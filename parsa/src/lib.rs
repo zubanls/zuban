@@ -1,7 +1,11 @@
 #![allow(unused)]
 
+fn parse(code: &str) -> Tree {
+    Tree {code: code.to_owned(), nodes: Vec::new() }
+}
+
 struct Tree {
-    code: Box<str>,
+    code: String,
     nodes: Vec<Node>,
 }
 
@@ -48,5 +52,17 @@ mod tests {
     fn sizes() {
         assert_eq!(size_of::<Node>(), 16);
         assert_eq!(size_of::<CompressedNode>(), 10);
+    }
+
+    fn p() -> Tree {
+        use std::env::current_dir;
+        //let foo = &current_dir().unwrap().into_os_string().into_string().unwrap();
+        let foo = "foo";
+        return parse(foo);
+    }
+    #[test]
+    fn test_parse() {
+        let tree = p();
+        assert_eq!(tree.code, "foo");
     }
 }
