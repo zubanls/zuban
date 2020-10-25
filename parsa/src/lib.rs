@@ -1,14 +1,20 @@
 #![allow(unused)]
 
-fn parse(code: &str) -> Tree {
-    Tree {code: code.to_owned(), nodes: Vec::new() }
+fn parse<F>(code: &str, next_token: F) -> Tree where F: Fn(&str) -> Token{
+    Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
 struct Tree {
     code: String,
     nodes: Vec<Node>,
+    lines: Option<Vec<u32>>,
 }
 
+struct Token {
+    start: u32,
+    length: u32,
+    node_type: u16,
+}
 
 #[derive(Copy, Clone)]
 struct Node {
@@ -17,7 +23,7 @@ struct Node {
     node_type: i16,
 
     start_index: u32,
-    length: u16,
+    length: u32,
     extra_data: u32,
 }
 
@@ -28,6 +34,10 @@ impl Node {
 
     pub fn set_extra_data(&mut self, extra_data: u32) {
         self.extra_data = extra_data
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        return self.node_type < 0
     }
 }
 
@@ -50,15 +60,17 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Node>(), 16);
+        assert_eq!(size_of::<Node>(), 20);
         assert_eq!(size_of::<CompressedNode>(), 10);
+        assert_eq!(align_of::<Node>(), 4);
+        assert_eq!(align_of::<CompressedNode>(), 2);
     }
 
     fn p() -> Tree {
         use std::env::current_dir;
         //let foo = &current_dir().unwrap().into_os_string().into_string().unwrap();
         let foo = "foo";
-        return parse(foo);
+        return parse(foo, |code| Token{start: 1, length: 1, node_type: 1});
     }
     #[test]
     fn test_parse() {
