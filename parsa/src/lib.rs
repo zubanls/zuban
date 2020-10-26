@@ -1,26 +1,40 @@
 #![allow(unused)]
+use std::mem;
 
-fn parse<F>(code: &str, next_token: F) -> Tree where F: Fn(&str) -> Token{
+pub fn parse<F>(code: &str, next_token: F) -> Tree where F: Fn(&str) -> Token{
     Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
-struct Tree {
+pub struct Tree {
     code: String,
     nodes: Vec<Node>,
     lines: Option<Vec<u32>>,
 }
 
-struct Token {
+pub struct Token {
     start: u32,
     length: u32,
-    node_type: u16,
+    type_: u16,
+}
+
+#[repr(i16)]
+enum TokenType {
+    String = 1,
+    Number,
+}
+
+#[allow(non_camel_case_types)]
+#[repr(i16)]
+enum NodeType {
+    file_input = 1,
+    foo,
 }
 
 #[derive(Copy, Clone)]
 struct Node {
     next_node_offset: u32,
     // Positive values are token types, negative values are nodes
-    node_type: i16,
+    type_: i16,
 
     start_index: u32,
     length: u32,
@@ -37,14 +51,28 @@ impl Node {
     }
 
     pub fn is_leaf(&self) -> bool {
-        return self.node_type < 0
+        return self.type_ < 0
+    }
+
+    pub fn token_type(&self) -> Option<TokenType> {
+        if self.is_leaf() {
+            return None
+        }
+        Some(unsafe {mem::transmute::<i16, TokenType>(-self.type_)})
+    }
+
+    pub fn node_type(&self) -> Option<NodeType> {
+        if !self.is_leaf() {
+            return None
+        }
+        Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
     }
 }
 
 struct CompressedNode {
     next_node_offset: u8,
     // Positive values are token types, negative values are nodes
-    node_type: i8,
+    type_: i8,
 
     start_index: u16,
     length: u16,
@@ -70,7 +98,7 @@ mod tests {
         use std::env::current_dir;
         //let foo = &current_dir().unwrap().into_os_string().into_string().unwrap();
         let foo = "foo";
-        return parse(foo, |code| Token{start: 1, length: 1, node_type: 1});
+        return parse(foo, |code| Token{start: 1, length: 1, type_: 1});
     }
     #[test]
     fn test_parse() {
