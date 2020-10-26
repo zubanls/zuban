@@ -2,4 +2,5 @@
 
 members = [
     "parsa",
+    "parsa_python",
 ]

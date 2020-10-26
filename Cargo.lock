@@ -3,3 +3,8 @@
 [[package]]
 name = "parsa"
 version = "0.1.0"
+
+[[package]]
+name = "parsa_python"
+version = "0.1.0"
+
