@@ -1,7 +1,7 @@
 #![allow(unused)]
 use std::mem;
 
-pub fn parse<F>(code: &str, next_token: F) -> Tree where F: Fn(&str) -> Token{
+pub fn parse<T, F: Fn(&str) -> T>(code: &str, next_token: F) -> Tree {
     Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
@@ -11,23 +11,10 @@ pub struct Tree {
     lines: Option<Vec<u32>>,
 }
 
-pub struct Token {
+struct Token {
     start: u32,
     length: u32,
     type_: u16,
-}
-
-#[repr(i16)]
-enum TokenType {
-    String = 1,
-    Number,
-}
-
-#[allow(non_camel_case_types)]
-#[repr(i16)]
-enum NodeType {
-    file_input = 1,
-    foo,
 }
 
 #[derive(Copy, Clone)]
@@ -54,6 +41,7 @@ impl Node {
         return self.type_ < 0
     }
 
+    /*
     pub fn token_type(&self) -> Option<TokenType> {
         if self.is_leaf() {
             return None
@@ -67,6 +55,7 @@ impl Node {
         }
         Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
     }
+    */
 }
 
 struct CompressedNode {
@@ -104,5 +93,38 @@ mod tests {
     fn test_parse() {
         let tree = p();
         assert_eq!(tree.code, "foo");
+    }
+}
+
+#[macro_export]
+macro_rules! create_parser {
+	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $TokenType:ty, $NodeType:ty) => {
+        pub fn $parser_name<F: Fn(&str) -> $Token>(code: &str, next_token: F) -> $Tree {
+            use parsa::parse;
+            $Tree {internal_tree: parse(code, next_token)}
+        }
+
+        use parsa::Tree;
+        pub struct $Tree {
+            internal_tree: Tree
+        }
+
+		impl $Tree {
+		}
+
+        pub struct $Node {
+        }
+
+        impl $Node {
+        }
+
+        pub struct $Token {
+            start: u32,
+            length: u32,
+            type_: $TokenType,
+        }
+
+        impl $Token {
+        }
     }
 }

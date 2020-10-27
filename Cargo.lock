@@ -7,4 +7,7 @@ version = "0.1.0"
 [[package]]
 name = "parsa_python"
 version = "0.1.0"
+dependencies = [
+ "parsa 0.1.0",
+]
 
