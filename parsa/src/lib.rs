@@ -1,14 +1,19 @@
 #![allow(unused)]
 use std::mem;
 
-pub trait TokenTrait {
+pub trait Token {
     fn get_start(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> u16;
 }
 
-pub fn parse<T: TokenTrait, F: Fn() -> T>(code: &str, tokenizer: F) -> Tree {
-    tokenizer().get_type();
+pub trait Tokenizer<T: Token> {
+    fn new(code: &str) -> Self;
+    fn yield_next(&self) -> T;
+}
+
+pub fn parse<U: Token, T: Tokenizer<U>>(code: &str, tokenizer: T) -> Tree {
+    T::new(code).yield_next().get_type();
     Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
@@ -102,7 +107,7 @@ mod tests {
 #[macro_export]
 macro_rules! create_parser {
 	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $TokenType:ty, $NodeType:ty) => {
-        pub fn $parser_name<F: Fn() -> $Token>(code: &str, next_token: F) -> $Tree {
+        pub fn $parser_name<U: parsa::Token, T: parsa::Tokenizer<U>>(code: &str, next_token: T) -> $Tree {
             $Tree {internal_tree: parsa::parse(code, next_token)}
         }
 
@@ -125,7 +130,7 @@ macro_rules! create_parser {
             type_: $TokenType,
         }
 
-        impl parsa::TokenTrait for $Token {
+        impl parsa::Token for $Token {
             fn get_start(&self) -> u32 {
                 self.start
             }

@@ -18,10 +18,11 @@ pub enum NodeType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use parsa::*;
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
-        parse_python("foo", || PythonToken{start: 1, length: 1, type_: TokenType::String});
+        parse_python::<PythonToken, PythonTokenizer>("foo", PythonTokenizer::new(""));
         return
     }
 }
@@ -30,10 +31,6 @@ struct PythonTokenizer {
 }
 
 impl PythonTokenizer {
-    fn new(code: &str) -> Self {
-        Self {}
-    }
-
     fn new_tok(&self) -> PythonToken {
         PythonToken {
             start: 0,
@@ -41,10 +38,17 @@ impl PythonTokenizer {
             type_: TokenType::Endmarker,
         }
     }
+}
+
+impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
+    fn new(_code: &str) -> Self {
+        Self {}
+    }
 
     fn yield_next(&self) -> PythonToken {
         self.new_tok()
     }
+
 }
 
 create_parser!(parse_python, PythonTree, PythonToken, PythonNode,
