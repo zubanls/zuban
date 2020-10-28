@@ -12,7 +12,7 @@ pub trait Tokenizer<T: Token> {
     fn yield_next(&self) -> T;
 }
 
-pub fn parse<U: Token, T: Tokenizer<U>>(code: &str, tokenizer: T) -> Tree {
+pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> Tree {
     T::new(code).yield_next().get_type();
     Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
@@ -106,9 +106,9 @@ mod tests {
 
 #[macro_export]
 macro_rules! create_parser {
-	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $TokenType:ty, $NodeType:ty) => {
-        pub fn $parser_name<U: parsa::Token, T: parsa::Tokenizer<U>>(code: &str, next_token: T) -> $Tree {
-            $Tree {internal_tree: parsa::parse(code, next_token)}
+	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
+        pub fn $parser_name(code: &str) -> $Tree {
+            $Tree {internal_tree: parsa::parse::<$Token, $Tokenizer>(code)}
         }
 
         pub struct $Tree {

@@ -18,11 +18,10 @@ pub enum NodeType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use parsa::*;
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
-        parse_python::<PythonToken, PythonTokenizer>("foo", PythonTokenizer::new(""));
+        parse_python("foo");
         return
     }
 }
@@ -52,4 +51,4 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 }
 
 create_parser!(parse_python, PythonTree, PythonToken, PythonNode,
-                      TokenType, NodeType);
+               PythonTokenizer, TokenType, NodeType);
