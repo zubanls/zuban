@@ -12,19 +12,19 @@ pub trait Tokenizer<T: Token> {
     fn yield_next(&self) -> T;
 }
 
-pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> Tree {
+pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> InternalTree {
     T::new(code).yield_next().get_type();
-    Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
+    InternalTree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
-pub struct Tree {
+pub struct InternalTree {
     code: String,
-    nodes: Vec<Node>,
+    nodes: Vec<InternalNode>,
     lines: Option<Vec<u32>>,
 }
 
 #[derive(Copy, Clone)]
-struct Node {
+struct InternalNode {
     next_node_offset: u32,
     // Positive values are token types, negative values are nodes
     type_: i16,
@@ -34,7 +34,7 @@ struct Node {
     extra_data: u32,
 }
 
-impl Node {
+impl InternalNode {
     pub fn get_extra_data(&self) -> u32 {
         self.extra_data
     }
@@ -83,9 +83,9 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<Node>(), 20);
+        assert_eq!(size_of::<InternalNode>(), 20);
         assert_eq!(size_of::<CompressedNode>(), 10);
-        assert_eq!(align_of::<Node>(), 4);
+        assert_eq!(align_of::<InternalNode>(), 4);
         assert_eq!(align_of::<CompressedNode>(), 2);
     }
 
@@ -112,7 +112,7 @@ macro_rules! create_parser {
         }
 
         pub struct $Tree {
-            internal_tree: parsa::Tree
+            internal_tree: parsa::InternalTree
         }
 
 		impl $Tree {
