@@ -1,7 +1,14 @@
 #![allow(unused)]
 use std::mem;
 
-pub fn parse<T, F: Fn(&str) -> T>(code: &str, next_token: F) -> Tree {
+pub trait TokenTrait {
+    fn get_start(&self) -> u32;
+    fn get_length(&self) -> u32;
+    fn get_type(&self) -> u16;
+}
+
+pub fn parse<T: TokenTrait, F: Fn() -> T>(code: &str, tokenizer: F) -> Tree {
+    tokenizer().get_type();
     Tree {code: code.to_owned(), nodes: Vec::new(), lines: None}
 }
 
@@ -9,12 +16,6 @@ pub struct Tree {
     code: String,
     nodes: Vec<Node>,
     lines: Option<Vec<u32>>,
-}
-
-struct Token {
-    start: u32,
-    length: u32,
-    type_: u16,
 }
 
 #[derive(Copy, Clone)]
@@ -83,30 +84,30 @@ mod tests {
         assert_eq!(align_of::<CompressedNode>(), 2);
     }
 
+    /*
     fn p() -> Tree {
         use std::env::current_dir;
         //let foo = &current_dir().unwrap().into_os_string().into_string().unwrap();
         let foo = "foo";
-        return parse(foo, |code| Token{start: 1, length: 1, type_: 1});
+        //return parse(foo, || Token{start: 1, length: 1, type_: 1});
     }
     #[test]
     fn test_parse() {
         let tree = p();
         assert_eq!(tree.code, "foo");
     }
+    */
 }
 
 #[macro_export]
 macro_rules! create_parser {
 	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $TokenType:ty, $NodeType:ty) => {
-        pub fn $parser_name<F: Fn(&str) -> $Token>(code: &str, next_token: F) -> $Tree {
-            use parsa::parse;
-            $Tree {internal_tree: parse(code, next_token)}
+        pub fn $parser_name<F: Fn() -> $Token>(code: &str, next_token: F) -> $Tree {
+            $Tree {internal_tree: parsa::parse(code, next_token)}
         }
 
-        use parsa::Tree;
         pub struct $Tree {
-            internal_tree: Tree
+            internal_tree: parsa::Tree
         }
 
 		impl $Tree {
@@ -124,7 +125,18 @@ macro_rules! create_parser {
             type_: $TokenType,
         }
 
-        impl $Token {
+        impl parsa::TokenTrait for $Token {
+            fn get_start(&self) -> u32 {
+                self.start
+            }
+                
+            fn get_length(&self) -> u32 {
+                self.length
+            }
+
+            fn get_type(&self) -> u16 {
+                self.type_ as u16
+            }
         }
     }
 }
