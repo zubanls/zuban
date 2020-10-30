@@ -181,11 +181,9 @@ macro_rules! create_type_set {
         use std::collections::HashMap;
         #[macro_use]
         $crate::lazy_static! {
-            static ref HASHMAP: HashMap<u32, &'static str> = {
+            static ref HASHMAP: HashMap<&'static str, i16> = {
                 let mut m = HashMap::new();
-                m.insert(0, "foo");
-                m.insert(1, "bar");
-                m.insert(2, "baz");
+                $(m.insert(stringify!($entry), $EnumName::$entry as i16)),*;
                 m
             };
         }
