@@ -18,50 +18,30 @@ pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> InternalTree {
 }
 
 pub struct InternalTree {
-    code: String,
-    nodes: Vec<InternalNode>,
-    lines: Option<Vec<u32>>,
+    pub code: String,
+    pub nodes: Vec<InternalNode>,
+    pub lines: Option<Vec<u32>>,
 }
 
 #[derive(Copy, Clone)]
-struct InternalNode {
+pub struct InternalNode {
     next_node_offset: u32,
     // Positive values are token types, negative values are nodes
-    type_: i16,
+    pub type_: i16,
 
     start_index: u32,
     length: u32,
-    extra_data: u32,
+    pub extra_data: u32,
 }
 
-impl InternalNode {
-    pub fn get_extra_data(&self) -> u32 {
-        self.extra_data
+pub mod private_parts {
+    pub trait InternalNodeAccess {
+        fn type_int(&self) -> i16;
     }
+}
 
-    pub fn set_extra_data(&mut self, extra_data: u32) {
-        self.extra_data = extra_data
-    }
+pub trait Node: private_parts::InternalNodeAccess {
 
-    pub fn is_leaf(&self) -> bool {
-        return self.type_ < 0
-    }
-
-    /*
-    pub fn token_type(&self) -> Option<TokenType> {
-        if self.is_leaf() {
-            return None
-        }
-        Some(unsafe {mem::transmute::<i16, TokenType>(-self.type_)})
-    }
-
-    pub fn node_type(&self) -> Option<NodeType> {
-        if !self.is_leaf() {
-            return None
-        }
-        Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
-    }
-    */
 }
 
 struct CompressedNode {
@@ -116,12 +96,52 @@ macro_rules! create_parser {
         }
 
 		impl $Tree {
+            /*pub fn get_root_node(&self) -> $Node{
+                $Node {internal_node: &self.internal_tree.nodes[0]}
+            }*/
 		}
 
         pub struct $Node {
+            internal_node: parsa::InternalNode
         }
 
+
+
         impl $Node {
+            fn get_extra_data(&self) -> u32 {
+                self.internal_node.extra_data
+            }
+
+            fn set_extra_data(&mut self, extra_data: u32) {
+                self.internal_node.extra_data = extra_data
+            }
+        }
+        impl parsa::private_parts::InternalNodeAccess for $Node {
+            fn type_int(&self) -> i16 {
+                self.internal_node.type_
+            }
+        }
+        impl parsa::Node for $Node {
+
+            /*fn is_leaf(&self) -> bool {
+                return self.type_int() < 0
+            }*/
+
+            /*
+            pub fn token_type(&self) -> Option<TokenType> {
+                if self.is_leaf() {
+                    return None
+                }
+                Some(unsafe {mem::transmute::<i16, $TokenType>(-self.type_)})
+            }
+
+            pub fn node_type(&self) -> Option<NodeType> {
+                if !self.is_leaf() {
+                    return None
+                }
+                Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
+            }
+            */
         }
 
         pub struct $Token {
