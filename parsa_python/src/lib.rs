@@ -1,4 +1,4 @@
-use parsa::create_parser;
+use parsa::{create_parser,create_type_set};
 
 #[repr(i16)]
 #[derive(Copy, Clone)]
@@ -14,6 +14,8 @@ pub enum NodeType {
     file_input = 1,
     foo,
 }
+
+create_type_set!(enum FooType, foo);
 
 #[cfg(test)]
 mod tests {

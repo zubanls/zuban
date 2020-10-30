@@ -1,4 +1,7 @@
 #![allow(unused)]
+extern crate lazy_static;
+#[macro_export]
+pub use lazy_static::lazy_static;
 use std::mem;
 
 pub trait Token {
@@ -161,6 +164,34 @@ macro_rules! create_parser {
 
             fn get_type(&self) -> u16 {
                 self.type_ as u16
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! create_type_set {
+	(enum $EnumName:ident, $($entry:ident),*) => {
+        #[allow(non_camel_case_types)]
+        #[repr(i16)]
+        pub enum $EnumName {
+            $($entry),*
+        }
+
+        use std::collections::HashMap;
+        #[macro_use]
+        $crate::lazy_static! {
+            static ref HASHMAP: HashMap<u32, &'static str> = {
+                let mut m = HashMap::new();
+                m.insert(0, "foo");
+                m.insert(1, "bar");
+                m.insert(2, "baz");
+                m
+            };
+        }
+        impl $EnumName {
+            fn get_map(&self) {
+                return 
             }
         }
     }
