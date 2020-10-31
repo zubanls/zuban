@@ -1,22 +1,6 @@
 use parsa::{create_parser,create_node,create_token};
 
 
-create_token!(PythonToken, enum TokenType, String, Number, Endmarker);
-create_node!(PythonNode, enum NodeType, file_input, foo);
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-        parse_python("bar");
-        dbg!(TokenType::get_map());
-        dbg!(NodeType::get_map());
-        return
-    }
-}
-
 struct PythonTokenizer {
 }
 
@@ -41,7 +25,22 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 
 }
 
+create_token!(PythonToken, enum TokenType, String, Number, Endmarker);
+create_node!(PythonNode, enum NodeType, file_input, foo);
 create_parser!(fn parse_python, struct PythonTree, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+        parse_python("bar");
+        dbg!(TokenType::get_map());
+        dbg!(NodeType::get_map());
+        return
+    }
+}
