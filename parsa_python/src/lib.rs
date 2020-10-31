@@ -1,12 +1,5 @@
 use parsa::{create_parser,create_type_set};
 
-#[repr(i16)]
-#[derive(Copy, Clone)]
-pub enum TokenType {
-    String = 1,
-    Number,
-    Endmarker,
-}
 
 #[allow(non_camel_case_types)]
 #[repr(i16)]
@@ -15,7 +8,8 @@ pub enum NodeType {
     foo,
 }
 
-create_type_set!(enum FooType, foo);
+create_type_set!(enum TokenType, Endmarker);
+//create_type_set!(enum BarType, bar);
 
 #[cfg(test)]
 mod tests {
@@ -23,7 +17,9 @@ mod tests {
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
-        parse_python("foo");
+        parse_python("bar");
+        dbg!(TokenType::get_map());
+        dbg!(TokenType::get_map());
         return
     }
 }
@@ -54,3 +50,5 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 
 create_parser!(parse_python, PythonTree, PythonToken, PythonNode,
                PythonTokenizer, TokenType, NodeType);
+//create_parser!(parse_pythonx, PythonTreex, PythonTokenx, PythonNodex,
+//               PythonTokenizer, TokenType, NodeType);

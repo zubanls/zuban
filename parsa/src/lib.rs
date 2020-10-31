@@ -173,6 +173,7 @@ macro_rules! create_parser {
 macro_rules! create_type_set {
 	(enum $EnumName:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
+        #[derive(Copy, Clone)]
         #[repr(i16)]
         pub enum $EnumName {
             $($entry),*
@@ -188,8 +189,8 @@ macro_rules! create_type_set {
             };
         }
         impl $EnumName {
-            fn get_map(&self) {
-                return 
+            fn get_map() -> &'static HashMap<&'static str, i16> {
+                &*HASHMAP
             }
         }
     }
