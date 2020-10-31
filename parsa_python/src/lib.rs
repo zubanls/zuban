@@ -1,15 +1,8 @@
-use parsa::{create_parser,create_type_set,create_token};
+use parsa::{create_parser,create_node,create_token};
 
-
-#[allow(non_camel_case_types)]
-#[repr(i16)]
-pub enum NodeType {
-    file_input = 1,
-    foo,
-}
 
 create_token!(PythonToken, enum TokenType, String, Number, Endmarker);
-create_type_set!(enum BarType, bar);
+create_node!(PythonNode, enum NodeType, file_input, foo);
 
 #[cfg(test)]
 mod tests {
@@ -19,7 +12,7 @@ mod tests {
         assert_eq!(2 + 2, 4);
         parse_python("bar");
         dbg!(TokenType::get_map());
-        dbg!(BarType::get_map());
+        dbg!(NodeType::get_map());
         return
     }
 }

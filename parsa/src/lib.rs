@@ -151,7 +151,7 @@ macro_rules! create_parser {
 }
 
 #[macro_export]
-macro_rules! create_type_set {
+macro_rules! __create_type_set {
 	(enum $EnumName:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone)]
@@ -179,7 +179,7 @@ macro_rules! create_type_set {
 #[macro_export]
 macro_rules! create_token {
 	($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
-        $crate::create_type_set!(enum $TokenType, $($entry),*);
+        $crate::__create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
             start: u32,
@@ -200,5 +200,12 @@ macro_rules! create_token {
                 self.type_ as u16
             }
         }
+    }
+}
+
+#[macro_export]
+macro_rules! create_node {
+	($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
+        $crate::__create_type_set!(enum $TokenType, $($entry),*);
     }
 }
