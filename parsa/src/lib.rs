@@ -90,7 +90,7 @@ mod tests {
 
 #[macro_export]
 macro_rules! create_parser {
-	($parser_name:ident, $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
+	(fn $parser_name:ident, struct $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
         pub fn $parser_name(code: &str) -> $Tree {
             $Tree {internal_tree: parsa::parse::<$Token, $Tokenizer>(code)}
         }
@@ -100,53 +100,15 @@ macro_rules! create_parser {
         }
 
 		impl $Tree {
-            /*pub fn get_root_node(&self) -> $Node{
-                $Node {internal_node: &self.internal_tree.nodes[0]}
-            }*/
+            pub fn get_root_node(&self) -> $Node{
+                $Node {
+                    internal_tree: &self.internal_tree,
+                    internal_node: &self.internal_tree.nodes[0],
+                    index: 0,
+                }
+            }
 		}
 
-        pub struct $Node {
-            internal_node: parsa::InternalNode
-        }
-
-
-
-        impl $Node {
-            fn get_extra_data(&self) -> u32 {
-                self.internal_node.extra_data
-            }
-
-            fn set_extra_data(&mut self, extra_data: u32) {
-                self.internal_node.extra_data = extra_data
-            }
-        }
-        impl parsa::private_parts::InternalNodeAccess for $Node {
-            fn type_int(&self) -> i16 {
-                self.internal_node.type_
-            }
-        }
-        impl parsa::Node for $Node {
-
-            /*fn is_leaf(&self) -> bool {
-                return self.type_int() < 0
-            }*/
-
-            /*
-            pub fn token_type(&self) -> Option<TokenType> {
-                if self.is_leaf() {
-                    return None
-                }
-                Some(unsafe {mem::transmute::<i16, $TokenType>(-self.type_)})
-            }
-
-            pub fn node_type(&self) -> Option<NodeType> {
-                if !self.is_leaf() {
-                    return None
-                }
-                Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
-            }
-            */
-        }
     }
 }
 
@@ -205,7 +167,56 @@ macro_rules! create_token {
 
 #[macro_export]
 macro_rules! create_node {
-	($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
-        $crate::__create_type_set!(enum $TokenType, $($entry),*);
+	($Node:ident, enum $NodeType:ident, $($entry:ident),*) => {
+        $crate::__create_type_set!(enum $NodeType, $($entry),*);
+
+        pub struct $Node<'a> {
+            internal_tree: &'a $crate::InternalTree,
+            pub index: u32,
+            internal_node: &'a $crate::InternalNode,
+        }
+
+
+
+        impl $Node<'_> {
+            fn get_extra_data(&self) -> u32 {
+                self.internal_node.extra_data
+            }
+            /*
+            fn set_extra_data(&mut self, extra_data: u32) {
+                self.internal_node.extra_data = extra_data
+            }
+            */
+        }
+
+        impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
+            fn type_int(&self) -> i16 {
+                self.internal_node.type_
+            }
+        }
+        /*
+        impl parsa::Node for $Node {
+
+            /*fn is_leaf(&self) -> bool {
+                return self.type_int() < 0
+            }*/
+
+            /*
+            pub fn token_type(&self) -> Option<TokenType> {
+                if self.is_leaf() {
+                    return None
+                }
+                Some(unsafe {mem::transmute::<i16, $TokenType>(-self.type_)})
+            }
+
+            pub fn node_type(&self) -> Option<NodeType> {
+                if !self.is_leaf() {
+                    return None
+                }
+                Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
+            }
+            */
+        }
+        */
     }
 }

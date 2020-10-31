@@ -41,7 +41,7 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 
 }
 
-create_parser!(parse_python, PythonTree, PythonNode,
+create_parser!(fn parse_python, struct PythonTree, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 //create_parser!(parse_pythonx, PythonTreex, PythonNodex,
 //               PythonToken, PythonTokenizer, TokenType, NodeType);
