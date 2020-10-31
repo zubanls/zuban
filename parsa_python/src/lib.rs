@@ -1,4 +1,4 @@
-use parsa::{create_parser,create_type_set};
+use parsa::{create_parser,create_type_set,create_token};
 
 
 #[allow(non_camel_case_types)]
@@ -8,7 +8,7 @@ pub enum NodeType {
     foo,
 }
 
-create_type_set!(enum TokenType, String, Number, Endmarker);
+create_token!(PythonToken, enum TokenType, String, Number, Endmarker);
 create_type_set!(enum BarType, bar);
 
 #[cfg(test)]
@@ -48,7 +48,7 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 
 }
 
-create_parser!(parse_python, PythonTree, PythonToken, PythonNode,
-               PythonTokenizer, TokenType, NodeType);
-//create_parser!(parse_pythonx, PythonTreex, PythonTokenx, PythonNodex,
-//               PythonTokenizer, TokenType, NodeType);
+create_parser!(parse_python, PythonTree, PythonNode,
+               PythonToken, PythonTokenizer, TokenType, NodeType);
+//create_parser!(parse_pythonx, PythonTreex, PythonNodex,
+//               PythonToken, PythonTokenizer, TokenType, NodeType);

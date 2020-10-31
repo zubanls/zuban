@@ -90,7 +90,7 @@ mod tests {
 
 #[macro_export]
 macro_rules! create_parser {
-	($parser_name:ident, $Tree:ident, $Token:ident, $Node:ident, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
+	($parser_name:ident, $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
         pub fn $parser_name(code: &str) -> $Tree {
             $Tree {internal_tree: parsa::parse::<$Token, $Tokenizer>(code)}
         }
@@ -147,26 +147,6 @@ macro_rules! create_parser {
             }
             */
         }
-
-        pub struct $Token {
-            start: u32,
-            length: u32,
-            type_: $TokenType,
-        }
-
-        impl parsa::Token for $Token {
-            fn get_start(&self) -> u32 {
-                self.start
-            }
-                
-            fn get_length(&self) -> u32 {
-                self.length
-            }
-
-            fn get_type(&self) -> u16 {
-                self.type_ as u16
-            }
-        }
     }
 }
 
@@ -191,6 +171,33 @@ macro_rules! create_type_set {
                     };
                 }
                 &*HASHMAP
+            }
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! create_token {
+	($Token:ident, enum $EnumName:ident, $($entry:ident),*) => {
+        $crate::create_type_set!(enum $EnumName, $($entry),*);
+
+        pub struct $Token {
+            start: u32,
+            length: u32,
+            type_: $EnumName,
+        }
+
+        impl $crate::Token for $Token {
+            fn get_start(&self) -> u32 {
+                self.start
+            }
+
+            fn get_length(&self) -> u32 {
+                self.length
+            }
+
+            fn get_type(&self) -> u16 {
+                self.type_ as u16
             }
         }
     }
