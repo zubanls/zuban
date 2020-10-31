@@ -9,7 +9,7 @@ pub enum NodeType {
 }
 
 create_type_set!(enum TokenType, String, Number, Endmarker);
-//create_type_set!(enum BarType, bar);
+create_type_set!(enum BarType, bar);
 
 #[cfg(test)]
 mod tests {
@@ -19,7 +19,7 @@ mod tests {
         assert_eq!(2 + 2, 4);
         parse_python("bar");
         dbg!(TokenType::get_map());
-        dbg!(TokenType::get_map());
+        dbg!(BarType::get_map());
         return
     }
 }

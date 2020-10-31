@@ -1,5 +1,6 @@
 #![allow(unused)]
 extern crate lazy_static;
+pub use std::collections::HashMap;
 #[macro_export]
 pub use lazy_static::lazy_static;
 use std::mem;
@@ -179,17 +180,16 @@ macro_rules! create_type_set {
             $($entry),*
         }
 
-        use std::collections::HashMap;
-        #[macro_use]
-        $crate::lazy_static! {
-            static ref HASHMAP: HashMap<&'static str, i16> = {
-                let mut m = HashMap::new();
-                $(m.insert(stringify!($entry), $EnumName::$entry as i16);)*
-                m
-            };
-        }
         impl $EnumName {
-            fn get_map() -> &'static HashMap<&'static str, i16> {
+            fn get_map() -> &'static $crate::HashMap<&'static str, i16> {
+                #[macro_use]
+                $crate::lazy_static! {
+                    static ref HASHMAP: $crate::HashMap<&'static str, i16> = {
+                        let mut m = $crate::HashMap::new();
+                        $(m.insert(stringify!($entry), $EnumName::$entry as i16);)*
+                        m
+                    };
+                }
                 &*HASHMAP
             }
         }
