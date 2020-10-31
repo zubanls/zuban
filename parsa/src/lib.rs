@@ -178,13 +178,13 @@ macro_rules! create_type_set {
 
 #[macro_export]
 macro_rules! create_token {
-	($Token:ident, enum $EnumName:ident, $($entry:ident),*) => {
-        $crate::create_type_set!(enum $EnumName, $($entry),*);
+	($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
+        $crate::create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
             start: u32,
             length: u32,
-            type_: $EnumName,
+            type_: $TokenType,
         }
 
         impl $crate::Token for $Token {
