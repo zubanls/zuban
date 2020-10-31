@@ -8,7 +8,7 @@ pub enum NodeType {
     foo,
 }
 
-create_type_set!(enum TokenType, Endmarker);
+create_type_set!(enum TokenType, String, Number, Endmarker);
 //create_type_set!(enum BarType, bar);
 
 #[cfg(test)]

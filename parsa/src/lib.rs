@@ -184,7 +184,7 @@ macro_rules! create_type_set {
         $crate::lazy_static! {
             static ref HASHMAP: HashMap<&'static str, i16> = {
                 let mut m = HashMap::new();
-                $(m.insert(stringify!($entry), $EnumName::$entry as i16)),*;
+                $(m.insert(stringify!($entry), $EnumName::$entry as i16);)*
                 m
             };
         }
