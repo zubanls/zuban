@@ -148,7 +148,7 @@ macro_rules! __create_type_set {
 
 #[macro_export]
 macro_rules! create_token {
-    (struct $Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
+    (struct $Token:ident, enum $TokenType:ident, [$($entry:ident),*]) => {
         $crate::__create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
@@ -175,7 +175,7 @@ macro_rules! create_token {
 
 #[macro_export]
 macro_rules! create_node {
-    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, $($entry:ident),*) => {
+    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, [$($entry:ident),*]) => {
         $crate::__create_type_set!(enum $NodeType, $($entry),*);
 
         pub struct $Node<'a> {

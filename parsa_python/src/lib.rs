@@ -25,8 +25,8 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 
 }
 
-create_token!(struct PythonToken, enum TokenType, String, Number, Endmarker);
-create_node!(struct PythonNode, enum NodeType, TokenType, file_input, foo);
+create_token!(struct PythonToken, enum TokenType, [String, Number, Endmarker]);
+create_node!(struct PythonNode, enum NodeType, TokenType, [file_input, foo]);
 create_parser!(fn parse_python, struct PythonTree, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
