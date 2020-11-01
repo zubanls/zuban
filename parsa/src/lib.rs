@@ -45,7 +45,6 @@ pub struct InternalNode {
 
 pub mod private_parts {
     pub trait InternalNodeAccess {
-        fn type_int(&self) -> i16;
     }
 }
 
@@ -197,21 +196,20 @@ macro_rules! create_node {
                 if self.is_leaf() {
                     return None
                 }
-                Some(unsafe {$crate::mem::transmute::<i16, $TokenType>(-self.internal_node.type_)})
+                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, $TokenType>(
+                    -self.internal_node.type_)})
             }
 
             pub fn node_type(&self) -> Option<NodeType> {
                 if !self.is_leaf() {
                     return None
                 }
-                Some(unsafe {$crate::mem::transmute::<i16, NodeType>(self.internal_node.type_)})
+                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, NodeType>(
+                    self.internal_node.type_)})
             }
         }
 
         impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
-            fn type_int(&self) -> $crate::InternalType {
-                self.internal_node.type_
-            }
         }
         /*
         impl parsa::Node for $Node {
