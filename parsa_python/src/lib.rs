@@ -35,8 +35,8 @@ create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
 create_grammar!(
     struct PythonGrammar, NodeType, TokenType,
 
-    foo: "bar | 'baz'";
-    bar: "'bla'";
+    foo: bar | "baz";
+    bar: "bla";
 );
 
 #[cfg(test)]
