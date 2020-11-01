@@ -6,6 +6,7 @@ pub use lazy_static::lazy_static;
 use std::mem;
 
 pub type ExtraData = u32;
+pub type Index = u32;
 
 pub trait Token {
     fn get_start(&self) -> u32;
@@ -35,7 +36,7 @@ pub struct InternalNode {
     // Positive values are token types, negative values are nodes
     pub type_: i16,
 
-    start_index: u32,
+    start_index: Index,
     length: u32,
     pub extra_data: ExtraData,
 }
@@ -110,7 +111,7 @@ macro_rules! create_parser {
                 }
             }
 
-            pub fn set_extra_data(&mut self, index: u32, extra_data: $crate::ExtraData) {
+            pub fn set_extra_data(&mut self, index: $crate::Index, extra_data: $crate::ExtraData) {
                 self.internal_tree.nodes[0].extra_data = extra_data
             }
         }
@@ -177,7 +178,7 @@ macro_rules! create_node {
 
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
-            pub index: u32,
+            pub index: $crate::Index,
             internal_node: &'a $crate::InternalNode,
         }
 
