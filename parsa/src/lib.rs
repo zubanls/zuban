@@ -192,6 +192,28 @@ macro_rules! create_node {
                 self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
+            pub fn get_prefix(&self) -> &str {
+                let start;
+                if self.index == 0 {
+                    start = 0;
+                } else {
+                    start = self.internal_tree.nodes[self.index as usize - 1].start_index;
+                }
+                let string = self.get_code_slice(start, self.internal_node.start_index);
+                string
+            }
+
+            pub fn get_suffix(&self) -> &str {
+                if self.index as usize == self.internal_tree.nodes.len() - 1 {
+                    return ""
+                }
+                let string = self.get_code_slice(
+                    self.internal_node.start_index + self.internal_node.length,
+                    self.internal_tree.nodes[self.index as usize + 1].start_index
+                );
+                string
+            }
+
             fn is_leaf(&self) -> bool {
                 return self.internal_node.type_ < 0
             }
