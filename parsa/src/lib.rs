@@ -5,6 +5,8 @@ pub use std::collections::HashMap;
 pub use lazy_static::lazy_static;
 use std::mem;
 
+pub type ExtraData = u32;
+
 pub trait Token {
     fn get_start(&self) -> u32;
     fn get_length(&self) -> u32;
@@ -35,7 +37,7 @@ pub struct InternalNode {
 
     start_index: u32,
     length: u32,
-    pub extra_data: u32,
+    pub extra_data: ExtraData,
 }
 
 pub mod private_parts {
@@ -90,7 +92,7 @@ mod tests {
 
 #[macro_export]
 macro_rules! create_parser {
-	(fn $parser_name:ident, struct $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
+    (fn $parser_name:ident, struct $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
         pub fn $parser_name(code: &str) -> $Tree {
             $Tree {internal_tree: parsa::parse::<$Token, $Tokenizer>(code)}
         }
@@ -99,7 +101,7 @@ macro_rules! create_parser {
             internal_tree: parsa::InternalTree
         }
 
-		impl $Tree {
+        impl $Tree {
             pub fn get_root_node(&self) -> $Node{
                 $Node {
                     internal_tree: &self.internal_tree,
@@ -107,14 +109,17 @@ macro_rules! create_parser {
                     index: 0,
                 }
             }
-		}
 
+            pub fn set_extra_data(&mut self, index: u32, extra_data: $crate::ExtraData) {
+                self.internal_tree.nodes[0].extra_data = extra_data
+            }
+        }
     }
 }
 
 #[macro_export]
 macro_rules! __create_type_set {
-	(enum $EnumName:ident, $($entry:ident),*) => {
+    (enum $EnumName:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone)]
         #[repr(i16)]
@@ -140,7 +145,7 @@ macro_rules! __create_type_set {
 
 #[macro_export]
 macro_rules! create_token {
-	($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
+    ($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
         $crate::__create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
@@ -167,7 +172,7 @@ macro_rules! create_token {
 
 #[macro_export]
 macro_rules! create_node {
-	($Node:ident, enum $NodeType:ident, $($entry:ident),*) => {
+    ($Node:ident, enum $NodeType:ident, $($entry:ident),*) => {
         $crate::__create_type_set!(enum $NodeType, $($entry),*);
 
         pub struct $Node<'a> {
@@ -179,14 +184,9 @@ macro_rules! create_node {
 
 
         impl $Node<'_> {
-            fn get_extra_data(&self) -> u32 {
+            fn get_extra_data(&self) -> $crate::ExtraData {
                 self.internal_node.extra_data
             }
-            /*
-            fn set_extra_data(&mut self, extra_data: u32) {
-                self.internal_node.extra_data = extra_data
-            }
-            */
         }
 
         impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
