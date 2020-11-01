@@ -1,6 +1,7 @@
 #![allow(unused)]
 extern crate lazy_static;
 pub use std::collections::HashMap;
+pub use std::io::Bytes;
 #[macro_export]
 pub use lazy_static::lazy_static;
 pub use std::mem;
@@ -23,11 +24,11 @@ pub trait Tokenizer<T: Token> {
 
 pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> InternalTree {
     T::new(code).yield_next().get_type();
-    InternalTree {code: code.to_owned(), nodes: Vec::new(), lines: None}
+    InternalTree {code: code.as_bytes().to_owned(), nodes: Vec::new(), lines: None}
 }
 
 pub struct InternalTree {
-    pub code: String,
+    pub code: Vec<u8>,
     pub nodes: Vec<InternalNode>,
     pub lines: Option<Vec<u32>>,
 }
@@ -38,17 +39,12 @@ pub struct InternalNode {
     // Positive values are token types, negative values are nodes
     pub type_: InternalType,
 
-    start_index: CodeIndex,
-    length: u32,
+    pub start_index: CodeIndex,
+    pub length: u32,
     pub extra_data: ExtraData,
 }
 
-pub mod private_parts {
-    pub trait InternalNodeAccess {
-    }
-}
-
-pub trait Node: private_parts::InternalNodeAccess {
+pub trait Node {
 
 }
 
@@ -188,6 +184,14 @@ macro_rules! create_node {
                 self.internal_node.extra_data
             }
 
+            pub fn get_code(&self) -> &str {
+                use std::str;
+                str::from_utf8(&self.internal_tree.code[
+                    self.internal_node.start_index as usize
+                    ..self.internal_node.start_index as usize + self.internal_node.length as usize
+                ]).unwrap()
+            }
+
             fn is_leaf(&self) -> bool {
                 return self.internal_node.type_ < 0
             }
@@ -209,13 +213,7 @@ macro_rules! create_node {
             }
         }
 
-        impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
+        impl $crate::Node for $Node<'_> {
         }
-        /*
-        impl parsa::Node for $Node {
-
-
-        }
-        */
     }
 }
