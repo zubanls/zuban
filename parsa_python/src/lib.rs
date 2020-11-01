@@ -1,4 +1,4 @@
-use parsa::{create_parser,create_node,create_token};
+use parsa::{create_parser,create_node,create_token, create_grammar};
 
 
 struct PythonTokenizer {
@@ -32,6 +32,13 @@ create_parser!(fn parse_python, struct PythonTree, PythonNode,
 create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 
+create_grammar!(
+    struct PythonGrammar, NodeType, TokenType,
+
+    foo: "bar | 'baz'";
+    bar: "'bla'";
+);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,6 +48,6 @@ mod tests {
         parse_python("bar");
         dbg!(TokenType::get_map());
         dbg!(NodeType::get_map());
-        return
+        PythonGrammar::debug()
     }
 }

@@ -241,3 +241,15 @@ macro_rules! create_node {
         }
     }
 }
+
+#[macro_export]
+macro_rules! create_grammar {
+    (struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($label:ident: $rule:literal;)+) => {
+        struct $Grammar {}
+        impl $Grammar {
+            fn debug() {
+                $(dbg!(stringify!($label), $rule);)+
+            }
+        }
+    }
+}
