@@ -9,10 +9,11 @@ pub use std::mem;
 pub type ExtraData = u32;
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
+pub type CodeLength = u32;
 pub type InternalType = i16;
 
 pub trait Token {
-    fn get_start(&self) -> u32;
+    fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> u16;
 }
@@ -40,12 +41,8 @@ pub struct InternalNode {
     pub type_: InternalType,
 
     pub start_index: CodeIndex,
-    pub length: u32,
+    pub length: CodeLength,
     pub extra_data: ExtraData,
-}
-
-pub trait Node {
-
 }
 
 struct CompressedNode {
@@ -147,14 +144,14 @@ macro_rules! create_token {
         $crate::__create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
-            start: u32,
-            length: u32,
+            start_index: $crate::CodeIndex,
+            length: $crate::CodeLength,
             type_: $TokenType,
         }
 
         impl $crate::Token for $Token {
-            fn get_start(&self) -> u32 {
-                self.start
+            fn get_start_index(&self) -> u32 {
+                self.start_index
             }
 
             fn get_length(&self) -> u32 {
@@ -184,12 +181,15 @@ macro_rules! create_node {
                 self.internal_node.extra_data
             }
 
-            pub fn get_code(&self) -> &str {
+            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
                 use std::str;
                 str::from_utf8(&self.internal_tree.code[
-                    self.internal_node.start_index as usize
-                    ..self.internal_node.start_index as usize + self.internal_node.length as usize
+                    index as usize..index as usize + length as usize
                 ]).unwrap()
+            }
+
+            pub fn get_code(&self) -> &str {
+                self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
             fn is_leaf(&self) -> bool {
@@ -211,9 +211,6 @@ macro_rules! create_node {
                 Some(unsafe {$crate::mem::transmute::<$crate::InternalType, NodeType>(
                     self.internal_node.type_)})
             }
-        }
-
-        impl $crate::Node for $Node<'_> {
         }
     }
 }

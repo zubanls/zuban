@@ -7,7 +7,7 @@ struct PythonTokenizer {
 impl PythonTokenizer {
     fn new_tok(&self) -> PythonToken {
         PythonToken {
-            start: 0,
+            start_index: 0,
             length: 0,
             type_: TokenType::Endmarker,
         }
