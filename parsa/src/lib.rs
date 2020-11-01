@@ -228,17 +228,15 @@ macro_rules! create_node {
                     return None
                 }
                 // Can be unsafe, because the TokenType is created by the macro create_token.
-                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, $TokenType>(
-                    -self.internal_node.type_)})
+                Some(unsafe {$crate::mem::transmute(-self.internal_node.type_)})
             }
 
-            pub fn node_type(&self) -> Option<NodeType> {
+            pub fn node_type(&self) -> Option<$NodeType> {
                 if !self.is_leaf() {
                     return None
                 }
                 // Can be unsafe, because the NodeType is created by this exact macro.
-                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, $NodeType>(
-                    self.internal_node.type_)})
+                Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
         }
     }
