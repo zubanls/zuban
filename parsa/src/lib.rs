@@ -3,10 +3,12 @@ extern crate lazy_static;
 pub use std::collections::HashMap;
 #[macro_export]
 pub use lazy_static::lazy_static;
-use std::mem;
+pub use std::mem;
 
 pub type ExtraData = u32;
 pub type NodeIndex = u32;
+pub type CodeIndex = u32;
+pub type InternalType = i16;
 
 pub trait Token {
     fn get_start(&self) -> u32;
@@ -32,11 +34,11 @@ pub struct InternalTree {
 
 #[derive(Copy, Clone)]
 pub struct InternalNode {
-    next_node_offset: u32,
+    next_node_offset: NodeIndex,
     // Positive values are token types, negative values are nodes
-    pub type_: i16,
+    pub type_: InternalType,
 
-    start_index: NodeIndex,
+    start_index: CodeIndex,
     length: u32,
     pub extra_data: ExtraData,
 }
@@ -146,7 +148,7 @@ macro_rules! __create_type_set {
 
 #[macro_export]
 macro_rules! create_token {
-    ($Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
+    (struct $Token:ident, enum $TokenType:ident, $($entry:ident),*) => {
         $crate::__create_type_set!(enum $TokenType, $($entry),*);
 
         pub struct $Token {
@@ -173,7 +175,7 @@ macro_rules! create_token {
 
 #[macro_export]
 macro_rules! create_node {
-    ($Node:ident, enum $NodeType:ident, $($entry:ident),*) => {
+    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, $($entry:ident),*) => {
         $crate::__create_type_set!(enum $NodeType, $($entry),*);
 
         pub struct $Node<'a> {
@@ -186,35 +188,35 @@ macro_rules! create_node {
             fn get_extra_data(&self) -> $crate::ExtraData {
                 self.internal_node.extra_data
             }
-        }
 
-        impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
-            fn type_int(&self) -> i16 {
-                self.internal_node.type_
+            fn is_leaf(&self) -> bool {
+                return self.internal_node.type_ < 0
             }
-        }
-        /*
-        impl parsa::Node for $Node {
 
-            /*fn is_leaf(&self) -> bool {
-                return self.type_int() < 0
-            }*/
-
-            /*
             pub fn token_type(&self) -> Option<TokenType> {
                 if self.is_leaf() {
                     return None
                 }
-                Some(unsafe {mem::transmute::<i16, $TokenType>(-self.type_)})
+                Some(unsafe {$crate::mem::transmute::<i16, $TokenType>(-self.internal_node.type_)})
             }
 
             pub fn node_type(&self) -> Option<NodeType> {
                 if !self.is_leaf() {
                     return None
                 }
-                Some(unsafe {mem::transmute::<i16, NodeType>(self.type_)})
+                Some(unsafe {$crate::mem::transmute::<i16, NodeType>(self.internal_node.type_)})
             }
-            */
+        }
+
+        impl parsa::private_parts::InternalNodeAccess for $Node<'_> {
+            fn type_int(&self) -> $crate::InternalType {
+                self.internal_node.type_
+            }
+        }
+        /*
+        impl parsa::Node for $Node {
+
+
         }
         */
     }
