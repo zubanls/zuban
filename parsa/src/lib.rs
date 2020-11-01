@@ -183,9 +183,9 @@ macro_rules! create_node {
 
             fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
                 use std::str;
-                str::from_utf8(&self.internal_tree.code[
+                unsafe {str::from_utf8_unchecked(&self.internal_tree.code[
                     index as usize..index as usize + length as usize
-                ]).unwrap()
+                ])}
             }
 
             pub fn get_code(&self) -> &str {
@@ -204,12 +204,15 @@ macro_rules! create_node {
             }
 
             pub fn get_suffix(&self) -> &str {
+                let end;
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
-                    return ""
+                    end = self.internal_tree.code.len() as u32
+                } else {
+                    end = self.internal_tree.nodes[self.index as usize + 1].start_index
                 }
                 let string = self.get_code_slice(
                     self.internal_node.start_index + self.internal_node.length,
-                    self.internal_tree.nodes[self.index as usize + 1].start_index
+                    end
                 );
                 string
             }
