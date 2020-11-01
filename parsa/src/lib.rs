@@ -183,6 +183,8 @@ macro_rules! create_node {
 
             fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
                 use std::str;
+                // Can be unsafe, because the input of the parse function is a
+                // String that is copied to the internal tree.
                 unsafe {str::from_utf8_unchecked(&self.internal_tree.code[
                     index as usize..index as usize + length as usize
                 ])}
@@ -221,10 +223,11 @@ macro_rules! create_node {
                 return self.internal_node.type_ < 0
             }
 
-            pub fn token_type(&self) -> Option<TokenType> {
+            pub fn token_type(&self) -> Option<$TokenType> {
                 if self.is_leaf() {
                     return None
                 }
+                // Can be unsafe, because the TokenType is created by the macro create_token.
                 Some(unsafe {$crate::mem::transmute::<$crate::InternalType, $TokenType>(
                     -self.internal_node.type_)})
             }
@@ -233,7 +236,8 @@ macro_rules! create_node {
                 if !self.is_leaf() {
                     return None
                 }
-                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, NodeType>(
+                // Can be unsafe, because the NodeType is created by this exact macro.
+                Some(unsafe {$crate::mem::transmute::<$crate::InternalType, $NodeType>(
                     self.internal_node.type_)})
             }
         }
