@@ -244,7 +244,9 @@ macro_rules! create_node {
 
 #[macro_export]
 macro_rules! __parse_operators {
-    ($label:ident: $($rule:tt)+) => {$crate::__parse_rules!($label: $($rule)+)};
+    ($next:ident: $($rule:tt)+) => {$crate::__parse_rules!($next: $($rule)+)};
+    ($next:ident $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
+    ($next:literal $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
     (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
     () => {};
 }

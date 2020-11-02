@@ -41,6 +41,7 @@ create_grammar!(
     multiline:
         | foo
         | bar
+    multi: foo bar
 );
 
 #[cfg(test)]
