@@ -47,6 +47,8 @@ create_grammar!(
     z: la foo?
     bracket1: (la foo)
     bracket2: bar (lala foo)?
+    negative_lookahead: bar !foo
+    positive_lookahead: bar &foo
 );
 
 #[cfg(test)]

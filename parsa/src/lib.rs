@@ -244,10 +244,17 @@ macro_rules! create_node {
 
 #[macro_export]
 macro_rules! __parse_operators {
+    // New rule
     ($next:ident: $($rule:tt)+) => {$crate::__parse_rules!($next: $($rule)+)};
-    ($next:ident $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
-    ($next:literal $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
+
+    // An identifier again
+    (! $($rule:tt)+)               => {$crate::__parse_identifier!(! $($rule)+)};
+    (& $($rule:tt)+)                => {$crate::__parse_identifier!(& $($rule)+)};
+    ($next:ident $($rule:tt)*)     => {$crate::__parse_identifier!($next $($rule)*)};
+    ($next:literal $($rule:tt)*)   => {$crate::__parse_identifier!($next $($rule)*)};
     (($($inner:tt)+) $($rule:tt)*) => {$crate::__parse_identifier!(($($inner)+) $($rule)*)};
+
+    // Actually an operator
     (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
     (+ $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
     (* $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
@@ -257,6 +264,12 @@ macro_rules! __parse_operators {
 
 #[macro_export]
 macro_rules! __parse_identifier {
+    (! $($rule:tt)+) => {
+        $crate::__parse_identifier!($($rule)+);
+    };
+    (& $($rule:tt)+) => {
+        $crate::__parse_identifier!($($rule)+);
+    };
     ($name:ident $($rule:tt)*) => {
         dbg!(stringify!('x', $name));
         $crate::__parse_operators!($($rule)*);
