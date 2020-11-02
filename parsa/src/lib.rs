@@ -245,13 +245,12 @@ macro_rules! create_node {
 #[macro_export]
 macro_rules! __parse_operators {
     ($label:ident: $($rule:tt)+) => {$crate::__parse_rules!($label: $($rule)+)};
-    (| $($rule:tt)+) => {$crate::__parse_rule!($($rule)+)};
+    (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
     () => {};
 }
 
 #[macro_export]
-macro_rules! __parse_rule {
-    //($name:tt) => {dbg!(stringify!("tt", $name))};
+macro_rules! __parse_identifier {
     ($name:ident $($rule:tt)*) => {
         dbg!(stringify!('x', $name));
         $crate::__parse_operators!($($rule)*);
@@ -264,7 +263,8 @@ macro_rules! __parse_rule {
 
 #[macro_export]
 macro_rules! __parse_rules {
-    ($label:ident: $($rule:tt)+) => {$crate::__parse_rule!($($rule)+)};
+    ($label:ident: | $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+    ($label:ident: $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
 }
 
 #[macro_export]
