@@ -42,6 +42,11 @@ create_grammar!(
         | foo
         | bar
     multi: foo bar
+    x: foo+
+    y: foo*
+    z: la foo?
+    bracket1: (la foo)
+    bracket2: bar (lala foo)?
 );
 
 #[cfg(test)]

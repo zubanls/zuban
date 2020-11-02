@@ -247,7 +247,11 @@ macro_rules! __parse_operators {
     ($next:ident: $($rule:tt)+) => {$crate::__parse_rules!($next: $($rule)+)};
     ($next:ident $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
     ($next:literal $($rule:tt)*) => {$crate::__parse_identifier!($next $($rule)*)};
+    (($($inner:tt)+) $($rule:tt)*) => {$crate::__parse_identifier!(($($inner)+) $($rule)*)};
     (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+    (+ $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
+    (* $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
+    (? $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
     () => {};
 }
 
@@ -259,6 +263,11 @@ macro_rules! __parse_identifier {
     };
     ($string:literal $($rule:tt)*) => {
         dbg!(stringify!('y', $string));
+        $crate::__parse_operators!($($rule)*);
+    };
+    (($($inner:tt)+) $($rule:tt)*) => {
+        $crate::__parse_identifier!($($inner)*);
+        dbg!(stringify!("bracket", $($inner)+));
         $crate::__parse_operators!($($rule)*);
     };
 }
