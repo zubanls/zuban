@@ -244,9 +244,6 @@ macro_rules! create_node {
 
 #[macro_export]
 macro_rules! __parse_operators {
-    // New rule
-    ($next:ident: $($rule:tt)+) => {$crate::__parse_rules!($next: $($rule)+)};
-
     // An identifier again
     (! $($rule:tt)+)               => {$crate::__parse_identifier!(! $($rule)+)};
     (& $($rule:tt)+)                => {$crate::__parse_identifier!(& $($rule)+)};
@@ -302,8 +299,23 @@ macro_rules! __parse_identifier {
 
 #[macro_export]
 macro_rules! __parse_rules {
-    ($label:ident: | $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
-    ($label:ident: $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+    ($label:ident: | $($rule:tt)+) => {$crate::__parse_rule!(/*[$label]*/ $($rule:tt)+)};
+    ($label:ident : $($rule:tt)+) => {$crate::__parse_rule!(/*[$label]*/ $($rule)+)};
+
+}
+
+#[macro_export]
+macro_rules! __parse_rule {
+    (/*[$label:ident $($saved:tt)+]*/ $next:ident : $($rule:tt)+) => {
+        //$crate::__parse_identifier!($($saved)+)
+        $crate::__parse_rules!($next : $($rule)+)
+    };
+
+    (/*[$($saved:tt)+]*/ $next:tt $($rule:tt)*) => {
+        $crate::__parse_rule!(/*[$($saved)+ $next]*/ $($rule)*)
+    };
+
+    () => {};
 }
 
 #[macro_export]
