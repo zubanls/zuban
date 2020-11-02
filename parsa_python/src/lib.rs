@@ -1,3 +1,4 @@
+#![recursion_limit="1024"]
 use parsa::{create_parser,create_node,create_token, create_grammar};
 
 
@@ -35,8 +36,8 @@ create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
 create_grammar!(
     struct PythonGrammar, NodeType, TokenType,
 
-    foo: bar | "baz";
-    bar: "bla";
+    foo: bar | "baz"
+    bar: "bla"
 );
 
 #[cfg(test)]

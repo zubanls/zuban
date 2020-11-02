@@ -243,24 +243,37 @@ macro_rules! create_node {
 }
 
 #[macro_export]
-macro_rules! __parse_rule {
-    ($name:tt) => {dbg!(stringify!("tt", $name))};
-    ($name:ident $(| $rule:tt)*) => {
-        dbg!(stringify!('x', $name));
-        $crate::__parse_rule!($rule);
-    };
-    ($string:literal $(| $rule:tt)*) => {
-        dbg!(stringify!('y', $string));
-    };
+macro_rules! __parse_operators {
+    ($label:ident: $($rule:tt)+) => {$crate::__parse_rules!($label: $($rule)+)};
+    (| $($rule:tt)+) => {$crate::__parse_rule!($($rule)+)};
     () => {};
 }
+
+#[macro_export]
+macro_rules! __parse_rule {
+    //($name:tt) => {dbg!(stringify!("tt", $name))};
+    ($name:ident $($rule:tt)*) => {
+        dbg!(stringify!('x', $name));
+        $crate::__parse_operators!($($rule)*);
+    };
+    ($string:literal $($rule:tt)*) => {
+        dbg!(stringify!('y', $string));
+        $crate::__parse_operators!($($rule)*);
+    };
+}
+
+#[macro_export]
+macro_rules! __parse_rules {
+    ($label:ident: $($rule:tt)+) => {$crate::__parse_rule!($($rule)+)};
+}
+
 #[macro_export]
 macro_rules! create_grammar {
-    (struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($label:ident: $($rule:tt)+;)+) => {
+    (struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
         struct $Grammar {}
         impl $Grammar {
             fn debug() {
-                $($crate::__parse_rule!($($rule:tt)+);)+
+                $crate::__parse_rules!($($rule)+);
             }
         }
     }
