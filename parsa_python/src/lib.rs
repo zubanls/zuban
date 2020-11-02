@@ -37,6 +37,21 @@ create_grammar!(
     struct PythonGrammar, NodeType, TokenType,
 
     foo: bar | "baz"
+    bar: "bla"
+    multiline:
+        | foo
+        | bar
+    multi: foo bar
+    x: foo+
+    y: foo*
+    z: la foo?
+    bracket1: (la foo)
+    bracket2: bar (lala foo)?
+    negative_lookahead: bar !foo
+    positive_lookahead: bar &foo
+    separator: bar.foo
+    cutoff: (bar ~ foo | baz)
+    optional: [bar foo] x
 );
 
 #[cfg(test)]
