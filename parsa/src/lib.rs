@@ -259,17 +259,23 @@ macro_rules! __parse_operators {
     (+ $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
     (* $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
     (? $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
+    (. $($rule:tt)*) => {$crate::__parse_identifier!($($rule)*)};
+    (~ $($rule:tt)*) => {$crate::__parse_identifier!($($rule)*)};
     () => {};
 }
 
 #[macro_export]
 macro_rules! __parse_identifier {
+    // Negative Lookahead
     (! $($rule:tt)+) => {
         $crate::__parse_identifier!($($rule)+);
     };
+    // Positive Lookahead
     (& $($rule:tt)+) => {
         $crate::__parse_identifier!($($rule)+);
     };
+
+    // Normal Patterns
     ($name:ident $($rule:tt)*) => {
         dbg!(stringify!('x', $name));
         $crate::__parse_operators!($($rule)*);
@@ -278,7 +284,16 @@ macro_rules! __parse_identifier {
         dbg!(stringify!('y', $string));
         $crate::__parse_operators!($($rule)*);
     };
+
+    // Group parentheses
     (($($inner:tt)+) $($rule:tt)*) => {
+        $crate::__parse_identifier!($($inner)*);
+        dbg!(stringify!("parens", $($inner)+));
+        $crate::__parse_operators!($($rule)*);
+    };
+
+    // Optional brackets
+    ([$($inner:tt)+] $($rule:tt)*) => {
         $crate::__parse_identifier!($($inner)*);
         dbg!(stringify!("bracket", $($inner)+));
         $crate::__parse_operators!($($rule)*);

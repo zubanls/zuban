@@ -49,6 +49,9 @@ create_grammar!(
     bracket2: bar (lala foo)?
     negative_lookahead: bar !foo
     positive_lookahead: bar &foo
+    separator: bar.foo
+    cutoff: (bar ~ foo | baz)
+    optional: [bar foo] x
 );
 
 #[cfg(test)]
