@@ -243,22 +243,25 @@ macro_rules! create_node {
 }
 
 #[macro_export]
-macro_rules! __parse_operators {
-    // An identifier again
-    (! $($rule:tt)+)               => {$crate::__parse_identifier!(! $($rule)+)};
-    (& $($rule:tt)+)                => {$crate::__parse_identifier!(& $($rule)+)};
-    ($next:ident $($rule:tt)*)     => {$crate::__parse_identifier!($next $($rule)*)};
-    ($next:literal $($rule:tt)*)   => {$crate::__parse_identifier!($next $($rule)*)};
-    (($($inner:tt)+) $($rule:tt)*) => {$crate::__parse_identifier!(($($inner)+) $($rule)*)};
-
+macro_rules! __parse_or {
     // Actually an operator
     (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
-    (+ $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
-    (* $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
-    (? $($rule:tt)*) => {$crate::__parse_operators!($($rule)*)};
-    (. $($rule:tt)*) => {$crate::__parse_identifier!($($rule)*)};
-    (~ $($rule:tt)*) => {$crate::__parse_identifier!($($rule)*)};
+    (~ $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+
+    // An identifier again
+    ($($rule:tt)+)               => {$crate::__parse_identifier!($($rule)+)};
     () => {};
+}
+
+#[macro_export]
+macro_rules! __parse_operators {
+    (+ $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
+    (* $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
+    (? $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
+    (. $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+
+    // All the other cases can only be simple operators
+    ($($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
 }
 
 #[macro_export]
