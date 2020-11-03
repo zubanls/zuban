@@ -275,11 +275,12 @@ macro_rules! __parse_identifier {
         $crate::__parse_identifier!($($rule)+);
     };
 
-    // Normal Patterns
+    // Terminal/Nonterminal
     ($name:ident $($rule:tt)*) => {
         dbg!(stringify!('x', $name));
         $crate::__parse_operators!($($rule)*);
     };
+    // Keyword
     ($string:literal $($rule:tt)*) => {
         dbg!(stringify!('y', $string));
         $crate::__parse_operators!($($rule)*);
