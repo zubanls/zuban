@@ -116,7 +116,7 @@ macro_rules! create_parser {
 macro_rules! __create_type_set {
     (enum $EnumName:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone)]
+        #[derive(Copy, Clone, Debug)]
         #[repr(i16)]
         pub enum $EnumName {
             $($entry),*
@@ -242,6 +242,16 @@ macro_rules! create_node {
     }
 }
 
+#[derive(Debug)]
+pub struct Rule {
+}
+
+impl Rule {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
 #[macro_export]
 macro_rules! __parse_or {
     // Actually an operator
@@ -303,25 +313,34 @@ macro_rules! __parse_identifier {
 
 #[macro_export]
 macro_rules! __parse_rules {
-    ($label:ident: | $($rule:tt)+) => {$crate::__parse_rule!([$label] $($rule)+)};
-    ($label:ident : $($rule:tt)+) => {$crate::__parse_rule!([$label] $($rule)+)};
-
+    ($NodeType:ident, $rules:ident, $label:ident: | $($rule:tt)+) => {
+        $crate::__parse_rule!($NodeType, $rules, [$label] $($rule)+)
+    };
+    ($NodeType:ident, $rules:ident, $label:ident : $($rule:tt)+) => {
+        $crate::__parse_rule!($NodeType, $rules, [$label] $($rule)+)
+    };
 }
 
 #[macro_export]
 macro_rules! __parse_rule {
-    ([$($saved:tt)+] $next:ident : $($rule:tt)+) => {
+    ($NodeType:ident, $rules:ident, [$($saved:tt)+] $next:ident : $($rule:tt)+) => {
         // Finish parsing the rule
-        $crate::__parse_rule!([$($saved)+ $next]);
+        $crate::__parse_rule!($NodeType, $rules, [$($saved)+ $next]);
         // Keep parsing the rest
-        $crate::__parse_rules!($next : $($rule)+);
+        $crate::__parse_rules!($NodeType, $rules, $next : $($rule)+);
     };
 
-    ([$($saved:tt)+] $next:tt $($rule:tt)*) => {
-        $crate::__parse_rule!([$($saved)+ $next] $($rule)*);
+    ($NodeType:ident, $rules:ident, [$($saved:tt)+] $next:tt $($rule:tt)*) => {
+        $crate::__parse_rule!($NodeType, $rules, [$($saved)+ $next] $($rule)*);
     };
 
-    ([$label:ident $($saved:tt)+]) => {
+    ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
+        let rule = $crate::Rule::new();
+        let key = $NodeType::$label as u16;
+        if $rules.contains_key(&key) {
+            panic!("Key exists twice: {}", stringify!($label));
+        }
+        $rules.insert(key, rule);
         $crate::__parse_identifier!($($saved)+);
     };
 }
@@ -332,7 +351,10 @@ macro_rules! create_grammar {
         struct $Grammar {}
         impl $Grammar {
             fn debug() {
-                $crate::__parse_rules!($($rule)+);
+                type N = $NodeType;
+                let mut rules = $crate::HashMap::new();
+                $crate::__parse_rules!($NodeType, rules, $($rule)+);
+                dbg!(rules);
             }
         }
     }

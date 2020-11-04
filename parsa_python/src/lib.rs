@@ -27,7 +27,7 @@ impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
 }
 
 create_token!(struct PythonToken, enum TokenType, [String, Number, Endmarker]);
-create_node!(struct PythonNode, enum NodeType, TokenType, [file_input, foo]);
+create_node!(struct PythonNode, enum NodeType, TokenType, [foo, bar, multiline, multi, x, y, z, bracket1, bracket2, negative_lookahead, positive_lookahead, separator, separator2, cutoff, optional]);
 create_parser!(fn parse_python, struct PythonTree, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
@@ -50,7 +50,7 @@ create_grammar!(
     negative_lookahead: bar !foo
     positive_lookahead: bar &foo
     separator: bar.foo
-    separator: (bar (x)*).foo
+    separator2: (bar (x)*).foo
     cutoff: (bar ~ foo | baz)
     optional: [bar foo] x
 );
