@@ -245,15 +245,14 @@ macro_rules! create_node {
 #[derive(Debug)]
 pub enum Rule {
     Identifier(&'static str),
-    String(&'static str),
+    Keyword(&'static str),
     Or(&'static Rule, &'static Rule),
     Cut(&'static Rule, &'static Rule),
     Maybe(&'static Rule),
-    MaybeMultiple(&'static Rule),
     Multiple(&'static Rule),
     NegativeLookahead(&'static Rule),
     PositiveLookahead(&'static Rule),
-    SeparatorFor(&'static Rule, &'static Rule),
+    Next(&'static Rule, &'static Rule),
 }
 pub struct Rulex {
 }
@@ -267,59 +266,80 @@ impl Rulex {
 #[macro_export]
 macro_rules! __parse_or {
     // Actually an operator
-    (| $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
-    (~ $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
+    ($input:expr, | $($rule:tt)+) => (
+        $crate::Rule::Or(&$input, &$crate::__parse_identifier!($($rule)+))
+    );
+    ($input:expr, ~ $($rule:tt)+) => (
+        $crate::Rule::Cut(&$input, &$crate::__parse_identifier!($($rule)+))
+    );
 
     // An identifier again
-    ($($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
-    () => (());
+    ($input:expr, $($rule:tt)+) => (
+        $crate::Rule::Next(&$input, &$crate::__parse_identifier!($($rule)+))
+    );
+    ($input:expr,) => ($input);
 }
 
 #[macro_export]
 macro_rules! __parse_operators {
-    (+ $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
-    (* $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
-    (? $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
-    (. $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
+    ($input:expr, + $($rule:tt)*) => (
+        $crate::Rule::Multiple($crate::__parse_or!($input, $($rule)*))
+    );
+    ($input:expr, * $($rule:tt)*) => (
+        $crate::Rule::Maybe($crate::Rule::Multiple($crate::__parse_or!($input, $($rule)*)))
+    );
+    ($input:expr, ? $($rule:tt)*) => (
+        $crate::Rule::Maybe($crate::__parse_or!($input, $($rule)*))
+    );
+    ($input:expr, . $($rule:tt)+) => (
+        // Basically turns s.e+ to (e (s e)*)
+        $crate::Rule::Next(
+            &$input,
+            &$crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::Rule::Next(
+                &$input,
+                &$crate::__parse_identifier!($($rule)+)
+            )))
+        )
+    );
 
     // All the other cases can only be simple operators
-    ($($rule:tt)*) => ($crate::__parse_or!($($rule)*));
+    ($input:expr, $($rule:tt)*) => ($crate::__parse_or!($input, $($rule)*));
 }
 
 #[macro_export]
 macro_rules! __parse_identifier {
     // Negative Lookahead
     (! $($rule:tt)+) => (
-        $crate::__parse_identifier!($($rule)+);
+        $crate::Rule::NegativeLookahead($crate::__parse_identifier!($($rule)+))
     );
     // Positive Lookahead
     (& $($rule:tt)+) => (
-        $crate::__parse_identifier!($($rule)+);
+        $crate::Rule::PositiveLookahead($crate::__parse_identifier!($($rule)+))
     );
 
     // Terminal/Nonterminal
-    ($name:ident $($rule:tt)*) => ({
-        $crate::__parse_operators!($($rule)*);
-        $crate::Rule::Identifier("foo")
-    });
+    ($name:ident $($rule:tt)*) => (
+        $crate::__parse_operators!($crate::Rule::Identifier(stringify!($name)), $($rule)*)
+    );
     // Keyword
     ($string:literal $($rule:tt)*) => (
-        $crate::__parse_operators!($($rule)*);
-        $crate::Rule::Identifier("foo")
+        $crate::__parse_operators!($crate::Rule::Keyword($string), $($rule)*)
     );
 
     // Group parentheses
     (($($inner:tt)+) $($rule:tt)*) => (
-        $crate::__parse_identifier!($($inner)*);
-        $crate::__parse_operators!($($rule)*);
-        $crate::Rule::Identifier("foo")
+        $crate::__parse_operators!(
+            $crate::__parse_identifier!($($inner)*),
+            $($rule)*
+        )
     );
 
     // Optional brackets
     ([$($inner:tt)+] $($rule:tt)*) => (
-        $crate::__parse_identifier!($($inner)*);
-        $crate::__parse_operators!($($rule)*);
-        $crate::Rule::Identifier("foo")
+        $crate::Rule::Maybe($crate::__parse_operators!(
+            $crate::__parse_identifier!($($inner)*),
+            $($rule)*
+        ))
     );
 }
 
