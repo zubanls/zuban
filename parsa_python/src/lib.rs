@@ -34,7 +34,7 @@ create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 
 create_grammar!(
-    struct PythonGrammar, NodeType, TokenType,
+    static PYTHON_GRAMMAR, struct PythonGrammar, NodeType, TokenType,
 
     foo: bar | "baz"
     bar: "bla"
@@ -65,5 +65,6 @@ mod tests {
         dbg!(TokenType::get_map());
         dbg!(NodeType::get_map());
         PythonGrammar::new();
+        PYTHON_GRAMMAR.foo();
     }
 }

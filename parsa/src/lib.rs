@@ -379,19 +379,24 @@ macro_rules! __parse_rule {
 pub trait Grammar {
     fn new() -> Self;
     fn identifier_to_int(&self, identifier: &str) -> InternalType;
-    fn generate(&self, rules: &HashMap<InternalType, Rule>) {
+    fn generate(&mut self, rules: &HashMap<InternalType, Rule>) {
+    }
+    fn foo(&self) {
     }
 }
 #[macro_export]
 macro_rules! create_grammar {
-    (struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
-        struct $Grammar {}
+    (static $grammar:ident, struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
+        struct $Grammar {
+            reserved_strings: $crate::HashMap<&'static str, $crate::InternalType>,
+        }
+
         impl $Grammar {
         }
 
         impl $crate::Grammar for $Grammar {
             fn new() -> Self {
-                let grammar = Self {};
+                let mut grammar = Self {reserved_strings: $crate::HashMap::new()};
 
                 let mut rules = $crate::HashMap::new();
                 $crate::__parse_rules!($NodeType, rules, $($rule)+);
@@ -410,6 +415,12 @@ macro_rules! create_grammar {
                 };
                 panic!("No terminal / nonterminal found for {}", identifier);
             }
+        }
+
+        $crate::lazy_static! {
+            static ref $grammar: $Grammar = {
+                $Grammar::new()
+            };
         }
     }
 }
