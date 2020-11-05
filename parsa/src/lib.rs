@@ -283,13 +283,13 @@ macro_rules! __parse_or {
 #[macro_export]
 macro_rules! __parse_operators {
     ($input:expr, + $($rule:tt)*) => (
-        $crate::Rule::Multiple($crate::__parse_or!($input, $($rule)*))
+        $crate::Rule::Multiple(&$crate::__parse_or!($input, $($rule)*))
     );
     ($input:expr, * $($rule:tt)*) => (
-        $crate::Rule::Maybe($crate::Rule::Multiple($crate::__parse_or!($input, $($rule)*)))
+        $crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::__parse_or!($input, $($rule)*)))
     );
     ($input:expr, ? $($rule:tt)*) => (
-        $crate::Rule::Maybe($crate::__parse_or!($input, $($rule)*))
+        $crate::Rule::Maybe(&$crate::__parse_or!($input, $($rule)*))
     );
     ($input:expr, . $($rule:tt)+) => (
         // Basically turns s.e+ to (e (s e)*)
@@ -310,11 +310,11 @@ macro_rules! __parse_operators {
 macro_rules! __parse_identifier {
     // Negative Lookahead
     (! $($rule:tt)+) => (
-        $crate::Rule::NegativeLookahead($crate::__parse_identifier!($($rule)+))
+        $crate::Rule::NegativeLookahead(&$crate::__parse_identifier!($($rule)+))
     );
     // Positive Lookahead
     (& $($rule:tt)+) => (
-        $crate::Rule::PositiveLookahead($crate::__parse_identifier!($($rule)+))
+        $crate::Rule::PositiveLookahead(&$crate::__parse_identifier!($($rule)+))
     );
 
     // Terminal/Nonterminal
@@ -336,7 +336,7 @@ macro_rules! __parse_identifier {
 
     // Optional brackets
     ([$($inner:tt)+] $($rule:tt)*) => (
-        $crate::Rule::Maybe($crate::__parse_operators!(
+        $crate::Rule::Maybe(&$crate::__parse_operators!(
             $crate::__parse_identifier!($($inner)*),
             $($rule)*
         ))
@@ -372,9 +372,7 @@ macro_rules! __parse_rule {
             panic!("Key exists twice: {}", stringify!($label));
         }
 
-        let x= $crate::__parse_identifier!($($saved)+);
-        let rulex = $crate::Rule::Identifier("foo");
-        $rules.insert(key, rulex);
+        $rules.insert(key, $crate::__parse_identifier!($($saved)+));
     };
 }
 

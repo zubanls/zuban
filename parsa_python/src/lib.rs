@@ -37,7 +37,7 @@ create_grammar!(
     struct PythonGrammar, NodeType, TokenType,
 
     foo: bar | "baz"
-    /*bar: "bla"
+    bar: "bla"
     multiline:
         | foo
         | bar
@@ -52,7 +52,7 @@ create_grammar!(
     separator: bar.foo
     separator2: (bar (x)*).foo
     cutoff: (bar ~ foo | baz)
-    optional: [bar foo] x*/
+    optional: [bar foo] x
 );
 
 #[cfg(test)]
