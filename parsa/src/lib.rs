@@ -243,10 +243,22 @@ macro_rules! create_node {
 }
 
 #[derive(Debug)]
-pub struct Rule {
+pub enum Rule {
+    Identifier(&'static str),
+    String(&'static str),
+    Or(&'static Rule, &'static Rule),
+    Cut(&'static Rule, &'static Rule),
+    Maybe(&'static Rule),
+    MaybeMultiple(&'static Rule),
+    Multiple(&'static Rule),
+    NegativeLookahead(&'static Rule),
+    PositiveLookahead(&'static Rule),
+    SeparatorFor(&'static Rule, &'static Rule),
+}
+pub struct Rulex {
 }
 
-impl Rule {
+impl Rulex {
     pub fn new() -> Self {
         Self {}
     }
@@ -255,60 +267,60 @@ impl Rule {
 #[macro_export]
 macro_rules! __parse_or {
     // Actually an operator
-    (| $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
-    (~ $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+    (| $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
+    (~ $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
 
     // An identifier again
-    ($($rule:tt)+)               => {$crate::__parse_identifier!($($rule)+)};
-    () => {};
+    ($($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
+    () => (());
 }
 
 #[macro_export]
 macro_rules! __parse_operators {
-    (+ $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
-    (* $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
-    (? $($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
-    (. $($rule:tt)+) => {$crate::__parse_identifier!($($rule)+)};
+    (+ $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
+    (* $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
+    (? $($rule:tt)*) => ($crate::__parse_or!($($rule)*));
+    (. $($rule:tt)+) => ($crate::__parse_identifier!($($rule)+));
 
     // All the other cases can only be simple operators
-    ($($rule:tt)*) => {$crate::__parse_or!($($rule)*)};
+    ($($rule:tt)*) => ($crate::__parse_or!($($rule)*));
 }
 
 #[macro_export]
 macro_rules! __parse_identifier {
     // Negative Lookahead
-    (! $($rule:tt)+) => {
+    (! $($rule:tt)+) => (
         $crate::__parse_identifier!($($rule)+);
-    };
+    );
     // Positive Lookahead
-    (& $($rule:tt)+) => {
+    (& $($rule:tt)+) => (
         $crate::__parse_identifier!($($rule)+);
-    };
+    );
 
     // Terminal/Nonterminal
-    ($name:ident $($rule:tt)*) => {
-        dbg!(stringify!('x', $name));
+    ($name:ident $($rule:tt)*) => ({
         $crate::__parse_operators!($($rule)*);
-    };
+        $crate::Rule::Identifier("foo")
+    });
     // Keyword
-    ($string:literal $($rule:tt)*) => {
-        dbg!(stringify!('y', $string));
+    ($string:literal $($rule:tt)*) => (
         $crate::__parse_operators!($($rule)*);
-    };
+        $crate::Rule::Identifier("foo")
+    );
 
     // Group parentheses
-    (($($inner:tt)+) $($rule:tt)*) => {
+    (($($inner:tt)+) $($rule:tt)*) => (
         $crate::__parse_identifier!($($inner)*);
-        dbg!(stringify!("parens", $($inner)+));
         $crate::__parse_operators!($($rule)*);
-    };
+        $crate::Rule::Identifier("foo")
+    );
 
     // Optional brackets
-    ([$($inner:tt)+] $($rule:tt)*) => {
+    ([$($inner:tt)+] $($rule:tt)*) => (
         $crate::__parse_identifier!($($inner)*);
-        dbg!(stringify!("bracket", $($inner)+));
         $crate::__parse_operators!($($rule)*);
-    };
+        $crate::Rule::Identifier("foo")
+    );
 }
 
 #[macro_export]
@@ -335,13 +347,14 @@ macro_rules! __parse_rule {
     };
 
     ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let rule = $crate::Rule::new();
         let key = $NodeType::$label as u16;
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
-        $rules.insert(key, rule);
-        $crate::__parse_identifier!($($saved)+);
+
+        let x= $crate::__parse_identifier!($($saved)+);
+        let rulex = $crate::Rule::Identifier("foo");
+        $rules.insert(key, rulex);
     };
 }
 
