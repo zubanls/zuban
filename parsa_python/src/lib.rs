@@ -1,5 +1,5 @@
 #![recursion_limit="1024"]
-use parsa::{create_parser,create_node,create_token, create_grammar};
+use parsa::{create_parser,create_node,create_token, create_grammar, Grammar};
 
 
 struct PythonTokenizer {
@@ -64,6 +64,6 @@ mod tests {
         parse_python("bar");
         dbg!(TokenType::get_map());
         dbg!(NodeType::get_map());
-        PythonGrammar::debug()
+        PythonGrammar::new();
     }
 }

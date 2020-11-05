@@ -15,7 +15,7 @@ pub type InternalType = i16;
 pub trait Token {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
-    fn get_type(&self) -> u16;
+    fn get_type(&self) -> InternalType;
 }
 
 pub trait Tokenizer<T: Token> {
@@ -158,8 +158,8 @@ macro_rules! create_token {
                 self.length
             }
 
-            fn get_type(&self) -> u16 {
-                self.type_ as u16
+            fn get_type(&self) -> $crate::InternalType {
+                self.type_ as $crate::InternalType
             }
         }
     }
@@ -367,7 +367,7 @@ macro_rules! __parse_rule {
     };
 
     ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let key = $NodeType::$label as u16;
+        let key = $NodeType::$label as $crate::InternalType;
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
@@ -376,16 +376,39 @@ macro_rules! __parse_rule {
     };
 }
 
+pub trait Grammar {
+    fn new() -> Self;
+    fn identifier_to_int(&self, identifier: &str) -> InternalType;
+    fn generate(&self, rules: &HashMap<InternalType, Rule>) {
+    }
+}
 #[macro_export]
 macro_rules! create_grammar {
     (struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
         struct $Grammar {}
         impl $Grammar {
-            fn debug() {
-                type N = $NodeType;
+        }
+
+        impl $crate::Grammar for $Grammar {
+            fn new() -> Self {
+                let grammar = Self {};
+
                 let mut rules = $crate::HashMap::new();
                 $crate::__parse_rules!($NodeType, rules, $($rule)+);
-                dbg!(rules);
+                grammar.generate(&rules);
+                grammar
+            }
+
+            fn identifier_to_int(&self, identifier: &str) -> $crate::InternalType {
+                match $NodeType::get_map().get(identifier) {
+                    Some(entry) => {return *entry},
+                    None => {},
+                };
+                match $TokenType::get_map().get(identifier) {
+                    Some(entry) => {return *entry},
+                    None => {},
+                };
+                panic!("No terminal / nonterminal found for {}", identifier);
             }
         }
     }
