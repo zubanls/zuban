@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use crate::{InternalType, Rule};
 
-type NFAStateId = usize;
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct NFAStateId(usize);
 #[derive(Debug, Clone, Copy)]
 struct DFAStateId(usize);
 
@@ -13,13 +14,13 @@ struct RuleAutomaton {
 
 impl RuleAutomaton {
     fn get_nfa_state(&mut self, id: NFAStateId) -> &mut NFAState {
-        &mut self.nfa_states[id]
+        &mut self.nfa_states[id.0]
     }
 
     fn new_nfa_states(&mut self) -> (NFAStateId, NFAStateId) {
         let mut new = || {
             self.nfa_states.push(Default::default());
-            self.nfa_states.len() - 1
+            NFAStateId(self.nfa_states.len() - 1)
         };
         (new(), new())
     }
@@ -39,7 +40,7 @@ impl RuleAutomaton {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set = HashSet::new();
         set.insert(nfa_state_id);
-        for transition in &self.nfa_states[nfa_state_id].transitions {
+        for transition in &self.nfa_states[nfa_state_id.0].transitions {
             if let None = transition.type_ {
                 set.insert(transition.to);
             }
@@ -84,7 +85,7 @@ impl RuleAutomaton {
         dbg!(dfa_id.0);
         let mut transitions = Vec::new();
         for nfa_state_id in state.nfa_set.clone()  {
-            let n = &self.nfa_states[nfa_state_id];
+            let n = &self.nfa_states[nfa_state_id.0];
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
                     let new_dfa_id = self.nfa_to_dfa(dfa_states, transition.to, end);
