@@ -13,8 +13,12 @@ struct RuleAutomaton {
 }
 
 impl RuleAutomaton {
-    fn get_nfa_state(&mut self, id: NFAStateId) -> &mut NFAState {
+    fn get_nfa_state_mut(&mut self, id: NFAStateId) -> &mut NFAState {
         &mut self.nfa_states[id.0]
+    }
+
+    fn get_nfa_state(&self, id: NFAStateId) -> &NFAState {
+        &self.nfa_states[id.0]
     }
 
     fn new_nfa_states(&mut self) -> (NFAStateId, NFAStateId) {
@@ -27,7 +31,7 @@ impl RuleAutomaton {
 
     fn add_transition(&mut self, start: NFAStateId, to: NFAStateId,
                       type_: Option<NFATransitionType>) {
-        self.get_nfa_state(start).transitions.push(
+        self.get_nfa_state_mut(start).transitions.push(
             NFATransition {type_: type_, to: to}
         );
     }
@@ -40,7 +44,7 @@ impl RuleAutomaton {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set = HashSet::new();
         set.insert(nfa_state_id);
-        for transition in &self.nfa_states[nfa_state_id.0].transitions {
+        for transition in &self.get_nfa_state(nfa_state_id).transitions {
             if let None = transition.type_ {
                 set.insert(transition.to);
             }
@@ -70,9 +74,6 @@ impl RuleAutomaton {
         let mut dfa_states = Vec::new();
         let dfa_id = self.nfa_to_dfa(&mut dfa_states, start, end);
         self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
-        if dfa_states.len() > 2 {
-        dbg!(dfa_states.len());
-        }
         1
     }
 
@@ -82,10 +83,9 @@ impl RuleAutomaton {
         if state.is_calculated {
             return
         }
-        dbg!(dfa_id.0);
         let mut transitions = Vec::new();
         for nfa_state_id in state.nfa_set.clone()  {
-            let n = &self.nfa_states[nfa_state_id.0];
+            let n = &self.get_nfa_state(nfa_state_id);
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
                     let new_dfa_id = self.nfa_to_dfa(dfa_states, transition.to, end);
@@ -93,6 +93,7 @@ impl RuleAutomaton {
                 }
             }
         }
+        dbg!(dfa_id.0, &transitions);
         dfa_states[dfa_id.0].transitions = transitions;
         dfa_states[dfa_id.0].is_calculated = true;
         for transition in dfa_states[dfa_id.0].transitions.clone() {
@@ -103,7 +104,7 @@ impl RuleAutomaton {
 
 
 // NFA = nondeterministic finite automaton
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct NFAState {
     transitions: Vec<NFATransition>,
 }
@@ -141,6 +142,7 @@ pub trait Grammar {
         for (internal_type, rule) in rules {
             let mut automaton = Default::default();
             let (start, end) = build_automaton(self, &mut automaton, rule);
+            dbg!(rule);
             automaton.construct_powerset(start, end);
         }
     }
@@ -200,7 +202,7 @@ fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton,
         Cut(rule1, rule2) | Next(rule1, rule2) => {
             let (start1, end1) = build_automaton(grammar, automaton, rule1);
             let (start2, end2) = build_automaton(grammar, automaton, rule2);
-            automaton.add_empty_transition(end1, start1);
+            automaton.add_empty_transition(end1, start2);
             (start1, end2)
         }
     }

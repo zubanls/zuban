@@ -266,6 +266,7 @@ macro_rules! __parse_or {
     ($input:expr, | $($rule:tt)+) => (
         $crate::Rule::Or(&$input, &$crate::__parse_identifier!($($rule)+))
     );
+    // TODO this should have lower prio than |
     ($input:expr, ~ $($rule:tt)+) => (
         $crate::Rule::Cut(&$input, &$crate::__parse_identifier!($($rule)+))
     );
@@ -280,13 +281,13 @@ macro_rules! __parse_or {
 #[macro_export]
 macro_rules! __parse_operators {
     ($input:expr, + $($rule:tt)*) => (
-        &$crate::__parse_or!($crate::Rule::Multiple(&$input), $($rule)*)
+        $crate::__parse_or!($crate::Rule::Multiple(&$input), $($rule)*)
     );
     ($input:expr, * $($rule:tt)*) => (
         $crate::__parse_or!($crate::Rule::Maybe(&$crate::Rule::Multiple(&$input)), $($rule)*)
     );
     ($input:expr, ? $($rule:tt)*) => (
-        &$crate::__parse_or!($crate::Rule::Maybe(&$input), $($rule)*)
+        $crate::__parse_or!($crate::Rule::Maybe(&$input), $($rule)*)
     );
     ($input:expr, . $($rule:tt)+) => (
         // Basically turns s.e+ to (e (s e)*)

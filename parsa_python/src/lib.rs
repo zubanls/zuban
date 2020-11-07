@@ -64,7 +64,7 @@ mod tests {
         parse_python("bar");
         //dbg!(TokenType::get_map());
         //dbg!(NodeType::get_map());
-        PythonGrammar::new();
+        //PythonGrammar::new();
         PYTHON_GRAMMAR.foo();
     }
 }
