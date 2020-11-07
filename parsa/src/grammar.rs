@@ -2,10 +2,12 @@ use std::collections::{HashMap, HashSet};
 use crate::{InternalType, Rule};
 
 type NFAStateId = usize;
+type DFAStateId = usize;
 
 #[derive(Default)]
 struct RuleAutomaton {
     nfa_states: Vec<NFAState>,
+    dfa_states: Vec<DFAState>,
 }
 
 impl RuleAutomaton {
@@ -21,21 +23,72 @@ impl RuleAutomaton {
         (new(), new())
     }
 
-    fn add_transition(&mut self, start: NFAStateId, to: NFAStateId, transition: NFATransitionType) {
+    fn add_transition(&mut self, start: NFAStateId, to: NFAStateId,
+                      type_: Option<NFATransitionType>) {
         self.get_nfa_state(start).transitions.push(
-            NFATransition {transition: transition, to: to}
+            NFATransition {type_: type_, to: to}
         );
     }
 
     fn add_empty_transition(&mut self, start: NFAStateId, to: NFAStateId) {
-        self.add_transition(start, to, NFATransitionType::None);
+        self.add_transition(start, to, None);
     }
 
-    fn group_nfas(nfa_state: NFAStateId) -> HashSet<NFAStateId> {
-        // Group all NFAs that are ε-moves
+    fn group_nfas(&self, nfa_state_id: NFAStateId) -> HashSet<NFAStateId> {
+        // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set = HashSet::new();
-        set.insert(nfa_state);
+        set.insert(nfa_state_id);
+        for transition in &self.nfa_states[nfa_state_id].transitions {
+            if let None = transition.type_ {
+                set.insert(transition.to);
+            }
+        }
         set
+    }
+
+    fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, start: NFAStateId,
+                  end: NFAStateId) -> (DFAStateId, bool) {
+        let grouped_nfas = self.group_nfas(start);
+        for (i, dfa_state) in dfa_states.iter().enumerate() {
+            if dfa_state.nfa_set == grouped_nfas {
+                //a
+                return (i, false);
+            }
+        }
+        let is_final = grouped_nfas.contains(&end);
+        dfa_states.push(DFAState {
+            transitions: Default::default(),
+            nfa_set: grouped_nfas,
+            is_final: is_final,
+            is_calculated: false,
+        });
+        (dfa_states.len() - 1, true)
+    }
+
+    fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
+        let mut dfa_states = Vec::new();
+        let (id, is_new) = self.nfa_to_dfa(&mut dfa_states, start, end);
+        let state = &dfa_states[id];
+        let mut transitions = Vec::new();
+        for nfa_state_id in state.nfa_set.clone()  {
+            let n = &self.nfa_states[id];
+            for transition in &n.transitions {
+                if let Some(t) = &transition.type_ {
+                    let (new_dfa_id, _) = self.nfa_to_dfa(&mut dfa_states, start, end);
+                    transitions.push(DFATransition {type_: *t, to: new_dfa_id});
+                    dbg!(t);
+                }
+            }
+        }
+        dfa_states[id].transitions = transitions;
+        dfa_states[id].is_calculated = true;
+        for transition in dfa_states[id].transitions.clone() {
+        }
+        1
+    }
+
+    fn get_dfa_state(&mut self, id: DFAStateId) -> &mut DFAState {
+        &mut self.dfa_states[id]
     }
 }
 
@@ -46,16 +99,30 @@ struct NFAState {
     transitions: Vec<NFATransition>,
 }
 
+struct DFAState {
+    transitions: Vec<DFATransition>,
+    nfa_set: HashSet<NFAStateId>,
+    is_final: bool,
+    is_calculated: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
 enum NFATransitionType {
     Terminal(InternalType),
     Nonterminal(InternalType),
     Keyword(&'static str),
-    None,
 }
 
+#[derive(Debug)]
 struct NFATransition {
-    transition: NFATransitionType,
+    type_: Option<NFATransitionType>,
     to: NFAStateId,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DFATransition {
+    type_: NFATransitionType,
+    to: DFAStateId,
 }
 
 pub trait Grammar {
@@ -65,7 +132,7 @@ pub trait Grammar {
         for (internal_type, rule) in rules {
             let mut automaton = Default::default();
             let (start, end) = build_automaton(self, &mut automaton, rule);
-            nfa_to_dfa(start, end);
+            automaton.construct_powerset(start, end);
             dbg!(rule);
         }
     }
@@ -74,15 +141,16 @@ pub trait Grammar {
     }
 }
 
-fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton, rule: &Rule) -> (NFAStateId, NFAStateId) {
+fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton,
+                   rule: &Rule) -> (NFAStateId, NFAStateId) {
     use Rule::*;
     match *rule {
         Identifier(string) => {
             let (start, end) = automaton.new_nfa_states();
             if let Some(t) = grammar.terminal_name_to_int(string) {
-                automaton.add_transition(start, end, NFATransitionType::Terminal(t));
+                automaton.add_transition(start, end, Some(NFATransitionType::Terminal(t)));
             } else if let Some(t) = grammar.nonterminal_name_to_int(string) {
-                automaton.add_transition(start, end, NFATransitionType::Nonterminal(t));
+                automaton.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
             } else {
                 panic!("No terminal / nonterminal found for {}", string);
             }
@@ -90,7 +158,7 @@ fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton, rule: &
         },
         Keyword(string) => {
             let (start, end) = automaton.new_nfa_states();
-            automaton.add_transition(start, end, NFATransitionType::Keyword(string));
+            automaton.add_transition(start, end, Some(NFATransitionType::Keyword(string)));
             (start, end)
         },
         Or(rule1, rule2) => {
@@ -128,14 +196,4 @@ fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton, rule: &
             (start1, end2)
         }
     }
-}
-
-struct DFAState {
-    transitions: Vec<u8>,
-    is_final: bool,
-}
-
-fn nfa_to_dfa(start: NFAStateId, end: NFAStateId) -> u8 {
-    //let dfa_states = vec!();
-    1
 }
