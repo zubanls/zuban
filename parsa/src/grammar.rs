@@ -68,8 +68,10 @@ impl RuleAutomaton {
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
         let mut dfa_states = Vec::new();
         let (id, is_new) = self.nfa_to_dfa(&mut dfa_states, start, end);
-        self.construct_powerset_for_dfa(&mut dfa_states, start, end);
+        self.construct_powerset_for_dfa(&mut dfa_states, id, end);
+        if dfa_states.len() > 2 {
         dbg!(dfa_states.len());
+        }
         1
     }
 
@@ -79,9 +81,10 @@ impl RuleAutomaton {
         if state.is_calculated {
             return
         }
+        dbg!(dfa_id);
         let mut transitions = Vec::new();
         for nfa_state_id in state.nfa_set.clone()  {
-            let n = &self.nfa_states[dfa_id];
+            let n = &self.nfa_states[nfa_state_id];
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
                     let (new_dfa_id, _) = self.nfa_to_dfa(dfa_states, transition.to, end);

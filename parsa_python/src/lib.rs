@@ -43,7 +43,7 @@ create_grammar!(
         | bar
     multi: foo bar
     x: foo+
-    y: foo*
+    y: foo* bar bar multiline
     z: x foo?
     bracket1: (x foo)
     bracket2: bar (y foo)?
@@ -62,8 +62,8 @@ mod tests {
     fn it_works() {
         assert_eq!(2 + 2, 4);
         parse_python("bar");
-        dbg!(TokenType::get_map());
-        dbg!(NodeType::get_map());
+        //dbg!(TokenType::get_map());
+        //dbg!(NodeType::get_map());
         PythonGrammar::new();
         PYTHON_GRAMMAR.foo();
     }
