@@ -68,23 +68,32 @@ impl RuleAutomaton {
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
         let mut dfa_states = Vec::new();
         let (id, is_new) = self.nfa_to_dfa(&mut dfa_states, start, end);
-        let state = &dfa_states[id];
+        self.construct_powerset_for_dfa(&mut dfa_states, start, end);
+        dbg!(dfa_states.len());
+        1
+    }
+
+    fn construct_powerset_for_dfa(&mut self, dfa_states: &mut Vec<DFAState>,
+                                  dfa_id: DFAStateId, end: NFAStateId) {
+        let state = &dfa_states[dfa_id];
+        if state.is_calculated {
+            return
+        }
         let mut transitions = Vec::new();
         for nfa_state_id in state.nfa_set.clone()  {
-            let n = &self.nfa_states[id];
+            let n = &self.nfa_states[dfa_id];
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
-                    let (new_dfa_id, _) = self.nfa_to_dfa(&mut dfa_states, start, end);
+                    let (new_dfa_id, _) = self.nfa_to_dfa(dfa_states, transition.to, end);
                     transitions.push(DFATransition {type_: *t, to: new_dfa_id});
-                    dbg!(t);
                 }
             }
         }
-        dfa_states[id].transitions = transitions;
-        dfa_states[id].is_calculated = true;
-        for transition in dfa_states[id].transitions.clone() {
+        dfa_states[dfa_id].transitions = transitions;
+        dfa_states[dfa_id].is_calculated = true;
+        for transition in dfa_states[dfa_id].transitions.clone() {
+            self.construct_powerset_for_dfa(dfa_states, transition.to, end)
         }
-        1
     }
 
     fn get_dfa_state(&mut self, id: DFAStateId) -> &mut DFAState {
@@ -133,7 +142,6 @@ pub trait Grammar {
             let mut automaton = Default::default();
             let (start, end) = build_automaton(self, &mut automaton, rule);
             automaton.construct_powerset(start, end);
-            dbg!(rule);
         }
     }
 
