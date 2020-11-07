@@ -280,13 +280,13 @@ macro_rules! __parse_or {
 #[macro_export]
 macro_rules! __parse_operators {
     ($input:expr, + $($rule:tt)*) => (
-        $crate::Rule::Multiple(&$crate::__parse_or!($input, $($rule)*))
+        &$crate::__parse_or!($crate::Rule::Multiple(&$input), $($rule)*)
     );
     ($input:expr, * $($rule:tt)*) => (
-        $crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::__parse_or!($input, $($rule)*)))
+        $crate::__parse_or!($crate::Rule::Maybe(&$crate::Rule::Multiple(&$input)), $($rule)*)
     );
     ($input:expr, ? $($rule:tt)*) => (
-        $crate::Rule::Maybe(&$crate::__parse_or!($input, $($rule)*))
+        &$crate::__parse_or!($crate::Rule::Maybe(&$input), $($rule)*)
     );
     ($input:expr, . $($rule:tt)+) => (
         // Basically turns s.e+ to (e (s e)*)
