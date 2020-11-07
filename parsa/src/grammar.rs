@@ -5,8 +5,9 @@ use crate::{InternalType, Rule};
 
 type NFAStateRc = Rc<RefCell<NFAState>>;
 
+#[derive(Default)]
 struct RuleAutomaton {
-    states: Vec<NFAStateRc>,
+    nfa_states: Vec<NFAStateRc>,
 }
 
 // NFA = nondeterministic finite automaton
@@ -32,8 +33,8 @@ pub trait Grammar {
     fn nonterminal_name_to_int(&self, identifier: &str) -> Option<InternalType>;
     fn generate(&mut self, rules: &HashMap<InternalType, Rule>) where Self: Sized {
         for (internal_type, rule) in rules {
-            let mut automaton = RuleAutomaton {states: vec!(Default::default())};
-            build_automaton(self, &mut automaton, rule);
+            let mut automaton = Default::default();
+            let (start, end) = build_automaton(self, &mut automaton, rule);
             dbg!(rule);
         }
     }
@@ -43,9 +44,9 @@ pub trait Grammar {
 }
 
 fn new_states(automaton: &mut RuleAutomaton) -> (NFAStateRc, NFAStateRc) {
-    automaton.states.push(Default::default());
-    automaton.states.push(Default::default());
-    (Rc::clone(&automaton.states[0]), Rc::clone(&automaton.states[0]))
+    automaton.nfa_states.push(Default::default());
+    automaton.nfa_states.push(Default::default());
+    (Rc::clone(&automaton.nfa_states[0]), Rc::clone(&automaton.nfa_states[0]))
 }
 
 fn add_transition(start: &NFAStateRc, to: &NFAStateRc, transition: NFATransitionType) {
@@ -114,3 +115,7 @@ fn build_automaton(grammar: &dyn Grammar, automaton: &mut RuleAutomaton, rule: &
     }
 }
 
+struct DFAState {
+    transitions: Vec<u8>,
+    is_final: bool,
+}
