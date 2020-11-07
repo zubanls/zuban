@@ -2,7 +2,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{InternalType, Rule};
 
 type NFAStateId = usize;
-type DFAStateId = usize;
+#[derive(Debug, Clone, Copy)]
+struct DFAStateId(usize);
 
 #[derive(Default)]
 struct RuleAutomaton {
@@ -47,12 +48,11 @@ impl RuleAutomaton {
     }
 
     fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, start: NFAStateId,
-                  end: NFAStateId) -> (DFAStateId, bool) {
+                  end: NFAStateId) -> DFAStateId {
         let grouped_nfas = self.group_nfas(start);
         for (i, dfa_state) in dfa_states.iter().enumerate() {
             if dfa_state.nfa_set == grouped_nfas {
-                //a
-                return (i, false);
+                return DFAStateId(i);
             }
         }
         let is_final = grouped_nfas.contains(&end);
@@ -62,13 +62,13 @@ impl RuleAutomaton {
             is_final: is_final,
             is_calculated: false,
         });
-        (dfa_states.len() - 1, true)
+        DFAStateId(dfa_states.len() - 1)
     }
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
         let mut dfa_states = Vec::new();
-        let (id, is_new) = self.nfa_to_dfa(&mut dfa_states, start, end);
-        self.construct_powerset_for_dfa(&mut dfa_states, id, end);
+        let dfa_id = self.nfa_to_dfa(&mut dfa_states, start, end);
+        self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
         if dfa_states.len() > 2 {
         dbg!(dfa_states.len());
         }
@@ -77,30 +77,26 @@ impl RuleAutomaton {
 
     fn construct_powerset_for_dfa(&mut self, dfa_states: &mut Vec<DFAState>,
                                   dfa_id: DFAStateId, end: NFAStateId) {
-        let state = &dfa_states[dfa_id];
+        let state = &dfa_states[dfa_id.0];
         if state.is_calculated {
             return
         }
-        dbg!(dfa_id);
+        dbg!(dfa_id.0);
         let mut transitions = Vec::new();
         for nfa_state_id in state.nfa_set.clone()  {
             let n = &self.nfa_states[nfa_state_id];
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
-                    let (new_dfa_id, _) = self.nfa_to_dfa(dfa_states, transition.to, end);
+                    let new_dfa_id = self.nfa_to_dfa(dfa_states, transition.to, end);
                     transitions.push(DFATransition {type_: *t, to: new_dfa_id});
                 }
             }
         }
-        dfa_states[dfa_id].transitions = transitions;
-        dfa_states[dfa_id].is_calculated = true;
-        for transition in dfa_states[dfa_id].transitions.clone() {
+        dfa_states[dfa_id.0].transitions = transitions;
+        dfa_states[dfa_id.0].is_calculated = true;
+        for transition in dfa_states[dfa_id.0].transitions.clone() {
             self.construct_powerset_for_dfa(dfa_states, transition.to, end)
         }
-    }
-
-    fn get_dfa_state(&mut self, id: DFAStateId) -> &mut DFAState {
-        &mut self.dfa_states[id]
     }
 }
 
