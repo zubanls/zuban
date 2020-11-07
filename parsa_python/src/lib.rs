@@ -44,14 +44,14 @@ create_grammar!(
     multi: foo bar
     x: foo+
     y: foo*
-    z: la foo?
-    bracket1: (la foo)
-    bracket2: bar (lala foo)?
+    z: x foo?
+    bracket1: (x foo)
+    bracket2: bar (y foo)?
     negative_lookahead: bar !foo
     positive_lookahead: bar &foo
     separator: bar.foo
     separator2: (bar (x)*).foo
-    cutoff: (bar ~ foo | baz)
+    cutoff: (bar ~ foo | x)
     optional: [bar foo] x
 );
 
