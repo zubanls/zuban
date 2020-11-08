@@ -40,21 +40,22 @@ impl RuleAutomaton {
         self.add_transition(start, to, None);
     }
 
-    fn group_nfas(&self, nfa_state_id: NFAStateId) -> HashSet<NFAStateId> {
+    fn group_nfas(&self, nfa_state_ids: Vec<NFAStateId>) -> HashSet<NFAStateId> {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
-        let mut set = HashSet::new();
-        set.insert(nfa_state_id);
-        for transition in &self.get_nfa_state(nfa_state_id).transitions {
-            if let None = transition.type_ {
-                set.insert(transition.to);
+        let mut set: HashSet<_> = nfa_state_ids.iter().cloned().collect();
+        for nfa_state_id in nfa_state_ids {
+            for transition in &self.get_nfa_state(nfa_state_id).transitions {
+                if let None = transition.type_ {
+                    set.insert(transition.to);
+                }
             }
         }
         set
     }
 
-    fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, start: NFAStateId,
+    fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, starts: Vec<NFAStateId>,
                   end: NFAStateId) -> DFAStateId {
-        let grouped_nfas = self.group_nfas(start);
+        let grouped_nfas = self.group_nfas(starts);
         for (i, dfa_state) in dfa_states.iter().enumerate() {
             if dfa_state.nfa_set == grouped_nfas {
                 return DFAStateId(i);
@@ -72,7 +73,7 @@ impl RuleAutomaton {
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
         let mut dfa_states = Vec::new();
-        let dfa_id = self.nfa_to_dfa(&mut dfa_states, start, end);
+        let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end);
         self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
         1
     }
@@ -83,16 +84,23 @@ impl RuleAutomaton {
         if state.is_calculated {
             return
         }
-        let mut transitions = Vec::new();
+
+        let mut grouped_transitions = HashMap::new();
         for nfa_state_id in state.nfa_set.clone()  {
             let n = &self.get_nfa_state(nfa_state_id);
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
-                    let new_dfa_id = self.nfa_to_dfa(dfa_states, transition.to, end);
-                    transitions.push(DFATransition {type_: *t, to: new_dfa_id});
+                    grouped_transitions.insert(t, vec!(transition.to));
                 }
             }
         }
+
+        let mut transitions = Vec::new();
+        for (type_, grouped_starts) in grouped_transitions {
+                let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end);
+                transitions.push(DFATransition {type_: *type_, to: new_dfa_id});
+            }
+
         dbg!(dfa_id.0, &transitions);
         dfa_states[dfa_id.0].transitions = transitions;
         dfa_states[dfa_id.0].is_calculated = true;
@@ -116,7 +124,7 @@ struct DFAState {
     is_calculated: bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum NFATransitionType {
     Terminal(InternalType),
     Nonterminal(InternalType),
