@@ -16,6 +16,7 @@ pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
 pub type InternalType = i16;
+pub type StrToInternalTypeMap = HashMap<&'static str, InternalType>;
 
 pub trait Token {
     fn get_start_index(&self) -> u32;
@@ -129,10 +130,10 @@ macro_rules! __create_type_set {
         }
 
         impl $EnumName {
-            fn get_map() -> &'static $crate::HashMap<&'static str, i16> {
+            fn get_map() -> &'static $crate::StrToInternalTypeMap {
                 #[macro_use]
                 $crate::lazy_static! {
-                    static ref HASHMAP: $crate::HashMap<&'static str, i16> = {
+                    static ref HASHMAP: $crate::StrToInternalTypeMap = {
                         let mut m = $crate::HashMap::new();
                         $(m.insert(stringify!($entry), $EnumName::$entry as i16);)*
                         m
@@ -383,42 +384,25 @@ macro_rules! __parse_rule {
 #[macro_export]
 macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
-        #[derive(Default)]
         struct $Grammar {
-            reserved_strings: $crate::HashMap<&'static str, $crate::InternalType>,
+            internal_grammar: Grammar,
         }
 
         impl $Grammar {
             fn new() -> Self {
-                let mut grammar: Self = Default::default();
-
                 let mut rules = $crate::HashMap::new();
                 $crate::__parse_rules!($NodeType, rules, $($rule)+);
-                grammar.generate(&rules);
-                grammar
-            }
-        }
-
-        impl $crate::Grammar for $Grammar {
-            fn terminal_name_to_int(&self, identifier: &str) -> Option<$crate::InternalType> {
-                match $TokenType::get_map().get(identifier) {
-                    Some(i) => Some(*i),
-                    None => None,
-                }
+                Self {internal_grammar: Grammar::new(
+                    &rules, $NodeType::get_map(), $TokenType::get_map(),
+                )}
             }
 
-            fn nonterminal_name_to_int(&self, identifier: &str) -> Option<$crate::InternalType> {
-                match $NodeType::get_map().get(identifier) {
-                    Some(i) => Some(*i),
-                    None => None,
-                }
+            pub fn foo(&self) {
             }
         }
 
         $crate::lazy_static! {
-            static ref $grammar: $Grammar = {
-                $Grammar::new()
-            };
+            static ref $grammar: $Grammar = {$Grammar::new()};
         }
     }
 }
