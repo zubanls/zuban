@@ -153,20 +153,6 @@ pub struct Grammar {
 }
 
 impl Grammar { 
-    fn terminal_name_to_int(&self, identifier: &str) -> Option<InternalType> {
-        match self.terminal_map.get(identifier) {
-            Some(i) => Some(*i),
-            None => None,
-        }
-    }
-
-    fn nonterminal_name_to_int(&self, identifier: &str) -> Option<InternalType> {
-        match self.nonterminal_map.get(identifier) {
-            Some(i) => Some(*i),
-            None => None,
-        }
-    }
-
     pub fn new(rules: &HashMap<InternalType, Rule>,
                nonterminal_map: &'static StrToInternalTypeMap, 
                terminal_map: &'static StrToInternalTypeMap) -> Self {
@@ -195,9 +181,9 @@ impl Grammar {
         match *rule {
             Identifier(string) => {
                 let (start, end) = automaton.new_nfa_states();
-                if let Some(t) = self.terminal_name_to_int(string) {
+                if let Some(&t) = self.terminal_map.get(string) {
                     automaton.add_transition(start, end, Some(NFATransitionType::Terminal(t)));
-                } else if let Some(t) = self.nonterminal_name_to_int(string) {
+                } else if let Some(&t) = self.nonterminal_map.get(string) {
                     automaton.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
                 } else {
                     panic!("No terminal / nonterminal found for {}", string);
@@ -246,4 +232,3 @@ impl Grammar {
         }
     }
 }
-
