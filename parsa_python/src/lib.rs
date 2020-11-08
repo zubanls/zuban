@@ -11,6 +11,7 @@ impl PythonTokenizer {
             start_index: 0,
             length: 0,
             type_: TokenType::Endmarker,
+            can_contain_syntax: false,
         }
     }
 }

@@ -21,6 +21,7 @@ pub trait Token {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> InternalType;
+    fn can_contain_syntax(&self) -> bool;
 }
 
 pub trait Tokenizer<T: Token> {
@@ -152,6 +153,7 @@ macro_rules! create_token {
             start_index: $crate::CodeIndex,
             length: $crate::CodeLength,
             type_: $TokenType,
+            can_contain_syntax: bool,
         }
 
         impl $crate::Token for $Token {
@@ -165,6 +167,10 @@ macro_rules! create_token {
 
             fn get_type(&self) -> $crate::InternalType {
                 self.type_ as $crate::InternalType
+            }
+
+            fn can_contain_syntax(&self) -> bool{
+                self.can_contain_syntax
             }
         }
     }

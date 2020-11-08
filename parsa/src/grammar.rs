@@ -71,11 +71,11 @@ impl RuleAutomaton {
         DFAStateId(dfa_states.len() - 1)
     }
 
-    fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> u8 {
+    fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> Vec<DFAState> {
         let mut dfa_states = Vec::new();
         let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end);
         self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
-        1
+        dfa_states
     }
 
     fn construct_powerset_for_dfa(&mut self, dfa_states: &mut Vec<DFAState>,
@@ -151,7 +151,12 @@ pub trait Grammar {
             let mut automaton = Default::default();
             let (start, end) = build_automaton(self, &mut automaton, rule);
             dbg!(rule);
-            automaton.construct_powerset(start, end);
+            let dfa_states = automaton.construct_powerset(start, end);
+            // TODO proper transitions for operators/names
+            // calculate first plans
+
+            // Since we now know every nonterminal has a first terminal, we know that there is no
+            // left recursion.
         }
     }
 
