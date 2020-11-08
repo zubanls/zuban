@@ -7,10 +7,131 @@ struct NFAStateId(usize);
 #[derive(Debug, Clone, Copy)]
 struct DFAStateId(usize);
 
+// NFA = nondeterministic finite automaton
+#[derive(Default, Debug)]
+struct NFAState {
+    transitions: Vec<NFATransition>,
+}
+
+struct DFAState {
+    transitions: Vec<DFATransition>,
+    nfa_set: HashSet<NFAStateId>,
+    is_final: bool,
+    is_calculated: bool,
+}
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+enum NFATransitionType {
+    Terminal(InternalType),
+    Nonterminal(InternalType),
+    Keyword(&'static str),
+}
+
+#[derive(Debug)]
+struct NFATransition {
+    type_: Option<NFATransitionType>,
+    to: NFAStateId,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct DFATransition {
+    type_: NFATransitionType,
+    to: DFAStateId,
+}
+
+
+#[derive(Debug)]
+pub struct Grammar {
+    reserved_strings: HashMap<&'static str, InternalType>,
+    terminal_map: &'static StrToInternalTypeMap,
+    nonterminal_map: &'static StrToInternalTypeMap,
+}
+
 #[derive(Default)]
 struct RuleAutomaton {
     nfa_states: Vec<NFAState>,
     dfa_states: Vec<DFAState>,
+}
+
+impl Grammar { 
+    pub fn new(rules: &HashMap<InternalType, Rule>,
+               nonterminal_map: &'static StrToInternalTypeMap, 
+               terminal_map: &'static StrToInternalTypeMap) -> Self {
+        let grammar = Self {
+            reserved_strings: Default::default(),
+            terminal_map: terminal_map,
+            nonterminal_map: nonterminal_map,
+        };
+        for (internal_type, rule) in rules {
+            let mut automaton = Default::default();
+            let (start, end) = grammar.build_automaton(&mut automaton, rule);
+            dbg!(rule);
+            let dfa_states = automaton.construct_powerset(start, end);
+            // TODO proper transitions for operators/names
+            // calculate first plans
+
+            // Since we now know every nonterminal has a first terminal, we know that there is no
+            // left recursion.
+        }
+        grammar
+    }
+
+    fn build_automaton(&self, automaton: &mut RuleAutomaton,
+                       rule: &Rule) -> (NFAStateId, NFAStateId) {
+        use Rule::*;
+        match *rule {
+            Identifier(string) => {
+                let (start, end) = automaton.new_nfa_states();
+                if let Some(&t) = self.terminal_map.get(string) {
+                    automaton.add_transition(start, end, Some(NFATransitionType::Terminal(t)));
+                } else if let Some(&t) = self.nonterminal_map.get(string) {
+                    automaton.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
+                } else {
+                    panic!("No terminal / nonterminal found for {}", string);
+                }
+                (start, end)
+            },
+            Keyword(string) => {
+                let (start, end) = automaton.new_nfa_states();
+                automaton.add_transition(start, end, Some(NFATransitionType::Keyword(string)));
+                (start, end)
+            },
+            Or(rule1, rule2) => {
+                let (start, end) = automaton.new_nfa_states();
+                for r in [rule1, rule2].iter() {
+                    let (x, y) = self.build_automaton(automaton, r);
+                    automaton.add_empty_transition(start, x);
+                    automaton.add_empty_transition(y, end);
+                }
+                (start, end)
+            },
+            Maybe(rule1) => {
+                let (start, end) = self.build_automaton(automaton, rule1);
+                automaton.add_empty_transition(start, end);
+                (start, end)
+            },
+            Multiple(rule1) => {
+                let (start, end) = self.build_automaton(automaton, rule1);
+                automaton.add_empty_transition(end, start);
+                (start, end)
+            }
+            NegativeLookahead(rule1) => {
+                // TODO for now this is basically ignored
+                self.build_automaton(automaton, rule1)
+            },
+            PositiveLookahead(rule1) => {
+                // TODO for now this is basically ignored
+                self.build_automaton(automaton, rule1)
+            }
+            // TODO Cut is ignored for now.
+            Cut(rule1, rule2) | Next(rule1, rule2) => {
+                let (start1, end1) = self.build_automaton(automaton, rule1);
+                let (start2, end2) = self.build_automaton(automaton, rule2);
+                automaton.add_empty_transition(end1, start2);
+                (start1, end2)
+            }
+        }
+    }
 }
 
 impl RuleAutomaton {
@@ -107,128 +228,6 @@ impl RuleAutomaton {
         dfa_states[dfa_id.0].is_calculated = true;
         for transition in dfa_states[dfa_id.0].transitions.clone() {
             self.construct_powerset_for_dfa(dfa_states, transition.to, end)
-        }
-    }
-}
-
-
-// NFA = nondeterministic finite automaton
-#[derive(Default, Debug)]
-struct NFAState {
-    transitions: Vec<NFATransition>,
-}
-
-struct DFAState {
-    transitions: Vec<DFATransition>,
-    nfa_set: HashSet<NFAStateId>,
-    is_final: bool,
-    is_calculated: bool,
-}
-
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum NFATransitionType {
-    Terminal(InternalType),
-    Nonterminal(InternalType),
-    Keyword(&'static str),
-}
-
-#[derive(Debug)]
-struct NFATransition {
-    type_: Option<NFATransitionType>,
-    to: NFAStateId,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct DFATransition {
-    type_: NFATransitionType,
-    to: DFAStateId,
-}
-
-
-#[derive(Debug)]
-pub struct Grammar {
-    reserved_strings: HashMap<&'static str, InternalType>,
-    terminal_map: &'static StrToInternalTypeMap,
-    nonterminal_map: &'static StrToInternalTypeMap,
-}
-
-impl Grammar { 
-    pub fn new(rules: &HashMap<InternalType, Rule>,
-               nonterminal_map: &'static StrToInternalTypeMap, 
-               terminal_map: &'static StrToInternalTypeMap) -> Self {
-        let grammar = Self {
-            reserved_strings: Default::default(),
-            terminal_map: terminal_map,
-            nonterminal_map: nonterminal_map,
-        };
-        for (internal_type, rule) in rules {
-            let mut automaton = Default::default();
-            let (start, end) = grammar.build_automaton(&mut automaton, rule);
-            dbg!(rule);
-            let dfa_states = automaton.construct_powerset(start, end);
-            // TODO proper transitions for operators/names
-            // calculate first plans
-
-            // Since we now know every nonterminal has a first terminal, we know that there is no
-            // left recursion.
-        }
-        grammar
-    }
-
-    fn build_automaton(&self, automaton: &mut RuleAutomaton,
-                       rule: &Rule) -> (NFAStateId, NFAStateId) {
-        use Rule::*;
-        match *rule {
-            Identifier(string) => {
-                let (start, end) = automaton.new_nfa_states();
-                if let Some(&t) = self.terminal_map.get(string) {
-                    automaton.add_transition(start, end, Some(NFATransitionType::Terminal(t)));
-                } else if let Some(&t) = self.nonterminal_map.get(string) {
-                    automaton.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
-                } else {
-                    panic!("No terminal / nonterminal found for {}", string);
-                }
-                (start, end)
-            },
-            Keyword(string) => {
-                let (start, end) = automaton.new_nfa_states();
-                automaton.add_transition(start, end, Some(NFATransitionType::Keyword(string)));
-                (start, end)
-            },
-            Or(rule1, rule2) => {
-                let (start, end) = automaton.new_nfa_states();
-                for r in [rule1, rule2].iter() {
-                    let (x, y) = self.build_automaton(automaton, r);
-                    automaton.add_empty_transition(start, x);
-                    automaton.add_empty_transition(y, end);
-                }
-                (start, end)
-            },
-            Maybe(rule1) => {
-                let (start, end) = self.build_automaton(automaton, rule1);
-                automaton.add_empty_transition(start, end);
-                (start, end)
-            },
-            Multiple(rule1) => {
-                let (start, end) = self.build_automaton(automaton, rule1);
-                automaton.add_empty_transition(end, start);
-                (start, end)
-            }
-            NegativeLookahead(rule1) => {
-                // TODO for now this is basically ignored
-                self.build_automaton(automaton, rule1)
-            },
-            PositiveLookahead(rule1) => {
-                // TODO for now this is basically ignored
-                self.build_automaton(automaton, rule1)
-            }
-            // TODO Cut is ignored for now.
-            Cut(rule1, rule2) | Next(rule1, rule2) => {
-                let (start1, end1) = self.build_automaton(automaton, rule1);
-                let (start2, end2) = self.build_automaton(automaton, rule2);
-                automaton.add_empty_transition(end1, start2);
-                (start1, end2)
-            }
         }
     }
 }
