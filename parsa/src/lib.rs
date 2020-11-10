@@ -385,7 +385,7 @@ macro_rules! __parse_rule {
 macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
         struct $Grammar {
-            internal_grammar: Grammar,
+            internal_grammar: Grammar<PythonToken>,
         }
 
         impl $Grammar {

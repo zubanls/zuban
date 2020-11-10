@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
+use std::marker::PhantomData;
 
-use crate::{InternalType, Rule, StrToInternalTypeMap};
+use crate::{InternalType, Rule, StrToInternalTypeMap, InternalNode, Token};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 struct NFAStateId(usize);
@@ -13,6 +14,7 @@ struct NFAState {
     transitions: Vec<NFATransition>,
 }
 
+// DFA = deterministic finite automaton
 struct DFAState {
     transitions: Vec<DFATransition>,
     nfa_set: HashSet<NFAStateId>,
@@ -39,12 +41,18 @@ struct DFATransition {
     to: DFAStateId,
 }
 
+#[derive(Debug)]
+struct Plan {
+    is_final: bool,
+    transitions: HashMap<InternalType, &'static Plan>,
+}
 
 #[derive(Debug)]
-pub struct Grammar {
+pub struct Grammar<T> {
     reserved_strings: HashMap<&'static str, InternalType>,
     terminal_map: &'static StrToInternalTypeMap,
     nonterminal_map: &'static StrToInternalTypeMap,
+    phantom: PhantomData<T>,
 }
 
 #[derive(Default)]
@@ -53,7 +61,7 @@ struct RuleAutomaton {
     dfa_states: Vec<DFAState>,
 }
 
-impl Grammar { 
+impl<T: Token> Grammar<T> {
     pub fn new(rules: &HashMap<InternalType, Rule>,
                nonterminal_map: &'static StrToInternalTypeMap, 
                terminal_map: &'static StrToInternalTypeMap) -> Self {
@@ -61,18 +69,25 @@ impl Grammar {
             reserved_strings: Default::default(),
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
+            phantom: PhantomData,
         };
+        let mut automatons = HashMap::new();
         for (internal_type, rule) in rules {
             let mut automaton = Default::default();
             let (start, end) = grammar.build_automaton(&mut automaton, rule);
             dbg!(rule);
             let dfa_states = automaton.construct_powerset(start, end);
+            automatons.insert(*internal_type, automaton);
             // TODO proper transitions for operators/names
-            // calculate first plans
-
-            // Since we now know every nonterminal has a first terminal, we know that there is no
-            // left recursion.
         }
+
+        // Calculate first plans
+        for id in automatons.keys().cloned().collect::<Vec<InternalType>>() {
+            grammar.create_first_plans(&mut automatons, id);
+        }
+
+        // Since we now know every nonterminal has a first terminal, we know that there is no
+        // left recursion.
         grammar
     }
 
@@ -129,6 +144,69 @@ impl Grammar {
                 let (start2, end2) = self.build_automaton(automaton, rule2);
                 automaton.add_empty_transition(end1, start2);
                 (start1, end2)
+            }
+        }
+    }
+
+    fn create_first_plans(&self, automatons: &mut HashMap<InternalType, RuleAutomaton>,
+                          automaton_key: InternalType) {
+        let automaton = &automatons[&automaton_key];
+        automaton;
+    }
+
+    fn create_all_plans(&self) {
+    }
+
+    pub fn parse(&self, tokens: impl Iterator<Item=T>, start_token: InternalType) -> Vec<InternalNode> {
+        let mut stack = Stack::new();
+        let mut nodes = Vec::new();
+        //stack.push(StackNode {plan: 0, backtrack_length_counts: Vec::new()});
+
+        for token in tokens {
+            let transition;
+            if token.can_contain_syntax() {
+                transition = match self.reserved_strings.get("") {
+                    None => token.get_type(),
+                    Some(type_) => *type_
+                }
+            } else {
+                transition = token.get_type();
+            }
+
+            loop {
+                let tos = stack.get_tos();
+                match tos.plan.transitions.get(&transition) {
+                    None => {
+                        if tos.plan.is_final {
+                            stack.pop()
+                        }
+                    },
+                    Some(plan) => {break},
+                }
+                nodes.push(InternalNode {
+                    next_node_offset: 0,
+                    // Positive values are token types, negative values are nodes
+                    type_: 0,
+                    start_index: 0,
+                    length: 0,
+                    extra_data: 0,
+                });
+            }
+        }
+
+        loop {
+            let tos = stack.get_tos();
+            if !tos.plan.is_final {
+                // We never broke out -- EOF is too soon -- Unfinished statement.
+                // However, the error recovery might have added the token again, if
+                // the stack is empty, we're fine.
+                panic!("incomplete input {:?}", tos.plan)
+            }
+
+            if stack.len() > 1 {
+                stack.pop()
+            } else {
+                return nodes
             }
         }
     }
@@ -229,5 +307,33 @@ impl RuleAutomaton {
         for transition in dfa_states[dfa_id.0].transitions.clone() {
             self.construct_powerset_for_dfa(dfa_states, transition.to, end)
         }
+    }
+}
+
+#[derive(Debug)]
+struct StackNode {
+    plan: Plan,
+    backtrack_length_counts: Vec<u32>,
+}
+
+#[derive(Debug)]
+struct Stack {
+    nodes: Vec<StackNode>,
+}
+
+impl Stack {
+    fn new() -> Self {
+        Self {nodes: Default::default()}
+    }
+
+    fn get_tos(&self) -> &StackNode{
+        &self.nodes[self.nodes.len() - 1]
+    }
+
+    fn len(&self) -> usize {
+        self.nodes.len()
+    }
+
+    fn pop(&mut self) {
     }
 }
