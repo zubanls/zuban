@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 use crate::{InternalType, Rule, StrToInternalTypeMap, InternalNode, Token};
 
@@ -41,10 +42,13 @@ struct DFATransition {
     to: DFAStateId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Plan {
     is_final: bool,
     transitions: HashMap<InternalType, &'static Plan>,
+    pushes: Vec<&'static Plan>,
+    next_plan: &'static Plan,
+    type_: InternalType,
 }
 
 #[derive(Debug)]
@@ -53,13 +57,25 @@ pub struct Grammar<T> {
     terminal_map: &'static StrToInternalTypeMap,
     nonterminal_map: &'static StrToInternalTypeMap,
     phantom: PhantomData<T>,
+    plans: Vec<Plan>,
 }
 
 #[derive(Default)]
 struct RuleAutomaton {
     nfa_states: Vec<NFAState>,
-    dfa_states: Vec<DFAState>,
 }
+
+#[derive(Debug)]
+struct StackNode<'a> {
+    plan: &'a Plan,
+    backtrack_length_counts: Vec<u32>,
+}
+
+#[derive(Debug)]
+struct Stack<'a> {
+    nodes: Vec<StackNode<'a>>,
+}
+
 
 impl<T: Token> Grammar<T> {
     pub fn new(rules: &HashMap<InternalType, Rule>,
@@ -70,6 +86,7 @@ impl<T: Token> Grammar<T> {
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
             phantom: PhantomData,
+            plans: Default::default(),
         };
         let mut automatons = HashMap::new();
         for (internal_type, rule) in rules {
@@ -158,9 +175,8 @@ impl<T: Token> Grammar<T> {
     }
 
     pub fn parse(&self, tokens: impl Iterator<Item=T>, start_token: InternalType) -> Vec<InternalNode> {
-        let mut stack = Stack::new();
+        let mut stack = Stack::new(&self.plans[start_token as usize]);
         let mut nodes = Vec::new();
-        //stack.push(StackNode {plan: 0, backtrack_length_counts: Vec::new()});
 
         for token in tokens {
             let transition;
@@ -173,24 +189,34 @@ impl<T: Token> Grammar<T> {
                 transition = token.get_type();
             }
 
+            let start_index = token.get_start_index();
             loop {
                 let tos = stack.get_tos();
                 match tos.plan.transitions.get(&transition) {
                     None => {
                         if tos.plan.is_final {
                             stack.pop()
+                        } else {
+                            panic!("Error recovery");
                         }
                     },
-                    Some(plan) => {break},
+                    Some(plan) => {
+                        let p = *plan;
+                        stack.set_plan(p.next_plan);
+                        for push in &p.pushes {
+                            stack.push(push);
+                            nodes.push(InternalNode {
+                                next_node_offset: 0,
+                                // Positive values are token types, negative values are nodes
+                                type_: push.type_,
+                                start_index: start_index,
+                                length: token.get_start_index(),
+                                extra_data: 0,
+                            });
+                        }
+                        break
+                    },
                 }
-                nodes.push(InternalNode {
-                    next_node_offset: 0,
-                    // Positive values are token types, negative values are nodes
-                    type_: 0,
-                    start_index: 0,
-                    length: 0,
-                    extra_data: 0,
-                });
             }
         }
 
@@ -310,20 +336,11 @@ impl RuleAutomaton {
     }
 }
 
-#[derive(Debug)]
-struct StackNode {
-    plan: Plan,
-    backtrack_length_counts: Vec<u32>,
-}
-
-#[derive(Debug)]
-struct Stack {
-    nodes: Vec<StackNode>,
-}
-
-impl Stack {
-    fn new() -> Self {
-        Self {nodes: Default::default()}
+impl<'a> Stack<'a> {
+    fn new(plan: &'a Plan) -> Self {
+        let mut stack = Self {nodes: Default::default()};
+        stack.nodes.push(StackNode {plan: plan, backtrack_length_counts: Vec::new()});
+        stack
     }
 
     fn get_tos(&self) -> &StackNode{
@@ -335,5 +352,15 @@ impl Stack {
     }
 
     fn pop(&mut self) {
+        self.nodes.pop();
+    }
+
+    fn push(&mut self, plan: &'a Plan) {
+        self.nodes.push(StackNode {plan: plan, backtrack_length_counts: Vec::new()});
+    }
+
+    fn set_plan(&mut self, plan: &'a Plan) {
+        let index = self.nodes.len() - 1;
+        self.nodes[index].plan = plan
     }
 }
