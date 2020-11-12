@@ -42,13 +42,16 @@ struct DFATransition {
     to: DFAStateId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Plan {
-    is_final: bool,
-    transitions: HashMap<InternalType, &'static Plan>,
-    pushes: Vec<&'static Plan>,
-    next_plan: &'static Plan,
+    pushes: Vec<&'static OptimizedDFAState>,
+    next_dfa_state: &'static OptimizedDFAState,
     type_: InternalType,
+}
+
+enum FirstPlan {
+    Plan(HashMap<InternalType, Plan>),
+    Calculating,
 }
 
 #[derive(Debug)]
@@ -58,16 +61,20 @@ pub struct Grammar<T> {
     nonterminal_map: &'static StrToInternalTypeMap,
     phantom: PhantomData<T>,
     plans: Vec<Plan>,
+    optimized_dfa_states: Vec<OptimizedDFAState>,
+    node_to_optimized_dfa_states: HashMap<InternalType, usize>,
 }
 
 #[derive(Default)]
 struct RuleAutomaton {
+    type_: InternalType,
     nfa_states: Vec<NFAState>,
+    dfa_states: Vec<DFAState>,
 }
 
 #[derive(Debug)]
 struct StackNode<'a> {
-    plan: &'a Plan,
+    dfa_state: &'a OptimizedDFAState,
     backtrack_length_counts: Vec<u32>,
 }
 
@@ -76,32 +83,63 @@ struct Stack<'a> {
     nodes: Vec<StackNode<'a>>,
 }
 
+#[derive(Debug)]
+struct OptimizedDFAState {
+    transitions: HashMap<InternalType, &'static Plan>,
+    is_final: bool,
+}
 
-impl<T: Token> Grammar<T> {
+impl<'a, T: Token> Grammar<T> {
     pub fn new(rules: &HashMap<InternalType, Rule>,
                nonterminal_map: &'static StrToInternalTypeMap, 
                terminal_map: &'static StrToInternalTypeMap) -> Self {
-        let grammar = Self {
+        let mut grammar = Self {
             reserved_strings: Default::default(),
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
             phantom: PhantomData,
             plans: Default::default(),
+            optimized_dfa_states: Default::default(),
+            node_to_optimized_dfa_states: Default::default(),
         };
         let mut automatons = HashMap::new();
+        let mut optimized_dfa_states = Vec::new();
+        let mut node_to_optimized_dfa_states = HashMap::new();
         for (internal_type, rule) in rules {
-            let mut automaton = Default::default();
+            let mut automaton = RuleAutomaton {
+                type_: *internal_type,
+                nfa_states: Default::default(),
+                dfa_states: Default::default(),
+            };
             let (start, end) = grammar.build_automaton(&mut automaton, rule);
             dbg!(rule);
             let dfa_states = automaton.construct_powerset(start, end);
+            automaton.dfa_states = dfa_states;
             automatons.insert(*internal_type, automaton);
+
+            // Now optimize the whole thing
             // TODO proper transitions for operators/names
+            for (i, dfa_state) in automatons[internal_type].dfa_states.iter().enumerate() {
+                let opt = OptimizedDFAState {
+                    transitions: Default::default(),
+                    is_final: dfa_state.is_final,
+                };
+                optimized_dfa_states.push(opt);
+                if i == 1 {
+                    node_to_optimized_dfa_states.insert(
+                        internal_type,
+                        optimized_dfa_states.len() - 1
+                    );
+                }
+            }
         }
 
         // Calculate first plans
+        let mut first_plans = HashMap::new();
         for id in automatons.keys().cloned().collect::<Vec<InternalType>>() {
-            grammar.create_first_plans(&mut automatons, id);
+            grammar.create_first_plans(&mut first_plans, &mut automatons, id);
         }
+        grammar.optimized_dfa_states = optimized_dfa_states;
 
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
@@ -165,17 +203,35 @@ impl<T: Token> Grammar<T> {
         }
     }
 
-    fn create_first_plans(&self, automatons: &mut HashMap<InternalType, RuleAutomaton>,
+    fn create_first_plans(&self,
+                          first_plans: &mut HashMap<InternalType, FirstPlan>,
+                          automatons: &mut HashMap<InternalType, RuleAutomaton>,
                           automaton_key: InternalType) {
         let automaton = &automatons[&automaton_key];
-        automaton;
+        for transition in &automaton.dfa_states[0].transitions {
+            match transition.type_ {
+                NFATransitionType::Terminal(type_) => {
+                },
+                NFATransitionType::Nonterminal(type_) => {
+                },
+                NFATransitionType::Keyword(string) => {
+                },
+            }
+        }
+        /*
+        first_plans[&id] = FirstPlan::Plan(Plan {
+            pushes: Vec::new(),
+            next_dfa_state: &optimized_dfa_states[node_to_optimized_dfa_states[id]],
+            type_: InternalType,
+        });
+        */
     }
 
     fn create_all_plans(&self) {
     }
 
     pub fn parse(&self, tokens: impl Iterator<Item=T>, start_token: InternalType) -> Vec<InternalNode> {
-        let mut stack = Stack::new(&self.plans[start_token as usize]);
+        let mut stack = Stack::new(&self.optimized_dfa_states[self.node_to_optimized_dfa_states[&start_token]]);
         let mut nodes = Vec::new();
 
         for token in tokens {
@@ -192,23 +248,23 @@ impl<T: Token> Grammar<T> {
             let start_index = token.get_start_index();
             loop {
                 let tos = stack.get_tos();
-                match tos.plan.transitions.get(&transition) {
+                match tos.dfa_state.transitions.get(&transition) {
                     None => {
-                        if tos.plan.is_final {
+                        if tos.dfa_state.is_final {
                             stack.pop()
                         } else {
                             panic!("Error recovery");
                         }
                     },
                     Some(plan) => {
-                        let p = *plan;
-                        stack.set_plan(p.next_plan);
+                        let p: &Plan = *plan;
+                        stack.set_dfa_state(p.next_dfa_state);
                         for push in &p.pushes {
                             stack.push(push);
                             nodes.push(InternalNode {
                                 next_node_offset: 0,
                                 // Positive values are token types, negative values are nodes
-                                type_: push.type_,
+                                type_: p.type_,
                                 start_index: start_index,
                                 length: token.get_start_index(),
                                 extra_data: 0,
@@ -222,11 +278,11 @@ impl<T: Token> Grammar<T> {
 
         loop {
             let tos = stack.get_tos();
-            if !tos.plan.is_final {
+            if !tos.dfa_state.is_final {
                 // We never broke out -- EOF is too soon -- Unfinished statement.
                 // However, the error recovery might have added the token again, if
                 // the stack is empty, we're fine.
-                panic!("incomplete input {:?}", tos.plan)
+                panic!("incomplete input {:?}", tos.dfa_state)
             }
 
             if stack.len() > 1 {
@@ -337,9 +393,9 @@ impl RuleAutomaton {
 }
 
 impl<'a> Stack<'a> {
-    fn new(plan: &'a Plan) -> Self {
+    fn new(dfa_state: &'a OptimizedDFAState) -> Self {
         let mut stack = Self {nodes: Default::default()};
-        stack.nodes.push(StackNode {plan: plan, backtrack_length_counts: Vec::new()});
+        stack.nodes.push(StackNode {dfa_state: dfa_state, backtrack_length_counts: Vec::new()});
         stack
     }
 
@@ -355,12 +411,12 @@ impl<'a> Stack<'a> {
         self.nodes.pop();
     }
 
-    fn push(&mut self, plan: &'a Plan) {
-        self.nodes.push(StackNode {plan: plan, backtrack_length_counts: Vec::new()});
+    fn push(&mut self, dfa_state: &'a OptimizedDFAState) {
+        self.nodes.push(StackNode {dfa_state: dfa_state, backtrack_length_counts: Vec::new()});
     }
 
-    fn set_plan(&mut self, plan: &'a Plan) {
+    fn set_dfa_state(&mut self, dfa_state: &'a OptimizedDFAState) {
         let index = self.nodes.len() - 1;
-        self.nodes[index].plan = plan
+        self.nodes[index].dfa_state = dfa_state
     }
 }
