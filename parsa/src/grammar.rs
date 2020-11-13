@@ -48,13 +48,13 @@ struct DFATransition {
 
 #[derive(Debug)]
 struct Plan {
-    pushes: Vec<&'static OptimizedDFAState>,
-    next_dfa_state: &'static OptimizedDFAState,
+    pushes: Vec<(InternalNodeType, DFAStateId)>,
+    next_dfa_state: DFAStateId,
     type_: InternalSquashedType,
 }
 
 enum FirstPlan {
-    Plan(HashMap<InternalSquashedType, Plan>),
+    Calculated(HashMap<InternalSquashedType, Plan>),
     Calculating,
 }
 
@@ -212,18 +212,45 @@ impl<'a, T: Token> Grammar<T> {
                           automatons: &mut HashMap<InternalNodeType, RuleAutomaton>,
                           automaton_key: InternalNodeType) {
         let automaton = &automatons[&automaton_key];
+        match first_plans.get(&automaton_key) {
+            None => {
+                first_plans[&automaton_key] = FirstPlan::Calculating;
+            }
+            Some(first_plan) => {
+                match first_plan {
+                    FirstPlan::Calculated(_) => {return},
+                    FirstPlan::Calculating => {
+                        panic!("The grammar contains left recursion for rule {:?}",
+                               self.nonterminal_to_str(automaton_key))
+                    },
+                }
+            }
+        }
+        let plans = HashMap::new();
         for transition in &automaton.dfa_states[0].transitions {
             match transition.type_ {
                 NFATransitionType::Terminal(type_) => {
+                    let t = token_type_to_squashed(type_);
+                    plans.insert(t, Plan {
+                        pushes: Vec::new(),
+                        next_dfa_state: transition.to,
+                        type_: t,
+                    });
                 },
                 NFATransitionType::Nonterminal(type_) => {
+                    let t = node_type_to_squashed(type_);
+                    plans.insert(t, Plan {
+                        pushes: Vec::new(),
+                        next_dfa_state: transition.to,
+                        type_: t,
+                    });
                 },
                 NFATransitionType::Keyword(string) => {
                 },
             }
         }
         /*
-        first_plans[&id] = FirstPlan::Plan(Plan {
+        first_plans[&id] = FirstPlan::Calculated(Plan {
             pushes: Vec::new(),
             next_dfa_state: &optimized_dfa_states[node_to_optimized_dfa_states[id]],
             type_: InternalType,
@@ -296,6 +323,15 @@ impl<'a, T: Token> Grammar<T> {
             }
         }
     }
+
+    fn nonterminal_to_str(&self, nonterminal: InternalNodeType) -> &str {
+        for (k, v) in self.nonterminal_map {
+            if nonterminal == *v {
+                return *k
+            }
+        }
+        panic!("Something is very wrong, integer not found");
+    }
 }
 
 #[inline]
@@ -303,6 +339,11 @@ fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashedType
     InternalSquashedType(token_type.0)
 }
 
+#[inline]
+fn node_type_to_squashed(token_type: InternalNodeType) -> InternalSquashedType {
+    // TODO hmmmmmm
+    InternalSquashedType(token_type.0)
+}
 
 impl RuleAutomaton {
     fn get_nfa_state_mut(&mut self, id: NFAStateId) -> &mut NFAState {
