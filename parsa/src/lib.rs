@@ -9,19 +9,23 @@ pub use std::io::Bytes;
 pub use lazy_static::lazy_static;
 pub use std::mem;
 
-pub use grammar::Grammar;
+pub use grammar::{Grammar, InternalSquashedType};
 
 pub type ExtraData = u32;
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
-pub type InternalType = i16;
-pub type StrToInternalTypeMap = HashMap<&'static str, InternalType>;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct InternalTokenType(pub i16);
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct InternalNodeType(pub i16);
+pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
+pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 
 pub trait Token {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
-    fn get_type(&self) -> InternalType;
+    fn get_type(&self) -> InternalTokenType;
     fn can_contain_syntax(&self) -> bool;
 }
 
@@ -45,7 +49,7 @@ pub struct InternalTree {
 pub struct InternalNode {
     next_node_offset: NodeIndex,
     // Positive values are token types, negative values are nodes
-    pub type_: InternalType,
+    pub type_: InternalSquashedType,
 
     pub start_index: CodeIndex,
     pub length: CodeLength,
@@ -121,7 +125,7 @@ macro_rules! create_parser {
 
 #[macro_export]
 macro_rules! __create_type_set {
-    (enum $EnumName:ident, $($entry:ident),*) => {
+    (enum $EnumName:ident, $Map:path, $Type:path, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug)]
         #[repr(i16)]
@@ -130,12 +134,16 @@ macro_rules! __create_type_set {
         }
 
         impl $EnumName {
-            fn get_map() -> &'static $crate::StrToInternalTypeMap {
+            fn get_map() -> &'static $Map {
                 #[macro_use]
                 $crate::lazy_static! {
-                    static ref HASHMAP: $crate::StrToInternalTypeMap = {
+                    static ref HASHMAP: $Map = {
                         let mut m = $crate::HashMap::new();
-                        $(m.insert(stringify!($entry), $EnumName::$entry as i16);)*
+                        $(m.insert(
+                              stringify!($entry),
+                              $Type($EnumName::$entry as i16)
+                          );
+                        )*
                         m
                     };
                 }
@@ -148,7 +156,8 @@ macro_rules! __create_type_set {
 #[macro_export]
 macro_rules! create_token {
     (struct $Token:ident, enum $TokenType:ident, [$($entry:ident),*]) => {
-        $crate::__create_type_set!(enum $TokenType, $($entry),*);
+        $crate::__create_type_set!(enum $TokenType, $crate::InternalStrToToken,
+                                   $crate::InternalTokenType, $($entry),*);
 
         pub struct $Token {
             start_index: $crate::CodeIndex,
@@ -166,8 +175,8 @@ macro_rules! create_token {
                 self.length
             }
 
-            fn get_type(&self) -> $crate::InternalType {
-                self.type_ as $crate::InternalType
+            fn get_type(&self) -> $crate::InternalTokenType {
+                $crate::InternalTokenType(self.type_ as i16)
             }
 
             fn can_contain_syntax(&self) -> bool{
@@ -180,7 +189,8 @@ macro_rules! create_token {
 #[macro_export]
 macro_rules! create_node {
     (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, [$($entry:ident),*]) => {
-        $crate::__create_type_set!(enum $NodeType, $($entry),*);
+        $crate::__create_type_set!(enum $NodeType, $crate::InternalStrToNode,
+                                   $crate::InternalNodeType, $($entry),*);
 
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
@@ -232,7 +242,8 @@ macro_rules! create_node {
             }
 
             fn is_leaf(&self) -> bool {
-                return self.internal_node.type_ < 0
+                false // TODO
+                //return self.internal_node.type_ < 0
             }
 
             pub fn token_type(&self) -> Option<$TokenType> {
@@ -240,7 +251,8 @@ macro_rules! create_node {
                     return None
                 }
                 // Can be unsafe, because the TokenType is created by the macro create_token.
-                Some(unsafe {$crate::mem::transmute(-self.internal_node.type_)})
+                // TODO 
+                Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
             pub fn node_type(&self) -> Option<$NodeType> {
@@ -372,7 +384,7 @@ macro_rules! __parse_rule {
     };
 
     ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let key = $NodeType::$label as $crate::InternalType;
+        let key = $crate::InternalNodeType($NodeType::$label as i16);
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
