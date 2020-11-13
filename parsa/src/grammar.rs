@@ -5,6 +5,7 @@ use std::rc::Rc;
 use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
             InternalStrToNode, InternalNode, Token};
 
+type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalSquashedType(i16);
 
@@ -20,6 +21,7 @@ struct NFAState {
 }
 
 // DFA = deterministic finite automaton
+#[derive(Debug)]
 struct DFAState {
     transitions: Vec<DFATransition>,
     nfa_set: HashSet<NFAStateId>,
@@ -28,7 +30,7 @@ struct DFAState {
 
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
-    transition_to_plan: HashMap<InternalSquashedType, &'static Plan>,
+    transition_to_plan: SquashedTransitions,
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -64,7 +66,7 @@ struct Plan {
 }
 
 enum FirstPlan {
-    Calculated(HashMap<InternalSquashedType, Plan>),
+    Calculated(SquashedTransitions),
     Calculating,
 }
 
@@ -75,12 +77,11 @@ pub struct Grammar<T> {
     nonterminal_map: &'static InternalStrToNode,
     phantom: PhantomData<T>,
     plans: Vec<Plan>,
-    optimized_dfa_states: Vec<OptimizedDFAState>,
-    node_to_optimized_dfa_states: HashMap<InternalNodeType, usize>,
+    automatons: HashMap<InternalNodeType, RuleAutomaton>,
     keywords: Keywords,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct RuleAutomaton {
     type_: InternalNodeType,
     nfa_states: Vec<NFAState>,
@@ -89,19 +90,14 @@ struct RuleAutomaton {
 
 #[derive(Debug)]
 struct StackNode<'a> {
-    dfa_state: &'a OptimizedDFAState,
+    node_id: InternalNodeType,
+    dfa_state: &'a DFAState,
     backtrack_length_counts: Vec<u32>,
 }
 
 #[derive(Debug)]
 struct Stack<'a> {
     nodes: Vec<StackNode<'a>>,
-}
-
-#[derive(Debug)]
-struct OptimizedDFAState {
-    transitions: HashMap<InternalSquashedType, &'static Plan>,
-    is_final: bool,
 }
 
 impl<'a, T: Token> Grammar<T> {
@@ -114,12 +110,10 @@ impl<'a, T: Token> Grammar<T> {
             nonterminal_map: nonterminal_map,
             phantom: PhantomData,
             plans: Default::default(),
-            optimized_dfa_states: Default::default(),
-            node_to_optimized_dfa_states: Default::default(),
+            automatons: Default::default(),
             keywords: Default::default(),
         };
         let mut automatons = HashMap::new();
-        let mut optimized_dfa_states = Vec::new();
         let dfa_counter = 0;
         for (internal_type, rule) in rules {
             let mut automaton = RuleAutomaton {
@@ -136,29 +130,17 @@ impl<'a, T: Token> Grammar<T> {
 
         // Calculate first plans
         let mut first_plans = HashMap::new();
-        for label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
-            grammar.create_first_plans(&mut first_plans, &mut automatons, label);
+        for rule_label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
+            grammar.create_first_plans(&mut first_plans, &mut automatons, rule_label);
         }
         // Optimize and calculate all plans
-        for label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
+        for rule_label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
             // Now optimize the whole thing
             // TODO proper transitions for operators/names
-            for (i, dfa_state) in automatons[&label].dfa_states.iter().enumerate() {
-                let opt = OptimizedDFAState {
-                    transitions: Default::default(),
-                    is_final: dfa_state.is_final,
-                };
-                optimized_dfa_states.push(opt);
-                if i == 1 {
-                    grammar.node_to_optimized_dfa_states.insert(
-                        label,
-                        optimized_dfa_states.len() - 1
-                    );
-                }
+            for (i, mut dfa_state) in automatons[&rule_label].dfa_states.iter().enumerate() {
+                dfa_state.transition_to_plan = grammar.create_all_plans(&dfa_state, &first_plans);
             }
         }
-
-        grammar.optimized_dfa_states = optimized_dfa_states;
 
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
@@ -282,11 +264,45 @@ impl<'a, T: Token> Grammar<T> {
         }
     }
 
-    fn create_all_plans(&self) {
+    fn create_all_plans(&self, dfa_state: &DFAState,
+                        first_plans: &HashMap<InternalNodeType, FirstPlan>) -> SquashedTransitions {
+        let plans = HashMap::new();
+        for transition in &dfa_state.transitions {
+            match transition.type_ {
+                NFATransitionType::Terminal(type_) => {
+                    let t = token_type_to_squashed(type_);
+                    plans.insert(t, Plan {
+                        pushes: Vec::new(),
+                        next_dfa_state: transition.to,
+                        type_: t,
+                    });
+                },
+                NFATransitionType::Nonterminal(type_) => {
+                    let first_plan = first_plans[&type_];
+                    if let FirstPlan::Calculated(p) = first_plan {
+                        plans.extend(p);
+                    } else {
+                        panic!("Shouldn't happen");
+                    }
+                },
+                NFATransitionType::Keyword(keyword) => {
+                    let t = self.keyword_to_squashed(keyword);
+                    plans.insert(t, Plan {
+                        pushes: Vec::new(),
+                        next_dfa_state: transition.to,
+                        type_: t,
+                    });
+                },
+            }
+        }
+        plans
     }
 
-    pub fn parse(&self, tokens: impl Iterator<Item=T>, start_token: InternalNodeType) -> Vec<InternalNode> {
-        let mut stack = Stack::new(&self.optimized_dfa_states[self.node_to_optimized_dfa_states[&start_token]]);
+    pub fn parse(&self, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
+        let mut stack = Stack::new(
+            start,
+            &self.automatons[&start].dfa_states[0]
+        );
         let mut nodes = Vec::new();
 
         for token in tokens {
@@ -303,7 +319,7 @@ impl<'a, T: Token> Grammar<T> {
             let start_index = token.get_start_index();
             loop {
                 let tos = stack.get_tos();
-                match tos.dfa_state.transitions.get(&transition) {
+                match tos.dfa_state.transition_to_plan.get(&transition) {
                     None => {
                         if tos.dfa_state.is_final {
                             stack.pop()
@@ -312,8 +328,9 @@ impl<'a, T: Token> Grammar<T> {
                         }
                     },
                     Some(plan) => {
-                        let p: &Plan = *plan;
-                        stack.set_dfa_state(p.next_dfa_state);
+                        let p: &Plan = plan;
+                        stack.set_dfa_state(
+                            self.automatons[&tos.node_id].dfa_states[&p.next_dfa_state.0]);
                         for (squashed_node_type, push) in &p.pushes {
                             stack.push(push);
                             nodes.push(InternalNode {
@@ -473,9 +490,9 @@ impl RuleAutomaton {
 }
 
 impl<'a> Stack<'a> {
-    fn new(dfa_state: &'a OptimizedDFAState) -> Self {
+    fn new(node_id: InternalNodeType, dfa_state: &'a DFAState) -> Self {
         let mut stack = Self {nodes: Default::default()};
-        stack.nodes.push(StackNode {dfa_state: dfa_state, backtrack_length_counts: Vec::new()});
+        stack.push(node_id, dfa_state);
         stack
     }
 
@@ -491,11 +508,15 @@ impl<'a> Stack<'a> {
         self.nodes.pop();
     }
 
-    fn push(&mut self, dfa_state: &'a OptimizedDFAState) {
-        self.nodes.push(StackNode {dfa_state: dfa_state, backtrack_length_counts: Vec::new()});
+    fn push(&mut self, node_id: InternalNodeType, dfa_state: &'a DFAState) {
+        self.nodes.push(StackNode {
+            node_id: node_id,
+            dfa_state: dfa_state,
+            backtrack_length_counts: Vec::new()
+        });
     }
 
-    fn set_dfa_state(&mut self, dfa_state: &'a OptimizedDFAState) {
+    fn set_dfa_state(&mut self, dfa_state: &'a DFAState) {
         let index = self.nodes.len() - 1;
         self.nodes[index].dfa_state = dfa_state
     }
