@@ -1,11 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
-use std::rc::Rc;
 
 use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
-            InternalStrToNode, InternalNode, Token};
+            InternalStrToNode, InternalNode, Token, CodeIndex};
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
+type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalSquashedType(i16);
 
@@ -58,7 +58,7 @@ struct Keywords {
     keywords: HashMap<&'static str, usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Plan {
     pushes: Vec<(InternalNodeType, DFAStateId)>,
     next_dfa_state: DFAStateId,
@@ -77,7 +77,7 @@ pub struct Grammar<T> {
     nonterminal_map: &'static InternalStrToNode,
     phantom: PhantomData<T>,
     plans: Vec<Plan>,
-    automatons: HashMap<InternalNodeType, RuleAutomaton>,
+    automatons: Automatons,
     keywords: Keywords,
 }
 
@@ -95,9 +95,11 @@ struct StackNode<'a> {
     backtrack_length_counts: Vec<u32>,
 }
 
-#[derive(Debug)]
-struct Stack<'a> {
-    nodes: Vec<StackNode<'a>>,
+#[derive(Debug, Default)]
+struct Stack<'a, T: Token> {
+    stack_nodes: Vec<StackNode<'a>>,
+    tree_nodes: Vec<InternalNode>,
+    phantom: PhantomData<T>,
 }
 
 impl<'a, T: Token> Grammar<T> {
@@ -113,6 +115,7 @@ impl<'a, T: Token> Grammar<T> {
             automatons: Default::default(),
             keywords: Default::default(),
         };
+        let mut keywords = Default::default();
         let mut automatons = HashMap::new();
         let dfa_counter = 0;
         for (internal_type, rule) in rules {
@@ -121,12 +124,12 @@ impl<'a, T: Token> Grammar<T> {
                 nfa_states: Default::default(),
                 dfa_states: Default::default(),
             };
-            let (start, end) = grammar.build_automaton(&mut automaton, &mut grammar.keywords, rule);
-            dbg!(rule);
+            let (start, end) = grammar.build_automaton(&mut automaton, &mut keywords, rule);
             let dfa_states = automaton.construct_powerset(start, end);
             automaton.dfa_states = dfa_states;
             automatons.insert(*internal_type, automaton);
         }
+        grammar.keywords = keywords;
 
         // Calculate first plans
         let mut first_plans = HashMap::new();
@@ -134,10 +137,10 @@ impl<'a, T: Token> Grammar<T> {
             grammar.create_first_plans(&mut first_plans, &mut automatons, rule_label);
         }
         // Optimize and calculate all plans
-        for rule_label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
+        for rule_label in [InternalNodeType(1)].iter() {
             // Now optimize the whole thing
             // TODO proper transitions for operators/names
-            for (i, mut dfa_state) in automatons[&rule_label].dfa_states.iter().enumerate() {
+            for (i, dfa_state) in automatons.get_mut(&rule_label).unwrap().dfa_states.iter_mut().enumerate() {
                 dfa_state.transition_to_plan = grammar.create_all_plans(&dfa_state, &first_plans);
             }
         }
@@ -207,12 +210,12 @@ impl<'a, T: Token> Grammar<T> {
 
     fn create_first_plans(&self,
                           first_plans: &mut HashMap<InternalNodeType, FirstPlan>,
-                          automatons: &mut HashMap<InternalNodeType, RuleAutomaton>,
+                          automatons: &Automatons,
                           automaton_key: InternalNodeType) {
         let automaton = &automatons[&automaton_key];
         match first_plans.get(&automaton_key) {
             None => {
-                first_plans[&automaton_key] = FirstPlan::Calculating;
+                first_plans.insert(automaton_key, FirstPlan::Calculating);
             }
             Some(first_plan) => {
                 match first_plan {
@@ -224,7 +227,7 @@ impl<'a, T: Token> Grammar<T> {
                 }
             }
         }
-        let plans = HashMap::new();
+        let mut plans = HashMap::new();
         for transition in &automaton.dfa_states[0].transitions {
             match transition.type_ {
                 NFATransitionType::Terminal(type_) => {
@@ -236,17 +239,17 @@ impl<'a, T: Token> Grammar<T> {
                     });
                 },
                 NFATransitionType::Nonterminal(type_) => {
-                    self.create_first_plans(&mut first_plans, &mut automatons, type_);
-                    match first_plans[&automaton_key] {
-                        FirstPlan::Calculating => {panic!("This should not happen")},
+                    self.create_first_plans(first_plans, &automatons, type_);
+                    match &first_plans[&type_] {
+                        FirstPlan::Calculating => {unreachable!()},
                         FirstPlan::Calculated(transitions) => {
                             for (t, nested_plan) in transitions {
-                                let pushes = nested_plan.pushes.clone();
+                                let mut pushes = nested_plan.pushes.clone();
                                 pushes.insert(0, (type_, nested_plan.next_dfa_state));
-                                plans.insert(t, Plan {
-                                    pushes: nested_plan.pushes,
+                                plans.insert(*t, Plan {
+                                    pushes: pushes,
                                     next_dfa_state: transition.to,
-                                    type_: t,
+                                    type_: *t,
                                 });
                             }
                         },
@@ -262,11 +265,12 @@ impl<'a, T: Token> Grammar<T> {
                 },
             }
         }
+        first_plans.insert(automaton_key, FirstPlan::Calculated(plans));
     }
 
     fn create_all_plans(&self, dfa_state: &DFAState,
                         first_plans: &HashMap<InternalNodeType, FirstPlan>) -> SquashedTransitions {
-        let plans = HashMap::new();
+        let mut plans = HashMap::new();
         for transition in &dfa_state.transitions {
             match transition.type_ {
                 NFATransitionType::Terminal(type_) => {
@@ -278,9 +282,9 @@ impl<'a, T: Token> Grammar<T> {
                     });
                 },
                 NFATransitionType::Nonterminal(type_) => {
-                    let first_plan = first_plans[&type_];
+                    let first_plan = &first_plans[&type_];
                     if let FirstPlan::Calculated(p) = first_plan {
-                        plans.extend(p);
+                        plans.extend(p.iter().map(|(k, v)| (*k, v.clone())));
                     } else {
                         panic!("Shouldn't happen");
                     }
@@ -303,7 +307,6 @@ impl<'a, T: Token> Grammar<T> {
             start,
             &self.automatons[&start].dfa_states[0]
         );
-        let mut nodes = Vec::new();
 
         for token in tokens {
             let transition;
@@ -316,7 +319,6 @@ impl<'a, T: Token> Grammar<T> {
                 transition = token_type_to_squashed(token.get_type());
             }
 
-            let start_index = token.get_start_index();
             loop {
                 let tos = stack.get_tos();
                 match tos.dfa_state.transition_to_plan.get(&transition) {
@@ -328,20 +330,8 @@ impl<'a, T: Token> Grammar<T> {
                         }
                     },
                     Some(plan) => {
-                        let p: &Plan = plan;
-                        stack.set_dfa_state(
-                            self.automatons[&tos.node_id].dfa_states[&p.next_dfa_state.0]);
-                        for (squashed_node_type, push) in &p.pushes {
-                            stack.push(push);
-                            nodes.push(InternalNode {
-                                next_node_offset: 0,
-                                // Positive values are token types, negative values are nodes
-                                type_: p.type_,
-                                start_index: start_index,
-                                length: token.get_start_index(),
-                                extra_data: 0,
-                            });
-                        }
+                        let cloned_plan = plan.clone();
+                        stack.apply_plan(&self.automatons, &cloned_plan, &token);
                         break
                     },
                 }
@@ -360,7 +350,7 @@ impl<'a, T: Token> Grammar<T> {
             if stack.len() > 1 {
                 stack.pop()
             } else {
-                return nodes
+                panic!();
             }
         }
     }
@@ -480,7 +470,6 @@ impl RuleAutomaton {
                 transitions.push(DFATransition {type_: *type_, to: new_dfa_id});
             }
 
-        dbg!(dfa_id.0, &transitions);
         dfa_states[dfa_id.0].transitions = transitions;
         dfa_states[dfa_id.0].is_calculated = true;
         for transition in dfa_states[dfa_id.0].transitions.clone() {
@@ -489,44 +478,76 @@ impl RuleAutomaton {
     }
 }
 
-impl<'a> Stack<'a> {
+impl<'a, T: Token> Stack<'a, T> {
     fn new(node_id: InternalNodeType, dfa_state: &'a DFAState) -> Self {
-        let mut stack = Self {nodes: Default::default()};
-        stack.push(node_id, dfa_state);
+        let mut stack = Stack {
+            stack_nodes: Default::default(),
+            tree_nodes: Default::default(),
+            phantom: PhantomData,
+        };
+        stack.push(node_id, dfa_state, 0);
         stack
     }
 
     fn get_tos(&self) -> &StackNode{
-        &self.nodes[self.nodes.len() - 1]
+        &self.stack_nodes.last().unwrap()
     }
 
     fn len(&self) -> usize {
-        self.nodes.len()
+        self.stack_nodes.len()
     }
 
     fn pop(&mut self) {
-        self.nodes.pop();
+        self.stack_nodes.pop();
     }
 
-    fn push(&mut self, node_id: InternalNodeType, dfa_state: &'a DFAState) {
-        self.nodes.push(StackNode {
+    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T) {
+        let start_index = token.get_start_index();
+        let tos = self.get_tos();
+
+        let next = &automatons[&tos.node_id].dfa_states[plan.next_dfa_state.0];
+        self.stack_nodes.last_mut().unwrap().dfa_state = next;
+        for (node_type, push) in &plan.pushes {
+            self.push(
+                *node_type,
+                &automatons[&node_type].dfa_states[push.0],
+                start_index,
+            );
+        }
+        // Once all the nodes are dealt with, add the token
+        self.tree_nodes.push(InternalNode {
+            next_node_offset: 0,
+            // Positive values are token types, negative values are nodes
+            type_: plan.type_,
+            start_index: start_index,
+            length: token.get_length(),
+            extra_data: 0,
+        });
+    }
+
+    #[inline]
+    fn push(&mut self, node_id: InternalNodeType, dfa_state: &'a DFAState, start: CodeIndex) {
+        self.stack_nodes.push(StackNode {
             node_id: node_id,
             dfa_state: dfa_state,
             backtrack_length_counts: Vec::new()
         });
-    }
-
-    fn set_dfa_state(&mut self, dfa_state: &'a DFAState) {
-        let index = self.nodes.len() - 1;
-        self.nodes[index].dfa_state = dfa_state
+        self.tree_nodes.push(InternalNode {
+            next_node_offset: 0,
+            // Positive values are token types, negative values are nodes
+            type_: node_type_to_squashed(node_id),
+            start_index: start,
+            length: 0,
+            extra_data: 0,
+        });
     }
 }
 
 
 impl Keywords {
-    fn add(&mut self, keyword: &str) {
+    fn add(&mut self, keyword: &'static str) {
         if !self.keywords.contains_key(keyword) {
-            self.keywords[keyword] = self.counter;
+            self.keywords.insert(keyword, self.counter);
             self.counter += 1;
         }
     }

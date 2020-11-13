@@ -45,7 +45,7 @@ pub struct InternalTree {
     pub lines: Option<Vec<u32>>,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct InternalNode {
     next_node_offset: NodeIndex,
     // Positive values are token types, negative values are nodes
