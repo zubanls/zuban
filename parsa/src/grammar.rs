@@ -25,6 +25,10 @@ struct DFAState {
     nfa_set: HashSet<NFAStateId>,
     is_final: bool,
     is_calculated: bool,
+
+    // This is the important part that will be used by the parser. The rest is
+    // just there to generate this information.
+    transition_to_plan: HashMap<InternalSquashedType, &'static Plan>,
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -44,6 +48,12 @@ struct NFATransition {
 struct DFATransition {
     type_: NFATransitionType,
     to: DFAStateId,
+}
+
+#[derive(Debug, Default)]
+struct Keywords {
+    counter: usize,
+    keywords: HashMap<&'static str, usize>,
 }
 
 #[derive(Debug)]
@@ -67,6 +77,7 @@ pub struct Grammar<T> {
     plans: Vec<Plan>,
     optimized_dfa_states: Vec<OptimizedDFAState>,
     node_to_optimized_dfa_states: HashMap<InternalNodeType, usize>,
+    keywords: Keywords,
 }
 
 #[derive(Default)]
@@ -105,44 +116,48 @@ impl<'a, T: Token> Grammar<T> {
             plans: Default::default(),
             optimized_dfa_states: Default::default(),
             node_to_optimized_dfa_states: Default::default(),
+            keywords: Default::default(),
         };
         let mut automatons = HashMap::new();
         let mut optimized_dfa_states = Vec::new();
-        let mut node_to_optimized_dfa_states = HashMap::new();
+        let dfa_counter = 0;
         for (internal_type, rule) in rules {
             let mut automaton = RuleAutomaton {
                 type_: *internal_type,
                 nfa_states: Default::default(),
                 dfa_states: Default::default(),
             };
-            let (start, end) = grammar.build_automaton(&mut automaton, rule);
+            let (start, end) = grammar.build_automaton(&mut automaton, &mut grammar.keywords, rule);
             dbg!(rule);
             let dfa_states = automaton.construct_powerset(start, end);
             automaton.dfa_states = dfa_states;
             automatons.insert(*internal_type, automaton);
+        }
 
+        // Calculate first plans
+        let mut first_plans = HashMap::new();
+        for label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
+            grammar.create_first_plans(&mut first_plans, &mut automatons, label);
+        }
+        // Optimize and calculate all plans
+        for label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
             // Now optimize the whole thing
             // TODO proper transitions for operators/names
-            for (i, dfa_state) in automatons[internal_type].dfa_states.iter().enumerate() {
+            for (i, dfa_state) in automatons[&label].dfa_states.iter().enumerate() {
                 let opt = OptimizedDFAState {
                     transitions: Default::default(),
                     is_final: dfa_state.is_final,
                 };
                 optimized_dfa_states.push(opt);
                 if i == 1 {
-                    node_to_optimized_dfa_states.insert(
-                        internal_type,
+                    grammar.node_to_optimized_dfa_states.insert(
+                        label,
                         optimized_dfa_states.len() - 1
                     );
                 }
             }
         }
 
-        // Calculate first plans
-        let mut first_plans = HashMap::new();
-        for id in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
-            grammar.create_first_plans(&mut first_plans, &mut automatons, id);
-        }
         grammar.optimized_dfa_states = optimized_dfa_states;
 
         // Since we now know every nonterminal has a first terminal, we know that there is no
@@ -150,7 +165,7 @@ impl<'a, T: Token> Grammar<T> {
         grammar
     }
 
-    fn build_automaton(&self, automaton: &mut RuleAutomaton,
+    fn build_automaton(&self, automaton: &mut RuleAutomaton, keywords: &mut Keywords,
                        rule: &Rule) -> (NFAStateId, NFAStateId) {
         use Rule::*;
         match *rule {
@@ -168,39 +183,40 @@ impl<'a, T: Token> Grammar<T> {
             Keyword(string) => {
                 let (start, end) = automaton.new_nfa_states();
                 automaton.add_transition(start, end, Some(NFATransitionType::Keyword(string)));
+                keywords.add(string);
                 (start, end)
             },
             Or(rule1, rule2) => {
                 let (start, end) = automaton.new_nfa_states();
                 for r in [rule1, rule2].iter() {
-                    let (x, y) = self.build_automaton(automaton, r);
+                    let (x, y) = self.build_automaton(automaton, keywords, r);
                     automaton.add_empty_transition(start, x);
                     automaton.add_empty_transition(y, end);
                 }
                 (start, end)
             },
             Maybe(rule1) => {
-                let (start, end) = self.build_automaton(automaton, rule1);
+                let (start, end) = self.build_automaton(automaton, keywords, rule1);
                 automaton.add_empty_transition(start, end);
                 (start, end)
             },
             Multiple(rule1) => {
-                let (start, end) = self.build_automaton(automaton, rule1);
+                let (start, end) = self.build_automaton(automaton, keywords, rule1);
                 automaton.add_empty_transition(end, start);
                 (start, end)
             }
             NegativeLookahead(rule1) => {
                 // TODO for now this is basically ignored
-                self.build_automaton(automaton, rule1)
+                self.build_automaton(automaton, keywords, rule1)
             },
             PositiveLookahead(rule1) => {
                 // TODO for now this is basically ignored
-                self.build_automaton(automaton, rule1)
+                self.build_automaton(automaton, keywords, rule1)
             }
             // TODO Cut is ignored for now.
             Cut(rule1, rule2) | Next(rule1, rule2) => {
-                let (start1, end1) = self.build_automaton(automaton, rule1);
-                let (start2, end2) = self.build_automaton(automaton, rule2);
+                let (start1, end1) = self.build_automaton(automaton, keywords, rule1);
+                let (start2, end2) = self.build_automaton(automaton, keywords, rule2);
                 automaton.add_empty_transition(end1, start2);
                 (start1, end2)
             }
@@ -238,24 +254,32 @@ impl<'a, T: Token> Grammar<T> {
                     });
                 },
                 NFATransitionType::Nonterminal(type_) => {
-                    let t = node_type_to_squashed(type_);
+                    self.create_first_plans(&mut first_plans, &mut automatons, type_);
+                    match first_plans[&automaton_key] {
+                        FirstPlan::Calculating => {panic!("This should not happen")},
+                        FirstPlan::Calculated(transitions) => {
+                            for (t, nested_plan) in transitions {
+                                let pushes = nested_plan.pushes.clone();
+                                pushes.insert(0, (type_, nested_plan.next_dfa_state));
+                                plans.insert(t, Plan {
+                                    pushes: nested_plan.pushes,
+                                    next_dfa_state: transition.to,
+                                    type_: t,
+                                });
+                            }
+                        },
+                    }
+                },
+                NFATransitionType::Keyword(keyword) => {
+                    let t = self.keyword_to_squashed(keyword);
                     plans.insert(t, Plan {
                         pushes: Vec::new(),
                         next_dfa_state: transition.to,
                         type_: t,
                     });
                 },
-                NFATransitionType::Keyword(string) => {
-                },
             }
         }
-        /*
-        first_plans[&id] = FirstPlan::Calculated(Plan {
-            pushes: Vec::new(),
-            next_dfa_state: &optimized_dfa_states[node_to_optimized_dfa_states[id]],
-            type_: InternalType,
-        });
-        */
     }
 
     fn create_all_plans(&self) {
@@ -290,7 +314,7 @@ impl<'a, T: Token> Grammar<T> {
                     Some(plan) => {
                         let p: &Plan = *plan;
                         stack.set_dfa_state(p.next_dfa_state);
-                        for push in &p.pushes {
+                        for (squashed_node_type, push) in &p.pushes {
                             stack.push(push);
                             nodes.push(InternalNode {
                                 next_node_offset: 0,
@@ -331,6 +355,10 @@ impl<'a, T: Token> Grammar<T> {
             }
         }
         panic!("Something is very wrong, integer not found");
+    }
+
+    fn keyword_to_squashed(&self, keyword: &str) -> InternalSquashedType {
+        InternalSquashedType(self.keywords.get(keyword) as i16)
     }
 }
 
@@ -400,6 +428,7 @@ impl RuleAutomaton {
             nfa_set: grouped_nfas,
             is_final: is_final,
             is_calculated: false,
+            transition_to_plan: Default::default(),
         });
         DFAStateId(dfa_states.len() - 1)
     }
@@ -469,5 +498,18 @@ impl<'a> Stack<'a> {
     fn set_dfa_state(&mut self, dfa_state: &'a OptimizedDFAState) {
         let index = self.nodes.len() - 1;
         self.nodes[index].dfa_state = dfa_state
+    }
+}
+
+
+impl Keywords {
+    fn add(&mut self, keyword: &str) {
+        if !self.keywords.contains_key(keyword) {
+            self.keywords[keyword] = self.counter;
+            self.counter += 1;
+        }
+    }
+    fn get(&self, keyword: &str) -> usize {
+        self.keywords[keyword]
     }
 }
