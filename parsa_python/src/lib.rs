@@ -22,15 +22,12 @@ impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
         Self {code: code}
     }
 
-    fn yield_next(&self) -> PythonToken {
-        self.new_tok()
-    }
-
 }
 
 impl Iterator for PythonTokenizer<'_> {
     type Item = PythonToken;
     fn next(&mut self) -> Option<Self::Item> {
+        //self.new_tok()
         None
     }
 }

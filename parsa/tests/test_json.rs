@@ -4,6 +4,7 @@ use parsa::{create_token, create_grammar, Grammar};
 
 struct JsonTokenizer<'a> {
     code: &'a str,
+    index: u32,
 }
 
 impl JsonTokenizer<'_> {
@@ -19,17 +20,14 @@ impl JsonTokenizer<'_> {
 
 impl<'a> parsa::Tokenizer<'a, JsonToken> for JsonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
-        Self {code: code}
+        assert!(code.len() < u32::MAX as usize);
+        Self {code: code, index: 0}
     }
-
-    fn yield_next(&self) -> JsonToken {
-        self.new_tok()
-    }
-
 }
 
 impl Iterator for JsonTokenizer<'_> {
     type Item = JsonToken;
+
     fn next(&mut self) -> Option<Self::Item> {
         None
     }

@@ -1,5 +1,6 @@
 #![allow(unused)]
 extern crate lazy_static;
+extern crate regex;
 
 mod grammar;
 mod automaton;
@@ -33,12 +34,6 @@ pub trait Token {
 
 pub trait Tokenizer<'a, T: Token>: Iterator {
     fn new(code: &'a str) -> Self;
-    fn yield_next(&self) -> T;
-}
-
-pub fn parse<'a, U: Token, T: Tokenizer<'a, U>>(code: &'a str) -> InternalTree {
-    T::new(code).yield_next().get_type();
-    InternalTree {code: code.as_bytes().to_owned(), nodes: Vec::new(), lines: None}
 }
 
 pub struct InternalTree {
