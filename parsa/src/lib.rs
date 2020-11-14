@@ -99,33 +99,6 @@ mod tests {
 }
 
 #[macro_export]
-macro_rules! create_parser {
-    (fn $parser_name:ident, struct $Tree:ident, $Node:ident, $Token:ty, $Tokenizer:ty, $TokenType:ty, $NodeType:ty) => {
-        pub fn $parser_name(code: &str) -> $Tree {
-            $Tree {internal_tree: parsa::parse::<$Token, $Tokenizer>(code)}
-        }
-
-        pub struct $Tree {
-            internal_tree: parsa::InternalTree
-        }
-
-        impl $Tree {
-            pub fn get_root_node(&self) -> $Node{
-                $Node {
-                    internal_tree: &self.internal_tree,
-                    internal_node: &self.internal_tree.nodes[0],
-                    index: 0,
-                }
-            }
-
-            pub fn set_extra_data(&mut self, index: $crate::NodeIndex, extra_data: $crate::ExtraData) {
-                self.internal_tree.nodes[0].extra_data = extra_data
-            }
-        }
-    }
-}
-
-#[macro_export]
 macro_rules! __create_type_set {
     (enum $EnumName:ident, $Map:path, $Type:path, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
@@ -397,8 +370,9 @@ macro_rules! __parse_rule {
 
 #[macro_export]
 macro_rules! create_grammar {
-    (static $grammar:ident, struct $Grammar:ident, $Tokenizer:ident,
-     $NodeType:ident, $TokenType:ident, $Token:ident, $first_node:ident $($rule:tt)+) => {
+    (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident, $Tokenizer:ident,
+     $Node:ident, $NodeType:ident, $Token:ident, $TokenType:ident,
+     $first_node:ident $($rule:tt)+) => {
         struct $Grammar {
             internal_grammar: Grammar<PythonToken>,
         }
@@ -424,6 +398,24 @@ macro_rules! create_grammar {
                     nodes: self.internal_grammar.parse(code, $Tokenizer::new(code), start),
                     lines: None
                 }
+            }
+        }
+
+        pub struct $Tree {
+            internal_tree: parsa::InternalTree
+        }
+
+        impl $Tree {
+            pub fn get_root_node(&self) -> $Node{
+                $Node {
+                    internal_tree: &self.internal_tree,
+                    internal_node: &self.internal_tree.nodes[0],
+                    index: 0,
+                }
+            }
+
+            pub fn set_extra_data(&mut self, index: $crate::NodeIndex, extra_data: $crate::ExtraData) {
+                self.internal_tree.nodes[0].extra_data = extra_data
             }
         }
 

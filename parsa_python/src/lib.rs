@@ -1,5 +1,5 @@
 #![recursion_limit="1024"]
-use parsa::{create_parser,create_node,create_token, create_grammar, Grammar};
+use parsa::{create_node,create_token, create_grammar, Grammar};
 
 
 struct PythonTokenizer<'a> {
@@ -37,13 +37,10 @@ impl Iterator for PythonTokenizer<'_> {
 
 create_token!(struct PythonToken, enum TokenType, [String, Number, Endmarker]);
 create_node!(struct PythonNode, enum NodeType, TokenType, [foo, bar, multiline, multi, x, y, z, bracket1, bracket2, negative_lookahead, positive_lookahead, separator, separator2, cutoff, optional]);
-create_parser!(fn parse_python, struct PythonTree, PythonNode,
-               PythonToken, PythonTokenizer, TokenType, NodeType);
-create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
-               PythonToken, PythonTokenizer, TokenType, NodeType);
 
 create_grammar!(
-    static PYTHON_GRAMMAR, struct PythonGrammar, PythonTokenizer, NodeType, TokenType, PythonToken,
+    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
+    PythonTokenizer, PythonNode, NodeType, PythonToken, TokenType,
 
     foo: bar | "baz"
     bar: "bla"
@@ -70,7 +67,6 @@ mod tests {
     #[test]
     fn it_works() {
         assert_eq!(2 + 2, 4);
-        parse_python("bar");
         //dbg!(TokenType::get_map());
         //dbg!(NodeType::get_map());
         //PythonGrammar::new();
