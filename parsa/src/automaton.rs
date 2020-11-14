@@ -66,18 +66,24 @@ enum FirstPlan {
 #[derive(Debug, Default)]
 pub struct Keywords {
     counter: usize,
-    keywords: HashMap<&'static str, usize>,
+    keywords: HashMap<&'static str, InternalSquashedType>,
 }
 
 impl Keywords {
     fn add(&mut self, keyword: &'static str) {
         if !self.keywords.contains_key(keyword) {
-            self.keywords.insert(keyword, self.counter);
+            self.keywords.insert(keyword, Self::keyword_to_squashed(self.counter));
             self.counter += 1;
         }
     }
-    fn get(&self, keyword: &str) -> usize {
-        self.keywords[keyword]
+
+    pub fn keyword_to_squashed(number: usize) -> InternalSquashedType {
+        InternalSquashedType(number as i16)
+    }
+
+
+    pub fn get_squashed(&self, keyword: &str) -> Option<InternalSquashedType> {
+        self.keywords.get(keyword).copied()
     }
 }
 
@@ -246,8 +252,8 @@ impl RuleAutomaton {
     }
 }
 
-fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
-                       rules: &HashMap<InternalNodeType, Rule>) -> (Automatons, Keywords) {
+pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
+                           rules: &HashMap<InternalNodeType, Rule>) -> (Automatons, Keywords) {
     let mut keywords = Default::default();
     let mut automatons = HashMap::new();
     let dfa_counter = 0;
@@ -328,7 +334,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                 }
             },
             NFATransitionType::Keyword(keyword) => {
-                let t = keyword_to_squashed(keywords, keyword);
+                let t = keywords.get_squashed(keyword).unwrap();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
@@ -362,7 +368,7 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
                 }
             },
             NFATransitionType::Keyword(keyword) => {
-                let t = keyword_to_squashed(keywords, keyword);
+                let t = keywords.get_squashed(keyword).unwrap();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
@@ -374,10 +380,6 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
     plans
 }
 
-
-fn keyword_to_squashed(keywords: &Keywords, keyword: &str) -> InternalSquashedType {
-    InternalSquashedType(keywords.get(keyword) as i16)
-}
 
 #[inline]
 pub fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashedType {

@@ -2,10 +2,11 @@
 use parsa::{create_parser,create_node,create_token, create_grammar, Grammar};
 
 
-struct PythonTokenizer {
+struct PythonTokenizer<'a> {
+    code: &'a str,
 }
 
-impl PythonTokenizer {
+impl PythonTokenizer<'_> {
     fn new_tok(&self) -> PythonToken {
         PythonToken {
             start_index: 0,
@@ -16,15 +17,22 @@ impl PythonTokenizer {
     }
 }
 
-impl parsa::Tokenizer<PythonToken> for PythonTokenizer {
-    fn new(_code: &str) -> Self {
-        Self {}
+impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
+    fn new(code: &'a str) -> Self {
+        Self {code: code}
     }
 
     fn yield_next(&self) -> PythonToken {
         self.new_tok()
     }
 
+}
+
+impl Iterator for PythonTokenizer<'_> {
+    type Item = PythonToken;
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
 }
 
 create_token!(struct PythonToken, enum TokenType, [String, Number, Endmarker]);
@@ -35,7 +43,7 @@ create_parser!(fn parse_pythonx, struct PythonTreex, PythonNode,
                PythonToken, PythonTokenizer, TokenType, NodeType);
 
 create_grammar!(
-    static PYTHON_GRAMMAR, struct PythonGrammar, NodeType, TokenType,
+    static PYTHON_GRAMMAR, struct PythonGrammar, PythonTokenizer, NodeType, TokenType, PythonToken,
 
     foo: bar | "baz"
     bar: "bla"
@@ -66,6 +74,6 @@ mod tests {
         //dbg!(TokenType::get_map());
         //dbg!(NodeType::get_map());
         //PythonGrammar::new();
-        PYTHON_GRAMMAR.foo();
+        PYTHON_GRAMMAR.parse("asdf");
     }
 }

@@ -31,12 +31,12 @@ pub trait Token {
     fn can_contain_syntax(&self) -> bool;
 }
 
-pub trait Tokenizer<T: Token> {
-    fn new(code: &str) -> Self;
+pub trait Tokenizer<'a, T: Token>: Iterator {
+    fn new(code: &'a str) -> Self;
     fn yield_next(&self) -> T;
 }
 
-pub fn parse<U: Token, T: Tokenizer<U>>(code: &str) -> InternalTree {
+pub fn parse<'a, U: Token, T: Tokenizer<'a, U>>(code: &'a str) -> InternalTree {
     T::new(code).yield_next().get_type();
     InternalTree {code: code.as_bytes().to_owned(), nodes: Vec::new(), lines: None}
 }
@@ -397,7 +397,8 @@ macro_rules! __parse_rule {
 
 #[macro_export]
 macro_rules! create_grammar {
-    (static $grammar:ident, struct $Grammar:ident, $NodeType:ident, $TokenType:ident, $($rule:tt)+) => {
+    (static $grammar:ident, struct $Grammar:ident, $Tokenizer:ident,
+     $NodeType:ident, $TokenType:ident, $Token:ident, $first_node:ident $($rule:tt)+) => {
         struct $Grammar {
             internal_grammar: Grammar<PythonToken>,
         }
@@ -405,13 +406,24 @@ macro_rules! create_grammar {
         impl $Grammar {
             fn new() -> Self {
                 let mut rules = $crate::HashMap::new();
-                $crate::__parse_rules!($NodeType, rules, $($rule)+);
+                $crate::__parse_rules!($NodeType, rules, $first_node $($rule)+);
                 Self {internal_grammar: Grammar::new(
                     &rules, $NodeType::get_map(), $TokenType::get_map(),
                 )}
             }
 
             pub fn foo(&self) {
+            }
+
+            pub fn parse(&self, code: &str) -> $crate::InternalTree {
+                use $crate::Tokenizer;
+                // TODO shouldn't be dynamic
+                let start = $NodeType::get_map()[stringify!($first_node)];
+                $crate::InternalTree {
+                    code: code.as_bytes().to_owned(),
+                    nodes: self.internal_grammar.parse(code, $Tokenizer::new(code), start),
+                    lines: None
+                }
             }
         }
 

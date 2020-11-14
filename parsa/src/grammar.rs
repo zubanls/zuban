@@ -4,15 +4,13 @@ use std::marker::PhantomData;
 use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
             InternalStrToNode, InternalNode, Token, CodeIndex};
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan, 
-                       DFAState, Keywords, node_type_to_squashed, token_type_to_squashed};
-
+                       DFAState, Keywords, node_type_to_squashed,
+                       token_type_to_squashed, generate_automatons}; 
 #[derive(Debug)]
 pub struct Grammar<T> {
-    reserved_strings: HashMap<&'static str, InternalSquashedType>,
     terminal_map: &'static InternalStrToToken,
     nonterminal_map: &'static InternalStrToNode,
     phantom: PhantomData<T>,
-    plans: Vec<Plan>,
     automatons: Automatons,
     keywords: Keywords,
 }
@@ -35,14 +33,13 @@ impl<'a, T: Token> Grammar<T> {
     pub fn new(rules: &HashMap<InternalNodeType, Rule>,
                nonterminal_map: &'static InternalStrToNode, 
                terminal_map: &'static InternalStrToToken) -> Self {
+        let (automatons, keywords) = generate_automatons(nonterminal_map, terminal_map, rules);
         let mut grammar = Self {
-            reserved_strings: Default::default(),
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
             phantom: PhantomData,
-            plans: Default::default(),
-            automatons: Default::default(),
-            keywords: Default::default(),
+            automatons: automatons,
+            keywords: keywords,
         };
 
         // Since we now know every nonterminal has a first terminal, we know that there is no
@@ -50,7 +47,7 @@ impl<'a, T: Token> Grammar<T> {
         grammar
     }
 
-    pub fn parse(&self, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
+    pub fn parse(&self, code: &str, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
         let mut stack = Stack::new(
             start,
             &self.automatons[&start].dfa_states[0]
@@ -59,10 +56,11 @@ impl<'a, T: Token> Grammar<T> {
         for token in tokens {
             let transition;
             if token.can_contain_syntax() {
-                transition = match self.reserved_strings.get("") {
-                    None => token_type_to_squashed(token.get_type()),
-                    Some(type_) => *type_
-                }
+                let start = token.get_start_index() as usize;
+                let token_str = &code[start..start + token.get_length() as usize];
+                transition = self.keywords.get_squashed(token_str).unwrap_or(
+                    token_type_to_squashed(token.get_type()),
+                );
             } else {
                 transition = token_type_to_squashed(token.get_type());
             }
