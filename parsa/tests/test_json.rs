@@ -1,5 +1,5 @@
 #![recursion_limit="1024"]
-use parsa::{create_node,create_token, create_grammar, Grammar};
+use parsa::{create_token, create_grammar, Grammar};
 
 
 struct JsonTokenizer<'a> {
@@ -36,12 +36,10 @@ impl Iterator for JsonTokenizer<'_> {
 }
 
 create_token!(struct JsonToken, enum TokenType, [Label, String, Number, Endmarker]);
-create_node!(struct JsonNode, enum NodeType, TokenType,
-             [document, json, value, array, object, property, name]);
 
 create_grammar!(
     static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, 
-    JsonTokenizer, JsonNode, NodeType, JsonToken, TokenType,
+    struct JsonNode, enum NodeType, JsonTokenizer, JsonToken, TokenType,
 
     document: json Endmarker
     json: array | object

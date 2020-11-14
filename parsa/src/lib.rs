@@ -99,7 +99,24 @@ mod tests {
 }
 
 #[macro_export]
+macro_rules! __filter_labels_and_create_node_set {
+    ([$($args:tt)+], $label:ident: $($rule:tt)+) => {
+        $crate::__filter_labels_and_create_node_set!([$($args)+, $label], $($rule)+);
+    };
+    ($args:tt, $not_label:tt $($rule:tt)*) => {
+        //compile_error!(stringify!($($rule:tt)*));
+        $crate::__filter_labels_and_create_node_set!($args, $($rule)*);
+    };
+    ([$($args:tt)+],) => {
+        $crate::__create_type_set!($($args)+);
+    };
+}
+
+#[macro_export]
 macro_rules! __create_type_set {
+    (enum $EnumName:ident, $Map:path, $Type:path, rules_to_nodes=$($rule:tt)*) => {
+        $crate::__filter_labels_and_create_node_set!([enum $EnumName, $Map, $Type], $($rule)*);
+    };
     (enum $EnumName:ident, $Map:path, $Type:path, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug)]
@@ -162,10 +179,10 @@ macro_rules! create_token {
 }
 
 #[macro_export]
-macro_rules! create_node {
-    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, [$($entry:ident),*]) => {
+macro_rules! __create_node {
+    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, [$($entry:tt)*]) => {
         $crate::__create_type_set!(enum $NodeType, $crate::InternalStrToNode,
-                                   $crate::InternalNodeType, $($entry),*);
+                                   $crate::InternalNodeType, $($entry)*);
 
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
@@ -370,9 +387,13 @@ macro_rules! __parse_rule {
 
 #[macro_export]
 macro_rules! create_grammar {
-    (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident, $Tokenizer:ident,
-     $Node:ident, $NodeType:ident, $Token:ident, $TokenType:ident,
+    (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident,
+     struct $Node:ident, enum $NodeType:ident, $Tokenizer:ident, $Token:ident, $TokenType:ident,
      $first_node:ident $($rule:tt)+) => {
+
+        $crate::__create_node!(struct $Node, enum $NodeType, $TokenType,
+                               [rules_to_nodes=$first_node $($rule)+]);
+
         struct $Grammar {
             internal_grammar: Grammar<$Token>,
         }
