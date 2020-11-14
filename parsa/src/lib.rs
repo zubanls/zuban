@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 mod grammar;
+mod automaton;
 
 pub use std::collections::HashMap;
 pub use std::io::Bytes;
@@ -9,7 +10,8 @@ pub use std::io::Bytes;
 pub use lazy_static::lazy_static;
 pub use std::mem;
 
-pub use grammar::{Grammar, InternalSquashedType};
+pub use grammar::{Grammar};
+pub use automaton::{InternalSquashedType};
 
 pub type ExtraData = u32;
 pub type NodeIndex = u32;
