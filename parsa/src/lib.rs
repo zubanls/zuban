@@ -374,7 +374,7 @@ macro_rules! create_grammar {
      $Node:ident, $NodeType:ident, $Token:ident, $TokenType:ident,
      $first_node:ident $($rule:tt)+) => {
         struct $Grammar {
-            internal_grammar: Grammar<PythonToken>,
+            internal_grammar: Grammar<$Token>,
         }
 
         impl $Grammar {

@@ -70,6 +70,6 @@ mod tests {
         //dbg!(TokenType::get_map());
         //dbg!(NodeType::get_map());
         //PythonGrammar::new();
-        PYTHON_GRAMMAR.parse("asdf");
+        //PYTHON_GRAMMAR.parse("asdf");
     }
 }
