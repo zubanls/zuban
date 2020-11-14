@@ -8,4 +8,6 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "*"
+
+[dev-dependencies]
 regex = "*"

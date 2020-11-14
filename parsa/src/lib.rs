@@ -1,6 +1,5 @@
 #![allow(unused)]
 extern crate lazy_static;
-extern crate regex;
 
 mod grammar;
 mod automaton;

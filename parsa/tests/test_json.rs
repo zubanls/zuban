@@ -1,4 +1,6 @@
 #![recursion_limit="1024"]
+extern crate regex;
+
 use parsa::{create_token, create_grammar, Grammar};
 
 
