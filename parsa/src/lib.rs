@@ -389,14 +389,16 @@ macro_rules! create_grammar {
             pub fn foo(&self) {
             }
 
-            pub fn parse(&self, code: &str) -> $crate::InternalTree {
+            pub fn parse(&self, code: &str) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
                 let start = $NodeType::get_map()[stringify!($first_node)];
-                $crate::InternalTree {
-                    code: code.as_bytes().to_owned(),
-                    nodes: self.internal_grammar.parse(code, $Tokenizer::new(code), start),
-                    lines: None
+                $Tree {
+                    internal_tree: $crate::InternalTree {
+                        code: code.as_bytes().to_owned(),
+                        nodes: self.internal_grammar.parse(code, $Tokenizer::new(code), start),
+                        lines: None
+                    }
                 }
             }
         }
