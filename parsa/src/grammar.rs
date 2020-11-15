@@ -6,6 +6,7 @@ use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan, 
                        DFAState, Keywords, node_type_to_squashed,
                        token_type_to_squashed, generate_automatons}; 
+use std::fmt::Debug;
 #[derive(Debug)]
 pub struct Grammar<T> {
     terminal_map: &'static InternalStrToToken,
@@ -29,7 +30,7 @@ struct Stack<'a, T: Token> {
     phantom: PhantomData<T>,
 }
 
-impl<'a, T: Token> Grammar<T> {
+impl<'a, T: Token+Debug> Grammar<T> {
     pub fn new(rules: &HashMap<InternalNodeType, Rule>,
                nonterminal_map: &'static InternalStrToNode, 
                terminal_map: &'static InternalStrToToken) -> Self {
