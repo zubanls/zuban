@@ -254,7 +254,12 @@ impl RuleAutomaton {
 
 pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
                            rules: &HashMap<InternalNodeType, Rule>) -> (Automatons, Keywords) {
-    let mut keywords = Default::default();
+    let mut keywords = Keywords {
+        // We need to start the numbers of keywords after tokens. Keyword ID's therefore never
+        // clash with Token IDs (both are of type SquashedInternalType).
+        counter: terminal_map.len(),
+        .. Default::default()
+    };
     let mut automatons = HashMap::new();
     let dfa_counter = 0;
     for (internal_type, rule) in rules {
@@ -271,14 +276,15 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
     // Calculate first plans
     let mut first_plans = HashMap::new();
-    for rule_label in automatons.keys().cloned().collect::<Vec<InternalNodeType>>() {
-        create_first_plans(nonterminal_map, &keywords, &mut first_plans, &mut automatons, rule_label);
+    let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNodeType>>();
+    for rule_label in &rule_labels {
+        create_first_plans(nonterminal_map, &keywords, &mut first_plans, &mut automatons, *rule_label);
     }
     // Optimize and calculate all plans
-    for rule_label in [InternalNodeType(1)].iter() {
+    for rule_label in &rule_labels {
         // Now optimize the whole thing
         // TODO proper transitions for operators/names
-        for (i, dfa_state) in automatons.get_mut(&rule_label).unwrap().dfa_states.iter_mut().enumerate() {
+        for (i, dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
             dfa_state.transition_to_plan = create_all_plans(&keywords, &dfa_state, &first_plans);
         }
     }
@@ -388,8 +394,7 @@ pub fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashed
 
 #[inline]
 pub fn node_type_to_squashed(token_type: InternalNodeType) -> InternalSquashedType {
-    // TODO hmmmmmm
-    InternalSquashedType(token_type.0)
+    InternalSquashedType(token_type.0 & 1<<15)
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {
