@@ -3,6 +3,7 @@ extern crate regex;
 extern crate lazy_static;
 
 use regex::Regex;
+use std::str;
 
 use parsa::{create_token, create_grammar, Grammar};
 
@@ -40,14 +41,15 @@ impl Iterator for JsonTokenizer<'_> {
                 can_contain_syntax: can_contain_syntax,
             })
         };
+        let code_bytes = &self.code.as_bytes();
+        let get_code = |index: usize| unsafe {str::from_utf8_unchecked(&code_bytes[index..])};
 
-        let whitespace = WHITESPACE.find_at(self.code, self.index);
+        let whitespace = WHITESPACE.find(get_code(self.index));
         if let Some(match_) = whitespace {
-            self.index = match_.end();
+            self.index += match_.end();
         }
 
         let index = self.index;
-        let code_bytes = self.code.as_bytes();
         const OPERATORS: &[u8; 6] = b",:{}[]";
         if let Some(byte) = code_bytes.get(self.index) {
             if OPERATORS.contains(byte) {
@@ -62,21 +64,16 @@ impl Iterator for JsonTokenizer<'_> {
             }
         }
 
-        if let Some(match_) = STRING.find_at(self.code, self.index) {
-            self.index = match_.end();
-            return new_token(index, match_.end() - match_.start(), TokenType::String, false);
-        }
-        if let Some(match_) = NUMBER.find_at(self.code, self.index) {
-            self.index = match_.end();
-            return new_token(index, match_.end() - match_.start(), TokenType::Number, false);
-        }
-        for type_ in &[TokenType::String, TokenType::Number, TokenType::Label, TokenType::Error] {
-            if let Some(match_) = LABEL.find_at(self.code, self.index) {
-                self.index = match_.end();
+        for (regex, type_) in &[(&*STRING, TokenType::String),
+                                (&*NUMBER, TokenType::Number),
+                                (&*LABEL, TokenType::Label),
+                                (&*ERROR, TokenType::Error),] {
+            if let Some(match_) = regex.find(get_code(index)) {
+                self.index += match_.end();
                 return new_token(index, match_.end() - match_.start(), *type_, false);
             }
         }
-        None
+        unreachable!();
     }
 }
 
