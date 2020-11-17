@@ -33,7 +33,7 @@ impl Iterator for JsonTokenizer<'_> {
     type Item = JsonToken;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let new_token = |start, length, type_: TokenType, can_contain_syntax| {
+        let new_token = |start, length, type_: JsonTokenType, can_contain_syntax| {
             return Some(JsonToken {
                 start_index: start as u32,
                 length: length as u32,
@@ -54,21 +54,21 @@ impl Iterator for JsonTokenizer<'_> {
         if let Some(byte) = code_bytes.get(self.index) {
             if OPERATORS.contains(byte) {
                 self.index += 1;
-                return new_token(index, 1, TokenType::Operator, true);
+                return new_token(index, 1, JsonTokenType::Operator, true);
             }
         } else {
             if self.ended {
                 return None
             } else {
                 self.ended = true;
-                return new_token(index, 0, TokenType::Endmarker, false);
+                return new_token(index, 0, JsonTokenType::Endmarker, false);
             }
         }
 
-        for (regex, type_) in &[(&*STRING, TokenType::String),
-                                (&*NUMBER, TokenType::Number),
-                                (&*LABEL, TokenType::Label),
-                                (&*ERROR, TokenType::Error),] {
+        for (regex, type_) in &[(&*STRING, JsonTokenType::String),
+                                (&*NUMBER, JsonTokenType::Number),
+                                (&*LABEL, JsonTokenType::Label),
+                                (&*ERROR, JsonTokenType::Error),] {
             if let Some(match_) = regex.find(get_code(index)) {
                 self.index += match_.end();
                 return new_token(index, match_.end() - match_.start(), *type_, false);
@@ -78,11 +78,11 @@ impl Iterator for JsonTokenizer<'_> {
     }
 }
 
-create_token!(struct JsonToken, enum TokenType, [Label, String, Number, Operator, Error, Endmarker]);
+create_token!(struct JsonToken, enum JsonTokenType, [Label, String, Number, Operator, Error, Endmarker]);
 
 create_grammar!(
     static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, 
-    struct JsonNode, enum NodeType, JsonTokenizer, JsonToken, TokenType,
+    struct JsonNode, enum JsonNodeType, JsonTokenizer, JsonToken, JsonTokenType,
 
     document: json Endmarker
     json: array | object
@@ -96,5 +96,7 @@ create_grammar!(
 
 #[test]
 fn it_works() {
-    JSON_GRAMMAR.parse("{asdf: 1}");
+    let tree = JSON_GRAMMAR.parse("{asdf: 1}");
+    let root_node = tree.get_root_node();
+    assert_eq!(root_node.node_type(), Some(JsonNodeType::document));
 }

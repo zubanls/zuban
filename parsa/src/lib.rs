@@ -18,9 +18,9 @@ pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalTokenType(pub i16);
+pub struct InternalTokenType(pub u16);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalNodeType(pub i16);
+pub struct InternalNodeType(pub u16);
 pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 
@@ -35,6 +35,7 @@ pub trait Tokenizer<'a, T: Token>: Iterator {
     fn new(code: &'a str) -> Self;
 }
 
+#[derive(Debug)]
 pub struct InternalTree {
     pub code: Vec<u8>,
     pub nodes: Vec<InternalNode>,
@@ -113,8 +114,8 @@ macro_rules! __create_type_set {
     };
     (enum $EnumName:ident, $Map:path, $Type:path, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug)]
-        #[repr(i16)]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+        #[repr(u16)]
         pub enum $EnumName {
             $($entry),*
         }
@@ -127,7 +128,7 @@ macro_rules! __create_type_set {
                         let mut m = $crate::HashMap::new();
                         $(m.insert(
                               stringify!($entry),
-                              $Type($EnumName::$entry as i16)
+                              $Type($EnumName::$entry as u16)
                           );
                         )*
                         m
@@ -163,7 +164,7 @@ macro_rules! create_token {
             }
 
             fn get_type(&self) -> $crate::InternalTokenType {
-                $crate::InternalTokenType(self.type_ as i16)
+                $crate::InternalTokenType(self.type_ as u16)
             }
 
             fn can_contain_syntax(&self) -> bool{
@@ -229,8 +230,7 @@ macro_rules! __create_node {
             }
 
             fn is_leaf(&self) -> bool {
-                false // TODO
-                //return self.internal_node.type_ < 0
+                return self.internal_node.type_.is_leaf()
             }
 
             pub fn token_type(&self) -> Option<$TokenType> {
@@ -371,7 +371,7 @@ macro_rules! __parse_rule {
     };
 
     ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let key = $crate::InternalNodeType($NodeType::$label as i16);
+        let key = $crate::InternalNodeType($NodeType::$label as u16);
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
@@ -419,6 +419,7 @@ macro_rules! create_grammar {
             }
         }
 
+        #[derive(Debug)]
         pub struct $Tree {
             internal_tree: parsa::InternalTree
         }

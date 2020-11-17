@@ -3,6 +3,8 @@ use std::collections::{HashMap, HashSet};
 use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
             InternalStrToNode, InternalNode, Token, CodeIndex};
 
+const NODE_START: u16 = 1<<15;
+
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
 
@@ -11,7 +13,13 @@ struct NFAStateId(usize);
 #[derive(Debug, Clone, Copy)]
 pub struct DFAStateId(pub usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalSquashedType(i16);
+pub struct InternalSquashedType(u16);
+
+impl InternalSquashedType {
+    pub fn is_leaf(&self) -> bool {
+        return self.0 < NODE_START
+    }
+}
 
 // NFA = nondeterministic finite automaton
 #[derive(Default, Debug)]
@@ -79,7 +87,7 @@ impl Keywords {
     }
 
     pub fn keyword_to_squashed(number: usize) -> InternalSquashedType {
-        InternalSquashedType(number as i16)
+        InternalSquashedType(number as u16)
     }
 
 
