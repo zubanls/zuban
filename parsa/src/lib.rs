@@ -361,7 +361,7 @@ macro_rules! __parse_rules {
 macro_rules! __parse_rule {
     ($NodeType:ident, $rules:ident, [$($saved:tt)+] $next:ident : $($rule:tt)+) => {
         // Finish parsing the rule
-        $crate::__parse_rule!($NodeType, $rules, [$($saved)+ $next]);
+        $crate::__parse_rule!($NodeType, $rules, [$($saved)+]);
         // Keep parsing the rest
         $crate::__parse_rules!($NodeType, $rules, $next : $($rule)+);
     };

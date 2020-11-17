@@ -34,7 +34,7 @@ pub struct DFAState {
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum NFATransitionType {
-    Terminal(InternalTokenType),
+    Terminal(InternalTokenType, &'static str),
     Nonterminal(InternalNodeType),
     Keyword(&'static str),
 }
@@ -56,6 +56,7 @@ pub struct Plan {
     pub pushes: Vec<(InternalNodeType, DFAStateId)>,
     pub next_dfa_state: DFAStateId,
     pub type_: InternalSquashedType,
+    pub debug_text: &'static str,
 }
 
 enum FirstPlan {
@@ -104,7 +105,7 @@ impl RuleAutomaton {
             Identifier(string) => {
                 let (start, end) = self.new_nfa_states();
                 if let Some(&t) = terminal_map.get(string) {
-                    self.add_transition(start, end, Some(NFATransitionType::Terminal(t)));
+                    self.add_transition(start, end, Some(NFATransitionType::Terminal(t, string)));
                 } else if let Some(&t) = nonterminal_map.get(string) {
                     self.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
                 } else {
@@ -185,10 +186,13 @@ impl RuleAutomaton {
     fn group_nfas(&self, nfa_state_ids: Vec<NFAStateId>) -> HashSet<NFAStateId> {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set: HashSet<_> = nfa_state_ids.iter().cloned().collect();
-        for nfa_state_id in nfa_state_ids {
-            for transition in &self.get_nfa_state(nfa_state_id).transitions {
+        for nfa_state_id in &nfa_state_ids {
+            for transition in &self.get_nfa_state(*nfa_state_id).transitions {
                 if let None = transition.type_ {
                     set.insert(transition.to);
+                    if !nfa_state_ids.contains(&transition.to) {
+                        set.extend(self.group_nfas(set.iter().cloned().collect()));
+                    }
                 }
             }
         }
@@ -314,27 +318,22 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
     let mut plans = HashMap::new();
     for transition in &automaton.dfa_states[0].transitions {
         match transition.type_ {
-            NFATransitionType::Terminal(type_) => {
+            NFATransitionType::Terminal(type_, debug_text) => {
                 let t = token_type_to_squashed(type_);
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
+                    debug_text: debug_text
                 });
             },
-            NFATransitionType::Nonterminal(type_) => {
-                create_first_plans(nonterminal_map, keywords, first_plans, &automatons, type_);
-                match &first_plans[&type_] {
+            NFATransitionType::Nonterminal(node_id) => {
+                create_first_plans(nonterminal_map, keywords, first_plans, &automatons, node_id);
+                match &first_plans[&node_id] {
                     FirstPlan::Calculating => {unreachable!()},
                     FirstPlan::Calculated(transitions) => {
                         for (t, nested_plan) in transitions {
-                            let mut pushes = nested_plan.pushes.clone();
-                            pushes.insert(0, (type_, nested_plan.next_dfa_state));
-                            plans.insert(*t, Plan {
-                                pushes: pushes,
-                                next_dfa_state: transition.to,
-                                type_: *t,
-                            });
+                            plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
                         }
                     },
                 }
@@ -345,6 +344,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
+                    debug_text: keyword,
                 });
             },
         }
@@ -357,20 +357,22 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
-            NFATransitionType::Terminal(type_) => {
+            NFATransitionType::Terminal(type_, debug_text) => {
                 let t = token_type_to_squashed(type_);
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
+                    debug_text: debug_text,
                 });
             },
-            NFATransitionType::Nonterminal(type_) => {
-                let first_plan = &first_plans[&type_];
+            NFATransitionType::Nonterminal(node_id) => {
+                let first_plan = &first_plans[&node_id];
                 if let FirstPlan::Calculated(p) = first_plan {
-                    plans.extend(p.iter().map(|(k, v)| (*k, v.clone())));
+                    plans.extend(p.iter().map(|(k, v)| (
+                        *k, nest_plan(v, node_id, transition.to))));
                 } else {
-                    panic!("Shouldn't happen");
+                    unreachable!();
                 }
             },
             NFATransitionType::Keyword(keyword) => {
@@ -379,6 +381,7 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
+                    debug_text: keyword,
                 });
             },
         }
@@ -386,6 +389,17 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
     plans
 }
 
+fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStateId) -> Plan {
+    let mut pushes = plan.pushes.clone();
+    pushes.insert(0, (new_node_id, plan.next_dfa_state));
+    Plan {
+        pushes: pushes,
+        next_dfa_state: next_dfa_state,
+        // TODO isn't this redundant  with the hashmap insertion?
+        type_: plan.type_,
+        debug_text: plan.debug_text
+    }
+}
 
 #[inline]
 pub fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashedType {
@@ -395,6 +409,12 @@ pub fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashed
 #[inline]
 pub fn node_type_to_squashed(token_type: InternalNodeType) -> InternalSquashedType {
     InternalSquashedType(token_type.0 & 1<<15)
+}
+
+#[inline]
+pub fn squashed_to_node_type(squashed: InternalSquashedType) -> InternalNodeType {
+    // TODO this sucks, should re-implement, maybe not needed
+    InternalNodeType(squashed.0 & !(1<<15))
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {

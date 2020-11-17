@@ -60,6 +60,7 @@ impl Iterator for JsonTokenizer<'_> {
             if self.ended {
                 return None
             } else {
+                self.ended = true;
                 return new_token(index, 0, TokenType::Endmarker, false);
             }
         }

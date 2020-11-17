@@ -85,21 +85,18 @@ impl<'a, T: Token+Debug> Grammar<T> {
             }
         }
 
-        loop {
+        while stack.len() > 0 {
             let tos = stack.get_tos();
-            if !tos.dfa_state.is_final {
+            if tos.dfa_state.is_final {
+                stack.pop()
                 // We never broke out -- EOF is too soon -- Unfinished statement.
                 // However, the error recovery might have added the token again, if
                 // the stack is empty, we're fine.
+            } else {
                 panic!("incomplete input {:?}", tos.dfa_state)
             }
-
-            if stack.len() > 1 {
-                stack.pop()
-            } else {
-                panic!();
-            }
         }
+        stack.tree_nodes
     }
 }
 
@@ -159,11 +156,21 @@ impl<'a, T: Token> Stack<'a, T> {
         });
         self.tree_nodes.push(InternalNode {
             next_node_offset: 0,
-            // Positive values are token types, negative values are nodes
             type_: node_type_to_squashed(node_id),
             start_index: start,
             length: 0,
             extra_data: 0,
         });
+    }
+}
+
+impl StackNode<'_> {
+    fn get_terminal_name(&self, nonterminal_map: &InternalStrToNode) -> &str {
+        for (label, &id) in nonterminal_map {
+            if id == self.node_id {
+                return label
+            }
+        }
+        unreachable!();
     }
 }
