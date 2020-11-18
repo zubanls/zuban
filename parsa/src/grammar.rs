@@ -32,7 +32,7 @@ pub struct InternalTree {
 
 #[derive(Copy, Clone, Debug)]
 pub struct InternalNode {
-    next_node_offset: NodeIndex,
+    pub next_node_offset: NodeIndex,
     // Positive values are token types, negative values are nodes
     pub type_: InternalSquashedType,
 

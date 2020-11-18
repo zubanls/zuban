@@ -157,6 +157,18 @@ macro_rules! __create_node {
                 string
             }
 
+            pub fn start(&self) -> u32 {
+                self.internal_node.start_index
+            }
+
+            pub fn end(&self) -> u32 {
+                self.start() + self.length()
+            }
+
+            pub fn length(&self) -> u32 {
+                self.internal_node.length
+            }
+
             fn is_leaf(&self) -> bool {
                 return self.internal_node.type_.is_leaf()
             }
@@ -317,9 +329,6 @@ macro_rules! create_grammar {
                 )}
             }
 
-            pub fn foo(&self) {
-            }
-
             pub fn parse(&self, code: &str) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
@@ -340,12 +349,23 @@ macro_rules! create_grammar {
         }
 
         impl $Tree {
-            pub fn get_root_node(&self) -> $Node{
+            pub fn get_root_node(&self) -> $Node {
+                self.get_node(0, &self.internal_tree.nodes[0])
+            }
+
+            #[inline]
+            fn get_node<'a>(&'a self, index: u32, internal_node: &'a $crate::InternalNode) -> $Node{
                 $Node {
                     internal_tree: &self.internal_tree,
-                    internal_node: &self.internal_tree.nodes[0],
-                    index: 0,
+                    internal_node: internal_node,
+                    index: index,
                 }
+            }
+
+            pub fn get_nodes(&self) -> Vec<$Node> {
+                self.internal_tree.nodes.iter().enumerate().map(
+                    |(index, internal_node)| self.get_node(index as u32, internal_node)
+                ).collect()
             }
 
             pub fn set_extra_data(&mut self, index: $crate::NodeIndex, extra_data: $crate::ExtraData) {
