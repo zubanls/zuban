@@ -96,7 +96,28 @@ create_grammar!(
 
 #[test]
 fn it_works() {
-    let tree = JSON_GRAMMAR.parse("{asdf: 1}");
+    let tree = JSON_GRAMMAR.parse("{foo: 1}");
     let root_node = tree.get_root_node();
     assert_eq!(root_node.node_type(), Some(JsonNodeType::document));
+    assert_eq!(root_node.get_extra_data(), 0);
+
+    assert_eq!(tree.internal_tree.nodes.len(), 12);
+    /*
+    let x = [
+        (0, 0, 12, ),
+    ]
+    */
+
+    /*
+    for x in [] {
+    InternalNode {
+        next_node_offset: 0,
+        // Positive values are token types, negative values are nodes
+        pub type_: InternalSquashedType,
+
+        pub start_index: CodeIndex,
+        pub length: CodeLength,
+        pub extra_data: ExtraData,
+    }
+    */
 }
