@@ -72,20 +72,6 @@ mod tests {
         assert_eq!(align_of::<InternalNode>(), 4);
         assert_eq!(align_of::<CompressedNode>(), 2);
     }
-
-    /*
-    fn p() -> Tree {
-        use std::env::current_dir;
-        //let foo = &current_dir().unwrap().into_os_string().into_string().unwrap();
-        let foo = "foo";
-        //return parse(foo, || Token{start: 1, length: 1, type_: 1});
-    }
-    #[test]
-    fn test_parse() {
-        let tree = p();
-        assert_eq!(tree.code, "foo");
-    }
-    */
 }
 
 #[macro_export]
