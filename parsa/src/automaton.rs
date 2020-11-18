@@ -445,12 +445,6 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
     }
 }
 
-#[inline]
-pub fn squashed_to_node_type(squashed: InternalSquashedType) -> InternalNodeType {
-    // TODO this sucks, should re-implement, maybe not needed
-    InternalNodeType(squashed.0)
-}
-
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {
     for (k, v) in nonterminal_map {
         if nonterminal == *v {
