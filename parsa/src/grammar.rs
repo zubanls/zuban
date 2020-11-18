@@ -4,8 +4,7 @@ use std::marker::PhantomData;
 use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
             InternalStrToNode, InternalNode, Token, CodeIndex};
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan, 
-                       DFAState, Keywords, node_type_to_squashed,
-                       token_type_to_squashed, generate_automatons}; 
+                       DFAState, Keywords, generate_automatons};
 use std::fmt::Debug;
 #[derive(Debug)]
 pub struct Grammar<T> {
@@ -60,10 +59,10 @@ impl<'a, T: Token+Debug> Grammar<T> {
                 let start = token.get_start_index() as usize;
                 let token_str = &code[start..start + token.get_length() as usize];
                 transition = self.keywords.get_squashed(token_str).unwrap_or(
-                    token_type_to_squashed(token.get_type()),
+                    token.get_type().to_squashed(),
                 );
             } else {
-                transition = token_type_to_squashed(token.get_type());
+                transition = token.get_type().to_squashed();
             }
 
             loop {

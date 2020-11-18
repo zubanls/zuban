@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{InternalTokenType, Rule, InternalStrToToken,
-            InternalStrToNode, InternalNode, Token, CodeIndex};
+use crate::{Rule, InternalStrToToken, InternalStrToNode, InternalNode, Token, CodeIndex};
 
 const NODE_START: u16 = 1<<15;
 
@@ -23,6 +22,15 @@ impl InternalNodeType {
     #[inline]
     pub fn to_squashed(&self) -> InternalSquashedType {
         InternalSquashedType(self.0 & 1<<15)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct InternalTokenType(pub u16);
+impl InternalTokenType {
+    #[inline]
+    pub fn to_squashed(&self) -> InternalSquashedType {
+        InternalSquashedType(self.0)
     }
 }
 
@@ -338,7 +346,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
     for transition in &automaton.dfa_states[0].transitions {
         match transition.type_ {
             NFATransitionType::Terminal(type_, debug_text) => {
-                let t = token_type_to_squashed(type_);
+                let t = type_.to_squashed();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
@@ -377,7 +385,7 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
     for transition in &dfa_state.transitions {
         match transition.type_ {
             NFATransitionType::Terminal(type_, debug_text) => {
-                let t = token_type_to_squashed(type_);
+                let t = type_.to_squashed();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
@@ -418,16 +426,6 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
         type_: plan.type_,
         debug_text: plan.debug_text
     }
-}
-
-#[inline]
-pub fn token_type_to_squashed(token_type: InternalTokenType) -> InternalSquashedType {
-    InternalSquashedType(token_type.0)
-}
-
-#[inline]
-pub fn node_type_to_squashed(token_type: InternalNodeType) -> InternalSquashedType {
-    InternalSquashedType(token_type.0 & 1<<15)
 }
 
 #[inline]
