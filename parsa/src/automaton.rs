@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::grammar::{InternalNode, Token, CodeIndex};
 
-const NODE_START: u16 = 1<<15;
+pub const NODE_START: u16 = 1<<15;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
@@ -24,7 +24,7 @@ pub enum Rule {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalSquashedType(u16);
+pub struct InternalSquashedType(pub u16);
 
 impl InternalSquashedType {
     pub fn is_leaf(&self) -> bool {
@@ -37,7 +37,7 @@ pub struct InternalNodeType(pub u16);
 impl InternalNodeType {
     #[inline]
     pub fn to_squashed(&self) -> InternalSquashedType {
-        InternalSquashedType(self.0 & 1<<15)
+        InternalSquashedType(self.0)
     }
 }
 
@@ -152,7 +152,8 @@ impl RuleAutomaton {
                 } else if let Some(&t) = nonterminal_map.get(string) {
                     self.add_transition(start, end, Some(NFATransitionType::Nonterminal(t)));
                 } else {
-                    panic!("No terminal / nonterminal found for {}", string);
+                    panic!("No terminal / nonterminal found for {:?}; token_map = {:?}; node_map ={:?}",
+                           string, terminal_map, nonterminal_map);
                 }
                 (start, end)
             },
@@ -447,7 +448,7 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
 #[inline]
 pub fn squashed_to_node_type(squashed: InternalSquashedType) -> InternalNodeType {
     // TODO this sucks, should re-implement, maybe not needed
-    InternalNodeType(squashed.0 & !(1<<15))
+    InternalNodeType(squashed.0)
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {
