@@ -1,11 +1,71 @@
 use std::collections::{HashMap};
 use std::marker::PhantomData;
 
-use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
-            InternalStrToNode, InternalNode, Token, CodeIndex};
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan, 
-                       DFAState, Keywords, generate_automatons};
+                       DFAState, Keywords, generate_automatons, Rule, 
+                       InternalStrToToken, InternalStrToNode,
+                       InternalTokenType, InternalNodeType};
 use std::fmt::Debug;
+
+pub type ExtraData = u32;
+pub type NodeIndex = u32;
+pub type CodeIndex = u32;
+pub type CodeLength = u32;
+
+pub trait Token {
+    fn get_start_index(&self) -> u32;
+    fn get_length(&self) -> u32;
+    fn get_type(&self) -> InternalTokenType;
+    fn can_contain_syntax(&self) -> bool;
+}
+
+pub trait Tokenizer<'a, T: Token>: Iterator {
+    fn new(code: &'a str) -> Self;
+}
+
+#[derive(Debug)]
+pub struct InternalTree {
+    pub code: Vec<u8>,
+    pub nodes: Vec<InternalNode>,
+    pub lines: Option<Vec<u32>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct InternalNode {
+    next_node_offset: NodeIndex,
+    // Positive values are token types, negative values are nodes
+    pub type_: InternalSquashedType,
+
+    pub start_index: CodeIndex,
+    pub length: CodeLength,
+    pub extra_data: ExtraData,
+}
+
+struct CompressedNode {
+    next_node_offset: u8,
+    // Positive values are token types, negative values are nodes
+    type_: i8,
+
+    start_index: u16,
+    length: u16,
+    extra_data1: u16,
+    extra_data2: u16,
+}
+
+#[cfg(test)]
+mod tests {
+    use std::mem::{size_of, align_of};
+    use super::*;
+
+    #[test]
+    fn sizes() {
+        assert_eq!(size_of::<InternalNode>(), 20);
+        assert_eq!(size_of::<CompressedNode>(), 10);
+        assert_eq!(align_of::<InternalNode>(), 4);
+        assert_eq!(align_of::<CompressedNode>(), 2);
+    }
+}
+
 #[derive(Debug)]
 pub struct Grammar<T> {
     terminal_map: &'static InternalStrToToken,

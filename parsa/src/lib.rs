@@ -10,69 +10,10 @@ pub use std::io::Bytes;
 pub use lazy_static::lazy_static;
 pub use std::mem;
 
-pub use grammar::{Grammar};
-pub use automaton::{InternalSquashedType, InternalNodeType, InternalTokenType};
-
-pub type ExtraData = u32;
-pub type NodeIndex = u32;
-pub type CodeIndex = u32;
-pub type CodeLength = u32;
-pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
-pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
-
-pub trait Token {
-    fn get_start_index(&self) -> u32;
-    fn get_length(&self) -> u32;
-    fn get_type(&self) -> InternalTokenType;
-    fn can_contain_syntax(&self) -> bool;
-}
-
-pub trait Tokenizer<'a, T: Token>: Iterator {
-    fn new(code: &'a str) -> Self;
-}
-
-#[derive(Debug)]
-pub struct InternalTree {
-    pub code: Vec<u8>,
-    pub nodes: Vec<InternalNode>,
-    pub lines: Option<Vec<u32>>,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct InternalNode {
-    next_node_offset: NodeIndex,
-    // Positive values are token types, negative values are nodes
-    pub type_: InternalSquashedType,
-
-    pub start_index: CodeIndex,
-    pub length: CodeLength,
-    pub extra_data: ExtraData,
-}
-
-struct CompressedNode {
-    next_node_offset: u8,
-    // Positive values are token types, negative values are nodes
-    type_: i8,
-
-    start_index: u16,
-    length: u16,
-    extra_data1: u16,
-    extra_data2: u16,
-}
-
-#[cfg(test)]
-mod tests {
-    use std::mem::{size_of, align_of};
-    use super::*;
-
-    #[test]
-    fn sizes() {
-        assert_eq!(size_of::<InternalNode>(), 20);
-        assert_eq!(size_of::<CompressedNode>(), 10);
-        assert_eq!(align_of::<InternalNode>(), 4);
-        assert_eq!(align_of::<CompressedNode>(), 2);
-    }
-}
+pub use grammar::{Grammar, InternalTree, ExtraData, CodeIndex, NodeIndex,
+                  CodeLength, InternalNode, Tokenizer, Token};
+pub use automaton::{InternalSquashedType, InternalNodeType, InternalTokenType,
+                    InternalStrToNode, InternalStrToToken, Rule};
 
 #[macro_export]
 macro_rules! __filter_labels_and_create_node_set {
@@ -232,19 +173,6 @@ macro_rules! __create_node {
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub enum Rule {
-    Identifier(&'static str),
-    Keyword(&'static str),
-    Or(&'static Rule, &'static Rule),
-    Cut(&'static Rule, &'static Rule),
-    Maybe(&'static Rule),
-    Multiple(&'static Rule),
-    NegativeLookahead(&'static Rule),
-    PositiveLookahead(&'static Rule),
-    Next(&'static Rule, &'static Rule),
 }
 
 #[macro_export]

@@ -1,11 +1,27 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{Rule, InternalStrToToken, InternalStrToNode, InternalNode, Token, CodeIndex};
+use crate::grammar::{InternalNode, Token, CodeIndex};
 
 const NODE_START: u16 = 1<<15;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
+pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
+pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
+
+
+#[derive(Debug)]
+pub enum Rule {
+    Identifier(&'static str),
+    Keyword(&'static str),
+    Or(&'static Rule, &'static Rule),
+    Cut(&'static Rule, &'static Rule),
+    Maybe(&'static Rule),
+    Multiple(&'static Rule),
+    NegativeLookahead(&'static Rule),
+    PositiveLookahead(&'static Rule),
+    Next(&'static Rule, &'static Rule),
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalSquashedType(u16);
