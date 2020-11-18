@@ -11,7 +11,7 @@ pub use lazy_static::lazy_static;
 pub use std::mem;
 
 pub use grammar::{Grammar};
-pub use automaton::{InternalSquashedType};
+pub use automaton::{InternalSquashedType, InternalNodeType};
 
 pub type ExtraData = u32;
 pub type NodeIndex = u32;
@@ -19,8 +19,6 @@ pub type CodeIndex = u32;
 pub type CodeLength = u32;
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalTokenType(pub u16);
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalNodeType(pub u16);
 pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 
@@ -63,7 +61,6 @@ struct CompressedNode {
     extra_data1: u16,
     extra_data2: u16,
 }
-
 
 #[cfg(test)]
 mod tests {

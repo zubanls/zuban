@@ -156,7 +156,7 @@ impl<'a, T: Token> Stack<'a, T> {
         });
         self.tree_nodes.push(InternalNode {
             next_node_offset: 0,
-            type_: node_type_to_squashed(node_id),
+            type_: node_id.to_squashed(),
             start_index: start,
             length: 0,
             extra_data: 0,

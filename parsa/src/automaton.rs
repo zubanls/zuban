@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use crate::{InternalTokenType, InternalNodeType, Rule, InternalStrToToken,
+use crate::{InternalTokenType, Rule, InternalStrToToken,
             InternalStrToNode, InternalNode, Token, CodeIndex};
 
 const NODE_START: u16 = 1<<15;
@@ -8,10 +8,6 @@ const NODE_START: u16 = 1<<15;
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct NFAStateId(usize);
-#[derive(Debug, Clone, Copy)]
-pub struct DFAStateId(pub usize);
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalSquashedType(u16);
 
@@ -20,6 +16,21 @@ impl InternalSquashedType {
         return self.0 < NODE_START
     }
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
+pub struct InternalNodeType(pub u16);
+impl InternalNodeType {
+    #[inline]
+    pub fn to_squashed(&self) -> InternalSquashedType {
+        InternalSquashedType(self.0 & 1<<15)
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct NFAStateId(usize);
+
+#[derive(Debug, Clone, Copy)]
+pub struct DFAStateId(pub usize);
 
 // NFA = nondeterministic finite automaton
 #[derive(Default, Debug)]
