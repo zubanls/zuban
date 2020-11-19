@@ -78,6 +78,7 @@ pub struct Grammar<T> {
 #[derive(Debug)]
 struct StackNode<'a> {
     node_id: InternalNodeType,
+    tree_node_index: usize,
     dfa_state: &'a DFAState,
     backtrack_length_counts: Vec<u32>,
 }
@@ -179,7 +180,14 @@ impl<'a, T: Token> Stack<'a, T> {
     }
 
     fn pop(&mut self) {
-        self.stack_nodes.pop();
+        let stack_node = self.stack_nodes.pop().unwrap();
+        let last_tree_node = self.tree_nodes.last().unwrap();
+        let length = last_tree_node.length;
+        let start = last_tree_node.start_index;
+        // We can simply get the last token and check its end position to
+        // calculate how long a token is.
+        let mut n = self.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+        n.length = start - n.start_index + length;
     }
 
     fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T) {
@@ -210,6 +218,7 @@ impl<'a, T: Token> Stack<'a, T> {
     fn push(&mut self, node_id: InternalNodeType, dfa_state: &'a DFAState, start: CodeIndex) {
         self.stack_nodes.push(StackNode {
             node_id: node_id,
+            tree_node_index: self.tree_nodes.len(),
             dfa_state: dfa_state,
             backtrack_length_counts: Vec::new()
         });

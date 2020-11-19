@@ -177,6 +177,9 @@ macro_rules! __create_node {
                 if !self.is_leaf() {
                     return None
                 }
+                if self.internal_node.type_.0 as usize >= $TokenType::get_map().len() {
+                    return None
+                }
                 // Can be unsafe, because the TokenType is created by the macro create_token.
                 // TODO 
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
