@@ -105,21 +105,21 @@ fn it_works() {
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);
     let expected_list = [
-        (0, 0, 8, Some(document), None),
-        (0, 0, 8, Some(json),     None),
-        (0, 0, 8, Some(object),   None),
-        (0, 0, 1, None,           None),//Some(Operator)),
-        (0, 1, 6, Some(property), None),
-        (0, 1, 3, Some(name),     None),
-        (0, 1, 3, None,           Some(Label)),
-        (0, 4, 1, None,           None),//Some(Operator)),
-        (0, 6, 1, Some(value),    None),
-        (0, 6, 1, None,           Some(Number)),
-        (0, 7, 1, None,           None),//Some(Operator)),
-        (0, 8, 0, None,           Some(Endmarker)),
+        ( 0, 0, 8, Some(document), None),
+        (10, 0, 8, Some(json),     None),
+        ( 0, 0, 8, Some(object),   None),
+        ( 1, 0, 1, None,           None),//Some(Operator)),
+        ( 6, 1, 6, Some(property), None),
+        ( 2, 1, 3, Some(name),     None),
+        ( 0, 1, 3, None,           Some(Label)),
+        ( 1, 4, 1, None,           None),//Some(Operator)),
+        ( 0, 6, 1, Some(value),    None),
+        ( 0, 6, 1, None,           Some(Number)),
+        ( 0, 7, 1, None,           None),//Some(Operator)),
+        ( 0, 8, 0, None,           Some(Endmarker)),
     ];
 
-    for (expected, actual)  in expected_list.iter().zip(tree.get_nodes()) {
+    for (expected, actual) in expected_list.iter().zip(tree.get_nodes()) {
         assert_eq!(
             &(
                 actual.internal_node.next_node_offset,

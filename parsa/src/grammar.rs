@@ -79,6 +79,7 @@ pub struct Grammar<T> {
 struct StackNode<'a> {
     node_id: InternalNodeType,
     tree_node_index: usize,
+    latest_child_node_index: usize,
     dfa_state: &'a DFAState,
     backtrack_length_counts: Vec<u32>,
 }
@@ -160,7 +161,7 @@ impl<'a, T: Token+Debug> Grammar<T> {
     }
 }
 
-impl<'a, T: Token> Stack<'a, T> {
+impl<'a, T: Token+Debug> Stack<'a, T> {
     fn new(node_id: InternalNodeType, dfa_state: &'a DFAState) -> Self {
         let mut stack = Stack {
             stack_nodes: Default::default(),
@@ -171,28 +172,32 @@ impl<'a, T: Token> Stack<'a, T> {
         stack
     }
 
+    #[inline]
     fn get_tos(&self) -> &StackNode{
-        &self.stack_nodes.last().unwrap()
+        self.stack_nodes.last().unwrap()
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.stack_nodes.len()
     }
 
+    #[inline]
     fn pop(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        let last_tree_node = self.tree_nodes.last().unwrap();
-        let length = last_tree_node.length;
-        let start = last_tree_node.start_index;
+        let last_tree_node = *self.tree_nodes.last().unwrap();
         // We can simply get the last token and check its end position to
         // calculate how long a token is.
         let mut n = self.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-        n.length = start - n.start_index + length;
+        n.length = last_tree_node.start_index - n.start_index + last_tree_node.length;
     }
 
+    #[inline]
     fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T) {
+        self.calculate_previous_next_node();
         let start_index = token.get_start_index();
         let tos = self.get_tos();
+
 
         let next = &automatons[&tos.node_id].dfa_states[plan.next_dfa_state.0];
         self.stack_nodes.last_mut().unwrap().dfa_state = next;
@@ -202,6 +207,7 @@ impl<'a, T: Token> Stack<'a, T> {
                 &automatons[&node_type].dfa_states[push.0],
                 start_index,
             );
+            self.stack_nodes.last_mut().unwrap().latest_child_node_index = self.tree_nodes.len();
         }
         // Once all the nodes are dealt with, add the token
         self.tree_nodes.push(InternalNode {
@@ -219,6 +225,7 @@ impl<'a, T: Token> Stack<'a, T> {
         self.stack_nodes.push(StackNode {
             node_id: node_id,
             tree_node_index: self.tree_nodes.len(),
+            latest_child_node_index: 0,
             dfa_state: dfa_state,
             backtrack_length_counts: Vec::new()
         });
@@ -229,6 +236,19 @@ impl<'a, T: Token> Stack<'a, T> {
             length: 0,
             extra_data: 0,
         });
+    }
+
+    #[inline]
+    fn calculate_previous_next_node(&mut self) {
+        // Care for next_node_offset here.
+        let index = self.get_tos().latest_child_node_index;
+        let next = self.tree_nodes.len();
+
+        if index == 0 && next == 1 {
+        } else {
+            self.tree_nodes[index].next_node_offset = (next - index) as u32;
+        }
+        self.stack_nodes.last_mut().unwrap().latest_child_node_index = next;
     }
 }
 
