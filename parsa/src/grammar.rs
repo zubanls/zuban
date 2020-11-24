@@ -244,8 +244,8 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
         let index = self.get_tos().latest_child_node_index;
         let next = self.tree_nodes.len();
 
-        if index == 0 && next == 1 {
-        } else {
+        // The first node does not need to be updated.
+        if index != 0 {
             self.tree_nodes[index].next_node_offset = (next - index) as u32;
         }
         self.stack_nodes.last_mut().unwrap().latest_child_node_index = next;
