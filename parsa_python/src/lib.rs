@@ -1,44 +1,13 @@
 #![recursion_limit="1024"]
-use parsa::{create_token, create_grammar, Grammar};
+mod tokenizer;
 
+use parsa::{create_grammar, Grammar};
+use crate::tokenizer::{PythonToken, PythonTokenType, PythonTokenizer};
 
-struct PythonTokenizer<'a> {
-    code: &'a str,
-}
-
-impl PythonTokenizer<'_> {
-    fn new_tok(&self) -> PythonToken {
-        PythonToken {
-            start_index: 0,
-            length: 0,
-            type_: TokenType::Endmarker,
-            can_contain_syntax: false,
-        }
-    }
-}
-
-impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
-    fn new(code: &'a str) -> Self {
-        Self {code: code}
-    }
-
-}
-
-impl Iterator for PythonTokenizer<'_> {
-    type Item = PythonToken;
-    fn next(&mut self) -> Option<Self::Item> {
-        //self.new_tok()
-        None
-    }
-}
-
-create_token!(struct PythonToken, enum TokenType,
-              [Name, String, Number, Endmarker, Newline, Indent, Dedent,
-               FStringStart, FStringString, FStringEnd]);
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
-    struct PythonNode, enum NodeType, PythonTokenizer, PythonToken, TokenType,
+    struct PythonNode, enum NodeType, PythonTokenizer, PythonToken, PythonTokenType,
 
     single_input: Newline | simple_stmt | compound_stmt Newline
     file_input: stmt* Endmarker

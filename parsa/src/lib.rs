@@ -45,7 +45,7 @@ macro_rules! __create_type_set {
         }
 
         impl $EnumName {
-            fn get_map() -> &'static $Map {
+            pub fn get_map() -> &'static $Map {
                 #[macro_use]
                 $crate::lazy_static! {
                     static ref HASHMAP: $Map = {
