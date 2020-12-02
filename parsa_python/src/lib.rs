@@ -180,7 +180,6 @@ mod tests {
         assert_eq!(2 + 2, 4);
         //dbg!(TokenType::get_map());
         //dbg!(NodeType::get_map());
-        //PythonGrammar::new();
         //PYTHON_GRAMMAR.parse("asdf");
     }
 }
