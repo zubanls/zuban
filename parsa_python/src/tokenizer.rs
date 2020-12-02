@@ -6,7 +6,7 @@ extern crate regex;
 
 use std::str;
 use std::collections::HashSet;
-use regex::{Regex, RegexSet};
+use regex::Regex;
 use parsa::{create_token, CodeIndex};
 
 const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
@@ -15,13 +15,8 @@ const OCT_NUMBER: &str = r"0[oO](_?[0-7])+";
 const DEC_NUMBER: &str = r"(0(_?0)*|[1-9](_?[0-9])*)";
 const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
 
-const NAME: &str = r"^[A-Za-z_0-9\u0080-\uffff]+";
-const NEWLINE: &str = r"\r\n?|\n";
-const COMMENT: &str = r"^#[^\r\n]*";
-const FSTRING_START: &str = r#"([Ff][Rr]?|[Rr][Ff])('|"|"""|''')"#;
-
 lazy_static::lazy_static! {
-    static ref WHITESPACE: Regex = Regex::new(r"^[\f\t ]+").unwrap();
+    static ref WHITESPACE: Regex = r(r"^[\f\t ]+");
 
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
     static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
@@ -30,28 +25,36 @@ lazy_static::lazy_static! {
         r"\.[0-9](?:_?[0-9])*"]) + "(" + EXPONENT + ")?";
     static ref FLOAT_NUMBER: String = or(&[&POINT_FLOAT, &EXP_FLOAT]);
     static ref IMAG_NUMBER: String = or(&[r"[0-9](?:_?[0-9])*", &FLOAT_NUMBER]) + r"[jJ]";
-    static ref NUMBER: String = "^".to_owned() + &or(&[&IMAG_NUMBER, &FLOAT_NUMBER, &INT_NUMBER]);
+    static ref NUMBER: Regex = r(&(
+        "^".to_owned() + &or(&[&IMAG_NUMBER, &FLOAT_NUMBER, &INT_NUMBER])
+    ));
 
-    static ref STRING: String = all_string_regexes(&["", "[rR]", "[uU]"]);
-    static ref BYTES: String = all_string_regexes(&["[bB][rR]?", "[rR][bB]"]);
+    static ref STRING: Regex = r(&all_string_regexes(&["", "[rR]", "[uU]"]));
+    static ref BYTES: Regex = r(&all_string_regexes(&["[bB][rR]?", "[rR][bB]"]));
 
     // Because of leftmost-then-longest match semantics, be sure to put the
     // longest operators first (e.g., if = came before ==, == would get
     // recognized as two instances of =).
-    static ref OPERATOR: String = or(&[
+    static ref OPERATOR: Regex = r(&("^".to_owned() + &or(&[
         r"\*\*=?", r">>=?", r"<<=?", r"//=?", r"->", r"\.\.\.", r":=?",
         r"[+\-*/%&@`|^!=<>]=?", r"[\[\](){}", r"[~;.,@]",
-    ]);
+    ])));
 
-    static ref TOKEN_REGEXES: RegexSet = RegexSet::new(&[
-        NAME, &NUMBER, NEWLINE, COMMENT, &STRING, &BYTES, FSTRING_START,
-    ]).unwrap();
+    static ref NAME: Regex = r(r"^[A-Za-z_0-9\u0080-\uffff]+");
+    static ref NEWLINE: Regex = r(r"^(\r\n?|\n)");
+    static ref COMMENT: Regex = r(r"^#[^\r\n]*");
+    static ref FSTRING_START: Regex = r(r#"^([Ff][Rr]?|[Rr][Ff])('|"|"""|''')"#);
 
     static ref ALWAYS_BREAK_NAMES: HashSet<&'static str> = [
         "import", "class", "def", "try", "except",
         "finally", "while", "with", "return", "continue",
         "break", "del", "pass", "global", "assert", "nonlocal"
     ].iter().cloned().collect();
+}
+
+
+fn r(regex_string: &str) -> Regex {
+    Regex::new(regex_string).unwrap()
 }
 
 fn or(regexes: &[&str]) -> String {
@@ -74,15 +77,15 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
 }
 
 create_token!(struct PythonToken, enum PythonTokenType,
-              [Name, String, Number, Endmarker, Newline, Indent, Dedent, ErrorDedent,
-               FStringStart, FStringString, FStringEnd]);
+              [Name, Operator, String, Bytes, Number, Endmarker, Newline, 
+               Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
 
 #[derive(Default, Debug)]
 pub struct PythonTokenizer<'a> {
     code: &'a str,
 
-    index: CodeIndex,
+    index: usize,
     ended: bool,
     indents: Vec<Indent>,
 }
@@ -104,7 +107,7 @@ impl PythonTokenizer<'_> {
     #[inline]
     fn new_tok(&self, type_: PythonTokenType) -> Option<PythonToken> {
         Some(PythonToken {
-            start_index: 0,
+            start_index: self.index as CodeIndex,
             length: 0,
             type_: type_,
             can_contain_syntax: false,
@@ -123,23 +126,57 @@ impl PythonTokenizer<'_> {
         }
         None
     }
+
+    #[inline]
+    fn code_from_start(&self) -> &str {
+        // This function only exists, because the regex crate is not able to at
+        // the beginning of a specific position.
+        unsafe {
+            str::from_utf8_unchecked(&self.code.as_bytes()[self.index as usize..])
+        }
+    }
 }
 
 impl Iterator for PythonTokenizer<'_> {
     type Item = PythonToken;
     fn next(&mut self) -> Option<Self::Item> {
-        let code_from_start = || unsafe {
-            str::from_utf8_unchecked(&self.code.as_bytes()[self.index as usize..])
-        };
-        use PythonTokenType::*;
         if self.ended {
             return None;
         }
 
-        let whitespace = WHITESPACE.find(code_from_start());
-        if let Some(match_) = whitespace {
-            self.index += match_.end() as CodeIndex;
+        //self.ended = true;
+        //self.new_tok(Endmarker)
+
+        if let Some(match_) = WHITESPACE.find(self.code_from_start()) {
+            self.index += match_.end();
         }
+
+        use PythonTokenType::*;
+        let c = self.code_from_start();
+        if let Some(match_) = OPERATOR.find(c) {
+            // TODO ; always break
+            self.index = match_.end();
+            return self.new_tok(Operator);
+        }
+        let regexes = [
+            (&*STRING, PythonTokenType::String),
+            (&*BYTES, PythonTokenType::Bytes),
+            (&*FSTRING_START, PythonTokenType::FStringStart),
+            (&*NEWLINE, PythonTokenType::Newline),
+            (&*NUMBER, PythonTokenType::Number)
+        ];
+        for (r, token_type) in &regexes {
+            if let Some(match_) = r.find(c) {
+                self.index = match_.end();
+                return self.new_tok(*token_type);
+            }
+        }
+        if let Some(match_) = NAME.find(c) {
+            self.index = match_.end();
+            return self.new_tok(Name);
+        }
+             //(&*COMMENT, PythonTokenType::Comment)];
+
 
         None
     }
