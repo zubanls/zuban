@@ -9,6 +9,7 @@ use std::collections::HashSet;
 use regex::Regex;
 use parsa::{create_token, CodeIndex};
 
+const FORM_FEED: char = '\x0C';
 const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
 const BIN_NUMBER: &str = r"0[bB](_?[01])+";
 const OCT_NUMBER: &str = r"0[oO](_?[0-7])+";
@@ -17,7 +18,7 @@ const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
 const BASIC_WHITESPACE: &str = r"^[\f\t ]*#[^\r\n]*";
 
 lazy_static::lazy_static! {
-    static ref WHITESPACE: Regex = r(&format!(r"{}(\\{})*", BASIC_WHITESPACE, BASIC_WHITESPACE));
+    static ref WHITESPACE: Regex = r(&format!(r"{w}(\\{w})*", w=BASIC_WHITESPACE));
 
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
     static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
@@ -78,7 +79,7 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
 
 create_token!(struct PythonToken, enum PythonTokenType,
               [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
-               Indent, Dedent, ErrorDedent, F_StringStart, F_StringString, F_StringEnd]);
+               Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
 
 #[derive(Default, Debug)]
@@ -93,12 +94,12 @@ pub struct PythonTokenizer<'a> {
     f_string_stack: Vec<FStringNode>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum QuoteType {
-    Single,
-    Double,
-    SingleTriple,
-    DoubleTriple,
+    Single,        // '
+    Double,        // "
+    SingleTriple,  // '''
+    DoubleTriple,  // """
 }
 
 #[derive(Debug)]
@@ -109,18 +110,12 @@ struct FStringNode {
 }
 
 impl FStringNode {
-    /*
-    def __init__(self, quote):
-        self.previous_lines = ''
-        self.last_string_start_pos = None
-        # In the syntax there can be multiple format_spec's nested:
-        # {x:{y:3}}
-    */
-
+    #[inline]
     fn open_parentheses(&mut self) {
         self.parentheses_level += 1;
     }
 
+    #[inline]
     fn close_parentheses(&mut self) {
         self.parentheses_level -= 1;
         if self.parentheses_level == 0 {
@@ -129,6 +124,7 @@ impl FStringNode {
         }
     }
 
+    #[inline]
     fn allow_multiline(&self) -> bool {
         match self.quote {
             QuoteType::Single | QuoteType::Double => false,
@@ -136,12 +132,15 @@ impl FStringNode {
         }
     }
 
-    fn is_in_expr(&self) -> bool {
+    #[inline]
+    fn in_expr(&self) -> bool {
         self.parentheses_level > self.format_spec_count
     }
 
-    fn is_in_format_spec(&self) -> bool {
-        !self.is_in_expr() && self.format_spec_count > 0
+    #[inline]
+    fn in_format_spec(&self) -> bool {
+        // In the syntax there can be multiple format_spec's nested: {x:{y:3}}
+        !self.in_expr() && self.format_spec_count > 0
     }
 }
 
@@ -197,6 +196,139 @@ impl PythonTokenizer<'_> {
         }
         None
     }
+
+    #[inline]
+    fn handle_fstring_stack(&mut self) -> Option<PythonToken> {
+        let in_expr = self.get_f_string_tos().in_expr();
+        let mut iterator = code_from_start(self.code, self.index).chars().enumerate().peekable();
+        while let Some((i, character)) = iterator.next() {
+            if (character == '{' || character == '}') && !in_expr {
+                if let Some((_, next)) = iterator.next() {
+                    if self.get_f_string_tos().in_format_spec() {
+                        // If the bracket appears again, we can just continue,
+                        // it's part of the string.
+                        if next != character {
+                            if let Some(t) = self.maybe_fstring_string(i) {
+                                return Some(t);
+                            }
+                        }
+                    }
+                    return None;
+                }
+            } else if character == '"' {
+                for (j, node) in self.f_string_stack.iter().enumerate() {
+                    let quote = node.quote;
+                    match quote {
+                        QuoteType::Double => return self.end_f_string(i, j, quote),
+                        QuoteType::DoubleTriple => {
+                            if code_from_start(self.code, self.index + i).starts_with("\"\"\"") {
+                                return self.end_f_string(i, j, quote);
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            } else if character == '\'' {
+                for (j, node) in self.f_string_stack.iter().enumerate() {
+                    let quote = node.quote;
+                    match quote {
+                        QuoteType::Single => return self.end_f_string(i, j, quote),
+                        QuoteType::SingleTriple => {
+                            if code_from_start(self.code, self.index + i).starts_with("'''") {
+                                return self.end_f_string(i, j, quote);
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            } else if character == ':' && in_expr {
+                let tos = self.get_f_string_tos();
+                if tos.parentheses_level - tos.format_spec_count == 1 {
+                    tos.format_spec_count += 1;
+                    self.index = i;
+                }
+                // By returning here, we are making sure that the normal
+                // tokenizer returns the as an operator.
+                return None;
+            } else if character == '\\' {
+                if let Some(&(_, next)) = iterator.peek() {
+                    if next != '{' && next == '}' {
+                        iterator.next();
+                        if in_expr {
+                            self.index += i;
+                            return self.new_tok(self.index - 1, false, PythonTokenType::ErrorToken);
+                        }
+                    }
+                }
+            } else if character == '\n' || character == '\r' {
+                // Check if there is an f-string on the stack that allows no newlines.
+                match self.f_string_stack.iter().enumerate().find(
+                        |(_, node)| !node.allow_multiline()) {
+                    None => {},
+                    Some((j, _)) => {
+                        if in_expr {
+                            self.f_string_stack.drain(j..);
+                            return self.next();
+                        } else {
+                            return self.maybe_fstring_string(i).or_else(|| {
+                                self.f_string_stack.drain(j..);
+                                // Since we have removed a few f-strings, it
+                                // should be fine to just recurse.
+                                self.next()
+                            });
+                        }
+                    }
+                }
+            } else if character == '#' && in_expr {
+                self.index += i;  // The part before was whitespace
+                let c = code_from_start(self.code, self.index);
+                let length = c.find(&['\n', '\r'] as &[_]).map_or(
+                    c.len(), |index| index + 1);
+                let start = self.index;
+                self.index += length;
+                return self.new_tok(start, false, PythonTokenType::ErrorToken);
+            } else if character != ' ' && character != '\t' && character != FORM_FEED && in_expr {
+                return None
+            }
+        }
+        // We are at the end of the code fragment and only the endmarker/dedent
+        // tokens will appear
+        None
+    }
+
+    #[inline]
+    fn get_f_string_tos(&mut self) -> &mut FStringNode {
+        // tos = top of stack
+        self.f_string_stack.last_mut().unwrap()
+    }
+
+    #[inline]
+    fn end_f_string(&mut self, string_length: usize, drain_from: usize, quote: QuoteType)
+                    -> Option<PythonToken> {
+        // This is the same if we are in_expr or not. The string ends no matter
+        // what. It's a bit strange that in the expr case it returns an
+        // fstring_string first, but this should be fine, since if there's a
+        // syntax error in the parser, the error will be there anyway.
+        return self.maybe_fstring_string(string_length).or_else(|| {
+            self.f_string_stack.drain(drain_from..);
+            let start = self.index;
+            self.index += match quote {
+                QuoteType::Single | QuoteType::Double => 1,
+                QuoteType::SingleTriple | QuoteType::DoubleTriple => 3,
+            };
+            self.new_tok(start, false, PythonTokenType::FStringEnd)
+        });
+    }
+
+    #[inline]
+    fn maybe_fstring_string(&mut self, length: usize) -> Option<PythonToken> {
+        if length > 0 {
+            let start = self.index;
+            self.index += length;
+            return self.new_tok(start, false, PythonTokenType::FStringString);
+        }
+        return None;
+    }
 }
 
 impl Iterator for PythonTokenizer<'_> {
@@ -204,6 +336,11 @@ impl Iterator for PythonTokenizer<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.ended {
             return None;
+        }
+        if self.f_string_stack.len() != 0 {
+            if let Some(token) = self.handle_fstring_stack() {
+                return Some(token);
+            }
         }
 
         if let Some(match_) = WHITESPACE.find(code_from_start(self.code, self.index)) {
@@ -248,17 +385,6 @@ impl Iterator for PythonTokenizer<'_> {
                     None => if self.parentheses_level > 0 {self.parentheses_level -= 1},
                     Some(node) => node.close_parentheses(),
                 }
-            } else if character == b':' {
-                match self.f_string_stack.last_mut() {
-                    None => {},
-                    Some(node) => {
-                        if node.parentheses_level - node.format_spec_count == 1 {
-                            // `:` and `:=` might end up here
-                            node.format_spec_count += 1;
-                            self.index = start + 1;
-                        }
-                    },
-                }
             }
             return self.new_tok(start, true, PythonTokenType::Operator);
         }
@@ -291,7 +417,7 @@ impl Iterator for PythonTokenizer<'_> {
                 parentheses_level: 0,
                 format_spec_count: 0,
             });
-            return self.new_tok(start, false, PythonTokenType::F_StringStart);
+            return self.new_tok(start, false, PythonTokenType::FStringStart);
         }
 
         if let Some(match_) = NAME.find(c) {
@@ -310,16 +436,6 @@ impl Iterator for PythonTokenizer<'_> {
         }
 
         if let Some(match_) = NEWLINE.find(c) {
-            if self.f_string_stack.len() != 0 {
-                match self.f_string_stack.iter().enumerate().find(
-                        |(i, node)| !node.allow_multiline()) {
-                    None => {},
-                    Some((i, _)) => {
-                        self.f_string_stack.drain(i..);
-                    }
-                }
-            }
-
             self.index += match_.end();
             if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
                 self.previous_token_was_newline = true;
