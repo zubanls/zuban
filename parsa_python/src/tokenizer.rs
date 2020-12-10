@@ -15,10 +15,10 @@ const BIN_NUMBER: &str = r"0[bB](_?[01])+";
 const OCT_NUMBER: &str = r"0[oO](_?[0-7])+";
 const DEC_NUMBER: &str = r"(0(_?0)*|[1-9](_?[0-9])*)";
 const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
-const BASIC_WHITESPACE: &str = r"^[\f\t ]*#[^\r\n]*";
+const BASIC_WHITESPACE: &str = r"[\f\t ]*(#[^\r\n]*)?";
 
 lazy_static::lazy_static! {
-    static ref WHITESPACE: Regex = r(&format!(r"{w}(\\{w})*", w=BASIC_WHITESPACE));
+    static ref WHITESPACE: Regex = r(&format!(r"^{w}(\\(\r\n?|\n){w})*", w=BASIC_WHITESPACE));
 
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
     static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
@@ -489,6 +489,6 @@ mod tests {
     }
 
     parametrize!(
-        simple "asdf" => [(0, 4, Name)];
+        simple "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
     );
 }
