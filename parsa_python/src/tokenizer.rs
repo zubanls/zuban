@@ -39,7 +39,7 @@ lazy_static::lazy_static! {
     // recognized as two instances of =).
     static ref OPERATOR: Regex = r(&("^".to_owned() + &or(&[
         r"\*\*=?", r">>=?", r"<<=?", r"//=?", r"->", r"\.\.\.", r":=?",
-        r"[+\-*/%&@`|^!=<>]=?", r"[\[\](){}", r"[~;.,@]",
+        r"[+\-*/%&@`|^!=<>]=?", r"[\[\](){}]", r"[~;.,@]",
     ])));
 
     static ref NAME: Regex = r(r"^[A-Za-z_0-9\u0080-\uffff]+");
@@ -426,12 +426,7 @@ impl Iterator for PythonTokenizer<'_> {
 
             }
             self.index += match_.end();
-            /*
-            if token.isidentifier():
-                yield PythonToken(NAME, token, spos, prefix)
-            else:
-                yield from _split_illegal_unicode_name(token, spos, prefix)
-            */
+            // TODO we should be using something like Python's str.isidentifier here.
             return self.new_tok(start, true, PythonTokenType::Name);
         }
 
@@ -471,4 +466,29 @@ fn code_from_start(code: &str, index: usize) -> &str {
     unsafe {
         str::from_utf8_unchecked(&code.as_bytes()[index..])
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use parsa::Tokenizer;
+    use super::*;
+    use PythonTokenType::*;
+
+    macro_rules! parametrize {
+        ($($name:ident $input:expr => $expected:tt;)*) => {$(
+            #[test]
+            fn $name() {
+                let string: &str = $input;
+                let tokenizer = PythonTokenizer::new($input);
+                let actual: Vec<_> = tokenizer.map(|t| (t.start_index as usize, t.length, t.type_)).collect();
+                let mut expected = vec!$expected;
+                expected.push((string.len(), 0, Endmarker));
+                assert_eq!(actual, expected);
+            }
+        )*}
+    }
+
+    parametrize!(
+        simple "asdf" => [(0, 4, Name)];
+    );
 }
