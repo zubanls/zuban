@@ -63,14 +63,12 @@ fn or(regexes: &[&str]) -> String {
 }
 
 fn all_string_regexes(prefixes: &[&'static str]) -> String {
-    let not_single_quote = r#"[^\r\n'\\]*"#;
-    let not_double_quote = r#"[^\r\n"\\]*"#;
-    let backslash = r"\\(\r\n?|\n|.)";
+    let not_single_quote = r#"[^\r\n'\\]"#;
+    let not_double_quote = r#"[^\r\n"\\]"#;
+    let with_backslash = r"\\(\r\n?|\n|.)";
 
-    let single = "'".to_owned() + not_single_quote + r"(" + backslash
-                 + not_single_quote + ")*'";
-    let double = "\"".to_owned() + not_double_quote + r"(" + backslash
-                 + not_double_quote + r#")*""#;
+    let single = "'".to_owned() + r"(" + with_backslash + "|" + not_single_quote + ")*'";
+    let double = "\"".to_owned() + r"(" + with_backslash + "|" + not_double_quote + r#")*""#;
     // ?s: here in regex activates the flag "allow . to match \n"
     let single3 = "'''".to_owned() + r"((?s:\\.|'[^'\\]|'\\.|''[^'\\]|''\\.|[^'\\])*''')?";
     let double3 = "\"\"\"".to_owned() + r#"((?s:\\.|"[^"\\]|"\\.|""[^"\\]|""\\.|[^"\\])*""")?"#;
@@ -499,6 +497,29 @@ mod tests {
 
     parametrize!(
         simple "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
-        multiline_string "''''\n" => [(0, 3, ErrorToken), (3, 1, ErrorToken), (4, 1, Newline)];
+        multiline_string1 "''''\n" => [(0, 3, ErrorToken), (3, 1, ErrorToken), (4, 1, Newline)];
+        multiline_string2 "'''" => [(0, 3, ErrorToken)];
+        multiline_string3 "'''''" => [(0, 3, ErrorToken), (3, 2, String)];
+        unicode "我あφ()" => [(0, 8, Name), (8, 1, Operator), (9, 1, Operator)];
+        string1 r#"u"test""# => [(0, 7, String)];
+        string2 r#"u"""test""""# => [(0, 11, String)];
+        string3 r#"U"""test""""# => [(0, 11, String)];
+        string4 "u'''test'''" => [(0, 11, String)];
+        string5 "U'''test'''" => [(0, 11, String)];
+        string6 "r'''test'''" => [(0, 11, String)];
+        string7 "R'''test'''" => [(0, 11, String)];
+        string_with_escape1 r"'''test\''''" => [(0, 12, String)];
+        string_with_escape2 r"R'''test\''''" => [(0, 13, String)];
+        string_with_escape3 r"''\'test\''''" => [(0, 2, String), (2, 1, ErrorToken),
+                                                 (3, 8, String), (11, 2, String)];
+        bytes1 "b'foo'" => [(0, 6, Bytes)];
+        bytes2 "br'foo'" => [(0, 7, Bytes)];
+        bytes3 "rb'foo'" => [(0, 7, Bytes)];
+        bytes4 "Rb'foo'" => [(0, 7, Bytes)];
+        bytes5 "RB'foo'" => [(0, 7, Bytes)];
+        bytes6 "B'foo'" => [(0, 6, Bytes)];
+        bytes7 r#"B"foo""# => [(0, 6, Bytes)];
+        bytes8 r#"rB"foo""# => [(0, 7, Bytes)];
+        bytes9 r#"Br"foo""# => [(0, 7, Bytes)];
     );
 }
