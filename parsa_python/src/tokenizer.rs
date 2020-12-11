@@ -14,7 +14,7 @@ const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
 const BIN_NUMBER: &str = r"0[bB](_?[01])+";
 const OCT_NUMBER: &str = r"0[oO](_?[0-7])+";
 const DEC_NUMBER: &str = r"(0(_?0)*|[1-9](_?[0-9])*)";
-const EXPONENT: &str = r"[eE][-+]?[0-9](?:_?[0-9])*";
+const EXPONENT: &str = r"[eE][-+]?[0-9](_?[0-9])*";
 const BASIC_WHITESPACE: &str = r"[\f\t ]*(#[^\r\n]*)?";
 
 lazy_static::lazy_static! {
@@ -23,10 +23,10 @@ lazy_static::lazy_static! {
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
     static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
     static ref POINT_FLOAT: String = or(&[
-        r"[0-9](?:_?[0-9])*\.(?:[0-9](?:_?[0-9])*)?",
-        r"\.[0-9](?:_?[0-9])*"]) + "(" + EXPONENT + ")?";
+        r"[0-9](_?[0-9])*\.([0-9](_?[0-9])*)?",
+        r"\.[0-9](_?[0-9])*"]) + "(" + EXPONENT + ")?";
     static ref FLOAT_NUMBER: String = or(&[&POINT_FLOAT, &EXP_FLOAT]);
-    static ref IMAG_NUMBER: String = or(&[r"[0-9](?:_?[0-9])*", &FLOAT_NUMBER]) + r"[jJ]";
+    static ref IMAG_NUMBER: String = or(&[r"[0-9](_?[0-9])*", &FLOAT_NUMBER]) + r"[jJ]";
     static ref NUMBER: Regex = r(&(
         "^".to_owned() + &or(&[&IMAG_NUMBER, &FLOAT_NUMBER, &INT_NUMBER])
     ));
@@ -71,10 +71,11 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
                  + not_single_quote + ")*'";
     let double = "\"".to_owned() + not_double_quote + r"(" + backslash
                  + not_double_quote + r#")*""#;
-    let single3 = "'''".to_owned() + r"(?s:\\.|'[^'\\]|'\\.|''[^'\\]|''\\.|[^'\\])*'''";
-    let double3 = r#"""""#.to_owned() + r#"(?s:\\.|"[^"\\]|"\\.|""[^"\\]|""\\.|[^"\\])*""""#;
+    // ?s: here in regex activates the flag "allow . to match \n"
+    let single3 = "'''".to_owned() + r"((?s:\\.|'[^'\\]|'\\.|''[^'\\]|''\\.|[^'\\])*''')?";
+    let double3 = "\"\"\"".to_owned() + r#"((?s:\\.|"[^"\\]|"\\.|""[^"\\]|""\\.|[^"\\])*""")?"#;
 
-    "^".to_owned() + &or(prefixes) + &or(&[&single, &double, &single3, &double3])
+    "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
 }
 
 create_token!(struct PythonToken, enum PythonTokenType,
@@ -388,15 +389,23 @@ impl Iterator for PythonTokenizer<'_> {
             }
             return self.new_tok(start, true, PythonTokenType::Operator);
         }
+        if let Some(match_) = NUMBER.find(c) {
+            self.index += match_.end();
+            return self.new_tok(start, false, PythonTokenType::Number);
+        }
         let regexes = [
             (&*STRING, PythonTokenType::String),
             (&*BYTES, PythonTokenType::Bytes),
-            (&*NUMBER, PythonTokenType::Number)
         ];
-        for (r, token_type) in &regexes {
+        for &(r, token_type) in &regexes {
             if let Some(match_) = r.find(c) {
-                self.index += match_.end();
-                return self.new_tok(start, false, *token_type);
+                let length = match_.end();
+                self.index += length;
+                if length <= 5 && (match_.as_str().contains("'''")
+                                   || match_.as_str().contains("\"\"\"")) {
+                    return self.new_tok(start, false, PythonTokenType::ErrorToken);
+                }
+                return self.new_tok(start, false, token_type);
             }
         }
         if let Some(match_) = F_STRING_START.find(c) {
@@ -490,5 +499,6 @@ mod tests {
 
     parametrize!(
         simple "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
+        multiline_string "''''\n" => [(0, 3, ErrorToken), (3, 1, ErrorToken), (4, 1, Newline)];
     );
 }
