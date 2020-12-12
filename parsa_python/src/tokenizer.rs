@@ -15,11 +15,8 @@ const BIN_NUMBER: &str = r"0[bB](_?[01])+";
 const OCT_NUMBER: &str = r"0[oO](_?[0-7])+";
 const DEC_NUMBER: &str = r"(0(_?0)*|[1-9](_?[0-9])*)";
 const EXPONENT: &str = r"[eE][-+]?[0-9](_?[0-9])*";
-const BASIC_WHITESPACE: &str = r"[\f\t ]*(#[^\r\n]*)?";
 
 lazy_static::lazy_static! {
-    static ref WHITESPACE: Regex = r(&format!(r"^{w}(\\(\r\n?|\n){w})*", w=BASIC_WHITESPACE));
-
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
     static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
     static ref POINT_FLOAT: String = or(&[
@@ -145,7 +142,7 @@ impl FStringNode {
 
 impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
-        Self {code: code, ..Default::default()}
+        Self {code: code, indent_stack: vec!(0), ..Default::default()}
     }
 
 }
@@ -328,6 +325,58 @@ impl PythonTokenizer<'_> {
         }
         return None;
     }
+
+    #[inline]
+    fn skip_whitespace(&mut self) -> usize {
+        let mut indentation = 0;
+        let mut was_comment = false;
+        let mut iterator = code_from_start(self.code, self.index).chars();
+        while let Some(character) = iterator.next() {
+            if character == '\n' || character == '\r' {
+                if !self.previous_token_was_newline {
+                    return indentation;
+                }
+                was_comment = false;
+                indentation = 0;
+            } else if !was_comment {
+                if character == ' ' || character == '\t' || character == FORM_FEED {
+                    if self.previous_token_was_newline {
+                        indentation += 1;
+                    }
+                } else if character == '#' {
+                    was_comment = true;
+                    indentation = 0;
+                } else if character == '\n' || character == '\r' {
+                    if !self.previous_token_was_newline {
+                        return indentation;
+                    }
+                    indentation = 0;
+                } else if character == '\\' {
+                    let mut found_newline = false;
+                    if let Some(&c) = self.code.as_bytes().get(self.index + 1) {
+                        if c == b'\r' {
+                            self.index += 1;
+                            found_newline = true
+                        }
+                    }
+                    if let Some(&c) = self.code.as_bytes().get(self.index + 1) {
+                        if c == b'\n' {
+                            self.index += 1;
+                            found_newline = true;
+                        }
+                    }
+                    if !found_newline {
+                        return indentation;
+                    }
+                } else {
+                    break
+                }
+            }
+            self.index += 1;
+        }
+        //"^{w}(\\(\r\n?|\n){w})*"
+        indentation
+    }
 }
 
 impl Iterator for PythonTokenizer<'_> {
@@ -342,9 +391,7 @@ impl Iterator for PythonTokenizer<'_> {
             }
         }
 
-        if let Some(match_) = WHITESPACE.find(code_from_start(self.code, self.index)) {
-            self.index += match_.end();
-        }
+        let indentation = self.skip_whitespace();
 
         let start = self.index;
         let c = code_from_start(self.code, self.index);
@@ -353,9 +400,8 @@ impl Iterator for PythonTokenizer<'_> {
             if let Some(&character) = c.as_bytes().first() {
                 if character != b'\n' && character != b'\r' {
                     if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
-                        let indentation_count = start;
-                        if indentation_count > *self.indent_stack.last().unwrap() {
-                            self.indent_stack.push(indentation_count);
+                        if indentation > *self.indent_stack.last().unwrap() {
+                            self.indent_stack.push(indentation);
                             return self.new_tok(start, false, PythonTokenType::Indent);
                         } else {
                             if let Some(token) = self.dedent_if_necessary(start - self.index) {
@@ -449,7 +495,7 @@ impl Iterator for PythonTokenizer<'_> {
 
         match c.as_bytes().first() {
             None => {
-                if self.indent_stack.len() != 0 {
+                if self.indent_stack.len() != 1 {
                     self.indent_stack.pop();
                     self.new_tok(start, false, PythonTokenType::Dedent)
                 } else {
@@ -463,7 +509,6 @@ impl Iterator for PythonTokenizer<'_> {
             },
         }
     }
-
 }
 
 #[inline]
@@ -497,9 +542,6 @@ mod tests {
 
     parametrize!(
         simple "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
-        multiline_string1 "''''\n" => [(0, 3, ErrorToken), (3, 1, ErrorToken), (4, 1, Newline)];
-        multiline_string2 "'''" => [(0, 3, ErrorToken)];
-        multiline_string3 "'''''" => [(0, 3, ErrorToken), (3, 2, String)];
         unicode "我あφ()" => [(0, 8, Name), (8, 1, Operator), (9, 1, Operator)];
         string1 r#"u"test""# => [(0, 7, String)];
         string2 r#"u"""test""""# => [(0, 11, String)];
@@ -521,5 +563,9 @@ mod tests {
         bytes7 r#"B"foo""# => [(0, 6, Bytes)];
         bytes8 r#"rB"foo""# => [(0, 7, Bytes)];
         bytes9 r#"Br"foo""# => [(0, 7, Bytes)];
+        multiline_string_error1 "''''\n" => [(0, 3, ErrorToken), (3, 1, ErrorToken), (4, 1, Newline)];
+        multiline_string_error2 "'''" => [(0, 3, ErrorToken)];
+        multiline_string_error3 "'''''" => [(0, 3, ErrorToken), (3, 2, String)];
+        single_line_string_error1 "' \n'" => [(0, 1, ErrorToken), (2, 1, Newline), (3, 1, ErrorToken)];
     );
 }
