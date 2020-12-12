@@ -169,10 +169,10 @@ impl PythonTokenizer<'_> {
         while indentation_count < *self.indent_stack.last().unwrap() {
             if indentation_count > self.indent_stack[self.indent_stack.len() - 2] {
                 *self.indent_stack.last_mut().unwrap() = indentation_count;
-                return self.new_tok(self.index, false, PythonTokenType::ErrorDedent);//, (lnum, start));
+                return self.new_tok(self.index, false, PythonTokenType::ErrorDedent);
             }
             self.indent_stack.pop();
-            return self.new_tok(self.index, false, PythonTokenType::Dedent);//, spos);
+            return self.new_tok(self.index, false, PythonTokenType::Dedent);
         }
         None
     }
@@ -574,10 +574,20 @@ mod tests {
         multiline_string_error2 "'''" => [(0, 3, ErrorToken)];
         multiline_string_error3 "'''''" => [(0, 3, ErrorToken), (3, 2, String)];
         single_line_string_error1 "' \n'" => [(0, 1, ErrorToken), (2, 1, Newline), (3, 1, ErrorToken)];
+        single_line_string_error2 "' \r'" => [(0, 1, ErrorToken), (2, 1, Newline), (3, 1, ErrorToken)];
+        single_line_string_error3 "' \\'" => [(0, 1, ErrorToken), (2, 1, ErrorToken), (3, 1, ErrorToken)];
+        single_line_string_error4 "( '''" => [(0, 1, Operator), (2, 3, ErrorToken)];
 
         backslash1 "\\\nfoo" => [(2, 3, Name)];
         backslash2 " \\\nfoo" => [(3, 0, Indent), (3, 3, Name), (6, 0, Dedent)];
         backslash3 "\\foo" => [(0, 1, ErrorToken), (1, 3, Name)];
         backslash4 "(+ \\\n 3.5)" => [(0, 1, Operator), (1, 1, Operator), (6, 3, Number), (9, 1, Operator)];
+
+        indent1 "                str(\n\
+                 from x import a\n\
+                 def" => [(16, 0, Indent), (16, 3, Name), (19, 1, Operator),
+                          (21, 4, Name), (26, 1, Name), (28, 6, Name), (35, 1, Name),
+                          (36, 1, Newline), (37, 0, Dedent), (37, 3, Name)];
+        // -100 220
     );
 }
