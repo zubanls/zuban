@@ -142,7 +142,12 @@ impl FStringNode {
 
 impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
-        Self {code: code, indent_stack: vec!(0), ..Default::default()}
+        Self {
+            code: code,
+            indent_stack: vec!(0),
+            previous_token_was_newline: true,
+            ..Default::default()
+        }
     }
 
 }
@@ -368,13 +373,15 @@ impl PythonTokenizer<'_> {
                     if !found_newline {
                         return indentation;
                     }
+                    self.index += 1;
+                    self.skip_whitespace();
+                    return indentation;
                 } else {
                     break
                 }
             }
             self.index += 1;
         }
-        //"^{w}(\\(\r\n?|\n){w})*"
         indentation
     }
 }
@@ -567,5 +574,9 @@ mod tests {
         multiline_string_error2 "'''" => [(0, 3, ErrorToken)];
         multiline_string_error3 "'''''" => [(0, 3, ErrorToken), (3, 2, String)];
         single_line_string_error1 "' \n'" => [(0, 1, ErrorToken), (2, 1, Newline), (3, 1, ErrorToken)];
+
+        backslash1 "\\\nfoo" => [(2, 3, Name)];
+        backslash2 " \\\nfoo" => [(3, 0, Indent), (3, 3, Name), (6, 0, Dedent)];
+        backslash3 "\\foo" => [(0, 1, ErrorToken), (1, 3, Name)];
     );
 }
