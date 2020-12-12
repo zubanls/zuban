@@ -532,6 +532,7 @@ mod tests {
     use parsa::Tokenizer;
     use super::*;
     use PythonTokenType::*;
+    const Op: PythonTokenType = Operator;
 
     macro_rules! parametrize {
         ($($name:ident $input:expr => $expected:tt;)*) => {$(
@@ -592,5 +593,58 @@ mod tests {
                                (3, 1, Name), (4, 1, Newline), (5, 0, Dedent), (5, 1, ErrorToken)];
         formfeed1 "  \x0C  " => [];
         formfeed2 "\x0C'''" => [(1, 0, Indent), (1, 3, ErrorToken), (4, 0, Dedent)];
+
+        f_string1 "f'" => [(0, 2, FStringStart)];
+        f_string2 "f''" => [(0, 2, FStringStart), (2, 1, FStringEnd)];
+        f_string3 "f' {}'" => [(0, 2, FStringStart), (2, 1, FStringString),
+                               (3, 1, Op), (4, 1, Op), (5, 1, FStringEnd)];
+        f_string4 "f' {'" => [(0, 2, FStringStart), (2, 1, FStringString),
+                               (3, 1, Op), (5, 1, FStringEnd)];
+        f_string5 "f' '{}" => [(0, 2, FStringStart), (2, 1, FStringString),
+                               (3, 1, FStringEnd), (4, 1, Op), (5, 1, Op)];
+        f_string6 r"f'\''" => [(0, 2, FStringStart), (2, 2, FStringString), (4, 1, FStringEnd)];
+        f_string7 "f'{ ''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 1, FStringEnd), (5, 3, String)];
+        f_string8 "f'{ f''}'" => [(0, 2, FStringStart), (2, 1, Op), (4, 1, Name),
+                                  (5, 1, FStringEnd), (6, 3, String)];
+
+        f_string_format_spec1 "f'Some {x:.2f}{y}'" => [
+            (0, 2, FStringStart), (2, 5, FStringString), (7, 1, Operator),
+            (8, 1, Name), (9, 1, Op), (10, 3, FStringString), (13, 1, Op),
+            (14, 1, Op), (14, 1, Name), (15, 1, Op), (16, 1, FStringEnd)];
+        // := is a valid token, it's not valid if it's just a dot.
+        f_string_format_spec2 "f'{x:=10}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Name),
+            (4, 1, Op), (6, 3, FStringString), (8, 1, Op), (9, 1, FStringEnd)];
+        f_string_format_spec3 "f'{x:=10}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Op), (4, 1, Name),
+            (5, 2, Op), (7, 2, FStringString), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
+
+        f_string_multiline1 "f'''abc\ndef'''" => [(0, 4, FStringStart), (4, 7, FStringString),
+                                                (11, 3, FStringEnd)];
+        f_string_multiline2 "f'''abc{\n123}def'''" => [
+            (0, 4, FStringStart), (4, 3, FStringString), (7, 1, Op),
+            (8, 3, Number), (11, 1, Op), (12, 3, FStringString), (15, 3, FStringEnd)];
+        f_string_multiline3 "f'''abc{\ndef}'''" => [
+            (0, 4, FStringStart), (4, 3, FStringString), (7, 1, Op),
+            (8, 3, Name), (11, 1, Op), (12, 3, FStringEnd)];
+
+        f_string_line_continuation1 "f'abc\\\ndef'" => [(0, 2, FStringStart), (2, 8, FStringString),
+                                                       (10, 1, FStringEnd)];
+        f_string_line_continuation2 "f'\\\n{123}\\\n'" => [
+            (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
+            (5, 3, Number), (8, 1, Op), (2, 2, FStringString), (10, 1, FStringEnd)];
+        f_string_line_continuation3 "f'{\\\n123}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (5, 3, Number), (8, 1, Op),
+            (9, 1, FStringEnd)];
+        // in format spec
+        f_string_line_continuation4 "f'{123:.2\\\nf}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 3, Number),
+            (6, 5, FStringString), (11, 1, Op), (12, 1, FStringEnd)];
+
+        // A newline without a line continuation inside a single-line string is
+        // wrong, and will generate an ERRORTOKEN
+        f_string_newline "f'abc\ndef'" => [
+            (0, 2, FStringStart), (2, 3, FStringString), (5, 1, Newline),
+            (6, 3, Name), (9, 1, ErrorToken)];
     );
 }
