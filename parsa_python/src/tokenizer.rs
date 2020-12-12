@@ -578,5 +578,6 @@ mod tests {
         backslash1 "\\\nfoo" => [(2, 3, Name)];
         backslash2 " \\\nfoo" => [(3, 0, Indent), (3, 3, Name), (6, 0, Dedent)];
         backslash3 "\\foo" => [(0, 1, ErrorToken), (1, 3, Name)];
+        backslash4 "(+ \\\n 3.5)" => [(0, 1, Operator), (1, 1, Operator), (6, 3, Number), (9, 1, Operator)];
     );
 }
