@@ -588,6 +588,9 @@ mod tests {
                  def" => [(16, 0, Indent), (16, 3, Name), (19, 1, Operator),
                           (21, 4, Name), (26, 1, Name), (28, 6, Name), (35, 1, Name),
                           (36, 1, Newline), (37, 0, Dedent), (37, 3, Name)];
-        // -100 220
+        indent2 "f\n g\n$" => [(0, 1, Name), (1, 1, Newline), (3, 0, Indent),
+                               (3, 1, Name), (4, 1, Newline), (5, 0, Dedent), (5, 1, ErrorToken)];
+        formfeed1 "  \x0C  " => [];
+        formfeed2 "\x0C'''" => [(1, 0, Indent), (1, 3, ErrorToken), (4, 0, Dedent)];
     );
 }
