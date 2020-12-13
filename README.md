@@ -4,4 +4,4 @@
 
 I usually use this to test:
 
-    RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
+    CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture

@@ -442,7 +442,7 @@ impl Iterator for PythonTokenizer<'_> {
                             self.indent_stack.push(indentation);
                             return self.new_tok(start, false, PythonTokenType::Indent);
                         } else {
-                            if let Some(token) = self.dedent_if_necessary(start - self.index) {
+                            if let Some(token) = self.dedent_if_necessary(indentation) {
                                 return Some(token);
                             }
                         }
@@ -626,6 +626,12 @@ mod tests {
                           (36, 1, Newline), (37, 0, Dedent), (37, 3, Name)];
         indent2 "f\n g\n$" => [(0, 1, Name), (1, 1, Newline), (3, 0, Indent),
                                (3, 1, Name), (4, 1, Newline), (5, 0, Dedent), (5, 1, ErrorToken)];
+        indent3 "  foo\n bar" => [(2, 0, Indent), (2, 3, Name), (5, 1, Newline),
+                                  (7, 0, ErrorDedent), (7, 3, Name), (10, 0, Dedent)];
+        indent4 "  foo\n bar \n baz" => [(2, 0, Indent), (2, 3, Name), (5, 1, Newline),
+                                         (7, 0, ErrorDedent), (7, 3, Name), (11, 1, Newline),
+                                         (13, 3, Name), (16, 0, Dedent)];
+
         formfeed1 "  \x0C  " => [];
         formfeed2 "\x0C'''" => [(1, 0, Indent), (1, 3, ErrorToken), (4, 0, Dedent)];
 
@@ -671,7 +677,7 @@ mod tests {
         f_string_line_continuation3 "f'{\\\n123}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 2, ErrorToken), (5, 3, Number), (8, 1, Op),
             (9, 1, FStringEnd)];
-        // in format spec
+        // In format spec
         f_string_line_continuation4 "f'{123:.2\\\nf}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 3, Number), (6, 1, Op),
             (7, 5, FStringString), (12, 1, Op), (13, 1, FStringEnd)];
