@@ -41,7 +41,7 @@ lazy_static::lazy_static! {
 
     static ref NAME: Regex = r(r"^[A-Za-z_0-9\u0080-\uffff]+");
     static ref NEWLINE: Regex = r(r"^(\r\n?|\n)");
-    static ref F_STRING_START: Regex = r(r#"^([Ff][Rr]?|[Rr][Ff])('|"|"""|''')"#);
+    static ref F_STRING_START: Regex = r(r#"^([Ff][Rr]?|[Rr][Ff])("""|'''|'|")"#);
 
     static ref ALWAYS_BREAK_NAMES: HashSet<&'static str> = [
         "import", "class", "def", "try", "except",
@@ -135,7 +135,7 @@ impl FStringNode {
     fn allow_multiline(&self) -> bool {
         match self.quote {
             QuoteType::Single | QuoteType::Double => false,
-            QuoteType::SingleTriple | QuoteType::DoubleTriple => false,
+            QuoteType::SingleTriple | QuoteType::DoubleTriple => true,
         }
     }
 
@@ -271,8 +271,8 @@ impl PythonTokenizer<'_> {
                         iterator.next();
 
                         if in_expr {
-                            self.index += i;
-                            return self.new_tok(self.index - 1, false, PythonTokenType::ErrorToken);
+                            self.index += i + 2;
+                            return self.new_tok(self.index - 2, false, PythonTokenType::ErrorToken);
                         }
                     }
                 }
@@ -410,6 +410,7 @@ impl PythonTokenizer<'_> {
                     break
                 }
             }
+            // TODO wrong length of unicode sign needed.
             self.index += 1;
         }
         indentation
@@ -649,18 +650,18 @@ mod tests {
         f_string_format_spec2 "f'{x:=10}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Name),
             (4, 1, Op), (5, 3, FStringString), (8, 1, Op), (9, 1, FStringEnd)];
-        f_string_format_spec3 "f'{x:=10}'" => [
+        f_string_format_spec3 "f'{(x:=10)}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Op), (4, 1, Name),
-            (5, 2, Op), (7, 2, FStringString), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
+            (5, 2, Op), (7, 2, Number), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
 
         f_string_multiline1 "f'''abc\ndef'''" => [(0, 4, FStringStart), (4, 7, FStringString),
                                                 (11, 3, FStringEnd)];
         f_string_multiline2 "f'''abc{\n123}def'''" => [
             (0, 4, FStringStart), (4, 3, FStringString), (7, 1, Op),
-            (8, 3, Number), (11, 1, Op), (12, 3, FStringString), (15, 3, FStringEnd)];
+            (9, 3, Number), (12, 1, Op), (13, 3, FStringString), (16, 3, FStringEnd)];
         f_string_multiline3 "f'''abc{\ndef}'''" => [
             (0, 4, FStringStart), (4, 3, FStringString), (7, 1, Op),
-            (8, 3, Name), (11, 1, Op), (12, 3, FStringEnd)];
+            (9, 3, Name), (12, 1, Op), (13, 3, ErrorToken)];
 
         f_string_line_continuation1 "f'abc\\\ndef'" => [
             (0, 2, FStringStart), (2, 8, FStringString), (10, 1, FStringEnd)];
@@ -668,7 +669,7 @@ mod tests {
             (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
             (5, 3, Number), (8, 1, Op), (9, 2, FStringString), (11, 1, FStringEnd)];
         f_string_line_continuation3 "f'{\\\n123}'" => [
-            (0, 2, FStringStart), (2, 1, Op), (5, 3, Number), (8, 1, Op),
+            (0, 2, FStringStart), (2, 1, Op), (3, 2, ErrorToken), (5, 3, Number), (8, 1, Op),
             (9, 1, FStringEnd)];
         // in format spec
         f_string_line_continuation4 "f'{123:.2\\\nf}'" => [
