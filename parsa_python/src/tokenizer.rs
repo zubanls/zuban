@@ -205,7 +205,7 @@ impl PythonTokenizer<'_> {
         while let Some((i, character)) = iterator.next() {
             if (character == '{' || character == '}') && !in_expr {
                 if let Some((_, next)) = iterator.next() {
-                    if self.get_f_string_tos().in_format_spec() {
+                    //if self.get_f_string_tos().in_format_spec() {
                         // If the bracket appears again, we can just continue,
                         // it's part of the string.
                         if next != character {
@@ -213,7 +213,7 @@ impl PythonTokenizer<'_> {
                                 return Some(t);
                             }
                         }
-                    }
+                    //}
                     return None;
                 }
             } else if character == '"' {
@@ -253,8 +253,9 @@ impl PythonTokenizer<'_> {
                 return None;
             } else if character == '\\' {
                 if let Some(&(_, next)) = iterator.peek() {
-                    if next != '{' && next == '}' {
+                    if next != '{' && next != '}' {
                         iterator.next();
+
                         if in_expr {
                             self.index += i;
                             return self.new_tok(self.index - 1, false, PythonTokenType::ErrorToken);
@@ -310,15 +311,20 @@ impl PythonTokenizer<'_> {
         // what. It's a bit strange that in the expr case it returns an
         // fstring_string first, but this should be fine, since if there's a
         // syntax error in the parser, the error will be there anyway.
-        return self.maybe_fstring_string(string_length).or_else(|| {
-            self.f_string_stack.drain(drain_from..);
-            let start = self.index;
-            self.index += match quote {
+        let end = |node: &mut Self| {
+            node.f_string_stack.drain(drain_from..);
+            let start = node.index;
+            node.index += match quote {
                 QuoteType::Single | QuoteType::Double => 1,
                 QuoteType::SingleTriple | QuoteType::DoubleTriple => 3,
             };
-            self.new_tok(start, false, PythonTokenType::FStringEnd)
-        });
+            node.new_tok(start, false, PythonTokenType::FStringEnd)
+        };
+        if self.get_f_string_tos().in_expr() {
+            self.index += string_length;
+            return end(self);
+        }
+        return self.maybe_fstring_string(string_length).or_else(|| end(self));
     }
 
     #[inline]
@@ -599,7 +605,7 @@ mod tests {
         f_string3 "f' {}'" => [(0, 2, FStringStart), (2, 1, FStringString),
                                (3, 1, Op), (4, 1, Op), (5, 1, FStringEnd)];
         f_string4 "f' {'" => [(0, 2, FStringStart), (2, 1, FStringString),
-                               (3, 1, Op), (5, 1, FStringEnd)];
+                              (3, 1, Op), (4, 1, FStringEnd)];
         f_string5 "f' '{}" => [(0, 2, FStringStart), (2, 1, FStringString),
                                (3, 1, FStringEnd), (4, 1, Op), (5, 1, Op)];
         f_string6 r"f'\''" => [(0, 2, FStringStart), (2, 2, FStringString), (4, 1, FStringEnd)];
@@ -628,8 +634,8 @@ mod tests {
             (0, 4, FStringStart), (4, 3, FStringString), (7, 1, Op),
             (8, 3, Name), (11, 1, Op), (12, 3, FStringEnd)];
 
-        f_string_line_continuation1 "f'abc\\\ndef'" => [(0, 2, FStringStart), (2, 8, FStringString),
-                                                       (10, 1, FStringEnd)];
+        f_string_line_continuation1 "f'abc\\\ndef'" => [
+            (0, 2, FStringStart), (2, 8, FStringString), (10, 1, FStringEnd)];
         f_string_line_continuation2 "f'\\\n{123}\\\n'" => [
             (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
             (5, 3, Number), (8, 1, Op), (2, 2, FStringString), (10, 1, FStringEnd)];
