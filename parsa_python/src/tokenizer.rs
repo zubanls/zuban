@@ -98,6 +98,17 @@ enum QuoteType {
     DoubleTriple,  // """
 }
 
+impl QuoteType {
+    fn to_value(self) -> &'static str {
+        match self {
+            Self::Single => "'",
+            Self::Double => "\"",
+            Self::SingleTriple => "'''",
+            Self::DoubleTriple => "\"\"\"",
+        }
+    }
+}
+
 #[derive(Debug)]
 struct FStringNode {
     quote: QuoteType,
@@ -246,7 +257,10 @@ impl PythonTokenizer<'_> {
                 let tos = self.get_f_string_tos();
                 if tos.parentheses_level - tos.format_spec_count == 1 {
                     tos.format_spec_count += 1;
-                    self.index = i;
+                    self.index += i + 1;
+                    // We cannot just return None here, because otherwise := would be tokenized
+                    // the wrong way.
+                    return self.new_tok(self.index - 1, true, PythonTokenType::Operator);
                 }
                 // By returning here, we are making sure that the normal
                 // tokenizer returns the as an operator.
@@ -325,6 +339,16 @@ impl PythonTokenizer<'_> {
             return end(self);
         }
         return self.maybe_fstring_string(string_length).or_else(|| end(self));
+    }
+
+    #[inline]
+    fn is_still_part_of_f_string(&self, match_: regex::Match) -> bool {
+        for node in &self.f_string_stack {
+            if match_.as_str().contains(node.quote.to_value()) {
+                return true;
+            }
+        }
+        false
     }
 
     #[inline]
@@ -456,34 +480,38 @@ impl Iterator for PythonTokenizer<'_> {
         ];
         for &(r, token_type) in &regexes {
             if let Some(match_) = r.find(c) {
-                let length = match_.end();
-                self.index += length;
-                if length <= 5 && (match_.as_str().contains("'''")
-                                   || match_.as_str().contains("\"\"\"")) {
-                    return self.new_tok(start, false, PythonTokenType::ErrorToken);
+                if !self.is_still_part_of_f_string(match_) {
+                    let length = match_.end();
+                    self.index += length;
+                    if length <= 5 && (match_.as_str().contains("'''")
+                                       || match_.as_str().contains("\"\"\"")) {
+                        return self.new_tok(start, false, PythonTokenType::ErrorToken);
+                    }
+                    return self.new_tok(start, false, token_type);
                 }
-                return self.new_tok(start, false, token_type);
             }
         }
         if let Some(match_) = F_STRING_START.find(c) {
-            self.index += match_.end();
-            self.f_string_stack.push(FStringNode {
-                quote: {
-                    let string = match_.as_str();
-                    if string.contains("''") {
-                        QuoteType::SingleTriple
-                    } else if string.contains("\"\"") {
-                        QuoteType::DoubleTriple
-                    } else if string.contains("'") {
-                        QuoteType::Single
-                    } else {
-                        QuoteType::Double
-                    }
-                },
-                parentheses_level: 0,
-                format_spec_count: 0,
-            });
-            return self.new_tok(start, false, PythonTokenType::FStringStart);
+            if !self.is_still_part_of_f_string(match_) {
+                self.index += match_.end();
+                self.f_string_stack.push(FStringNode {
+                    quote: {
+                        let string = match_.as_str();
+                        if string.contains("''") {
+                            QuoteType::SingleTriple
+                        } else if string.contains("\"\"") {
+                            QuoteType::DoubleTriple
+                        } else if string.contains("'") {
+                            QuoteType::Single
+                        } else {
+                            QuoteType::Double
+                        }
+                    },
+                    parentheses_level: 0,
+                    format_spec_count: 0,
+                });
+                return self.new_tok(start, false, PythonTokenType::FStringStart);
+            }
         }
 
         if let Some(match_) = NAME.find(c) {
@@ -616,11 +644,11 @@ mod tests {
         f_string_format_spec1 "f'Some {x:.2f}{y}'" => [
             (0, 2, FStringStart), (2, 5, FStringString), (7, 1, Operator),
             (8, 1, Name), (9, 1, Op), (10, 3, FStringString), (13, 1, Op),
-            (14, 1, Op), (14, 1, Name), (15, 1, Op), (16, 1, FStringEnd)];
+            (14, 1, Op), (15, 1, Name), (16, 1, Op), (17, 1, FStringEnd)];
         // := is a valid token, it's not valid if it's just a dot.
         f_string_format_spec2 "f'{x:=10}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Name),
-            (4, 1, Op), (6, 3, FStringString), (8, 1, Op), (9, 1, FStringEnd)];
+            (4, 1, Op), (5, 3, FStringString), (8, 1, Op), (9, 1, FStringEnd)];
         f_string_format_spec3 "f'{x:=10}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Op), (4, 1, Name),
             (5, 2, Op), (7, 2, FStringString), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
@@ -638,14 +666,14 @@ mod tests {
             (0, 2, FStringStart), (2, 8, FStringString), (10, 1, FStringEnd)];
         f_string_line_continuation2 "f'\\\n{123}\\\n'" => [
             (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
-            (5, 3, Number), (8, 1, Op), (2, 2, FStringString), (10, 1, FStringEnd)];
+            (5, 3, Number), (8, 1, Op), (9, 2, FStringString), (11, 1, FStringEnd)];
         f_string_line_continuation3 "f'{\\\n123}'" => [
             (0, 2, FStringStart), (2, 1, Op), (5, 3, Number), (8, 1, Op),
             (9, 1, FStringEnd)];
         // in format spec
         f_string_line_continuation4 "f'{123:.2\\\nf}'" => [
-            (0, 2, FStringStart), (2, 1, Op), (3, 3, Number),
-            (6, 5, FStringString), (11, 1, Op), (12, 1, FStringEnd)];
+            (0, 2, FStringStart), (2, 1, Op), (3, 3, Number), (6, 1, Op),
+            (7, 5, FStringString), (12, 1, Op), (13, 1, FStringEnd)];
 
         // A newline without a line continuation inside a single-line string is
         // wrong, and will generate an ERRORTOKEN
