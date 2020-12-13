@@ -461,6 +461,10 @@ impl Iterator for PythonTokenizer<'_> {
             }
         }
 
+        if let Some(match_) = NUMBER.find(c) {
+            self.index += match_.end();
+            return self.new_tok(start, false, PythonTokenType::Number);
+        }
         if let Some(match_) = OPERATOR.find(c) {
             let character = c.as_bytes()[0];
             if character == b';' {
@@ -480,10 +484,6 @@ impl Iterator for PythonTokenizer<'_> {
                 }
             }
             return self.new_tok(start, true, PythonTokenType::Operator);
-        }
-        if let Some(match_) = NUMBER.find(c) {
-            self.index += match_.end();
-            return self.new_tok(start, false, PythonTokenType::Number);
         }
         let regexes = [
             (&*STRING, PythonTokenType::String),
@@ -630,6 +630,13 @@ mod tests {
         single_line_string_error2 "' \r'" => [(0, 1, ErrorToken), (2, 1, Newline), (3, 1, ErrorToken)];
         single_line_string_error3 "' \\'" => [(0, 1, ErrorToken), (2, 1, ErrorToken), (3, 1, ErrorToken)];
         single_line_string_error4 "( '''" => [(0, 1, Operator), (2, 3, ErrorToken)];
+
+        number1 r"1_1" => [(0, 3, Number)];
+        number2 r"1_1jfoo" => [(0, 4, Number), (4, 3, Name)];
+        number3 r"3_111_133.13" => [(0, 12, Number)];
+        number4 r".13" => [(0, 3, Number)];
+        number5 r"1." => [(0, 2, Number)];
+        number6 r"1.2j" => [(0, 4, Number)];
 
         backslash1 "\\\nfoo" => [(2, 3, Name)];
         backslash2 " \\\nfoo" => [(3, 0, Indent), (3, 3, Name), (6, 0, Dedent)];
