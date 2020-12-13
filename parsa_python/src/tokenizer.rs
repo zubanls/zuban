@@ -414,6 +414,17 @@ impl PythonTokenizer<'_> {
         }
         indentation
     }
+
+    #[inline]
+    fn find_name_length(&self, code: &str) -> usize {
+        for (i, character) in code.char_indices() {
+            // TODO this is not correct, because we should implement str.isidentifier from CPython
+            if !(character.is_alphabetic() || character.is_numeric() && i != 0) {
+                return i;
+            }
+        }
+        return code.len()
+    }
 }
 
 impl Iterator for PythonTokenizer<'_> {
@@ -514,20 +525,13 @@ impl Iterator for PythonTokenizer<'_> {
             }
         }
 
-        let mut name_index = None;
-        for (i, character) in c.char_indices() {
-            // TODO this is not correct, because we should implement str.isidentifier from CPython
-            if !(character.is_alphabetic() || character.is_numeric() && i != 0) {
-                name_index = Some(i);
-                break
-            }
-        }
-        let unwrapped_name_index = name_index.unwrap_or(c.len());
-        if unwrapped_name_index > 0 {
-            if ALWAYS_BREAK_NAMES.contains(&c[..unwrapped_name_index]) {
+
+        let name_length = self.find_name_length(c);
+        if name_length > 0 {
+            if ALWAYS_BREAK_NAMES.contains(&c[..name_length]) {
                 self.encountered_break_token();
             }
-            self.index += unwrapped_name_index;
+            self.index += name_length;
             return self.new_tok(start, true, PythonTokenType::Name);
         }
 
