@@ -124,7 +124,9 @@ impl FStringNode {
 
     #[inline]
     fn close_parentheses(&mut self) {
-        self.parentheses_level -= 1;
+        if self.parentheses_level > 0 {
+            self.parentheses_level -= 1;
+        }
         if self.parentheses_level == 0 {
             // No parentheses means that the format spec is also finished.
             self.format_spec_count = 0
@@ -216,15 +218,13 @@ impl PythonTokenizer<'_> {
         while let Some((i, character)) = iterator.next() {
             if (character == '{' || character == '}') && !in_expr {
                 if let Some((_, next)) = iterator.next() {
-                    //if self.get_f_string_tos().in_format_spec() {
-                        // If the bracket appears again, we can just continue,
-                        // it's part of the string.
-                        if next != character {
-                            if let Some(t) = self.maybe_fstring_string(i) {
-                                return Some(t);
-                            }
+                    // If the bracket appears again, we can just continue,
+                    // it's part of the string.
+                    if next != character || false && self.get_f_string_tos().in_format_spec() {
+                        if let Some(t) = self.maybe_fstring_string(i) {
+                            return Some(t);
                         }
-                    //}
+                    }
                     return None;
                 }
             } else if character == '"' {
@@ -686,6 +686,9 @@ mod tests {
         f_string_format_spec3 "f'{(x:=10)}'" => [
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Op), (4, 1, Name),
             (5, 2, Op), (7, 2, Number), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
+        f_string_format_spec4 "f'{1}}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Number), (4, 1, Operator),
+            (5, 1, Op), (6, 1, FStringEnd)];
 
         f_string_multiline1 "f'''abc\ndef'''" => [(0, 4, FStringStart), (4, 7, FStringString),
                                                 (11, 3, FStringEnd)];
