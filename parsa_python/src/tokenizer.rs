@@ -584,8 +584,15 @@ mod tests {
     }
 
     parametrize!(
-        simple "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
-        unicode "我あφ()" => [(0, 8, Name), (8, 1, Operator), (9, 1, Operator)];
+        simple1 "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
+        simple2 "1foo1" => [(0, 1, Number), (1, 4, Name)];
+        unicode1 "我あφ()" => [(0, 8, Name), (8, 1, Operator), (9, 1, Operator)];
+        unicode2 "மெல்லினம்" => [(0, 27, Name)];
+        unicode3 "²" => [(0, 2, ErrorToken)];
+        unicode4 "ä²ö" => [(0, 2, Name), (2, 4, ErrorToken), (6, 8, Name)];
+        unicode5 "ää²¹öö" => [(0, 4, Name), (4, 8, ErrorToken), (8, 12, Name)];
+        unicode6 " \x00a" => [(0, 1, Indent), (1, 1, ErrorToken), (2, 1, Name), (3, 1, ErrorToken)];
+
         string1 r#"u"test""# => [(0, 7, String)];
         string2 r#"u"""test""""# => [(0, 11, String)];
         string3 r#"U"""test""""# => [(0, 11, String)];
@@ -631,6 +638,16 @@ mod tests {
         indent4 "  foo\n bar \n baz" => [(2, 0, Indent), (2, 3, Name), (5, 1, Newline),
                                          (7, 0, ErrorDedent), (7, 3, Name), (11, 1, Newline),
                                          (13, 3, Name), (16, 0, Dedent)];
+        weird_indent1 "  )\n foo " => [(2, 0, Indent), (2, 1, Op), (3, 1, Newline),
+                                       (5, 0, ErrorDedent), (5, 3, Name), (9, 0, Dedent)];
+        weird_indent2 "  (\n foo " => [(2, 0, Indent), (2, 1, Op), (5, 3, Name), (9, 0, Dedent)];
+        weird_indent3 "a\n b\n  )\n c" => [
+            (0, 1, Name), (1, 1, Newline), (3, 0, Indent), (3, 1, Name),
+            (4, 1, Newline), (7, 0, Indent), (7, 1, Op), (8, 1, Newline),
+            (10, 0, Dedent), (10, 1, Name), (11, 0, Dedent)];
+        weird_indent4 " 1 \\\ndef" => [
+            (1, 0, Indent), (1, 1, Number), (5, 3, Name), (8, 0, Dedent)];
+
 
         formfeed1 "  \x0C  " => [];
         formfeed2 "\x0C'''" => [(1, 0, Indent), (1, 3, ErrorToken), (4, 0, Dedent)];
