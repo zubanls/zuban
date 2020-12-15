@@ -42,6 +42,7 @@ lazy_static::lazy_static! {
     static ref NAME: Regex = r(r"^[A-Za-z_0-9\u0080-\uffff]+");
     static ref NEWLINE: Regex = r(r"^(\r\n?|\n)");
     static ref F_STRING_START: Regex = r(r#"^([Ff][Rr]?|[Rr][Ff])("""|'''|'|")"#);
+    static ref UNICODE_CHARACTER_NAME: Regex = r(r"\{[A-Za-z0-9\-]+( [A-Za-z0-9\-]+)*\}");
 
     static ref ALWAYS_BREAK_NAMES: HashSet<&'static str> = [
         "import", "class", "def", "try", "except",
@@ -267,6 +268,13 @@ impl PythonTokenizer<'_> {
                 return None;
             } else if character == '\\' {
                 if let Some(&(_, next)) = iterator.peek() {
+                    if next == 'N' {
+                        if let Some(match_) = UNICODE_CHARACTER_NAME.find(
+                            code_from_start(self.code, self.index + i + 2)) {
+                            iterator.nth(match_.end());
+                            continue;
+                        }
+                    }
                     if next != '{' && next != '}' {
                         iterator.next();
 
@@ -525,7 +533,6 @@ impl Iterator for PythonTokenizer<'_> {
             }
         }
 
-
         let name_length = self.find_name_length(c);
         if name_length > 0 {
             if ALWAYS_BREAK_NAMES.contains(&c[..name_length]) {
@@ -577,6 +584,7 @@ mod tests {
     use parsa::Tokenizer;
     use super::*;
     use PythonTokenType::*;
+    #[allow(non_upper_case_globals)]
     const Op: PythonTokenType = Operator;
 
     macro_rules! parametrize {
@@ -724,5 +732,16 @@ mod tests {
         f_string_newline "f'abc\ndef'" => [
             (0, 2, FStringStart), (2, 3, FStringString), (5, 1, Newline),
             (6, 3, Name), (9, 1, ErrorToken)];
+
+        f_string_with_unicode_name1 r"f'\N{foo}'" => [
+            (0, 2, FStringStart), (2, 7, FStringString), (9, 1, FStringEnd)];
+        f_string_with_unicode_name2 r"f'\N{foo} {1}'" => [
+            (0, 2, FStringStart), (2, 8, FStringString), (10, 1, Op),
+            (11, 1, Number), (12, 1, Op), (13, 1, FStringEnd)];
+        f_string_with_unicode_name3 r"f'\N'" => [
+            (0, 2, FStringStart), (2, 2, FStringString), (4, 1, FStringEnd)];
+        f_string_with_unicode_name4 r"f'\N{}'" => [
+            (0, 2, FStringStart), (2, 2, FStringString), (4, 1, Op),
+            (5, 1, Op), (6, 1, FStringEnd)];
     );
 }
