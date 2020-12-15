@@ -7,7 +7,7 @@ use crate::tokenizer::{PythonToken, PythonTokenType, PythonTokenizer};
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
-    struct PythonNode, enum NodeType, PythonTokenizer, PythonToken, PythonTokenType,
+    struct PythonNode, enum PythonNodeType, PythonTokenizer, PythonToken, PythonTokenType,
 
     single_input: Newline | simple_stmt | compound_stmt Newline
     file_input: stmt* Endmarker
@@ -176,10 +176,13 @@ create_grammar!(
 mod tests {
     use super::*;
     #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    fn test_grammar() {
+        let tree = PYTHON_GRAMMAR.parse("{foo: 1}");
+        let root_node = tree.get_root_node();
+        assert_eq!(root_node.node_type(), Some(PythonNodeType::file_input));
+        assert_eq!(root_node.get_extra_data(), 0);
+        assert_eq!(tree.internal_tree.nodes.len(), 12);
         //dbg!(TokenType::get_map());
-        //dbg!(NodeType::get_map());
-        //PYTHON_GRAMMAR.parse("asdf");
+        //dbg!(PythonNodeType::get_map());
     }
 }

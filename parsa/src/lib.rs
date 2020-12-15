@@ -115,7 +115,7 @@ macro_rules! __create_node {
         }
 
         impl $Node<'_> {
-            fn get_extra_data(&self) -> $crate::ExtraData {
+            pub fn get_extra_data(&self) -> $crate::ExtraData {
                 self.internal_node.extra_data
             }
 
@@ -319,7 +319,7 @@ macro_rules! create_grammar {
         $crate::__create_node!(struct $Node, enum $NodeType, $TokenType,
                                [rules_to_nodes=$first_node $($rule)+]);
 
-        struct $Grammar {
+        pub struct $Grammar {
             internal_grammar: Grammar<$Token>,
         }
 
@@ -377,7 +377,7 @@ macro_rules! create_grammar {
         }
 
         $crate::lazy_static! {
-            static ref $grammar: $Grammar = {$Grammar::new()};
+            pub static ref $grammar: $Grammar = {$Grammar::new()};
         }
     }
 }
