@@ -9,8 +9,8 @@ create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
     struct PythonNode, enum PythonNodeType, PythonTokenizer, PythonToken, PythonTokenType,
 
-    single_input: Newline | simple_stmt | compound_stmt Newline
     file_input: stmt* Endmarker
+    single_input: Newline | simple_stmt | compound_stmt Newline
     eval_input: testlist Newline* Endmarker
 
     decorator: "@" dotted_name [ "(" [arglist] ")" ] Newline
@@ -177,11 +177,11 @@ mod tests {
     use super::*;
     #[test]
     fn test_grammar() {
-        let tree = PYTHON_GRAMMAR.parse("{foo: 1}");
+        let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n");
         let root_node = tree.get_root_node();
         assert_eq!(root_node.node_type(), Some(PythonNodeType::file_input));
         assert_eq!(root_node.get_extra_data(), 0);
-        assert_eq!(tree.internal_tree.nodes.len(), 12);
+        assert_eq!(tree.internal_tree.nodes.len(), 59);
         //dbg!(TokenType::get_map());
         //dbg!(PythonNodeType::get_map());
     }
