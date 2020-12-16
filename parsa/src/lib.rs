@@ -306,7 +306,7 @@ macro_rules! __parse_rule {
             panic!("Key exists twice: {}", stringify!($label));
         }
 
-        $rules.insert(key, $crate::__parse_identifier!($($saved)+));
+        $rules.insert(key, (stringify!($label), $crate::__parse_identifier!($($saved)+)));
     };
 }
 

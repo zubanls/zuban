@@ -2,7 +2,7 @@ use std::collections::{HashMap};
 use std::marker::PhantomData;
 
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan, 
-                       DFAState, Keywords, generate_automatons, Rule, 
+                       DFAState, Keywords, generate_automatons, Rule, RuleMap,
                        InternalStrToToken, InternalStrToNode,
                        InternalTokenType, InternalNodeType};
 use std::fmt::Debug;
@@ -92,7 +92,7 @@ struct Stack<'a, T: Token> {
 }
 
 impl<'a, T: Token+Debug> Grammar<T> {
-    pub fn new(rules: &HashMap<InternalNodeType, Rule>,
+    pub fn new(rules: &RuleMap,
                nonterminal_map: &'static InternalStrToNode, 
                terminal_map: &'static InternalStrToToken) -> Self {
         let (automatons, keywords) = generate_automatons(nonterminal_map, terminal_map, rules);
@@ -127,6 +127,8 @@ impl<'a, T: Token+Debug> Grammar<T> {
                 transition = token.get_type().to_squashed();
             }
 
+            //dbg!(&token);
+            //dbg!(stack.get_tos().dfa_state.transition_to_plan.values().map(|x| x.debug_text).collect::<Vec<_>>());
             loop {
                 let tos = stack.get_tos();
                 match tos.dfa_state.transition_to_plan.get(&transition) {

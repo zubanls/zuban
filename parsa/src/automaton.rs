@@ -8,6 +8,7 @@ type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
 pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
+pub type RuleMap = HashMap<InternalNodeType, (&'static str, Rule)>;
 
 
 #[derive(Debug)]
@@ -136,6 +137,7 @@ pub struct RuleAutomaton {
     type_: InternalNodeType,
     nfa_states: Vec<NFAState>,
     pub dfa_states: Vec<DFAState>,
+    name: &'static str,
 }
 
 impl RuleAutomaton {
@@ -301,7 +303,7 @@ impl RuleAutomaton {
 }
 
 pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
-                           rules: &HashMap<InternalNodeType, Rule>) -> (Automatons, Keywords) {
+                           rules: &RuleMap) -> (Automatons, Keywords) {
     let mut keywords = Keywords {
         // We need to start the numbers of keywords after tokens. Keyword ID's therefore never
         // clash with Token IDs (both are of type SquashedInternalType).
@@ -310,11 +312,12 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     };
     let mut automatons = HashMap::new();
     let dfa_counter = 0;
-    for (internal_type, rule) in rules {
+    for (internal_type, (rule_name, rule)) in rules {
         let mut automaton = RuleAutomaton {
             type_: *internal_type,
             nfa_states: Default::default(),
             dfa_states: Default::default(),
+            name: rule_name,
         };
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
         let dfa_states = automaton.construct_powerset(start, end);
