@@ -197,12 +197,8 @@ macro_rules! __create_node {
 }
 
 #[macro_export]
-macro_rules! __parse_or {
-    // Actually an operator
-    ($input:expr, | $($rule:tt)+) => (
-        $crate::Rule::Or(&$input, &$crate::__parse_identifier!($($rule)+))
-    );
-    // TODO this should have lower prio than |
+macro_rules! __parse_next_identifier {
+    // The ~ operator
     ($input:expr, ~ $($rule:tt)+) => (
         $crate::Rule::Cut(&$input, &$crate::__parse_identifier!($($rule)+))
     );
@@ -217,13 +213,13 @@ macro_rules! __parse_or {
 #[macro_export]
 macro_rules! __parse_operators {
     ($input:expr, + $($rule:tt)*) => (
-        $crate::__parse_or!($crate::Rule::Multiple(&$input), $($rule)*)
+        $crate::__parse_next_identifier!($crate::Rule::Multiple(&$input), $($rule)*)
     );
     ($input:expr, * $($rule:tt)*) => (
-        $crate::__parse_or!($crate::Rule::Maybe(&$crate::Rule::Multiple(&$input)), $($rule)*)
+        $crate::__parse_next_identifier!($crate::Rule::Maybe(&$crate::Rule::Multiple(&$input)), $($rule)*)
     );
     ($input:expr, ? $($rule:tt)*) => (
-        $crate::__parse_or!($crate::Rule::Maybe(&$input), $($rule)*)
+        $crate::__parse_next_identifier!($crate::Rule::Maybe(&$input), $($rule)*)
     );
     ($input:expr, . $($rule:tt)+) => (
         // Basically turns s.e+ to (e (s e)*)
@@ -237,7 +233,7 @@ macro_rules! __parse_operators {
     );
 
     // All the other cases can only be simple operators
-    ($input:expr, $($rule:tt)*) => ($crate::__parse_or!($input, $($rule)*));
+    ($input:expr, $($rule:tt)*) => ($crate::__parse_next_identifier!($input, $($rule)*));
 }
 
 #[macro_export]
@@ -263,7 +259,7 @@ macro_rules! __parse_identifier {
     // Group parentheses
     (($($inner:tt)+) $($rule:tt)*) => (
         $crate::__parse_operators!(
-            $crate::__parse_identifier!($($inner)*),
+            $crate::__parse_or!([] $($inner)*),
             $($rule)*
         )
     );
@@ -271,10 +267,32 @@ macro_rules! __parse_identifier {
     // Optional brackets
     ([$($inner:tt)+] $($rule:tt)*) => (
         $crate::Rule::Maybe(&$crate::__parse_operators!(
-            $crate::__parse_identifier!($($inner)*),
+            $crate::__parse_or!([] $($inner)*),
             $($rule)*
         ))
     );
+}
+
+#[macro_export]
+macro_rules! __parse_or {
+    // First we need to split up the rule for or, because it has the highest precedence.
+
+    ([$($saved:tt)*] | $($rule:tt)+) => {
+        $crate::Rule::Or(
+            // Finish parsing the rule
+            &$crate::__parse_identifier!($($saved)+),
+            // Parse the next rule
+            &$crate::__parse_or!([] $($rule)+),
+        )
+    };
+
+    ([$($saved:tt)*] $next:tt $($rule:tt)*) => {
+        $crate::__parse_or!([$($saved)* $next] $($rule)*)
+    };
+
+    ([$($saved:tt)+]) => {
+        $crate::__parse_identifier!($($saved)+)
+    };
 }
 
 #[macro_export]
@@ -306,7 +324,7 @@ macro_rules! __parse_rule {
             panic!("Key exists twice: {}", stringify!($label));
         }
 
-        $rules.insert(key, (stringify!($label), $crate::__parse_identifier!($($saved)+)));
+        $rules.insert(key, (stringify!($label), $crate::__parse_or!([] $($saved)+)));
     };
 }
 
