@@ -266,10 +266,10 @@ macro_rules! __parse_identifier {
 
     // Optional brackets
     ([$($inner:tt)+] $($rule:tt)*) => (
-        $crate::Rule::Maybe(&$crate::__parse_operators!(
-            $crate::__parse_or!([] $($inner)*),
+        $crate::__parse_operators!(
+            $crate::Rule::Maybe(&$crate::__parse_or!([] $($inner)*)),
             $($rule)*
-        ))
+        )
     );
 }
 
