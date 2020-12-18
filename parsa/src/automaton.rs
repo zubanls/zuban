@@ -74,6 +74,7 @@ pub struct DFAState {
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
     pub transition_to_plan: SquashedTransitions,
+    pub from_rule: &'static str,
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
@@ -260,6 +261,7 @@ impl RuleAutomaton {
             is_final: is_final,
             is_calculated: false,
             transition_to_plan: Default::default(),
+            from_rule: self.name,
         });
         DFAStateId(dfa_states.len() - 1)
     }
@@ -278,12 +280,17 @@ impl RuleAutomaton {
             return
         }
 
-        let mut grouped_transitions = HashMap::new();
+        let mut grouped_transitions = HashMap::<_, Vec<NFAStateId>>::new();
         for nfa_state_id in state.nfa_set.clone()  {
             let n = &self.get_nfa_state(nfa_state_id);
             for transition in &n.transitions {
                 if let Some(t) = &transition.type_ {
-                    grouped_transitions.insert(t, vec!(transition.to));
+                    match grouped_transitions.get_mut(t) {
+                        Some(v) => v.push(transition.to),
+                        None => {
+                            grouped_transitions.insert(t, vec!(transition.to));
+                        },
+                    }
                 }
             }
         }

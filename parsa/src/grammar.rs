@@ -128,11 +128,13 @@ impl<'a, T: Token+Debug> Grammar<T> {
             }
 
             //dbg!(&token);
-            //dbg!(stack.get_tos().dfa_state.transition_to_plan.values().map(|x| x.debug_text).collect::<Vec<_>>());
             loop {
                 let tos = stack.get_tos();
                 match tos.dfa_state.transition_to_plan.get(&transition) {
                     None => {
+                        //dbg!(stack.get_tos().dfa_state.from_rule);
+                        //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
+                        //     .map(|x| x.debug_text).collect::<Vec<_>>());
                         if tos.dfa_state.is_final {
                             stack.pop()
                         } else {
