@@ -41,6 +41,7 @@ pub struct InternalNode {
     pub extra_data: ExtraData,
 }
 
+// This node is currently not used and just here for future optimization purposes.
 struct CompressedNode {
     next_node_offset: u8,
     // Positive values are token types, negative values are nodes

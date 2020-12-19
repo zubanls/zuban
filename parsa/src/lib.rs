@@ -64,6 +64,20 @@ macro_rules! __create_type_set {
                 }
                 &*HASHMAP
             }
+
+            pub fn as_str(x: $EnumName) -> &'static str {
+                #[macro_use]
+                $crate::lazy_static! {
+                    static ref HASHMAP: $crate::HashMap<u16, &'static str> = {
+                        let mut m = $crate::HashMap::new();
+                        m.insert($EnumName::$first_entry as u16, stringify!($first_entry));
+                        $(m.insert($EnumName::$entry as u16, stringify!($entry));)*;
+                        m
+                    };
+                }
+                dbg!(&*HASHMAP, x);
+                HASHMAP[&(x as u16)]
+            }
         }
     }
 }
@@ -191,6 +205,14 @@ macro_rules! __create_node {
                 }
                 // Can be unsafe, because the NodeType is created by this exact macro.
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
+            }
+
+            pub fn type_str(&self) -> &'static str {
+                // Not a fast API, should probably only be used for tests.
+                if let Some(n_t) = self.node_type() {
+                    return $NodeType::as_str(n_t);
+                }
+                $TokenType::as_str(self.token_type().unwrap())
             }
         }
     }
