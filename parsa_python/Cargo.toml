@@ -10,3 +10,6 @@ edition = "2018"
 parsa = { path = "../parsa" }
 lazy_static = "*"
 regex = "*"
+
+[dev-dependencies]
+insta = "*"
