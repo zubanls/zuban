@@ -75,7 +75,6 @@ macro_rules! __create_type_set {
                         m
                     };
                 }
-                dbg!(&*HASHMAP, x);
                 HASHMAP[&(x as u16)]
             }
         }
@@ -171,6 +170,27 @@ macro_rules! __create_node {
                 string
             }
 
+            pub fn get_children(&self) -> Vec<$Node> {
+                let mut v = Vec::new();
+                if !self.is_leaf() {
+                    // The next node must always be a child.
+                    let mut index = self.index + 1;
+                    loop {
+                        let n = &self.internal_tree.nodes[index as usize];
+                        v.push($Node {
+                            internal_tree: self.internal_tree,
+                            index: index,
+                            internal_node: n,
+                        });
+                        if n.next_node_offset == 0 {
+                            break
+                        }
+                        index += n.next_node_offset;
+                    }
+                }
+                v
+            }
+
             pub fn start(&self) -> u32 {
                 self.internal_node.start_index
             }
@@ -183,19 +203,19 @@ macro_rules! __create_node {
                 self.internal_node.length
             }
 
-            fn is_leaf(&self) -> bool {
-                return self.internal_node.type_.is_leaf()
+            pub fn is_leaf(&self) -> bool {
+                self.internal_node.type_.is_leaf()
             }
 
             pub fn token_type(&self) -> Option<$TokenType> {
                 if !self.is_leaf() {
                     return None
                 }
+                // TODO this should probably be something like is keyword
                 if self.internal_node.type_.0 as usize >= $TokenType::get_map().len() {
                     return None
                 }
                 // Can be unsafe, because the TokenType is created by the macro create_token.
-                // TODO 
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
@@ -212,7 +232,16 @@ macro_rules! __create_node {
                 if let Some(n_t) = self.node_type() {
                     return $NodeType::as_str(n_t);
                 }
-                $TokenType::as_str(self.token_type().unwrap())
+                match self.token_type() {
+                    None => "Keyword",
+                    Some(t) => $TokenType::as_str(t),
+                }
+            }
+        }
+
+        impl std::fmt::Debug for $Node<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "Node {}: {:?}", self.type_str(), self.internal_node)
             }
         }
     }
