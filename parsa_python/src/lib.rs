@@ -101,27 +101,27 @@ create_grammar!(
     test_nocond: or_test | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" test
     lambdef_nocond: "lambda" [varargslist] ":" test_nocond
-    or_test: and_test ("or" and_test)*
-    and_test: not_test ("and" not_test)*
-    not_test: "not" not_test | comparison
-    comparison: expr (comp_op expr)*
+    or_test:? and_test ("or" and_test)*
+    and_test:? not_test ("and" not_test)*
+    not_test:? "not" not_test | comparison
+    comparison:? expr (comp_op expr)*
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
     star_expr: "*" expr
     expr: xor_expr ("|" xor_expr)*
-    xor_expr: and_expr ("^" and_expr)*
-    and_expr: shift_expr ("&" shift_expr)*
-    shift_expr: arith_expr (("<<"|">>") arith_expr)*
-    arith_expr: term (("+"|"-") term)*
-    term: factor (("*"|"@"|"/"|"%"|"//") factor)*
-    factor: ("+"|"-"|"~") factor | power
-    power: atom_expr ["**" factor]
-    atom_expr: ["await"] atom trailer*
-    atom: ("(" [yield_expr|testlist_comp] ")" |
-           "[" [testlist_comp] "]" |
-           "{" [dictorsetmaker] "}" |
-           Name | Number | strings | "..." | "None" | "True" | "False")
+    xor_expr:? and_expr ("^" and_expr)*
+    and_expr:? shift_expr ("&" shift_expr)*
+    shift_expr:? arith_expr (("<<"|">>") arith_expr)*
+    arith_expr:? term (("+"|"-") term)*
+    term:? factor (("*"|"@"|"/"|"%"|"//") factor)*
+    factor:? ("+"|"-"|"~") factor | power
+    power:? atom_expr ["**" factor]
+    atom_expr:? ["await"] atom trailer*
+    atom:? ("(" [yield_expr|testlist_comp] ")" |
+            "[" [testlist_comp] "]" |
+            "{" [dictorsetmaker] "}" |
+            Name | Number | strings | "..." | "None" | "True" | "False")
     testlist_comp: (namedexpr_test|star_expr) ( comp_for | ("," (namedexpr_test|star_expr))* [","] )
     trailer: "(" [arglist] ")" | "[" subscriptlist "]" | "." Name
     subscriptlist: subscript ("," subscript)* [","]
@@ -181,7 +181,6 @@ mod tests {
         let root_node = tree.get_root_node();
         assert_eq!(root_node.node_type(), Some(PythonNodeType::file_input));
         assert_eq!(root_node.get_extra_data(), 0);
-        assert_eq!(tree.internal_tree.nodes.len(), 59);
         //dbg!(TokenType::get_map());
         //dbg!(PythonNodeType::get_map());
     }

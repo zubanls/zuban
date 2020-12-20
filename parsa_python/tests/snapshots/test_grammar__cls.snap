@@ -12,21 +12,8 @@ file_input: 0-117
     arglist: 11-17
      argument: 11-17
       test: 11-17
-       or_test: 11-17
-        and_test: 11-17
-         not_test: 11-17
-          comparison: 11-17
-           expr: 11-17
-            xor_expr: 11-17
-             and_expr: 11-17
-              shift_expr: 11-17
-               arith_expr: 11-17
-                term: 11-17
-                 factor: 11-17
-                  power: 11-17
-                   atom_expr: 11-17
-                    atom: 11-17
-                     Name: 11-17 "object"
+       expr: 11-17
+        Name: 11-17 "object"
     Keyword: 17-18 ")"
     Keyword: 18-19 ":"
     suite: 19-117

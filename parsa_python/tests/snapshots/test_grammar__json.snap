@@ -9,56 +9,18 @@ file_input: 0-9
     expr_stmt: 0-8
      testlist_star_expr: 0-8
       test: 0-8
-       or_test: 0-8
-        and_test: 0-8
-         not_test: 0-8
-          comparison: 0-8
-           expr: 0-8
-            xor_expr: 0-8
-             and_expr: 0-8
-              shift_expr: 0-8
-               arith_expr: 0-8
-                term: 0-8
-                 factor: 0-8
-                  power: 0-8
-                   atom_expr: 0-8
-                    atom: 0-8
-                     Keyword: 0-1 "{"
-                     dictorsetmaker: 1-7
-                      test: 1-4
-                       or_test: 1-4
-                        and_test: 1-4
-                         not_test: 1-4
-                          comparison: 1-4
-                           expr: 1-4
-                            xor_expr: 1-4
-                             and_expr: 1-4
-                              shift_expr: 1-4
-                               arith_expr: 1-4
-                                term: 1-4
-                                 factor: 1-4
-                                  power: 1-4
-                                   atom_expr: 1-4
-                                    atom: 1-4
-                                     Name: 1-4 "foo"
-                      Keyword: 4-5 ":"
-                      test: 6-7
-                       or_test: 6-7
-                        and_test: 6-7
-                         not_test: 6-7
-                          comparison: 6-7
-                           expr: 6-7
-                            xor_expr: 6-7
-                             and_expr: 6-7
-                              shift_expr: 6-7
-                               arith_expr: 6-7
-                                term: 6-7
-                                 factor: 6-7
-                                  power: 6-7
-                                   atom_expr: 6-7
-                                    atom: 6-7
-                                     Number: 6-7 "1"
-                     Keyword: 7-8 "}"
+       expr: 0-8
+        atom: 0-8
+         Keyword: 0-1 "{"
+         dictorsetmaker: 1-7
+          test: 1-4
+           expr: 1-4
+            Name: 1-4 "foo"
+          Keyword: 4-5 ":"
+          test: 6-7
+           expr: 6-7
+            Number: 6-7 "1"
+         Keyword: 7-8 "}"
    Newline: 8-9 "\n"
  Endmarker: 9-9 ""
 

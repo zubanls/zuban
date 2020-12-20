@@ -83,6 +83,7 @@ struct StackNode<'a> {
     latest_child_node_index: usize,
     dfa_state: &'a DFAState,
     backtrack_length_counts: Vec<u32>,
+    children_count: usize,
 }
 
 #[derive(Debug, Default)]
@@ -195,8 +196,13 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
         let last_tree_node = *self.tree_nodes.last().unwrap();
         // We can simply get the last token and check its end position to
         // calculate how long a token is.
-        let mut n = self.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-        n.length = last_tree_node.start_index - n.start_index + last_tree_node.length;
+        if stack_node.dfa_state.node_may_be_omitted && stack_node.children_count == 1 {
+            self.tree_nodes.remove(stack_node.tree_node_index);
+        } else {
+            debug_assert!(stack_node.children_count >= 1);
+            let mut n = self.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+            n.length = last_tree_node.start_index - n.start_index + last_tree_node.length;
+        }
     }
 
     #[inline]
@@ -209,6 +215,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
         let next = &automatons[&tos.node_id].dfa_states[plan.next_dfa_state.0];
         self.stack_nodes.last_mut().unwrap().dfa_state = next;
         for (node_type, push) in &plan.pushes {
+            self.stack_nodes.last_mut().unwrap().children_count += 1;
             self.push(
                 *node_type,
                 &automatons[&node_type].dfa_states[push.0],
@@ -217,6 +224,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
             self.stack_nodes.last_mut().unwrap().latest_child_node_index = self.tree_nodes.len();
         }
         // Once all the nodes are dealt with, add the token
+        self.stack_nodes.last_mut().unwrap().children_count += 1;
         self.tree_nodes.push(InternalNode {
             next_node_offset: 0,
             // Positive values are token types, negative values are nodes
@@ -234,7 +242,8 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
             tree_node_index: self.tree_nodes.len(),
             latest_child_node_index: 0,
             dfa_state: dfa_state,
-            backtrack_length_counts: Vec::new()
+            backtrack_length_counts: Vec::new(),
+            children_count: 0,
         });
         self.tree_nodes.push(InternalNode {
             next_node_offset: 0,

@@ -9,21 +9,8 @@ file_input: 0-21
     expr_stmt: 1-2
      testlist_star_expr: 1-2
       test: 1-2
-       or_test: 1-2
-        and_test: 1-2
-         not_test: 1-2
-          comparison: 1-2
-           expr: 1-2
-            xor_expr: 1-2
-             and_expr: 1-2
-              shift_expr: 1-2
-               arith_expr: 1-2
-                term: 1-2
-                 factor: 1-2
-                  power: 1-2
-                   atom_expr: 1-2
-                    atom: 1-2
-                     Name: 1-2 "a"
+       expr: 1-2
+        Name: 1-2 "a"
    Keyword: 2-3 ";"
    Newline: 3-4 "\n"
  stmt: 4-21
@@ -32,21 +19,8 @@ file_input: 0-21
     Keyword: 4-6 "if"
     namedexpr_test: 7-8
      test: 7-8
-      or_test: 7-8
-       and_test: 7-8
-        not_test: 7-8
-         comparison: 7-8
-          expr: 7-8
-           xor_expr: 7-8
-            and_expr: 7-8
-             shift_expr: 7-8
-              arith_expr: 7-8
-               term: 7-8
-                factor: 7-8
-                 power: 7-8
-                  atom_expr: 7-8
-                   atom: 7-8
-                    Name: 7-8 "a"
+      expr: 7-8
+       Name: 7-8 "a"
     Keyword: 8-9 ":"
     suite: 9-13
      Newline: 9-10 "\n"
@@ -57,21 +31,8 @@ file_input: 0-21
         expr_stmt: 11-12
          testlist_star_expr: 11-12
           test: 11-12
-           or_test: 11-12
-            and_test: 11-12
-             not_test: 11-12
-              comparison: 11-12
-               expr: 11-12
-                xor_expr: 11-12
-                 and_expr: 11-12
-                  shift_expr: 11-12
-                   arith_expr: 11-12
-                    term: 11-12
-                     factor: 11-12
-                      power: 11-12
-                       atom_expr: 11-12
-                        atom: 11-12
-                         Number: 11-12 "1"
+           expr: 11-12
+            Number: 11-12 "1"
        Newline: 12-13 "\n"
      Dedent: 13-13 ""
     Keyword: 13-17 "else"
@@ -82,21 +43,8 @@ file_input: 0-21
        expr_stmt: 19-20
         testlist_star_expr: 19-20
          test: 19-20
-          or_test: 19-20
-           and_test: 19-20
-            not_test: 19-20
-             comparison: 19-20
-              expr: 19-20
-               xor_expr: 19-20
-                and_expr: 19-20
-                 shift_expr: 19-20
-                  arith_expr: 19-20
-                   term: 19-20
-                    factor: 19-20
-                     power: 19-20
-                      atom_expr: 19-20
-                       atom: 19-20
-                        Number: 19-20 "2"
+          expr: 19-20
+           Number: 19-20 "2"
       Newline: 20-21 "\n"
  Endmarker: 21-21 ""
 

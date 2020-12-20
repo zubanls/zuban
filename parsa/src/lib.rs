@@ -347,6 +347,18 @@ macro_rules! __parse_or {
 }
 
 #[macro_export]
+macro_rules! __parse_reduce {
+    // Parses the question mark in `foo:? bar | baz
+    (? $($rule:tt)*) => {
+        $crate::Rule::NodeMayBeOmitted(&$crate::__parse_or!([] $($rule)*))
+    };
+
+    ($($rule:tt)*) => {
+        $crate::__parse_or!([] $($rule)*)
+    };
+}
+
+#[macro_export]
 macro_rules! __parse_rules {
     ($NodeType:ident, $rules:ident, $label:ident: | $($rule:tt)+) => {
         $crate::__parse_rule!($NodeType, $rules, [$label] $($rule)+)
@@ -375,7 +387,7 @@ macro_rules! __parse_rule {
             panic!("Key exists twice: {}", stringify!($label));
         }
 
-        $rules.insert(key, (stringify!($label), $crate::__parse_or!([] $($saved)+)));
+        $rules.insert(key, (stringify!($label), $crate::__parse_reduce!($($saved)+)));
     };
 }
 

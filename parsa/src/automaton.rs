@@ -22,6 +22,7 @@ pub enum Rule {
     NegativeLookahead(&'static Rule),
     PositiveLookahead(&'static Rule),
     Next(&'static Rule, &'static Rule),
+    NodeMayBeOmitted(&'static Rule),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -64,12 +65,13 @@ struct NFAState {
 }
 
 // DFA = deterministic finite automaton
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DFAState {
     transitions: Vec<DFATransition>,
     nfa_set: HashSet<NFAStateId>,
     pub is_final: bool,
     is_calculated: bool,
+    pub node_may_be_omitted: bool,
 
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
@@ -139,6 +141,7 @@ pub struct RuleAutomaton {
     nfa_states: Vec<NFAState>,
     pub dfa_states: Vec<DFAState>,
     name: &'static str,
+    node_may_be_omitted: bool,
 }
 
 impl RuleAutomaton {
@@ -200,6 +203,10 @@ impl RuleAutomaton {
                 self.add_empty_transition(end1, start2);
                 (start1, end2)
             }
+            NodeMayBeOmitted(rule1) => {
+                self.node_may_be_omitted = true;
+                build(self, rule1)
+            }
         }
     }
 
@@ -256,12 +263,11 @@ impl RuleAutomaton {
         }
         let is_final = grouped_nfas.contains(&end);
         dfa_states.push(DFAState {
-            transitions: Default::default(),
             nfa_set: grouped_nfas,
             is_final: is_final,
-            is_calculated: false,
-            transition_to_plan: Default::default(),
+            node_may_be_omitted: self.node_may_be_omitted,
             from_rule: self.name,
+            .. Default::default()
         });
         DFAStateId(dfa_states.len() - 1)
     }
@@ -322,9 +328,8 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     for (internal_type, (rule_name, rule)) in rules {
         let mut automaton = RuleAutomaton {
             type_: *internal_type,
-            nfa_states: Default::default(),
-            dfa_states: Default::default(),
             name: rule_name,
+            .. Default::default()
         };
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
         let dfa_states = automaton.construct_powerset(start, end);
