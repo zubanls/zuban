@@ -2,14 +2,22 @@ extern crate insta;
 
 use parsa_python::*;
 
-#[test]
-fn test_x() {
-    let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n");
-    let root_node = tree.get_root_node();
-    assert_eq!(root_node.node_type(), Some(PythonNodeType::file_input));
-    assert_eq!(root_node.get_extra_data(), 0);
+fn dedent(s: &'static str) -> String {
+    let mut indent = usize::MAX;
+    let lines: &Vec<_> = &s.split('\n').collect();
+    for line in lines {
+        if line.trim().len() > 0 {
+            indent = std::cmp::min(indent, line.len() - line.trim_start().len());
+        }
+    }
+    if indent == usize::MAX {
+        return s.to_string();
+    }
+    let new_lines: Vec<_> = lines.iter().map(
+       |line| if line.len() >= indent {&line[indent..]} else {line}
+    ).collect();
+    new_lines.join("\n")
 }
-
 
 fn tree_to_string(tree: PythonTree) -> String {
     fn recurse(code: &mut String, node: &PythonNode, depth: usize) {
@@ -40,5 +48,10 @@ macro_rules! parametrize_snapshots {
 
 parametrize_snapshots!(
     json: "{foo: 1}\n";
-    simple: "a;\nif a:\n 1\nelse: 2\n";
+    simple: &dedent(
+"        a;
+        if a:
+         1
+        else: 2
+        ");
 );
