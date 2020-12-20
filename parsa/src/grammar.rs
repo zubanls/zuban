@@ -139,6 +139,8 @@ impl<'a, T: Token+Debug> Grammar<T> {
                         if tos.dfa_state.is_final {
                             stack.pop()
                         } else {
+                            let rest = &code[token.get_start_index() as usize..];
+                            dbg!(token, rest);
                             panic!("Error recovery");
                         }
                     },

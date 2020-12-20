@@ -1,0 +1,98 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-117
+ stmt: 1-117
+  compound_stmt: 1-117
+   classdef: 1-117
+    Keyword: 1-6 "class"
+    Name: 7-10 "Foo"
+    Keyword: 10-11 "("
+    arglist: 11-17
+     argument: 11-17
+      test: 11-17
+       or_test: 11-17
+        and_test: 11-17
+         not_test: 11-17
+          comparison: 11-17
+           expr: 11-17
+            xor_expr: 11-17
+             and_expr: 11-17
+              shift_expr: 11-17
+               arith_expr: 11-17
+                term: 11-17
+                 factor: 11-17
+                  power: 11-17
+                   atom_expr: 11-17
+                    atom: 11-17
+                     Name: 11-17 "object"
+    Keyword: 17-18 ")"
+    Keyword: 18-19 ":"
+    suite: 19-117
+     Newline: 19-20 "\n"
+     Indent: 24-24 ""
+     stmt: 24-74
+      compound_stmt: 24-74
+       funcdef: 24-74
+        Keyword: 24-27 "def"
+        Name: 28-36 "__init__"
+        parameters: 36-54
+         Keyword: 36-37 "("
+         typedargslist: 37-53
+          tfpdef: 37-41
+           Name: 37-41 "self"
+          Keyword: 41-42 ","
+          Keyword: 43-44 "/"
+          Keyword: 44-45 ","
+          tfpdef: 46-47
+           Name: 46-47 "f"
+          Keyword: 47-48 ","
+          Keyword: 49-50 "*"
+          Keyword: 50-51 ","
+          tfpdef: 52-53
+           Name: 52-53 "g"
+         Keyword: 53-54 ")"
+        Keyword: 54-55 ":"
+        suite: 55-74
+         Newline: 55-56 "\n"
+         Indent: 64-64 ""
+         stmt: 64-69
+          simple_stmt: 64-69
+           small_stmt: 64-68
+            pass_stmt: 64-68
+             Keyword: 64-68 "pass"
+           Newline: 68-69 "\n"
+         Dedent: 74-74 ""
+     stmt: 74-117
+      compound_stmt: 74-117
+       decorated: 74-117
+        decorators: 74-84
+         decorator: 74-84
+          Keyword: 74-75 "@"
+          dotted_name: 75-83
+           Name: 75-83 "property"
+          Newline: 83-84 "\n"
+        funcdef: 88-117
+         Keyword: 88-91 "def"
+         Name: 92-96 "prop"
+         parameters: 96-102
+          Keyword: 96-97 "("
+          typedargslist: 97-101
+           tfpdef: 97-101
+            Name: 97-101 "self"
+          Keyword: 101-102 ")"
+         Keyword: 102-103 ":"
+         suite: 103-117
+          Newline: 103-104 "\n"
+          Indent: 112-112 ""
+          stmt: 112-117
+           simple_stmt: 112-117
+            small_stmt: 112-116
+             pass_stmt: 112-116
+              Keyword: 112-116 "pass"
+            Newline: 116-117 "\n"
+          Dedent: 117-117 ""
+     Dedent: 117-117 ""
+ Endmarker: 117-117 ""
+

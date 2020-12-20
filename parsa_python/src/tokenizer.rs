@@ -427,7 +427,7 @@ impl PythonTokenizer<'_> {
     fn find_name_length(&self, code: &str) -> usize {
         for (i, character) in code.char_indices() {
             // TODO this is not correct, because we should implement str.isidentifier from CPython
-            if !(character.is_alphabetic() || character.is_numeric() && i != 0) {
+            if !(character.is_alphabetic() || character == '_' || character.is_numeric() && i != 0) {
                 return i;
             }
         }
@@ -604,6 +604,7 @@ mod tests {
     parametrize!(
         simple1 "asdf + 11" => [(0, 4, Name), (5, 1, Operator), (7, 2, Number)];
         simple2 "1foo1" => [(0, 1, Number), (1, 4, Name)];
+        name1 "__" => [(0, 2, Name)];
         unicode1 "我あφ()" => [(0, 8, Name), (8, 1, Operator), (9, 1, Operator)];
         //unicode2 "மெல்லினம்" => [(0, 27, Name)];
         unicode3 "²" => [(0, 2, ErrorToken)];

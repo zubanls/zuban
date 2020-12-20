@@ -54,4 +54,13 @@ parametrize_snapshots!(
          1
         else: 2
         ");
+    cls: &dedent("
+        class Foo(object):
+            def __init__(self, /, f, *, g):
+                pass
+
+            @property
+            def prop(self):
+                pass
+        ");
 );
