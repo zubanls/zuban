@@ -1,0 +1,102 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-20
+ stmt: 0-3
+  simple_stmt: 0-3
+   small_stmt: 0-1
+    expr_stmt: 0-1
+     testlist_star_expr: 0-1
+      test: 0-1
+       or_test: 0-1
+        and_test: 0-1
+         not_test: 0-1
+          comparison: 0-1
+           expr: 0-1
+            xor_expr: 0-1
+             and_expr: 0-1
+              shift_expr: 0-1
+               arith_expr: 0-1
+                term: 0-1
+                 factor: 0-1
+                  power: 0-1
+                   atom_expr: 0-1
+                    atom: 0-1
+                     Name: 0-1 "a"
+   Keyword: 1-2 ";"
+   Newline: 2-3 "\n"
+ stmt: 3-20
+  compound_stmt: 3-20
+   if_stmt: 3-20
+    Keyword: 3-5 "if"
+    namedexpr_test: 6-7
+     test: 6-7
+      or_test: 6-7
+       and_test: 6-7
+        not_test: 6-7
+         comparison: 6-7
+          expr: 6-7
+           xor_expr: 6-7
+            and_expr: 6-7
+             shift_expr: 6-7
+              arith_expr: 6-7
+               term: 6-7
+                factor: 6-7
+                 power: 6-7
+                  atom_expr: 6-7
+                   atom: 6-7
+                    Name: 6-7 "a"
+    Keyword: 7-8 ":"
+    suite: 8-12
+     Newline: 8-9 "\n"
+     Indent: 10-10 ""
+     stmt: 10-12
+      simple_stmt: 10-12
+       small_stmt: 10-11
+        expr_stmt: 10-11
+         testlist_star_expr: 10-11
+          test: 10-11
+           or_test: 10-11
+            and_test: 10-11
+             not_test: 10-11
+              comparison: 10-11
+               expr: 10-11
+                xor_expr: 10-11
+                 and_expr: 10-11
+                  shift_expr: 10-11
+                   arith_expr: 10-11
+                    term: 10-11
+                     factor: 10-11
+                      power: 10-11
+                       atom_expr: 10-11
+                        atom: 10-11
+                         Number: 10-11 "1"
+       Newline: 11-12 "\n"
+     Dedent: 12-12 ""
+    Keyword: 12-16 "else"
+    Keyword: 16-17 ":"
+    suite: 18-20
+     simple_stmt: 18-20
+      small_stmt: 18-19
+       expr_stmt: 18-19
+        testlist_star_expr: 18-19
+         test: 18-19
+          or_test: 18-19
+           and_test: 18-19
+            not_test: 18-19
+             comparison: 18-19
+              expr: 18-19
+               xor_expr: 18-19
+                and_expr: 18-19
+                 shift_expr: 18-19
+                  arith_expr: 18-19
+                   term: 18-19
+                    factor: 18-19
+                     power: 18-19
+                      atom_expr: 18-19
+                       atom: 18-19
+                        Number: 18-19 "2"
+      Newline: 19-20 "\n"
+ Endmarker: 20-20 ""
+

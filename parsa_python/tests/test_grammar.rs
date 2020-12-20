@@ -18,7 +18,6 @@ fn tree_to_string(tree: PythonTree) -> String {
             "{}: {}-{}{}\n", node.type_str(), node.start(), node.end(),
             if node.is_leaf() {format!(" {:?}", node.get_code())} else {"".to_string()}
         );
-        dbg!(node);
         for c in node.get_children() {
             recurse(code, &c, depth + 1);
         }
@@ -34,11 +33,12 @@ macro_rules! parametrize_snapshots {
         #[test]
         fn $name() {
             let tree = PYTHON_GRAMMAR.parse($input);
-            insta::assert_snapshot!("expected", tree_to_string(tree));
+            insta::assert_snapshot!(stringify!($name), tree_to_string(tree));
         }
     )*}
 }
 
 parametrize_snapshots!(
     json: "{foo: 1}\n";
+    simple: "a;\nif a:\n 1\nelse: 2\n";
 );
