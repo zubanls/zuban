@@ -342,6 +342,13 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNodeType>>();
     for rule_label in &rule_labels {
         create_first_plans(nonterminal_map, &keywords, &mut first_plans, &mut automatons, *rule_label);
+
+        // There should never be a case where a first plan is an empty production.
+        // There should always be child nodes, otherwise the data structures won't work.
+        let automaton = &automatons[&rule_label];
+        if automaton.dfa_states[0].is_final {
+            panic!("The rule \"{}\" is allowed to have no child nodes", automaton.name);
+        }
     }
     // Optimize and calculate all plans
     for rule_label in &rule_labels {

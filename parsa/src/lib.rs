@@ -432,7 +432,7 @@ macro_rules! create_grammar {
 
         #[derive(Debug)]
         pub struct $Tree {
-            internal_tree: parsa::InternalTree
+            internal_tree: $crate::InternalTree
         }
 
         impl $Tree {
@@ -463,5 +463,40 @@ macro_rules! create_grammar {
         $crate::lazy_static! {
             pub static ref $grammar: $Grammar = {$Grammar::new()};
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    create_token!(struct TestToken, enum TestTokenType, [Foo, Bar]);
+
+    struct TestTokenizer {}
+    impl Tokenizer<'_, TestToken> for TestTokenizer {
+        fn new(code: &str) -> Self {
+            Self {}
+        }
+    }
+
+    impl Iterator for TestTokenizer {
+        type Item = TestToken;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            None
+        }
+    }
+    #[test]
+    #[should_panic(expected = "The rule \"rule2\" is allowed to have no child nodes")]
+    fn empty_rule() {
+        create_grammar!(
+            static GRAMMAR, struct TestGrammar, struct TestTree,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+
+            rule1: rule2 | Foo
+            rule2: Bar?
+        );
+
+        GRAMMAR.parse("");
     }
 }
