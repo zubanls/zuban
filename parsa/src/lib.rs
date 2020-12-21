@@ -272,16 +272,19 @@ macro_rules! __parse_operators {
     ($input:expr, ? $($rule:tt)*) => (
         $crate::__parse_next_identifier!($crate::Rule::Maybe(&$input), $($rule)*)
     );
-    ($input:expr, . $($rule:tt)+) => (
+    ($separator:expr, . $label:ident + $($rule:tt)*) => ({
         // Basically turns s.e+ to (e (s e)*)
-        $crate::Rule::Next(
-            &$input,
-            &$crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::Rule::Next(
-                &$input,
-                &$crate::__parse_identifier!($($rule)+)
-            )))
+        $crate::__parse_next_identifier!(
+            $crate::Rule::Next(
+                &$crate::Rule::Identifier(stringify!($label)),
+                &$crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::Rule::Next(
+                    &$separator,
+                    &$crate::Rule::Identifier(stringify!($label))
+                )))
+            ),
+            $($rule)*
         )
-    );
+    });
 
     // All the other cases can only be simple operators
     ($input:expr, $($rule:tt)*) => ($crate::__parse_next_identifier!($input, $($rule)*));
