@@ -63,4 +63,14 @@ parametrize_snapshots!(
             def prop(self):
                 pass
         ");
+    imports: &dedent("
+        import foo
+        import foo.bar as baz
+        from foo import bar
+        from foo import bar as baz
+        import foo, bar, baz
+        from foo import *
+        from . import (foo, bar)
+        from . import (foo, bar,)
+        ");
 );

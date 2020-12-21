@@ -66,7 +66,7 @@ create_grammar!(
     return_stmt: "return" [testlist_star_expr]
     yield_stmt: yield_expr
     raise_stmt: "raise" [test ["from" test]]
-    import_stmt: import_name | import_from
+    import_stmt:? import_name | import_from
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from: ("from" (("." | "...")* dotted_name | ("." | "...")+)

@@ -1,0 +1,118 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-171
+ stmt: 1-12
+  simple_stmt: 1-12
+   small_stmt: 1-11
+    import_name: 1-11
+     Keyword: 1-7 "import"
+     dotted_as_names: 8-11
+      dotted_as_name: 8-11
+       dotted_name: 8-11
+        Name: 8-11 "foo"
+   Newline: 11-12 "\n"
+ stmt: 12-34
+  simple_stmt: 12-34
+   small_stmt: 12-33
+    import_name: 12-33
+     Keyword: 12-18 "import"
+     dotted_as_names: 19-33
+      dotted_as_name: 19-33
+       dotted_name: 19-26
+        Name: 19-22 "foo"
+        Keyword: 22-23 "."
+        Name: 23-26 "bar"
+       Keyword: 27-29 "as"
+       Name: 30-33 "baz"
+   Newline: 33-34 "\n"
+ stmt: 34-54
+  simple_stmt: 34-54
+   small_stmt: 34-53
+    import_from: 34-53
+     Keyword: 34-38 "from"
+     dotted_name: 39-42
+      Name: 39-42 "foo"
+     Keyword: 43-49 "import"
+     import_as_names: 50-53
+      import_as_name: 50-53
+       Name: 50-53 "bar"
+   Newline: 53-54 "\n"
+ stmt: 54-81
+  simple_stmt: 54-81
+   small_stmt: 54-80
+    import_from: 54-80
+     Keyword: 54-58 "from"
+     dotted_name: 59-62
+      Name: 59-62 "foo"
+     Keyword: 63-69 "import"
+     import_as_names: 70-80
+      import_as_name: 70-80
+       Name: 70-73 "bar"
+       Keyword: 74-76 "as"
+       Name: 77-80 "baz"
+   Newline: 80-81 "\n"
+ stmt: 81-102
+  simple_stmt: 81-102
+   small_stmt: 81-101
+    import_name: 81-101
+     Keyword: 81-87 "import"
+     dotted_as_names: 88-101
+      dotted_as_name: 88-91
+       dotted_name: 88-91
+        Name: 88-91 "foo"
+      Keyword: 91-92 ","
+      dotted_as_name: 93-96
+       dotted_name: 93-96
+        Name: 93-96 "bar"
+      Keyword: 96-97 ","
+      dotted_as_name: 98-101
+       dotted_name: 98-101
+        Name: 98-101 "baz"
+   Newline: 101-102 "\n"
+ stmt: 102-120
+  simple_stmt: 102-120
+   small_stmt: 102-119
+    import_from: 102-119
+     Keyword: 102-106 "from"
+     dotted_name: 107-110
+      Name: 107-110 "foo"
+     Keyword: 111-117 "import"
+     Keyword: 118-119 "*"
+   Newline: 119-120 "\n"
+ stmt: 120-145
+  simple_stmt: 120-145
+   small_stmt: 120-144
+    import_from: 120-144
+     Keyword: 120-124 "from"
+     Keyword: 125-126 "."
+     Keyword: 127-133 "import"
+     Keyword: 134-135 "("
+     import_as_names: 135-143
+      import_as_name: 135-138
+       Name: 135-138 "foo"
+      Keyword: 138-139 ","
+      import_as_name: 140-143
+       Name: 140-143 "bar"
+     Keyword: 143-144 ")"
+   Newline: 144-145 "\n"
+ stmt: 145-171
+  simple_stmt: 145-171
+   small_stmt: 145-170
+    import_from: 145-170
+     Keyword: 145-149 "from"
+     Keyword: 150-151 "."
+     Keyword: 152-158 "import"
+     Keyword: 159-160 "("
+     import_as_names: 160-169
+      import_as_name: 160-163
+       Name: 160-163 "foo"
+      Keyword: 163-164 ","
+      import_as_name: 165-168
+       Name: 165-168 "bar"
+      Keyword: 168-169 ","
+     Keyword: 169-170 ")"
+   Newline: 170-171 "\n"
+ Endmarker: 171-171 ""
+
