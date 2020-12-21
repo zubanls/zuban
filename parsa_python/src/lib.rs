@@ -73,7 +73,7 @@ create_grammar!(
                   "import" ("*" | "(" import_as_names ")" | import_as_names))
     import_as_name: Name ["as" Name]
     dotted_as_name: dotted_name ["as" Name]
-    import_as_names: ",".import_as_name+ [","]
+    import_as_names: ",".import_as_name+ ","?
     dotted_as_names: dotted_as_name ("," dotted_as_name)*
     dotted_name: Name ("." Name)*
     global_stmt: "global" Name ("," Name)*
