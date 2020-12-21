@@ -499,4 +499,18 @@ mod tests {
 
         GRAMMAR.parse("");
     }
+    #[test]
+    #[should_panic(expected = "grammar contains left recursion for rule")]
+    fn left_recursion() {
+        create_grammar!(
+            static GRAMMAR, struct TestGrammar, struct TestTree,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+
+            rule1: rule2 | Foo
+            rule2: rule3
+            rule3: rule1
+        );
+
+        GRAMMAR.parse("");
+    }
 }
