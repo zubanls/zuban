@@ -49,7 +49,7 @@ macro_rules! parametrize_snapshots {
 parametrize_snapshots!(
     json: "{foo: 1}\n";
     simple: &dedent("
-        a;
+        a(foo=1, bar:=1);
         if a:
          1
         else: 2
