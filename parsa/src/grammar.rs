@@ -98,6 +98,8 @@ impl<'a, T: Token+Debug> Grammar<T> {
                nonterminal_map: &'static InternalStrToNode, 
                terminal_map: &'static InternalStrToToken) -> Self {
         let (automatons, keywords) = generate_automatons(nonterminal_map, terminal_map, rules);
+        // Since we now know every nonterminal has a first terminal, we know that there is no
+        // left recursion.
         let mut grammar = Self {
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
@@ -106,8 +108,6 @@ impl<'a, T: Token+Debug> Grammar<T> {
             keywords: keywords,
         };
 
-        // Since we now know every nonterminal has a first terminal, we know that there is no
-        // left recursion.
         grammar
     }
 

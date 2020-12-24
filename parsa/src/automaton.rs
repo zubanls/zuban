@@ -386,6 +386,9 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
         match transition.type_ {
             NFATransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
+                if plans.contains_key(&t) {
+                    panic!("ambigous! {}", automaton.name);
+                }
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
@@ -399,6 +402,9 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                     FirstPlan::Calculating => {unreachable!()},
                     FirstPlan::Calculated(transitions) => {
                         for (t, nested_plan) in transitions {
+                            if plans.contains_key(&t) {
+                                panic!("ambigous2! {}", automaton.name);
+                            }
                             plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
                         }
                     },
@@ -406,6 +412,9 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
             },
             NFATransitionType::Keyword(keyword) => {
                 let t = keywords.get_squashed(keyword).unwrap();
+                if plans.contains_key(&t) {
+                    panic!("ambigous3! {}", automaton.name);
+                }
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
