@@ -450,7 +450,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                     FirstPlan::Calculated(transitions) => {
                         for (t, nested_plan) in transitions {
                             if plans.contains_key(&t) {
-                                panic!("ambigous2! {}", automaton.name);
+                                panic!("ambigous2! {} in {}", nested_plan.debug_text, automaton.name);
                             }
                             plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
                         }

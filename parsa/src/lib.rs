@@ -87,7 +87,7 @@ macro_rules! create_token {
         $crate::__create_type_set!(enum $TokenType, $crate::InternalStrToToken,
                                    $crate::InternalTokenType, 0, $($entry),*);
 
-        #[derive(Debug)]
+        #[derive(Debug, Copy, Clone)]
         pub struct $Token {
             start_index: $crate::CodeIndex,
             length: $crate::CodeLength,

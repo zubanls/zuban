@@ -113,7 +113,7 @@ struct BacktrackingPoint<'a> {
     mode: StackMode,
 }
 
-impl<'a, T: Token+Debug> Grammar<T> {
+impl<'a, T: Token+Debug+Copy> Grammar<T> {
     pub fn new(rules: &RuleMap,
                nonterminal_map: &'static InternalStrToNode, 
                terminal_map: &'static InternalStrToToken) -> Self {
@@ -138,7 +138,7 @@ impl<'a, T: Token+Debug> Grammar<T> {
         );
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
-        for token in backtracking_tokenizer {
+        while let Some(token) = backtracking_tokenizer.next() {
             let transition;
             if token.can_contain_syntax() {
                 let start = token.get_start_index() as usize;
@@ -164,8 +164,8 @@ impl<'a, T: Token+Debug> Grammar<T> {
                             let mut tos = stack.stack_nodes.last_mut().unwrap();
                             match tos.backtracking_points.pop() {
                                 Some(backtracking_point) => {
-                                    //stack.backtrack(&backtracking_point);
-                                    //backtracking_tokenizer.next_index = backtracking_point.token_index;
+                                    stack.backtrack(&backtracking_point);
+                                    backtracking_tokenizer.next_index = backtracking_point.token_index;
                                 },
                                 None => {
                                     let rest = &code[token.get_start_index() as usize..];
@@ -315,7 +315,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
     }
 
     #[inline]
-    fn backtrack(&mut self, backtracking_point: &'a BacktrackingPoint) {
+    fn backtrack(&mut self, backtracking_point: &BacktrackingPoint<'a>) {
         self.tree_nodes.truncate(backtracking_point.tree_node_count);
         let mut tos = self.stack_nodes.last_mut().unwrap();
         tos.dfa_state = backtracking_point.dfa_state;
@@ -358,12 +358,27 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     }
 }
 
-impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
+impl<T: Token+Copy, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_backtracking {
+            match self.tokens.get(self.next_index) {
+                None => {
+                    self.next_index += 1;
+                    if let Some(next) = self.tokenizer.next() {
+                        self.tokens.push(next);
+                        Some(next)
+                    } else {
+                        None
+                    }
+                },
+                Some(next) => {
+                    self.next_index += 1;
+                    Some(*next)
+                }
+            }
         } else {
+            self.tokenizer.next()
         }
-        panic!();
     }
 }

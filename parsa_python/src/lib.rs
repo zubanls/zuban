@@ -134,7 +134,7 @@ create_grammar!(
                       ((test | star_expr)
                        (comp_for | ("," (test | star_expr))* [","])) )
 
-    classdef: "class" Name ["(" [arglist] ")"] ":" &Newline suite
+    classdef: "class" Name ["(" [arglist] ")"] ":" suite
 
     arglist: argument ("," argument)*  [","]
 
@@ -149,7 +149,7 @@ create_grammar!(
     // that precede iterable unpackings are blocked; etc.
     argument: ( test [comp_for] |
                 test ":=" test |
-                Name "=" test |
+                test "=" test |
                 "**" test |
                 "*" test )
 
