@@ -86,7 +86,7 @@ enum NFATransitionType {
     Keyword(&'static str),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModeChange {
     NoChange,
     PositiveLookaheadStart,
@@ -104,7 +104,7 @@ struct NFATransition {
 
 #[derive(Debug, Clone)]
 struct DFATransition {
-    type_: NFATransitionType,
+    type_: Option<NFATransitionType>,
     to: DFAStateId,
     mode_change: ModeChange,
 }
@@ -120,6 +120,7 @@ pub enum StackMode {
 pub struct Push {
     pub node_type: InternalNodeType,
     pub to_state: DFAStateId,
+    pub fallback: Option<DFAStateId>,
     pub stack_mode: StackMode,
 }
 
@@ -128,6 +129,7 @@ pub struct Plan {
     pub pushes: Vec<Push>,
     pub next_dfa_state: DFAStateId,
     pub type_: InternalSquashedType,
+    pub fallback: Option<DFAStateId>,
     pub debug_text: &'static str,
 }
 
@@ -277,16 +279,17 @@ impl RuleAutomaton {
         self.add_transition(start, to, None, ModeChange::NoChange);
     }
 
-    fn group_nfas(&self, nfa_state_ids: Vec<NFAStateId>) -> HashSet<NFAStateId> {
+    fn group_nfas(&self, nfa_state_ids: Vec<NFAStateId>,
+                  mode_change: ModeChange) -> HashSet<NFAStateId> {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set: HashSet<_> = nfa_state_ids.iter().cloned().collect();
         for nfa_state_id in &nfa_state_ids {
             for transition in &self.get_nfa_state(*nfa_state_id).transitions {
                 // Mode changes need to have separate DFA states as well.
-                if transition.type_ == None && transition.mode_change == ModeChange::NoChange {
+                if transition.type_ == None && transition.mode_change == mode_change {
                     set.insert(transition.to);
                     if !nfa_state_ids.contains(&transition.to) {
-                        set.extend(self.group_nfas(set.iter().cloned().collect()));
+                        set.extend(self.group_nfas(set.iter().cloned().collect(), mode_change));
                     }
                 }
             }
@@ -295,8 +298,8 @@ impl RuleAutomaton {
     }
 
     fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, starts: Vec<NFAStateId>,
-                  end: NFAStateId) -> DFAStateId {
-        let grouped_nfas = self.group_nfas(starts);
+                  end: NFAStateId, mode_change: ModeChange) -> DFAStateId {
+        let grouped_nfas = self.group_nfas(starts, mode_change);
         for (i, dfa_state) in dfa_states.iter().enumerate() {
             if dfa_state.nfa_set == grouped_nfas {
                 return DFAStateId(i);
@@ -317,7 +320,7 @@ impl RuleAutomaton {
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> Vec<DFAState> {
         let mut dfa_states = Vec::new();
-        let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end);
+        let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end, ModeChange::NoChange);
         self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
         dfa_states
     }
@@ -330,14 +333,23 @@ impl RuleAutomaton {
         }
 
         let mut grouped_transitions = HashMap::<_, Vec<NFAStateId>>::new();
-        for nfa_state_id in state.nfa_set.clone()  {
+        let mut nfa_list: Vec<NFAStateId> = state.nfa_set.iter().cloned().collect();
+        // Need to sort the list by ID to make sure that the lower IDs have higher priority. The
+        // rules always generate NFAStates in order of priority.
+        nfa_list.sort_by_key(|x| x.0);
+        for nfa_state_id in nfa_list  {
             let n = &self.get_nfa_state(nfa_state_id);
             for transition in &n.transitions {
-                if let Some(t) = &transition.type_ {
-                    match grouped_transitions.get_mut(t) {
+                // The nodes that have no proper type are only interesting if there's a mode
+                // change.
+                if !(transition.type_ == None && transition.mode_change == ModeChange::NoChange) {
+                    match grouped_transitions.get_mut(&(transition.type_, transition.mode_change)) {
                         Some(v) => v.push(transition.to),
                         None => {
-                            grouped_transitions.insert(t, vec!(transition.to));
+                            grouped_transitions.insert(
+                                (transition.type_, ModeChange::NoChange),
+                                vec!(transition.to)
+                            );
                         },
                     }
                 }
@@ -345,10 +357,10 @@ impl RuleAutomaton {
         }
 
         let mut transitions = Vec::new();
-        for (type_, grouped_starts) in grouped_transitions {
-            let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end);
+        for ((type_, mode), grouped_starts) in grouped_transitions {
+            let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end, mode);
             transitions.push(DFATransition {
-                type_: *type_,
+                type_: type_,
                 to: new_dfa_id,
                 mode_change: ModeChange::NoChange,
             });
@@ -428,50 +440,66 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
             }
         }
     }
+    let plans = first_plans_for_dfa(nonterminal_map, keywords, automatons, first_plans,
+                                    &automaton.dfa_states[0]);
+    first_plans.insert(automaton_key, FirstPlan::Calculated(plans));
+}
+
+fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
+                       keywords: &Keywords,
+                       automatons: &Automatons,
+                       first_plans: &mut HashMap<InternalNodeType, FirstPlan>,
+                       dfa_state: &DFAState) -> SquashedTransitions {
     let mut plans = HashMap::new();
-    for transition in &automaton.dfa_states[0].transitions {
+    for transition in &dfa_state.transitions {
         match transition.type_ {
-            NFATransitionType::Terminal(type_, debug_text) => {
+            Some(NFATransitionType::Terminal(type_, debug_text)) => {
                 let t = type_.to_squashed();
                 if plans.contains_key(&t) {
-                    panic!("ambigous! {}", automaton.name);
+                    panic!("ambigous! {}", dfa_state.from_rule);
                 }
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
+                    fallback: None,
                 });
             },
-            NFATransitionType::Nonterminal(node_id) => {
+            Some(NFATransitionType::Nonterminal(node_id)) => {
                 create_first_plans(nonterminal_map, keywords, first_plans, &automatons, node_id);
                 match &first_plans[&node_id] {
                     FirstPlan::Calculating => {unreachable!()},
                     FirstPlan::Calculated(transitions) => {
                         for (t, nested_plan) in transitions {
                             if plans.contains_key(&t) {
-                                panic!("ambigous2! {} in {}", nested_plan.debug_text, automaton.name);
+                                panic!("ambigous2! {} in {}", nested_plan.debug_text, dfa_state.from_rule);
                             }
                             plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
                         }
                     },
                 }
             },
-            NFATransitionType::Keyword(keyword) => {
+            Some(NFATransitionType::Keyword(keyword)) => {
                 let t = keywords.get_squashed(keyword).unwrap();
                 if plans.contains_key(&t) {
-                    panic!("ambigous3! {}", automaton.name);
+                    panic!("ambigous3! {}", dfa_state.from_rule);
                 }
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
+                    fallback: None,
                 });
+            },
+            None => {
+                unreachable!();
+                //plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
             },
         }
     }
-    first_plans.insert(automaton_key, FirstPlan::Calculated(plans));
+    plans
 }
 
 fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
@@ -479,16 +507,17 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
-            NFATransitionType::Terminal(type_, debug_text) => {
+            Some(NFATransitionType::Terminal(type_, debug_text)) => {
                 let t = type_.to_squashed();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
+                    fallback: None,
                 });
             },
-            NFATransitionType::Nonterminal(node_id) => {
+            Some(NFATransitionType::Nonterminal(node_id)) => {
                 let first_plan = &first_plans[&node_id];
                 if let FirstPlan::Calculated(p) = first_plan {
                     plans.extend(p.iter().map(|(k, v)| (
@@ -497,14 +526,17 @@ fn create_all_plans(keywords: &Keywords, dfa_state: &DFAState,
                     unreachable!();
                 }
             },
-            NFATransitionType::Keyword(keyword) => {
+            Some(NFATransitionType::Keyword(keyword)) => {
                 let t = keywords.get_squashed(keyword).unwrap();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
+                    fallback: None,
                 });
+            },
+            None => {
             },
         }
     }
@@ -517,13 +549,15 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
         node_type: new_node_id,
         to_state: plan.next_dfa_state,
         stack_mode: StackMode::Normal,
+        fallback: None,
     });
     Plan {
         pushes: pushes,
         next_dfa_state: next_dfa_state,
         // TODO isn't this redundant  with the hashmap insertion?
         type_: plan.type_,
-        debug_text: plan.debug_text
+        debug_text: plan.debug_text,
+        fallback: None,
     }
 }
 

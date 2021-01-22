@@ -177,7 +177,8 @@ impl<'a, T: Token+Debug+Copy> Grammar<T> {
                     },
                     Some(plan) => {
                         let cloned_plan = plan.clone();
-                        stack.apply_plan(&self.automatons, &cloned_plan, &token);
+                        stack.apply_plan(&self.automatons, &cloned_plan,
+                                         &token, backtracking_tokenizer.tokens.len());
                         break
                     },
                 }
@@ -236,15 +237,23 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
     }
 
     #[inline]
-    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T) {
+    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
+                  token_count: usize) {
         self.calculate_previous_next_node();
         let start_index = token.get_start_index();
-        let tos = self.get_tos();
 
-        let initial_mode = tos.mode;
-        let record_tokens = tos.record_tokens;
-        let next = &automatons[&tos.node_id].dfa_states[plan.next_dfa_state.0];
-        self.stack_nodes.last_mut().unwrap().dfa_state = next;
+        let tos_mut = self.stack_nodes.last_mut().unwrap();
+        let initial_mode = tos_mut.mode;
+        let record_tokens = tos_mut.record_tokens;
+        let next = &automatons[&tos_mut.node_id].dfa_states[plan.next_dfa_state.0];
+        tos_mut.dfa_state = next;
+        if let Some(fallback) = plan.fallback {
+            tos_mut.add_backtracking_point(
+                self.tree_nodes.len(),
+                token_count,
+                &automatons[&tos_mut.node_id].dfa_states[fallback.0],
+            );
+        }
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let mut mode = push.stack_mode;
@@ -260,7 +269,15 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
                 mode,
                 record_tokens,
             );
-            self.stack_nodes.last_mut().unwrap().latest_child_node_index = self.tree_nodes.len();
+            let tos_mut = self.stack_nodes.last_mut().unwrap();
+            tos_mut.latest_child_node_index = self.tree_nodes.len();
+            if let Some(fallback) = plan.fallback {
+                tos_mut.add_backtracking_point(
+                    self.tree_nodes.len(),
+                    token_count,
+                    &automatons[&tos_mut.node_id].dfa_states[fallback.0],
+                );
+            }
         }
         let tos = self.get_tos();
         if tos.mode == StackMode::Normal {
@@ -325,7 +342,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
     }
 }
 
-impl StackNode<'_> {
+impl<'a> StackNode<'a> {
     fn get_terminal_name(&self, nonterminal_map: &InternalStrToNode) -> &str {
         for (label, &id) in nonterminal_map {
             if id == self.node_id {
@@ -333,6 +350,19 @@ impl StackNode<'_> {
             }
         }
         unreachable!();
+    }
+
+    #[inline]
+    fn add_backtracking_point(&mut self, tree_node_count: usize, token_count: usize,
+                              state: &'a DFAState) {
+        self.backtracking_points.push(BacktrackingPoint {
+            tree_node_count: tree_node_count,
+            token_index: token_count,
+            children_count: self.children_count,
+            mode: self.mode,
+            latest_child_node_index: self.latest_child_node_index,
+            dfa_state: state,
+        });
     }
 }
 
