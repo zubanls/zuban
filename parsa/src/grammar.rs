@@ -159,17 +159,24 @@ impl<'a, T: Token+Debug+Copy> Grammar<T> {
                         //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
                         //     .map(|x| x.debug_text).collect::<Vec<_>>());
                         if tos.dfa_state.is_final {
+                            if tos.mode == StackMode::PositiveLookahead {
+                                dbg!("bla", &tos.backtracking_points);
+                                panic!()
+                            }
                             stack.pop()
                         } else {
                             let mut tos = stack.stack_nodes.last_mut().unwrap();
                             match tos.backtracking_points.pop() {
                                 Some(backtracking_point) => {
+                                    panic!("YAY");
                                     stack.backtrack(&backtracking_point);
                                     backtracking_tokenizer.next_index = backtracking_point.token_index;
                                 },
                                 None => {
                                     let rest = &code[token.get_start_index() as usize..];
                                     dbg!(token, rest);
+                                    dbg!(stack.stack_nodes.iter().map(
+                                         |n| n.dfa_state.from_rule).collect::<Vec<_>>());
                                     panic!("Error recovery");
                                 },
                             };
@@ -262,6 +269,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
             }
 
             self.stack_nodes.last_mut().unwrap().children_count += 1;
+            //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
             self.push(
                 push.node_type,
                 &automatons[&push.node_type].dfa_states[push.to_state.0],
@@ -279,8 +287,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
                 );
             }
         }
-        let tos = self.get_tos();
-        if tos.mode == StackMode::Normal {
+        if self.get_tos().mode == StackMode::Normal {
             // Once all the nodes are dealt with, add the token
             self.stack_nodes.last_mut().unwrap().children_count += 1;
             self.tree_nodes.push(InternalNode {
