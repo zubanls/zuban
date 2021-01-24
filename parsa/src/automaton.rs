@@ -401,10 +401,10 @@ impl RuleAutomaton {
                 transition_list.push(Some((
                     t.to,
                     match t.type_ {
-                        Some(NFATransitionType::Terminal(_, s)) => {s},
+                        Some(NFATransitionType::Terminal(_, s)) => {s.to_owned()},
                         Some(NFATransitionType::Nonterminal(t)) => {
-                            nonterminal_to_str(nonterminal_map, t)},
-                        Some(NFATransitionType::Keyword(s)) => {s},
+                            nonterminal_to_str(nonterminal_map, t).to_owned()},
+                        Some(NFATransitionType::Keyword(s)) => {format!("{:#?}", s)},
                         None => {
                             match t.mode_change {
                                 ModeChange::NoChange => {""}
@@ -412,7 +412,7 @@ impl RuleAutomaton {
                                 ModeChange::PositiveLookaheadEnd => {"LOOK_END"},
                                 ModeChange::NegativeLookaheadEnd => {"LOOK_END"},
                                 ModeChange::NegativeLookaheadStart => {"NEG_LOOK"},
-                            }
+                            }.to_owned()
                         },
                     }
                 )));
@@ -426,8 +426,8 @@ impl RuleAutomaton {
             for t in transition_list.iter_mut() {
                 if let Some((to, s)) = t.clone() {
                     v1.push("|".to_owned());
-                    v2.push(if s.is_empty() {"|".to_owned()} else {s.to_owned()});
-                    t.replace((to, ""));
+                    v2.push(if s.is_empty() {"|".to_owned()} else {s});
+                    t.replace((to, "".to_owned()));
                     v3.push(if to.0 <= i + 1 {
                                 t.take();
                                 if to.0 == i + 1 {
