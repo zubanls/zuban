@@ -293,12 +293,14 @@ macro_rules! __parse_operators {
 #[macro_export]
 macro_rules! __parse_identifier {
     // Negative Lookahead
-    (! $($rule:tt)+) => (
-        $crate::Rule::NegativeLookahead(&$crate::__parse_identifier!($($rule)+))
+    (! $lookahead:tt $($rule:tt)+) => (
+        $crate::__parse_next_identifier!(
+            $crate::Rule::NegativeLookahead(&$crate::__parse_identifier!($lookahead)), $($rule)*)
     );
     // Positive Lookahead
-    (& $($rule:tt)+) => (
-        $crate::Rule::PositiveLookahead(&$crate::__parse_identifier!($($rule)+))
+    (& $lookahead:tt $($rule:tt)+) => (
+        $crate::__parse_next_identifier!(
+            $crate::Rule::PositiveLookahead(&$crate::__parse_identifier!($lookahead)), $($rule)*)
     );
 
     // Terminal/Nonterminal

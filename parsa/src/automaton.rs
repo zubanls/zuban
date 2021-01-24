@@ -519,10 +519,6 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
         if automaton.dfa_states[0].is_final {
             panic!("The rule \"{}\" is allowed to have no child nodes", automaton.name);
         }
-        if nonterminal_map["classdef"] == *rule_label {
-            println!("{}", &automaton.illustrate_dfas(nonterminal_map));
-            panic!();
-        }
     }
     // Optimize and calculate all plans
     for rule_label in &rule_labels {
