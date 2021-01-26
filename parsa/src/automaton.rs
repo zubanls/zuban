@@ -112,9 +112,10 @@ struct DFATransition {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum StackMode {
+pub enum StackMode<> {
     NegativeLookahead,
     PositiveLookahead,
+    Alternative(DFAStateId),
     Normal,
 }
 
@@ -122,7 +123,6 @@ pub enum StackMode {
 pub struct Push {
     pub node_type: InternalNodeType,
     pub to_state: DFAStateId,
-    pub fallback: Option<DFAStateId>,
     pub stack_mode: StackMode,
 }
 
@@ -131,7 +131,6 @@ pub struct Plan {
     pub pushes: Vec<Push>,
     pub next_dfa_state: DFAStateId,
     pub type_: InternalSquashedType,
-    pub fallback: Option<DFAStateId>,
     pub debug_text: &'static str,
 }
 
@@ -579,7 +578,6 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
-                    fallback: None,
                 });
             },
             Some(NFATransitionType::Nonterminal(node_id)) => {
@@ -607,7 +605,6 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
-                    fallback: None,
                 });
             },
             None => {
@@ -631,7 +628,6 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
-                    fallback: None,
                 });
             },
             Some(NFATransitionType::Nonterminal(node_id)) => {
@@ -650,7 +646,6 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
-                    fallback: None,
                 });
             },
             None => {
@@ -693,7 +688,6 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
         node_type: new_node_id,
         to_state: plan.next_dfa_state,
         stack_mode: mode,
-        fallback: None,
     });
     Plan {
         pushes: pushes,
@@ -701,7 +695,6 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
         // TODO isn't this redundant  with the hashmap insertion?
         type_: plan.type_,
         debug_text: plan.debug_text,
-        fallback: None,
     }
 }
 
