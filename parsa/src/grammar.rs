@@ -238,6 +238,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     let tos = self.stack_nodes.last_mut().unwrap();
                     tos.children_count = old_tos.children_count;
                     tos.latest_child_node_index = old_tos.latest_child_node_index;
+                    panic!("YAYY");
                 }
             }
         } else {
@@ -383,7 +384,9 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
 
         // The first node does not need to be updated.
         if index != 0 {
-            self.tree_nodes[index].next_node_offset = (next - index) as u32;
+            if let Some(n) = self.tree_nodes.get_mut(index) {
+                n.next_node_offset = (next - index) as u32;
+            }
         }
         tos.latest_child_node_index = next;
     }
