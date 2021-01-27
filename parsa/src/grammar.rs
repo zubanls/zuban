@@ -162,14 +162,9 @@ impl<'a, T: Token+Debug+Copy> Grammar<T> {
 
         while stack.len() > 0 {
             let tos = stack.get_tos();
-            if tos.dfa_state.is_final {
-                //stack.pop(&mut backtracking_tokenizer)
-                // We never broke out -- EOF is too soon -- Unfinished statement.
-                // However, the error recovery might have added the token again, if
-                // the stack is empty, we're fine.
-            } else {
-                panic!("incomplete input {:?}", tos.dfa_state)
-            }
+            let is_final = tos.dfa_state.is_final;
+            let mode = tos.mode;
+            stack.end_of_node(&mut backtracking_tokenizer, is_final, mode);
         }
         stack.tree_nodes
     }
