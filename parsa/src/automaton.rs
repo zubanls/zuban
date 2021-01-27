@@ -82,33 +82,25 @@ pub struct DFAState {
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-enum NFATransitionType {
+enum TransitionType {
     Terminal(InternalTokenType, &'static str),
     Nonterminal(InternalNodeType),
     Keyword(&'static str),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ModeChange {
-    NoChange,
     PositiveLookaheadStart,
-    PositiveLookaheadEnd,
-    NegativeLookaheadEnd,
     NegativeLookaheadStart,
+    LookaheadEnd,
 }
 
 #[derive(Debug)]
 struct NFATransition {
-    type_: Option<NFATransitionType>,
+    type_: Option<TransitionType>,
     to: NFAStateId,
-    mode_change: ModeChange,
 }
 
 #[derive(Debug, Clone)]
 struct DFATransition {
-    type_: Option<NFATransitionType>,
+    type_: TransitionType,
     to: DFAStateId,
-    mode_change: ModeChange,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -184,13 +176,13 @@ impl RuleAutomaton {
                 if let Some(&t) = terminal_map.get(string) {
                     self.add_transition(
                         start, end,
-                        Some(NFATransitionType::Terminal(t, string)),
-                        ModeChange::NoChange);
+                        Some(TransitionType::Terminal(t, string)),
+                    );
                 } else if let Some(&t) = nonterminal_map.get(string) {
                     self.add_transition(
                         start, end,
-                        Some(NFATransitionType::Nonterminal(t)),
-                        ModeChange::NoChange);
+                        Some(TransitionType::Nonterminal(t)),
+                    );
                 } else {
                     panic!("No terminal / nonterminal found for {:?}; token_map = {:?}; node_map ={:?}",
                            string, terminal_map, nonterminal_map);
@@ -200,7 +192,7 @@ impl RuleAutomaton {
             Keyword(string) => {
                 let (start, end) = self.new_nfa_states();
                 self.add_transition(
-                    start, end, Some(NFATransitionType::Keyword(string)), ModeChange::NoChange);
+                    start, end, Some(TransitionType::Keyword(string)));
                 keywords.add(string);
                 (start, end)
             },
@@ -226,15 +218,15 @@ impl RuleAutomaton {
             NegativeLookahead(rule1) => {
                 let (start, end) = build(self, rule1);
                 let (new_start, new_end) = self.new_nfa_states();
-                self.add_transition(new_start, start, None, ModeChange::NegativeLookaheadStart);
-                self.add_transition(end, new_end, None, ModeChange::NegativeLookaheadEnd);
+                self.add_transition(new_start, start, Some(TransitionType::NegativeLookaheadStart));
+                self.add_transition(end, new_end, Some(TransitionType::LookaheadEnd));
                 (new_start, new_end)
             },
             PositiveLookahead(rule1) => {
                 let (start, end) = build(self, rule1);
                 let (new_start, new_end) = self.new_nfa_states();
-                self.add_transition(new_start, start, None, ModeChange::PositiveLookaheadStart);
-                self.add_transition(end, new_end, None, ModeChange::PositiveLookaheadEnd);
+                self.add_transition(new_start, start, Some(TransitionType::PositiveLookaheadStart));
+                self.add_transition(end, new_end, Some(TransitionType::LookaheadEnd));
                 (new_start, new_end)
             }
             // TODO Cut is ignored for now.
@@ -270,14 +262,14 @@ impl RuleAutomaton {
     }
 
     fn add_transition(&mut self, start: NFAStateId, to: NFAStateId,
-                      type_: Option<NFATransitionType>, mode_change: ModeChange) {
+                      type_: Option<TransitionType>) {
         self.get_nfa_state_mut(start).transitions.push(
-            NFATransition {type_: type_, to: to, mode_change: mode_change}
+            NFATransition {type_: type_, to: to}
         );
     }
 
     fn add_empty_transition(&mut self, start: NFAStateId, to: NFAStateId) {
-        self.add_transition(start, to, None, ModeChange::NoChange);
+        self.add_transition(start, to, None);
     }
 
     fn group_nfas(&self, nfa_state_ids: Vec<NFAStateId>) -> HashSet<NFAStateId> {
@@ -286,7 +278,7 @@ impl RuleAutomaton {
         for nfa_state_id in &nfa_state_ids {
             for transition in &self.get_nfa_state(*nfa_state_id).transitions {
                 // Mode changes need to have separate DFA states as well.
-                if transition.type_ == None && transition.mode_change == ModeChange::NoChange {
+                if transition.type_ == None {
                     set.insert(transition.to);
                     if !nfa_state_ids.contains(&transition.to) {
                         set.extend(self.group_nfas(set.iter().cloned().collect()));
@@ -298,7 +290,7 @@ impl RuleAutomaton {
     }
 
     fn nfa_to_dfa(&self, dfa_states: &mut Vec<DFAState>, starts: Vec<NFAStateId>,
-                  end: NFAStateId, mode_change: ModeChange) -> DFAStateId {
+                  end: NFAStateId) -> DFAStateId {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
@@ -323,7 +315,7 @@ impl RuleAutomaton {
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> Vec<DFAState> {
         let mut dfa_states = Vec::new();
-        let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end, ModeChange::NoChange);
+        let dfa_id = self.nfa_to_dfa(&mut dfa_states, vec!(start), end);
         self.construct_powerset_for_dfa(&mut dfa_states, dfa_id, end);
         dfa_states
     }
@@ -345,27 +337,21 @@ impl RuleAutomaton {
             for transition in &n.transitions {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
-                if !(transition.type_ == None && transition.mode_change == ModeChange::NoChange) {
-                    match grouped_transitions.get_mut(&(transition.type_, transition.mode_change)) {
+                if let Some(t) = transition.type_ {
+                    match grouped_transitions.get_mut(&(t)) {
                         Some(v) => v.push(transition.to),
-                        None => {
-                            grouped_transitions.insert(
-                                (transition.type_, transition.mode_change),
-                                vec!(transition.to)
-                            );
-                        },
+                        None => {grouped_transitions.insert(t, vec!(transition.to));},
                     }
                 }
             }
         }
 
         let mut transitions = Vec::new();
-        for ((type_, mode_change), grouped_starts) in grouped_transitions {
-            let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end, mode_change);
+        for (type_, grouped_starts) in grouped_transitions {
+            let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end);
             transitions.push(DFATransition {
                 type_: type_,
                 to: new_dfa_id,
-                mode_change: mode_change,
             });
         }
 
@@ -400,19 +386,13 @@ impl RuleAutomaton {
                 transition_list.push(Some((
                     t.to,
                     match t.type_ {
-                        Some(NFATransitionType::Terminal(_, s)) => {s.to_owned()},
-                        Some(NFATransitionType::Nonterminal(t)) => {
+                        TransitionType::Terminal(_, s) => {s.to_owned()},
+                        TransitionType::Nonterminal(t) => {
                             nonterminal_to_str(nonterminal_map, t).to_owned()},
-                        Some(NFATransitionType::Keyword(s)) => {format!("{:#?}", s)},
-                        None => {
-                            match t.mode_change {
-                                ModeChange::NoChange => {""}
-                                ModeChange::PositiveLookaheadStart => {"POS_LOOK"},
-                                ModeChange::PositiveLookaheadEnd => {"LOOK_END"},
-                                ModeChange::NegativeLookaheadEnd => {"LOOK_END"},
-                                ModeChange::NegativeLookaheadStart => {"NEG_LOOK"},
-                            }.to_owned()
-                        },
+                        TransitionType::Keyword(s) => {format!("{:#?}", s)},
+                        TransitionType::PositiveLookaheadStart => {"POS_LOOK".to_owned()},
+                        TransitionType::LookaheadEnd => {"LOOK_END".to_owned()},
+                        TransitionType::NegativeLookaheadStart => {"NEG_LOOK".to_owned()},
                     }
                 )));
             }
@@ -480,7 +460,7 @@ impl RuleAutomaton {
 
 impl NFAState {
     fn is_lookahead_end(&self) -> bool {
-        self.transitions.iter().any(|t| t.mode_change == ModeChange::NegativeLookaheadEnd || t.mode_change == ModeChange::PositiveLookaheadEnd)
+        self.transitions.iter().any(|t| t.type_ == Some(TransitionType::LookaheadEnd))
     }
 }
 
@@ -569,7 +549,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
-            Some(NFATransitionType::Terminal(type_, debug_text)) => {
+            TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
                 if plans.contains_key(&t) {
                     panic!("ambigous! {}", dfa_state.from_rule);
@@ -581,7 +561,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     debug_text: debug_text,
                 });
             },
-            Some(NFATransitionType::Nonterminal(node_id)) => {
+            TransitionType::Nonterminal(node_id) => {
                 create_first_plans(nonterminal_map, keywords, first_plans, &automatons, node_id);
                 match &first_plans[&node_id] {
                     FirstPlan::Calculating => {unreachable!()},
@@ -596,7 +576,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     },
                 }
             },
-            Some(NFATransitionType::Keyword(keyword)) => {
+            TransitionType::Keyword(keyword) => {
                 let t = keywords.get_squashed(keyword).unwrap();
                 if plans.contains_key(&t) {
                     panic!("ambigous3! {}", dfa_state.from_rule);
@@ -608,11 +588,14 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     debug_text: keyword,
                 });
             },
-            None => {
+            TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
                 let inner_plans = first_plans_for_dfa(
                     nonterminal_map, keywords, automatons, first_plans,
                     automaton, &automaton.dfa_states[transition.to.0]);
                 plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
+            },
+            TransitionType::LookaheadEnd => {
+                unreachable!();
             },
         }
     }
@@ -621,25 +604,18 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
 
 fn create_lookahead_plans(automaton: &RuleAutomaton, transition: &DFATransition,
                           inner_plans: &SquashedTransitions) -> SquashedTransitions {
-    if transition.mode_change == ModeChange::PositiveLookaheadStart
-            || transition.mode_change == ModeChange::NegativeLookaheadStart {
-        let mode = {
-            if transition.mode_change == ModeChange::PositiveLookaheadStart {
-                StackMode::PositiveLookahead
-            } else {
-                StackMode::NegativeLookahead
-            }
-        };
-        inner_plans.iter().map(
-                |(k, plan)| (*k, nest_plan(
-                        plan, automaton.type_, search_lookahead_end(
-                            automaton, plan.next_dfa_state
-                        ), mode
-                ))
-        ).collect()
-    } else {
-        unreachable!()
-    }
+    let mode = match transition.type_ {
+        TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
+        TransitionType::NegativeLookaheadStart => StackMode::NegativeLookahead,
+        _ => unreachable!()
+    };
+    inner_plans.iter().map(
+        |(k, plan)| (*k, nest_plan(
+                plan, automaton.type_, search_lookahead_end(
+                    automaton, plan.next_dfa_state
+                ), mode
+        ))
+    ).collect()
 }
 
 fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &DFAState,
@@ -647,7 +623,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
-            Some(NFATransitionType::Terminal(type_, debug_text)) => {
+            TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
@@ -656,7 +632,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     debug_text: debug_text,
                 });
             },
-            Some(NFATransitionType::Nonterminal(node_id)) => {
+            TransitionType::Nonterminal(node_id) => {
                 let first_plan = &first_plans[&node_id];
                 if let FirstPlan::Calculated(p) = first_plan {
                     plans.extend(p.iter().map(|(k, v)| (
@@ -665,7 +641,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     unreachable!();
                 }
             },
-            Some(NFATransitionType::Keyword(keyword)) => {
+            TransitionType::Keyword(keyword) => {
                 let t = keywords.get_squashed(keyword).unwrap();
                 plans.insert(t, Plan {
                     pushes: Vec::new(),
@@ -674,11 +650,14 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     debug_text: keyword,
                 });
             },
-            None => {
+            TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
                 let inner_plans = create_all_plans(
                     &keywords, automaton, &automaton.dfa_states[transition.to.0],
                     &first_plans);
                 plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
+            },
+            TransitionType::LookaheadEnd => {
+                // No plans needed.
             },
         }
     }
@@ -703,23 +682,28 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
 }
 
 fn search_lookahead_end(automaton: &RuleAutomaton, dfa_state_id: DFAStateId) -> DFAStateId {
-    let mut hash_map = HashSet::new();
-    hash_map.insert(dfa_state_id);
+    let mut already_checked = HashSet::new();
+    already_checked.insert(dfa_state_id);
 
-    fn search(hash_map: &mut HashSet<DFAStateId>, automaton: &RuleAutomaton, dfa_state_id: DFAStateId) -> DFAStateId {
+    fn search(already_checked: &mut HashSet<DFAStateId>, automaton: &RuleAutomaton, dfa_state_id: DFAStateId) -> DFAStateId {
         for transition in &automaton.dfa_states[dfa_state_id.0].transitions {
-            if transition.mode_change == ModeChange::PositiveLookaheadEnd
-                    || transition.mode_change == ModeChange::NegativeLookaheadEnd {
-                return transition.to;
-            } else if !hash_map.contains(&transition.to)
-                    && transition.mode_change == ModeChange::NoChange {
-                hash_map.insert(transition.to);
-                return search(hash_map, automaton, transition.to);
+            match transition.type_ {
+                TransitionType::LookaheadEnd => return transition.to,
+                TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart
+                    => unimplemented!(),
+                _ => {
+                    if !already_checked.contains(&transition.to) {
+                        already_checked.insert(transition.to);
+                        // It is a bit weird that this return works. It probably works, but maybe
+                        // wouldn't in some weird cases. We can still fix it then if necessary. 
+                        return search(already_checked, automaton, transition.to);
+                    }
+                }
             }
         }
         unreachable!()
     }
-    return search(&mut hash_map, automaton, dfa_state_id)
+    return search(&mut already_checked, automaton, dfa_state_id)
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {
