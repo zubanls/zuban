@@ -528,7 +528,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
             // The dfa_states need to refer to themselves, having it unsafe
             // here is the easiest way.
             dfa_state.transition_to_plan = create_all_plans(
-                &keywords, unsafe {&*automaton}, &dfa_state, *rule_label, &first_plans);
+                &keywords, unsafe {&*automaton}, &dfa_state, &first_plans);
 
         }
     }
@@ -556,7 +556,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
         }
     }
     let plans = first_plans_for_dfa(nonterminal_map, keywords, automatons, first_plans,
-                                    &automaton.dfa_states[0]);
+                                    automaton, &automaton.dfa_states[0]);
     first_plans.insert(automaton_key, FirstPlan::Calculated(plans));
 }
 
@@ -564,6 +564,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                        keywords: &Keywords,
                        automatons: &Automatons,
                        first_plans: &mut HashMap<InternalNodeType, FirstPlan>,
+                       automaton: &RuleAutomaton,
                        dfa_state: &DFAState) -> SquashedTransitions {
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
@@ -608,8 +609,26 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 });
             },
             None => {
-                unreachable!();
-                //plans.insert(*t, nest_plan(nested_plan, node_id, transition.to));
+                let inner_plans = first_plans_for_dfa(
+                    nonterminal_map, keywords, automatons, first_plans,
+                    automaton, &automaton.dfa_states[transition.to.0]);
+                if transition.mode_change == ModeChange::PositiveLookaheadStart
+                        || transition.mode_change == ModeChange::NegativeLookaheadStart {
+                    let mode = {
+                        if transition.mode_change == ModeChange::PositiveLookaheadStart {
+                            StackMode::PositiveLookahead
+                        } else {
+                            StackMode::NegativeLookahead
+                        }
+                    };
+                    plans.extend(inner_plans.iter().map(
+                            |(k, plan)| (*k, nest_plan(
+                                    plan, automaton.type_, search_lookahead_end(
+                                        automaton, plan.next_dfa_state
+                                    ), mode
+                            ))
+                    ));
+                }
             },
         }
     }
@@ -617,7 +636,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
 }
 
 fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &DFAState,
-                    node_type: InternalNodeType, first_plans: &HashMap<InternalNodeType, FirstPlan>) -> SquashedTransitions {
+                    first_plans: &HashMap<InternalNodeType, FirstPlan>) -> SquashedTransitions {
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
@@ -651,7 +670,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
             None => {
                 let inner_plans = create_all_plans(
                     &keywords, automaton, &automaton.dfa_states[transition.to.0],
-                    node_type,  &first_plans);
+                    &first_plans);
                 if transition.mode_change == ModeChange::PositiveLookaheadStart
                         || transition.mode_change == ModeChange::NegativeLookaheadStart {
                     let mode = {
@@ -663,7 +682,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     };
                     plans.extend(inner_plans.iter().map(
                             |(k, plan)| (*k, nest_plan(
-                                    plan, node_type, search_lookahead_end(
+                                    plan, automaton.type_, search_lookahead_end(
                                         automaton, plan.next_dfa_state
                                     ), mode
                             ))
