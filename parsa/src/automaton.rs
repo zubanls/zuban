@@ -612,27 +612,34 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 let inner_plans = first_plans_for_dfa(
                     nonterminal_map, keywords, automatons, first_plans,
                     automaton, &automaton.dfa_states[transition.to.0]);
-                if transition.mode_change == ModeChange::PositiveLookaheadStart
-                        || transition.mode_change == ModeChange::NegativeLookaheadStart {
-                    let mode = {
-                        if transition.mode_change == ModeChange::PositiveLookaheadStart {
-                            StackMode::PositiveLookahead
-                        } else {
-                            StackMode::NegativeLookahead
-                        }
-                    };
-                    plans.extend(inner_plans.iter().map(
-                            |(k, plan)| (*k, nest_plan(
-                                    plan, automaton.type_, search_lookahead_end(
-                                        automaton, plan.next_dfa_state
-                                    ), mode
-                            ))
-                    ));
-                }
+                plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
             },
         }
     }
     plans
+}
+
+fn create_lookahead_plans(automaton: &RuleAutomaton, transition: &DFATransition,
+                          inner_plans: &SquashedTransitions) -> SquashedTransitions {
+    if transition.mode_change == ModeChange::PositiveLookaheadStart
+            || transition.mode_change == ModeChange::NegativeLookaheadStart {
+        let mode = {
+            if transition.mode_change == ModeChange::PositiveLookaheadStart {
+                StackMode::PositiveLookahead
+            } else {
+                StackMode::NegativeLookahead
+            }
+        };
+        inner_plans.iter().map(
+                |(k, plan)| (*k, nest_plan(
+                        plan, automaton.type_, search_lookahead_end(
+                            automaton, plan.next_dfa_state
+                        ), mode
+                ))
+        ).collect()
+    } else {
+        unreachable!()
+    }
 }
 
 fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &DFAState,
@@ -671,23 +678,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                 let inner_plans = create_all_plans(
                     &keywords, automaton, &automaton.dfa_states[transition.to.0],
                     &first_plans);
-                if transition.mode_change == ModeChange::PositiveLookaheadStart
-                        || transition.mode_change == ModeChange::NegativeLookaheadStart {
-                    let mode = {
-                        if transition.mode_change == ModeChange::PositiveLookaheadStart {
-                            StackMode::PositiveLookahead
-                        } else {
-                            StackMode::NegativeLookahead
-                        }
-                    };
-                    plans.extend(inner_plans.iter().map(
-                            |(k, plan)| (*k, nest_plan(
-                                    plan, automaton.type_, search_lookahead_end(
-                                        automaton, plan.next_dfa_state
-                                    ), mode
-                            ))
-                    ));
-                }
+                plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
             },
         }
     }
