@@ -1,0 +1,96 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-55
+ stmt: 1-10
+  simple_stmt: 1-10
+   small_stmt: 1-9
+    expr_stmt: 1-9
+     testlist_star_expr: 1-9
+      test: 1-9
+       expr: 1-9
+        atom_expr: 1-9
+         Name: 1-4 "foo"
+         trailer: 4-9
+          Keyword: 4-5 "("
+          arglist: 5-8
+           argument: 5-8
+            test: 5-8
+             expr: 5-8
+              Name: 5-8 "bar"
+          Keyword: 8-9 ")"
+   Newline: 9-10 "\n"
+ stmt: 10-25
+  simple_stmt: 10-25
+   small_stmt: 10-24
+    expr_stmt: 10-24
+     testlist_star_expr: 10-24
+      test: 10-24
+       expr: 10-24
+        atom_expr: 10-24
+         Name: 10-13 "foo"
+         trailer: 13-24
+          Keyword: 13-14 "("
+          arglist: 14-23
+           argument: 14-23
+            test: 14-21
+             expr: 14-21
+              atom_expr: 14-21
+               Name: 14-17 "bar"
+               trailer: 17-21
+                Keyword: 17-18 "."
+                Name: 18-21 "foo"
+            Keyword: 21-22 "="
+            test: 22-23
+             expr: 22-23
+              Number: 22-23 "3"
+          Keyword: 23-24 ")"
+   Newline: 24-25 "\n"
+ stmt: 25-41
+  simple_stmt: 25-41
+   small_stmt: 25-40
+    expr_stmt: 25-40
+     testlist_star_expr: 25-40
+      test: 25-40
+       expr: 25-40
+        atom_expr: 25-40
+         Name: 25-28 "foo"
+         trailer: 28-40
+          Keyword: 28-29 "("
+          arglist: 29-39
+           argument: 29-39
+            test: 29-36
+             expr: 29-36
+              atom_expr: 29-36
+               Name: 29-32 "bar"
+               trailer: 32-36
+                Keyword: 32-33 "."
+                Name: 33-36 "baz"
+            Keyword: 36-38 ":="
+            test: 38-39
+             expr: 38-39
+              Number: 38-39 "2"
+          Keyword: 39-40 ")"
+   Newline: 40-41 "\n"
+ stmt: 41-55
+  simple_stmt: 41-55
+   small_stmt: 41-54
+    expr_stmt: 41-54
+     testlist_star_expr: 41-54
+      test: 41-54
+       expr: 41-54
+        atom_expr: 41-54
+         Name: 41-44 "foo"
+         trailer: 44-54
+          Keyword: 44-45 "("
+          arglist: 45-53
+           argument: 45-53
+            Keyword: 45-47 "**"
+            test: 47-53
+             expr: 47-53
+              Name: 47-53 "kwargs"
+          Keyword: 53-54 ")"
+   Newline: 54-55 "\n"
+ Endmarker: 55-55 ""
+
