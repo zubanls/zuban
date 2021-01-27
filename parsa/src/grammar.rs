@@ -375,17 +375,6 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 }
 
-impl<'a> StackNode<'a> {
-    fn get_terminal_name(&self, nonterminal_map: &InternalStrToNode) -> &str {
-        for (label, &id) in nonterminal_map {
-            if id == self.node_id {
-                return label
-            }
-        }
-        unreachable!();
-    }
-}
-
 impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     fn new(tokenizer: I) -> Self {
         Self {
