@@ -288,19 +288,26 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     #[inline]
     fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
                   backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
-        self.calculate_previous_next_node();
-        let start_index = token.get_start_index();
-
         let tos_mut = self.stack_nodes.last_mut().unwrap();
-        let next = &automatons[&tos_mut.node_id].dfa_states[plan.next_dfa_state.0];
-        tos_mut.dfa_state = next;
+        tos_mut.dfa_state = &automatons[&tos_mut.node_id].dfa_states[plan.next_dfa_state.0];
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
+        let mut add_tree_nodes = tos_mut.add_tree_nodes;
+
+        if add_tree_nodes {
+            self.calculate_previous_next_node();
+        }
+
+        let start_index = token.get_start_index();
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let tos = self.stack_nodes.last_mut().unwrap();
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
             enabled_token_recording |= push.stack_mode != StackMode::Normal;
+            add_tree_nodes &= match push.stack_mode {
+                StackMode::Normal | StackMode::Alternative(_) => true,
+                _ => false,
+            };
             self.push(
                 push.node_type,
                 &automatons[&push.node_type].dfa_states[push.to_state.0],
@@ -322,12 +329,14 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     ),
                 },
                 enabled_token_recording,
-                self.get_tos().add_tree_nodes || push.stack_mode == StackMode::Normal,
+                add_tree_nodes,
             );
-            let tos_mut = self.stack_nodes.last_mut().unwrap();
-            tos_mut.latest_child_node_index = self.tree_nodes.len();
+            if add_tree_nodes {
+                let tos_mut = self.stack_nodes.last_mut().unwrap();
+                tos_mut.latest_child_node_index = self.tree_nodes.len();
+            }
         }
-        if self.get_tos().add_tree_nodes {
+        if add_tree_nodes {
             // Once all the nodes are dealt with, add the token
             self.stack_nodes.last_mut().unwrap().children_count += 1;
             self.tree_nodes.push(InternalNode {
@@ -367,15 +376,16 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
 
     #[inline]
     fn calculate_previous_next_node(&mut self) {
+        let tos = self.stack_nodes.last_mut().unwrap();
         // Care for next_node_offset here.
-        let index = self.get_tos().latest_child_node_index;
+        let index = tos.latest_child_node_index;
         let next = self.tree_nodes.len();
 
         // The first node does not need to be updated.
         if index != 0 {
             self.tree_nodes[index].next_node_offset = (next - index) as u32;
         }
-        self.stack_nodes.last_mut().unwrap().latest_child_node_index = next;
+        tos.latest_child_node_index = next;
     }
 }
 
