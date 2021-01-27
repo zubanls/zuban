@@ -12,7 +12,7 @@ pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
 
-pub trait Token {
+pub trait Token: Copy+Debug {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> InternalTokenType;
@@ -118,7 +118,7 @@ struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
     next_index: usize,
 }
 
-impl<'a, T: Token+Debug+Copy> Grammar<T> {
+impl<'a, T: Token> Grammar<T> {
     pub fn new(rules: &RuleMap,
                nonterminal_map: &'static InternalStrToNode,
                terminal_map: &'static InternalStrToToken) -> Self {
@@ -294,11 +294,13 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
         let tos_mut = self.stack_nodes.last_mut().unwrap();
         let next = &automatons[&tos_mut.node_id].dfa_states[plan.next_dfa_state.0];
         tos_mut.dfa_state = next;
+        let mut enabled_token_recording = tos_mut.enabled_token_recording;
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
-            self.stack_nodes.last_mut().unwrap().children_count += 1;
+            let tos = self.stack_nodes.last_mut().unwrap();
+            tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            let enabled_token_recording = false;
+            enabled_token_recording |= push.stack_mode != StackMode::Normal;
             self.push(
                 push.node_type,
                 &automatons[&push.node_type].dfa_states[push.to_state.0],
@@ -408,7 +410,7 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     }
 }
 
-impl<T: Token+Copy, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
+impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if self.tokens.len() > 0 {

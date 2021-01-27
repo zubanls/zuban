@@ -134,7 +134,7 @@ create_grammar!(
                       ((test | star_expr)
                        (comp_for | ("," (test | star_expr))* [","])) )
 
-    classdef: "class" Name ["(" [arglist] ")"] ":" suite
+    classdef: "class" Name &"(" ["(" [arglist] ")"] ":" suite
 
     arglist: argument ("," argument)*  [","]
 
