@@ -668,12 +668,6 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                                     ), mode
                             ))
                     ));
-                    dbg!(&automaton.dfa_states[search_lookahead_end(
-                                        automaton, inner_plans.values().next().unwrap().next_dfa_state
-                                    ).0]);
-                    dbg!(&plans);
-                    dbg!(&automaton.dfa_states[plans.values().next().unwrap().next_dfa_state.0]);
-                    dbg!(&automaton.dfa_states[plans.values().next().unwrap().pushes[0].to_state.0]);
                 }
             },
         }
@@ -706,8 +700,6 @@ fn search_lookahead_end(automaton: &RuleAutomaton, dfa_state_id: DFAStateId) -> 
         for transition in &automaton.dfa_states[dfa_state_id.0].transitions {
             if transition.mode_change == ModeChange::PositiveLookaheadEnd
                     || transition.mode_change == ModeChange::NegativeLookaheadEnd {
-                dbg!(&automaton.dfa_states[dfa_state_id.0]);
-                dbg!(&transition, &automaton.dfa_states[transition.to.0]);
                 return transition.to;
             } else if !hash_map.contains(&transition.to)
                     && transition.mode_change == ModeChange::NoChange {

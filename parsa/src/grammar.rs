@@ -264,8 +264,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             }
             //let rest = &code[token.get_start_index() as usize..];
             //dbg!(token, rest);
-            dbg!(self.stack_nodes.iter().map(
-                 |n| n.dfa_state.from_rule).collect::<Vec<_>>());
+            //dbg!(self.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
             panic!("Error recovery");
         }
     }
