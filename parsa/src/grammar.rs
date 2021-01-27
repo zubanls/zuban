@@ -116,7 +116,6 @@ struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
     tokenizer: I,
     tokens: Vec<T>,
     next_index: usize,
-    is_backtracking: bool,
 }
 
 impl<'a, T: Token+Debug+Copy> Grammar<T> {
@@ -211,7 +210,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                 Some(plan) => {
                     let cloned_plan = plan.clone();
                     self.apply_plan(automatons, &cloned_plan,
-                                    &token, backtracking_tokenizer.tokens.len());
+                                    &token, backtracking_tokenizer);
                     break
                 },
             }
@@ -228,10 +227,10 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                 },
                 ModeData::PositiveLookahead(token_index) => {
                     self.stack_nodes.pop();
-                    backtracking_tokenizer.next_index = token_index;
+                    backtracking_tokenizer.reset(token_index);
                 },
                 ModeData::NegativeLookahead(token_index) => {
-                    backtracking_tokenizer.next_index = token_index;
+                    backtracking_tokenizer.reset(token_index);
                     unimplemented!();
                 },
                 ModeData::Alternative(backtracking_point) => {
@@ -246,7 +245,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                 match node.mode {
                     ModeData::NegativeLookahead(token_index) => {
                         self.stack_nodes.truncate(i);
-                        backtracking_tokenizer.next_index = token_index;
+                        backtracking_tokenizer.reset(token_index);
                         return
                     },
                     ModeData::Alternative(backtracking_point) => {
@@ -255,8 +254,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                         self.tree_nodes.truncate(backtracking_point.tree_node_count);
                         let tos = self.stack_nodes.last_mut().unwrap();
                         tos.dfa_state = backtracking_point.fallback;
-                        backtracking_tokenizer.next_index
-                            = backtracking_point.token_index;
+                        backtracking_tokenizer.reset(backtracking_point.token_index);
                         panic!("YAY");
                         return
                     },
@@ -289,7 +287,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
 
     #[inline]
     fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
-                  token_count: usize) {
+                  backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
         self.calculate_previous_next_node();
         let start_index = token.get_start_index();
 
@@ -307,12 +305,16 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                 start_index,
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
-                    StackMode::PositiveLookahead => ModeData::PositiveLookahead(token_count),
-                    StackMode::NegativeLookahead => ModeData::NegativeLookahead(token_count),
+                    StackMode::PositiveLookahead => ModeData::PositiveLookahead(
+                        backtracking_tokenizer.start(token)
+                    ),
+                    StackMode::NegativeLookahead => ModeData::NegativeLookahead(
+                        backtracking_tokenizer.start(token)
+                    ),
                     StackMode::Alternative(dfa_state_id) => ModeData::Alternative(
                         BacktrackingPoint {
                             tree_node_count: self.tree_nodes.len(),
-                            token_index: token_count,
+                            token_index: backtracking_tokenizer.start(token),
                             fallback: &automatons[&push.node_type].dfa_states[dfa_state_id.0],
                         }
                     ),
@@ -381,26 +383,35 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
             tokenizer: tokenizer,
             tokens: vec!(),
             next_index: 0,
-            is_backtracking: false,
         }
     }
 
     #[inline]
-    fn start_backtracking<'a>(&mut self, backtracking_point: &'a BacktrackingPoint) {
-        self.next_index = backtracking_point.token_index;
-        self.is_backtracking = true;
+    fn start(&mut self, token: &T) -> usize {
+        if self.tokens.len() == 0 {
+            self.tokens.push(*token);
+            1
+        } else {
+            self.next_index
+        }
     }
 
     #[inline]
-    fn stop_backtracking(&mut self) {
-        self.is_backtracking = false;
+    fn reset(&mut self, token_index: usize) {
+        self.next_index = token_index;
+    }
+
+    #[inline]
+    fn stop(&mut self) {
+        self.tokens.clear();
+        self.next_index = 0;
     }
 }
 
 impl<T: Token+Copy, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.is_backtracking {
+        if self.tokens.len() > 0 {
             match self.tokens.get(self.next_index) {
                 None => {
                     self.next_index += 1;
