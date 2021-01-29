@@ -338,7 +338,15 @@ impl RuleAutomaton {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
                 if let Some(t) = transition.type_ {
-                    match grouped_transitions.get_mut(&(t)) {
+                    let t = transition.type_.unwrap();
+                    match grouped_transitions.get_mut(&(t)).and_then(
+                        |x| if transition.is_terminal_nonterminal_or_keyword() {
+                                Some(x)
+                            } else {
+                                None
+                            }
+                    ) {
+
                         Some(v) => v.push(transition.to),
                         None => {grouped_transitions.insert(t, vec!(transition.to));},
                     }
@@ -461,6 +469,17 @@ impl RuleAutomaton {
 impl NFAState {
     fn is_lookahead_end(&self) -> bool {
         self.transitions.iter().any(|t| t.type_ == Some(TransitionType::LookaheadEnd))
+    }
+}
+
+impl NFATransition {
+    fn is_terminal_nonterminal_or_keyword(&self) -> bool {
+        self.type_.map_or(false, |t| match t {
+            TransitionType::Nonterminal(_)
+            | TransitionType::Terminal(_, _)
+            | TransitionType::Keyword(_) => true,
+            _ => false,
+        })
     }
 }
 
