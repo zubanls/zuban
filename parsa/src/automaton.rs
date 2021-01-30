@@ -11,6 +11,7 @@ pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
 pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 pub type RuleMap = HashMap<InternalNodeType, (&'static str, Rule)>;
+type FirstPlans = HashMap<InternalNodeType, FirstPlan>;
 
 
 #[derive(Debug)]
@@ -530,12 +531,17 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
         // Now optimize the whole thing
         // TODO proper transitions for operators/names
         let automaton: *const RuleAutomaton = automatons.get(rule_label).unwrap();
-        for (i, dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
+        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
             // The dfa_states need to refer to themselves, having it unsafe
             // here is the easiest way.
             dfa_state.transition_to_plan = create_all_plans(
                 &keywords, unsafe {&*automaton}, &dfa_state, &first_plans);
+        }
 
+        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
+            let recursion_plans = create_left_recursion_plans(
+                unsafe {&*automaton}, &mut dfa_state, &first_plans);
+            dfa_state.transition_to_plan.extend(recursion_plans);
         }
     }
     (automatons, keywords)
@@ -543,7 +549,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
 fn create_first_plans(nonterminal_map: &InternalStrToNode,
                       keywords: &Keywords,
-                      first_plans: &mut HashMap<InternalNodeType, FirstPlan>,
+                      first_plans: &mut FirstPlans,
                       automatons: &Automatons,
                       automaton_key: InternalNodeType) {
     let automaton = &automatons[&automaton_key];
@@ -566,7 +572,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
 fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                        keywords: &Keywords,
                        automatons: &Automatons,
-                       first_plans: &mut HashMap<InternalNodeType, FirstPlan>,
+                       first_plans: &mut FirstPlans,
                        automaton: &RuleAutomaton,
                        dfa_state: &DFAState) -> (SquashedTransitions, bool) {
     let mut plans = HashMap::new();
@@ -657,7 +663,7 @@ fn create_lookahead_plans(automaton: &RuleAutomaton, transition: &DFATransition,
 }
 
 fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &DFAState,
-                    first_plans: &HashMap<InternalNodeType, FirstPlan>) -> SquashedTransitions {
+                    first_plans: &FirstPlans) -> SquashedTransitions {
     let mut plans = HashMap::new();
     for transition in &dfa_state.transitions {
         match transition.type_ {
@@ -701,6 +707,12 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
             },
         }
     }
+    plans
+}
+
+fn create_left_recursion_plans(automaton: &RuleAutomaton, dfa_state: &mut DFAState,
+                               first_plans: &FirstPlans) -> SquashedTransitions {
+    let mut plans = HashMap::new();
     if dfa_state.is_final && !dfa_state.is_lookahead_end(){
         // DFAStates that are the end of a lookahead are ignored here, because left recursion is
         // not allowed for lookaheads and they get a separate stack node anyway.
