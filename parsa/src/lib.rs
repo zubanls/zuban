@@ -502,8 +502,8 @@ mod tests {
         GRAMMAR.parse("");
     }
     #[test]
-    #[should_panic(expected = "grammar contains left recursion for rule")]
-    fn left_recursion() {
+    #[should_panic(expected = "Indirect left recursion")]
+    fn indirect_left_recursion() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
             struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
@@ -513,6 +513,44 @@ mod tests {
             rule3: rule1
         );
 
-        GRAMMAR.parse("");
+        &*GRAMMAR;
+    }
+    #[test]
+    #[should_panic(expected = "grammar contains left recursion")]
+    fn direct_left_recursion_without_alternative() {
+        create_grammar!(
+            static GRAMMAR, struct TestGrammar, struct TestTree,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+
+            rule1: rule1
+            rule2: rule1
+        );
+
+        &*GRAMMAR;
+    }
+    #[test]
+    #[should_panic(expected = "Left recursion with lookaheads is not supported")]
+    fn left_recursion_in_lookaheads() {
+        create_grammar!(
+            static GRAMMAR, struct TestGrammar, struct TestTree,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+
+            rule1: &rule1 Bar | Foo
+            rule2: rule1
+        );
+
+        &*GRAMMAR;
+    }
+    #[test]
+    fn direct_left_recursion_with_alternative() {
+        create_grammar!(
+            static GRAMMAR, struct TestGrammar, struct TestTree,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+
+            rule1: rule1 | Foo
+            rule2: rule1
+        );
+
+        &*GRAMMAR;
     }
 }
