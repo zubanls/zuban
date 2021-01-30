@@ -1,0 +1,37 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-37
+ stmt: 1-37
+  simple_stmt: 1-37
+   small_stmt: 1-36
+    expr_stmt: 1-36
+     testlist_star_expr: 1-36
+      test: 1-36
+       expr: 1-36
+        Name: 1-2 "f"
+        Keyword: 3-4 "|"
+        Name: 5-6 "d"
+        Keyword: 7-8 "|"
+        and_expr: 9-36
+         arith_expr: 9-14
+          Name: 9-10 "c"
+          Keyword: 11-12 "+"
+          Number: 13-14 "5"
+         Keyword: 15-16 "&"
+         term: 17-36
+          Number: 17-18 "2"
+          Keyword: 19-20 "*"
+          Number: 21-22 "3"
+          Keyword: 23-24 "*"
+          power: 25-36
+           Number: 25-26 "4"
+           Keyword: 27-29 "**"
+           power: 30-36
+            Number: 30-31 "5"
+            Keyword: 32-34 "**"
+            Number: 35-36 "6"
+   Newline: 36-37 "\n"
+ Endmarker: 37-37 ""
+

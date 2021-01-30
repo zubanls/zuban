@@ -79,4 +79,7 @@ parametrize_snapshots!(
         foo(bar.baz:=2)
         foo(**kwargs)
         ");
+    operators: &dedent("
+        f | d | c + 5 & 2 * 3 * 4 ** 5 ** 6
+        ");
 );
