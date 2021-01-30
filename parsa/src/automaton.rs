@@ -123,6 +123,7 @@ pub struct Plan {
     pub pushes: Vec<Push>,
     pub next_dfa_state: DFAStateId,
     pub type_: InternalSquashedType,
+    pub is_left_recursive: bool,
     pub debug_text: &'static str,
 }
 
@@ -472,6 +473,12 @@ impl NFAState {
     }
 }
 
+impl DFAState {
+    fn is_lookahead_end(&self) -> bool {
+        self.transitions.iter().any(|t| t.type_ == TransitionType::LookaheadEnd)
+    }
+}
+
 impl NFATransition {
     fn is_terminal_nonterminal_or_keyword(&self) -> bool {
         self.type_.map_or(false, |t| match t {
@@ -576,6 +583,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
+                    is_left_recursive: false,
                 });
             },
             TransitionType::Nonterminal(node_id) => {
@@ -611,6 +619,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
+                    is_left_recursive: false,
                 });
             },
             TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
@@ -659,6 +668,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: debug_text,
+                    is_left_recursive: false,
                 });
             },
             TransitionType::Nonterminal(node_id) => {
@@ -677,6 +687,7 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
                     next_dfa_state: transition.to,
                     type_: t,
                     debug_text: keyword,
+                    is_left_recursive: false,
                 });
             },
             TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
@@ -688,6 +699,35 @@ fn create_all_plans(keywords: &Keywords, automaton: &RuleAutomaton, dfa_state: &
             TransitionType::LookaheadEnd => {
                 // No plans needed.
             },
+        }
+    }
+    if dfa_state.is_final && !dfa_state.is_lookahead_end(){
+        // DFAStates that are the end of a lookahead are ignored here, because left recursion is
+        // not allowed for lookaheads and they get a separate stack node anyway.
+        match first_plans[&automaton.type_] {
+            FirstPlan::Calculated(_, is_left_recursive) => {
+                if is_left_recursive {
+                    for transition in &automaton.dfa_states[0].transitions {
+                        match transition.type_ {
+                            TransitionType::Nonterminal(node_id) => {
+                                if node_id == automaton.type_ {
+                                    for (&t, p) in &automaton.dfa_states[transition.to.0].transition_to_plan {
+                                        plans.insert(t, Plan {
+                                            pushes: p.pushes.clone(),
+                                            next_dfa_state: p.next_dfa_state,
+                                            type_: t,
+                                            debug_text: p.debug_text,
+                                            is_left_recursive: true,
+                                        });
+                                    }
+                                }
+                            },
+                            _ => {},
+                        }
+                    }
+                }
+            },
+            _ => unreachable!(),
         }
     }
     plans
@@ -707,6 +747,7 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa_state: DFAStat
         // TODO isn't this redundant  with the hashmap insertion?
         type_: plan.type_,
         debug_text: plan.debug_text,
+        is_left_recursive: false,
     }
 }
 
