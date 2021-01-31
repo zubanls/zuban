@@ -41,6 +41,12 @@ pub struct InternalNode {
     pub extra_data: ExtraData,
 }
 
+impl InternalNode {
+    fn get_end_index(&self) -> u32 {
+        self.start_index + self.length
+    }
+}
+
 // This node is currently not used and just here for future optimization purposes.
 struct CompressedNode {
     next_node_offset: u8,
@@ -272,16 +278,13 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        let last_tree_node = *self.tree_nodes.last().unwrap();
-
         if stack_node.dfa_state.node_may_be_omitted && stack_node.children_count == 1 {
             self.tree_nodes.remove(stack_node.tree_node_index);
         } else {
             // We can simply get the last token and check its end position to
             // calculate how long a node is.
             debug_assert!(stack_node.children_count >= 1);
-            let mut n = self.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-            n.length = last_tree_node.start_index - n.start_index + last_tree_node.length;
+            update_tree_node_position(&mut self.tree_nodes, &stack_node);
         }
     }
 
@@ -293,11 +296,27 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
         let mut add_tree_nodes = tos_mut.add_tree_nodes;
 
+        let start_index = token.get_start_index();
         if add_tree_nodes {
+            if plan.is_left_recursive {
+                tos_mut.children_count = 1;
+                tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+
+                update_tree_node_position(&mut self.tree_nodes, tos_mut);
+
+                let old_node = self.tree_nodes[tos_mut.tree_node_index];
+                self.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
+                    next_node_offset: 0,
+                    // Positive values are token types, negative values are nodes
+                    type_: old_node.type_,
+                    start_index: old_node.start_index,
+                    length: 0,
+                    extra_data: 0,
+                });
+            }
             self.calculate_previous_next_node();
         }
 
-        let start_index = token.get_start_index();
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let tos = self.stack_nodes.last_mut().unwrap();
@@ -381,7 +400,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
         let index = tos.latest_child_node_index;
         let next = self.tree_nodes.len();
 
-        // The first node does not need to be updated.
+        // The first node (root node) does not need to be updated.
         if index != 0 {
             if let Some(n) = self.tree_nodes.get_mut(index) {
                 n.next_node_offset = (next - index) as u32;
@@ -390,6 +409,14 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
         tos.latest_child_node_index = next;
     }
 }
+
+#[inline]
+fn update_tree_node_position(tree_nodes: &mut Vec<InternalNode>, stack_node: &StackNode) {
+    let last_tree_node = *tree_nodes.last().unwrap();
+    let mut n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+    n.length = last_tree_node.get_end_index() - n.start_index;
+}
+
 
 impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     fn new(tokenizer: I) -> Self {

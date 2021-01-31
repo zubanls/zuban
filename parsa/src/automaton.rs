@@ -159,7 +159,7 @@ impl Keywords {
 
 #[derive(Default, Debug)]
 pub struct RuleAutomaton {
-    type_: InternalNodeType,
+    pub type_: InternalNodeType,
     nfa_states: Vec<NFAState>,
     pub dfa_states: Vec<DFAState>,
     name: &'static str,
