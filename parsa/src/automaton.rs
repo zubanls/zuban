@@ -636,6 +636,9 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     panic!("Left recursion with lookaheads is not supported (in rule {:?})",
                            nonterminal_to_str(nonterminal_map, automaton.type_));
                 }
+                if inner_plans.iter().any(|(key, _)| plans.contains_key(&key)) {
+                    panic!("ambigous4");
+                }
                 plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
             },
             TransitionType::LookaheadEnd => {
