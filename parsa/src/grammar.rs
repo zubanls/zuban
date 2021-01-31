@@ -278,7 +278,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        if stack_node.dfa_state.node_may_be_omitted && stack_node.children_count == 1 {
+        if stack_node.can_omit_children() {
             self.tree_nodes.remove(stack_node.tree_node_index);
         } else {
             // We can simply get the last token and check its end position to
@@ -298,7 +298,11 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
 
         let start_index = token.get_start_index();
         if add_tree_nodes {
-            if plan.is_left_recursive {
+            // If we have left recursion we have to do something a bit weird: We push the same tree
+            // node in between, because we only handle direct recursion. This is kind of similar
+            // how LR would work. So it's an interesting mixture of LL and LR.
+            // There's one exception: If the node can be omitted we don't even have to do it.
+            if plan.is_left_recursive && !tos_mut.can_omit_children(){
                 tos_mut.children_count = 1;
                 tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
 
@@ -407,6 +411,13 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             }
         }
         tos.latest_child_node_index = next;
+    }
+}
+
+impl<'a> StackNode<'a> {
+    #[inline]
+    fn can_omit_children(&self) -> bool {
+        self.dfa_state.node_may_be_omitted && self.children_count == 1
     }
 }
 

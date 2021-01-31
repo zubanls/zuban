@@ -111,7 +111,7 @@ create_grammar!(
     star_expr: "*" expr
     expr: expr "|" xor_expr | xor_expr
     xor_expr:? and_expr ("^" and_expr)*
-    and_expr:? shift_expr ("&" shift_expr)*
+    and_expr:? [and_expr "&"] shift_expr
     shift_expr:? arith_expr (("<<"|">>") arith_expr)*
     arith_expr:? term (("+"|"-") term)*
     term:? factor (("*"|"@"|"/"|"%"|"//") factor)*
