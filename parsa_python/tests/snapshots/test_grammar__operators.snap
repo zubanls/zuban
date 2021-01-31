@@ -23,9 +23,10 @@ file_input: 0-37
           Number: 13-14 "5"
          Keyword: 15-16 "&"
          term: 17-36
-          Number: 17-18 "2"
-          Keyword: 19-20 "*"
-          Number: 21-22 "3"
+          term: 17-22
+           Number: 17-18 "2"
+           Keyword: 19-20 "*"
+           Number: 21-22 "3"
           Keyword: 23-24 "*"
           power: 25-36
            Number: 25-26 "4"

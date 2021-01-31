@@ -113,8 +113,8 @@ create_grammar!(
     xor_expr:? and_expr ("^" and_expr)*
     and_expr:? [and_expr "&"] shift_expr
     shift_expr:? arith_expr (("<<"|">>") arith_expr)*
-    arith_expr:? term (("+"|"-") term)*
-    term:? factor (("*"|"@"|"/"|"%"|"//") factor)*
+    arith_expr:? arith_expr ("+"|"-") term | term
+    term:? [term ("*"|"@"|"/"|"%"|"//")] factor
     factor:? ("+"|"-"|"~") factor | power
     power:? atom_expr ["**" factor]
     atom_expr:? ["await"] atom trailer*
