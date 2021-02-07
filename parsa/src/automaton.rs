@@ -575,6 +575,8 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                        first_plans: &mut FirstPlans,
                        automaton: &RuleAutomaton,
                        dfa_state: &DFAState) -> (SquashedTransitions, bool) {
+    let mut conflict_tokens = HashSet::new();
+    let mut conflict_transitions = HashSet::new();
     let mut plans = HashMap::new();
     let mut is_left_recursive = false;
     for transition in &dfa_state.transitions {
@@ -605,8 +607,14 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 match &first_plans[&node_id] {
                     FirstPlan::Calculated(transitions, is_left_recursive) => {
                         for (t, nested_plan) in transitions {
-                            if plans.contains_key(&t) {
-                                panic!("ambigous2! {} in {}", nested_plan.debug_text, dfa_state.from_rule);
+                            if conflict_tokens.contains(t) {
+                                conflict_transitions.insert(transition.type_);
+                            }
+                            if let Some(p) = plans.remove(t) {
+                                conflict_tokens.insert(*t);
+                                conflict_transitions.insert(transition.type_);
+                                //conflict_transitions.insert(p.pushes[0]);
+                                debug_assert!(conflict_transitions.len() == 2)
                             }
                             plans.insert(*t, nest_plan(nested_plan, node_id, 
                                                        transition.to, StackMode::Normal));
@@ -628,7 +636,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     is_left_recursive: false,
                 });
             },
-            TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
+            TransitionType::PositiveLookaheadStart => {
                 let (inner_plans, inner_is_left_recursive) = first_plans_for_dfa(
                     nonterminal_map, keywords, automatons, first_plans,
                     automaton, &automaton.dfa_states[transition.to.0]);
@@ -641,10 +649,19 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 }
                 plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
             },
+            TransitionType::NegativeLookaheadStart => {
+                unimplemented!("It is currently not supported to have negative \
+                                lookaheads as a first token in a rule")
+            },
             TransitionType::LookaheadEnd => {
                 unreachable!();
             },
         }
+    }
+    if conflict_tokens.len() > 0 {
+        dbg!(conflict_tokens, conflict_transitions);
+        //dbg!(automaton.nfa_states.iter().map(|x| x));
+        panic!("ambigous2! {}", dfa_state.from_rule);
     }
     (plans, is_left_recursive)
 }
