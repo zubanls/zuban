@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use std::fmt;
-use std::sync::{Arc, RwLock};
 use std::cell::RefCell;
 
 use crate::grammar::{InternalNode, Token, CodeIndex};
@@ -14,7 +13,7 @@ pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 pub type RuleMap = HashMap<InternalNodeType, (&'static str, Rule)>;
 type FirstPlans = HashMap<InternalNodeType, FirstPlan>;
-type DFAStates = Vec<Arc<RwLock<DFAState>>>;
+type DFAStates = Vec<Box<DFAState>>;
 
 
 #[derive(Debug)]
@@ -86,6 +85,9 @@ pub struct DFAState {
     pub from_rule: &'static str,
 }
 
+unsafe impl Sync for DFAState {}
+unsafe impl Send for DFAState {}
+
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum TransitionType {
     Terminal(InternalTokenType, &'static str),
@@ -105,14 +107,14 @@ struct NFATransition {
 #[derive(Debug, Clone)]
 struct DFATransition {
     type_: TransitionType,
-    to: *const DFAState,
+    to: *mut DFAState,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StackMode {
     NegativeLookahead,
     PositiveLookahead,
-    Alternative(DFAStateId),
+    Alternative(*const DFAState),
     Normal,
 }
 
@@ -296,18 +298,18 @@ impl RuleAutomaton {
     }
 
     fn nfa_to_dfa(&self, dfa_states: &mut DFAStates, starts: Vec<NFAStateId>,
-                  end: NFAStateId) -> *const DFAState {
+                  end: NFAStateId) -> *mut DFAState {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
-        for (i, dfa_state) in dfa_states.iter().enumerate() {
-            if dfa_state.read().unwrap().nfa_set == grouped_nfas {
-                return &dfa_state.read().unwrap() as &DFAState as *const DFAState;
+        for (i, dfa_state) in dfa_states.iter_mut().enumerate() {
+            if dfa_state.nfa_set == grouped_nfas {
+                return dfa_state as &mut DFAState;
             }
         }
         let is_final = grouped_nfas.contains(&end)
             || grouped_nfas.iter().any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
-        dfa_states.push(Arc::new(RwLock::new(DFAState {
+        dfa_states.push(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final: is_final,
             is_calculated: false,
@@ -316,8 +318,8 @@ impl RuleAutomaton {
             from_rule: self.name,
             transition_to_plan: Default::default(),
             transitions: Default::default(),
-        })));
-        &dfa_states.last().unwrap().read().unwrap() as &DFAState as *const DFAState
+        }));
+        dfa_states.last_mut().unwrap() as &mut DFAState
     }
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> DFAStates {
@@ -328,8 +330,8 @@ impl RuleAutomaton {
     }
 
     fn construct_powerset_for_dfa(&mut self, dfa_states: &mut DFAStates,
-                                  dfa: *const DFAState, end: NFAStateId) {
-        let state = &mut *dfa;
+                                  dfa: *mut DFAState, end: NFAStateId) {
+        let state = unsafe {&mut *dfa};
         if state.is_calculated {
             return
         }
@@ -386,8 +388,8 @@ impl RuleAutomaton {
             (id + 1).to_string() + (if dfa.is_final {" (final)"} else {""});
         let mut out_strings = vec!();
         let mut transition_list = vec!();
-        let mut first_line = vec!(format_index(0, &self.dfa_states[0].read().unwrap()), "#".to_owned());
-        first_line.extend(repeat("o".to_owned()).take(self.dfa_states[0].read().unwrap().transitions.len())
+        let mut first_line = vec!(format_index(0, &self.dfa_states[0]), "#".to_owned());
+        first_line.extend(repeat("o".to_owned()).take(self.dfa_states[0].transitions.len())
                           .collect::<Vec<_>>());
         out_strings.push(first_line);
         for (i, dfa) in self.dfa_states.iter().enumerate() {
@@ -399,7 +401,7 @@ impl RuleAutomaton {
             while transition_list.last() == Some(&None) {
                 transition_list.pop();
             }
-            for t in &dfa.read().unwrap().transitions {
+            for t in &dfa.transitions {
                 transition_list.push(Some((
                     t.get_next_dfa().list_index,
                     match t.type_ {
@@ -417,7 +419,7 @@ impl RuleAutomaton {
             let mut v1 = vec!("".to_owned(), "#".to_owned());
             let mut v2 = vec!("".to_owned(), "#".to_owned());
             let mut v3 = vec!("".to_owned(), "#".to_owned());
-            let mut v4 = vec!(format_index(i + 1, &self.dfa_states[i + 1].read().unwrap()), "#".to_owned());
+            let mut v4 = vec!(format_index(i + 1, &self.dfa_states[i + 1]), "#".to_owned());
             let len = transition_list.len();
             for t in transition_list.iter_mut() {
                 if let Some((to, s)) = t.clone() {
@@ -500,19 +502,19 @@ impl NFATransition {
 
 impl DFATransition {
     pub fn get_next_dfa(&self) -> &DFAState{
-        &*self.to
+        unsafe {&*self.to}
     }
 }
 
 impl Plan {
     pub fn get_next_dfa(&self) -> &DFAState{
-        &*self.next_dfa
+        unsafe {&*self.next_dfa}
     }
 }
 
 impl Push {
     pub fn get_next_dfa(&self) -> &DFAState{
-        &*self.next_dfa
+        unsafe {&*self.next_dfa}
     }
 }
 
@@ -547,26 +549,24 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
         let automaton = &automatons[&rule_label];
-        if automaton.dfa_states[0].read().unwrap().is_final {
+        if automaton.dfa_states[0].is_final {
             panic!("The rule \"{}\" is allowed to have no child nodes", automaton.name);
         }
     }
     // Optimize and calculate all plans
     for rule_label in &rule_labels {
-        // Now optimize the whole thing
-        // TODO proper transitions for operators/names
-        let automaton = automatons.get(rule_label).unwrap();
-        for (i, dfa_state) in automaton.dfa_states.iter().enumerate() {
+        let automaton = unsafe {&*(automatons.get(rule_label).unwrap() as *const RuleAutomaton)};
+        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
             // The dfa_states need to refer to themselves, having it unsafe
             // here is the easiest way.
-            dfa_state.write().unwrap().transition_to_plan = create_all_plans(
-                &keywords, automaton, &dfa_state.read().unwrap(), &first_plans);
+            dfa_state.transition_to_plan = create_all_plans(
+                &keywords, automaton, &dfa_state, &first_plans);
         }
 
-        for (i, mut dfa_state) in automatons.get(rule_label).unwrap().dfa_states.iter().enumerate() {
+        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
             let recursion_plans = create_left_recursion_plans(
-                automaton, &mut dfa_state.write().unwrap(), &first_plans);
-            dfa_state.write().unwrap().transition_to_plan.extend(recursion_plans);
+                automaton, &mut dfa_state, &first_plans);
+            dfa_state.transition_to_plan.extend(recursion_plans);
         }
     }
     (automatons, keywords)
@@ -582,7 +582,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
         first_plans.insert(automaton_key, FirstPlan::Calculating);
         let (plans, is_left_recursive) = first_plans_for_dfa(
             nonterminal_map, keywords, automatons, first_plans, automaton,
-            &automaton.dfa_states[0].read().unwrap());
+            &automaton.dfa_states[0]);
 
         if is_left_recursive {
             if plans.len() == 0 {
@@ -763,7 +763,7 @@ fn create_left_recursion_plans(automaton: &RuleAutomaton, dfa_state: &mut DFASta
         match first_plans[&automaton.type_] {
             FirstPlan::Calculated(_, is_left_recursive) => {
                 if is_left_recursive {
-                    for transition in &automaton.dfa_states[0].read().unwrap().transitions {
+                    for transition in &automaton.dfa_states[0].transitions {
                         match transition.type_ {
                             TransitionType::Nonterminal(node_id) => {
                                 if node_id == automaton.type_ {

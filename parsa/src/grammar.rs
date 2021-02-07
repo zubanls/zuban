@@ -143,8 +143,7 @@ impl<'a, T: Token> Grammar<T> {
     }
 
     pub fn parse(&self, code: &str, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
-        let dfa = &self.automatons[&start].dfa_states[0].read().unwrap();
-        let mut stack = Stack::new(start, dfa);
+        let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0]);
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
         while let Some(token) = backtracking_tokenizer.next() {
@@ -287,10 +286,10 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 
     #[inline]
-    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan<'a>, token: &T,
+    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
                   backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
         let tos_mut = self.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = plan.get_next_dfa();
+        tos_mut.dfa_state = unsafe {&*plan.next_dfa};
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
         let mut add_tree_nodes = tos_mut.add_tree_nodes;
 
@@ -331,7 +330,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             };
             self.push(
                 push.node_type,
-                push.get_next_dfa(),
+                push.next_dfa,
                 start_index,
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
@@ -341,11 +340,11 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     StackMode::NegativeLookahead => ModeData::NegativeLookahead(
                         backtracking_tokenizer.start(token)
                     ),
-                    StackMode::Alternative(dfa_state_id) => ModeData::Alternative(
+                    StackMode::Alternative(dfa_state) => ModeData::Alternative(
                         BacktrackingPoint {
                             tree_node_count: self.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
-                            fallback: &automatons[&push.node_type].dfa_states[dfa_state_id.0].read().unwrap(),
+                            fallback: unsafe {&*dfa_state},
                         }
                     ),
                 },
@@ -372,13 +371,13 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 
     #[inline]
-    fn push(&mut self, node_id: InternalNodeType, dfa_state: &'a DFAState, start: CodeIndex,
+    fn push(&mut self, node_id: InternalNodeType, dfa_state: *const DFAState, start: CodeIndex,
             mode: ModeData<'a>, enabled_token_recording: bool, add_tree_nodes: bool) {
         self.stack_nodes.push(StackNode {
             node_id: node_id,
             tree_node_index: self.tree_nodes.len(),
             latest_child_node_index: 0,
-            dfa_state: dfa_state,
+            dfa_state: unsafe {&*dfa_state},
             children_count: 0,
             mode: mode,
             enabled_token_recording: enabled_token_recording,
