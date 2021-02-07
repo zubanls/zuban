@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::iter::repeat;
 use std::fmt;
-use std::cell::RefCell;
+use std::pin::Pin;
 
 use crate::grammar::{InternalNode, Token, CodeIndex};
 
@@ -13,7 +13,7 @@ pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
 pub type RuleMap = HashMap<InternalNodeType, (&'static str, Rule)>;
 type FirstPlans = HashMap<InternalNodeType, FirstPlan>;
-type DFAStates = Vec<Box<DFAState>>;
+type DFAStates = Vec<Pin<Box<DFAState>>>;
 
 
 #[derive(Debug)]
@@ -309,7 +309,7 @@ impl RuleAutomaton {
         }
         let is_final = grouped_nfas.contains(&end)
             || grouped_nfas.iter().any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
-        dfa_states.push(Box::new(DFAState {
+        dfa_states.push(Pin::new(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final: is_final,
             is_calculated: false,
@@ -318,7 +318,7 @@ impl RuleAutomaton {
             from_rule: self.name,
             transition_to_plan: Default::default(),
             transitions: Default::default(),
-        }));
+        })));
         dfa_states.last_mut().unwrap() as &mut DFAState
     }
 
