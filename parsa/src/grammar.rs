@@ -143,10 +143,8 @@ impl<'a, T: Token> Grammar<T> {
     }
 
     pub fn parse(&self, code: &str, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
-        let mut stack = Stack::new(
-            start,
-            &self.automatons[&start].dfa_states[0]
-        );
+        let dfa = &self.automatons[&start].dfa_states[0].read().unwrap();
+        let mut stack = Stack::new(start, dfa);
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
         while let Some(token) = backtracking_tokenizer.next() {
@@ -289,10 +287,10 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 
     #[inline]
-    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
+    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan<'a>, token: &T,
                   backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
         let tos_mut = self.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = &automatons[&tos_mut.node_id].dfa_states[plan.next_dfa_state.0];
+        tos_mut.dfa_state = plan.get_next_dfa();
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
         let mut add_tree_nodes = tos_mut.add_tree_nodes;
 
@@ -333,7 +331,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             };
             self.push(
                 push.node_type,
-                &automatons[&push.node_type].dfa_states[push.to_state.0],
+                push.get_next_dfa(),
                 start_index,
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
@@ -347,7 +345,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                         BacktrackingPoint {
                             tree_node_count: self.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
-                            fallback: &automatons[&push.node_type].dfa_states[dfa_state_id.0],
+                            fallback: &automatons[&push.node_type].dfa_states[dfa_state_id.0].read().unwrap(),
                         }
                     ),
                 },
