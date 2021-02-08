@@ -612,13 +612,13 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 if plans.contains_key(&t) {
                     panic!("ambigous! {}", dfa_state.from_rule);
                 }
-                plans.insert(t, Plan {
+                plans.insert(t, (transition, Plan {
                     pushes: Vec::new(),
                     next_dfa: transition.to,
                     type_: t,
                     debug_text: debug_text,
                     is_left_recursive: false,
-                });
+                }));
             },
             TransitionType::Nonterminal(node_id) => {
                 if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
@@ -636,14 +636,20 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                             if conflict_tokens.contains(t) {
                                 conflict_transitions.insert(transition.type_);
                             }
-                            if let Some(p) = plans.remove(t) {
+                            if let Some((t_x, p)) = plans.remove(t) {
                                 conflict_tokens.insert(*t);
                                 conflict_transitions.insert(transition.type_);
-                                //conflict_transitions.insert(p.pushes[0]);
+                                conflict_transitions.insert(t_x.type_);
+                                /*
+                                if p.pushes.len() > 0 {
+                                    conflict_transitions.insert(p.pushes[0]);
+                                } else {
+                                    conflict_transitions.insert(p.type_);
+                                }*/
                                 debug_assert!(conflict_transitions.len() == 2)
                             }
-                            plans.insert(*t, nest_plan(nested_plan, node_id, 
-                                                       transition.to, StackMode::Normal));
+                            plans.insert(*t, (transition, nest_plan(nested_plan, node_id, 
+                                                                    transition.to, StackMode::Normal)));
                         }
                     },
                     FirstPlan::Calculating => {unreachable!()},
@@ -654,13 +660,13 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 if plans.contains_key(&t) {
                     panic!("ambigous3! {}", dfa_state.from_rule);
                 }
-                plans.insert(t, Plan {
+                plans.insert(t, (transition, Plan {
                     pushes: Vec::new(),
                     next_dfa: transition.to,
                     type_: t,
                     debug_text: keyword,
                     is_left_recursive: false,
-                });
+                }));
             },
             TransitionType::PositiveLookaheadStart => {
                 let (inner_plans, inner_is_left_recursive) = first_plans_for_dfa(
@@ -673,7 +679,11 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 if inner_plans.iter().any(|(key, _)| plans.contains_key(&key)) {
                     panic!("ambigous4");
                 }
-                plans.extend(create_lookahead_plans(automaton, transition, &inner_plans));
+                plans.extend::<Vec<_>>(
+                    create_lookahead_plans(automaton, transition, &inner_plans).iter().map(
+                        |(&t, plan)| (t, (transition, plan.clone()))
+                    ).collect()
+                );
             },
             TransitionType::NegativeLookaheadStart => {
                 unimplemented!("It is currently not supported to have negative \
@@ -685,11 +695,10 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
         }
     }
     if conflict_tokens.len() > 0 {
-        dbg!(conflict_tokens, conflict_transitions);
-        //dbg!(automaton.nfa_states.iter().map(|x| x));
+        separate_tokens(automaton, dfa_state, conflict_transitions, conflict_tokens);
         panic!("ambigous2! {}", dfa_state.from_rule);
     }
-    (plans, is_left_recursive)
+    (plans.iter().map(|(&t, (_, plan))| (t, plan.clone())).collect(), is_left_recursive)
 }
 
 fn create_lookahead_plans(automaton: &RuleAutomaton, transition: &DFATransition,
@@ -831,6 +840,60 @@ fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {
         unreachable!()
     }
     return search(&mut already_checked, dfa_state)
+}
+
+fn separate_tokens(automaton: &RuleAutomaton, dfa: &DFAState, 
+                   conflict_transitions: HashSet<TransitionType>,
+                   conflict_tokens: HashSet<InternalSquashedType>) {
+    let mut transition_to_nfas = HashMap::<_, Vec<_>>::new();
+    let mut nfas: Vec<_> = dfa.nfa_set.iter().collect();
+    nfas.sort_by_key(|id| id.0);
+    for &nfa_id in &nfas {
+        let nfa = &automaton.nfa_states[nfa_id.0];
+        for transition in &nfa.transitions {
+            if let Some(t) = transition.type_ {
+                if conflict_transitions.contains(&t) {
+                    if let Some(list) = transition_to_nfas.get_mut(&t) {
+                        list.push(nfa_id);
+                    } else {
+                        transition_to_nfas.insert(t, vec!(nfa_id));
+                    }
+                }
+            }
+        }
+        dbg!(nfa);
+    }
+
+    let mut as_list: Vec<_> = transition_to_nfas.iter().map(|(_, nfa_ids)| nfa_ids.clone()).collect();
+    while as_list.len() > 0 {
+        as_list.sort_by_key(|nfa_ids| nfa_ids[0].0);
+        let mut new_dfa_nfa_ids = vec!();
+        if as_list.len() > 1 {
+            let must_be_smaller = *as_list[1][0];
+            debug_assert!(as_list[0].len() > 0);
+            while let Some(&&nfa_id) = as_list[0].get(0) {
+                // It should basically never happen that two transitions are possible from an
+                // NFA. ε-moves are of course always possible.
+                debug_assert!(nfa_id != must_be_smaller);
+                if nfa_id.0 > must_be_smaller.0 {
+                    break
+                }
+                new_dfa_nfa_ids.push(*as_list[0].remove(0));
+            }
+            if as_list[0].len() == 0 {
+                as_list.remove(0);
+            }
+        } else {
+            new_dfa_nfa_ids.extend(as_list.pop().unwrap().iter().cloned());
+        }
+        debug_assert!(new_dfa_nfa_ids.len() > 0);
+        dbg!(&new_dfa_nfa_ids);
+        let mut f = vec!();
+        automaton.nfa_to_dfa(&mut f, new_dfa_nfa_ids, NFAStateId(0));
+    }
+
+    //dbg!(transition_to_nfas);
+    //dbg!(conflict_tokens, conflict_transitions);
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {

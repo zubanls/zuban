@@ -147,9 +147,9 @@ create_grammar!(
     // Illegal combinations and orderings are blocked in ast.c:
     // multiple (test comp_for) arguments are blocked; keyword unpackings
     // that precede iterable unpackings are blocked; etc.
-    argument: ( test [comp_for] |
+    argument: ( Name "=" test |
+                test [comp_for] |
                 test ":=" test |
-                test "=" test |
                 "**" test |
                 "*" test )
 
