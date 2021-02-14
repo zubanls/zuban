@@ -75,7 +75,7 @@ parametrize_snapshots!(
         ");
     calls: &dedent("
         foo(bar)
-        foo(bar.foo=3)
+        foo(bar_foo=3)
         foo(bar.baz:=2)
         foo(**kwargs)
         ");
