@@ -57,7 +57,7 @@ impl InternalTokenType {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Default)]
 struct NFAStateId(usize);
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
@@ -115,7 +115,7 @@ struct DFATransition {
 pub enum StackMode {
     NegativeLookahead,
     PositiveLookahead,
-    Alternative(*const DFAState),
+    Alternative(*const Plan),
     Normal,
 }
 
@@ -171,6 +171,7 @@ pub struct RuleAutomaton {
     pub dfa_states: DFAStates,
     name: &'static str,
     node_may_be_omitted: bool,
+    nfa_end_id: NFAStateId,
 }
 
 impl RuleAutomaton {
@@ -536,6 +537,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
             .. Default::default()
         };
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
+        automaton.nfa_end_id = end;
         let dfa_states = automaton.construct_powerset(start, end);
         automaton.dfa_states = dfa_states;
         automatons.insert(*internal_type, automaton);
@@ -693,16 +695,25 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
         = plans.iter().map(|(&t, (_, plan))| (t, plan.clone())).collect();
     if conflict_tokens.len() > 0 {
         let automaton = automatons.get_mut(&automaton_key).unwrap();
-        let start = split_tokens(automaton, &dfa_state, conflict_transitions);
-        for dfa_id in start..automaton.dfa_states.len() {
+        let (start, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
+        let t = automaton.type_;
+        for dfa_id in (start..automaton.dfa_states.len()).rev() {
             let (new_plans, left_recursive) = first_plans_for_dfa(
                 nonterminal_map, keywords, automatons, first_plans, automaton_key, DFAStateId(dfa_id)
             );
             debug_assert!(!left_recursive);
-            for (transition, new_plan) in new_plans {
+            for (transition, mut new_plan) in new_plans {
                 if conflict_tokens.contains(&transition) {
-                    dbg!(&transition, &new_plan);
-                    result.insert(transition, new_plan.clone());
+                    if let Some(fallback_plan) = result.remove(&transition) {
+                        // TODO xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+                        // This sets a const pointer on the fallback plan. This is only save,
+                        // because the plans are not touched after they have been generated.
+                        new_plan = nest_plan(
+                            &new_plan, t, end,
+                            StackMode::Alternative(&fallback_plan));
+                    }
+                    //dbg!(&transition, &new_plan);
+                    result.insert(transition, new_plan);
                 }
             }
         }
@@ -852,7 +863,7 @@ fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {
 }
 
 fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
-                conflict_transitions: HashSet<TransitionType>) -> usize {
+                conflict_transitions: HashSet<TransitionType>) -> (usize, *const DFAState) {
     let mut transition_to_nfas = HashMap::<_, Vec<_>>::new();
     let mut nfas: Vec<_> = dfa.nfa_set.iter().collect();
     nfas.sort_by_key(|id| id.0);
@@ -872,6 +883,10 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
     }
 
     let first_new_index = automaton.dfa_states.len();
+    // TODO Fix rule automaton shit
+    let x = unsafe {&mut *(automaton as *mut RuleAutomaton)};
+    let end_dfa = automaton.nfa_to_dfa(&mut x.dfa_states, vec!(x.nfa_end_id), x.nfa_end_id);
+
     let mut as_list: Vec<_> = transition_to_nfas.iter().map(|(_, nfa_ids)| nfa_ids.clone()).collect();
     while as_list.len() > 0 {
         as_list.sort_by_key(|nfa_ids| nfa_ids[0].0);
@@ -896,11 +911,10 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
         }
         debug_assert!(new_dfa_nfa_ids.len() > 0);
 
-        // TODO Fix rule automaton shit
-        let x = unsafe {&mut *(automaton as *mut RuleAutomaton)};
-        automaton.nfa_to_dfa(&mut x.dfa_states, new_dfa_nfa_ids, NFAStateId(0));
+        automaton.nfa_to_dfa(&mut x.dfa_states, new_dfa_nfa_ids, x.nfa_end_id);
+        dbg!(x.dfa_states.last().unwrap());
     }
-    first_new_index
+    (first_new_index, end_dfa)
 }
 
 fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {

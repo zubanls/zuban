@@ -94,7 +94,7 @@ enum ModeData<'a> {
 struct BacktrackingPoint<'a> {
     tree_node_count: usize,
     token_index: usize,
-    fallback: &'a DFAState,
+    fallback_plan: &'a Plan,
 }
 
 #[derive(Debug)]
@@ -146,27 +146,27 @@ impl<'a, T: Token> Grammar<T> {
         let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0]);
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
-        while let Some(token) = backtracking_tokenizer.next() {
-            let transition;
-            if token.can_contain_syntax() {
-                let start = token.get_start_index() as usize;
-                let token_str = &code[start..start + token.get_length() as usize];
-                transition = self.keywords.get_squashed(token_str).unwrap_or(
-                    token.get_type().to_squashed(),
-                );
-            } else {
-                transition = token.get_type().to_squashed();
+        while stack.len() > 0 {
+            while let Some(token) = backtracking_tokenizer.next() {
+                let transition;
+                if token.can_contain_syntax() {
+                    let start = token.get_start_index() as usize;
+                    let token_str = &code[start..start + token.get_length() as usize];
+                    transition = self.keywords.get_squashed(token_str).unwrap_or(
+                        token.get_type().to_squashed(),
+                    );
+                } else {
+                    transition = token.get_type().to_squashed();
+                }
+
+                dbg!(&token);
+                stack.apply_transition(&self.automatons, &mut backtracking_tokenizer, transition, &token);
             }
 
-            //dbg!(&token);
-            stack.apply_transition(&self.automatons, &mut backtracking_tokenizer, transition, &token);
-        }
-
-        while stack.len() > 0 {
             let tos = stack.get_tos();
             let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
-            stack.end_of_node(&mut backtracking_tokenizer, is_final, mode);
+            stack.end_of_node(&self.automatons, &mut backtracking_tokenizer, is_final, mode);
         }
         stack.tree_nodes
     }
@@ -208,7 +208,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     //dbg!(stack.get_tos().dfa_state.from_rule);
                     //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
                     //     .map(|x| x.debug_text).collect::<Vec<_>>());
-                    self.end_of_node(backtracking_tokenizer, is_final, mode);
+                    self.end_of_node(automatons, backtracking_tokenizer, is_final, mode);
                 },
                 Some(plan) => {
                     let cloned_plan = plan.clone();
@@ -221,7 +221,8 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 
     #[inline]
-    fn end_of_node(&mut self, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+    fn end_of_node(&mut self, automatons: &'a Automatons,
+                   backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
                    is_final: bool, mode: ModeData<'a>) {
         if is_final {
             match mode {
@@ -241,7 +242,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     let tos = self.stack_nodes.last_mut().unwrap();
                     tos.children_count = old_tos.children_count;
                     tos.latest_child_node_index = old_tos.latest_child_node_index;
-                    panic!("YAYY");
+                    debug_assert!(tos.dfa_state.is_final);
                 }
             }
         } else {
@@ -253,13 +254,15 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                         return
                     },
                     ModeData::Alternative(backtracking_point) => {
+                        panic!("YAY");
                         self.stack_nodes.truncate(i);
 
                         self.tree_nodes.truncate(backtracking_point.tree_node_count);
                         let tos = self.stack_nodes.last_mut().unwrap();
-                        tos.dfa_state = backtracking_point.fallback;
                         backtracking_tokenizer.reset(backtracking_point.token_index);
-                        panic!("YAY");
+                        self.apply_plan(
+                            automatons, backtracking_point.fallback_plan,
+                            &backtracking_tokenizer.next().unwrap(), backtracking_tokenizer);
                         return
                     },
                     _ => {}
@@ -267,7 +270,8 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             }
             //let rest = &code[token.get_start_index() as usize..];
             //dbg!(token, rest);
-            //dbg!(self.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
+            dbg!(self.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
+            dbg!(self.get_tos());
             panic!("Error recovery");
         }
     }
@@ -323,7 +327,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             let tos = self.stack_nodes.last_mut().unwrap();
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            enabled_token_recording |= push.stack_mode != StackMode::Normal;
+            enabled_token_recording |= push.stack_mode == StackMode::Normal;
             add_tree_nodes &= match push.stack_mode {
                 StackMode::Normal | StackMode::Alternative(_) => true,
                 _ => false,
@@ -340,11 +344,11 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     StackMode::NegativeLookahead => ModeData::NegativeLookahead(
                         backtracking_tokenizer.start(token)
                     ),
-                    StackMode::Alternative(dfa_state) => ModeData::Alternative(
+                    StackMode::Alternative(alternative_plan) => ModeData::Alternative(
                         BacktrackingPoint {
                             tree_node_count: self.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
-                            fallback: unsafe {&*dfa_state},
+                            fallback_plan: unsafe {&*alternative_plan},
                         }
                     ),
                 },
@@ -383,7 +387,9 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             enabled_token_recording: enabled_token_recording,
             add_tree_nodes: add_tree_nodes,
         });
-        if add_tree_nodes {
+        // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
+        // part of the parent stack node.
+        if add_tree_nodes && match mode {ModeData::Normal => true, _ => false} {
             self.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
                 type_: node_id.to_squashed(),
@@ -439,10 +445,9 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     fn start(&mut self, token: &T) -> usize {
         if self.tokens.len() == 0 {
             self.tokens.push(*token);
-            1
-        } else {
-            self.next_index
+            self.next_index = 1;
         }
+        self.next_index
     }
 
     #[inline]
@@ -464,12 +469,11 @@ impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
             match self.tokens.get(self.next_index) {
                 None => {
                     self.next_index += 1;
-                    if let Some(next) = self.tokenizer.next() {
-                        self.tokens.push(next);
-                        Some(next)
-                    } else {
-                        None
+                    let next = self.tokenizer.next();
+                    if let Some(token) = next {
+                        self.tokens.push(token);
                     }
+                    next
                 },
                 Some(next) => {
                     self.next_index += 1;
