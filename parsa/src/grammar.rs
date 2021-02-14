@@ -5,6 +5,7 @@ use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
                        DFAState, Keywords, generate_automatons, Rule, RuleMap,
                        InternalStrToToken, InternalStrToNode, StackMode,
                        InternalTokenType, InternalNodeType};
+use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
 pub type ExtraData = u32;
@@ -115,13 +116,6 @@ struct Stack<'a, T: Token, I> {
     tree_nodes: Vec<InternalNode>,
     phantom: PhantomData<T>,
     phantom2: PhantomData<I>,
-}
-
-#[derive(Debug)]
-struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
-    tokenizer: I,
-    tokens: Vec<T>,
-    next_index: usize,
 }
 
 impl<'a, T: Token> Grammar<T> {
@@ -428,59 +422,4 @@ fn update_tree_node_position(tree_nodes: &mut Vec<InternalNode>, stack_node: &St
     let last_tree_node = *tree_nodes.last().unwrap();
     let mut n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
     n.length = last_tree_node.get_end_index() - n.start_index;
-}
-
-
-impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
-    fn new(tokenizer: I) -> Self {
-        Self {
-            tokenizer: tokenizer,
-            tokens: vec!(),
-            next_index: 0,
-        }
-    }
-
-    #[inline]
-    fn start(&mut self, token: &T) -> usize {
-        if self.tokens.len() == 0 {
-            self.tokens.push(*token);
-            self.next_index = 1;
-        }
-        self.next_index
-    }
-
-    #[inline]
-    fn reset(&mut self, token_index: usize) {
-        self.next_index = token_index;
-    }
-
-    #[inline]
-    fn stop(&mut self) {
-        self.tokens.clear();
-        self.next_index = 0;
-    }
-}
-
-impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
-    type Item = T;
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.tokens.len() > 0 {
-            match self.tokens.get(self.next_index) {
-                None => {
-                    self.next_index += 1;
-                    let next = self.tokenizer.next();
-                    if let Some(token) = next {
-                        self.tokens.push(token);
-                    }
-                    next
-                },
-                Some(next) => {
-                    self.next_index += 1;
-                    Some(*next)
-                }
-            }
-        } else {
-            self.tokenizer.next()
-        }
-    }
 }

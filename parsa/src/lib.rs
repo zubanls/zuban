@@ -3,6 +3,7 @@ extern crate lazy_static;
 
 mod grammar;
 mod automaton;
+mod backtracking;
 
 pub use std::collections::HashMap;
 pub use std::io::Bytes;
