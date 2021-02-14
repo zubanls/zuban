@@ -105,7 +105,7 @@ struct NFATransition {
     to: NFAStateId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 struct DFATransition {
     type_: TransitionType,
     to: *mut DFAState,
@@ -134,6 +134,10 @@ pub struct Plan {
     pub is_left_recursive: bool,
     pub debug_text: &'static str,
 }
+
+// Safe, because plan pointers are behind a pinned box that never gets changed
+unsafe impl Sync for Plan {}
+unsafe impl Send for Plan {}
 
 enum FirstPlan {
     Calculated(SquashedTransitions, bool),
@@ -172,6 +176,7 @@ pub struct RuleAutomaton {
     name: &'static str,
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
+    fallback_plans: Vec<Pin<Box<Plan>>>,
 }
 
 impl RuleAutomaton {
@@ -607,7 +612,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
     let mut plans = HashMap::new();
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
-    let dfa_state = unsafe {&*(&automatons[&automaton_key].dfa_states[0] as &DFAState as *const DFAState)};
+    let dfa_state = unsafe {&*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)};
     for transition in &dfa_state.transitions {
         match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => {
@@ -638,15 +643,20 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                         for (t, nested_plan) in transitions {
                             if conflict_tokens.contains(t) {
                                 conflict_transitions.insert(transition.type_);
+                            } else {
+                                if let Some((&t_x, _)) = plans.get(t) {
+                                    if t_x.type_ != transition.type_ {
+                                        plans.remove(t);
+                                        conflict_tokens.insert(*t);
+                                        conflict_transitions.insert(transition.type_);
+                                        conflict_transitions.insert(t_x.type_);
+                                        debug_assert!(conflict_transitions.len() == 2)
+                                    }
+                                }
+                                plans.insert(*t, (
+                                    transition, nest_plan(nested_plan, node_id,
+                                                          transition.to, StackMode::Normal)));
                             }
-                            if let Some((t_x, p)) = plans.remove(t) {
-                                conflict_tokens.insert(*t);
-                                conflict_transitions.insert(transition.type_);
-                                conflict_transitions.insert(t_x.type_);
-                                debug_assert!(conflict_transitions.len() == 2)
-                            }
-                            plans.insert(*t, (transition, nest_plan(nested_plan, node_id, 
-                                                                    transition.to, StackMode::Normal)));
                         }
                     },
                     FirstPlan::Calculating => {unreachable!()},
@@ -705,12 +715,13 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
             for (transition, mut new_plan) in new_plans {
                 if conflict_tokens.contains(&transition) {
                     if let Some(fallback_plan) = result.remove(&transition) {
-                        // TODO xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+                        let automaton = automatons.get_mut(&automaton_key).unwrap();
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
+                        automaton.fallback_plans.push(Pin::new(Box::new(fallback_plan)));
                         new_plan = nest_plan(
                             &new_plan, t, end,
-                            StackMode::Alternative(&fallback_plan));
+                            StackMode::Alternative(automaton.fallback_plans.last().unwrap() as &Plan));
                     }
                     //dbg!(&transition, &new_plan);
                     result.insert(transition, new_plan);
@@ -911,8 +922,9 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
         }
         debug_assert!(new_dfa_nfa_ids.len() > 0);
 
-        automaton.nfa_to_dfa(&mut x.dfa_states, new_dfa_nfa_ids, x.nfa_end_id);
-        dbg!(x.dfa_states.last().unwrap());
+        let dfa = automaton.nfa_to_dfa(&mut x.dfa_states, new_dfa_nfa_ids, x.nfa_end_id);
+        automaton.construct_powerset_for_dfa(&mut x.dfa_states, dfa, x.nfa_end_id);
+        //dbg!(x.dfa_states.len(), x.dfa_states.last().unwrap());
     }
     (first_new_index, end_dfa)
 }

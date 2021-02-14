@@ -254,7 +254,6 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                         return
                     },
                     ModeData::Alternative(backtracking_point) => {
-                        panic!("YAY");
                         self.stack_nodes.truncate(i);
 
                         self.tree_nodes.truncate(backtracking_point.tree_node_count);
