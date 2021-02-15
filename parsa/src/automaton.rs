@@ -609,7 +609,7 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                        dfa_id: DFAStateId) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
     let mut conflict_transitions = HashSet::new();
-    let mut plans = HashMap::new();
+    let mut plans: HashMap<InternalSquashedType, (&DFATransition, Plan)> = HashMap::new();
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
     let dfa_state = unsafe {&*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)};
@@ -617,16 +617,27 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
         match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
-                if plans.contains_key(&t) {
-                    panic!("ambigous! {}", dfa_state.from_rule);
+                if conflict_tokens.contains(&t) {
+                    conflict_transitions.insert(transition.type_);
+                } else {
+                    if let Some((&t_x, _)) = plans.get(&t) {
+                        if t_x.type_ != transition.type_ {
+                            plans.remove(&t);
+                            conflict_tokens.insert(t);
+                            conflict_transitions.insert(transition.type_);
+                            conflict_transitions.insert(t_x.type_);
+                            debug_assert!(conflict_transitions.len() == 2);
+                            continue
+                        }
+                    }
+                    plans.insert(t, (transition, Plan {
+                        pushes: Vec::new(),
+                        next_dfa: transition.to,
+                        type_: t,
+                        debug_text: debug_text,
+                        is_left_recursive: false,
+                    }));
                 }
-                plans.insert(t, (transition, Plan {
-                    pushes: Vec::new(),
-                    next_dfa: transition.to,
-                    type_: t,
-                    debug_text: debug_text,
-                    is_left_recursive: false,
-                }));
             },
             TransitionType::Nonterminal(node_id) => {
                 if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
