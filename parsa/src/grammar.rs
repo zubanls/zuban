@@ -153,7 +153,6 @@ impl<'a, T: Token> Grammar<T> {
                     transition = token.get_type().to_squashed();
                 }
 
-                dbg!(&token);
                 stack.apply_transition(&self.automatons, &mut backtracking_tokenizer, transition, &token);
             }
 
@@ -195,14 +194,16 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             transition: InternalSquashedType, token: &T) {
         loop {
             let tos = self.get_tos();
-                    let is_final = tos.dfa_state.is_final;
-                    let mode = tos.mode;
+            let is_final = tos.dfa_state.is_final;
+            let mode = tos.mode;
             match tos.dfa_state.transition_to_plan.get(&transition) {
                 None => {
                     //dbg!(stack.get_tos().dfa_state.from_rule);
                     //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
                     //     .map(|x| x.debug_text).collect::<Vec<_>>());
-                    self.end_of_node(automatons, backtracking_tokenizer, is_final, mode);
+                    if self.end_of_node(automatons, backtracking_tokenizer, is_final, mode) {
+                        return
+                    }
                 },
                 Some(plan) => {
                     let cloned_plan = plan.clone();
@@ -217,7 +218,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     #[inline]
     fn end_of_node(&mut self, automatons: &'a Automatons,
                    backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-                   is_final: bool, mode: ModeData<'a>) {
+                   is_final: bool, mode: ModeData<'a>) -> bool {
         if is_final {
             match mode {
                 ModeData::Normal => {
@@ -245,7 +246,7 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                     ModeData::NegativeLookahead(token_index) => {
                         self.stack_nodes.truncate(i);
                         backtracking_tokenizer.reset(token_index);
-                        return
+                        return false
                     },
                     ModeData::Alternative(backtracking_point) => {
                         self.stack_nodes.truncate(i);
@@ -253,10 +254,11 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
                         self.tree_nodes.truncate(backtracking_point.tree_node_count);
                         let tos = self.stack_nodes.last_mut().unwrap();
                         backtracking_tokenizer.reset(backtracking_point.token_index);
+                        let t = backtracking_tokenizer.next().unwrap();
                         self.apply_plan(
                             automatons, backtracking_point.fallback_plan,
-                            &backtracking_tokenizer.next().unwrap(), backtracking_tokenizer);
-                        return
+                            &t, backtracking_tokenizer);
+                        return true
                     },
                     _ => {}
                 }
@@ -264,9 +266,10 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             //let rest = &code[token.get_start_index() as usize..];
             //dbg!(token, rest);
             dbg!(self.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
-            dbg!(self.get_tos());
+            //dbg!(self.get_tos());
             panic!("Error recovery");
         }
+        false
     }
 
     #[inline]

@@ -34,9 +34,7 @@ file_input: 0-55
           Keyword: 13-14 "("
           arglist: 14-23
            argument: 14-23
-            test: 14-21
-             expr: 14-21
-              Name: 14-21 "bar_foo"
+            Name: 14-21 "bar_foo"
             Keyword: 21-22 "="
             test: 22-23
              expr: 22-23

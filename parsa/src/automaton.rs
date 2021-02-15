@@ -650,7 +650,8 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                                         conflict_tokens.insert(*t);
                                         conflict_transitions.insert(transition.type_);
                                         conflict_transitions.insert(t_x.type_);
-                                        debug_assert!(conflict_transitions.len() == 2)
+                                        debug_assert!(conflict_transitions.len() == 2);
+                                        continue;
                                     }
                                 }
                                 plans.insert(*t, (
@@ -701,6 +702,11 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
             },
         }
     }
+
+    for c in &conflict_tokens {
+        debug_assert!(!plans.contains_key(c));
+    }
+
     let mut result: SquashedTransitions
         = plans.iter().map(|(&t, (_, plan))| (t, plan.clone())).collect();
     if conflict_tokens.len() > 0 {
@@ -893,10 +899,10 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
         }
     }
 
-    let first_new_index = automaton.dfa_states.len();
     // TODO Fix rule automaton shit
     let x = unsafe {&mut *(automaton as *mut RuleAutomaton)};
     let end_dfa = automaton.nfa_to_dfa(&mut x.dfa_states, vec!(x.nfa_end_id), x.nfa_end_id);
+    let first_new_index = automaton.dfa_states.len();
 
     let mut as_list: Vec<_> = transition_to_nfas.iter().map(|(_, nfa_ids)| nfa_ids.clone()).collect();
     while as_list.len() > 0 {

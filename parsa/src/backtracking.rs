@@ -21,8 +21,10 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
         if self.tokens.len() == 0 {
             self.tokens.push(*token);
             self.next_index = 1;
+            0
+        } else {
+            self.next_index - 1
         }
-        self.next_index
     }
 
     #[inline]
