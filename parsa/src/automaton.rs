@@ -609,35 +609,22 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                        dfa_id: DFAStateId) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
     let mut conflict_transitions = HashSet::new();
-    let mut plans: HashMap<InternalSquashedType, (&DFATransition, Plan)> = HashMap::new();
+    let mut plans: HashMap<InternalSquashedType, (DFATransition, Plan)> = HashMap::new();
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
     let dfa_state = unsafe {&*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)};
-    for transition in &dfa_state.transitions {
+    for &transition in &dfa_state.transitions {
         match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
-                if conflict_tokens.contains(&t) {
-                    conflict_transitions.insert(transition.type_);
-                } else {
-                    if let Some((&t_x, _)) = plans.get(&t) {
-                        if t_x.type_ != transition.type_ {
-                            plans.remove(&t);
-                            conflict_tokens.insert(t);
-                            conflict_transitions.insert(transition.type_);
-                            conflict_transitions.insert(t_x.type_);
-                            debug_assert!(conflict_transitions.len() == 2);
-                            continue
-                        }
-                    }
-                    plans.insert(t, (transition, Plan {
-                        pushes: Vec::new(),
-                        next_dfa: transition.to,
-                        type_: t,
-                        debug_text: debug_text,
-                        is_left_recursive: false,
-                    }));
-                }
+                add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
+                                   transition, t, || Plan {
+                    pushes: Vec::new(),
+                    next_dfa: transition.to,
+                    type_: t,
+                    debug_text: debug_text,
+                    is_left_recursive: false,
+                });
             },
             TransitionType::Nonterminal(node_id) => {
                 if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
@@ -651,24 +638,12 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 create_first_plans(nonterminal_map, keywords, first_plans, automatons, node_id);
                 match &first_plans[&node_id] {
                     FirstPlan::Calculated(transitions, is_left_recursive) => {
-                        for (t, nested_plan) in transitions {
-                            if conflict_tokens.contains(t) {
-                                conflict_transitions.insert(transition.type_);
-                            } else {
-                                if let Some((&t_x, _)) = plans.get(t) {
-                                    if t_x.type_ != transition.type_ {
-                                        plans.remove(t);
-                                        conflict_tokens.insert(*t);
-                                        conflict_transitions.insert(transition.type_);
-                                        conflict_transitions.insert(t_x.type_);
-                                        debug_assert!(conflict_transitions.len() == 2);
-                                        continue;
-                                    }
-                                }
-                                plans.insert(*t, (
-                                    transition, nest_plan(nested_plan, node_id,
-                                                          transition.to, StackMode::Normal)));
-                            }
+                        for (&t, nested_plan) in transitions {
+                            add_if_no_conflict(&mut plans, &mut conflict_transitions,
+                                               &mut conflict_tokens,
+                                               transition, t,
+                                               || nest_plan(nested_plan, node_id,
+                                                            transition.to, StackMode::Normal));
                         }
                     },
                     FirstPlan::Calculating => {unreachable!()},
@@ -676,16 +651,14 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
             },
             TransitionType::Keyword(keyword) => {
                 let t = keywords.get_squashed(keyword).unwrap();
-                if plans.contains_key(&t) {
-                    panic!("ambigous3! {}", dfa_state.from_rule);
-                }
-                plans.insert(t, (transition, Plan {
+                add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
+                                   transition, t, || Plan {
                     pushes: Vec::new(),
                     next_dfa: transition.to,
                     type_: t,
                     debug_text: keyword,
                     is_left_recursive: false,
-                }));
+                });
             },
             TransitionType::PositiveLookaheadStart => {
                 let (inner_plans, inner_is_left_recursive) = first_plans_for_dfa(
@@ -695,14 +668,10 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     panic!("Left recursion with lookaheads is not supported (in rule {:?})",
                            nonterminal_to_str(nonterminal_map, automaton_key));
                 }
-                if inner_plans.iter().any(|(key, _)| plans.contains_key(&key)) {
-                    panic!("ambigous4");
+                for (&t, plan) in &create_lookahead_plans(automaton_key, transition, &inner_plans) {
+                    add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
+                                       transition, t, || plan.clone());
                 }
-                plans.extend::<Vec<_>>(
-                    create_lookahead_plans(automaton_key, transition, &inner_plans).iter().map(
-                        |(&t, plan)| (t, (transition, plan.clone()))
-                    ).collect()
-                );
             },
             TransitionType::NegativeLookaheadStart => {
                 unimplemented!("It is currently not supported to have negative \
@@ -749,7 +718,31 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
     (result, is_left_recursive)
 }
 
-fn create_lookahead_plans(automaton_key: InternalNodeType, transition: &DFATransition,
+fn add_if_no_conflict<F: FnOnce() -> Plan>(
+        plans: &mut HashMap<InternalSquashedType, (DFATransition, Plan)>,
+                      conflict_transitions: &mut HashSet<TransitionType>,
+                      conflict_tokens: &mut HashSet<InternalSquashedType>,
+                      transition: DFATransition,
+                      token: InternalSquashedType,
+                      create_plan: F) {
+    if conflict_tokens.contains(&token) {
+        conflict_transitions.insert(transition.type_);
+    } else {
+        if let Some(&(t_x, _)) = plans.get(&token) {
+            if t_x.type_ != transition.type_ {
+                plans.remove(&token);
+                conflict_tokens.insert(token);
+                conflict_transitions.insert(transition.type_);
+                conflict_transitions.insert(t_x.type_);
+                debug_assert!(conflict_transitions.len() == 2);
+                return
+            }
+        }
+        plans.insert(token, (transition, create_plan()));
+    }
+}
+
+fn create_lookahead_plans(automaton_key: InternalNodeType, transition: DFATransition,
                           inner_plans: &SquashedTransitions) -> SquashedTransitions {
     let mode = match transition.type_ {
         TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
@@ -766,7 +759,7 @@ fn create_lookahead_plans(automaton_key: InternalNodeType, transition: &DFATrans
 fn create_all_plans(keywords: &Keywords, automaton_key: InternalNodeType, dfa_state: &DFAState,
                     first_plans: &FirstPlans) -> SquashedTransitions {
     let mut plans = HashMap::new();
-    for transition in &dfa_state.transitions {
+    for &transition in &dfa_state.transitions {
         match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
