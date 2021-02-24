@@ -565,8 +565,8 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
             automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
         }
 
-        // Left recursion can be calculated here, because only final nodes are relevant and first
-        // nodes are never allowed to be final.
+        // Left recursion can be calculated here, because first nodes are not relevant, because
+        // they are never allowed to be final.
         for i in 1..automatons[rule_label].dfa_states.len() {
             let left_recursion_plans = create_left_recursion_plans(
                     &automatons, *rule_label, DFAStateId(i), &first_plans);
