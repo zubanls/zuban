@@ -516,12 +516,6 @@ impl Plan {
     }
 }
 
-impl Push {
-    pub fn get_next_dfa(&self) -> &DFAState{
-        unsafe {&*self.next_dfa}
-    }
-}
-
 pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
                            rules: &RuleMap) -> (Automatons, Keywords) {
     let mut keywords = Keywords {
