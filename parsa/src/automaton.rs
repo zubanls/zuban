@@ -304,40 +304,37 @@ impl RuleAutomaton {
         set
     }
 
-    fn nfa_to_dfa(&self, dfa_states: &mut DFAStates, starts: Vec<NFAStateId>,
+    fn nfa_to_dfa(&mut self, starts: Vec<NFAStateId>,
                   end: NFAStateId) -> *mut DFAState {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
-        for (i, dfa_state) in dfa_states.iter_mut().enumerate() {
+        for (i, dfa_state) in self.dfa_states.iter_mut().enumerate() {
             if dfa_state.nfa_set == grouped_nfas {
                 return dfa_state as &mut DFAState;
             }
         }
         let is_final = grouped_nfas.contains(&end)
             || grouped_nfas.iter().any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
-        dfa_states.push(Pin::new(Box::new(DFAState {
+        self.dfa_states.push(Pin::new(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final: is_final,
             is_calculated: false,
-            list_index: DFAStateId(dfa_states.len()),
+            list_index: DFAStateId(self.dfa_states.len()),
             node_may_be_omitted: self.node_may_be_omitted,
             from_rule: self.name,
             transition_to_plan: Default::default(),
             transitions: Default::default(),
         })));
-        dfa_states.last_mut().unwrap() as &mut DFAState
+        self.dfa_states.last_mut().unwrap() as &mut DFAState
     }
 
-    fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) -> DFAStates {
-        let mut dfa_states = Vec::new();
-        let dfa = self.nfa_to_dfa(&mut dfa_states, vec!(start), end);
-        self.construct_powerset_for_dfa(&mut dfa_states, dfa, end);
-        dfa_states
+    fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) {
+        let dfa = self.nfa_to_dfa(vec!(start), end);
+        self.construct_powerset_for_dfa(dfa, end);
     }
 
-    fn construct_powerset_for_dfa(&mut self, dfa_states: &mut DFAStates,
-                                  dfa: *mut DFAState, end: NFAStateId) {
+    fn construct_powerset_for_dfa(&mut self, dfa: *mut DFAState, end: NFAStateId) {
         let state = unsafe {&mut *dfa};
         if state.is_calculated {
             return
@@ -373,7 +370,7 @@ impl RuleAutomaton {
 
         let mut transitions = Vec::new();
         for (type_, grouped_starts) in grouped_transitions {
-            let new_dfa_id = self.nfa_to_dfa(dfa_states, grouped_starts, end);
+            let new_dfa_id = self.nfa_to_dfa(grouped_starts, end);
             transitions.push(DFATransition {
                 type_: type_,
                 to: new_dfa_id,
@@ -384,7 +381,7 @@ impl RuleAutomaton {
         state.is_calculated = true;
         let transitions = state.transitions.clone();
         for transition in transitions {
-            self.construct_powerset_for_dfa(dfa_states, transition.to, end)
+            self.construct_powerset_for_dfa(transition.to, end)
         }
     }
 
@@ -543,8 +540,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
         };
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
         automaton.nfa_end_id = end;
-        let dfa_states = automaton.construct_powerset(start, end);
-        automaton.dfa_states = dfa_states;
+        automaton.construct_powerset(start, end);
         automatons.insert(*internal_type, automaton);
     }
 
@@ -860,9 +856,7 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
         }
     }
 
-    // TODO Fix rule automaton shit
-    let x = unsafe {&mut *(automaton as *mut RuleAutomaton)};
-    let end_dfa = automaton.nfa_to_dfa(&mut x.dfa_states, vec!(x.nfa_end_id), x.nfa_end_id);
+    let end_dfa = automaton.nfa_to_dfa(vec!(automaton.nfa_end_id), automaton.nfa_end_id);
     let first_new_index = automaton.dfa_states.len();
 
     let mut as_list: Vec<_> = transition_to_nfas.iter().map(|(_, nfa_ids)| nfa_ids.clone()).collect();
@@ -889,8 +883,8 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
         }
         debug_assert!(new_dfa_nfa_ids.len() > 0);
 
-        let dfa = automaton.nfa_to_dfa(&mut x.dfa_states, new_dfa_nfa_ids, x.nfa_end_id);
-        automaton.construct_powerset_for_dfa(&mut x.dfa_states, dfa, x.nfa_end_id);
+        let dfa = automaton.nfa_to_dfa(new_dfa_nfa_ids, automaton.nfa_end_id);
+        automaton.construct_powerset_for_dfa(dfa, automaton.nfa_end_id);
         //dbg!(x.dfa_states.len(), x.dfa_states.last().unwrap());
     }
     (first_new_index, end_dfa)
