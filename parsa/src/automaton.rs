@@ -558,19 +558,20 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     }
     // Optimize and calculate the rest of the plans
     for rule_label in &rule_labels {
-        for i in 1..automatons.get(rule_label).unwrap().dfa_states.len() {
+        for i in 1..automatons[rule_label].dfa_states.len() {
             let (plans, _) = plans_for_dfa(
                 nonterminal_map, &mut keywords, &mut automatons, &mut first_plans,
                 *rule_label, DFAStateId(i), false);
             automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
         }
 
-        // TODO is this unsafe really needed?
-        let automaton = unsafe {&mut *(automatons.get_mut(rule_label).unwrap() as *mut RuleAutomaton)};
-        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
-            let recursion_plans = create_left_recursion_plans(
-                automaton, &mut dfa_state, &first_plans);
-            dfa_state.transition_to_plan.extend(recursion_plans);
+        // Left recursion can be calculated here, because only final nodes are relevant and first
+        // nodes are never allowed to be final.
+        for i in 1..automatons[rule_label].dfa_states.len() {
+            let left_recursion_plans = create_left_recursion_plans(
+                    &automatons, *rule_label, DFAStateId(i), &first_plans);
+            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan.extend(
+                left_recursion_plans);
         }
     }
     (automatons, keywords)
@@ -756,9 +757,12 @@ fn create_lookahead_plans(automaton_key: InternalNodeType, transition: DFATransi
     ).collect()
 }
 
-fn create_left_recursion_plans(automaton: &RuleAutomaton, dfa_state: &mut DFAState,
+fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalNodeType,
+                               dfa_id: DFAStateId,
                                first_plans: &FirstPlans) -> SquashedTransitions {
     let mut plans = HashMap::new();
+    let automaton = &automatons[&automaton_key];
+    let dfa_state = &automaton.dfa_states[dfa_id.0];
     if dfa_state.is_final && !dfa_state.is_lookahead_end(){
         // DFAStates that are the end of a lookahead are ignored here, because left recursion is
         // not allowed for lookaheads and they get a separate stack node anyway.
@@ -770,6 +774,10 @@ fn create_left_recursion_plans(automaton: &RuleAutomaton, dfa_state: &mut DFASta
                             TransitionType::Nonterminal(node_id) => {
                                 if node_id == automaton.type_ {
                                     for (&t, p) in &transition.get_next_dfa().transition_to_plan {
+                                        if plans.contains_key(&t) {
+                                            panic!("ambigous: {} contains left recursion with alternatives!",
+                                                   dfa_state.from_rule);
+                                        }
                                         plans.insert(t, Plan {
                                             pushes: p.pushes.clone(),
                                             next_dfa: p.next_dfa,
