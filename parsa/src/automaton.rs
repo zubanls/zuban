@@ -335,6 +335,7 @@ impl RuleAutomaton {
     }
 
     fn construct_powerset_for_dfa(&mut self, dfa: *mut DFAState, end: NFAStateId) {
+        // Safe because DFAs are pinnned boxes in insert only lists
         let state = unsafe {&mut *dfa};
         if state.is_calculated {
             return
@@ -546,14 +547,18 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
-        let automaton = &automatons[&rule_label];
+        let automaton = automatons.get_mut(rule_label).unwrap();
         if automaton.dfa_states[0].is_final {
-            panic!("The rule \"{}\" is allowed to have no child nodes", automaton.name);
+            panic!("The rule \"{}\" must not have an empty production", automaton.name);
         }
+        automaton.dfa_states[0].transition_to_plan = match &first_plans[rule_label] {
+            FirstPlan::Calculated(plans, _) => plans.clone(),
+            _ => unreachable!(),
+        };
     }
-    // Optimize and calculate all plans
+    // Optimize and calculate the rest of the plans
     for rule_label in &rule_labels {
-        for i in 0..automatons.get(rule_label).unwrap().dfa_states.len() {
+        for i in 1..automatons.get(rule_label).unwrap().dfa_states.len() {
             let (plans, _) = plans_for_dfa(
                 nonterminal_map, &mut keywords, &mut automatons, &mut first_plans,
                 *rule_label, DFAStateId(i), false);

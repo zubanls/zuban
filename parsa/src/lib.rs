@@ -490,7 +490,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_panic(expected = "The rule \"rule2\" is allowed to have no child nodes")]
+    #[should_panic(expected = "The rule \"rule2\" must not have an empty production")]
     fn empty_rule() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
