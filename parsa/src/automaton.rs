@@ -563,14 +563,15 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     }
     // Optimize and calculate all plans
     for rule_label in &rule_labels {
-        let automaton = unsafe {&mut *(automatons.get_mut(rule_label).unwrap() as *mut RuleAutomaton)};
-        for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
-            // The dfa_states need to refer to themselves, having it unsafe
-            // here is the easiest way.
-            dfa_state.transition_to_plan = create_all_plans(
-                &keywords, *rule_label, &dfa_state, &first_plans);
+        for i in 0..automatons.get(rule_label).unwrap().dfa_states.len() {
+            let (plans, _) = plans_for_dfa(
+                nonterminal_map, &mut keywords, &mut automatons, &mut first_plans,
+                *rule_label, DFAStateId(i), false);
+            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
         }
 
+        // TODO is this unsafe really needed?
+        let automaton = unsafe {&mut *(automatons.get_mut(rule_label).unwrap() as *mut RuleAutomaton)};
         for (i, mut dfa_state) in automatons.get_mut(rule_label).unwrap().dfa_states.iter_mut().enumerate() {
             let recursion_plans = create_left_recursion_plans(
                 automaton, &mut dfa_state, &first_plans);
@@ -587,8 +588,8 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                       automaton_key: InternalNodeType) {
     if let None = first_plans.get(&automaton_key) {
         first_plans.insert(automaton_key, FirstPlan::Calculating);
-        let (plans, is_left_recursive) = first_plans_for_dfa(
-            nonterminal_map, keywords, automatons, first_plans, automaton_key, DFAStateId(0));
+        let (plans, is_left_recursive) = plans_for_dfa(
+            nonterminal_map, keywords, automatons, first_plans, automaton_key, DFAStateId(0), true);
 
         if is_left_recursive {
             if plans.len() == 0 {
@@ -601,12 +602,13 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
     }
 }
 
-fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
-                       keywords: &Keywords,
-                       automatons: &mut Automatons,
-                       first_plans: &mut FirstPlans,
-                       automaton_key: InternalNodeType,
-                       dfa_id: DFAStateId) -> (SquashedTransitions, bool) {
+fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
+                 keywords: &Keywords,
+                 automatons: &mut Automatons,
+                 first_plans: &mut FirstPlans,
+                 automaton_key: InternalNodeType,
+                 dfa_id: DFAStateId,
+                 is_first_plan: bool) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
     let mut conflict_transitions = HashSet::new();
     let mut plans: HashMap<InternalSquashedType, (DFATransition, Plan)> = HashMap::new();
@@ -627,15 +629,17 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 });
             },
             TransitionType::Nonterminal(node_id) => {
-                if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
-                    if node_id != automaton_key {
-                        panic!("Indirect left recursion not supported (in rule {:?})",
-                               nonterminal_to_str(nonterminal_map, automaton_key));
+                if is_first_plan {
+                    if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
+                        if node_id != automaton_key {
+                            panic!("Indirect left recursion not supported (in rule {:?})",
+                                   nonterminal_to_str(nonterminal_map, automaton_key));
+                        }
+                        is_left_recursive = true;
+                        continue
                     }
-                    is_left_recursive = true;
-                    continue
+                    create_first_plans(nonterminal_map, keywords, first_plans, automatons, node_id);
                 }
-                create_first_plans(nonterminal_map, keywords, first_plans, automatons, node_id);
                 match &first_plans[&node_id] {
                     FirstPlan::Calculated(transitions, is_left_recursive) => {
                         for (&t, nested_plan) in transitions {
@@ -661,9 +665,9 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 });
             },
             TransitionType::PositiveLookaheadStart => {
-                let (inner_plans, inner_is_left_recursive) = first_plans_for_dfa(
+                let (inner_plans, inner_is_left_recursive) = plans_for_dfa(
                     nonterminal_map, keywords, automatons, first_plans,
-                    automaton_key, transition.get_next_dfa().list_index);
+                    automaton_key, transition.get_next_dfa().list_index, is_first_plan);
                 if inner_is_left_recursive {
                     panic!("Left recursion with lookaheads is not supported (in rule {:?})",
                            nonterminal_to_str(nonterminal_map, automaton_key));
@@ -694,8 +698,9 @@ fn first_plans_for_dfa(nonterminal_map: &InternalStrToNode,
         let (start, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
         let t = automaton.type_;
         for dfa_id in (start..automaton.dfa_states.len()).rev() {
-            let (new_plans, left_recursive) = first_plans_for_dfa(
-                nonterminal_map, keywords, automatons, first_plans, automaton_key, DFAStateId(dfa_id)
+            let (new_plans, left_recursive) = plans_for_dfa(
+                nonterminal_map, keywords, automatons, first_plans, automaton_key,
+                DFAStateId(dfa_id), is_first_plan
             );
             debug_assert!(!left_recursive);
             for (transition, mut new_plan) in new_plans {
@@ -754,54 +759,6 @@ fn create_lookahead_plans(automaton_key: InternalNodeType, transition: DFATransi
             plan, automaton_key, search_lookahead_end(plan.get_next_dfa()), mode
         ))
     ).collect()
-}
-
-fn create_all_plans(keywords: &Keywords, automaton_key: InternalNodeType, dfa_state: &DFAState,
-                    first_plans: &FirstPlans) -> SquashedTransitions {
-    let mut plans = HashMap::new();
-    for &transition in &dfa_state.transitions {
-        match transition.type_ {
-            TransitionType::Terminal(type_, debug_text) => {
-                let t = type_.to_squashed();
-                plans.insert(t, Plan {
-                    pushes: Vec::new(),
-                    next_dfa: transition.to,
-                    type_: t,
-                    debug_text: debug_text,
-                    is_left_recursive: false,
-                });
-            },
-            TransitionType::Nonterminal(node_id) => {
-                let first_plan = &first_plans[&node_id];
-                if let FirstPlan::Calculated(p, _) = first_plan {
-                    plans.extend(p.iter().map(|(k, v)| (
-                        *k, nest_plan(v, node_id, transition.to, StackMode::Normal))));
-                } else {
-                    unreachable!();
-                }
-            },
-            TransitionType::Keyword(keyword) => {
-                let t = keywords.get_squashed(keyword).unwrap();
-                plans.insert(t, Plan {
-                    pushes: Vec::new(),
-                    next_dfa: transition.to,
-                    type_: t,
-                    debug_text: keyword,
-                    is_left_recursive: false,
-                });
-            },
-            TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
-                let inner_plans = create_all_plans(
-                    &keywords, automaton_key, transition.get_next_dfa(),
-                    &first_plans);
-                plans.extend(create_lookahead_plans(automaton_key, transition, &inner_plans));
-            },
-            TransitionType::LookaheadEnd => {
-                // No plans needed.
-            },
-        }
-    }
-    plans
 }
 
 fn create_left_recursion_plans(automaton: &RuleAutomaton, dfa_state: &mut DFAState,
