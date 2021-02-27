@@ -208,6 +208,10 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_leaf()
             }
 
+            pub fn is_error_recovery_node(&self) -> bool {
+                self.internal_node.type_.is_error_recovery()
+            }
+
             pub fn token_type(&self) -> Option<$TokenType> {
                 if !self.is_leaf() {
                     return None

@@ -6,6 +6,7 @@ use std::pin::Pin;
 use crate::grammar::{InternalNode, Token, CodeIndex};
 
 pub const NODE_START: u16 = 1<<15;
+pub const ERROR_RECOVERY_BIT: u16 = 1<<14;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
@@ -34,8 +35,19 @@ pub enum Rule {
 pub struct InternalSquashedType(pub u16);
 
 impl InternalSquashedType {
+    #[inline]
     pub fn is_leaf(&self) -> bool {
-        return self.0 < NODE_START
+        self.0 < NODE_START
+    }
+
+    #[inline]
+    pub fn is_error_recovery(&self) -> bool {
+        self.0 & ERROR_RECOVERY_BIT > 0
+    }
+
+    #[inline]
+    pub fn remove_error_recovery_bit(&self) -> Self {
+        Self(self.0 & !ERROR_RECOVERY_BIT)
     }
 }
 
