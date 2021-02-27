@@ -96,7 +96,7 @@ create_grammar!(
     except_clause: "except" [test ["as" Name]]
     suite: simple_stmt | Newline Indent stmt+ Dedent
 
-    namedexpr_test: test [":=" test]
+    namedexpr_test: Name ":=" test | test
     test: or_test ["if" or_test "else" test] | lambdef
     test_nocond: or_test | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" test
