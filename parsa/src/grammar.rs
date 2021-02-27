@@ -111,11 +111,10 @@ struct StackNode<'a> {
     add_tree_nodes: bool,
 }
 
-struct Stack<'a, T: Token, I> {
+struct Stack<'a, T: Token> {
     stack_nodes: Vec<StackNode<'a>>,
     tree_nodes: Vec<InternalNode>,
     phantom: PhantomData<T>,
-    phantom2: PhantomData<I>,
 }
 
 impl<'a, T: Token> Grammar<T> {
@@ -136,7 +135,7 @@ impl<'a, T: Token> Grammar<T> {
         grammar
     }
 
-    pub fn parse(&self, code: &str, tokens: impl Iterator<Item=T>, start: InternalNodeType) -> Vec<InternalNode> {
+    pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNodeType) -> Vec<InternalNode> {
         let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0]);
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
@@ -153,25 +152,196 @@ impl<'a, T: Token> Grammar<T> {
                     transition = token.get_type().to_squashed();
                 }
 
-                stack.apply_transition(&self.automatons, &mut backtracking_tokenizer, transition, &token);
+                self.apply_transition(&mut stack, &mut backtracking_tokenizer, transition, &token);
             }
 
             let tos = stack.get_tos();
             let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
-            stack.end_of_node(&self.automatons, &mut backtracking_tokenizer, is_final, mode);
+            self.end_of_node(&mut stack, &mut backtracking_tokenizer, is_final, mode);
         }
         stack.tree_nodes
     }
+
+    #[inline]
+    fn apply_transition<I: Iterator<Item=T>>(
+            &self, stack: &mut Stack<T>,
+            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+            transition: InternalSquashedType, token: &T) {
+        loop {
+            let tos = stack.get_tos();
+            let is_final = tos.dfa_state.is_final;
+            let mode = tos.mode;
+            match tos.dfa_state.transition_to_plan.get(&transition) {
+                None => {
+                    //dbg!(stack.get_tos().dfa_state.from_rule);
+                    //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
+                    //     .map(|x| x.debug_text).collect::<Vec<_>>());
+                    if self.end_of_node(stack, backtracking_tokenizer, is_final, mode) {
+                        return
+                    }
+                },
+                Some(plan) => {
+                    let cloned_plan = plan.clone();
+                    self.apply_plan(stack, &cloned_plan, &token, backtracking_tokenizer);
+                    break
+                },
+            }
+        }
+    }
+
+    #[inline]
+    fn end_of_node<I: Iterator<Item=T>>(
+            &self, stack: &mut Stack<T>,
+            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+            is_final: bool, mode: ModeData<'a>) -> bool {
+        if is_final {
+            match mode {
+                ModeData::Normal => {
+                    stack.pop_normal();
+                },
+                ModeData::PositiveLookahead(token_index) => {
+                    stack.stack_nodes.pop();
+                    backtracking_tokenizer.reset(token_index);
+                },
+                ModeData::NegativeLookahead(token_index) => {
+                    backtracking_tokenizer.reset(token_index);
+                    unimplemented!();
+                },
+                ModeData::Alternative(backtracking_point) => {
+                    let old_tos = stack.stack_nodes.pop().unwrap();
+                    let tos = stack.stack_nodes.last_mut().unwrap();
+                    tos.children_count = old_tos.children_count;
+                    tos.latest_child_node_index = old_tos.latest_child_node_index;
+                    debug_assert!(tos.dfa_state.is_final);
+                }
+            }
+        } else {
+            for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+                match node.mode {
+                    ModeData::NegativeLookahead(token_index) => {
+                        stack.stack_nodes.truncate(i);
+                        backtracking_tokenizer.reset(token_index);
+                        return false
+                    },
+                    ModeData::Alternative(backtracking_point) => {
+                        stack.stack_nodes.truncate(i);
+
+                        stack.tree_nodes.truncate(backtracking_point.tree_node_count);
+                        let tos = stack.stack_nodes.last_mut().unwrap();
+                        backtracking_tokenizer.reset(backtracking_point.token_index);
+                        let t = backtracking_tokenizer.next().unwrap();
+                        self.apply_plan(
+                            stack, backtracking_point.fallback_plan,
+                            &t, backtracking_tokenizer);
+                        return true
+                    },
+                    _ => {}
+                }
+            }
+            //let rest = &code[token.get_start_index() as usize..];
+            //dbg!(token, rest);
+            dbg!(stack.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
+            //dbg!(self.get_tos());
+            panic!("Error recovery");
+        }
+        false
+    }
+
+    #[inline]
+    fn apply_plan<I: Iterator<Item=T>>(
+            &self, stack: &mut Stack<T>, plan: &Plan, token: &T,
+            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
+        let tos_mut = stack.stack_nodes.last_mut().unwrap();
+        tos_mut.dfa_state = unsafe {&*plan.next_dfa};
+        let mut enabled_token_recording = tos_mut.enabled_token_recording;
+        let mut add_tree_nodes = tos_mut.add_tree_nodes;
+
+        let start_index = token.get_start_index();
+        if add_tree_nodes {
+            // If we have left recursion we have to do something a bit weird: We push the same tree
+            // node in between, because we only handle direct recursion. This is kind of similar
+            // how LR would work. So it's an interesting mixture of LL and LR.
+            // There's one exception: If the node can be omitted we don't even have to do it.
+            if plan.is_left_recursive && !tos_mut.can_omit_children(){
+                tos_mut.children_count = 1;
+                tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+
+                update_tree_node_position(&mut stack.tree_nodes, tos_mut);
+
+                let old_node = stack.tree_nodes[tos_mut.tree_node_index];
+                stack.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
+                    next_node_offset: 0,
+                    // Positive values are token types, negative values are nodes
+                    type_: old_node.type_,
+                    start_index: old_node.start_index,
+                    length: 0,
+                    extra_data: 0,
+                });
+            }
+            stack.calculate_previous_next_node();
+        }
+
+        for push in &plan.pushes {
+            // Lookaheads need to be accounted for.
+            let tos = stack.stack_nodes.last_mut().unwrap();
+            tos.children_count += 1;
+            //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
+            enabled_token_recording |= push.stack_mode == StackMode::Normal;
+            add_tree_nodes &= match push.stack_mode {
+                StackMode::Normal | StackMode::Alternative(_) => true,
+                _ => false,
+            };
+            stack.push(
+                push.node_type,
+                push.next_dfa,
+                start_index,
+                match push.stack_mode {
+                    StackMode::Normal => ModeData::Normal,
+                    StackMode::PositiveLookahead => ModeData::PositiveLookahead(
+                        backtracking_tokenizer.start(token)
+                    ),
+                    StackMode::NegativeLookahead => ModeData::NegativeLookahead(
+                        backtracking_tokenizer.start(token)
+                    ),
+                    StackMode::Alternative(alternative_plan) => ModeData::Alternative(
+                        BacktrackingPoint {
+                            tree_node_count: stack.tree_nodes.len(),
+                            token_index: backtracking_tokenizer.start(token),
+                            fallback_plan: unsafe {&*alternative_plan},
+                        }
+                    ),
+                },
+                enabled_token_recording,
+                add_tree_nodes,
+            );
+            if add_tree_nodes {
+                let tos_mut = stack.stack_nodes.last_mut().unwrap();
+                tos_mut.latest_child_node_index = stack.tree_nodes.len();
+            }
+        }
+        if add_tree_nodes {
+            // Once all the nodes are dealt with, add the token
+            stack.stack_nodes.last_mut().unwrap().children_count += 1;
+            stack.tree_nodes.push(InternalNode {
+                next_node_offset: 0,
+                // Positive values are token types, negative values are nodes
+                type_: plan.type_,
+                start_index: start_index,
+                length: token.get_length(),
+                extra_data: 0,
+            });
+        }
+    }
+
 }
 
-impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
+impl<'a, T: Token+Debug> Stack<'a, T> {
     fn new(node_id: InternalNodeType, dfa_state: &'a DFAState) -> Self {
         let mut stack = Stack {
             stack_nodes: vec!(),
             tree_nodes: vec!(),
             phantom: PhantomData,
-            phantom2: PhantomData,
         };
         stack.push(node_id, dfa_state, 0, ModeData::Normal, false, true);
         stack
@@ -188,91 +358,6 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
     }
 
     #[inline]
-    fn apply_transition(
-            &mut self, automatons: &'a Automatons,
-            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-            transition: InternalSquashedType, token: &T) {
-        loop {
-            let tos = self.get_tos();
-            let is_final = tos.dfa_state.is_final;
-            let mode = tos.mode;
-            match tos.dfa_state.transition_to_plan.get(&transition) {
-                None => {
-                    //dbg!(stack.get_tos().dfa_state.from_rule);
-                    //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
-                    //     .map(|x| x.debug_text).collect::<Vec<_>>());
-                    if self.end_of_node(automatons, backtracking_tokenizer, is_final, mode) {
-                        return
-                    }
-                },
-                Some(plan) => {
-                    let cloned_plan = plan.clone();
-                    self.apply_plan(automatons, &cloned_plan,
-                                    &token, backtracking_tokenizer);
-                    break
-                },
-            }
-        }
-    }
-
-    #[inline]
-    fn end_of_node(&mut self, automatons: &'a Automatons,
-                   backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-                   is_final: bool, mode: ModeData<'a>) -> bool {
-        if is_final {
-            match mode {
-                ModeData::Normal => {
-                    self.pop_normal();
-                },
-                ModeData::PositiveLookahead(token_index) => {
-                    self.stack_nodes.pop();
-                    backtracking_tokenizer.reset(token_index);
-                },
-                ModeData::NegativeLookahead(token_index) => {
-                    backtracking_tokenizer.reset(token_index);
-                    unimplemented!();
-                },
-                ModeData::Alternative(backtracking_point) => {
-                    let old_tos = self.stack_nodes.pop().unwrap();
-                    let tos = self.stack_nodes.last_mut().unwrap();
-                    tos.children_count = old_tos.children_count;
-                    tos.latest_child_node_index = old_tos.latest_child_node_index;
-                    debug_assert!(tos.dfa_state.is_final);
-                }
-            }
-        } else {
-            for (i, node) in self.stack_nodes.iter().enumerate().rev() {
-                match node.mode {
-                    ModeData::NegativeLookahead(token_index) => {
-                        self.stack_nodes.truncate(i);
-                        backtracking_tokenizer.reset(token_index);
-                        return false
-                    },
-                    ModeData::Alternative(backtracking_point) => {
-                        self.stack_nodes.truncate(i);
-
-                        self.tree_nodes.truncate(backtracking_point.tree_node_count);
-                        let tos = self.stack_nodes.last_mut().unwrap();
-                        backtracking_tokenizer.reset(backtracking_point.token_index);
-                        let t = backtracking_tokenizer.next().unwrap();
-                        self.apply_plan(
-                            automatons, backtracking_point.fallback_plan,
-                            &t, backtracking_tokenizer);
-                        return true
-                    },
-                    _ => {}
-                }
-            }
-            //let rest = &code[token.get_start_index() as usize..];
-            //dbg!(token, rest);
-            dbg!(self.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
-            //dbg!(self.get_tos());
-            panic!("Error recovery");
-        }
-        false
-    }
-
-    #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
         if stack_node.can_omit_children() {
@@ -282,91 +367,6 @@ impl<'a, T: Token+Debug, I: Iterator<Item=T>> Stack<'a, T, I> {
             // calculate how long a node is.
             debug_assert!(stack_node.children_count >= 1);
             update_tree_node_position(&mut self.tree_nodes, &stack_node);
-        }
-    }
-
-    #[inline]
-    fn apply_plan(&mut self, automatons: &'a Automatons, plan: &Plan, token: &T,
-                  backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
-        let tos_mut = self.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = unsafe {&*plan.next_dfa};
-        let mut enabled_token_recording = tos_mut.enabled_token_recording;
-        let mut add_tree_nodes = tos_mut.add_tree_nodes;
-
-        let start_index = token.get_start_index();
-        if add_tree_nodes {
-            // If we have left recursion we have to do something a bit weird: We push the same tree
-            // node in between, because we only handle direct recursion. This is kind of similar
-            // how LR would work. So it's an interesting mixture of LL and LR.
-            // There's one exception: If the node can be omitted we don't even have to do it.
-            if plan.is_left_recursive && !tos_mut.can_omit_children(){
-                tos_mut.children_count = 1;
-                tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
-
-                update_tree_node_position(&mut self.tree_nodes, tos_mut);
-
-                let old_node = self.tree_nodes[tos_mut.tree_node_index];
-                self.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
-                    next_node_offset: 0,
-                    // Positive values are token types, negative values are nodes
-                    type_: old_node.type_,
-                    start_index: old_node.start_index,
-                    length: 0,
-                    extra_data: 0,
-                });
-            }
-            self.calculate_previous_next_node();
-        }
-
-        for push in &plan.pushes {
-            // Lookaheads need to be accounted for.
-            let tos = self.stack_nodes.last_mut().unwrap();
-            tos.children_count += 1;
-            //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            enabled_token_recording |= push.stack_mode == StackMode::Normal;
-            add_tree_nodes &= match push.stack_mode {
-                StackMode::Normal | StackMode::Alternative(_) => true,
-                _ => false,
-            };
-            self.push(
-                push.node_type,
-                push.next_dfa,
-                start_index,
-                match push.stack_mode {
-                    StackMode::Normal => ModeData::Normal,
-                    StackMode::PositiveLookahead => ModeData::PositiveLookahead(
-                        backtracking_tokenizer.start(token)
-                    ),
-                    StackMode::NegativeLookahead => ModeData::NegativeLookahead(
-                        backtracking_tokenizer.start(token)
-                    ),
-                    StackMode::Alternative(alternative_plan) => ModeData::Alternative(
-                        BacktrackingPoint {
-                            tree_node_count: self.tree_nodes.len(),
-                            token_index: backtracking_tokenizer.start(token),
-                            fallback_plan: unsafe {&*alternative_plan},
-                        }
-                    ),
-                },
-                enabled_token_recording,
-                add_tree_nodes,
-            );
-            if add_tree_nodes {
-                let tos_mut = self.stack_nodes.last_mut().unwrap();
-                tos_mut.latest_child_node_index = self.tree_nodes.len();
-            }
-        }
-        if add_tree_nodes {
-            // Once all the nodes are dealt with, add the token
-            self.stack_nodes.last_mut().unwrap().children_count += 1;
-            self.tree_nodes.push(InternalNode {
-                next_node_offset: 0,
-                // Positive values are token types, negative values are nodes
-                type_: plan.type_,
-                start_index: start_index,
-                length: token.get_length(),
-                extra_data: 0,
-            });
         }
     }
 
