@@ -13,7 +13,7 @@ pub use std::mem;
 
 pub use grammar::{Grammar, InternalTree, ExtraData, CodeIndex, NodeIndex,
                   CodeLength, InternalNode, Tokenizer, Token};
-pub use automaton::{InternalSquashedType, InternalNonterminalType, InternalTokenType,
+pub use automaton::{InternalSquashedType, InternalNonterminalType, InternalTerminalType,
                     InternalStrToNode, InternalStrToToken, Rule, NODE_START};
 
 #[macro_export]
@@ -86,7 +86,7 @@ macro_rules! __create_type_set {
 macro_rules! create_token {
     (struct $Token:ident, enum $TerminalType:ident, [$($entry:ident),*]) => {
         $crate::__create_type_set!(enum $TerminalType, $crate::InternalStrToToken,
-                                   $crate::InternalTokenType, 0, $($entry),*);
+                                   $crate::InternalTerminalType, 0, $($entry),*);
 
         #[derive(Debug, Copy, Clone)]
         pub struct $Token {
@@ -105,8 +105,8 @@ macro_rules! create_token {
                 self.length
             }
 
-            fn get_type(&self) -> $crate::InternalTokenType {
-                $crate::InternalTokenType(self.type_ as u16)
+            fn get_type(&self) -> $crate::InternalTerminalType {
+                $crate::InternalTerminalType(self.type_ as u16)
             }
 
             fn can_contain_syntax(&self) -> bool{

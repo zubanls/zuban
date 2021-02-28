@@ -10,7 +10,7 @@ pub const ERROR_RECOVERY_BIT: u16 = 1<<14;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNonterminalType, RuleAutomaton>;
-pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
+pub type InternalStrToToken = HashMap<&'static str, InternalTerminalType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNonterminalType>;
 pub type RuleMap = HashMap<InternalNonterminalType, (&'static str, Rule)>;
 type FirstPlans = HashMap<InternalNonterminalType, FirstPlan>;
@@ -68,8 +68,8 @@ impl InternalNonterminalType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalTokenType(pub u16);
-impl InternalTokenType {
+pub struct InternalTerminalType(pub u16);
+impl InternalTerminalType {
     #[inline]
     pub fn to_squashed(&self) -> InternalSquashedType {
         InternalSquashedType(self.0)
@@ -110,7 +110,7 @@ unsafe impl Send for DFAState {}
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum TransitionType {
-    Terminal(InternalTokenType, &'static str),
+    Terminal(InternalTerminalType, &'static str),
     Nonterminal(InternalNonterminalType),
     Keyword(&'static str),
     PositiveLookaheadStart,

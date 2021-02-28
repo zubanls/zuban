@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
                        DFAState, Keywords, generate_automatons, Rule, RuleMap,
                        InternalStrToToken, InternalStrToNode, StackMode,
-                       InternalTokenType, InternalNonterminalType};
+                       InternalTerminalType, InternalNonterminalType};
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
@@ -16,7 +16,7 @@ pub type CodeLength = u32;
 pub trait Token: Copy+Debug {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
-    fn get_type(&self) -> InternalTokenType;
+    fn get_type(&self) -> InternalTerminalType;
     fn can_contain_syntax(&self) -> bool;
 }
 
