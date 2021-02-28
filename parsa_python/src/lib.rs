@@ -2,12 +2,12 @@
 mod tokenizer;
 
 use parsa::{create_grammar, Grammar};
-use crate::tokenizer::{PythonToken, PythonTokenType, PythonTokenizer};
+use crate::tokenizer::{PythonTerminal, PythonTerminalType, PythonTokenizer};
 
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
-    struct PythonNode, enum PythonNodeType, PythonTokenizer, PythonToken, PythonTokenType,
+    struct PythonNode, enum PythonNodeType, PythonTokenizer, PythonTerminal, PythonTerminalType,
 
     file_input: stmt* Endmarker
     single_input: Newline | simple_stmt | compound_stmt Newline
@@ -181,7 +181,5 @@ mod tests {
         let root_node = tree.get_root_node();
         assert_eq!(root_node.node_type(), Some(PythonNodeType::file_input));
         assert_eq!(root_node.get_extra_data(), 0);
-        //dbg!(TokenType::get_map());
-        //dbg!(PythonNodeType::get_map());
     }
 }

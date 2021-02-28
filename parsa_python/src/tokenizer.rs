@@ -74,7 +74,7 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
     "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
 }
 
-create_token!(struct PythonToken, enum PythonTokenType,
+create_token!(struct PythonTerminal, enum PythonTerminalType,
               [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
                Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
@@ -154,7 +154,7 @@ impl FStringNode {
     }
 }
 
-impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
+impl<'a> parsa::Tokenizer<'a, PythonTerminal> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         Self {
             code: code,
@@ -168,9 +168,9 @@ impl<'a> parsa::Tokenizer<'a, PythonToken> for PythonTokenizer<'a> {
 
 impl PythonTokenizer<'_> {
     #[inline]
-    fn new_tok(&self, start: usize, can_contain_syntax: bool, type_: PythonTokenType)
-            -> Option<PythonToken> {
-        Some(PythonToken {
+    fn new_tok(&self, start: usize, can_contain_syntax: bool, type_: PythonTerminalType)
+            -> Option<PythonTerminal> {
+        Some(PythonTerminal {
             start_index: start as CodeIndex,
             length: (self.index - start) as CodeIndex,
             type_: type_,
@@ -179,20 +179,20 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn dedent_if_necessary(&mut self, indentation_count: usize) -> Option<PythonToken> {
+    fn dedent_if_necessary(&mut self, indentation_count: usize) -> Option<PythonTerminal> {
         while indentation_count < *self.indent_stack.last().unwrap() {
             if indentation_count > self.indent_stack[self.indent_stack.len() - 2] {
                 *self.indent_stack.last_mut().unwrap() = indentation_count;
-                return self.new_tok(self.index, false, PythonTokenType::ErrorDedent);
+                return self.new_tok(self.index, false, PythonTerminalType::ErrorDedent);
             }
             self.indent_stack.pop();
-            return self.new_tok(self.index, false, PythonTokenType::Dedent);
+            return self.new_tok(self.index, false, PythonTerminalType::Dedent);
         }
         None
     }
 
     #[inline]
-    fn encountered_break_token(&mut self) -> Option<PythonToken> {
+    fn encountered_break_token(&mut self) -> Option<PythonTerminal> {
         if self.parentheses_level != 0 || self.f_string_stack.len() != 0 {
             self.parentheses_level = 0;
             self.f_string_stack.clear();
@@ -213,7 +213,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn handle_fstring_stack(&mut self) -> Option<PythonToken> {
+    fn handle_fstring_stack(&mut self) -> Option<PythonTerminal> {
         let in_expr = self.get_f_string_tos().in_expr();
         let mut iterator = code_from_start(self.code, self.index).char_indices().peekable();
         while let Some((i, character)) = iterator.next() {
@@ -261,7 +261,7 @@ impl PythonTokenizer<'_> {
                     self.index += i + 1;
                     // We cannot just return None here, because otherwise := would be tokenized
                     // the wrong way.
-                    return self.new_tok(self.index - 1, true, PythonTokenType::Operator);
+                    return self.new_tok(self.index - 1, true, PythonTerminalType::Operator);
                 }
                 // By returning here, we are making sure that the normal
                 // tokenizer returns the as an operator.
@@ -280,7 +280,7 @@ impl PythonTokenizer<'_> {
 
                         if in_expr {
                             self.index += i + 2;
-                            return self.new_tok(self.index - 2, false, PythonTokenType::ErrorToken);
+                            return self.new_tok(self.index - 2, false, PythonTerminalType::ErrorToken);
                         }
                     }
                 }
@@ -310,7 +310,7 @@ impl PythonTokenizer<'_> {
                     c.len(), |index| index + 1);
                 let start = self.index;
                 self.index += length;
-                return self.new_tok(start, false, PythonTokenType::ErrorToken);
+                return self.new_tok(start, false, PythonTerminalType::ErrorToken);
             } else if character != ' ' && character != '\t' && character != FORM_FEED && in_expr {
                 return None
             }
@@ -328,7 +328,7 @@ impl PythonTokenizer<'_> {
 
     #[inline]
     fn end_f_string(&mut self, string_length: usize, drain_from: usize, quote: QuoteType)
-                    -> Option<PythonToken> {
+                    -> Option<PythonTerminal> {
         // This is the same if we are in_expr or not. The string ends no matter
         // what. It's a bit strange that in the expr case it returns an
         // fstring_string first, but this should be fine, since if there's a
@@ -340,7 +340,7 @@ impl PythonTokenizer<'_> {
                 QuoteType::Single | QuoteType::Double => 1,
                 QuoteType::SingleTriple | QuoteType::DoubleTriple => 3,
             };
-            node.new_tok(start, false, PythonTokenType::FStringEnd)
+            node.new_tok(start, false, PythonTerminalType::FStringEnd)
         };
         if self.get_f_string_tos().in_expr() {
             self.index += string_length;
@@ -360,11 +360,11 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn maybe_fstring_string(&mut self, length: usize) -> Option<PythonToken> {
+    fn maybe_fstring_string(&mut self, length: usize) -> Option<PythonTerminal> {
         if length > 0 {
             let start = self.index;
             self.index += length;
-            return self.new_tok(start, false, PythonTokenType::FStringString);
+            return self.new_tok(start, false, PythonTerminalType::FStringString);
         }
         return None;
     }
@@ -436,7 +436,7 @@ impl PythonTokenizer<'_> {
 }
 
 impl Iterator for PythonTokenizer<'_> {
-    type Item = PythonToken;
+    type Item = PythonTerminal;
     fn next(&mut self) -> Option<Self::Item> {
         if self.ended {
             return None;
@@ -458,7 +458,7 @@ impl Iterator for PythonTokenizer<'_> {
                     if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
                         if indentation > *self.indent_stack.last().unwrap() {
                             self.indent_stack.push(indentation);
-                            return self.new_tok(start, false, PythonTokenType::Indent);
+                            return self.new_tok(start, false, PythonTerminalType::Indent);
                         } else {
                             if let Some(token) = self.dedent_if_necessary(indentation) {
                                 return Some(token);
@@ -471,7 +471,7 @@ impl Iterator for PythonTokenizer<'_> {
 
         if let Some(match_) = NUMBER.find(c) {
             self.index += match_.end();
-            return self.new_tok(start, false, PythonTokenType::Number);
+            return self.new_tok(start, false, PythonTerminalType::Number);
         }
         if let Some(match_) = OPERATOR.find(c) {
             let character = c.as_bytes()[0];
@@ -491,11 +491,11 @@ impl Iterator for PythonTokenizer<'_> {
                     Some(node) => node.close_parentheses(),
                 }
             }
-            return self.new_tok(start, true, PythonTokenType::Operator);
+            return self.new_tok(start, true, PythonTerminalType::Operator);
         }
         let regexes = [
-            (&*STRING, PythonTokenType::String),
-            (&*BYTES, PythonTokenType::Bytes),
+            (&*STRING, PythonTerminalType::String),
+            (&*BYTES, PythonTerminalType::Bytes),
         ];
         for &(r, token_type) in &regexes {
             if let Some(match_) = r.find(c) {
@@ -504,7 +504,7 @@ impl Iterator for PythonTokenizer<'_> {
                     self.index += length;
                     if length <= 5 && (match_.as_str().contains("'''")
                                        || match_.as_str().contains("\"\"\"")) {
-                        return self.new_tok(start, false, PythonTokenType::ErrorToken);
+                        return self.new_tok(start, false, PythonTerminalType::ErrorToken);
                     }
                     return self.new_tok(start, false, token_type);
                 }
@@ -529,7 +529,7 @@ impl Iterator for PythonTokenizer<'_> {
                     parentheses_level: 0,
                     format_spec_count: 0,
                 });
-                return self.new_tok(start, false, PythonTokenType::FStringStart);
+                return self.new_tok(start, false, PythonTerminalType::FStringStart);
             }
         }
 
@@ -539,14 +539,14 @@ impl Iterator for PythonTokenizer<'_> {
                 self.encountered_break_token();
             }
             self.index += name_length;
-            return self.new_tok(start, true, PythonTokenType::Name);
+            return self.new_tok(start, true, PythonTerminalType::Name);
         }
 
         if let Some(match_) = NEWLINE.find(c) {
             self.index += match_.end();
             if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
                 self.previous_token_was_newline = true;
-                return self.new_tok(start, false, PythonTokenType::Newline);
+                return self.new_tok(start, false, PythonTerminalType::Newline);
             } else {
                 return self.next();
             }
@@ -556,15 +556,15 @@ impl Iterator for PythonTokenizer<'_> {
             None => {
                 if self.indent_stack.len() != 1 {
                     self.indent_stack.pop();
-                    self.new_tok(start, false, PythonTokenType::Dedent)
+                    self.new_tok(start, false, PythonTerminalType::Dedent)
                 } else {
                     self.ended = true;
-                    self.new_tok(start, false, PythonTokenType::Endmarker)
+                    self.new_tok(start, false, PythonTerminalType::Endmarker)
                 }
             },
             Some(character) => {
                 self.index += character.len_utf8();
-                self.new_tok(start, false, PythonTokenType::ErrorToken)
+                self.new_tok(start, false, PythonTerminalType::ErrorToken)
             },
         }
     }
@@ -583,9 +583,9 @@ fn code_from_start(code: &str, index: usize) -> &str {
 mod tests {
     use parsa::Tokenizer;
     use super::*;
-    use PythonTokenType::*;
+    use PythonTerminalType::*;
     #[allow(non_upper_case_globals)]
-    const Op: PythonTokenType = Operator;
+    const Op: PythonTerminalType = Operator;
 
     macro_rules! parametrize {
         ($($name:ident $input:expr => $expected:tt;)*) => {$(

@@ -84,15 +84,15 @@ macro_rules! __create_type_set {
 
 #[macro_export]
 macro_rules! create_token {
-    (struct $Token:ident, enum $TokenType:ident, [$($entry:ident),*]) => {
-        $crate::__create_type_set!(enum $TokenType, $crate::InternalStrToToken,
+    (struct $Token:ident, enum $TerminalType:ident, [$($entry:ident),*]) => {
+        $crate::__create_type_set!(enum $TerminalType, $crate::InternalStrToToken,
                                    $crate::InternalTokenType, 0, $($entry),*);
 
         #[derive(Debug, Copy, Clone)]
         pub struct $Token {
             start_index: $crate::CodeIndex,
             length: $crate::CodeLength,
-            type_: $TokenType,
+            type_: $TerminalType,
             can_contain_syntax: bool,
         }
 
@@ -118,17 +118,17 @@ macro_rules! create_token {
 
 #[macro_export]
 macro_rules! __create_node {
-    (struct $Node:ident, enum $NodeType:ident, $TokenType:ident, [$($entry:tt)*]) => {
-        $crate::__create_type_set!(enum $NodeType, $crate::InternalStrToNode,
+    (struct $Node:ident, enum $NonterminalType:ident, $TerminalType:ident, [$($entry:tt)*]) => {
+        $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNodeType, $crate::NODE_START, $($entry)*);
 
         #[derive(Debug)]
         pub enum NodeType{
-            Branch($NodeType),
-            Leaf($TokenType),
+            Branch($NonterminalType),
+            Leaf($TerminalType),
             Keyword,
-            ErrorBranch($NodeType),
-            ErrorLeaf($TokenType),
+            ErrorBranch($NonterminalType),
+            ErrorLeaf($TerminalType),
             ErrorKeyword,
         }
 
@@ -228,7 +228,7 @@ macro_rules! __create_node {
                 if self.is_error_recovery_node() {
                     if self.is_leaf() {
                         let t = self.internal_node.type_.remove_error_recovery_bit();
-                        if t.0 as usize >= $TokenType::get_map().len() {
+                        if t.0 as usize >= $TerminalType::get_map().len() {
                             NodeType::Keyword
                         } else {
                             NodeType::ErrorLeaf(f(t))
@@ -240,7 +240,7 @@ macro_rules! __create_node {
                     dbg!(self.internal_node.type_);
                     if self.is_leaf() {
                         // TODO this should probably be something like is keyword
-                        if self.internal_node.type_.0 as usize >= $TokenType::get_map().len() {
+                        if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
                             NodeType::Keyword
                         } else {
                             NodeType::Leaf(f(self.internal_node.type_))
@@ -251,19 +251,19 @@ macro_rules! __create_node {
                 }
             }
 
-            pub fn token_type(&self) -> Option<$TokenType> {
+            pub fn token_type(&self) -> Option<$TerminalType> {
                 if !self.is_leaf() && !self.is_error_recovery_node() {
                     return None
                 }
                 // TODO this should probably be something like is keyword
-                if self.internal_node.type_.0 as usize >= $TokenType::get_map().len() {
+                if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
                     return None
                 }
-                // Can be unsafe, because the TokenType is created by the macro create_token.
+                // Can be unsafe, because the TerminalType is created by the macro create_token.
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
-            pub fn node_type(&self) -> Option<$NodeType> {
+            pub fn node_type(&self) -> Option<$NonterminalType> {
                 if self.is_leaf() && !self.is_error_recovery_node() {
                     return None
                 }
@@ -275,11 +275,11 @@ macro_rules! __create_node {
                 // Not a fast API, should probably only be used for tests.
                 //dbg!(self.get_type());
                 match self.get_type() {
-                    NodeType::Branch(t) => $NodeType::as_str(t).to_owned(),
-                    NodeType::Leaf(t) => $TokenType::as_str(t).to_owned(),
+                    NodeType::Branch(t) => $NonterminalType::as_str(t).to_owned(),
+                    NodeType::Leaf(t) => $TerminalType::as_str(t).to_owned(),
                     NodeType::Keyword => "Keyword".to_owned(),
-                    NodeType::ErrorBranch(t) => format!("Error({})", $NodeType::as_str(t)),
-                    NodeType::ErrorLeaf(t) => format!("Error({})", $TokenType::as_str(t)),
+                    NodeType::ErrorBranch(t) => format!("Error({})", $NonterminalType::as_str(t)),
+                    NodeType::ErrorLeaf(t) => format!("Error({})", $TerminalType::as_str(t)),
                     NodeType::ErrorKeyword => "Error(Keyword)".to_owned(),
                 }
             }
@@ -423,29 +423,29 @@ macro_rules! __parse_reduce {
 
 #[macro_export]
 macro_rules! __parse_rules {
-    ($NodeType:ident, $rules:ident, $label:ident: | $($rule:tt)+) => {
-        $crate::__parse_rule!($NodeType, $rules, [$label] $($rule)+)
+    ($NonterminalType:ident, $rules:ident, $label:ident: | $($rule:tt)+) => {
+        $crate::__parse_rule!($NonterminalType, $rules, [$label] $($rule)+)
     };
-    ($NodeType:ident, $rules:ident, $label:ident : $($rule:tt)+) => {
-        $crate::__parse_rule!($NodeType, $rules, [$label] $($rule)+)
+    ($NonterminalType:ident, $rules:ident, $label:ident : $($rule:tt)+) => {
+        $crate::__parse_rule!($NonterminalType, $rules, [$label] $($rule)+)
     };
 }
 
 #[macro_export]
 macro_rules! __parse_rule {
-    ($NodeType:ident, $rules:ident, [$($saved:tt)+] $next:ident : $($rule:tt)+) => {
+    ($NonterminalType:ident, $rules:ident, [$($saved:tt)+] $next:ident : $($rule:tt)+) => {
         // Finish parsing the rule
-        $crate::__parse_rule!($NodeType, $rules, [$($saved)+]);
+        $crate::__parse_rule!($NonterminalType, $rules, [$($saved)+]);
         // Keep parsing the rest
-        $crate::__parse_rules!($NodeType, $rules, $next : $($rule)+);
+        $crate::__parse_rules!($NonterminalType, $rules, $next : $($rule)+);
     };
 
-    ($NodeType:ident, $rules:ident, [$($saved:tt)+] $next:tt $($rule:tt)*) => {
-        $crate::__parse_rule!($NodeType, $rules, [$($saved)+ $next] $($rule)*);
+    ($NonterminalType:ident, $rules:ident, [$($saved:tt)+] $next:tt $($rule:tt)*) => {
+        $crate::__parse_rule!($NonterminalType, $rules, [$($saved)+ $next] $($rule)*);
     };
 
-    ($NodeType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let key = $crate::InternalNodeType($NodeType::$label as u16);
+    ($NonterminalType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
+        let key = $crate::InternalNodeType($NonterminalType::$label as u16);
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
@@ -457,10 +457,10 @@ macro_rules! __parse_rule {
 #[macro_export]
 macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident,
-     struct $Node:ident, enum $NodeType:ident, $Tokenizer:ident, $Token:ident, $TokenType:ident,
+     struct $Node:ident, enum $NonterminalType:ident, $Tokenizer:ident, $Token:ident, $TerminalType:ident,
      $first_node:ident $($rule:tt)+) => {
 
-        $crate::__create_node!(struct $Node, enum $NodeType, $TokenType,
+        $crate::__create_node!(struct $Node, enum $NonterminalType, $TerminalType,
                                [rules_to_nodes=$first_node $($rule)+]);
 
         pub struct $Grammar {
@@ -470,16 +470,16 @@ macro_rules! create_grammar {
         impl $Grammar {
             fn new() -> Self {
                 let mut rules = $crate::HashMap::new();
-                $crate::__parse_rules!($NodeType, rules, $first_node $($rule)+);
+                $crate::__parse_rules!($NonterminalType, rules, $first_node $($rule)+);
                 Self {internal_grammar: Grammar::new(
-                    &rules, $NodeType::get_map(), $TokenType::get_map(),
+                    &rules, $NonterminalType::get_map(), $TerminalType::get_map(),
                 )}
             }
 
             pub fn parse(&self, code: &str) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
-                let start = $NodeType::get_map()[stringify!($first_node)];
+                let start = $NonterminalType::get_map()[stringify!($first_node)];
                 $Tree {
                     internal_tree: $crate::InternalTree {
                         code: code.as_bytes().to_owned(),
@@ -530,17 +530,17 @@ macro_rules! create_grammar {
 mod tests {
     use super::*;
 
-    create_token!(struct TestToken, enum TestTokenType, [Foo, Bar]);
+    create_token!(struct TestTerminal, enum TestTerminalType, [Foo, Bar]);
 
     struct TestTokenizer {}
-    impl Tokenizer<'_, TestToken> for TestTokenizer {
+    impl Tokenizer<'_, TestTerminal> for TestTokenizer {
         fn new(code: &str) -> Self {
             Self {}
         }
     }
 
     impl Iterator for TestTokenizer {
-        type Item = TestToken;
+        type Item = TestTerminal;
 
         fn next(&mut self) -> Option<Self::Item> {
             None
@@ -551,7 +551,7 @@ mod tests {
     fn empty_rule() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: Bar?
@@ -564,7 +564,7 @@ mod tests {
     fn indirect_left_recursion() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: rule3
@@ -578,7 +578,7 @@ mod tests {
     fn direct_left_recursion_without_alternative() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1
             rule2: rule1
@@ -591,7 +591,7 @@ mod tests {
     fn left_recursion_in_lookaheads() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: &rule1 Bar | Foo
             rule2: rule1
@@ -603,7 +603,7 @@ mod tests {
     fn direct_left_recursion_with_alternative() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestToken, TestTokenType,
+            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1 | Foo
             rule2: rule1
