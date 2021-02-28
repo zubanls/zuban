@@ -13,7 +13,7 @@ pub use std::mem;
 
 pub use grammar::{Grammar, InternalTree, ExtraData, CodeIndex, NodeIndex,
                   CodeLength, InternalNode, Tokenizer, Token};
-pub use automaton::{InternalSquashedType, InternalNodeType, InternalTokenType,
+pub use automaton::{InternalSquashedType, InternalNonterminalType, InternalTokenType,
                     InternalStrToNode, InternalStrToToken, Rule, NODE_START};
 
 #[macro_export]
@@ -120,7 +120,7 @@ macro_rules! create_token {
 macro_rules! __create_node {
     (struct $Node:ident, enum $NonterminalType:ident, $TerminalType:ident, [$($entry:tt)*]) => {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
-                                   $crate::InternalNodeType, $crate::NODE_START, $($entry)*);
+                                   $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
 
         #[derive(Debug)]
         pub enum NodeType{
@@ -445,7 +445,7 @@ macro_rules! __parse_rule {
     };
 
     ($NonterminalType:ident, $rules:ident, [$label:ident $($saved:tt)+]) => {
-        let key = $crate::InternalNodeType($NonterminalType::$label as u16);
+        let key = $crate::InternalNonterminalType($NonterminalType::$label as u16);
         if $rules.contains_key(&key) {
             panic!("Key exists twice: {}", stringify!($label));
         }
@@ -551,7 +551,7 @@ mod tests {
     fn empty_rule() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
+            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: Bar?
@@ -564,7 +564,7 @@ mod tests {
     fn indirect_left_recursion() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
+            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: rule3
@@ -578,7 +578,7 @@ mod tests {
     fn direct_left_recursion_without_alternative() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
+            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1
             rule2: rule1
@@ -591,7 +591,7 @@ mod tests {
     fn left_recursion_in_lookaheads() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
+            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: &rule1 Bar | Foo
             rule2: rule1
@@ -603,7 +603,7 @@ mod tests {
     fn direct_left_recursion_with_alternative() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNodeType, TestTokenizer, TestTerminal, TestTerminalType,
+            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1 | Foo
             rule2: rule1

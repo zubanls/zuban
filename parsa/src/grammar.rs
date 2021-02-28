@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
                        DFAState, Keywords, generate_automatons, Rule, RuleMap,
                        InternalStrToToken, InternalStrToNode, StackMode,
-                       InternalTokenType, InternalNodeType};
+                       InternalTokenType, InternalNonterminalType};
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
@@ -100,7 +100,7 @@ struct BacktrackingPoint<'a> {
 
 #[derive(Debug)]
 struct StackNode<'a> {
-    node_id: InternalNodeType,
+    node_id: InternalNonterminalType,
     tree_node_index: usize,
     latest_child_node_index: usize,
     dfa_state: &'a DFAState,
@@ -135,7 +135,7 @@ impl<'a, T: Token> Grammar<T> {
         grammar
     }
 
-    pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNodeType) -> Vec<InternalNode> {
+    pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNonterminalType) -> Vec<InternalNode> {
         let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0]);
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
@@ -351,7 +351,7 @@ impl<'a, T: Token> Grammar<T> {
 }
 
 impl<'a, T: Token+Debug> Stack<'a, T> {
-    fn new(node_id: InternalNodeType, dfa_state: &'a DFAState) -> Self {
+    fn new(node_id: InternalNonterminalType, dfa_state: &'a DFAState) -> Self {
         let mut stack = Stack {
             stack_nodes: vec!(),
             tree_nodes: vec!(),
@@ -387,7 +387,7 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
     }
 
     #[inline]
-    fn push(&mut self, node_id: InternalNodeType, dfa_state: *const DFAState, start: CodeIndex,
+    fn push(&mut self, node_id: InternalNonterminalType, dfa_state: *const DFAState, start: CodeIndex,
             mode: ModeData<'a>, enabled_token_recording: bool, add_tree_nodes: bool) {
         self.stack_nodes.push(StackNode {
             node_id: node_id,

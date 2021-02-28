@@ -9,11 +9,11 @@ pub const NODE_START: u16 = 1<<15;
 pub const ERROR_RECOVERY_BIT: u16 = 1<<14;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
-pub type Automatons = HashMap<InternalNodeType, RuleAutomaton>;
+pub type Automatons = HashMap<InternalNonterminalType, RuleAutomaton>;
 pub type InternalStrToToken = HashMap<&'static str, InternalTokenType>;
-pub type InternalStrToNode = HashMap<&'static str, InternalNodeType>;
-pub type RuleMap = HashMap<InternalNodeType, (&'static str, Rule)>;
-type FirstPlans = HashMap<InternalNodeType, FirstPlan>;
+pub type InternalStrToNode = HashMap<&'static str, InternalNonterminalType>;
+pub type RuleMap = HashMap<InternalNonterminalType, (&'static str, Rule)>;
+type FirstPlans = HashMap<InternalNonterminalType, FirstPlan>;
 type DFAStates = Vec<Pin<Box<DFAState>>>;
 
 
@@ -59,8 +59,8 @@ impl InternalSquashedType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct InternalNodeType(pub u16);
-impl InternalNodeType {
+pub struct InternalNonterminalType(pub u16);
+impl InternalNonterminalType {
     #[inline]
     pub fn to_squashed(&self) -> InternalSquashedType {
         InternalSquashedType(self.0)
@@ -111,7 +111,7 @@ unsafe impl Send for DFAState {}
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum TransitionType {
     Terminal(InternalTokenType, &'static str),
-    Nonterminal(InternalNodeType),
+    Nonterminal(InternalNonterminalType),
     Keyword(&'static str),
     PositiveLookaheadStart,
     NegativeLookaheadStart,
@@ -140,7 +140,7 @@ pub enum StackMode {
 
 #[derive(Debug, Clone)]
 pub struct Push {
-    pub node_type: InternalNodeType,
+    pub node_type: InternalNonterminalType,
     pub next_dfa: *const DFAState,
     pub stack_mode: StackMode,
 }
@@ -189,7 +189,7 @@ impl Keywords {
 
 #[derive(Default, Debug)]
 pub struct RuleAutomaton {
-    pub type_: InternalNodeType,
+    pub type_: InternalNonterminalType,
     nfa_states: Vec<NFAState>,
     pub dfa_states: DFAStates,
     name: &'static str,
@@ -565,7 +565,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
     // Calculate first plans
     let mut first_plans = HashMap::new();
-    let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNodeType>>();
+    let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNonterminalType>>();
     for rule_label in &rule_labels {
         create_first_plans(nonterminal_map, &keywords, &mut first_plans, &mut automatons, *rule_label);
 
@@ -605,7 +605,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
                       keywords: &Keywords,
                       first_plans: &mut FirstPlans,
                       automatons: &mut Automatons,
-                      automaton_key: InternalNodeType) {
+                      automaton_key: InternalNonterminalType) {
     if let None = first_plans.get(&automaton_key) {
         first_plans.insert(automaton_key, FirstPlan::Calculating);
         let (plans, is_left_recursive) = plans_for_dfa(
@@ -626,7 +626,7 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                  keywords: &Keywords,
                  automatons: &mut Automatons,
                  first_plans: &mut FirstPlans,
-                 automaton_key: InternalNodeType,
+                 automaton_key: InternalNonterminalType,
                  dfa_id: DFAStateId,
                  is_first_plan: bool) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
@@ -767,7 +767,7 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
     }
 }
 
-fn create_lookahead_plans(automaton_key: InternalNodeType, transition: DFATransition,
+fn create_lookahead_plans(automaton_key: InternalNonterminalType, transition: DFATransition,
                           inner_plans: &SquashedTransitions) -> SquashedTransitions {
     let mode = match transition.type_ {
         TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
@@ -781,7 +781,7 @@ fn create_lookahead_plans(automaton_key: InternalNodeType, transition: DFATransi
     ).collect()
 }
 
-fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalNodeType,
+fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalNonterminalType,
                                dfa_id: DFAStateId,
                                first_plans: &FirstPlans) -> SquashedTransitions {
     let mut plans = HashMap::new();
@@ -823,7 +823,7 @@ fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalN
     plans
 }
 
-fn nest_plan(plan: &Plan, new_node_id: InternalNodeType, next_dfa: *const DFAState,
+fn nest_plan(plan: &Plan, new_node_id: InternalNonterminalType, next_dfa: *const DFAState,
              mode: StackMode) -> Plan {
     let mut pushes = plan.pushes.clone();
     pushes.insert(0, Push {
@@ -921,7 +921,7 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
     (first_new_index, end_dfa)
 }
 
-fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNodeType) -> &str {
+fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNonterminalType) -> &str {
     for (k, v) in nonterminal_map {
         if nonterminal == *v {
             return *k
