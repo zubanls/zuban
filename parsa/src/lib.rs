@@ -83,7 +83,7 @@ macro_rules! __create_type_set {
 }
 
 #[macro_export]
-macro_rules! create_token {
+macro_rules! create_terminals {
     (struct $Token:ident, enum $TerminalType:ident, [$($entry:ident),*]) => {
         $crate::__create_type_set!(enum $TerminalType, $crate::InternalStrToToken,
                                    $crate::InternalTerminalType, 0, $($entry),*);
@@ -259,7 +259,7 @@ macro_rules! __create_node {
                 if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
                     return None
                 }
-                // Can be unsafe, because the TerminalType is created by the macro create_token.
+                // Can be unsafe, because the TerminalType is created by the macro create_terminals.
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
@@ -530,7 +530,7 @@ macro_rules! create_grammar {
 mod tests {
     use super::*;
 
-    create_token!(struct TestTerminal, enum TestTerminalType, [Foo, Bar]);
+    create_terminals!(struct TestTerminal, enum TestTerminalType, [Foo, Bar]);
 
     struct TestTokenizer {}
     impl Tokenizer<'_, TestTerminal> for TestTokenizer {

@@ -7,7 +7,7 @@ extern crate regex;
 use std::str;
 use std::collections::HashSet;
 use regex::Regex;
-use parsa::{create_token, CodeIndex};
+use parsa::{create_terminals, CodeIndex};
 
 const FORM_FEED: char = '\x0C';
 const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
@@ -74,9 +74,9 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
     "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
 }
 
-create_token!(struct PythonTerminal, enum PythonTerminalType,
-              [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
-               Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
+create_terminals!(struct PythonTerminal, enum PythonTerminalType,
+                  [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
+                   Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
 
 #[derive(Default, Debug)]

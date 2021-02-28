@@ -78,7 +78,7 @@ impl Iterator for JsonTokenizer<'_> {
     }
 }
 
-create_token!(struct JsonToken, enum JsonTokenType, [Label, String, Number, Operator, Error, Endmarker]);
+create_terminals!(struct JsonToken, enum JsonTokenType, [Label, String, Number, Operator, Error, Endmarker]);
 
 create_grammar!(
     static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, 

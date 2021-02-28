@@ -3,8 +3,6 @@ use std::iter::repeat;
 use std::fmt;
 use std::pin::Pin;
 
-use crate::grammar::{InternalNode, Token, CodeIndex};
-
 pub const NODE_START: u16 = 1<<15;
 pub const ERROR_RECOVERY_BIT: u16 = 1<<14;
 
