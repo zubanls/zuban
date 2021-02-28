@@ -125,11 +125,11 @@ macro_rules! __create_node {
 
         #[derive(Debug)]
         pub enum $NodeType{
-            Branch($NonterminalType),
-            Leaf($TerminalType),
+            Nonterminal($NonterminalType),
+            Terminal($TerminalType),
             Keyword,
-            ErrorBranch($NonterminalType),
-            ErrorLeaf($TerminalType),
+            ErrorNonterminal($NonterminalType),
+            ErrorTerminal($TerminalType),
             ErrorKeyword,
         }
 
@@ -232,10 +232,10 @@ macro_rules! __create_node {
                         if t.0 as usize >= $TerminalType::get_map().len() {
                             $NodeType::Keyword
                         } else {
-                            $NodeType::ErrorLeaf(f(t))
+                            $NodeType::ErrorTerminal(f(t))
                         }
                     } else {
-                        $NodeType::ErrorBranch(g(self.internal_node.type_.remove_error_recovery_bit()))
+                        $NodeType::ErrorNonterminal(g(self.internal_node.type_.remove_error_recovery_bit()))
                     }
                 } else {
                     dbg!(self.internal_node.type_);
@@ -244,10 +244,10 @@ macro_rules! __create_node {
                         if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
                             $NodeType::Keyword
                         } else {
-                            $NodeType::Leaf(f(self.internal_node.type_))
+                            $NodeType::Terminal(f(self.internal_node.type_))
                         }
                     } else {
-                        $NodeType::Branch(g(self.internal_node.type_))
+                        $NodeType::Nonterminal(g(self.internal_node.type_))
                     }
                 }
             }
@@ -276,11 +276,11 @@ macro_rules! __create_node {
                 // Not a fast API, should probably only be used for tests.
                 //dbg!(self.get_type());
                 match self.get_type() {
-                    $NodeType::Branch(t) => $NonterminalType::as_str(t).to_owned(),
-                    $NodeType::Leaf(t) => $TerminalType::as_str(t).to_owned(),
+                    $NodeType::Nonterminal(t) => $NonterminalType::as_str(t).to_owned(),
+                    $NodeType::Terminal(t) => $TerminalType::as_str(t).to_owned(),
                     $NodeType::Keyword => "Keyword".to_owned(),
-                    $NodeType::ErrorBranch(t) => format!("Error({})", $NonterminalType::as_str(t)),
-                    $NodeType::ErrorLeaf(t) => format!("Error({})", $TerminalType::as_str(t)),
+                    $NodeType::ErrorNonterminal(t) => format!("Error({})", $NonterminalType::as_str(t)),
+                    $NodeType::ErrorTerminal(t) => format!("Error({})", $TerminalType::as_str(t)),
                     $NodeType::ErrorKeyword => "Error(Keyword)".to_owned(),
                 }
             }
