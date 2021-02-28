@@ -98,6 +98,7 @@ create_grammar!(
 fn it_works() {
     use JsonNonterminalType::*;
     use JsonTerminalType::*;
+    use JsonNodeType::*;
     let tree = JSON_GRAMMAR.parse("{foo: 1}");
     let root_node = tree.get_root_node();
     assert_eq!(root_node.node_type(), Some(JsonNonterminalType::document));
@@ -105,18 +106,18 @@ fn it_works() {
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);
     let expected_list = [
-        ( 0, 0, 8, Some(document), None),
-        (10, 0, 8, Some(json),     None),
-        ( 0, 0, 8, Some(object),   None),
-        ( 1, 0, 1, None,           None),//Some(Operator)),
-        ( 6, 1, 6, Some(property), None),
-        ( 2, 1, 3, Some(name),     None),
-        ( 0, 1, 3, None,           Some(Label)),
-        ( 1, 4, 1, None,           None),//Some(Operator)),
-        ( 0, 6, 1, Some(value),    None),
-        ( 0, 6, 1, None,           Some(Number)),
-        ( 0, 7, 1, None,           None),//Some(Operator)),
-        ( 0, 8, 0, None,           Some(Endmarker)),
+        ( 0, 0, 8, Nonterminal(document)),
+        (10, 0, 8, Nonterminal(json)),
+        ( 0, 0, 8, Nonterminal(object)),
+        ( 1, 0, 1, Keyword),
+        ( 6, 1, 6, Nonterminal(property)),
+        ( 2, 1, 3, Nonterminal(name)),
+        ( 0, 1, 3, Terminal(Label)),
+        ( 1, 4, 1, Keyword),
+        ( 0, 6, 1, Nonterminal(value)),
+        ( 0, 6, 1, Terminal(Number)),
+        ( 0, 7, 1, Keyword),
+        ( 0, 8, 0, Terminal(Endmarker)),
     ];
 
     for (expected, actual) in expected_list.iter().zip(tree.get_nodes()) {
@@ -125,8 +126,7 @@ fn it_works() {
                 actual.internal_node.next_node_offset,
                 actual.start(),
                 actual.length(),
-                actual.node_type(),
-                actual.token_type()
+                actual.get_type(),
             ),
             expected);
     }

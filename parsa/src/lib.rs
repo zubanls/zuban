@@ -123,7 +123,7 @@ macro_rules! __create_node {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
 
-        #[derive(Debug)]
+        #[derive(Debug, PartialEq, Eq)]
         pub enum $NodeType{
             Nonterminal($NonterminalType),
             Terminal($TerminalType),
