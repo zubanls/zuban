@@ -6,8 +6,8 @@ use crate::tokenizer::{PythonTerminal, PythonTerminalType, PythonTokenizer};
 
 
 create_grammar!(
-    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, 
-    struct PythonNode, enum PythonNonterminalType, PythonTokenizer, PythonTerminal, PythonTerminalType,
+    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PythonNode, 
+    enum PythonNodeType, enum PythonNonterminalType, PythonTokenizer, PythonTerminal, PythonTerminalType,
 
     file_input: stmt* Endmarker
     single_input: Newline | simple_stmt | compound_stmt Newline

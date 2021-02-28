@@ -118,12 +118,13 @@ macro_rules! create_terminals {
 
 #[macro_export]
 macro_rules! __create_node {
-    (struct $Node:ident, enum $NonterminalType:ident, $TerminalType:ident, [$($entry:tt)*]) => {
+    (struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
+            $TerminalType:ident, [$($entry:tt)*]) => {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
 
         #[derive(Debug)]
-        pub enum NodeType{
+        pub enum $NodeType{
             Branch($NonterminalType),
             Leaf($TerminalType),
             Keyword,
@@ -222,31 +223,31 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_error_recovery()
             }
 
-            pub fn get_type(&self) -> NodeType {
+            pub fn get_type(&self) -> $NodeType {
                 let f = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 let g = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 if self.is_error_recovery_node() {
                     if self.is_leaf() {
                         let t = self.internal_node.type_.remove_error_recovery_bit();
                         if t.0 as usize >= $TerminalType::get_map().len() {
-                            NodeType::Keyword
+                            $NodeType::Keyword
                         } else {
-                            NodeType::ErrorLeaf(f(t))
+                            $NodeType::ErrorLeaf(f(t))
                         }
                     } else {
-                        NodeType::ErrorBranch(g(self.internal_node.type_.remove_error_recovery_bit()))
+                        $NodeType::ErrorBranch(g(self.internal_node.type_.remove_error_recovery_bit()))
                     }
                 } else {
                     dbg!(self.internal_node.type_);
                     if self.is_leaf() {
                         // TODO this should probably be something like is keyword
                         if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
-                            NodeType::Keyword
+                            $NodeType::Keyword
                         } else {
-                            NodeType::Leaf(f(self.internal_node.type_))
+                            $NodeType::Leaf(f(self.internal_node.type_))
                         }
                     } else {
-                        NodeType::Branch(g(self.internal_node.type_))
+                        $NodeType::Branch(g(self.internal_node.type_))
                     }
                 }
             }
@@ -267,7 +268,7 @@ macro_rules! __create_node {
                 if self.is_leaf() && !self.is_error_recovery_node() {
                     return None
                 }
-                // Can be unsafe, because the NodeType is created by this exact macro.
+                // Can be unsafe, because the NonterminalType is created by this exact macro.
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
@@ -275,12 +276,12 @@ macro_rules! __create_node {
                 // Not a fast API, should probably only be used for tests.
                 //dbg!(self.get_type());
                 match self.get_type() {
-                    NodeType::Branch(t) => $NonterminalType::as_str(t).to_owned(),
-                    NodeType::Leaf(t) => $TerminalType::as_str(t).to_owned(),
-                    NodeType::Keyword => "Keyword".to_owned(),
-                    NodeType::ErrorBranch(t) => format!("Error({})", $NonterminalType::as_str(t)),
-                    NodeType::ErrorLeaf(t) => format!("Error({})", $TerminalType::as_str(t)),
-                    NodeType::ErrorKeyword => "Error(Keyword)".to_owned(),
+                    $NodeType::Branch(t) => $NonterminalType::as_str(t).to_owned(),
+                    $NodeType::Leaf(t) => $TerminalType::as_str(t).to_owned(),
+                    $NodeType::Keyword => "Keyword".to_owned(),
+                    $NodeType::ErrorBranch(t) => format!("Error({})", $NonterminalType::as_str(t)),
+                    $NodeType::ErrorLeaf(t) => format!("Error({})", $TerminalType::as_str(t)),
+                    $NodeType::ErrorKeyword => "Error(Keyword)".to_owned(),
                 }
             }
         }
@@ -457,10 +458,11 @@ macro_rules! __parse_rule {
 #[macro_export]
 macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident,
-     struct $Node:ident, enum $NonterminalType:ident, $Tokenizer:ident, $Token:ident, $TerminalType:ident,
+     struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
+     $Tokenizer:ident, $Token:ident, $TerminalType:ident,
      $first_node:ident $($rule:tt)+) => {
 
-        $crate::__create_node!(struct $Node, enum $NonterminalType, $TerminalType,
+        $crate::__create_node!(struct $Node, enum $NodeType, enum $NonterminalType, $TerminalType,
                                [rules_to_nodes=$first_node $($rule)+]);
 
         pub struct $Grammar {
@@ -550,8 +552,8 @@ mod tests {
     #[should_panic(expected = "The rule \"rule2\" must not have an empty production")]
     fn empty_rule() {
         create_grammar!(
-            static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
+            enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: Bar?
@@ -563,8 +565,8 @@ mod tests {
     #[should_panic(expected = "Indirect left recursion")]
     fn indirect_left_recursion() {
         create_grammar!(
-            static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
+            enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule2 | Foo
             rule2: rule3
@@ -577,8 +579,8 @@ mod tests {
     #[should_panic(expected = "grammar contains left recursion")]
     fn direct_left_recursion_without_alternative() {
         create_grammar!(
-            static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
+            enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1
             rule2: rule1
@@ -590,8 +592,8 @@ mod tests {
     #[should_panic(expected = "Left recursion with lookaheads is not supported")]
     fn left_recursion_in_lookaheads() {
         create_grammar!(
-            static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
+            enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: &rule1 Bar | Foo
             rule2: rule1
@@ -602,8 +604,8 @@ mod tests {
     #[test]
     fn direct_left_recursion_with_alternative() {
         create_grammar!(
-            static GRAMMAR, struct TestGrammar, struct TestTree,
-            struct TestNode, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
+            enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
 
             rule1: rule1 | Foo
             rule2: rule1

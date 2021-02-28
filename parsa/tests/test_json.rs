@@ -5,7 +5,7 @@ extern crate lazy_static;
 use regex::Regex;
 use std::str;
 
-use parsa::{create_token, create_grammar, Grammar};
+use parsa::{create_terminals, create_grammar, Grammar};
 
 lazy_static::lazy_static! {
     static ref WHITESPACE: Regex = Regex::new(r"^\s+").unwrap();
@@ -22,7 +22,7 @@ struct JsonTokenizer<'a> {
     ended: bool,
 }
 
-impl<'a> parsa::Tokenizer<'a, JsonToken> for JsonTokenizer<'a> {
+impl<'a> parsa::Tokenizer<'a, JsonTerminal> for JsonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         assert!(code.len() < u32::MAX as usize);
         Self {code: code, index: 0, ended: false}
@@ -30,11 +30,11 @@ impl<'a> parsa::Tokenizer<'a, JsonToken> for JsonTokenizer<'a> {
 }
 
 impl Iterator for JsonTokenizer<'_> {
-    type Item = JsonToken;
+    type Item = JsonTerminal;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let new_token = |start, length, type_: JsonTokenType, can_contain_syntax| {
-            return Some(JsonToken {
+        let new_token = |start, length, type_: JsonTerminalType, can_contain_syntax| {
+            return Some(JsonTerminal {
                 start_index: start as u32,
                 length: length as u32,
                 type_: type_,
@@ -54,21 +54,21 @@ impl Iterator for JsonTokenizer<'_> {
         if let Some(byte) = code_bytes.get(self.index) {
             if OPERATORS.contains(byte) {
                 self.index += 1;
-                return new_token(index, 1, JsonTokenType::Operator, true);
+                return new_token(index, 1, JsonTerminalType::Operator, true);
             }
         } else {
             if self.ended {
                 return None
             } else {
                 self.ended = true;
-                return new_token(index, 0, JsonTokenType::Endmarker, false);
+                return new_token(index, 0, JsonTerminalType::Endmarker, false);
             }
         }
 
-        for (regex, type_) in &[(&*STRING, JsonTokenType::String),
-                                (&*NUMBER, JsonTokenType::Number),
-                                (&*LABEL, JsonTokenType::Label),
-                                (&*ERROR, JsonTokenType::Error),] {
+        for (regex, type_) in &[(&*STRING, JsonTerminalType::String),
+                                (&*NUMBER, JsonTerminalType::Number),
+                                (&*LABEL, JsonTerminalType::Label),
+                                (&*ERROR, JsonTerminalType::Error),] {
             if let Some(match_) = regex.find(get_code(index)) {
                 self.index += match_.end();
                 return new_token(index, match_.end() - match_.start(), *type_, false);
@@ -78,11 +78,11 @@ impl Iterator for JsonTokenizer<'_> {
     }
 }
 
-create_terminals!(struct JsonToken, enum JsonTokenType, [Label, String, Number, Operator, Error, Endmarker]);
+create_terminals!(struct JsonTerminal, enum JsonTerminalType, [Label, String, Number, Operator, Error, Endmarker]);
 
 create_grammar!(
-    static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, 
-    struct JsonNode, enum JsonNodeType, JsonTokenizer, JsonToken, JsonTokenType,
+    static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, struct JsonNode,
+    enum JsonNodeType, enum JsonNonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
 
     document: json Endmarker
     json: array | object
@@ -96,11 +96,11 @@ create_grammar!(
 
 #[test]
 fn it_works() {
-    use JsonNodeType::*;
-    use JsonTokenType::*;
+    use JsonNonterminalType::*;
+    use JsonTerminalType::*;
     let tree = JSON_GRAMMAR.parse("{foo: 1}");
     let root_node = tree.get_root_node();
-    assert_eq!(root_node.node_type(), Some(JsonNodeType::document));
+    assert_eq!(root_node.node_type(), Some(JsonNonterminalType::document));
     assert_eq!(root_node.get_extra_data(), 0);
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);
