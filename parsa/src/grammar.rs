@@ -239,11 +239,25 @@ impl<'a, T: Token> Grammar<T> {
                     _ => {}
                 }
             }
+
+            for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+                if self.automatons[&node.node_id].does_error_recovery {
+                    while stack.stack_nodes.len() > i {
+                        let stack_node = stack.stack_nodes.pop().unwrap();
+                        if stack_node.add_tree_nodes {
+                            update_tree_node_position(&mut stack.tree_nodes, &stack_node);
+                            let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+                            n.type_ = n.type_.set_error_recovery_bit();
+                        }
+                    }
+                    return true
+                }
+            }
             //let rest = &code[token.get_start_index() as usize..];
             //dbg!(token, rest);
             dbg!(stack.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
             //dbg!(self.get_tos());
-            panic!("Error recovery");
+            panic!("No error recovery function found");
         }
         false
     }
@@ -360,13 +374,15 @@ impl<'a, T: Token+Debug> Stack<'a, T> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        if stack_node.can_omit_children() {
-            self.tree_nodes.remove(stack_node.tree_node_index);
-        } else {
-            // We can simply get the last token and check its end position to
-            // calculate how long a node is.
-            debug_assert!(stack_node.children_count >= 1);
-            update_tree_node_position(&mut self.tree_nodes, &stack_node);
+        if stack_node.add_tree_nodes {
+            if stack_node.can_omit_children() {
+                self.tree_nodes.remove(stack_node.tree_node_index);
+            } else {
+                // We can simply get the last token and check its end position to
+                // calculate how long a node is.
+                debug_assert!(stack_node.children_count >= 1);
+                update_tree_node_position(&mut self.tree_nodes, &stack_node);
+            }
         }
     }
 

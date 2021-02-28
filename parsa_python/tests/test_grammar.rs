@@ -82,4 +82,8 @@ parametrize_snapshots!(
     operators: &dedent("
         f | d | c + 5 & 2 * 3 * 4 ** 5 ** 6
         ");
+    simple_error_recovery: &dedent("
+        a + 3 +
+        b = 3
+        ");
 );

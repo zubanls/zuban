@@ -29,6 +29,7 @@ pub enum Rule {
     PositiveLookahead(&'static Rule),
     Next(&'static Rule, &'static Rule),
     NodeMayBeOmitted(&'static Rule),
+    DoesErrorRecovery(&'static Rule),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -42,12 +43,18 @@ impl InternalSquashedType {
 
     #[inline]
     pub fn is_error_recovery(&self) -> bool {
+        dbg!(self.0, self.0 & ERROR_RECOVERY_BIT);
         self.0 & ERROR_RECOVERY_BIT > 0
     }
 
     #[inline]
     pub fn remove_error_recovery_bit(&self) -> Self {
         Self(self.0 & !ERROR_RECOVERY_BIT)
+    }
+
+    #[inline]
+    pub fn set_error_recovery_bit(&self) -> Self {
+        Self(self.0 | ERROR_RECOVERY_BIT)
     }
 }
 
@@ -189,6 +196,7 @@ pub struct RuleAutomaton {
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
     fallback_plans: Vec<Pin<Box<Plan>>>,
+    pub does_error_recovery: bool,
 }
 
 impl RuleAutomaton {
@@ -266,6 +274,10 @@ impl RuleAutomaton {
             NodeMayBeOmitted(rule1) => {
                 self.node_may_be_omitted = true;
                 build(self, rule1)
+            }
+            DoesErrorRecovery(rule) => {
+                self.does_error_recovery = true;
+                build(self, rule)
             }
         }
     }

@@ -1,0 +1,41 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-15
+ Error(stmt): 1-8
+  Error(simple_stmt): 1-8
+   Error(small_stmt): 1-8
+    Error(expr_stmt): 1-8
+     Error(testlist_star_expr): 1-8
+      Error(test): 1-8
+       Error(or_test): 1-8
+        Error(and_test): 1-8
+         Error(not_test): 1-8
+          Error(comparison): 1-8
+           Error(expr): 1-8
+            Error(xor_expr): 1-8
+             Error(and_expr): 1-8
+              Error(shift_expr): 1-8
+               Error(arith_expr): 1-8
+                arith_expr: 1-6
+                 Name: 1-2 "a"
+                 Keyword: 3-4 "+"
+                 Number: 5-6 "3"
+                Keyword: 7-8 "+"
+ stmt: 9-15
+  simple_stmt: 9-15
+   small_stmt: 9-14
+    expr_stmt: 9-14
+     testlist_star_expr: 9-10
+      test: 9-10
+       expr: 9-10
+        Name: 9-10 "b"
+     Keyword: 11-12 "="
+     testlist_star_expr: 13-14
+      test: 13-14
+       expr: 13-14
+        Number: 13-14 "3"
+   Newline: 14-15 "\n"
+ Endmarker: 15-15 ""
+

@@ -47,7 +47,7 @@ create_grammar!(
     )
     vfpdef: Name
 
-    stmt: simple_stmt | compound_stmt | Newline
+    stmt: @error_recovery simple_stmt | compound_stmt | Newline
     simple_stmt: small_stmt (";" small_stmt)* [";"] Newline
     small_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)

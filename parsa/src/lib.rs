@@ -122,6 +122,16 @@ macro_rules! __create_node {
         $crate::__create_type_set!(enum $NodeType, $crate::InternalStrToNode,
                                    $crate::InternalNodeType, $crate::NODE_START, $($entry)*);
 
+        #[derive(Debug)]
+        pub enum NodeType{
+            Branch($NodeType),
+            Leaf($TokenType),
+            Keyword,
+            ErrorBranch($NodeType),
+            ErrorLeaf($TokenType),
+            ErrorKeyword,
+        }
+
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
             pub index: $crate::NodeIndex,
@@ -212,8 +222,37 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_error_recovery()
             }
 
+            pub fn get_type(&self) -> NodeType {
+                let f = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
+                let g = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
+                if self.is_error_recovery_node() {
+                    if self.is_leaf() {
+                        let t = self.internal_node.type_.remove_error_recovery_bit();
+                        if t.0 as usize >= $TokenType::get_map().len() {
+                            NodeType::Keyword
+                        } else {
+                            NodeType::ErrorLeaf(f(t))
+                        }
+                    } else {
+                        NodeType::ErrorBranch(g(self.internal_node.type_.remove_error_recovery_bit()))
+                    }
+                } else {
+                    dbg!(self.internal_node.type_);
+                    if self.is_leaf() {
+                        // TODO this should probably be something like is keyword
+                        if self.internal_node.type_.0 as usize >= $TokenType::get_map().len() {
+                            NodeType::Keyword
+                        } else {
+                            NodeType::Leaf(f(self.internal_node.type_))
+                        }
+                    } else {
+                        NodeType::Branch(g(self.internal_node.type_))
+                    }
+                }
+            }
+
             pub fn token_type(&self) -> Option<$TokenType> {
-                if !self.is_leaf() {
+                if !self.is_leaf() && !self.is_error_recovery_node() {
                     return None
                 }
                 // TODO this should probably be something like is keyword
@@ -225,21 +264,23 @@ macro_rules! __create_node {
             }
 
             pub fn node_type(&self) -> Option<$NodeType> {
-                if self.is_leaf() {
+                if self.is_leaf() && !self.is_error_recovery_node() {
                     return None
                 }
                 // Can be unsafe, because the NodeType is created by this exact macro.
                 Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
             }
 
-            pub fn type_str(&self) -> &'static str {
+            pub fn type_str(&self) -> String {
                 // Not a fast API, should probably only be used for tests.
-                if let Some(n_t) = self.node_type() {
-                    return $NodeType::as_str(n_t);
-                }
-                match self.token_type() {
-                    None => "Keyword",
-                    Some(t) => $TokenType::as_str(t),
+                //dbg!(self.get_type());
+                match self.get_type() {
+                    NodeType::Branch(t) => $NodeType::as_str(t).to_owned(),
+                    NodeType::Leaf(t) => $TokenType::as_str(t).to_owned(),
+                    NodeType::Keyword => "Keyword".to_owned(),
+                    NodeType::ErrorBranch(t) => format!("Error({})", $NodeType::as_str(t)),
+                    NodeType::ErrorLeaf(t) => format!("Error({})", $TokenType::as_str(t)),
+                    NodeType::ErrorKeyword => "Error(Keyword)".to_owned(),
                 }
             }
         }
@@ -357,14 +398,26 @@ macro_rules! __parse_or {
 }
 
 #[macro_export]
-macro_rules! __parse_reduce {
-    // Parses the question mark in `foo:? bar | baz
-    (? $($rule:tt)*) => {
-        $crate::Rule::NodeMayBeOmitted(&$crate::__parse_or!([] $($rule)*))
+macro_rules! __parse_at {
+    // Parses the @error_recovery in `foo: @error_recovery bar | baz
+    (@error_recovery $($rule:tt)*) => {
+        $crate::Rule::DoesErrorRecovery(&$crate::__parse_or!([] $($rule)*))
     };
 
     ($($rule:tt)*) => {
         $crate::__parse_or!([] $($rule)*)
+    };
+}
+
+#[macro_export]
+macro_rules! __parse_reduce {
+    // Parses the question mark in `foo:? bar | baz
+    (? $($rule:tt)*) => {
+        $crate::Rule::NodeMayBeOmitted(&$crate::__parse_at!($($rule)*))
+    };
+
+    ($($rule:tt)*) => {
+        $crate::__parse_at!($($rule)*)
     };
 }
 
