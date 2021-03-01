@@ -101,7 +101,7 @@ fn it_works() {
     use JsonNodeType::*;
     let tree = JSON_GRAMMAR.parse("{foo: 1}");
     let root_node = tree.get_root_node();
-    assert_eq!(root_node.node_type(), Some(JsonNonterminalType::document));
+    assert_eq!(root_node.get_type(), Nonterminal(document));
     assert_eq!(root_node.get_extra_data(), 0);
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);

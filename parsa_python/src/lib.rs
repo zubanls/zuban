@@ -179,7 +179,7 @@ mod tests {
     fn test_grammar() {
         let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n");
         let root_node = tree.get_root_node();
-        assert_eq!(root_node.node_type(), Some(PythonNonterminalType::file_input));
+        assert_eq!(root_node.get_type(), PythonNodeType::Nonterminal(PythonNonterminalType::file_input));
         assert_eq!(root_node.get_extra_data(), 0);
     }
 }

@@ -252,29 +252,8 @@ macro_rules! __create_node {
                 }
             }
 
-            pub fn token_type(&self) -> Option<$TerminalType> {
-                if !self.is_leaf() && !self.is_error_recovery_node() {
-                    return None
-                }
-                // TODO this should probably be something like is keyword
-                if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
-                    return None
-                }
-                // Can be unsafe, because the TerminalType is created by the macro create_terminals.
-                Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
-            }
-
-            pub fn node_type(&self) -> Option<$NonterminalType> {
-                if self.is_leaf() && !self.is_error_recovery_node() {
-                    return None
-                }
-                // Can be unsafe, because the NonterminalType is created by this exact macro.
-                Some(unsafe {$crate::mem::transmute(self.internal_node.type_)})
-            }
-
             pub fn type_str(&self) -> String {
                 // Not a fast API, should probably only be used for tests.
-                //dbg!(self.get_type());
                 match self.get_type() {
                     $NodeType::Nonterminal(t) => $NonterminalType::as_str(t).to_owned(),
                     $NodeType::Terminal(t) => $TerminalType::as_str(t).to_owned(),
