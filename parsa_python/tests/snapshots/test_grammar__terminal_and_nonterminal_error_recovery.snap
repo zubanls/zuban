@@ -1,0 +1,62 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-21
+ stmt: 1-5
+  simple_stmt: 1-5
+   small_stmt: 1-4
+    expr_stmt: 1-4
+     testlist_star_expr: 1-4
+      test: 1-4
+       expr: 1-4
+        Name: 1-4 "foo"
+   Newline: 4-5 "\n"
+ Error(stmt): 5-10
+  Error(simple_stmt): 5-10
+   Error(small_stmt): 5-10
+    Error(expr_stmt): 5-10
+     Error(testlist_star_expr): 5-10
+      Error(test): 5-10
+       Error(or_test): 5-10
+        Error(and_test): 5-10
+         Error(not_test): 5-10
+          Error(comparison): 5-10
+           Error(expr): 5-10
+            Error(xor_expr): 5-10
+             Error(and_expr): 5-10
+              Error(shift_expr): 5-10
+               Error(arith_expr): 5-10
+                atom: 5-8
+                 Keyword: 5-6 "("
+                 testlist_comp: 6-7
+                  namedexpr_test: 6-7
+                   test: 6-7
+                    expr: 6-7
+                     Number: 6-7 "1"
+                 Keyword: 7-8 ")"
+                Keyword: 9-10 "+"
+ Error(stmt): 11-12
+  Error(ErrorToken): 11-12 "?"
+ stmt: 13-17
+  simple_stmt: 13-17
+   small_stmt: 13-16
+    expr_stmt: 13-16
+     testlist_star_expr: 13-16
+      test: 13-16
+       expr: 13-16
+        factor: 13-16
+         Keyword: 13-14 "+"
+         Name: 15-16 "c"
+   Newline: 16-17 "\n"
+ stmt: 17-21
+  simple_stmt: 17-21
+   small_stmt: 17-20
+    expr_stmt: 17-20
+     testlist_star_expr: 17-20
+      test: 17-20
+       expr: 17-20
+        Name: 17-20 "bar"
+   Newline: 20-21 "\n"
+ Endmarker: 21-21 ""
+

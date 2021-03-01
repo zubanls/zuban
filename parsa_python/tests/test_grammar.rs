@@ -86,4 +86,12 @@ parametrize_snapshots!(
         a + 3 +
         b = 3
         ");
+    terminal_error_recovery: &dedent("
+        ?
+        ");
+    terminal_and_nonterminal_error_recovery: &dedent("
+        foo
+        (1) + ? + c
+        bar
+        ");
 );

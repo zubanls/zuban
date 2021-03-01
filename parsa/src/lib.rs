@@ -238,7 +238,6 @@ macro_rules! __create_node {
                         $NodeType::ErrorNonterminal(g(self.internal_node.type_.remove_error_recovery_bit()))
                     }
                 } else {
-                    dbg!(self.internal_node.type_);
                     if self.is_leaf() {
                         // TODO this should probably be something like is keyword
                         if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {

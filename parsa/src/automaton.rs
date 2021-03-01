@@ -41,7 +41,6 @@ impl InternalSquashedType {
 
     #[inline]
     pub fn is_error_recovery(&self) -> bool {
-        dbg!(self.0, self.0 & ERROR_RECOVERY_BIT);
         self.0 & ERROR_RECOVERY_BIT > 0
     }
 
@@ -513,6 +512,16 @@ impl NFAState {
 impl DFAState {
     fn is_lookahead_end(&self) -> bool {
         self.transitions.iter().any(|t| t.type_ == TransitionType::LookaheadEnd)
+    }
+
+    pub fn get_nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
+        let mut transition_ids = vec!();
+        for transition in &self.transitions {
+            if let TransitionType::Nonterminal(id) = transition.type_ {
+                transition_ids.push(id);
+            }
+        }
+        transition_ids
     }
 }
 

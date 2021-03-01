@@ -34,7 +34,6 @@ pub struct InternalTree {
 #[derive(Copy, Clone, Debug)]
 pub struct InternalNode {
     pub next_node_offset: NodeIndex,
-    // Positive values are token types, negative values are nodes
     pub type_: InternalSquashedType,
 
     pub start_index: CodeIndex,
@@ -51,7 +50,6 @@ impl InternalNode {
 // This node is currently not used and just here for future optimization purposes.
 struct CompressedNode {
     next_node_offset: u8,
-    // Positive values are token types, negative values are nodes
     type_: i8,
 
     start_index: u16,
@@ -158,7 +156,7 @@ impl<'a, T: Token> Grammar<T> {
             let tos = stack.get_tos();
             let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
-            self.end_of_node(&mut stack, &mut backtracking_tokenizer, is_final, mode);
+            self.end_of_node(&mut stack, &mut backtracking_tokenizer, is_final, mode, None, None);
         }
         stack.tree_nodes
     }
@@ -177,7 +175,8 @@ impl<'a, T: Token> Grammar<T> {
                     //dbg!(stack.get_tos().dfa_state.from_rule);
                     //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
                     //     .map(|x| x.debug_text).collect::<Vec<_>>());
-                    if self.end_of_node(stack, backtracking_tokenizer, is_final, mode) {
+                    if self.end_of_node(stack, backtracking_tokenizer, is_final,
+                                        mode, Some(transition), Some(token)) {
                         return
                     }
                 },
@@ -194,7 +193,8 @@ impl<'a, T: Token> Grammar<T> {
     fn end_of_node<I: Iterator<Item=T>>(
             &self, stack: &mut Stack<T>,
             backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-            is_final: bool, mode: ModeData<'a>) -> bool {
+            is_final: bool, mode: ModeData<'a>,
+            transition: Option<InternalSquashedType>, token: Option<&T>) -> bool {
         if is_final {
             match mode {
                 ModeData::Normal => {
@@ -217,6 +217,7 @@ impl<'a, T: Token> Grammar<T> {
                 }
             }
         } else {
+            // In case we have a token that is not allowed at this position, try alternatives.
             for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
                 match node.mode {
                     ModeData::NegativeLookahead(token_index) => {
@@ -234,12 +235,15 @@ impl<'a, T: Token> Grammar<T> {
                         self.apply_plan(
                             stack, backtracking_point.fallback_plan,
                             &t, backtracking_tokenizer);
+                        // The token was not used, but the tokenizer backtracked.
                         return true
                     },
                     _ => {}
                 }
             }
 
+            // First step of error recovery is to mark tree nodes as failed and pop the
+            // stack nodes that are failed.
             for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
                 if self.automatons[&node.node_id].does_error_recovery {
                     while stack.stack_nodes.len() > i {
@@ -250,7 +254,35 @@ impl<'a, T: Token> Grammar<T> {
                             n.type_ = n.type_.set_error_recovery_bit();
                         }
                     }
-                    return true
+                    return false // The token was not used
+                }
+            }
+            if let Some(transition) = transition {
+                // If the first step did not work, we try to add the token as an error terminal to
+                // the tree.
+                for nonterminal_id in stack.get_tos().dfa_state.get_nonterminal_transition_ids() {
+                    let automaton = &self.automatons[&nonterminal_id];
+                    if automaton.does_error_recovery {
+                        stack.calculate_previous_next_node();
+                        let token = token.unwrap();
+                        // First add the nonterminal
+                        stack.tree_nodes.push(InternalNode {
+                            next_node_offset: 0,
+                            type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
+                            start_index: token.get_start_index(),
+                            length: token.get_length(),
+                            extra_data: 0,
+                        });
+                        // And then add the terminal
+                        stack.tree_nodes.push(InternalNode {
+                            next_node_offset: 0,
+                            type_: transition.set_error_recovery_bit(),
+                            start_index: token.get_start_index(),
+                            length: token.get_length(),
+                            extra_data: 0,
+                        });
+                        return true  // The token was used
+                    }
                 }
             }
             //let rest = &code[token.get_start_index() as usize..];
@@ -286,7 +318,6 @@ impl<'a, T: Token> Grammar<T> {
                 let old_node = stack.tree_nodes[tos_mut.tree_node_index];
                 stack.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
                     next_node_offset: 0,
-                    // Positive values are token types, negative values are nodes
                     type_: old_node.type_,
                     start_index: old_node.start_index,
                     length: 0,
@@ -339,7 +370,6 @@ impl<'a, T: Token> Grammar<T> {
             stack.stack_nodes.last_mut().unwrap().children_count += 1;
             stack.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
-                // Positive values are token types, negative values are nodes
                 type_: plan.type_,
                 start_index: start_index,
                 length: token.get_length(),
