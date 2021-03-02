@@ -94,4 +94,11 @@ parametrize_snapshots!(
         (1) + ? + c
         bar
         ");
+    keyword_recovery: &dedent("
+        foo
+        def
+        bar
+        else:
+        baz
+        ");
 );

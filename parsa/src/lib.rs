@@ -230,7 +230,7 @@ macro_rules! __create_node {
                     if self.is_leaf() {
                         let t = self.internal_node.type_.remove_error_recovery_bit();
                         if t.0 as usize >= $TerminalType::get_map().len() {
-                            $NodeType::Keyword
+                            $NodeType::ErrorKeyword
                         } else {
                             $NodeType::ErrorTerminal(f(t))
                         }
