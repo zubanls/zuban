@@ -101,4 +101,10 @@ parametrize_snapshots!(
         else:
         baz
         ");
+    match_simple: &dedent("
+        match foo:
+            case ['a']: ...
+            case _:
+                pass
+        ");
 );
