@@ -3,9 +3,9 @@ source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
 file_input: 0-63
- Error(stmt): 1-53
-  Error(compound_stmt): 1-53
-   Error(match_stmt): 1-53
+ stmt: 1-53
+  compound_stmt: 1-53
+   match_stmt: 1-53
     Keyword: 1-6 "match"
     subject_expr: 7-8
      named_expression: 7-8

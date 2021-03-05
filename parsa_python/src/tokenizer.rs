@@ -452,21 +452,23 @@ impl Iterator for PythonTokenizer<'_> {
         let start = self.index;
         let c = code_from_start(self.code, self.index);
         if self.previous_token_was_newline {
-            self.previous_token_was_newline = false;
             if let Some(&character) = c.as_bytes().first() {
                 if character != b'\n' && character != b'\r' {
                     if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
                         if indentation > *self.indent_stack.last().unwrap() {
                             self.indent_stack.push(indentation);
+                            self.previous_token_was_newline = false;
                             return self.new_tok(start, false, PythonTerminalType::Indent);
                         } else {
                             if let Some(token) = self.dedent_if_necessary(indentation) {
+                                self.index -= indentation;
                                 return Some(token);
                             }
                         }
                     }
                 }
             }
+            self.previous_token_was_newline = false;
         }
 
         if let Some(match_) = NUMBER.find(c) {
