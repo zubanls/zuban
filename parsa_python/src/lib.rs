@@ -9,6 +9,10 @@ create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PythonNode, 
     enum PythonNodeType, enum PythonNonterminalType, PythonTokenizer, PythonTerminal, PythonTerminalType,
 
+    soft_keywords=[
+        Name: "match" | "case" | "_"
+    ]
+
     file_input: stmt* Endmarker
     single_input: Newline | simple_stmt | compound_stmt Newline
     eval_input: testlist Newline* Endmarker
@@ -80,7 +84,9 @@ create_grammar!(
     nonlocal_stmt: "nonlocal" Name ("," Name)*
     assert_stmt: "assert" test ["," test]
 
-    compound_stmt: if_stmt | while_stmt | for_stmt | try_stmt | with_stmt | funcdef | classdef | decorated | async_stmt
+    compound_stmt:
+        | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
+        | funcdef | classdef | decorated | async_stmt | match_stmt
     async_stmt: "async" (funcdef | with_stmt | for_stmt)
     if_stmt: "if" namedexpr_test ":" suite ("elif" namedexpr_test ":" suite)* ["else" ":" suite]
     while_stmt: "while" namedexpr_test ":" suite ["else" ":" suite]
@@ -95,6 +101,101 @@ create_grammar!(
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [test ["as" Name]]
     suite: simple_stmt | Newline Indent stmt+ Dedent
+
+    match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
+    subject_expr:
+        | star_named_expression "," star_named_expressions?
+        | named_expression
+    case_block:
+        | "case" patterns guard? ":" suite
+    guard: "if" named_expression
+
+    patterns:
+        | open_sequence_pattern
+        | pattern
+    pattern:
+        | as_pattern
+        | or_pattern
+    as_pattern:
+        | or_pattern "as" capture_pattern
+    or_pattern:
+        | "|".closed_pattern+
+    closed_pattern:
+        | literal_pattern
+        | wildcard_pattern
+        | value_pattern
+        | group_pattern
+        | sequence_pattern
+        | mapping_pattern
+        | class_pattern
+        | capture_pattern
+
+    literal_pattern:
+        | signed_number [("+" | "-") Number]
+        | strings
+        | "None"
+        | "True"
+        | "False"
+    signed_number:
+        | Number
+        | "-" Number
+
+    capture_pattern:
+        // TODO
+        //| !"_" Name !("." | "(" | "=")
+        | Name
+
+    wildcard_pattern:
+        | "_"
+
+    value_pattern: Name "." ".".Name+
+
+    group_pattern:
+        | "(" pattern ")"
+
+    sequence_pattern:
+        | "[" maybe_sequence_pattern? "]"
+        | "(" open_sequence_pattern? ")"
+    open_sequence_pattern:
+        | maybe_star_pattern "," maybe_sequence_pattern?
+    maybe_sequence_pattern:
+        | ",".maybe_star_pattern+ ","?
+    maybe_star_pattern:
+        | star_pattern
+        | pattern
+    star_pattern:
+        | "*" (capture_pattern | wildcard_pattern)
+
+    mapping_pattern:
+        | "{" items_pattern? "}"
+    items_pattern:
+        | ",".key_value_pattern+ ","?
+    key_value_pattern:
+        | (literal_pattern | value_pattern) ":" pattern
+        | double_star_pattern
+    double_star_pattern:
+        | "**" capture_pattern
+
+    name_or_attr: ".".Name+
+    class_pattern:
+        | name_or_attr "(" ")"
+        | name_or_attr "(" positional_patterns ","? ")"
+        | name_or_attr "(" keyword_patterns ","? ")"
+        | name_or_attr "(" positional_patterns "," keyword_patterns ","? ")"
+    positional_patterns:
+        | ",".pattern+
+    keyword_patterns:
+        | ",".keyword_pattern+
+    keyword_pattern:
+        | Name "=" pattern
+
+    star_named_expressions: ",".star_named_expression+ [","]
+    star_named_expression:
+        | "*" or_test
+        | named_expression
+    named_expression:
+        | Name ":=" test
+        | test
 
     namedexpr_test: Name ":=" test | test
     test: or_test ["if" or_test "else" test] | lambdef

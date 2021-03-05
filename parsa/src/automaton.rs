@@ -714,6 +714,16 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
         }
     }
 
+    /*
+    if conflict_transitions.len() > 0 {
+        dbg!(&conflict_transitions, &automatons[&automaton_key].name);
+        for x in &conflict_transitions {
+            if let TransitionType::Nonterminal(id) = x {
+                dbg!(nonterminal_to_str(nonterminal_map, *id));
+            }
+        }
+    }
+    */
     for c in &conflict_tokens {
         debug_assert!(!plans.contains_key(c));
     }
@@ -766,7 +776,6 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
                 conflict_tokens.insert(token);
                 conflict_transitions.insert(transition.type_);
                 conflict_transitions.insert(t_x.type_);
-                debug_assert!(conflict_transitions.len() == 2);
                 return
             }
         }

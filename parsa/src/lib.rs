@@ -438,6 +438,7 @@ macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident,
      struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
      $Tokenizer:ident, $Token:ident, $TerminalType:ident,
+     soft_keywords=[$($soft_keywords:tt)*]
      $first_node:ident $($rule:tt)+) => {
 
         $crate::__create_node!(struct $Node, enum $NodeType, enum $NonterminalType, $TerminalType,
@@ -532,6 +533,7 @@ mod tests {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
             enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            soft_keywords=[]
 
             rule1: rule2 | Foo
             rule2: Bar?
@@ -545,6 +547,7 @@ mod tests {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
             enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            soft_keywords=[]
 
             rule1: rule2 | Foo
             rule2: rule3
@@ -559,6 +562,7 @@ mod tests {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
             enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            soft_keywords=[]
 
             rule1: rule1
             rule2: rule1
@@ -572,6 +576,7 @@ mod tests {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
             enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            soft_keywords=[]
 
             rule1: &rule1 Bar | Foo
             rule2: rule1
@@ -584,6 +589,7 @@ mod tests {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,
             enum TestNodeType, enum TestNonterminalType, TestTokenizer, TestTerminal, TestTerminalType,
+            soft_keywords=[]
 
             rule1: rule1 | Foo
             rule2: rule1

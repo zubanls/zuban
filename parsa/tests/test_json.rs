@@ -83,6 +83,7 @@ create_terminals!(struct JsonTerminal, enum JsonTerminalType, [Label, String, Nu
 create_grammar!(
     static JSON_GRAMMAR, struct JsonGrammar, struct JsonTree, struct JsonNode,
     enum JsonNodeType, enum JsonNonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
+    soft_keywords=[]
 
     document: json Endmarker
     json: array | object
