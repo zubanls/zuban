@@ -661,8 +661,6 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 });
                 if let Some(kws) = soft_keywords.get(&type_) {
                     for &kw in kws {
-                        if kw != "_" {
-                            continue }
                         let soft_keyword_type = keywords.get_squashed(kw).unwrap();
                         add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
                                            DFATransition{

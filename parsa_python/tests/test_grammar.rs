@@ -112,5 +112,6 @@ parametrize_snapshots!(
             case ['a']: _(_)
             case _:
                 _
+        match = 3
         ");
 );
