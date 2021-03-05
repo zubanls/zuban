@@ -107,4 +107,10 @@ parametrize_snapshots!(
             case _:
                 pass
         ");
+    soft_keyword_underscore: &dedent("
+        match _:
+            case ['a']: _(_)
+            case _:
+                _
+        ");
 );

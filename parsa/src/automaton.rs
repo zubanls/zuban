@@ -659,8 +659,23 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     debug_text: debug_text,
                     is_left_recursive: false,
                 });
-                if let Some(foo) = soft_keywords.get(&type_) {
-                    // TODO
+                if let Some(kws) = soft_keywords.get(&type_) {
+                    for &kw in kws {
+                        if kw != "_" {
+                            continue }
+                        let soft_keyword_type = keywords.get_squashed(kw).unwrap();
+                        add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
+                                           DFATransition{
+                                               type_: TransitionType::Keyword(kw),
+                                               to: transition.to,
+                                           }, soft_keyword_type, || Plan {
+                            pushes: Vec::new(),
+                            next_dfa: transition.to,
+                            type_: t,
+                            debug_text: debug_text,
+                            is_left_recursive: false,
+                        });
+                    }
                 }
             },
             TransitionType::Nonterminal(node_id) => {

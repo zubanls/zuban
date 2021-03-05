@@ -1,0 +1,78 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-53
+ stmt: 1-53
+  compound_stmt: 1-53
+   match_stmt: 1-53
+    Keyword: 1-6 "match"
+    subject_expr: 7-8
+     named_expression: 7-8
+      test: 7-8
+       expr: 7-8
+        Name: 7-8 "_"
+    Keyword: 8-9 ":"
+    Newline: 9-10 "\n"
+    Indent: 14-14 ""
+    case_block: 14-31
+     Keyword: 14-18 "case"
+     patterns: 19-24
+      pattern: 19-24
+       or_pattern: 19-24
+        closed_pattern: 19-24
+         sequence_pattern: 19-24
+          Keyword: 19-20 "["
+          maybe_sequence_pattern: 20-23
+           maybe_star_pattern: 20-23
+            pattern: 20-23
+             or_pattern: 20-23
+              closed_pattern: 20-23
+               literal_pattern: 20-23
+                strings: 20-23
+                 String: 20-23 "\'a\'"
+          Keyword: 23-24 "]"
+     Keyword: 24-25 ":"
+     suite: 26-31
+      simple_stmt: 26-31
+       small_stmt: 26-30
+        expr_stmt: 26-30
+         testlist_star_expr: 26-30
+          test: 26-30
+           expr: 26-30
+            atom_expr: 26-30
+             Name: 26-27 "_"
+             trailer: 27-30
+              Keyword: 27-28 "("
+              arglist: 28-29
+               argument: 28-29
+                test: 28-29
+                 expr: 28-29
+                  Name: 28-29 "_"
+              Keyword: 29-30 ")"
+       Newline: 30-31 "\n"
+    case_block: 35-53
+     Keyword: 35-39 "case"
+     patterns: 40-41
+      pattern: 40-41
+       or_pattern: 40-41
+        closed_pattern: 40-41
+         wildcard_pattern: 40-41
+          Keyword: 40-41 "_"
+     Keyword: 41-42 ":"
+     suite: 42-53
+      Newline: 42-43 "\n"
+      Indent: 51-51 ""
+      stmt: 51-53
+       simple_stmt: 51-53
+        small_stmt: 51-52
+         expr_stmt: 51-52
+          testlist_star_expr: 51-52
+           test: 51-52
+            expr: 51-52
+             Name: 51-52 "_"
+        Newline: 52-53 "\n"
+      Dedent: 53-53 ""
+    Dedent: 53-53 ""
+ Endmarker: 53-53 ""
+
