@@ -11,6 +11,7 @@ pub type Automatons = HashMap<InternalNonterminalType, RuleAutomaton>;
 pub type InternalStrToToken = HashMap<&'static str, InternalTerminalType>;
 pub type InternalStrToNode = HashMap<&'static str, InternalNonterminalType>;
 pub type RuleMap = HashMap<InternalNonterminalType, (&'static str, Rule)>;
+pub type SoftKeywords = HashMap<InternalTerminalType, HashSet<&'static str>>;
 type FirstPlans = HashMap<InternalNonterminalType, FirstPlan>;
 type DFAStates = Vec<Pin<Box<DFAState>>>;
 
@@ -549,7 +550,7 @@ impl Plan {
 }
 
 pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
-                           rules: &RuleMap) -> (Automatons, Keywords) {
+                           rules: &RuleMap, soft_keywords: &SoftKeywords) -> (Automatons, Keywords) {
     let mut keywords = Keywords {
         // We need to start the numbers of keywords after tokens. Keyword ID's therefore never
         // clash with Token IDs (both are of type SquashedInternalType).
@@ -574,7 +575,8 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     let mut first_plans = HashMap::new();
     let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNonterminalType>>();
     for rule_label in &rule_labels {
-        create_first_plans(nonterminal_map, &keywords, &mut first_plans, &mut automatons, *rule_label);
+        create_first_plans(nonterminal_map, &keywords, soft_keywords,
+                           &mut first_plans, &mut automatons, *rule_label);
 
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
@@ -591,7 +593,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     for rule_label in &rule_labels {
         for i in 1..automatons[rule_label].dfa_states.len() {
             let (plans, _) = plans_for_dfa(
-                nonterminal_map, &mut keywords, &mut automatons, &mut first_plans,
+                nonterminal_map, &keywords, soft_keywords, &mut automatons, &mut first_plans,
                 *rule_label, DFAStateId(i), false);
             automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
         }
@@ -610,13 +612,15 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
 fn create_first_plans(nonterminal_map: &InternalStrToNode,
                       keywords: &Keywords,
+                      soft_keywords: &SoftKeywords,
                       first_plans: &mut FirstPlans,
                       automatons: &mut Automatons,
                       automaton_key: InternalNonterminalType) {
     if let None = first_plans.get(&automaton_key) {
         first_plans.insert(automaton_key, FirstPlan::Calculating);
         let (plans, is_left_recursive) = plans_for_dfa(
-            nonterminal_map, keywords, automatons, first_plans, automaton_key, DFAStateId(0), true);
+            nonterminal_map, keywords, soft_keywords, automatons, first_plans,
+            automaton_key, DFAStateId(0), true);
 
         if is_left_recursive {
             if plans.len() == 0 {
@@ -631,6 +635,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
 
 fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                  keywords: &Keywords,
+                 soft_keywords: &SoftKeywords,
                  automatons: &mut Automatons,
                  first_plans: &mut FirstPlans,
                  automaton_key: InternalNonterminalType,
@@ -654,6 +659,9 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     debug_text: debug_text,
                     is_left_recursive: false,
                 });
+                if let Some(foo) = soft_keywords.get(&type_) {
+                    // TODO
+                }
             },
             TransitionType::Nonterminal(node_id) => {
                 if is_first_plan {
@@ -665,7 +673,8 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                         is_left_recursive = true;
                         continue
                     }
-                    create_first_plans(nonterminal_map, keywords, first_plans, automatons, node_id);
+                    create_first_plans(nonterminal_map, keywords, soft_keywords,
+                                       first_plans, automatons, node_id);
                 }
                 match &first_plans[&node_id] {
                     FirstPlan::Calculated(transitions, is_left_recursive) => {
@@ -693,7 +702,7 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
             },
             TransitionType::PositiveLookaheadStart => {
                 let (inner_plans, inner_is_left_recursive) = plans_for_dfa(
-                    nonterminal_map, keywords, automatons, first_plans,
+                    nonterminal_map, keywords, soft_keywords, automatons, first_plans,
                     automaton_key, transition.get_next_dfa().list_index, is_first_plan);
                 if inner_is_left_recursive {
                     panic!("Left recursion with lookaheads is not supported (in rule {:?})",
@@ -736,7 +745,7 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
         let t = automaton.type_;
         for dfa_id in (start..automaton.dfa_states.len()).rev() {
             let (new_plans, left_recursive) = plans_for_dfa(
-                nonterminal_map, keywords, automatons, first_plans, automaton_key,
+                nonterminal_map, keywords, soft_keywords, automatons, first_plans, automaton_key,
                 DFAStateId(dfa_id), is_first_plan
             );
             debug_assert!(!left_recursive);

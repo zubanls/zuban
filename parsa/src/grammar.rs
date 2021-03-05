@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
                        DFAState, Keywords, generate_automatons, Rule, RuleMap,
                        InternalStrToToken, InternalStrToNode, StackMode,
-                       InternalTerminalType, InternalNonterminalType};
+                       InternalTerminalType, InternalNonterminalType, SoftKeywords};
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
@@ -12,7 +12,6 @@ pub type ExtraData = u32;
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
-type SoftKeywords = HashMap<InternalTerminalType, HashSet<&'static str>>;
 
 pub trait Token: Copy+Debug {
     fn get_start_index(&self) -> u32;
@@ -122,7 +121,8 @@ impl<'a, T: Token> Grammar<T> {
                nonterminal_map: &'static InternalStrToNode,
                terminal_map: &'static InternalStrToToken,
                soft_keywords: SoftKeywords) -> Self {
-        let (automatons, keywords) = generate_automatons(nonterminal_map, terminal_map, rules);
+        let (automatons, keywords) = generate_automatons(
+            nonterminal_map, terminal_map, rules, &soft_keywords);
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
         let grammar = Self {

@@ -38,7 +38,7 @@ macro_rules! __create_type_set {
     (enum $EnumName:ident, $Map:path, $Type:path, $start:expr,
      $first_entry:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
         #[repr(u16)]
         pub enum $EnumName {
             $first_entry = $start,
