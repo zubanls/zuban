@@ -5,7 +5,7 @@ mod grammar;
 mod automaton;
 mod backtracking;
 
-pub use std::collections::HashMap;
+pub use std::collections::{HashMap, HashSet};
 pub use std::io::Bytes;
 #[macro_export]
 pub use lazy_static::lazy_static;
@@ -38,7 +38,7 @@ macro_rules! __create_type_set {
     (enum $EnumName:ident, $Map:path, $Type:path, $start:expr,
      $first_entry:ident, $($entry:ident),*) => {
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+        #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
         #[repr(u16)]
         pub enum $EnumName {
             $first_entry = $start,
@@ -434,6 +434,22 @@ macro_rules! __parse_rule {
 }
 
 #[macro_export]
+macro_rules! __parse_soft_keywords {
+    ($TerminalType:ident, $($terminal:ident : $($string:literal)|+)*) => {{
+        let mut soft_keywords = $crate::HashMap::new();
+        $(
+            let mut tokens = $crate::HashSet::new();
+            $(tokens.insert($string);)+
+            soft_keywords.insert(
+                $crate::InternalTerminalType($TerminalType::$terminal as u16),
+                tokens);
+        )*;
+        soft_keywords
+    }};
+}
+
+
+#[macro_export]
 macro_rules! create_grammar {
     (static $grammar:ident, struct $Grammar:ident, struct $Tree:ident,
      struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
@@ -452,8 +468,10 @@ macro_rules! create_grammar {
             fn new() -> Self {
                 let mut rules = $crate::HashMap::new();
                 $crate::__parse_rules!($NonterminalType, rules, $first_node $($rule)+);
+                let soft_keywords = $crate::__parse_soft_keywords!($TerminalType, $($soft_keywords)*);
                 Self {internal_grammar: Grammar::new(
                     &rules, $NonterminalType::get_map(), $TerminalType::get_map(),
+                    soft_keywords
                 )}
             }
 

@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
 use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
@@ -12,6 +12,7 @@ pub type ExtraData = u32;
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
+type SoftKeywords = HashMap<InternalTerminalType, HashSet<&'static str>>;
 
 pub trait Token: Copy+Debug {
     fn get_start_index(&self) -> u32;
@@ -79,6 +80,7 @@ pub struct Grammar<T> {
     phantom: PhantomData<T>,
     automatons: Automatons,
     keywords: Keywords,
+    soft_keywords: SoftKeywords,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -118,16 +120,18 @@ struct Stack<'a, T: Token> {
 impl<'a, T: Token> Grammar<T> {
     pub fn new(rules: &RuleMap,
                nonterminal_map: &'static InternalStrToNode,
-               terminal_map: &'static InternalStrToToken) -> Self {
+               terminal_map: &'static InternalStrToToken,
+               soft_keywords: SoftKeywords) -> Self {
         let (automatons, keywords) = generate_automatons(nonterminal_map, terminal_map, rules);
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
-        let mut grammar = Self {
+        let grammar = Self {
             terminal_map: terminal_map,
             nonterminal_map: nonterminal_map,
             phantom: PhantomData,
             automatons: automatons,
             keywords: keywords,
+            soft_keywords: soft_keywords,
         };
 
         grammar
