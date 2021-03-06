@@ -220,82 +220,89 @@ impl<'a, T: Token> Grammar<T> {
                     debug_assert!(tos.dfa_state.is_final);
                 }
             }
+            false
         } else {
-            // In case we have a token that is not allowed at this position, try alternatives.
-            for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-                match node.mode {
-                    ModeData::NegativeLookahead(token_index) => {
-                        stack.stack_nodes.truncate(i);
-                        backtracking_tokenizer.reset(token_index);
-                        return false
-                    },
-                    ModeData::Alternative(backtracking_point) => {
-                        stack.stack_nodes.truncate(i);
-
-                        stack.tree_nodes.truncate(backtracking_point.tree_node_count);
-                        let tos = stack.stack_nodes.last_mut().unwrap();
-                        backtracking_tokenizer.reset(backtracking_point.token_index);
-                        let t = backtracking_tokenizer.next().unwrap();
-                        self.apply_plan(
-                            stack, backtracking_point.fallback_plan,
-                            &t, backtracking_tokenizer);
-                        // The token was not used, but the tokenizer backtracked.
-                        return true
-                    },
-                    _ => {}
-                }
-            }
-
-            // First step of error recovery is to mark tree nodes as failed and pop the
-            // stack nodes that are failed.
-            for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-                if self.automatons[&node.node_id].does_error_recovery {
-                    while stack.stack_nodes.len() > i {
-                        let stack_node = stack.stack_nodes.pop().unwrap();
-                        if stack_node.add_tree_nodes {
-                            update_tree_node_position(&mut stack.tree_nodes, &stack_node);
-                            let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-                            n.type_ = n.type_.set_error_recovery_bit();
-                        }
-                    }
-                    return false // The token was not used
-                }
-            }
-            if let Some(transition) = transition {
-                // If the first step did not work, we try to add the token as an error terminal to
-                // the tree.
-                for nonterminal_id in stack.get_tos().dfa_state.get_nonterminal_transition_ids() {
-                    let automaton = &self.automatons[&nonterminal_id];
-                    if automaton.does_error_recovery {
-                        stack.calculate_previous_next_node();
-                        let token = token.unwrap();
-                        // First add the nonterminal
-                        stack.tree_nodes.push(InternalNode {
-                            next_node_offset: 0,
-                            type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
-                            start_index: token.get_start_index(),
-                            length: token.get_length(),
-                            extra_data: 0,
-                        });
-                        // And then add the terminal
-                        stack.tree_nodes.push(InternalNode {
-                            next_node_offset: 0,
-                            type_: transition.set_error_recovery_bit(),
-                            start_index: token.get_start_index(),
-                            length: token.get_length(),
-                            extra_data: 0,
-                        });
-                        return true  // The token was used
-                    }
-                }
-            }
-            //let rest = &code[token.get_start_index() as usize..];
-            //dbg!(token, rest);
-            dbg!(stack.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
-            //dbg!(self.get_tos());
-            panic!("No error recovery function found");
+            self.error_recovery(stack, backtracking_tokenizer, is_final, transition, token)
         }
-        false
+    }
+
+    fn error_recovery<I: Iterator<Item=T>>(
+        &self, stack: &mut Stack<T>,
+        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        is_final: bool, transition: Option<InternalSquashedType>, token: Option<&T>) -> bool {
+        // In case we have a token that is not allowed at this position, try alternatives.
+        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+            match node.mode {
+                ModeData::NegativeLookahead(token_index) => {
+                    stack.stack_nodes.truncate(i);
+                    backtracking_tokenizer.reset(token_index);
+                    return false
+                },
+                ModeData::Alternative(backtracking_point) => {
+                    stack.stack_nodes.truncate(i);
+
+                    stack.tree_nodes.truncate(backtracking_point.tree_node_count);
+                    let tos = stack.stack_nodes.last_mut().unwrap();
+                    backtracking_tokenizer.reset(backtracking_point.token_index);
+                    let t = backtracking_tokenizer.next().unwrap();
+                    self.apply_plan(
+                        stack, backtracking_point.fallback_plan,
+                        &t, backtracking_tokenizer);
+                    // The token was not used, but the tokenizer backtracked.
+                    return true
+                },
+                _ => {}
+            }
+        }
+
+        // First step of error recovery is to mark tree nodes as failed and pop the
+        // stack nodes that are failed.
+        for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
+            if self.automatons[&node.node_id].does_error_recovery {
+                while stack.stack_nodes.len() > i {
+                    let stack_node = stack.stack_nodes.pop().unwrap();
+                    if stack_node.add_tree_nodes {
+                        update_tree_node_position(&mut stack.tree_nodes, &stack_node);
+                        let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+                        n.type_ = n.type_.set_error_recovery_bit();
+                    }
+                }
+                return false // The token was not used
+            }
+        }
+        if let Some(transition) = transition {
+            // If the first step did not work, we try to add the token as an error terminal to
+            // the tree.
+            for nonterminal_id in stack.get_tos().dfa_state.get_nonterminal_transition_ids() {
+                let automaton = &self.automatons[&nonterminal_id];
+                if automaton.does_error_recovery {
+                    stack.calculate_previous_next_node();
+                    let token = token.unwrap();
+                    // First add the nonterminal
+                    stack.tree_nodes.push(InternalNode {
+                        next_node_offset: 0,
+                        type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
+                        start_index: token.get_start_index(),
+                        length: token.get_length(),
+                        extra_data: 0,
+                    });
+                    // And then add the terminal
+                    stack.tree_nodes.push(InternalNode {
+                        next_node_offset: 0,
+                        type_: transition.set_error_recovery_bit(),
+                        start_index: token.get_start_index(),
+                        length: token.get_length(),
+                        extra_data: 0,
+                    });
+                    return true  // The token was used
+                }
+            }
+        }
+        //let rest = &code[token.get_start_index() as usize..];
+        //dbg!(token, rest);
+        dbg!(stack.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
+        //dbg!(self.get_tos());
+        panic!("No error recovery function found");
     }
 
     #[inline]
