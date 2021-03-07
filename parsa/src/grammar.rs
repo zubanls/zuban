@@ -190,8 +190,7 @@ impl<'a, T: Token> Grammar<T> {
                     }
                 },
                 Some(plan) => {
-                    let cloned_plan = plan.clone();
-                    self.apply_plan(stack, &cloned_plan, &token, backtracking_tokenizer);
+                    self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
                     break
                 },
             }
