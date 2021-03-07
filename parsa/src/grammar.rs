@@ -158,9 +158,12 @@ impl<'a, T: Token> Grammar<T> {
             }
 
             let tos = stack.get_tos();
-            let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
-            self.end_of_node(&mut stack, &mut backtracking_tokenizer, is_final, mode, None, None);
+            if tos.dfa_state.is_final {
+                self.end_of_node(&mut stack, &mut backtracking_tokenizer, mode)
+            } else {
+                self.error_recovery(&mut stack, &mut backtracking_tokenizer, None, None);
+            }
         }
         stack.tree_nodes
     }
@@ -179,8 +182,11 @@ impl<'a, T: Token> Grammar<T> {
                     //dbg!(stack.get_tos().dfa_state.from_rule);
                     //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
                     //     .map(|x| x.debug_text).collect::<Vec<_>>());
-                    if self.end_of_node(stack, backtracking_tokenizer, is_final,
-                                        mode, Some(transition), Some(token)) {
+                    if is_final {
+                        self.end_of_node(stack, backtracking_tokenizer, mode)
+                    } else {
+                        self.error_recovery(stack, backtracking_tokenizer,
+                                            Some(transition), Some(token));
                         return
                     }
                 },
@@ -195,49 +201,36 @@ impl<'a, T: Token> Grammar<T> {
 
     #[inline]
     fn end_of_node<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack<T>,
-            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-            is_final: bool, mode: ModeData<'a>,
-            transition: Option<InternalSquashedType>, token: Option<&T>) -> bool {
-        if is_final {
-            match mode {
-                ModeData::Normal => {
-                    stack.pop_normal();
-                },
-                ModeData::PositiveLookahead(token_index) => {
-                    stack.stack_nodes.pop();
-                    backtracking_tokenizer.reset(token_index);
-                },
-                ModeData::NegativeLookahead(token_index) => {
-                    backtracking_tokenizer.reset(token_index);
-                    unimplemented!();
-                },
-                ModeData::Alternative(backtracking_point) => {
-                    let old_tos = stack.stack_nodes.pop().unwrap();
-                    let tos = stack.stack_nodes.last_mut().unwrap();
-                    tos.children_count = old_tos.children_count;
-                    tos.latest_child_node_index = old_tos.latest_child_node_index;
-                    debug_assert!(tos.dfa_state.is_final);
-                }
+            &self, stack: &mut Stack<T>, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+            mode: ModeData<'a>) {
+        match mode {
+            ModeData::Normal => {
+                stack.pop_normal();
+            },
+            ModeData::PositiveLookahead(token_index) => {
+                stack.stack_nodes.pop();
+                backtracking_tokenizer.reset(token_index);
+            },
+            ModeData::NegativeLookahead(token_index) => {
+                backtracking_tokenizer.reset(token_index);
+                unimplemented!();
+            },
+            ModeData::Alternative(backtracking_point) => {
+                let old_tos = stack.stack_nodes.pop().unwrap();
+                let tos = stack.stack_nodes.last_mut().unwrap();
+                tos.children_count = old_tos.children_count;
+                tos.latest_child_node_index = old_tos.latest_child_node_index;
+                debug_assert!(tos.dfa_state.is_final);
             }
-            false
-        } else {
-            self.error_recovery(stack, backtracking_tokenizer, is_final, transition, token)
         }
     }
 
     fn error_recovery<I: Iterator<Item=T>>(
-        &self, stack: &mut Stack<T>,
-        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-        is_final: bool, transition: Option<InternalSquashedType>, token: Option<&T>) -> bool {
+        &self, stack: &mut Stack<T>, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        transition: Option<InternalSquashedType>, token: Option<&T>) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             match node.mode {
-                ModeData::NegativeLookahead(token_index) => {
-                    stack.stack_nodes.truncate(i);
-                    backtracking_tokenizer.reset(token_index);
-                    return false
-                },
                 ModeData::Alternative(backtracking_point) => {
                     stack.stack_nodes.truncate(i);
 
@@ -249,7 +242,7 @@ impl<'a, T: Token> Grammar<T> {
                         stack, backtracking_point.fallback_plan,
                         &t, backtracking_tokenizer);
                     // The token was not used, but the tokenizer backtracked.
-                    return true
+                    return // Error Recovery done.
                 },
                 _ => {}
             }
@@ -267,7 +260,11 @@ impl<'a, T: Token> Grammar<T> {
                         n.type_ = n.type_.set_error_recovery_bit();
                     }
                 }
-                return false // The token was not used
+                if let Some(transition) = transition {
+                    self.apply_transition(stack, backtracking_tokenizer,
+                                          transition, token.unwrap());
+                }
+                return // Error recovery is done.
             }
         }
         if let Some(transition) = transition {
@@ -294,7 +291,7 @@ impl<'a, T: Token> Grammar<T> {
                         length: token.get_length(),
                         extra_data: 0,
                     });
-                    return true  // The token was used
+                    return // Error recovery is done.
                 }
             }
         }
