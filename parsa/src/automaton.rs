@@ -262,7 +262,8 @@ impl RuleAutomaton {
                 (new_start, new_end)
             }
             // TODO Cut is ignored for now.
-            Cut(rule1, rule2) | Next(rule1, rule2) => {
+            Cut(rule1, rule2)  => { unimplemented!() }
+            Next(rule1, rule2) => {
                 let (start1, end1) = build(self, rule1);
                 let (start2, end2) = build(self, rule2);
                 self.add_empty_transition(end1, start2);
@@ -896,7 +897,6 @@ fn nest_plan(plan: &Plan, new_node_id: InternalNonterminalType, next_dfa: *const
     Plan {
         pushes: pushes,
         next_dfa: next_dfa,
-        // TODO isn't this redundant with the hashmap insertion?
         type_: plan.type_,
         debug_text: plan.debug_text,
         is_left_recursive: false,
