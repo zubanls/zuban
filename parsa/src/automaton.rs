@@ -130,7 +130,6 @@ struct DFATransition {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum StackMode {
-    NegativeLookahead,
     PositiveLookahead,
     Alternative(*const Plan),
     Normal,
@@ -727,11 +726,37 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 }
             },
             TransitionType::NegativeLookaheadStart => {
-                unimplemented!("It is currently not supported to have negative \
-                                lookaheads as a first token in a rule")
+                let dfa = transition.get_next_dfa();
+                let lookahead_end = dfa.transitions[0].get_next_dfa();
+                assert!(lookahead_end.is_lookahead_end());
+                assert_eq!(lookahead_end.transitions.len(), 1);
+
+                let next_dfa = lookahead_end.transitions[0].get_next_dfa();
+                // Only simple peeks are allowed at the moment.
+                let (mut inner_plans, _) = plans_for_dfa(
+                    nonterminal_map, keywords, soft_keywords, automatons, first_plans,
+                    automaton_key, next_dfa.list_index, is_first_plan);
+                for transition in &dfa.transitions {
+                    let t = match transition.type_ {
+                        TransitionType::Terminal(type_, debug_text) => {
+                            type_.to_squashed()
+                        },
+                        TransitionType::Keyword(keyword) => {
+                            keywords.get_squashed(keyword).unwrap()
+                        }
+                        _ => {
+                            panic!("Only terminal lookaheads are allowed");
+                        }
+                    };
+                    // Because negative lookaheads are only allowed to be simple terminals, we can
+                    // just remove those terminals from plans and everything should work.
+                    inner_plans.remove(&t);
+                }
+                plans.extend(inner_plans.iter().map(|(&key, plan)| (key, (transition, plan.clone()))));
             },
             TransitionType::LookaheadEnd => {
-                unreachable!();
+                // No plans need to be created.
+                continue
             },
         }
     }
@@ -809,7 +834,6 @@ fn create_lookahead_plans(automaton_key: InternalNonterminalType, transition: DF
                           inner_plans: &SquashedTransitions) -> SquashedTransitions {
     let mode = match transition.type_ {
         TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
-        TransitionType::NegativeLookaheadStart => StackMode::NegativeLookahead,
         _ => unreachable!()
     };
     inner_plans.iter().map(

@@ -141,9 +141,7 @@ create_grammar!(
         | "-" Number
 
     capture_pattern:
-        // TODO
-        //| !"_" Name !("." | "(" | "=")
-        | Name
+        | !"_" Name
 
     wildcard_pattern:
         | "_"

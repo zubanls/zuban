@@ -114,4 +114,8 @@ parametrize_snapshots!(
                 _
         match = 3
         ");
+    match_underscore_with_as: &dedent("
+        match foo:
+            case bar as _: pass
+        ");
 );

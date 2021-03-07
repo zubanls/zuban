@@ -85,7 +85,6 @@ pub struct Grammar<T> {
 #[derive(Debug, Clone, Copy)]
 enum ModeData<'a> {
     Alternative(BacktrackingPoint<'a>),
-    NegativeLookahead(usize),
     PositiveLookahead(usize),
     Normal,
 }
@@ -210,10 +209,6 @@ impl<'a, T: Token> Grammar<T> {
             ModeData::PositiveLookahead(token_index) => {
                 stack.stack_nodes.pop();
                 backtracking_tokenizer.reset(token_index);
-            },
-            ModeData::NegativeLookahead(token_index) => {
-                backtracking_tokenizer.reset(token_index);
-                unimplemented!();
             },
             ModeData::Alternative(backtracking_point) => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
@@ -352,9 +347,6 @@ impl<'a, T: Token> Grammar<T> {
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
                     StackMode::PositiveLookahead => ModeData::PositiveLookahead(
-                        backtracking_tokenizer.start(token)
-                    ),
-                    StackMode::NegativeLookahead => ModeData::NegativeLookahead(
                         backtracking_tokenizer.start(token)
                     ),
                     StackMode::Alternative(alternative_plan) => ModeData::Alternative(

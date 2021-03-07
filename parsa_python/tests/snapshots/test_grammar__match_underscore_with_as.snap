@@ -1,0 +1,47 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file_input: 0-36
+ Error(stmt): 1-24
+  Error(compound_stmt): 1-24
+   Error(match_stmt): 1-24
+    Keyword: 1-6 "match"
+    subject_expr: 7-10
+     named_expression: 7-10
+      test: 7-10
+       expr: 7-10
+        Name: 7-10 "foo"
+    Keyword: 10-11 ":"
+    Newline: 11-12 "\n"
+    Indent: 16-16 ""
+    Error(case_block): 16-24
+     Keyword: 16-20 "case"
+     patterns: 21-24
+      pattern: 21-24
+       or_pattern: 21-24
+        closed_pattern: 21-24
+         capture_pattern: 21-24
+          Name: 21-24 "bar"
+ Error(stmt): 25-27
+  Error(Keyword): 25-27 "as"
+ Error(stmt): 28-30
+  Error(simple_stmt): 28-30
+   Error(small_stmt): 28-30
+    Error(expr_stmt): 28-30
+     testlist_star_expr: 28-29
+      test: 28-29
+       expr: 28-29
+        Name: 28-29 "_"
+     Error(annassign): 29-30
+      Keyword: 29-30 ":"
+ stmt: 31-36
+  simple_stmt: 31-36
+   small_stmt: 31-35
+    pass_stmt: 31-35
+     Keyword: 31-35 "pass"
+   Newline: 35-36 "\n"
+ Error(stmt): 36-36
+  Error(Dedent): 36-36 ""
+ Endmarker: 36-36 ""
+
