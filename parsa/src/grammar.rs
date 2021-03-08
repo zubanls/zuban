@@ -137,7 +137,9 @@ impl<'a, T: Token> Grammar<T> {
     }
 
     pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNonterminalType) -> Vec<InternalNode> {
-        let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0]);
+        let mut stack = Stack::new(
+            start, &self.automatons[&start].dfa_states[0], code.len()
+        );
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
         while stack.len() > 0 {
@@ -380,12 +382,16 @@ impl<'a, T: Token> Grammar<T> {
 }
 
 impl<'a, T: Token+Debug> Stack<'a, T> {
-    fn new(node_id: InternalNonterminalType, dfa_state: &'a DFAState) -> Self {
+    fn new(node_id: InternalNonterminalType, dfa_state: &'a DFAState, string_len: usize) -> Self {
         let mut stack = Stack {
             stack_nodes: vec!(),
             tree_nodes: vec!(),
             phantom: PhantomData,
         };
+        // Just reserve enough so the vec contents don't need to be copied.
+        stack.stack_nodes.reserve(128);
+        // TODO need some research in how much we should reserve.
+        stack.tree_nodes.reserve(string_len / 4);
         stack.push(node_id, dfa_state, 0, ModeData::Normal, false, true);
         stack
     }
