@@ -109,10 +109,9 @@ struct StackNode<'a> {
     add_tree_nodes: bool,
 }
 
-struct Stack<'a, T: Token> {
+struct Stack<'a> {
     stack_nodes: Vec<StackNode<'a>>,
     tree_nodes: Vec<InternalNode>,
-    phantom: PhantomData<T>,
 }
 
 impl<'a, T: Token> Grammar<T> {
@@ -171,7 +170,7 @@ impl<'a, T: Token> Grammar<T> {
 
     #[inline]
     fn apply_transition<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack<T>,
+            &self, stack: &mut Stack,
             backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
             transition: InternalSquashedType, token: &T) {
         loop {
@@ -201,7 +200,7 @@ impl<'a, T: Token> Grammar<T> {
 
     #[inline]
     fn end_of_node<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack<T>, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+            &self, stack: &mut Stack, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
             mode: ModeData<'a>) {
         match mode {
             ModeData::Normal => {
@@ -222,7 +221,7 @@ impl<'a, T: Token> Grammar<T> {
     }
 
     fn error_recovery<I: Iterator<Item=T>>(
-        &self, stack: &mut Stack<T>, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        &self, stack: &mut Stack, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
         transition: Option<InternalSquashedType>, token: Option<&T>) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
@@ -300,7 +299,7 @@ impl<'a, T: Token> Grammar<T> {
 
     #[inline]
     fn apply_plan<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack<T>, plan: &Plan, token: &T,
+            &self, stack: &mut Stack, plan: &Plan, token: &T,
             backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = unsafe {&*plan.next_dfa};
@@ -381,12 +380,11 @@ impl<'a, T: Token> Grammar<T> {
 
 }
 
-impl<'a, T: Token+Debug> Stack<'a, T> {
+impl<'a> Stack<'a> {
     fn new(node_id: InternalNonterminalType, dfa_state: &'a DFAState, string_len: usize) -> Self {
         let mut stack = Stack {
             stack_nodes: vec!(),
             tree_nodes: vec!(),
-            phantom: PhantomData,
         };
         // Just reserve enough so the vec contents don't need to be copied.
         stack.stack_nodes.reserve(128);
