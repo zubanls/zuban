@@ -3,4 +3,5 @@
 members = [
     "parsa",
     "parsa_python",
+    "scripts",
 ]
