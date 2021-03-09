@@ -26,7 +26,7 @@ pub trait Tokenizer<'a, T: Token>: Iterator {
 
 #[derive(Debug)]
 pub struct InternalTree {
-    pub code: Vec<u8>,
+    pub code: String,
     pub nodes: Vec<InternalNode>,
     pub lines: Option<Vec<u32>>,
 }

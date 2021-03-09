@@ -148,7 +148,7 @@ macro_rules! __create_node {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
                 // String that is copied to the internal tree.
-                unsafe {str::from_utf8_unchecked(&self.internal_tree.code[
+                unsafe {str::from_utf8_unchecked(&self.internal_tree.code.as_bytes()[
                     index as usize..index as usize + length as usize
                 ])}
             }
@@ -475,14 +475,15 @@ macro_rules! create_grammar {
                 )}
             }
 
-            pub fn parse(&self, code: &str) -> $Tree {
+            pub fn parse(&self, code: String) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
                 let start = $NonterminalType::get_map()[stringify!($first_node)];
+                let nodes = self.internal_grammar.parse(&code, $Tokenizer::new(&code), start);
                 $Tree {
                     internal_tree: $crate::InternalTree {
-                        code: code.as_bytes().to_owned(),
-                        nodes: self.internal_grammar.parse(code, $Tokenizer::new(code), start),
+                        code: code,
+                        nodes: nodes,
                         lines: None
                     }
                 }
@@ -557,7 +558,7 @@ mod tests {
             rule2: Bar?
         );
 
-        GRAMMAR.parse("");
+        &*GRAMMAR;
     }
     #[test]
     #[should_panic(expected = "Indirect left recursion")]

@@ -100,7 +100,7 @@ fn it_works() {
     use JsonNonterminalType::*;
     use JsonTerminalType::*;
     use JsonNodeType::*;
-    let tree = JSON_GRAMMAR.parse("{foo: 1}");
+    let tree = JSON_GRAMMAR.parse("{foo: 1}".to_owned());
     let root_node = tree.get_root_node();
     assert_eq!(root_node.get_type(), Nonterminal(document));
     assert_eq!(root_node.get_extra_data(), 0);

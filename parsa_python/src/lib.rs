@@ -276,7 +276,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_grammar() {
-        let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n");
+        let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n".to_owned());
         let root_node = tree.get_root_node();
         assert_eq!(root_node.get_type(), PythonNodeType::Nonterminal(PythonNonterminalType::file_input));
         assert_eq!(root_node.get_extra_data(), 0);

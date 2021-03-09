@@ -47,14 +47,14 @@ macro_rules! parametrize_snapshots {
 }
 
 parametrize_snapshots!(
-    json: "{foo: 1}\n";
-    simple: &dedent("
+    json: "{foo: 1}\n".to_owned();
+    simple: dedent("
         a(foo=1, bar:=1);
         if a:
          1
         else: 2
         ");
-    cls: &dedent("
+    cls: dedent("
         class Foo(object):
             def __init__(self, /, f, *, g):
                 pass
@@ -63,7 +63,7 @@ parametrize_snapshots!(
             def prop(self):
                 pass
         ");
-    imports: &dedent("
+    imports: dedent("
         import foo
         import foo.bar as baz
         from foo import bar
@@ -73,48 +73,48 @@ parametrize_snapshots!(
         from . import (foo, bar)
         from . import (foo, bar,)
         ");
-    calls: &dedent("
+    calls: dedent("
         foo(bar)
         foo(bar_foo=3)
         foo(bar.baz:=2)
         foo(**kwargs)
         ");
-    operators: &dedent("
+    operators: dedent("
         f | d | c + 5 & 2 * 3 * 4 ** 5 ** 6
         ");
-    simple_error_recovery: &dedent("
+    simple_error_recovery: dedent("
         a + 3 +
         b = 3
         ");
-    terminal_error_recovery: &dedent("
+    terminal_error_recovery: dedent("
         ?
         ");
-    terminal_and_nonterminal_error_recovery: &dedent("
+    terminal_and_nonterminal_error_recovery: dedent("
         foo
         (1) + ? + c
         bar
         ");
-    keyword_recovery: &dedent("
+    keyword_recovery: dedent("
         foo
         def
         bar
         else:
         baz
         ");
-    match_simple: &dedent("
+    match_simple: dedent("
         match foo:
             case ['a']: ...
             case _:
                 pass
         ");
-    soft_keyword_underscore: &dedent("
+    soft_keyword_underscore: dedent("
         match _:
             case ['a']: _(_)
             case _:
                 _
         match = 3
         ");
-    match_underscore_with_as: &dedent("
+    match_underscore_with_as: dedent("
         match foo:
             case bar as _: pass
         ");
