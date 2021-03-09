@@ -106,7 +106,6 @@ struct StackNode<'a> {
 
     mode: ModeData<'a>,
     enabled_token_recording: bool,
-    add_tree_nodes: bool,
 }
 
 struct Stack<'a> {
@@ -255,11 +254,9 @@ impl<'a, T: Token> Grammar<T> {
             if self.automatons[&node.node_id].does_error_recovery {
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
-                    if stack_node.add_tree_nodes {
-                        update_tree_node_position(&mut stack.tree_nodes, &stack_node);
-                        let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-                        n.type_ = n.type_.set_error_recovery_bit();
-                    }
+                    update_tree_node_position(&mut stack.tree_nodes, &stack_node);
+                    let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+                    n.type_ = n.type_.set_error_recovery_bit();
                 }
                 if let Some(transition) = transition {
                     self.apply_transition(stack, backtracking_tokenizer,
@@ -310,41 +307,34 @@ impl<'a, T: Token> Grammar<T> {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = unsafe {&*plan.next_dfa};
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
-        let mut add_tree_nodes = tos_mut.add_tree_nodes;
 
         let start_index = token.get_start_index();
-        if add_tree_nodes {
-            // If we have left recursion we have to do something a bit weird: We push the same tree
-            // node in between, because we only handle direct recursion. This is kind of similar
-            // how LR would work. So it's an interesting mixture of LL and LR.
-            // There's one exception: If the node can be omitted we don't even have to do it.
-            if plan.is_left_recursive && !tos_mut.can_omit_children(){
-                tos_mut.children_count = 1;
-                tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
+        // If we have left recursion we have to do something a bit weird: We push the same tree
+        // node in between, because we only handle direct recursion. This is kind of similar
+        // how LR would work. So it's an interesting mixture of LL and LR.
+        // There's one exception: If the node can be omitted we don't even have to do it.
+        if plan.is_left_recursive && !tos_mut.can_omit_children(){
+            tos_mut.children_count = 1;
+            tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
 
-                update_tree_node_position(&mut stack.tree_nodes, tos_mut);
+            update_tree_node_position(&mut stack.tree_nodes, tos_mut);
 
-                let old_node = stack.tree_nodes[tos_mut.tree_node_index];
-                stack.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
-                    next_node_offset: 0,
-                    type_: old_node.type_,
-                    start_index: old_node.start_index,
-                    length: 0,
-                    extra_data: 0,
-                });
-            }
-            stack.calculate_previous_next_node();
+            let old_node = stack.tree_nodes[tos_mut.tree_node_index];
+            stack.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
+                next_node_offset: 0,
+                type_: old_node.type_,
+                start_index: old_node.start_index,
+                length: 0,
+                extra_data: 0,
+            });
         }
+        stack.calculate_previous_next_node();
 
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
             let tos = stack.stack_nodes.last_mut().unwrap();
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            add_tree_nodes &= match push.stack_mode {
-                StackMode::Normal | StackMode::Alternative(_) => true,
-                _ => false,
-            };
             if match push.stack_mode {StackMode::Alternative(_) => true, _ => false} {
                 enabled_token_recording = true;
             }
@@ -366,24 +356,19 @@ impl<'a, T: Token> Grammar<T> {
                     ),
                 },
                 enabled_token_recording,
-                add_tree_nodes,
             );
-            if add_tree_nodes {
-                let tos_mut = stack.stack_nodes.last_mut().unwrap();
-                tos_mut.latest_child_node_index = stack.tree_nodes.len();
-            }
+            let tos_mut = stack.stack_nodes.last_mut().unwrap();
+            tos_mut.latest_child_node_index = stack.tree_nodes.len();
         }
-        if add_tree_nodes {
-            // Once all the nodes are dealt with, add the token
-            stack.stack_nodes.last_mut().unwrap().children_count += 1;
-            stack.tree_nodes.push(InternalNode {
-                next_node_offset: 0,
-                type_: plan.type_,
-                start_index: start_index,
-                length: token.get_length(),
-                extra_data: 0,
-            });
-        }
+        // Once all the nodes are dealt with, add the token
+        stack.stack_nodes.last_mut().unwrap().children_count += 1;
+        stack.tree_nodes.push(InternalNode {
+            next_node_offset: 0,
+            type_: plan.type_,
+            start_index: start_index,
+            length: token.get_length(),
+            extra_data: 0,
+        });
     }
 
 }
@@ -398,7 +383,7 @@ impl<'a> Stack<'a> {
         stack.stack_nodes.reserve(128);
         // TODO need some research in how much we should reserve.
         stack.tree_nodes.reserve(string_len / 4);
-        stack.push(node_id, dfa_state, 0, ModeData::Normal, false, true);
+        stack.push(node_id, dfa_state, 0, ModeData::Normal, false);
         stack
     }
 
@@ -415,21 +400,19 @@ impl<'a> Stack<'a> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        if stack_node.add_tree_nodes {
-            if stack_node.can_omit_children() {
-                self.tree_nodes.remove(stack_node.tree_node_index);
-            } else {
-                // We can simply get the last token and check its end position to
-                // calculate how long a node is.
-                debug_assert!(stack_node.children_count >= 1);
-                update_tree_node_position(&mut self.tree_nodes, &stack_node);
-            }
+        if stack_node.can_omit_children() {
+            self.tree_nodes.remove(stack_node.tree_node_index);
+        } else {
+            // We can simply get the last token and check its end position to
+            // calculate how long a node is.
+            debug_assert!(stack_node.children_count >= 1);
+            update_tree_node_position(&mut self.tree_nodes, &stack_node);
         }
     }
 
     #[inline]
     fn push(&mut self, node_id: InternalNonterminalType, dfa_state: *const DFAState, start: CodeIndex,
-            mode: ModeData<'a>, enabled_token_recording: bool, add_tree_nodes: bool) {
+            mode: ModeData<'a>, enabled_token_recording: bool) {
         self.stack_nodes.push(StackNode {
             node_id: node_id,
             tree_node_index: self.tree_nodes.len(),
@@ -438,11 +421,10 @@ impl<'a> Stack<'a> {
             children_count: 0,
             mode: mode,
             enabled_token_recording: enabled_token_recording,
-            add_tree_nodes: add_tree_nodes,
         });
         // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
         // part of the parent stack node.
-        if add_tree_nodes && match mode {ModeData::Normal => true, _ => false} {
+        if match mode {ModeData::Normal => true, _ => false} {
             self.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
                 type_: node_id.to_squashed(),
