@@ -215,6 +215,9 @@ impl<'a, T: Token> Grammar<T> {
                 let tos = stack.stack_nodes.last_mut().unwrap();
                 tos.children_count = old_tos.children_count;
                 tos.latest_child_node_index = old_tos.latest_child_node_index;
+                if !tos.enabled_token_recording {
+                    backtracking_tokenizer.stop();
+                }
                 debug_assert!(tos.dfa_state.is_final);
             }
         }
@@ -236,6 +239,9 @@ impl<'a, T: Token> Grammar<T> {
                     self.apply_plan(
                         stack, backtracking_point.fallback_plan,
                         &t, backtracking_tokenizer);
+                    if !stack.get_tos().enabled_token_recording {
+                        backtracking_tokenizer.stop();
+                    }
                     // The token was not used, but the tokenizer backtracked.
                     return // Error Recovery done.
                 },
@@ -335,11 +341,13 @@ impl<'a, T: Token> Grammar<T> {
             let tos = stack.stack_nodes.last_mut().unwrap();
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            enabled_token_recording |= push.stack_mode == StackMode::Normal;
             add_tree_nodes &= match push.stack_mode {
                 StackMode::Normal | StackMode::Alternative(_) => true,
                 _ => false,
             };
+            if match push.stack_mode {StackMode::Alternative(_) => true, _ => false} {
+                enabled_token_recording = true;
+            }
             stack.push(
                 push.node_type,
                 push.next_dfa,
