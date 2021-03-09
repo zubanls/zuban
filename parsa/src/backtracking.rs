@@ -5,6 +5,7 @@ pub struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
     tokenizer: I,
     tokens: Vec<T>,
     next_index: usize,
+    is_recording: bool,
 }
 
 impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
@@ -13,11 +14,13 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
             tokenizer: tokenizer,
             tokens: vec!(),
             next_index: 0,
+            is_recording: false,
         }
     }
 
     #[inline]
     pub fn start(&mut self, token: &T) -> usize {
+        self.is_recording = true;
         if self.tokens.len() == 0 {
             self.tokens.push(*token);
             self.next_index = 1;
@@ -34,8 +37,7 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
 
     #[inline]
     pub fn stop(&mut self) {
-        self.tokens.clear();
-        self.next_index = 0;
+        self.is_recording = false;
     }
 }
 
@@ -45,10 +47,15 @@ impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
         if self.tokens.len() > 0 {
             match self.tokens.get(self.next_index) {
                 None => {
-                    self.next_index += 1;
                     let next = self.tokenizer.next();
-                    if let Some(token) = next {
-                        self.tokens.push(token);
+                    if self.is_recording {
+                        self.next_index += 1;
+                        if let Some(token) = next {
+                            self.tokens.push(token);
+                        }
+                    } else {
+                        self.next_index = 0;
+                        self.tokens.clear();
                     }
                     next
                 },
@@ -58,6 +65,7 @@ impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
                 }
             }
         } else {
+            // is_recording is only true if there's at least one token.
             self.tokenizer.next()
         }
     }
