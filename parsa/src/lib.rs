@@ -1,20 +1,24 @@
 #![allow(unused)]
 extern crate lazy_static;
 
-mod grammar;
 mod automaton;
 mod backtracking;
+mod grammar;
 
-pub use std::collections::{HashMap, HashSet};
-pub use std::io::Bytes;
 #[macro_export]
 pub use lazy_static::lazy_static;
+pub use std::collections::{HashMap, HashSet};
+pub use std::io::Bytes;
 pub use std::mem;
 
-pub use grammar::{Grammar, InternalTree, ExtraData, CodeIndex, NodeIndex,
-                  CodeLength, InternalNode, Tokenizer, Token};
-pub use automaton::{InternalSquashedType, InternalNonterminalType, InternalTerminalType,
-                    InternalStrToNode, InternalStrToToken, Rule, NODE_START};
+pub use automaton::{
+    InternalNonterminalType, InternalSquashedType, InternalStrToNode, InternalStrToToken,
+    InternalTerminalType, Rule, NODE_START,
+};
+pub use grammar::{
+    CodeIndex, CodeLength, ExtraData, Grammar, InternalNode, InternalTree, NodeIndex, Token,
+    Tokenizer,
+};
 
 #[macro_export]
 macro_rules! __filter_labels_and_create_node_set {
@@ -447,7 +451,6 @@ macro_rules! __parse_soft_keywords {
         soft_keywords
     }};
 }
-
 
 #[macro_export]
 macro_rules! create_grammar {

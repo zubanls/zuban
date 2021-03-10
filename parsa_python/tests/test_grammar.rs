@@ -13,9 +13,16 @@ fn dedent(s: &'static str) -> String {
     if indent == usize::MAX {
         return s.to_string();
     }
-    let new_lines: Vec<_> = lines.iter().map(
-       |line| if line.len() >= indent {&line[indent..]} else {line}
-    ).collect();
+    let new_lines: Vec<_> = lines
+        .iter()
+        .map(|line| {
+            if line.len() >= indent {
+                &line[indent..]
+            } else {
+                line
+            }
+        })
+        .collect();
     new_lines.join("\n")
 }
 
@@ -23,8 +30,15 @@ fn tree_to_string(tree: PythonTree) -> String {
     fn recurse(code: &mut String, node: &PythonNode, depth: usize) {
         *code += &" ".repeat(depth);
         *code += &format!(
-            "{}: {}-{}{}\n", node.type_str(), node.start(), node.end(),
-            if node.is_leaf() {format!(" {:?}", node.get_code())} else {"".to_string()}
+            "{}: {}-{}{}\n",
+            node.type_str(),
+            node.start(),
+            node.end(),
+            if node.is_leaf() {
+                format!(" {:?}", node.get_code())
+            } else {
+                "".to_string()
+            }
         );
         for c in node.get_children() {
             recurse(code, &c, depth + 1);

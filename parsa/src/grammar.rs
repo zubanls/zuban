@@ -1,10 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::marker::PhantomData;
 
-use crate::automaton::{Automatons, RuleAutomaton, InternalSquashedType, Plan,
-                       DFAState, Keywords, generate_automatons, Rule, RuleMap,
-                       InternalStrToToken, InternalStrToNode, StackMode,
-                       InternalTerminalType, InternalNonterminalType, SoftKeywords};
+use crate::automaton::{
+    generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
+    InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, Rule,
+    RuleAutomaton, RuleMap, SoftKeywords, StackMode,
+};
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
@@ -13,7 +14,7 @@ pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
 
-pub trait Token: Copy+Debug {
+pub trait Token: Copy + Debug {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> InternalTerminalType;
@@ -60,8 +61,8 @@ struct CompressedNode {
 
 #[cfg(test)]
 mod tests {
-    use std::mem::{size_of, align_of};
     use super::*;
+    use std::mem::{align_of, size_of};
 
     #[test]
     fn sizes() {
@@ -114,12 +115,14 @@ struct Stack<'a> {
 }
 
 impl<'a, T: Token> Grammar<T> {
-    pub fn new(rules: &RuleMap,
-               nonterminal_map: &'static InternalStrToNode,
-               terminal_map: &'static InternalStrToToken,
-               soft_keywords: SoftKeywords) -> Self {
-        let (automatons, keywords) = generate_automatons(
-            nonterminal_map, terminal_map, rules, &soft_keywords);
+    pub fn new(
+        rules: &RuleMap,
+        nonterminal_map: &'static InternalStrToNode,
+        terminal_map: &'static InternalStrToToken,
+        soft_keywords: SoftKeywords,
+    ) -> Self {
+        let (automatons, keywords) =
+            generate_automatons(nonterminal_map, terminal_map, rules, &soft_keywords);
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
         Self {
@@ -132,10 +135,13 @@ impl<'a, T: Token> Grammar<T> {
         }
     }
 
-    pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNonterminalType) -> Vec<InternalNode> {
-        let mut stack = Stack::new(
-            start, &self.automatons[&start].dfa_states[0], code.len()
-        );
+    pub fn parse<I: Iterator<Item = T>>(
+        &self,
+        code: &str,
+        tokens: I,
+        start: InternalNonterminalType,
+    ) -> Vec<InternalNode> {
+        let mut stack = Stack::new(start, &self.automatons[&start].dfa_states[0], code.len());
         let mut backtracking_tokenizer = BacktrackingTokenizer::new(tokens);
 
         while stack.len() > 0 {
@@ -144,9 +150,10 @@ impl<'a, T: Token> Grammar<T> {
                 if token.can_contain_syntax() {
                     let start = token.get_start_index() as usize;
                     let token_str = &code[start..start + token.get_length() as usize];
-                    transition = self.keywords.get_squashed(token_str).unwrap_or_else(
-                        || token.get_type().to_squashed(),
-                    );
+                    transition = self
+                        .keywords
+                        .get_squashed(token_str)
+                        .unwrap_or_else(|| token.get_type().to_squashed());
                 } else {
                     transition = token.get_type().to_squashed();
                 }
@@ -166,10 +173,13 @@ impl<'a, T: Token> Grammar<T> {
     }
 
     #[inline]
-    fn apply_transition<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack,
-            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-            transition: InternalSquashedType, token: &T) {
+    fn apply_transition<I: Iterator<Item = T>>(
+        &self,
+        stack: &mut Stack,
+        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        transition: InternalSquashedType,
+        token: &T,
+    ) {
         loop {
             let tos = stack.get_tos();
             let is_final = tos.dfa_state.is_final;
@@ -182,31 +192,38 @@ impl<'a, T: Token> Grammar<T> {
                     if is_final {
                         self.end_of_node(stack, backtracking_tokenizer, mode)
                     } else {
-                        self.error_recovery(stack, backtracking_tokenizer,
-                                            Some(transition), Some(token));
-                        return
+                        self.error_recovery(
+                            stack,
+                            backtracking_tokenizer,
+                            Some(transition),
+                            Some(token),
+                        );
+                        return;
                     }
-                },
+                }
                 Some(plan) => {
                     self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
-                    break
-                },
+                    break;
+                }
             }
         }
     }
 
     #[inline]
-    fn end_of_node<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-            mode: ModeData<'a>) {
+    fn end_of_node<I: Iterator<Item = T>>(
+        &self,
+        stack: &mut Stack,
+        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        mode: ModeData<'a>,
+    ) {
         match mode {
             ModeData::Normal => {
                 stack.pop_normal();
-            },
+            }
             ModeData::PositiveLookahead(token_index) => {
                 stack.stack_nodes.pop();
                 backtracking_tokenizer.reset(token_index);
-            },
+            }
             ModeData::Alternative(backtracking_point) => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
                 let tos = stack.stack_nodes.last_mut().unwrap();
@@ -220,26 +237,35 @@ impl<'a, T: Token> Grammar<T> {
         }
     }
 
-    fn error_recovery<I: Iterator<Item=T>>(
-        &self, stack: &mut Stack, backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
-        transition: Option<InternalSquashedType>, token: Option<&T>) {
+    fn error_recovery<I: Iterator<Item = T>>(
+        &self,
+        stack: &mut Stack,
+        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+        transition: Option<InternalSquashedType>,
+        token: Option<&T>,
+    ) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
             if let ModeData::Alternative(backtracking_point) = node.mode {
                 stack.stack_nodes.truncate(i);
 
-                stack.tree_nodes.truncate(backtracking_point.tree_node_count);
+                stack
+                    .tree_nodes
+                    .truncate(backtracking_point.tree_node_count);
                 let tos = stack.stack_nodes.last_mut().unwrap();
                 backtracking_tokenizer.reset(backtracking_point.token_index);
                 let t = backtracking_tokenizer.next().unwrap();
                 self.apply_plan(
-                    stack, backtracking_point.fallback_plan,
-                    &t, backtracking_tokenizer);
+                    stack,
+                    backtracking_point.fallback_plan,
+                    &t,
+                    backtracking_tokenizer,
+                );
                 if !stack.get_tos().enabled_token_recording {
                     backtracking_tokenizer.stop();
                 }
                 // The token was not used, but the tokenizer backtracked.
-                return // Error Recovery done.
+                return; // Error Recovery done.
             }
         }
 
@@ -250,14 +276,21 @@ impl<'a, T: Token> Grammar<T> {
                 while stack.stack_nodes.len() > i {
                     let stack_node = stack.stack_nodes.pop().unwrap();
                     update_tree_node_position(&mut stack.tree_nodes, &stack_node);
-                    let mut n = stack.tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
+                    let mut n = stack
+                        .tree_nodes
+                        .get_mut(stack_node.tree_node_index)
+                        .unwrap();
                     n.type_ = n.type_.set_error_recovery_bit();
                 }
                 if let Some(transition) = transition {
-                    self.apply_transition(stack, backtracking_tokenizer,
-                                          transition, token.unwrap());
+                    self.apply_transition(
+                        stack,
+                        backtracking_tokenizer,
+                        transition,
+                        token.unwrap(),
+                    );
                 }
-                return // Error recovery is done.
+                return; // Error recovery is done.
             }
         }
         if let Some(transition) = transition {
@@ -284,23 +317,31 @@ impl<'a, T: Token> Grammar<T> {
                         length: token.get_length(),
                         extra_data: 0,
                     });
-                    return // Error recovery is done.
+                    return; // Error recovery is done.
                 }
             }
         }
         //let rest = &code[token.get_start_index() as usize..];
         //dbg!(token, rest);
-        dbg!(stack.stack_nodes.iter().map(|n| n.dfa_state.from_rule).collect::<Vec<_>>());
+        dbg!(stack
+            .stack_nodes
+            .iter()
+            .map(|n| n.dfa_state.from_rule)
+            .collect::<Vec<_>>());
         //dbg!(self.get_tos());
         panic!("No error recovery function found");
     }
 
     #[inline]
-    fn apply_plan<I: Iterator<Item=T>>(
-            &self, stack: &mut Stack, plan: &Plan, token: &T,
-            backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>) {
+    fn apply_plan<I: Iterator<Item = T>>(
+        &self,
+        stack: &mut Stack,
+        plan: &Plan,
+        token: &T,
+        backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
+    ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = unsafe {&*plan.next_dfa};
+        tos_mut.dfa_state = unsafe { &*plan.next_dfa };
         let mut enabled_token_recording = tos_mut.enabled_token_recording;
 
         let start_index = token.get_start_index();
@@ -308,20 +349,23 @@ impl<'a, T: Token> Grammar<T> {
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
         // There's one exception: If the node can be omitted we don't even have to do it.
-        if plan.is_left_recursive && !tos_mut.can_omit_children(){
+        if plan.is_left_recursive && !tos_mut.can_omit_children() {
             tos_mut.children_count = 1;
             tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
 
             update_tree_node_position(&mut stack.tree_nodes, tos_mut);
 
             let old_node = stack.tree_nodes[tos_mut.tree_node_index];
-            stack.tree_nodes.insert(tos_mut.tree_node_index, InternalNode {
-                next_node_offset: 0,
-                type_: old_node.type_,
-                start_index: old_node.start_index,
-                length: 0,
-                extra_data: 0,
-            });
+            stack.tree_nodes.insert(
+                tos_mut.tree_node_index,
+                InternalNode {
+                    next_node_offset: 0,
+                    type_: old_node.type_,
+                    start_index: old_node.start_index,
+                    length: 0,
+                    extra_data: 0,
+                },
+            );
         }
         stack.calculate_previous_next_node();
 
@@ -339,16 +383,16 @@ impl<'a, T: Token> Grammar<T> {
                 start_index,
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
-                    StackMode::PositiveLookahead => ModeData::PositiveLookahead(
-                        backtracking_tokenizer.start(token)
-                    ),
-                    StackMode::Alternative(alternative_plan) => ModeData::Alternative(
-                        BacktrackingPoint {
+                    StackMode::PositiveLookahead => {
+                        ModeData::PositiveLookahead(backtracking_tokenizer.start(token))
+                    }
+                    StackMode::Alternative(alternative_plan) => {
+                        ModeData::Alternative(BacktrackingPoint {
                             tree_node_count: stack.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
-                            fallback_plan: unsafe {&*alternative_plan},
-                        }
-                    ),
+                            fallback_plan: unsafe { &*alternative_plan },
+                        })
+                    }
                 },
                 enabled_token_recording,
             );
@@ -365,14 +409,13 @@ impl<'a, T: Token> Grammar<T> {
             extra_data: 0,
         });
     }
-
 }
 
 impl<'a> Stack<'a> {
     fn new(node_id: InternalNonterminalType, dfa_state: &'a DFAState, string_len: usize) -> Self {
         let mut stack = Stack {
-            stack_nodes: vec!(),
-            tree_nodes: vec!(),
+            stack_nodes: vec![],
+            tree_nodes: vec![],
         };
         // Just reserve enough so the vec contents don't need to be copied.
         stack.stack_nodes.reserve(128);
@@ -406,13 +449,19 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    fn push(&mut self, node_id: InternalNonterminalType, dfa_state: *const DFAState, start: CodeIndex,
-            mode: ModeData<'a>, enabled_token_recording: bool) {
+    fn push(
+        &mut self,
+        node_id: InternalNonterminalType,
+        dfa_state: *const DFAState,
+        start: CodeIndex,
+        mode: ModeData<'a>,
+        enabled_token_recording: bool,
+    ) {
         self.stack_nodes.push(StackNode {
             node_id,
             tree_node_index: self.tree_nodes.len(),
             latest_child_node_index: 0,
-            dfa_state: unsafe {&*dfa_state},
+            dfa_state: unsafe { &*dfa_state },
             children_count: 0,
             mode,
             enabled_token_recording,

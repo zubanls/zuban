@@ -1,12 +1,11 @@
-#![recursion_limit="1024"]
+#![recursion_limit = "1024"]
 mod tokenizer;
 
-use parsa::{create_grammar, Grammar};
 use crate::tokenizer::{PythonTerminal, PythonTerminalType, PythonTokenizer};
-
+use parsa::{create_grammar, Grammar};
 
 create_grammar!(
-    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PythonNode, 
+    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PythonNode,
     enum PythonNodeType, enum PythonNonterminalType, PythonTokenizer, PythonTerminal, PythonTerminalType,
 
     soft_keywords=[
@@ -278,7 +277,10 @@ mod tests {
     fn test_grammar() {
         let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n".to_owned());
         let root_node = tree.get_root_node();
-        assert_eq!(root_node.get_type(), PythonNodeType::Nonterminal(PythonNonterminalType::file_input));
+        assert_eq!(
+            root_node.get_type(),
+            PythonNodeType::Nonterminal(PythonNonterminalType::file_input)
+        );
         assert_eq!(root_node.get_extra_data(), 0);
     }
 }

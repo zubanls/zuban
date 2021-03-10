@@ -1,18 +1,18 @@
 use crate::grammar::Token;
 
 #[derive(Debug)]
-pub struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
+pub struct BacktrackingTokenizer<T: Token, I: Iterator<Item = T>> {
     tokenizer: I,
     tokens: Vec<T>,
     next_index: usize,
     is_recording: bool,
 }
 
-impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
+impl<T: Token, I: Iterator<Item = T>> BacktrackingTokenizer<T, I> {
     pub fn new(tokenizer: I) -> Self {
         Self {
             tokenizer,
-            tokens: vec!(),
+            tokens: vec![],
             next_index: 0,
             is_recording: false,
         }
@@ -41,7 +41,7 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     }
 }
 
-impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
+impl<T: Token, I: Iterator<Item = T>> Iterator for BacktrackingTokenizer<T, I> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
         if !self.tokens.is_empty() {
@@ -58,7 +58,7 @@ impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
                         self.tokens.clear();
                     }
                     next
-                },
+                }
                 Some(next) => {
                     self.next_index += 1;
                     Some(*next)

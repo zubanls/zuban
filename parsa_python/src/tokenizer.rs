@@ -4,10 +4,10 @@
 extern crate lazy_static;
 extern crate regex;
 
-use std::str;
-use std::collections::HashSet;
-use regex::Regex;
 use parsa::{create_terminals, CodeIndex};
+use regex::Regex;
+use std::collections::HashSet;
+use std::str;
 
 const FORM_FEED: char = '\x0C';
 const HEX_NUMBER: &str = r"0[xX](_?[0-9a-fA-F])+";
@@ -51,7 +51,6 @@ lazy_static::lazy_static! {
     ].iter().cloned().collect();
 }
 
-
 fn r(regex_string: &str) -> Regex {
     Regex::new(regex_string).unwrap()
 }
@@ -78,7 +77,6 @@ create_terminals!(struct PythonTerminal, enum PythonTerminalType,
                   [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
                    Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
-
 #[derive(Default, Debug)]
 pub struct PythonTokenizer<'a> {
     code: &'a str,
@@ -93,10 +91,10 @@ pub struct PythonTokenizer<'a> {
 
 #[derive(Debug, Clone, Copy)]
 enum QuoteType {
-    Single,        // '
-    Double,        // "
-    SingleTriple,  // '''
-    DoubleTriple,  // """
+    Single,       // '
+    Double,       // "
+    SingleTriple, // '''
+    DoubleTriple, // """
 }
 
 impl QuoteType {
@@ -158,18 +156,21 @@ impl<'a> parsa::Tokenizer<'a, PythonTerminal> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         Self {
             code,
-            indent_stack: vec!(0),
+            indent_stack: vec![0],
             previous_token_was_newline: true,
             ..Default::default()
         }
     }
-
 }
 
 impl PythonTokenizer<'_> {
     #[inline]
-    fn new_tok(&self, start: usize, can_contain_syntax: bool, type_: PythonTerminalType)
-            -> Option<PythonTerminal> {
+    fn new_tok(
+        &self,
+        start: usize,
+        can_contain_syntax: bool,
+        type_: PythonTerminalType,
+    ) -> Option<PythonTerminal> {
         Some(PythonTerminal {
             start_index: start as CodeIndex,
             length: (self.index - start) as CodeIndex,
@@ -203,7 +204,7 @@ impl PythonTokenizer<'_> {
                     indentation += 1;
                 } else if character == '\n' || character == '\r' {
                     // We only want to dedent if the token is on a new line.
-                    return self.dedent_if_necessary(indentation)
+                    return self.dedent_if_necessary(indentation);
                 } else {
                     return None;
                 }
@@ -215,7 +216,9 @@ impl PythonTokenizer<'_> {
     #[inline]
     fn handle_fstring_stack(&mut self) -> Option<PythonTerminal> {
         let in_expr = self.get_f_string_tos().in_expr();
-        let mut iterator = code_from_start(self.code, self.index).char_indices().peekable();
+        let mut iterator = code_from_start(self.code, self.index)
+            .char_indices()
+            .peekable();
         while let Some((i, character)) = iterator.next() {
             if (character == '{' || character == '}') && !in_expr {
                 if let Some((_, next)) = iterator.next() {
@@ -237,7 +240,7 @@ impl PythonTokenizer<'_> {
                             if code_from_start(self.code, self.index + i).starts_with("\"\"\"") {
                                 return self.end_f_string(i, j, quote);
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -250,7 +253,7 @@ impl PythonTokenizer<'_> {
                             if code_from_start(self.code, self.index + i).starts_with("'''") {
                                 return self.end_f_string(i, j, quote);
                             }
-                        },
+                        }
                         _ => {}
                     }
                 }
@@ -269,8 +272,9 @@ impl PythonTokenizer<'_> {
             } else if character == '\\' {
                 if let Some(&(_, next)) = iterator.peek() {
                     if next == 'N' {
-                        if let Some(match_) = UNICODE_CHARACTER_NAME.find(
-                            code_from_start(self.code, self.index + i + 2)) {
+                        if let Some(match_) = UNICODE_CHARACTER_NAME
+                            .find(code_from_start(self.code, self.index + i + 2))
+                        {
                             iterator.nth(match_.end());
                             continue;
                         }
@@ -280,15 +284,23 @@ impl PythonTokenizer<'_> {
 
                         if in_expr {
                             self.index += i + 2;
-                            return self.new_tok(self.index - 2, false, PythonTerminalType::ErrorToken);
+                            return self.new_tok(
+                                self.index - 2,
+                                false,
+                                PythonTerminalType::ErrorToken,
+                            );
                         }
                     }
                 }
             } else if character == '\n' || character == '\r' {
                 // Check if there is an f-string on the stack that allows no newlines.
-                match self.f_string_stack.iter().enumerate().find(
-                        |(_, node)| !node.allow_multiline()) {
-                    None => {},
+                match self
+                    .f_string_stack
+                    .iter()
+                    .enumerate()
+                    .find(|(_, node)| !node.allow_multiline())
+                {
+                    None => {}
                     Some((j, _)) => {
                         if in_expr {
                             self.f_string_stack.drain(j..);
@@ -304,15 +316,16 @@ impl PythonTokenizer<'_> {
                     }
                 }
             } else if character == '#' && in_expr {
-                self.index += i;  // The part before was whitespace
+                self.index += i; // The part before was whitespace
                 let c = code_from_start(self.code, self.index);
-                let length = c.find(&['\n', '\r'] as &[_]).map_or(
-                    c.len(), |index| index + 1);
+                let length = c
+                    .find(&['\n', '\r'] as &[_])
+                    .map_or(c.len(), |index| index + 1);
                 let start = self.index;
                 self.index += length;
                 return self.new_tok(start, false, PythonTerminalType::ErrorToken);
             } else if character != ' ' && character != '\t' && character != FORM_FEED && in_expr {
-                return None
+                return None;
             }
         }
         // We are at the end of the code fragment and only the endmarker/dedent
@@ -327,8 +340,12 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn end_f_string(&mut self, string_length: usize, drain_from: usize, quote: QuoteType)
-                    -> Option<PythonTerminal> {
+    fn end_f_string(
+        &mut self,
+        string_length: usize,
+        drain_from: usize,
+        quote: QuoteType,
+    ) -> Option<PythonTerminal> {
         // This is the same if we are in_expr or not. The string ends no matter
         // what. It's a bit strange that in the expr case it returns an
         // fstring_string first, but this should be fine, since if there's a
@@ -346,7 +363,8 @@ impl PythonTokenizer<'_> {
             self.index += string_length;
             return end(self);
         }
-        self.maybe_fstring_string(string_length).or_else(|| end(self))
+        self.maybe_fstring_string(string_length)
+            .or_else(|| end(self))
     }
 
     #[inline]
@@ -374,7 +392,7 @@ impl PythonTokenizer<'_> {
         let mut indentation = 0;
         let mut was_comment = false;
         let iterator = code_from_start(self.code, self.index).chars();
-        #[allow(clippy::while_let_on_iterator)]  // Because of borrowing
+        #[allow(clippy::while_let_on_iterator)] // Because of borrowing
         for character in iterator {
             if character == '\n' || character == '\r' {
                 if !self.previous_token_was_newline {
@@ -416,7 +434,7 @@ impl PythonTokenizer<'_> {
                     self.skip_whitespace();
                     return indentation;
                 } else {
-                    break
+                    break;
                 }
             }
             self.index += character.len_utf8();
@@ -428,7 +446,8 @@ impl PythonTokenizer<'_> {
     fn find_name_length(&self, code: &str) -> usize {
         for (i, character) in code.char_indices() {
             // TODO this is not correct, because we should implement str.isidentifier from CPython
-            if !(character.is_alphabetic() || character == '_' || character.is_numeric() && i != 0) {
+            if !(character.is_alphabetic() || character == '_' || character.is_numeric() && i != 0)
+            {
                 return i;
             }
         }
@@ -454,15 +473,18 @@ impl Iterator for PythonTokenizer<'_> {
         let c = code_from_start(self.code, self.index);
         if self.previous_token_was_newline {
             if let Some(&character) = c.as_bytes().first() {
-                if character != b'\n' && character != b'\r'
-                        && self.parentheses_level == 0 && self.f_string_stack.is_empty() {
+                if character != b'\n'
+                    && character != b'\r'
+                    && self.parentheses_level == 0
+                    && self.f_string_stack.is_empty()
+                {
                     if indentation > *self.indent_stack.last().unwrap() {
                         self.indent_stack.push(indentation);
                         self.previous_token_was_newline = false;
                         return self.new_tok(start, false, PythonTerminalType::Indent);
                     } else if let Some(token) = self.dedent_if_necessary(indentation) {
-                            self.index -= indentation;
-                            return Some(token);
+                        self.index -= indentation;
+                        return Some(token);
                     }
                 }
             }
@@ -487,7 +509,11 @@ impl Iterator for PythonTokenizer<'_> {
                 }
             } else if character == b')' || character == b']' || character == b'}' {
                 match self.f_string_stack.last_mut() {
-                    None => if self.parentheses_level > 0 {self.parentheses_level -= 1},
+                    None => {
+                        if self.parentheses_level > 0 {
+                            self.parentheses_level -= 1
+                        }
+                    }
                     Some(node) => node.close_parentheses(),
                 }
             }
@@ -502,8 +528,9 @@ impl Iterator for PythonTokenizer<'_> {
                 if !self.is_still_part_of_f_string(match_) {
                     let length = match_.end();
                     self.index += length;
-                    if length <= 5 && (match_.as_str().contains("'''")
-                                       || match_.as_str().contains("\"\"\"")) {
+                    if length <= 5
+                        && (match_.as_str().contains("'''") || match_.as_str().contains("\"\"\""))
+                    {
                         return self.new_tok(start, false, PythonTerminalType::ErrorToken);
                     }
                     return self.new_tok(start, false, token_type);
@@ -561,11 +588,11 @@ impl Iterator for PythonTokenizer<'_> {
                     self.ended = true;
                     self.new_tok(start, false, PythonTerminalType::Endmarker)
                 }
-            },
+            }
             Some(character) => {
                 self.index += character.len_utf8();
                 self.new_tok(start, false, PythonTerminalType::ErrorToken)
-            },
+            }
         }
     }
 }
@@ -574,15 +601,13 @@ impl Iterator for PythonTokenizer<'_> {
 fn code_from_start(code: &str, index: usize) -> &str {
     // This function only exists, because the regex crate is not able to at
     // the beginning of a specific position.
-    unsafe {
-        str::from_utf8_unchecked(&code.as_bytes()[index..])
-    }
+    unsafe { str::from_utf8_unchecked(&code.as_bytes()[index..]) }
 }
 
 #[cfg(test)]
 mod tests {
-    use parsa::Tokenizer;
     use super::*;
+    use parsa::Tokenizer;
     use PythonTerminalType::*;
     #[allow(non_upper_case_globals)]
     const Op: PythonTerminalType = Operator;

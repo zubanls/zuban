@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::iter::repeat;
 use std::fmt;
+use std::iter::repeat;
 use std::pin::Pin;
 
-pub const NODE_START: u16 = 1<<15;
-pub const ERROR_RECOVERY_BIT: u16 = 1<<14;
+pub const NODE_START: u16 = 1 << 15;
+pub const ERROR_RECOVERY_BIT: u16 = 1 << 14;
 
 type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
 pub type Automatons = HashMap<InternalNonterminalType, RuleAutomaton>;
@@ -14,7 +14,6 @@ pub type RuleMap = HashMap<InternalNonterminalType, (&'static str, Rule)>;
 pub type SoftKeywords = HashMap<InternalTerminalType, HashSet<&'static str>>;
 type FirstPlans = HashMap<InternalNonterminalType, FirstPlan>;
 type DFAStates = Vec<Pin<Box<DFAState>>>;
-
 
 #[derive(Debug)]
 pub enum Rule {
@@ -94,7 +93,7 @@ pub struct DFAState {
     pub is_final: bool,
     is_calculated: bool,
     pub node_may_be_omitted: bool,
-    list_index: DFAStateId,  // The index in the dfa_states vec in the automaton.
+    list_index: DFAStateId, // The index in the dfa_states vec in the automaton.
 
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
@@ -169,7 +168,8 @@ pub struct Keywords {
 impl Keywords {
     fn add(&mut self, keyword: &'static str) {
         if !self.keywords.contains_key(keyword) {
-            self.keywords.insert(keyword, Self::keyword_to_squashed(self.counter));
+            self.keywords
+                .insert(keyword, Self::keyword_to_squashed(self.counter));
             self.counter += 1;
         }
     }
@@ -177,7 +177,6 @@ impl Keywords {
     pub fn keyword_to_squashed(number: usize) -> InternalSquashedType {
         InternalSquashedType(number as u16)
     }
-
 
     pub fn get_squashed(&self, keyword: &str) -> Option<InternalSquashedType> {
         self.keywords.get(keyword).copied()
@@ -197,37 +196,36 @@ pub struct RuleAutomaton {
 }
 
 impl RuleAutomaton {
-    fn build(&mut self, nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
-             keywords: &mut Keywords, rule: &Rule) -> (NFAStateId, NFAStateId) {
-        let mut build = |automaton: &mut Self, rule| automaton.build(
-            nonterminal_map, terminal_map, keywords, rule);
+    fn build(
+        &mut self,
+        nonterminal_map: &InternalStrToNode,
+        terminal_map: &InternalStrToToken,
+        keywords: &mut Keywords,
+        rule: &Rule,
+    ) -> (NFAStateId, NFAStateId) {
+        let mut build = |automaton: &mut Self, rule| {
+            automaton.build(nonterminal_map, terminal_map, keywords, rule)
+        };
         use Rule::*;
         match *rule {
             Identifier(string) => {
                 let (start, end) = self.new_nfa_states();
                 if let Some(&t) = terminal_map.get(string) {
-                    self.add_transition(
-                        start, end,
-                        Some(TransitionType::Terminal(t, string)),
-                    );
+                    self.add_transition(start, end, Some(TransitionType::Terminal(t, string)));
                 } else if let Some(&t) = nonterminal_map.get(string) {
-                    self.add_transition(
-                        start, end,
-                        Some(TransitionType::Nonterminal(t)),
-                    );
+                    self.add_transition(start, end, Some(TransitionType::Nonterminal(t)));
                 } else {
                     panic!("No terminal / nonterminal found for {:?}; token_map = {:?}; node_map ={:?}",
                            string, terminal_map, nonterminal_map);
                 }
                 (start, end)
-            },
+            }
             Keyword(string) => {
                 let (start, end) = self.new_nfa_states();
-                self.add_transition(
-                    start, end, Some(TransitionType::Keyword(string)));
+                self.add_transition(start, end, Some(TransitionType::Keyword(string)));
                 keywords.add(string);
                 (start, end)
-            },
+            }
             Or(rule1, rule2) => {
                 let (start, end) = self.new_nfa_states();
                 for r in [rule1, rule2].iter() {
@@ -236,12 +234,12 @@ impl RuleAutomaton {
                     self.add_empty_transition(y, end);
                 }
                 (start, end)
-            },
+            }
             Maybe(rule1) => {
                 let (start, end) = build(self, rule1);
                 self.add_empty_transition(start, end);
                 (start, end)
-            },
+            }
             Multiple(rule1) => {
                 let (start, end) = build(self, rule1);
                 self.add_empty_transition(end, start);
@@ -250,19 +248,29 @@ impl RuleAutomaton {
             NegativeLookahead(rule1) => {
                 let (start, end) = build(self, rule1);
                 let (new_start, new_end) = self.new_nfa_states();
-                self.add_transition(new_start, start, Some(TransitionType::NegativeLookaheadStart));
+                self.add_transition(
+                    new_start,
+                    start,
+                    Some(TransitionType::NegativeLookaheadStart),
+                );
                 self.add_transition(end, new_end, Some(TransitionType::LookaheadEnd));
                 (new_start, new_end)
-            },
+            }
             PositiveLookahead(rule1) => {
                 let (start, end) = build(self, rule1);
                 let (new_start, new_end) = self.new_nfa_states();
-                self.add_transition(new_start, start, Some(TransitionType::PositiveLookaheadStart));
+                self.add_transition(
+                    new_start,
+                    start,
+                    Some(TransitionType::PositiveLookaheadStart),
+                );
                 self.add_transition(end, new_end, Some(TransitionType::LookaheadEnd));
                 (new_start, new_end)
             }
             // TODO Cut is ignored for now.
-            Cut(rule1, rule2)  => { unimplemented!() }
+            Cut(rule1, rule2) => {
+                unimplemented!()
+            }
             Next(rule1, rule2) => {
                 let (start1, end1) = build(self, rule1);
                 let (start2, end2) = build(self, rule2);
@@ -298,11 +306,10 @@ impl RuleAutomaton {
         (new(), new())
     }
 
-    fn add_transition(&mut self, start: NFAStateId, to: NFAStateId,
-                      type_: Option<TransitionType>) {
-        self.get_nfa_state_mut(start).transitions.push(
-            NFATransition {type_, to}
-        );
+    fn add_transition(&mut self, start: NFAStateId, to: NFAStateId, type_: Option<TransitionType>) {
+        self.get_nfa_state_mut(start)
+            .transitions
+            .push(NFATransition { type_, to });
     }
 
     fn add_empty_transition(&mut self, start: NFAStateId, to: NFAStateId) {
@@ -326,8 +333,7 @@ impl RuleAutomaton {
         set
     }
 
-    fn nfa_to_dfa(&mut self, starts: Vec<NFAStateId>,
-                  end: NFAStateId) -> *mut DFAState {
+    fn nfa_to_dfa(&mut self, starts: Vec<NFAStateId>, end: NFAStateId) -> *mut DFAState {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
@@ -337,7 +343,9 @@ impl RuleAutomaton {
             }
         }
         let is_final = grouped_nfas.contains(&end)
-            || grouped_nfas.iter().any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
+            || grouped_nfas
+                .iter()
+                .any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
         self.dfa_states.push(Pin::new(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final,
@@ -352,15 +360,15 @@ impl RuleAutomaton {
     }
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) {
-        let dfa = self.nfa_to_dfa(vec!(start), end);
+        let dfa = self.nfa_to_dfa(vec![start], end);
         self.construct_powerset_for_dfa(dfa, end);
     }
 
     fn construct_powerset_for_dfa(&mut self, dfa: *mut DFAState, end: NFAStateId) {
         // Safe because DFAs are pinnned boxes in insert only lists
-        let state = unsafe {&mut *dfa};
+        let state = unsafe { &mut *dfa };
         if state.is_calculated {
-            return
+            return;
         }
 
         use std::mem;
@@ -369,23 +377,24 @@ impl RuleAutomaton {
         // Need to sort the list by ID to make sure that the lower IDs have higher priority. The
         // rules always generate NFAStates in order of priority.
         nfa_list.sort_by_key(|x| x.0);
-        for nfa_state_id in nfa_list  {
+        for nfa_state_id in nfa_list {
             let n = &self.get_nfa_state(nfa_state_id);
             for transition in &n.transitions {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
                 if let Some(t) = transition.type_ {
                     let t = transition.type_.unwrap();
-                    match grouped_transitions.get_mut(&(t)).and_then(
-                        |x| if transition.is_terminal_nonterminal_or_keyword() {
-                                Some(x)
-                            } else {
-                                None
-                            }
-                    ) {
-
+                    match grouped_transitions.get_mut(&(t)).and_then(|x| {
+                        if transition.is_terminal_nonterminal_or_keyword() {
+                            Some(x)
+                        } else {
+                            None
+                        }
+                    }) {
                         Some(v) => v.push(transition.to),
-                        None => {grouped_transitions.insert(t, vec!(transition.to));},
+                        None => {
+                            grouped_transitions.insert(t, vec![transition.to]);
+                        }
                     }
                 }
             }
@@ -411,18 +420,22 @@ impl RuleAutomaton {
     pub fn illustrate_dfas(&self, nonterminal_map: &InternalStrToNode) -> String {
         // Sorry for this code, it's really ugly, but since it's really only for debugging
         // purposes, I don't care too much. ~dave
-        let format_index = |id: usize, dfa: &DFAState|
-            (id + 1).to_string() + (if dfa.is_final {" (final)"} else {""});
-        let mut out_strings = vec!();
-        let mut transition_list = vec!();
-        let mut first_line = vec!(format_index(0, &self.dfa_states[0]), "#".to_owned());
-        first_line.extend(repeat("o".to_owned()).take(self.dfa_states[0].transitions.len())
-                          .collect::<Vec<_>>());
+        let format_index = |id: usize, dfa: &DFAState| {
+            (id + 1).to_string() + (if dfa.is_final { " (final)" } else { "" })
+        };
+        let mut out_strings = vec![];
+        let mut transition_list = vec![];
+        let mut first_line = vec![format_index(0, &self.dfa_states[0]), "#".to_owned()];
+        first_line.extend(
+            repeat("o".to_owned())
+                .take(self.dfa_states[0].transitions.len())
+                .collect::<Vec<_>>(),
+        );
         out_strings.push(first_line);
         for (i, dfa) in self.dfa_states.iter().enumerate() {
             if i + 1 == self.dfa_states.len() {
                 // Was already displayed.
-                break
+                break;
             }
 
             while transition_list.last() == Some(&None) {
@@ -432,46 +445,50 @@ impl RuleAutomaton {
                 transition_list.push(Some((
                     t.get_next_dfa().list_index,
                     match t.type_ {
-                        TransitionType::Terminal(_, s) => {s.to_owned()},
+                        TransitionType::Terminal(_, s) => s.to_owned(),
                         TransitionType::Nonterminal(t) => {
-                            nonterminal_to_str(nonterminal_map, t).to_owned()},
-                        TransitionType::Keyword(s) => {format!("{:#?}", s)},
-                        TransitionType::PositiveLookaheadStart => {"POS_LOOK".to_owned()},
-                        TransitionType::LookaheadEnd => {"LOOK_END".to_owned()},
-                        TransitionType::NegativeLookaheadStart => {"NEG_LOOK".to_owned()},
-                    }
+                            nonterminal_to_str(nonterminal_map, t).to_owned()
+                        }
+                        TransitionType::Keyword(s) => {
+                            format!("{:#?}", s)
+                        }
+                        TransitionType::PositiveLookaheadStart => "POS_LOOK".to_owned(),
+                        TransitionType::LookaheadEnd => "LOOK_END".to_owned(),
+                        TransitionType::NegativeLookaheadStart => "NEG_LOOK".to_owned(),
+                    },
                 )));
             }
 
-            let mut v1 = vec!("".to_owned(), "#".to_owned());
-            let mut v2 = vec!("".to_owned(), "#".to_owned());
-            let mut v3 = vec!("".to_owned(), "#".to_owned());
-            let mut v4 = vec!(format_index(i + 1, &self.dfa_states[i + 1]), "#".to_owned());
+            let mut v1 = vec!["".to_owned(), "#".to_owned()];
+            let mut v2 = vec!["".to_owned(), "#".to_owned()];
+            let mut v3 = vec!["".to_owned(), "#".to_owned()];
+            let mut v4 = vec![format_index(i + 1, &self.dfa_states[i + 1]), "#".to_owned()];
             let len = transition_list.len();
             for t in transition_list.iter_mut() {
                 if let Some((to, s)) = t.clone() {
                     v1.push("|".to_owned());
-                    v2.push(if s.is_empty() {"|".to_owned()} else {s});
+                    v2.push(if s.is_empty() { "|".to_owned() } else { s });
                     t.replace((to, "".to_owned()));
                     v3.push(if to.0 <= i + 1 {
-                                t.take();
-                                if to.0 == i + 1 {
-                                    "|".to_owned()
-                                } else {
-                                    format!("-> {}", to.0 + 1)
-                                }
-                            } else {
-                                "|".to_owned()
-                            }
-                    );
-                    v4.push((
+                        t.take();
                         if to.0 == i + 1 {
+                            "|".to_owned()
+                        } else {
+                            format!("-> {}", to.0 + 1)
+                        }
+                    } else {
+                        "|".to_owned()
+                    });
+                    v4.push(
+                        (if to.0 == i + 1 {
                             "o"
                         } else if to.0 <= i {
                             ""
                         } else {
                             "|"
-                        }).to_owned());
+                        })
+                        .to_owned(),
+                    );
                 } else {
                     v1.push("".to_owned());
                     v2.push("".to_owned());
@@ -484,19 +501,23 @@ impl RuleAutomaton {
             out_strings.push(v3);
             out_strings.push(v4);
         }
-        let mut column_widths = vec!();
+        let mut column_widths = vec![];
         for line in &out_strings {
             for (i, field) in line.iter().enumerate() {
                 match column_widths.get(i) {
                     None => column_widths.push(field.len()),
-                    Some(f) => if column_widths[i] < field.len() {column_widths[i] = field.len()},
+                    Some(f) => {
+                        if column_widths[i] < field.len() {
+                            column_widths[i] = field.len()
+                        }
+                    }
                 };
             }
         }
         let mut s = String::new();
         for line in &out_strings {
             for (field, max_width) in line.iter().zip(&column_widths) {
-                s += &format!("{:^width$}", field, width=max_width + 2);
+                s += &format!("{:^width$}", field, width = max_width + 2);
             }
             s += "\n";
         }
@@ -506,17 +527,21 @@ impl RuleAutomaton {
 
 impl NFAState {
     fn is_lookahead_end(&self) -> bool {
-        self.transitions.iter().any(|t| t.type_ == Some(TransitionType::LookaheadEnd))
+        self.transitions
+            .iter()
+            .any(|t| t.type_ == Some(TransitionType::LookaheadEnd))
     }
 }
 
 impl DFAState {
     fn is_lookahead_end(&self) -> bool {
-        self.transitions.iter().any(|t| t.type_ == TransitionType::LookaheadEnd)
+        self.transitions
+            .iter()
+            .any(|t| t.type_ == TransitionType::LookaheadEnd)
     }
 
     pub fn get_nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
-        let mut transition_ids = vec!();
+        let mut transition_ids = vec![];
         for transition in &self.transitions {
             if let TransitionType::Nonterminal(id) = transition.type_ {
                 transition_ids.push(id);
@@ -528,33 +553,40 @@ impl DFAState {
 
 impl NFATransition {
     fn is_terminal_nonterminal_or_keyword(&self) -> bool {
-        self.type_.map_or(false, |t| matches!(
-            t, TransitionType::Nonterminal(_)
-            | TransitionType::Terminal(_, _)
-            | TransitionType::Keyword(_)
-        ))
+        self.type_.map_or(false, |t| {
+            matches!(
+                t,
+                TransitionType::Nonterminal(_)
+                    | TransitionType::Terminal(_, _)
+                    | TransitionType::Keyword(_)
+            )
+        })
     }
 }
 
 impl DFATransition {
-    pub fn get_next_dfa(&self) -> &DFAState{
-        unsafe {&*self.to}
+    pub fn get_next_dfa(&self) -> &DFAState {
+        unsafe { &*self.to }
     }
 }
 
 impl Plan {
-    pub fn get_next_dfa(&self) -> &DFAState{
-        unsafe {&*self.next_dfa}
+    pub fn get_next_dfa(&self) -> &DFAState {
+        unsafe { &*self.next_dfa }
     }
 }
 
-pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &InternalStrToToken,
-                           rules: &RuleMap, soft_keywords: &SoftKeywords) -> (Automatons, Keywords) {
+pub fn generate_automatons(
+    nonterminal_map: &InternalStrToNode,
+    terminal_map: &InternalStrToToken,
+    rules: &RuleMap,
+    soft_keywords: &SoftKeywords,
+) -> (Automatons, Keywords) {
     let mut keywords = Keywords {
         // We need to start the numbers of keywords after tokens. Keyword ID's therefore never
         // clash with Token IDs (both are of type SquashedInternalType).
         counter: terminal_map.len(),
-        .. Default::default()
+        ..Default::default()
     };
     let mut automatons = HashMap::new();
     let dfa_counter = 0;
@@ -562,7 +594,7 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
         let mut automaton = RuleAutomaton {
             type_: *internal_type,
             name: rule_name,
-            .. Default::default()
+            ..Default::default()
         };
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
         automaton.nfa_end_id = end;
@@ -572,16 +604,28 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
 
     // Calculate first plans
     let mut first_plans = HashMap::new();
-    let rule_labels = automatons.keys().cloned().collect::<Vec<InternalNonterminalType>>();
+    let rule_labels = automatons
+        .keys()
+        .cloned()
+        .collect::<Vec<InternalNonterminalType>>();
     for rule_label in &rule_labels {
-        create_first_plans(nonterminal_map, &keywords, soft_keywords,
-                           &mut first_plans, &mut automatons, *rule_label);
+        create_first_plans(
+            nonterminal_map,
+            &keywords,
+            soft_keywords,
+            &mut first_plans,
+            &mut automatons,
+            *rule_label,
+        );
 
         // There should never be a case where a first plan is an empty production.
         // There should always be child nodes, otherwise the data structures won't work.
         let automaton = automatons.get_mut(rule_label).unwrap();
         if automaton.dfa_states[0].is_final {
-            panic!("The rule \"{}\" must not have an empty production", automaton.name);
+            panic!(
+                "The rule \"{}\" must not have an empty production",
+                automaton.name
+            );
         }
         automaton.dfa_states[0].transition_to_plan = match &first_plans[rule_label] {
             FirstPlan::Calculated(plans, _) => plans.clone(),
@@ -592,138 +636,217 @@ pub fn generate_automatons(nonterminal_map: &InternalStrToNode, terminal_map: &I
     for rule_label in &rule_labels {
         for i in 1..automatons[rule_label].dfa_states.len() {
             let (plans, _) = plans_for_dfa(
-                nonterminal_map, &keywords, soft_keywords, &mut automatons, &mut first_plans,
-                *rule_label, DFAStateId(i), false);
+                nonterminal_map,
+                &keywords,
+                soft_keywords,
+                &mut automatons,
+                &mut first_plans,
+                *rule_label,
+                DFAStateId(i),
+                false,
+            );
             automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan = plans;
         }
 
         // Left recursion can be calculated here, because first nodes are not relevant, because
         // they are never allowed to be final.
         for i in 1..automatons[rule_label].dfa_states.len() {
-            let left_recursion_plans = create_left_recursion_plans(
-                    &automatons, *rule_label, DFAStateId(i), &first_plans);
-            automatons.get_mut(rule_label).unwrap().dfa_states[i].transition_to_plan.extend(
-                left_recursion_plans);
+            let left_recursion_plans =
+                create_left_recursion_plans(&automatons, *rule_label, DFAStateId(i), &first_plans);
+            automatons.get_mut(rule_label).unwrap().dfa_states[i]
+                .transition_to_plan
+                .extend(left_recursion_plans);
         }
     }
     (automatons, keywords)
 }
 
-fn create_first_plans(nonterminal_map: &InternalStrToNode,
-                      keywords: &Keywords,
-                      soft_keywords: &SoftKeywords,
-                      first_plans: &mut FirstPlans,
-                      automatons: &mut Automatons,
-                      automaton_key: InternalNonterminalType) {
+fn create_first_plans(
+    nonterminal_map: &InternalStrToNode,
+    keywords: &Keywords,
+    soft_keywords: &SoftKeywords,
+    first_plans: &mut FirstPlans,
+    automatons: &mut Automatons,
+    automaton_key: InternalNonterminalType,
+) {
     if first_plans.get(&automaton_key).is_none() {
         first_plans.insert(automaton_key, FirstPlan::Calculating);
         let (plans, is_left_recursive) = plans_for_dfa(
-            nonterminal_map, keywords, soft_keywords, automatons, first_plans,
-            automaton_key, DFAStateId(0), true);
+            nonterminal_map,
+            keywords,
+            soft_keywords,
+            automatons,
+            first_plans,
+            automaton_key,
+            DFAStateId(0),
+            true,
+        );
 
         if is_left_recursive && plans.is_empty() {
-            panic!("The grammar contains left recursion without an \
+            panic!(
+                "The grammar contains left recursion without an \
                     alternative for rule {:?}",
-                   nonterminal_to_str(nonterminal_map, automaton_key));
+                nonterminal_to_str(nonterminal_map, automaton_key)
+            );
         }
-        first_plans.insert(automaton_key, FirstPlan::Calculated(plans, is_left_recursive));
+        first_plans.insert(
+            automaton_key,
+            FirstPlan::Calculated(plans, is_left_recursive),
+        );
     }
 }
 
 #[allow(clippy::too_many_arguments)]
-fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
-                 keywords: &Keywords,
-                 soft_keywords: &SoftKeywords,
-                 automatons: &mut Automatons,
-                 first_plans: &mut FirstPlans,
-                 automaton_key: InternalNonterminalType,
-                 dfa_id: DFAStateId,
-                 is_first_plan: bool) -> (SquashedTransitions, bool) {
+fn plans_for_dfa(
+    nonterminal_map: &InternalStrToNode,
+    keywords: &Keywords,
+    soft_keywords: &SoftKeywords,
+    automatons: &mut Automatons,
+    first_plans: &mut FirstPlans,
+    automaton_key: InternalNonterminalType,
+    dfa_id: DFAStateId,
+    is_first_plan: bool,
+) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
     let mut conflict_transitions = HashSet::new();
     let mut plans: HashMap<InternalSquashedType, (DFATransition, Plan)> = HashMap::new();
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
-    let dfa_state = unsafe {&*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)};
+    let dfa_state = unsafe {
+        &*(&automatons[&automaton_key].dfa_states[dfa_id.0] as &DFAState as *const DFAState)
+    };
     for &transition in &dfa_state.transitions {
         match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => {
                 let t = type_.to_squashed();
-                add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
-                                   transition, t, || Plan {
-                    pushes: Vec::new(),
-                    next_dfa: transition.to,
-                    type_: t,
-                    debug_text,
-                    is_left_recursive: false,
-                });
+                add_if_no_conflict(
+                    &mut plans,
+                    &mut conflict_transitions,
+                    &mut conflict_tokens,
+                    transition,
+                    t,
+                    || Plan {
+                        pushes: Vec::new(),
+                        next_dfa: transition.to,
+                        type_: t,
+                        debug_text,
+                        is_left_recursive: false,
+                    },
+                );
                 if let Some(kws) = soft_keywords.get(&type_) {
                     for &kw in kws {
                         let soft_keyword_type = keywords.get_squashed(kw).unwrap();
-                        add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
-                                           DFATransition{
-                                               type_: TransitionType::Keyword(kw),
-                                               to: transition.to,
-                                           }, soft_keyword_type, || Plan {
-                            pushes: Vec::new(),
-                            next_dfa: transition.to,
-                            type_: t,
-                            debug_text,
-                            is_left_recursive: false,
-                        });
+                        add_if_no_conflict(
+                            &mut plans,
+                            &mut conflict_transitions,
+                            &mut conflict_tokens,
+                            DFATransition {
+                                type_: TransitionType::Keyword(kw),
+                                to: transition.to,
+                            },
+                            soft_keyword_type,
+                            || Plan {
+                                pushes: Vec::new(),
+                                next_dfa: transition.to,
+                                type_: t,
+                                debug_text,
+                                is_left_recursive: false,
+                            },
+                        );
                     }
                 }
-            },
+            }
             TransitionType::Nonterminal(node_id) => {
                 if is_first_plan {
                     if let Some(FirstPlan::Calculating) = first_plans.get(&node_id) {
                         if node_id != automaton_key {
-                            panic!("Indirect left recursion not supported (in rule {:?})",
-                                   nonterminal_to_str(nonterminal_map, automaton_key));
+                            panic!(
+                                "Indirect left recursion not supported (in rule {:?})",
+                                nonterminal_to_str(nonterminal_map, automaton_key)
+                            );
                         }
                         is_left_recursive = true;
-                        continue
+                        continue;
                     }
-                    create_first_plans(nonterminal_map, keywords, soft_keywords,
-                                       first_plans, automatons, node_id);
+                    create_first_plans(
+                        nonterminal_map,
+                        keywords,
+                        soft_keywords,
+                        first_plans,
+                        automatons,
+                        node_id,
+                    );
                 }
                 match &first_plans[&node_id] {
                     FirstPlan::Calculated(transitions, is_left_recursive) => {
                         for (&t, nested_plan) in transitions {
-                            add_if_no_conflict(&mut plans, &mut conflict_transitions,
-                                               &mut conflict_tokens,
-                                               transition, t,
-                                               || nest_plan(nested_plan, node_id,
-                                                            transition.to, StackMode::Normal));
+                            add_if_no_conflict(
+                                &mut plans,
+                                &mut conflict_transitions,
+                                &mut conflict_tokens,
+                                transition,
+                                t,
+                                || {
+                                    nest_plan(
+                                        nested_plan,
+                                        node_id,
+                                        transition.to,
+                                        StackMode::Normal,
+                                    )
+                                },
+                            );
                         }
-                    },
-                    FirstPlan::Calculating => {unreachable!()},
+                    }
+                    FirstPlan::Calculating => {
+                        unreachable!()
+                    }
                 }
-            },
+            }
             TransitionType::Keyword(keyword) => {
                 let t = keywords.get_squashed(keyword).unwrap();
-                add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
-                                   transition, t, || Plan {
-                    pushes: Vec::new(),
-                    next_dfa: transition.to,
-                    type_: t,
-                    debug_text: keyword,
-                    is_left_recursive: false,
-                });
-            },
+                add_if_no_conflict(
+                    &mut plans,
+                    &mut conflict_transitions,
+                    &mut conflict_tokens,
+                    transition,
+                    t,
+                    || Plan {
+                        pushes: Vec::new(),
+                        next_dfa: transition.to,
+                        type_: t,
+                        debug_text: keyword,
+                        is_left_recursive: false,
+                    },
+                );
+            }
             TransitionType::PositiveLookaheadStart => {
                 let (inner_plans, inner_is_left_recursive) = plans_for_dfa(
-                    nonterminal_map, keywords, soft_keywords, automatons, first_plans,
-                    automaton_key, transition.get_next_dfa().list_index, is_first_plan);
+                    nonterminal_map,
+                    keywords,
+                    soft_keywords,
+                    automatons,
+                    first_plans,
+                    automaton_key,
+                    transition.get_next_dfa().list_index,
+                    is_first_plan,
+                );
                 if inner_is_left_recursive {
-                    panic!("Left recursion with lookaheads is not supported (in rule {:?})",
-                           nonterminal_to_str(nonterminal_map, automaton_key));
+                    panic!(
+                        "Left recursion with lookaheads is not supported (in rule {:?})",
+                        nonterminal_to_str(nonterminal_map, automaton_key)
+                    );
                 }
                 for (&t, plan) in &create_lookahead_plans(automaton_key, transition, &inner_plans) {
-                    add_if_no_conflict(&mut plans, &mut conflict_transitions, &mut conflict_tokens,
-                                       transition, t, || plan.clone());
+                    add_if_no_conflict(
+                        &mut plans,
+                        &mut conflict_transitions,
+                        &mut conflict_tokens,
+                        transition,
+                        t,
+                        || plan.clone(),
+                    );
                 }
-            },
+            }
             TransitionType::NegativeLookaheadStart => {
                 let dfa = transition.get_next_dfa();
                 let lookahead_end = dfa.transitions[0].get_next_dfa();
@@ -733,16 +856,19 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                 let next_dfa = lookahead_end.transitions[0].get_next_dfa();
                 // Only simple peeks are allowed at the moment.
                 let (mut inner_plans, _) = plans_for_dfa(
-                    nonterminal_map, keywords, soft_keywords, automatons, first_plans,
-                    automaton_key, next_dfa.list_index, is_first_plan);
+                    nonterminal_map,
+                    keywords,
+                    soft_keywords,
+                    automatons,
+                    first_plans,
+                    automaton_key,
+                    next_dfa.list_index,
+                    is_first_plan,
+                );
                 for transition in &dfa.transitions {
                     let t = match transition.type_ {
-                        TransitionType::Terminal(type_, debug_text) => {
-                            type_.to_squashed()
-                        },
-                        TransitionType::Keyword(keyword) => {
-                            keywords.get_squashed(keyword).unwrap()
-                        }
+                        TransitionType::Terminal(type_, debug_text) => type_.to_squashed(),
+                        TransitionType::Keyword(keyword) => keywords.get_squashed(keyword).unwrap(),
                         _ => {
                             panic!("Only terminal lookaheads are allowed");
                         }
@@ -751,12 +877,16 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                     // just remove those terminals from plans and everything should work.
                     inner_plans.remove(&t);
                 }
-                plans.extend(inner_plans.iter().map(|(&key, plan)| (key, (transition, plan.clone()))));
-            },
+                plans.extend(
+                    inner_plans
+                        .iter()
+                        .map(|(&key, plan)| (key, (transition, plan.clone()))),
+                );
+            }
             TransitionType::LookaheadEnd => {
                 // No plans need to be created.
-                continue
-            },
+                continue;
+            }
         }
     }
 
@@ -774,16 +904,24 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
         debug_assert!(!plans.contains_key(c));
     }
 
-    let mut result: SquashedTransitions
-        = plans.iter().map(|(&t, (_, plan))| (t, plan.clone())).collect();
+    let mut result: SquashedTransitions = plans
+        .iter()
+        .map(|(&t, (_, plan))| (t, plan.clone()))
+        .collect();
     if !conflict_tokens.is_empty() {
         let automaton = automatons.get_mut(&automaton_key).unwrap();
         let (start, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
         let t = automaton.type_;
         for dfa_id in (start..automaton.dfa_states.len()).rev() {
             let (new_plans, left_recursive) = plans_for_dfa(
-                nonterminal_map, keywords, soft_keywords, automatons, first_plans, automaton_key,
-                DFAStateId(dfa_id), is_first_plan
+                nonterminal_map,
+                keywords,
+                soft_keywords,
+                automatons,
+                first_plans,
+                automaton_key,
+                DFAStateId(dfa_id),
+                is_first_plan,
             );
             debug_assert!(!left_recursive);
             for (transition, mut new_plan) in new_plans {
@@ -792,10 +930,17 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                         let automaton = automatons.get_mut(&automaton_key).unwrap();
                         // This sets a const pointer on the fallback plan. This is only save,
                         // because the plans are not touched after they have been generated.
-                        automaton.fallback_plans.push(Pin::new(Box::new(fallback_plan)));
+                        automaton
+                            .fallback_plans
+                            .push(Pin::new(Box::new(fallback_plan)));
                         new_plan = nest_plan(
-                            &new_plan, t, end,
-                            StackMode::Alternative(automaton.fallback_plans.last().unwrap() as &Plan));
+                            &new_plan,
+                            t,
+                            end,
+                            StackMode::Alternative(
+                                automaton.fallback_plans.last().unwrap() as &Plan
+                            ),
+                        );
                     }
                     //dbg!(&transition, &new_plan);
                     result.insert(transition, new_plan);
@@ -807,12 +952,13 @@ fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
 }
 
 fn add_if_no_conflict<F: FnOnce() -> Plan>(
-        plans: &mut HashMap<InternalSquashedType, (DFATransition, Plan)>,
-                      conflict_transitions: &mut HashSet<TransitionType>,
-                      conflict_tokens: &mut HashSet<InternalSquashedType>,
-                      transition: DFATransition,
-                      token: InternalSquashedType,
-                      create_plan: F) {
+    plans: &mut HashMap<InternalSquashedType, (DFATransition, Plan)>,
+    conflict_transitions: &mut HashSet<TransitionType>,
+    conflict_tokens: &mut HashSet<InternalSquashedType>,
+    transition: DFATransition,
+    token: InternalSquashedType,
+    create_plan: F,
+) {
     if conflict_tokens.contains(&token) {
         conflict_transitions.insert(transition.type_);
     } else {
@@ -822,33 +968,48 @@ fn add_if_no_conflict<F: FnOnce() -> Plan>(
                 conflict_tokens.insert(token);
                 conflict_transitions.insert(transition.type_);
                 conflict_transitions.insert(t_x.type_);
-                return
+                return;
             }
         }
         plans.insert(token, (transition, create_plan()));
     }
 }
 
-fn create_lookahead_plans(automaton_key: InternalNonterminalType, transition: DFATransition,
-                          inner_plans: &SquashedTransitions) -> SquashedTransitions {
+fn create_lookahead_plans(
+    automaton_key: InternalNonterminalType,
+    transition: DFATransition,
+    inner_plans: &SquashedTransitions,
+) -> SquashedTransitions {
     let mode = match transition.type_ {
         TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
-        _ => unreachable!()
+        _ => unreachable!(),
     };
-    inner_plans.iter().map(
-        |(k, plan)| (*k, nest_plan(
-            plan, automaton_key, search_lookahead_end(plan.get_next_dfa()), mode
-        ))
-    ).collect()
+    inner_plans
+        .iter()
+        .map(|(k, plan)| {
+            (
+                *k,
+                nest_plan(
+                    plan,
+                    automaton_key,
+                    search_lookahead_end(plan.get_next_dfa()),
+                    mode,
+                ),
+            )
+        })
+        .collect()
 }
 
-fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalNonterminalType,
-                               dfa_id: DFAStateId,
-                               first_plans: &FirstPlans) -> SquashedTransitions {
+fn create_left_recursion_plans(
+    automatons: &Automatons,
+    automaton_key: InternalNonterminalType,
+    dfa_id: DFAStateId,
+    first_plans: &FirstPlans,
+) -> SquashedTransitions {
     let mut plans = HashMap::new();
     let automaton = &automatons[&automaton_key];
     let dfa_state = &automaton.dfa_states[dfa_id.0];
-    if dfa_state.is_final && !dfa_state.is_lookahead_end(){
+    if dfa_state.is_final && !dfa_state.is_lookahead_end() {
         // DFAStates that are the end of a lookahead are ignored here, because left recursion is
         // not allowed for lookaheads and they get a separate stack node anyway.
         match first_plans[&automaton.type_] {
@@ -862,33 +1023,43 @@ fn create_left_recursion_plans(automatons: &Automatons, automaton_key: InternalN
                                         panic!("ambigous: {} contains left recursion with alternatives!",
                                                dfa_state.from_rule);
                                     }
-                                    plans.insert(t, Plan {
-                                        pushes: p.pushes.clone(),
-                                        next_dfa: p.next_dfa,
-                                        type_: t,
-                                        debug_text: p.debug_text,
-                                        is_left_recursive: true,
-                                    });
+                                    plans.insert(
+                                        t,
+                                        Plan {
+                                            pushes: p.pushes.clone(),
+                                            next_dfa: p.next_dfa,
+                                            type_: t,
+                                            debug_text: p.debug_text,
+                                            is_left_recursive: true,
+                                        },
+                                    );
                                 }
                             }
                         }
                     }
                 }
-            },
+            }
             _ => unreachable!(),
         }
     }
     plans
 }
 
-fn nest_plan(plan: &Plan, new_node_id: InternalNonterminalType, next_dfa: *const DFAState,
-             mode: StackMode) -> Plan {
+fn nest_plan(
+    plan: &Plan,
+    new_node_id: InternalNonterminalType,
+    next_dfa: *const DFAState,
+    mode: StackMode,
+) -> Plan {
     let mut pushes = plan.pushes.clone();
-    pushes.insert(0, Push {
-        node_type: new_node_id,
-        next_dfa: plan.next_dfa,
-        stack_mode: mode,
-    });
+    pushes.insert(
+        0,
+        Push {
+            node_type: new_node_id,
+            next_dfa: plan.next_dfa,
+            stack_mode: mode,
+        },
+    );
     Plan {
         pushes,
         next_dfa,
@@ -906,14 +1077,15 @@ fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {
         for transition in &dfa_state.transitions {
             match transition.type_ {
                 TransitionType::LookaheadEnd => return transition.to,
-                TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart
-                    => unimplemented!(),
+                TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
+                    unimplemented!()
+                }
                 _ => {
                     let to_dfa = transition.get_next_dfa();
                     if !already_checked.contains(&to_dfa.list_index) {
                         already_checked.insert(to_dfa.list_index);
                         // It is a bit weird that this return works. It probably works, but maybe
-                        // wouldn't in some weird cases. We can still fix it then if necessary. 
+                        // wouldn't in some weird cases. We can still fix it then if necessary.
                         return search(already_checked, to_dfa);
                     }
                 }
@@ -924,8 +1096,11 @@ fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {
     search(&mut already_checked, dfa_state)
 }
 
-fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
-                conflict_transitions: HashSet<TransitionType>) -> (usize, *const DFAState) {
+fn split_tokens(
+    automaton: &mut RuleAutomaton,
+    dfa: &DFAState,
+    conflict_transitions: HashSet<TransitionType>,
+) -> (usize, *const DFAState) {
     let mut transition_to_nfas = HashMap::<_, Vec<_>>::new();
     let mut nfas: Vec<_> = dfa.nfa_set.iter().collect();
     nfas.sort_by_key(|id| id.0);
@@ -937,20 +1112,23 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
                     if let Some(list) = transition_to_nfas.get_mut(&t) {
                         list.push(nfa_id);
                     } else {
-                        transition_to_nfas.insert(t, vec!(nfa_id));
+                        transition_to_nfas.insert(t, vec![nfa_id]);
                     }
                 }
             }
         }
     }
 
-    let end_dfa = automaton.nfa_to_dfa(vec!(automaton.nfa_end_id), automaton.nfa_end_id);
+    let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id);
     let first_new_index = automaton.dfa_states.len();
 
-    let mut as_list: Vec<_> = transition_to_nfas.iter().map(|(_, nfa_ids)| nfa_ids.clone()).collect();
+    let mut as_list: Vec<_> = transition_to_nfas
+        .iter()
+        .map(|(_, nfa_ids)| nfa_ids.clone())
+        .collect();
     while !as_list.is_empty() {
         as_list.sort_by_key(|nfa_ids| nfa_ids[0].0);
-        let mut new_dfa_nfa_ids = vec!();
+        let mut new_dfa_nfa_ids = vec![];
         if as_list.len() > 1 {
             let must_be_smaller = *as_list[1][0];
             debug_assert!(!as_list[0].is_empty());
@@ -959,7 +1137,7 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
                 // NFA. ε-moves are of course always possible.
                 debug_assert!(nfa_id != must_be_smaller);
                 if nfa_id.0 > must_be_smaller.0 {
-                    break
+                    break;
                 }
                 new_dfa_nfa_ids.push(*as_list[0].remove(0));
             }
@@ -978,10 +1156,13 @@ fn split_tokens(automaton: &mut RuleAutomaton, dfa: &DFAState,
     (first_new_index, end_dfa)
 }
 
-fn nonterminal_to_str(nonterminal_map: &InternalStrToNode, nonterminal: InternalNonterminalType) -> &str {
+fn nonterminal_to_str(
+    nonterminal_map: &InternalStrToNode,
+    nonterminal: InternalNonterminalType,
+) -> &str {
     for (k, v) in nonterminal_map {
         if nonterminal == *v {
-            return *k
+            return *k;
         }
     }
     panic!("Something is very wrong, integer not found");
