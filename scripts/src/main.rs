@@ -1,5 +1,4 @@
 use std::fs;
-use parsa_python;
 
 fn main() -> std::io::Result<()> {
     let file = "/home/dave/source/stuff_jedi/quickfix_huge.py";
