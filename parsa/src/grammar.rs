@@ -144,8 +144,8 @@ impl<'a, T: Token> Grammar<T> {
                 if token.can_contain_syntax() {
                     let start = token.get_start_index() as usize;
                     let token_str = &code[start..start + token.get_length() as usize];
-                    transition = self.keywords.get_squashed(token_str).unwrap_or(
-                        token.get_type().to_squashed(),
+                    transition = self.keywords.get_squashed(token_str).unwrap_or_else(
+                        || token.get_type().to_squashed(),
                     );
                 } else {
                     transition = token.get_type().to_squashed();

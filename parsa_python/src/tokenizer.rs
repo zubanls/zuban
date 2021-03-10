@@ -373,8 +373,9 @@ impl PythonTokenizer<'_> {
     fn skip_whitespace(&mut self) -> usize {
         let mut indentation = 0;
         let mut was_comment = false;
-        let mut iterator = code_from_start(self.code, self.index).chars();
-        while let Some(character) = iterator.next() {
+        let iterator = code_from_start(self.code, self.index).chars();
+        #[allow(clippy::while_let_on_iterator)]  // Because of borrowing
+        for character in iterator {
             if character == '\n' || character == '\r' {
                 if !self.previous_token_was_newline {
                     return indentation;
@@ -519,10 +520,10 @@ impl Iterator for PythonTokenizer<'_> {
                             QuoteType::SingleTriple
                         } else if string.contains("\"\"") {
                             QuoteType::DoubleTriple
-                        } else if string.contains("'") {
-                            QuoteType::Single
-                        } else {
+                        } else if string.contains('"') {
                             QuoteType::Double
+                        } else {
+                            QuoteType::Single
                         }
                     },
                     parentheses_level: 0,

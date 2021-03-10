@@ -630,6 +630,7 @@ fn create_first_plans(nonterminal_map: &InternalStrToNode,
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn plans_for_dfa(nonterminal_map: &InternalStrToNode,
                  keywords: &Keywords,
                  soft_keywords: &SoftKeywords,

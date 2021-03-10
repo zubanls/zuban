@@ -29,7 +29,7 @@ fn tree_to_string(tree: PythonTree) -> String {
         for c in node.get_children() {
             recurse(code, &c, depth + 1);
         }
-    };
+    }
 
     let mut code = String::new();
     recurse(&mut code, &tree.get_root_node(), 0);
