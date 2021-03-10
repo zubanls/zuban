@@ -122,16 +122,14 @@ impl<'a, T: Token> Grammar<T> {
             nonterminal_map, terminal_map, rules, &soft_keywords);
         // Since we now know every nonterminal has a first terminal, we know that there is no
         // left recursion.
-        let grammar = Self {
-            terminal_map: terminal_map,
-            nonterminal_map: nonterminal_map,
+        Self {
+            terminal_map,
+            nonterminal_map,
             phantom: PhantomData,
-            automatons: automatons,
-            keywords: keywords,
-            soft_keywords: soft_keywords,
-        };
-
-        grammar
+            automatons,
+            keywords,
+            soft_keywords,
+        }
     }
 
     pub fn parse<I: Iterator<Item=T>>(&self, code: &str, tokens: I, start: InternalNonterminalType) -> Vec<InternalNode> {
@@ -227,24 +225,21 @@ impl<'a, T: Token> Grammar<T> {
         transition: Option<InternalSquashedType>, token: Option<&T>) {
         // In case we have a token that is not allowed at this position, try alternatives.
         for (i, node) in stack.stack_nodes.iter().enumerate().rev() {
-            match node.mode {
-                ModeData::Alternative(backtracking_point) => {
-                    stack.stack_nodes.truncate(i);
+            if let ModeData::Alternative(backtracking_point) = node.mode {
+                stack.stack_nodes.truncate(i);
 
-                    stack.tree_nodes.truncate(backtracking_point.tree_node_count);
-                    let tos = stack.stack_nodes.last_mut().unwrap();
-                    backtracking_tokenizer.reset(backtracking_point.token_index);
-                    let t = backtracking_tokenizer.next().unwrap();
-                    self.apply_plan(
-                        stack, backtracking_point.fallback_plan,
-                        &t, backtracking_tokenizer);
-                    if !stack.get_tos().enabled_token_recording {
-                        backtracking_tokenizer.stop();
-                    }
-                    // The token was not used, but the tokenizer backtracked.
-                    return // Error Recovery done.
-                },
-                _ => {}
+                stack.tree_nodes.truncate(backtracking_point.tree_node_count);
+                let tos = stack.stack_nodes.last_mut().unwrap();
+                backtracking_tokenizer.reset(backtracking_point.token_index);
+                let t = backtracking_tokenizer.next().unwrap();
+                self.apply_plan(
+                    stack, backtracking_point.fallback_plan,
+                    &t, backtracking_tokenizer);
+                if !stack.get_tos().enabled_token_recording {
+                    backtracking_tokenizer.stop();
+                }
+                // The token was not used, but the tokenizer backtracked.
+                return // Error Recovery done.
             }
         }
 
@@ -335,7 +330,7 @@ impl<'a, T: Token> Grammar<T> {
             let tos = stack.stack_nodes.last_mut().unwrap();
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
-            if match push.stack_mode {StackMode::Alternative(_) => true, _ => false} {
+            if matches!(push.stack_mode, StackMode::Alternative(_)) {
                 enabled_token_recording = true;
             }
             stack.push(
@@ -365,7 +360,7 @@ impl<'a, T: Token> Grammar<T> {
         stack.tree_nodes.push(InternalNode {
             next_node_offset: 0,
             type_: plan.type_,
-            start_index: start_index,
+            start_index,
             length: token.get_length(),
             extra_data: 0,
         });
@@ -414,17 +409,17 @@ impl<'a> Stack<'a> {
     fn push(&mut self, node_id: InternalNonterminalType, dfa_state: *const DFAState, start: CodeIndex,
             mode: ModeData<'a>, enabled_token_recording: bool) {
         self.stack_nodes.push(StackNode {
-            node_id: node_id,
+            node_id,
             tree_node_index: self.tree_nodes.len(),
             latest_child_node_index: 0,
             dfa_state: unsafe {&*dfa_state},
             children_count: 0,
-            mode: mode,
-            enabled_token_recording: enabled_token_recording,
+            mode,
+            enabled_token_recording,
         });
         // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
         // part of the parent stack node.
-        if match mode {ModeData::Normal => true, _ => false} {
+        if matches!(mode, ModeData::Normal) {
             self.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
                 type_: node_id.to_squashed(),

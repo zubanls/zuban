@@ -157,7 +157,7 @@ impl FStringNode {
 impl<'a> parsa::Tokenizer<'a, PythonTerminal> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         Self {
-            code: code,
+            code,
             indent_stack: vec!(0),
             previous_token_was_newline: true,
             ..Default::default()
@@ -173,14 +173,14 @@ impl PythonTokenizer<'_> {
         Some(PythonTerminal {
             start_index: start as CodeIndex,
             length: (self.index - start) as CodeIndex,
-            type_: type_,
-            can_contain_syntax: can_contain_syntax,
+            type_,
+            can_contain_syntax,
         })
     }
 
     #[inline]
     fn dedent_if_necessary(&mut self, indentation_count: usize) -> Option<PythonTerminal> {
-        while indentation_count < *self.indent_stack.last().unwrap() {
+        if indentation_count < *self.indent_stack.last().unwrap() {
             if indentation_count > self.indent_stack[self.indent_stack.len() - 2] {
                 *self.indent_stack.last_mut().unwrap() = indentation_count;
                 return self.new_tok(self.index, false, PythonTerminalType::ErrorDedent);
@@ -193,7 +193,7 @@ impl PythonTokenizer<'_> {
 
     #[inline]
     fn encountered_break_token(&mut self) -> Option<PythonTerminal> {
-        if self.parentheses_level != 0 || self.f_string_stack.len() != 0 {
+        if self.parentheses_level != 0 || !self.f_string_stack.is_empty() {
             self.parentheses_level = 0;
             self.f_string_stack.clear();
 
@@ -346,7 +346,7 @@ impl PythonTokenizer<'_> {
             self.index += string_length;
             return end(self);
         }
-        return self.maybe_fstring_string(string_length).or_else(|| end(self));
+        self.maybe_fstring_string(string_length).or_else(|| end(self))
     }
 
     #[inline]
@@ -366,7 +366,7 @@ impl PythonTokenizer<'_> {
             self.index += length;
             return self.new_tok(start, false, PythonTerminalType::FStringString);
         }
-        return None;
+        None
     }
 
     #[inline]
@@ -431,7 +431,7 @@ impl PythonTokenizer<'_> {
                 return i;
             }
         }
-        return code.len()
+        code.len()
     }
 }
 
@@ -441,7 +441,7 @@ impl Iterator for PythonTokenizer<'_> {
         if self.ended {
             return None;
         }
-        if self.f_string_stack.len() != 0 {
+        if !self.f_string_stack.is_empty() {
             if let Some(token) = self.handle_fstring_stack() {
                 return Some(token);
             }
@@ -453,18 +453,15 @@ impl Iterator for PythonTokenizer<'_> {
         let c = code_from_start(self.code, self.index);
         if self.previous_token_was_newline {
             if let Some(&character) = c.as_bytes().first() {
-                if character != b'\n' && character != b'\r' {
-                    if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
-                        if indentation > *self.indent_stack.last().unwrap() {
-                            self.indent_stack.push(indentation);
-                            self.previous_token_was_newline = false;
-                            return self.new_tok(start, false, PythonTerminalType::Indent);
-                        } else {
-                            if let Some(token) = self.dedent_if_necessary(indentation) {
-                                self.index -= indentation;
-                                return Some(token);
-                            }
-                        }
+                if character != b'\n' && character != b'\r'
+                        && self.parentheses_level == 0 && self.f_string_stack.is_empty() {
+                    if indentation > *self.indent_stack.last().unwrap() {
+                        self.indent_stack.push(indentation);
+                        self.previous_token_was_newline = false;
+                        return self.new_tok(start, false, PythonTerminalType::Indent);
+                    } else if let Some(token) = self.dedent_if_necessary(indentation) {
+                            self.index -= indentation;
+                            return Some(token);
                     }
                 }
             }
@@ -546,7 +543,7 @@ impl Iterator for PythonTokenizer<'_> {
 
         if let Some(match_) = NEWLINE.find(c) {
             self.index += match_.end();
-            if self.parentheses_level == 0 && self.f_string_stack.len() == 0 {
+            if self.parentheses_level == 0 && self.f_string_stack.is_empty() {
                 self.previous_token_was_newline = true;
                 return self.new_tok(start, false, PythonTerminalType::Newline);
             } else {

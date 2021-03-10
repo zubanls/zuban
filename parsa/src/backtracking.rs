@@ -11,7 +11,7 @@ pub struct BacktrackingTokenizer<T: Token, I: Iterator<Item=T>> {
 impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     pub fn new(tokenizer: I) -> Self {
         Self {
-            tokenizer: tokenizer,
+            tokenizer,
             tokens: vec!(),
             next_index: 0,
             is_recording: false,
@@ -21,7 +21,7 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
     #[inline]
     pub fn start(&mut self, token: &T) -> usize {
         self.is_recording = true;
-        if self.tokens.len() == 0 {
+        if self.tokens.is_empty() {
             self.tokens.push(*token);
             self.next_index = 1;
             0
@@ -44,7 +44,7 @@ impl<T: Token, I: Iterator<Item=T>> BacktrackingTokenizer<T, I> {
 impl<T: Token, I: Iterator<Item=T>> Iterator for BacktrackingTokenizer<T, I> {
     type Item = T;
     fn next(&mut self) -> Option<Self::Item> {
-        if self.tokens.len() > 0 {
+        if !self.tokens.is_empty() {
             match self.tokens.get(self.next_index) {
                 None => {
                     let next = self.tokenizer.next();
