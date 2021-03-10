@@ -221,7 +221,7 @@ impl PythonTokenizer<'_> {
                 if let Some((_, next)) = iterator.next() {
                     // If the bracket appears again, we can just continue,
                     // it's part of the string.
-                    if next != character || false && self.get_f_string_tos().in_format_spec() {
+                    if next != character || self.get_f_string_tos().in_format_spec() {
                         if let Some(t) = self.maybe_fstring_string(i) {
                             return Some(t);
                         }
@@ -703,8 +703,17 @@ mod tests {
             (0, 2, FStringStart), (2, 1, Op), (3, 1, Op), (4, 1, Name),
             (5, 2, Op), (7, 2, Number), (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
         f_string_format_spec4 "f'{1}}'" => [
-            (0, 2, FStringStart), (2, 1, Op), (3, 1, Number), (4, 1, Operator),
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Number), (4, 1, Op),
             (5, 1, Op), (6, 1, FStringEnd)];
+
+        f_string_format_spec_nested1 "f'{x:{y:3}}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Name), (4, 1, Op),
+            (5, 1, Op), (6, 1, Name), (7, 1, Op), (8, 1, FStringString),
+            (9, 1, Op), (10, 1, Op), (11, 1, FStringEnd)];
+        f_string_format_spec_nested2 "f'{2:{x:{\"f\"}}}'" => [
+            (0, 2, FStringStart), (2, 1, Op), (3, 1, Number), (4, 1, Op),
+            (5, 1, Op), (6, 1, Name), (7, 1, Op), (8, 1, Op), (9, 3, String),
+            (12, 1, Op), (13, 1, Op), (14, 1, Op), (15, 1, FStringEnd)];
 
         f_string_multiline1 "f'''abc\ndef'''" => [(0, 4, FStringStart), (4, 7, FStringString),
                                                 (11, 3, FStringEnd)];
