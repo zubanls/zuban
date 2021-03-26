@@ -2,18 +2,26 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::iter::repeat;
 use std::pin::Pin;
+use std::hash::BuildHasherDefault;
+
+use fnv::FnvHashMap;
 
 pub const NODE_START: u16 = 1 << 15;
 pub const ERROR_RECOVERY_BIT: u16 = 1 << 14;
 
-type SquashedTransitions = HashMap<InternalSquashedType, Plan>;
-pub type Automatons = HashMap<InternalNonterminalType, RuleAutomaton>;
-pub type InternalStrToToken = HashMap<&'static str, InternalTerminalType>;
-pub type InternalStrToNode = HashMap<&'static str, InternalNonterminalType>;
-pub type RuleMap = HashMap<InternalNonterminalType, (&'static str, Rule)>;
-pub type SoftKeywords = HashMap<InternalTerminalType, HashSet<&'static str>>;
-type FirstPlans = HashMap<InternalNonterminalType, FirstPlan>;
+type SquashedTransitions = FastHashMap<InternalSquashedType, Plan>;
+pub type Automatons = FastHashMap<InternalNonterminalType, RuleAutomaton>;
+pub type InternalStrToToken = FastHashMap<&'static str, InternalTerminalType>;
+pub type InternalStrToNode = FastHashMap<&'static str, InternalNonterminalType>;
+pub type RuleMap = FastHashMap<InternalNonterminalType, (&'static str, Rule)>;
+pub type SoftKeywords = FastHashMap<InternalTerminalType, HashSet<&'static str>>;
+type FirstPlans = FastHashMap<InternalNonterminalType, FirstPlan>;
 type DFAStates = Vec<Pin<Box<DFAState>>>;
+pub type FastHashMap<K, V> = FnvHashMap<K, V>;
+
+pub fn new_fast_hash_map<K, V>() -> FastHashMap<K, V> {
+    FnvHashMap::default()
+}
 
 #[derive(Debug)]
 pub enum Rule {
@@ -162,7 +170,7 @@ enum FirstPlan {
 #[derive(Debug, Default)]
 pub struct Keywords {
     counter: usize,
-    keywords: HashMap<&'static str, InternalSquashedType>,
+    keywords: FastHashMap<&'static str, InternalSquashedType>,
 }
 
 impl Keywords {
@@ -371,8 +379,7 @@ impl RuleAutomaton {
             return;
         }
 
-        use std::mem;
-        let mut grouped_transitions = HashMap::<_, Vec<NFAStateId>>::new();
+        let mut grouped_transitions = new_fast_hash_map::<_, Vec<NFAStateId>>();
         let mut nfa_list: Vec<NFAStateId> = state.nfa_set.iter().cloned().collect();
         // Need to sort the list by ID to make sure that the lower IDs have higher priority. The
         // rules always generate NFAStates in order of priority.
@@ -588,7 +595,7 @@ pub fn generate_automatons(
         counter: terminal_map.len(),
         ..Default::default()
     };
-    let mut automatons = HashMap::new();
+    let mut automatons = new_fast_hash_map();
     let dfa_counter = 0;
     for (internal_type, (rule_name, rule)) in rules {
         let mut automaton = RuleAutomaton {
@@ -603,7 +610,7 @@ pub fn generate_automatons(
     }
 
     // Calculate first plans
-    let mut first_plans = HashMap::new();
+    let mut first_plans = new_fast_hash_map();
     let rule_labels = automatons
         .keys()
         .cloned()
@@ -709,7 +716,8 @@ fn plans_for_dfa(
 ) -> (SquashedTransitions, bool) {
     let mut conflict_tokens = HashSet::new();
     let mut conflict_transitions = HashSet::new();
-    let mut plans: HashMap<InternalSquashedType, (DFATransition, Plan)> = HashMap::new();
+
+    let mut plans = new_fast_hash_map();
     let mut is_left_recursive = false;
     // It is safe to get the dfa_state here, because they are pinned in a list that is insert only.
     let dfa_state = unsafe {
@@ -952,7 +960,7 @@ fn plans_for_dfa(
 }
 
 fn add_if_no_conflict<F: FnOnce() -> Plan>(
-    plans: &mut HashMap<InternalSquashedType, (DFATransition, Plan)>,
+    plans: &mut FastHashMap<InternalSquashedType, (DFATransition, Plan)>,
     conflict_transitions: &mut HashSet<TransitionType>,
     conflict_tokens: &mut HashSet<InternalSquashedType>,
     transition: DFATransition,
@@ -1006,7 +1014,7 @@ fn create_left_recursion_plans(
     dfa_id: DFAStateId,
     first_plans: &FirstPlans,
 ) -> SquashedTransitions {
-    let mut plans = HashMap::new();
+    let mut plans = new_fast_hash_map();
     let automaton = &automatons[&automaton_key];
     let dfa_state = &automaton.dfa_states[dfa_id.0];
     if dfa_state.is_final && !dfa_state.is_lookahead_end() {
@@ -1101,7 +1109,7 @@ fn split_tokens(
     dfa: &DFAState,
     conflict_transitions: HashSet<TransitionType>,
 ) -> (usize, *const DFAState) {
-    let mut transition_to_nfas = HashMap::<_, Vec<_>>::new();
+    let mut transition_to_nfas = new_fast_hash_map::<_, Vec<_>>();
     let mut nfas: Vec<_> = dfa.nfa_set.iter().collect();
     nfas.sort_by_key(|id| id.0);
     for &nfa_id in &nfas {
