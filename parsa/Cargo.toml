@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "*"
-seahash = "*"
+fnv = "*"
 
 [dev-dependencies]
 regex = "*"

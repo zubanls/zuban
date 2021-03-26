@@ -4,7 +4,7 @@ use std::iter::repeat;
 use std::pin::Pin;
 use std::hash::BuildHasherDefault;
 
-use seahash::SeaHasher;
+use fnv::FnvHashMap;
 
 pub const NODE_START: u16 = 1 << 15;
 pub const ERROR_RECOVERY_BIT: u16 = 1 << 14;
@@ -17,11 +17,10 @@ pub type RuleMap = FastHashMap<InternalNonterminalType, (&'static str, Rule)>;
 pub type SoftKeywords = FastHashMap<InternalTerminalType, HashSet<&'static str>>;
 type FirstPlans = FastHashMap<InternalNonterminalType, FirstPlan>;
 type DFAStates = Vec<Pin<Box<DFAState>>>;
-pub type FastHashMap<K, V> = HashMap<K, V, BuildHasherDefault<SeaHasher>>;
+pub type FastHashMap<K, V> = FnvHashMap<K, V>;
 
 pub fn new_fast_hash_map<K, V>() -> FastHashMap<K, V> {
-    let hasher = BuildHasherDefault::<SeaHasher>::default();
-    HashMap::with_hasher(hasher)
+    FnvHashMap::default()
 }
 
 #[derive(Debug)]
