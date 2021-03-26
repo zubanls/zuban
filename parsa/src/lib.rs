@@ -7,13 +7,13 @@ mod grammar;
 
 #[macro_export]
 pub use lazy_static::lazy_static;
-pub use std::collections::{HashMap, HashSet};
+pub use std::collections::{HashSet};
 pub use std::io::Bytes;
 pub use std::mem;
 
 pub use automaton::{
     InternalNonterminalType, InternalSquashedType, InternalStrToNode, InternalStrToToken,
-    InternalTerminalType, Rule, NODE_START,
+    InternalTerminalType, Rule, NODE_START, FastHashMap, new_fast_hash_map
 };
 pub use grammar::{
     CodeIndex, CodeLength, ExtraData, Grammar, InternalNode, InternalTree, NodeIndex, Token,
@@ -54,7 +54,7 @@ macro_rules! __create_type_set {
                 #[macro_use]
                 $crate::lazy_static! {
                     static ref HASHMAP: $Map = {
-                        let mut m = $crate::HashMap::new();
+                        let mut m = $crate::new_fast_hash_map();
                         m.insert(
                             stringify!($first_entry),
                             $Type($EnumName::$first_entry as u16)
@@ -73,8 +73,8 @@ macro_rules! __create_type_set {
             pub fn as_str(x: $EnumName) -> &'static str {
                 #[macro_use]
                 $crate::lazy_static! {
-                    static ref HASHMAP: $crate::HashMap<u16, &'static str> = {
-                        let mut m = $crate::HashMap::new();
+                    static ref HASHMAP: $crate::FastHashMap<u16, &'static str> = {
+                        let mut m = $crate::new_fast_hash_map();
                         m.insert($EnumName::$first_entry as u16, stringify!($first_entry));
                         $(m.insert($EnumName::$entry as u16, stringify!($entry));)*;
                         m
@@ -440,7 +440,7 @@ macro_rules! __parse_rule {
 #[macro_export]
 macro_rules! __parse_soft_keywords {
     ($TerminalType:ident, $($terminal:ident : $($string:literal)|+)*) => {{
-        let mut soft_keywords = $crate::HashMap::new();
+        let mut soft_keywords = $crate::new_fast_hash_map();
         $(
             let mut tokens = $crate::HashSet::new();
             $(tokens.insert($string);)+
@@ -469,7 +469,7 @@ macro_rules! create_grammar {
 
         impl $Grammar {
             fn new() -> Self {
-                let mut rules = $crate::HashMap::new();
+                let mut rules = $crate::new_fast_hash_map();
                 $crate::__parse_rules!($NonterminalType, rules, $first_node $($rule)+);
                 let soft_keywords = $crate::__parse_soft_keywords!($TerminalType, $($soft_keywords)*);
                 Self {internal_grammar: Grammar::new(
