@@ -8,7 +8,6 @@ use crate::automaton::{
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
 
-pub type ExtraData = u32;
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
@@ -38,7 +37,6 @@ pub struct InternalNode {
 
     pub start_index: CodeIndex,
     pub length: CodeLength,
-    pub extra_data: ExtraData,
 }
 
 impl InternalNode {
@@ -54,8 +52,6 @@ struct CompressedNode {
 
     start_index: u16,
     length: u16,
-    extra_data1: u16,
-    extra_data2: u16,
 }
 
 #[cfg(test)]
@@ -65,8 +61,8 @@ mod tests {
 
     #[test]
     fn sizes() {
-        assert_eq!(size_of::<InternalNode>(), 20);
-        assert_eq!(size_of::<CompressedNode>(), 10);
+        assert_eq!(size_of::<InternalNode>(), 16);
+        assert_eq!(size_of::<CompressedNode>(), 6);
         assert_eq!(align_of::<InternalNode>(), 4);
         assert_eq!(align_of::<CompressedNode>(), 2);
     }
@@ -306,7 +302,6 @@ impl<'a, T: Token> Grammar<T> {
                         type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
                         start_index: token.get_start_index(),
                         length: token.get_length(),
-                        extra_data: 0,
                     });
                     // And then add the terminal
                     stack.tree_nodes.push(InternalNode {
@@ -314,7 +309,6 @@ impl<'a, T: Token> Grammar<T> {
                         type_: transition.set_error_recovery_bit(),
                         start_index: token.get_start_index(),
                         length: token.get_length(),
-                        extra_data: 0,
                     });
                     return; // Error recovery is done.
                 }
@@ -362,7 +356,6 @@ impl<'a, T: Token> Grammar<T> {
                     type_: old_node.type_,
                     start_index: old_node.start_index,
                     length: 0,
-                    extra_data: 0,
                 },
             );
         }
@@ -405,7 +398,6 @@ impl<'a, T: Token> Grammar<T> {
             type_: plan.type_,
             start_index,
             length: token.get_length(),
-            extra_data: 0,
         });
     }
 }
@@ -473,7 +465,6 @@ impl<'a> Stack<'a> {
                 type_: node_id.to_squashed(),
                 start_index: start,
                 length: 0,
-                extra_data: 0,
             });
         }
     }

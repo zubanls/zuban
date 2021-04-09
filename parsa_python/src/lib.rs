@@ -281,6 +281,5 @@ mod tests {
             root_node.get_type(),
             PythonNodeType::Nonterminal(PythonNonterminalType::file_input)
         );
-        assert_eq!(root_node.get_extra_data(), 0);
     }
 }

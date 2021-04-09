@@ -108,7 +108,6 @@ fn it_works() {
     let tree = JSON_GRAMMAR.parse("{foo: 1}".to_owned());
     let root_node = tree.get_root_node();
     assert_eq!(root_node.get_type(), Nonterminal(document));
-    assert_eq!(root_node.get_extra_data(), 0);
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);
     let expected_list = [

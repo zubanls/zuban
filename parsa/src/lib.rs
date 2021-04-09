@@ -16,7 +16,7 @@ pub use automaton::{
     InternalTerminalType, Rule, NODE_START, FastHashMap, new_fast_hash_map
 };
 pub use grammar::{
-    CodeIndex, CodeLength, ExtraData, Grammar, InternalNode, InternalTree, NodeIndex, Token,
+    CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token,
     Tokenizer,
 };
 
@@ -144,10 +144,6 @@ macro_rules! __create_node {
         }
 
         impl $Node<'_> {
-            pub fn get_extra_data(&self) -> $crate::ExtraData {
-                self.internal_node.extra_data
-            }
-
             fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
@@ -516,10 +512,6 @@ macro_rules! create_grammar {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.get_node(index as u32, internal_node)
                 ).collect()
-            }
-
-            pub fn set_extra_data(&mut self, index: $crate::NodeIndex, extra_data: $crate::ExtraData) {
-                self.internal_tree.nodes[0].extra_data = extra_data
             }
         }
 
