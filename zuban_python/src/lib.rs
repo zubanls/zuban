@@ -53,11 +53,14 @@ impl<'a> Script<'a> {
     fn complete(&self, line: usize, column: usize) {
     }
 
-    fn infer(&self, line: usize, column: usize/*, only_stubs=False, prefer_stubs=False*/) {
+    fn infer_definition(&self, line: usize, column: usize) {
+    }
+    fn infer_implementation(&self, line: usize, column: usize) {
     }
 
-    fn goto(&self, line: usize, column: usize/*, follow_imports=False, follow_builtin_imports=False,
-            only_stubs=False, prefer_stubs=False*/) {
+    fn goto_definition(&self, line: usize, column: usize, follow_imports: bool) {
+    }
+    fn goto_implementation(&self, line: usize, column: usize, follow_imports: bool) {
     }
 
     fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {
@@ -69,7 +72,7 @@ impl<'a> Script<'a> {
     fn help(&self, line: usize, column: usize) {
     }
 
-    fn get_references(&self, line: usize, column: usize/*, include_builtins=True, scope='project'*/) {
+    fn get_references(&self, line: usize, column: usize/*, scope='project'*/) {
     }
 
     fn get_signatures(&self, line: usize, column: usize) {
