@@ -19,6 +19,7 @@ struct PythonProject {
     //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
+    database: cache::StateDB,
 }
 
 struct Script {

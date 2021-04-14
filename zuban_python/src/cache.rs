@@ -1,5 +1,5 @@
 pub use std::mem;
-pub use std::path::PathBuf;
+pub use std::path::{Path, PathBuf};
 pub use std::collections::HashMap;
 pub use parsa_python::PythonTree;
 
@@ -23,9 +23,14 @@ type ComplexIndex = u32;
 
 const IS_REFERENCE_MASK: u32 = 1 << 31;
 const IS_DEFINITION_MASK: u32 = 1 << 30;
-const LOCALITY_MASK: u32 = 0b111 << 27
+const LOCALITY_INDEX: usize = 27;
+const LOCALITY_MASK: u32 = 0b111 << LOCALITY_INDEX;
 const REST_MASK: u32 = LOCALITY_MASK | IS_REFERENCE_MASK | IS_DEFINITION_MASK;
+const MODULE_MASK: u32 = 0xFFFFFF; // 24 bits
 
+const IS_EXTERN_MASK: u32 = 1 << 29;
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct InternalValueOrReference {
     flags: u32,
     tree_index: TreeIndex,
@@ -33,11 +38,24 @@ struct InternalValueOrReference {
 
 impl InternalValueOrReference {
     fn get_locality(self) -> Locality {
-        mem::transmute(self.flags << 28 & 7)
+        unsafe { mem::transmute(self.flags << 28 & 7) }
+    }
+
+    fn is_extern(self) -> bool {
+        self.flags & IS_EXTERN_MASK != 0
     }
 
     fn is_uncalculated(self) -> bool {
-         self.flags == 0
+        self.flags == 0
+    }
+
+    fn is_calculating(self) -> bool {
+        self.flags == 1
+    }
+
+    fn is_recursion_error(self) -> bool {
+        unimplemented!();
+        //self.flags & REST_MASK & 1 == 1
     }
 
     fn is_value(self) -> bool {
@@ -45,13 +63,22 @@ impl InternalValueOrReference {
     }
 
     fn get_x(self) -> ValueOrReference {
-        if self.is_calculated() {
-            ValueOrReference::Uncalculated
+        if self.is_uncalculated() {
+            return ValueOrReference::Uncalculated;
+        }
+        if self.is_calculating() {
+            return ValueOrReference::Calculating;
+        }
+        if self.is_recursion_error() {
+            return ValueOrReference::RecursionError;
         }
         if self.is_value() {
-            ValueOrReference::Value()
+            panic!();
+            //ValueOrReference::Value(1)
+        } else if self.is_extern() {
+            ValueOrReference::Reference(Reference::Link(self.flags & MODULE_MASK, self.tree_index))
         } else {
-            ValueOrReference::Reference()
+            ValueOrReference::Reference(Reference::LocalLink(self.tree_index))
         }
     }
 }
@@ -145,9 +172,9 @@ enum ModuleState<T> {
 
 struct Module {
     path: PathBuf,
-    state: ModuleState<Tree>,
-    definition_names: HashMap<&str, TreeIndex>,
-    reference_bloom_filter: BloomFilter<&str>,
+    state: ModuleState<PythonTree>,
+    definition_names: HashMap<&'static str, TreeIndex>,
+    //reference_bloom_filter: BloomFilter<&str>,
     dependencies: Vec<ModuleIndex>,
     values_or_references: Vec<InternalValueOrReference>,
     complex_values: Vec<ComplexValue>,
@@ -160,3 +187,19 @@ struct Issue {
     locality: Locality,
 }
 
+pub struct StateDB {
+    modules: Vec<Module>,
+    path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
+    workspaces: Vec<Workspace>,
+    files_managed_by_client: HashMap<PathBuf, ModuleIndex>,
+}
+
+struct Workspace {
+    root: DirectoryOrFile,
+    //watcher: dyn notify::Watcher,
+}
+
+enum DirectoryOrFile {
+    File(&'static Path, Option<ModuleIndex>),
+    Directory(&'static Path, Vec<DirectoryOrFile>),
+}
