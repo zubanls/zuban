@@ -1,6 +1,12 @@
 use std::fs;
+use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
+    let mut project = zuban_python::Project::new("foo".to_owned());
+    zuban_python::Script::new(&mut project, Some(PathBuf::from("/foo/bar")), None);
+
+    return Ok(());
+
     let file = "/home/dave/source/stuff_jedi/quickfix_huge.py";
     let contents = fs::read_to_string(file)?;
 

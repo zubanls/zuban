@@ -2,19 +2,36 @@
 #![allow(dead_code)]
 
 mod cache;
+use std::path::PathBuf;
 
-enum Project {
+pub enum Project {
     PythonProject(PythonProject),
 }
 
 impl Project {
+    pub fn new(path: String) -> Self {
+        Self::PythonProject(PythonProject {
+            path,
+            sys_path: vec!(),
+            is_django: false,
+            database: Default::default(),
+        })
+    }
+
     fn search(&self, string: &str, all_scopes: bool) {
     }
     fn complete_search(&self, string: &str, all_scopes: bool) {
     }
+
+    fn get_state(&self) -> &cache::StateDB {
+        // TODO cleanup
+        match self {
+            Project::PythonProject(x) => &x.database,
+        }
+    }
 }
 
-struct PythonProject {
+pub struct PythonProject {
     path: String,
     //environment_path: String,
     sys_path: Vec<String>,
@@ -22,11 +39,15 @@ struct PythonProject {
     database: cache::StateDB,
 }
 
-struct Script {
+pub struct Script<'a> {
+    project: &'a mut Project,
+    path: Option<PathBuf>,
+    code: Option<String>,
 }
 
-impl Script {
-    fn _new(code: String, path: &str, project: Project) {
+impl<'a> Script<'a> {
+    pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
+        Self {project, path, code}
     }
 
     fn complete(&self, line: usize, column: usize) {
@@ -61,6 +82,9 @@ impl Script {
     }
 
     fn get_syntax_errors(&self) {
+    }
+
+    fn get_errors(&self) {
     }
 
     fn rename(&self, line: usize, column: usize, new_name: &str) {

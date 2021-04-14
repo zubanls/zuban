@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 parsa_python = { path = "../parsa_python" }
+zuban_python = { path = "../zuban_python" }

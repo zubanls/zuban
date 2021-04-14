@@ -159,6 +159,7 @@ name = "scripts"
 version = "0.1.0"
 dependencies = [
  "parsa_python",
+ "zuban_python",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
-pub use std::mem;
-pub use std::path::{Path, PathBuf};
-pub use std::collections::HashMap;
-pub use parsa_python::PythonTree;
+use std::mem;
+use std::path::{Path, PathBuf};
+use std::collections::HashMap;
+use parsa_python::PythonTree;
 
 type TreeIndex = u32;
 type ModuleIndex = u32;
@@ -187,6 +187,7 @@ struct Issue {
     locality: Locality,
 }
 
+#[derive(Default)]
 pub struct StateDB {
     modules: Vec<Module>,
     path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
