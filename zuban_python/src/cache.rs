@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use parsa_python::PythonTree;
 
+use crate::module::Module;
+
 type TreeIndex = u32;
 type ModuleIndex = u32;
 type ComplexIndex = u32;
@@ -170,7 +172,7 @@ enum ModuleState<T> {
     FulllyInferred(T),
 }
 
-struct Module {
+struct PythonModule {
     path: PathBuf,
     state: ModuleState<PythonTree>,
     definition_names: HashMap<&'static str, TreeIndex>,
@@ -189,10 +191,17 @@ struct Issue {
 
 #[derive(Default)]
 pub struct StateDB {
-    modules: Vec<Module>,
+    modules: Vec<Box<dyn Module>>,
     path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, ModuleIndex>,
+}
+
+impl StateDB {
+    pub fn get_module(&self, path: PathBuf) -> &Box<dyn Module> {
+        let index = self.path_to_module[&path];
+        &self.modules[index as usize]
+    }
 }
 
 struct Workspace {

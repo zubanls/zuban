@@ -2,7 +2,10 @@
 #![allow(dead_code)]
 
 mod cache;
+mod module;
+use parsa::CodeIndex;
 use std::path::PathBuf;
+use module::{Names, Leaf};
 
 pub enum Project {
     PythonProject(PythonProject),
@@ -14,7 +17,7 @@ impl Project {
             path,
             sys_path: vec!(),
             is_django: false,
-            database: Default::default(),
+            state_db: Default::default(),
         })
     }
 
@@ -26,7 +29,7 @@ impl Project {
     fn get_state(&self) -> &cache::StateDB {
         // TODO cleanup
         match self {
-            Project::PythonProject(x) => &x.database,
+            Project::PythonProject(x) => &x.state_db,
         }
     }
 }
@@ -36,79 +39,107 @@ pub struct PythonProject {
     //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
-    database: cache::StateDB,
+    state_db: cache::StateDB,
+}
+
+pub enum Position {
+    Byte(usize),
+    LineColumn(usize, usize),
 }
 
 pub struct Script<'a> {
     project: &'a mut Project,
-    path: Option<PathBuf>,
-    code: Option<String>,
+    module: Box<dyn module::Module>,
 }
 
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
-        Self {project, path, code}
+        let module = project.get_state().get_module(path.unwrap().canonicalize().unwrap());
+        panic!();
+        //Self {project, module}
     }
 
-    fn complete(&self, line: usize, column: usize) {
+    fn to_byte_position(&self, position: Position) -> CodeIndex {
+        match position {
+            Position::Byte(pos) => pos as u32,
+            Position::LineColumn(line, column) => {
+                panic!();
+            },
+        }
     }
 
-    fn infer_definition(&self, line: usize, column: usize) {
-    }
-    fn infer_implementation(&self, line: usize, column: usize) {
-    }
-
-    fn goto_definition(&self, line: usize, column: usize, follow_imports: bool) {
-    }
-    fn goto_implementation(&self, line: usize, column: usize, follow_imports: bool) {
+    fn get_tree_leaf(&self, position: Position) -> Leaf {
+        let pos = self.to_byte_position(position);
+        self.module.get_leaf(pos)
     }
 
-    fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {
+    pub fn complete(&self, position: Position) {
     }
 
-    fn complete_search(&self, text: String, all_scopes: bool, fuzzy: bool) {
+    pub fn infer_definition(&self, position: Position) -> Names {
+        panic!()
     }
 
-    fn help(&self, line: usize, column: usize) {
+    pub fn infer_implementation(&self, position: Position) -> Names {
+        let names = self.infer_definition(position);
+        self.module.get_implementation(names)
     }
 
-    fn get_references(&self, line: usize, column: usize/*, scope='project'*/) {
+    pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
+        panic!()
     }
 
-    fn get_signatures(&self, line: usize, column: usize) {
+    pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
+        let names = self.infer_definition(position);
+        self.module.get_implementation(names)
     }
 
-    fn get_context(&self, line: usize, column: usize) {
+    pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {
     }
 
-    fn get_names(&self, /*all_scopes=False, definitions=True, references=False*/) {
+    pub fn complete_search(&self, text: String, all_scopes: bool, fuzzy: bool) {
     }
 
-    fn get_syntax_errors(&self) {
+    pub fn help(&self, position: Position) {
     }
 
-    fn get_errors(&self) {
+    pub fn get_references(&self, position: Position/*, scope='project'*/) {
     }
 
-    fn rename(&self, line: usize, column: usize, new_name: &str) {
+    pub fn get_signatures(&self, position: Position) {
     }
 
-    fn extract_variable(&self, line: usize, column: usize, new_name: &str,
+    pub fn get_context(&self, position: Position) {
+    }
+
+    pub fn get_names(&self, /*all_scopes=False, definitions=True, references=False*/) {
+    }
+
+    pub fn get_syntax_errors(&self) {
+    }
+
+    pub fn get_errors(&self) {
+    }
+
+    pub fn rename(&self, position: Position, new_name: &str) {
+    }
+
+    pub fn extract_variable(&self, position: Position, new_name: &str,
                         until_line: Option<usize>, until_column: Option<usize>) {
     }
 
-    fn extract_function(&self, line: usize, column: usize, new_name: &str,
+    pub fn extract_function(&self, position: Position, new_name: &str,
                         until_line: Option<usize>, until_column: Option<usize>) {
     }
 
-    fn inline(&self, line: usize, column: usize) {
+    pub fn inline(&self, position: Position) {
     }
 
     /*
-    fn get_selection_ranges() {
+    pub fn get_selection_ranges() {
     }
 
-    fn get_errors() {
+    pub fn get_errors() {
     }
     */
 }

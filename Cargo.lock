@@ -285,5 +285,6 @@ dependencies = [
 name = "zuban_python"
 version = "0.1.0"
 dependencies = [
+ "parsa",
  "parsa_python",
 ]
