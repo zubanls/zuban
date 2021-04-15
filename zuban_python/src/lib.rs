@@ -52,6 +52,10 @@ pub struct Script<'a> {
     module: Box<dyn module::Module>,
 }
 
+fn sorted_names(names: Names) -> Names {
+    names
+}
+
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let module = project.get_state().get_module(path.unwrap().canonicalize().unwrap());
@@ -68,7 +72,7 @@ impl<'a> Script<'a> {
         }
     }
 
-    fn get_tree_leaf(&self, position: Position) -> Leaf {
+    fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
         self.module.get_leaf(pos)
     }
@@ -77,7 +81,12 @@ impl<'a> Script<'a> {
     }
 
     pub fn infer_definition(&self, position: Position) -> Names {
-        panic!()
+        match self.get_leaf(position) {
+            Leaf::Name(name) => sorted_names(self.module.infer(name)),
+            Leaf::Number => panic!(),
+            Leaf::Keyword(keyword) => panic!(),
+            Leaf::Other | Leaf::None | Leaf::String => vec!(),
+        }
     }
 
     pub fn infer_implementation(&self, position: Position) -> Names {
