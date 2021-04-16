@@ -2,11 +2,11 @@ use std::mem;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use parsa_python::PythonTree;
+use parsa::NodeIndex;
 
 use crate::module::Module;
 
-type TreeIndex = u32;
-type ModuleIndex = u32;
+pub type ModuleIndex = u32;
 type ComplexIndex = u32;
 
 // Most significant bits
@@ -35,7 +35,7 @@ const IS_EXTERN_MASK: u32 = 1 << 29;
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 struct InternalValueOrReference {
     flags: u32,
-    tree_index: TreeIndex,
+    node_index: NodeIndex,
 }
 
 impl InternalValueOrReference {
@@ -78,9 +78,9 @@ impl InternalValueOrReference {
             panic!();
             //ValueOrReference::Value(1)
         } else if self.is_extern() {
-            ValueOrReference::Reference(Reference::Link(self.flags & MODULE_MASK, self.tree_index))
+            ValueOrReference::Reference(Reference::Link(self.flags & MODULE_MASK, self.node_index))
         } else {
-            ValueOrReference::Reference(Reference::LocalLink(self.tree_index))
+            ValueOrReference::Reference(Reference::LocalLink(self.node_index))
         }
     }
 }
@@ -94,16 +94,16 @@ enum ValueOrReference {
 }
 
 enum Reference {
-    LocalLink(TreeIndex),
-    Link(ModuleIndex, TreeIndex),
-    MultiReference(TreeIndex),
+    LocalLink(NodeIndex),
+    Link(ModuleIndex, NodeIndex),
+    MultiReference(NodeIndex),
     Missing,
 }
 
 enum Value {
-    Class(TreeIndex),
-    Function(TreeIndex),  // Result
-    NoReturnFunction(TreeIndex),
+    Class(NodeIndex),
+    Function(NodeIndex),  // Result
+    NoReturnFunction(NodeIndex),
     String,
     Bytes,
     Float,
@@ -115,13 +115,13 @@ enum Value {
     Unknown,
     Param,  // Can be optional if param has default `foo=None`
     SelfParam,
-    ParamWithDefault(TreeIndex),
+    ParamWithDefault(NodeIndex),
     Any,
     SimpleGeneric, // primary: primary '[' slices ']'
-    TypeVar(TreeIndex),
+    TypeVar(NodeIndex),
 
-    LocalLink(TreeIndex),
-    Link(ModuleIndex, TreeIndex),
+    LocalLink(NodeIndex),
+    Link(ModuleIndex, NodeIndex),
     ComplexIndex(ComplexIndex),
 
     //Optional<Value>,
@@ -147,7 +147,7 @@ struct InternalValue(u32, u32);
 
 struct ValueLink {
     module: ModuleIndex,
-    tree_index: TreeIndex,
+    node_index: NodeIndex,
 }
 
 enum ComplexValue {
@@ -175,7 +175,7 @@ enum ModuleState<T> {
 struct PythonModule {
     path: PathBuf,
     state: ModuleState<PythonTree>,
-    definition_names: HashMap<&'static str, TreeIndex>,
+    definition_names: HashMap<&'static str, NodeIndex>,
     //reference_bloom_filter: BloomFilter<&str>,
     dependencies: Vec<ModuleIndex>,
     values_or_references: Vec<InternalValueOrReference>,
@@ -185,7 +185,7 @@ struct PythonModule {
 
 struct Issue {
     issue_id: u32,
-    tree_node: TreeIndex,
+    tree_node: NodeIndex,
     locality: Locality,
 }
 

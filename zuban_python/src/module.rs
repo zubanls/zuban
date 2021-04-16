@@ -1,4 +1,4 @@
-use parsa::CodeIndex;
+use parsa::{CodeIndex, NodeIndex};
 
 pub type Names = Vec<()>;
 pub type Name = u8;
@@ -22,6 +22,10 @@ pub trait Module {
     }
 
     fn infer(&self, name: Name) -> Names {
+        vec!()
+    }
+
+    fn goto(&self, name: NodeIndex) -> Names {
         vec!()
     }
 }
