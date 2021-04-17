@@ -3,8 +3,13 @@
 
 mod cache;
 mod module;
-use parsa::CodeIndex;
+mod name;
+mod value;
+
 use std::path::PathBuf;
+use std::rc::Rc;
+use std::cell::RefCell;
+use parsa::CodeIndex;
 use module::{Names, Leaf};
 
 pub enum Project {
@@ -26,10 +31,10 @@ impl Project {
     fn complete_search(&self, string: &str, all_scopes: bool) {
     }
 
-    fn get_state(&self) -> &cache::StateDB {
+    fn get_state(&self) -> Rc<RefCell<cache::StateDB>> {
         // TODO cleanup
         match self {
-            Project::PythonProject(x) => &x.state_db,
+            Project::PythonProject(x) => x.state_db.clone(),
         }
     }
 }
@@ -39,7 +44,7 @@ pub struct PythonProject {
     //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
-    state_db: cache::StateDB,
+    state_db: Rc<RefCell<cache::StateDB>>,
 }
 
 pub enum Position {
@@ -58,7 +63,8 @@ fn sorted_names(names: Names) -> Names {
 
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
-        let module = project.get_state().get_module(path.unwrap().canonicalize().unwrap());
+        let state = project.get_state();
+        let module = state.borrow_mut().get_module(path.unwrap().canonicalize().unwrap());
         panic!();
         //Self {project, module}
     }

@@ -1,7 +1,7 @@
 use parsa::{CodeIndex, NodeIndex};
 
 pub type Names = Vec<()>;
-pub type Name = u8;
+pub type Name = u32;
 
 pub enum Leaf {
     Name(Name),
@@ -21,7 +21,7 @@ pub trait Module {
         panic!();
     }
 
-    fn infer(&self, name: Name) -> Names {
+    fn infer(&self, name: NodeIndex) -> Names {
         vec!()
     }
 
