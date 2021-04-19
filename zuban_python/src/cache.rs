@@ -6,7 +6,9 @@ use parsa::NodeIndex;
 
 use crate::module::Module;
 
-pub type ModuleIndex = u32;
+#[derive(Clone, Copy)]
+pub struct ModuleIndex(u32);
+
 type ComplexIndex = u32;
 
 // Most significant bits
@@ -78,7 +80,7 @@ impl InternalValueOrReference {
             panic!();
             //ValueOrReference::Value(1)
         } else if self.is_extern() {
-            ValueOrReference::Reference(Reference::Link(self.flags & MODULE_MASK, self.node_index))
+            ValueOrReference::Reference(Reference::Link(ModuleIndex(self.flags & MODULE_MASK), self.node_index))
         } else {
             ValueOrReference::Reference(Reference::LocalLink(self.node_index))
         }
@@ -198,9 +200,13 @@ pub struct StateDB {
 }
 
 impl StateDB {
-    pub fn get_module(&self, path: PathBuf) -> &Box<dyn Module> {
+    pub fn get_module(&self, index: ModuleIndex) -> &Box<dyn Module> {
+        &self.modules[index.0 as usize]
+    }
+
+    pub fn get_module_by_path(&self, path: PathBuf) -> &Box<dyn Module> {
         let index = self.path_to_module[&path];
-        &self.modules[index as usize]
+        &self.get_module(index)
     }
 }
 

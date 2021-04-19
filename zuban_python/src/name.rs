@@ -2,46 +2,16 @@ use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::path::{PathBuf};
 
-use crate::value::Value;
+use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, StateDB};
-use crate::module::Names;
+use crate::module::{Module, Names};
 use parsa::{CodeIndex, NodeIndex};
 
-type Signatures = Vec<u8>;
+type Signatures = Vec<()>;
 
 struct TreePosition {
     position: CodeIndex,
     state_db: Rc<RefCell<StateDB>>,
-}
-
-enum ValueKind {
-    // Taken from LSP, unused kinds are commented
-	//File = 1,
-	Module = 2,
-	Namespace = 3,
-	//Package = 4,
-	Class = 5,
-	Method = 6,
-	Property = 7,
-	Field = 8,
-	//Constructor = 9,
-	//Enum = 10,
-	//Interface = 11,
-	Function = 12,
-	//Variable = 13,
-	Constant = 14,
-	String = 15,
-	Number = 16,
-	Boolean = 17,
-	Array = 18,
-	Dictionary = 19,  // Called "Object" in LSP
-	//Key = 20,
-	Null = 21,
-	//EnumMember = 22,
-	//Struct = 23,
-	//Event = 24,
-	//Operator = 25,
-	TypeParameter = 26,
 }
 
 impl TreePosition {
@@ -59,7 +29,7 @@ trait Name {
 
     fn get_module_path(&self) -> Option<PathBuf>;
 
-    fn get_kind(&self) -> ValueKind;
+    fn get_kind(&self) -> Option<ValueKind>;
 
     fn get_position(&self) -> TreePosition;
 
@@ -99,8 +69,28 @@ trait Name {
 struct TreeName {
     module: ModuleIndex,
     is_alive: Rc<Cell<bool>>,
-    state_db: Rc<RefCell<StateDB>>,
+    state_db: *mut StateDB,
     tree_id: NodeIndex,
+}
+
+impl TreeName {
+    #[inline]
+    fn get_state_db(&mut self) -> &mut StateDB {
+        if !self.is_alive.get() {
+            panic!("You should not access an old state of the project");
+        }
+        unsafe {&mut *self.state_db}
+    }
+
+    #[inline]
+    fn get_module(&self) -> &Box<Module> {
+        let module = self.module;
+        let x = self as *const Self;
+        let y = x as *mut Self;
+        let z = unsafe {&mut *y};
+        z.get_state_db().get_module(module)
+        //unsafe {&*(self as *const Self as *mut Self)}.get_state_db().get_module(self.module)
+    }
 }
 
 struct ValueName {

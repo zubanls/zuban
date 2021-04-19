@@ -64,7 +64,7 @@ fn sorted_names(names: Names) -> Names {
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let state = project.get_state();
-        let module = state.borrow_mut().get_module(path.unwrap().canonicalize().unwrap());
+        let module = state.borrow_mut().get_module_by_path(path.unwrap().canonicalize().unwrap());
         panic!();
         //Self {project, module}
     }
