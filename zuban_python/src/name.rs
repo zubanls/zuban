@@ -83,7 +83,7 @@ impl TreeName {
     }
 
     #[inline]
-    fn get_module(&self) -> &Box<Module> {
+    fn get_module(&self) -> &dyn Module {
         let module = self.module;
         let x = self as *const Self;
         let y = x as *mut Self;
@@ -101,7 +101,7 @@ struct ValueName {
 /*
 impl Name for TreeName {
     fn get_name(&self) -> String {
-        self.
+        self.get_module().get_name()
     }
 
     fn is_implementation

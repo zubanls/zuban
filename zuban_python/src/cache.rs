@@ -200,13 +200,13 @@ pub struct StateDB {
 }
 
 impl StateDB {
-    pub fn get_module(&self, index: ModuleIndex) -> &Box<dyn Module> {
-        &self.modules[index.0 as usize]
+    pub fn get_module(&self, index: ModuleIndex) -> &dyn Module {
+        self.modules[index.0 as usize].as_ref()
     }
 
-    pub fn get_module_by_path(&self, path: PathBuf) -> &Box<dyn Module> {
+    pub fn get_module_by_path(&self, path: PathBuf) -> &dyn Module {
         let index = self.path_to_module[&path];
-        &self.get_module(index)
+        self.get_module(index)
     }
 }
 

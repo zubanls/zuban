@@ -28,4 +28,6 @@ pub trait Module {
     fn goto(&self, name: NodeIndex) -> Names {
         vec!()
     }
+
+    fn get_name(&self, name: NodeIndex) -> &str;
 }
