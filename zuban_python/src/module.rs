@@ -13,6 +13,8 @@ pub enum Leaf {
 }
 
 pub trait Module {
+    fn get_path(&self) -> Option<&str>;
+
     fn get_implementation(&self, names: Names) -> Names {
         vec!()
     }
@@ -29,5 +31,5 @@ pub trait Module {
         vec!()
     }
 
-    fn get_name(&self, name: NodeIndex) -> &str;
+    fn get_tree_node(&self, name: NodeIndex) -> &str;
 }

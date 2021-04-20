@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
-use std::path::{PathBuf};
 
 use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, StateDB};
@@ -25,15 +24,19 @@ impl TreePosition {
 }
 
 trait Name {
-    fn get_name(&self) -> String;
+    fn get_name(&self) -> &str;
 
-    fn get_module_path(&self) -> Option<PathBuf>;
+    fn get_module_path(&self) -> Option<&str>;
 
-    fn get_kind(&self) -> Option<ValueKind>;
+    // TODO
+    //fn get_kind(&self) -> Option<ValueKind>;
 
-    fn get_position(&self) -> TreePosition;
+    fn get_start_position(&self) -> TreePosition;
 
-    fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
+    fn get_end_position(&self) -> TreePosition;
+
+    // TODO
+    //fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
 
     fn get_documentation(&self) -> String;
 
@@ -84,12 +87,9 @@ impl TreeName {
 
     #[inline]
     fn get_module(&self) -> &dyn Module {
-        let module = self.module;
-        let x = self as *const Self;
-        let y = x as *mut Self;
-        let z = unsafe {&mut *y};
-        z.get_state_db().get_module(module)
-        //unsafe {&*(self as *const Self as *mut Self)}.get_state_db().get_module(self.module)
+        // TODO comment why this is ok.
+        #[allow(clippy::cast_ref_to_mut)]
+        unsafe {&mut *(self as *const Self as *mut Self)}.get_state_db().get_module(self.module)
     }
 }
 
@@ -98,12 +98,39 @@ struct ValueName {
 }
 
 
-/*
 impl Name for TreeName {
-    fn get_name(&self) -> String {
-        self.get_module().get_name()
+    fn get_name(&self) -> &str {
+        //self.get_module().get_tree_node(self.tree_id).get_code()
+        todo!()
     }
 
-    fn is_implementation
+    fn get_module_path(&self) -> Option<&str> {
+        self.get_module().get_path()
+    }
+
+    fn get_start_position(&self) -> TreePosition {
+        //self.get_module().get_tree_node(self.tree_id).get_position()
+        todo!();
+    }
+
+    fn get_end_position(&self) -> TreePosition {
+        todo!();
+    }
+
+    fn get_documentation(&self) -> String {
+        todo!()
+    }
+
+    fn get_description(&self) -> String {
+        todo!()
+    }
+
+    fn get_qualified_names(&self) -> Option<Vec<String>> {
+        todo!()
+    }
+
+    /*
+    fn is_implementation(&self) {
+    }
+    */
 }
-*/
