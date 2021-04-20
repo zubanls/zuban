@@ -19,9 +19,7 @@ pub trait Module {
         vec!()
     }
     
-    fn get_leaf(&self, position: CodeIndex) -> Leaf {
-        todo!();
-    }
+    fn get_leaf(&self, position: CodeIndex) -> Leaf;
 
     fn infer(&self, name: NodeIndex) -> Names;
 

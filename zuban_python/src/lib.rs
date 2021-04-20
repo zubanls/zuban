@@ -65,7 +65,7 @@ impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let state = project.get_state();
         let module = state.borrow_mut().get_module_by_path(path.unwrap().canonicalize().unwrap());
-        panic!();
+        todo!();
         //Self {project, module}
     }
 
@@ -73,7 +73,7 @@ impl<'a> Script<'a> {
         match position {
             Position::Byte(pos) => pos as u32,
             Position::LineColumn(line, column) => {
-                panic!();
+                todo!();
             },
         }
     }
@@ -89,8 +89,8 @@ impl<'a> Script<'a> {
     pub fn infer_definition(&self, position: Position) -> Names {
         match self.get_leaf(position) {
             Leaf::Name(name) => sorted_names(self.module.infer(name)),
-            Leaf::Number => panic!(),
-            Leaf::Keyword(keyword) => panic!(),
+            Leaf::Number => todo!(),
+            Leaf::Keyword(keyword) => todo!(),
             Leaf::Other | Leaf::None | Leaf::String => vec!(),
         }
     }
@@ -101,7 +101,7 @@ impl<'a> Script<'a> {
     }
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
-        panic!()
+        todo!()
     }
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
