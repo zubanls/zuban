@@ -1,4 +1,4 @@
-use parsa::{CodeIndex, NodeIndex};
+use parsa::{CodeIndex, NodeIndex, Node};
 
 pub type Names = Vec<()>;
 pub type Name = u32;
@@ -20,16 +20,12 @@ pub trait Module {
     }
     
     fn get_leaf(&self, position: CodeIndex) -> Leaf {
-        panic!();
+        todo!();
     }
 
-    fn infer(&self, name: NodeIndex) -> Names {
-        vec!()
-    }
+    fn infer(&self, name: NodeIndex) -> Names;
 
-    fn goto(&self, name: NodeIndex) -> Names {
-        vec!()
-    }
+    fn goto(&self, name: NodeIndex) -> Names;
 
-    fn get_tree_node(&self, name: NodeIndex) -> &str;
+    fn get_tree_node(&self, name: NodeIndex) -> &dyn Node;
 }

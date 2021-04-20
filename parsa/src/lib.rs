@@ -20,6 +20,26 @@ pub use grammar::{
     Tokenizer,
 };
 
+pub trait Tree {
+    fn get_node_by_index(&self, index: NodeIndex) -> &dyn Node;
+}
+
+pub trait Node {
+    fn get_code(&self) -> &str;
+
+    fn get_prefix(&self) -> &str;
+
+    fn get_suffix(&self) -> &str;
+
+    fn start(&self) -> CodeIndex;
+
+    fn end(&self) -> CodeIndex;
+
+    fn length(&self) -> CodeLength;
+
+    fn is_leaf(&self) -> bool;
+}
+
 #[macro_export]
 macro_rules! __filter_labels_and_create_node_set {
     ([$($args:tt)+], $label:ident: $($rule:tt)+) => {
@@ -127,6 +147,8 @@ macro_rules! __create_node {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
 
+        use $crate::Node;
+
         #[derive(Debug, PartialEq, Eq)]
         pub enum $NodeType{
             Nonterminal($NonterminalType),
@@ -143,21 +165,12 @@ macro_rules! __create_node {
             internal_node: &'a $crate::InternalNode,
         }
 
-        impl $Node<'_> {
-            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
-                use std::str;
-                // Can be unsafe, because the input of the parse function is a
-                // String that is copied to the internal tree.
-                unsafe {str::from_utf8_unchecked(&self.internal_tree.code.as_bytes()[
-                    index as usize..index as usize + length as usize
-                ])}
-            }
-
-            pub fn get_code(&self) -> &str {
+        impl Node for $Node<'_> {
+            fn get_code(&self) -> &str {
                 self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
-            pub fn get_prefix(&self) -> &str {
+            fn get_prefix(&self) -> &str {
                 let start;
                 if self.index == 0 {
                     start = 0;
@@ -168,7 +181,7 @@ macro_rules! __create_node {
                 string
             }
 
-            pub fn get_suffix(&self) -> &str {
+            fn get_suffix(&self) -> &str {
                 let end;
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
@@ -180,6 +193,33 @@ macro_rules! __create_node {
                     end
                 );
                 string
+            }
+
+            fn start(&self) -> u32 {
+                self.internal_node.start_index
+            }
+
+            fn end(&self) -> u32 {
+                self.start() + self.length()
+            }
+
+            fn length(&self) -> u32 {
+                self.internal_node.length
+            }
+
+            fn is_leaf(&self) -> bool {
+                self.internal_node.type_.is_leaf()
+            }
+        }
+
+        impl $Node<'_> {
+            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
+                use std::str;
+                // Can be unsafe, because the input of the parse function is a
+                // String that is copied to the internal tree.
+                unsafe {str::from_utf8_unchecked(&self.internal_tree.code.as_bytes()[
+                    index as usize..index as usize + length as usize
+                ])}
             }
 
             pub fn get_children(&self) -> Vec<$Node> {
@@ -201,22 +241,6 @@ macro_rules! __create_node {
                     }
                 }
                 v
-            }
-
-            pub fn start(&self) -> u32 {
-                self.internal_node.start_index
-            }
-
-            pub fn end(&self) -> u32 {
-                self.start() + self.length()
-            }
-
-            pub fn length(&self) -> u32 {
-                self.internal_node.length
-            }
-
-            pub fn is_leaf(&self) -> bool {
-                self.internal_node.type_.is_leaf()
             }
 
             pub fn is_error_recovery_node(&self) -> bool {

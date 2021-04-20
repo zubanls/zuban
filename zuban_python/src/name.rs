@@ -1,5 +1,5 @@
 use std::rc::Rc;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell};
 
 use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, StateDB};
@@ -10,15 +10,14 @@ type Signatures = Vec<()>;
 
 struct TreePosition {
     position: CodeIndex,
-    state_db: Rc<RefCell<StateDB>>,
 }
 
 impl TreePosition {
-    fn get_byte_position(&self) -> usize {
-        unimplemented!();
+    fn get_byte_position(&self) -> CodeIndex {
+        self.position
     }
 
-    fn get_line_and_column(&self) -> (usize, usize) {
+    fn get_line_and_column(&self) -> (CodeIndex, CodeIndex) {
         unimplemented!();
     }
 }
@@ -100,8 +99,7 @@ struct ValueName {
 
 impl Name for TreeName {
     fn get_name(&self) -> &str {
-        //self.get_module().get_tree_node(self.tree_id).get_code()
-        todo!()
+        self.get_module().get_tree_node(self.tree_id).get_code()
     }
 
     fn get_module_path(&self) -> Option<&str> {
@@ -109,12 +107,11 @@ impl Name for TreeName {
     }
 
     fn get_start_position(&self) -> TreePosition {
-        //self.get_module().get_tree_node(self.tree_id).get_position()
-        todo!();
+        TreePosition {position: self.get_module().get_tree_node(self.tree_id).start()}
     }
 
     fn get_end_position(&self) -> TreePosition {
-        todo!();
+        TreePosition {position: self.get_module().get_tree_node(self.tree_id).end()}
     }
 
     fn get_documentation(&self) -> String {

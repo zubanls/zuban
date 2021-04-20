@@ -1,6 +1,7 @@
 extern crate insta;
 
 use parsa_python::*;
+use parsa::Node;
 
 fn dedent(s: &'static str) -> String {
     let mut indent = usize::MAX;
