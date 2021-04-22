@@ -1,5 +1,5 @@
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::PythonTree;
+use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
 
 pub type Names = Vec<()>;
 pub type Name = u32;
@@ -46,7 +46,16 @@ impl Module for PythonModule {
 
     fn get_leaf(&self, position: CodeIndex) -> Leaf {
         let node = self.tree.get_leaf_by_position(position);
-        todo!()
+        match node.get_type() {
+            PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
+                match t {
+                    PythonTerminalType::Name => Leaf::Name(3),
+                    _ => Leaf::None,
+                }
+            }
+            PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => Leaf::Keyword("".to_owned()),
+            PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => panic!(),
+        }
     }
 
     fn infer(&self, name: NodeIndex) -> Names {

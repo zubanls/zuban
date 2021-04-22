@@ -1,7 +1,8 @@
 #![recursion_limit = "1024"]
 mod tokenizer;
 
-use crate::tokenizer::{PythonTerminal, PythonTerminalType, PythonTokenizer};
+pub use crate::tokenizer::PythonTerminalType;
+use crate::tokenizer::{PythonTerminal, PythonTokenizer};
 use parsa::{create_grammar, Grammar};
 
 create_grammar!(
