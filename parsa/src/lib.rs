@@ -20,16 +20,12 @@ pub use grammar::{
     Tokenizer,
 };
 
-pub trait Tree {
-    fn get_node_by_index(&self, index: NodeIndex) -> &dyn Node;
-}
+pub trait Node<'a> {
+    fn get_code(&self) -> &'a str;
 
-pub trait Node {
-    fn get_code(&self) -> &str;
+    fn get_prefix(&self) -> &'a str;
 
-    fn get_prefix(&self) -> &str;
-
-    fn get_suffix(&self) -> &str;
+    fn get_suffix(&self) -> &'a str;
 
     fn start(&self) -> CodeIndex;
 
@@ -165,12 +161,12 @@ macro_rules! __create_node {
             internal_node: &'a $crate::InternalNode,
         }
 
-        impl Node for $Node<'_> {
-            fn get_code(&self) -> &str {
+        impl<'a> Node<'a> for $Node<'a> {
+            fn get_code(&self) -> &'a str {
                 self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
-            fn get_prefix(&self) -> &str {
+            fn get_prefix(&self) -> &'a str {
                 let start;
                 if self.index == 0 {
                     start = 0;
@@ -181,7 +177,7 @@ macro_rules! __create_node {
                 string
             }
 
-            fn get_suffix(&self) -> &str {
+            fn get_suffix(&self) -> &'a str {
                 let end;
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
@@ -212,8 +208,8 @@ macro_rules! __create_node {
             }
         }
 
-        impl $Node<'_> {
-            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &str {
+        impl<'a> $Node<'a> {
+            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
                 // String that is copied to the internal tree.
@@ -222,7 +218,7 @@ macro_rules! __create_node {
                 ])}
             }
 
-            pub fn get_children(&self) -> Vec<$Node> {
+            pub fn get_children(&self) -> Vec<$Node<'a>> {
                 let mut v = Vec::new();
                 if !self.is_leaf() {
                     // The next node must always be a child.
@@ -536,6 +532,14 @@ macro_rules! create_grammar {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.get_node(index as u32, internal_node)
                 ).collect()
+            }
+
+            pub fn get_node_by_index(&self, index: $crate::NodeIndex) -> $Node {
+                todo!()
+            }
+
+            pub fn get_leaf_by_position(&self, index: $crate::CodeIndex) -> $Node {
+                todo!()
             }
         }
 
