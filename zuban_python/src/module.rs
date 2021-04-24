@@ -1,12 +1,12 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
 use crate::name::{Name, TreeName};
+use crate::cache::StateDB;
 
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
 
-pub enum Leaf {
-    //Name(Box<dyn Name<'a>>),
-    Name(Box<u8>),
+pub enum Leaf<'a> {
+    Name(Box<dyn Name<'a> + 'a>),
     String,
     Number,
     Keyword(String),
@@ -21,7 +21,7 @@ pub trait Module {
         vec!()
     }
     
-    fn get_leaf(&self, position: CodeIndex) -> Leaf;
+    fn get_leaf(&self, state_db: *mut StateDB, position: CodeIndex) -> Leaf;
 
     fn infer(&self, name: NodeIndex) -> Names;
 
@@ -45,12 +45,15 @@ impl Module for PythonModule {
         todo!()
     }
 
-    fn get_leaf(&self, position: CodeIndex) -> Leaf {
+    fn get_leaf(&self, state_db: *mut StateDB, position: CodeIndex) -> Leaf {
         let node = self.tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
+                use crate::cache::ModuleIndex;
                 match t {
-                    //PythonTerminalType::Name => Leaf::Name(Box::new(TreeName {})),
+                    PythonTerminalType::Name => Leaf::Name(Box::new(
+                        TreeName::new(state_db, ModuleIndex(1), node)
+                    )),
                     _ => Leaf::None,
                 }
             }

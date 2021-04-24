@@ -80,7 +80,8 @@ impl<'a> Script<'a> {
 
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        self.module.get_leaf(pos)
+        todo!()
+        //self.module.get_leaf(self.project.get_state().borrow_mut() as &mut cache::StateDB, pos)
     }
 
     pub fn complete(&self, position: Position) {

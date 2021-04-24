@@ -1,4 +1,5 @@
 use std::mem;
+use std::pin::Pin;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use parsa_python::PythonTree;
@@ -193,7 +194,7 @@ struct Issue {
 
 #[derive(Default)]
 pub struct StateDB {
-    modules: Vec<Box<dyn Module>>,
+    modules: Vec<Pin<Box<dyn Module>>>,
     path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, ModuleIndex>,
@@ -201,7 +202,7 @@ pub struct StateDB {
 
 impl StateDB {
     pub fn get_module(&self, index: ModuleIndex) -> &dyn Module {
-        self.modules[index.0 as usize].as_ref()
+        &*self.modules[index.0 as usize]
     }
 
     pub fn get_module_by_path(&self, path: PathBuf) -> &dyn Module {

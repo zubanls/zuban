@@ -74,7 +74,7 @@ pub struct TreeName<N> {
 }
 
 impl<'a, N: Node<'a>> TreeName<N> {
-    fn new(state_db: *mut StateDB, tree_node: N, module: ModuleIndex) -> Self {
+    pub fn new(state_db: *mut StateDB, module: ModuleIndex, tree_node: N) -> Self {
         Self {state_db, tree_node, module}
     }
     #[inline]
