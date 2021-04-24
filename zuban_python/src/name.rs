@@ -50,11 +50,11 @@ pub trait Name<'a> {
         vec!()
     }
 
-    fn infer(&self) -> Names {
+    fn infer(&self) -> Names<'a> {
         vec!()
     }
 
-    fn goto(&self) -> Names {
+    fn goto(&self) -> Names<'a> {
         vec!()
     }
 

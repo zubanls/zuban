@@ -23,10 +23,6 @@ pub trait Module {
     
     fn get_leaf<'a>(&'a self, state_db: &'a StateDB, position: CodeIndex) -> Leaf<'a>;
 
-    fn infer(&self, name: NodeIndex) -> Names;
-
-    fn goto(&self, name: NodeIndex) -> Names;
-
     fn get_tree_node(&self, index: NodeIndex) -> Box<dyn Node + '_>;
 }
 
@@ -61,14 +57,6 @@ impl Module for PythonModule {
             }
             PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => panic!(),
         }
-    }
-
-    fn infer(&self, name: NodeIndex) -> Names {
-        todo!()
-    }
-
-    fn goto(&self, name: NodeIndex) -> Names {
-        todo!()
     }
 
     fn get_tree_node(&self, index: NodeIndex) -> Box<dyn Node + '_> {
