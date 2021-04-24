@@ -88,7 +88,7 @@ impl<'a> Script<'a> {
 
     pub fn infer_definition(&self, position: Position) -> Names {
         match self.get_leaf(position) {
-            Leaf::Name(name) => sorted_names(self.module.infer(name)),
+            Leaf::Name(name) => todo!(), //sorted_names(self.module.infer(name)),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
             Leaf::Other | Leaf::None | Leaf::String => vec!(),

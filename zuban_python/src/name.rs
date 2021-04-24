@@ -5,7 +5,7 @@ use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
 
-struct TreePosition {
+pub struct TreePosition {
     position: CodeIndex,
 }
 
@@ -19,8 +19,8 @@ impl TreePosition {
     }
 }
 
-pub trait Name {
-    fn get_name(&self) -> &str;
+pub trait Name<'a> {
+    fn get_name(&self) -> &'a str;
 
     fn get_module_path(&self) -> Option<&str>;
 
@@ -68,8 +68,8 @@ pub trait ValueName {
 }
 
 pub struct TreeName<N> {
-    module: ModuleIndex,
     state_db: *mut StateDB,
+    module: ModuleIndex,
     tree_node: N,
 }
 
@@ -97,10 +97,9 @@ struct ValueName {
 */
 
 
-impl<'a, N: Node<'a>> Name for TreeName<N> {
-    fn get_name<'b>(&'b self) -> &'b str {
-        todo!();
-        //self.tree_node.get_code()
+impl<'a, N: Node<'a>> Name<'a> for TreeName<N> {
+    fn get_name(&self) -> &'a str {
+        self.tree_node.get_code()
     }
 
     fn get_module_path(&self) -> Option<&str> {

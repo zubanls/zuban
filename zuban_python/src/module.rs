@@ -2,10 +2,11 @@ use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
 use crate::name::{Name, TreeName};
 
-pub type Names = Vec<()>;
+pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
 
 pub enum Leaf {
-    Name(Box<dyn Name>),
+    //Name(Box<dyn Name<'a>>),
+    Name(Box<u8>),
     String,
     Number,
     Keyword(String),
