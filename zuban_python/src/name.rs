@@ -67,26 +67,15 @@ pub trait ValueName {
     fn get_kind(&self) -> Option<ValueKind>;
 }
 
-pub struct TreeName<N> {
-    state_db: *mut StateDB,
-    module: ModuleIndex,
+pub struct TreeName<'a, M: Module, N: Node<'a>> {
+    state_db: &'a StateDB,
+    module: &'a M,
     tree_node: N,
 }
 
-impl<'a, N: Node<'a>> TreeName<N> {
-    pub fn new(state_db: *mut StateDB, module: ModuleIndex, tree_node: N) -> Self {
+impl<'a, N: Node<'a>, M: Module> TreeName<'a, M, N> {
+    pub fn new(state_db: &'a StateDB, module: &'a M, tree_node: N) -> Self {
         Self {state_db, tree_node, module}
-    }
-    #[inline]
-    fn get_state_db(&mut self) -> &mut StateDB {
-        unsafe {&mut *self.state_db}
-    }
-
-    #[inline]
-    fn get_module(&self) -> &dyn Module {
-        // TODO comment why this is ok.
-        #[allow(clippy::cast_ref_to_mut)]
-        unsafe {&mut *(self as *const Self as *mut Self)}.get_state_db().get_module(self.module)
     }
 }
 
@@ -97,13 +86,13 @@ struct ValueName {
 */
 
 
-impl<'a, N: Node<'a>> Name<'a> for TreeName<N> {
+impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
     fn get_name(&self) -> &'a str {
         self.tree_node.get_code()
     }
 
     fn get_module_path(&self) -> Option<&str> {
-        self.get_module().get_path()
+        self.module.get_path()
     }
 
     fn get_start_position(&self) -> TreePosition {

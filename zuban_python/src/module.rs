@@ -21,7 +21,7 @@ pub trait Module {
         vec!()
     }
     
-    fn get_leaf(&self, state_db: *mut StateDB, position: CodeIndex) -> Leaf;
+    fn get_leaf<'a>(&'a self, state_db: &'a StateDB, position: CodeIndex) -> Leaf<'a>;
 
     fn infer(&self, name: NodeIndex) -> Names;
 
@@ -45,14 +45,13 @@ impl Module for PythonModule {
         todo!()
     }
 
-    fn get_leaf(&self, state_db: *mut StateDB, position: CodeIndex) -> Leaf {
+    fn get_leaf<'a>(&'a self, state_db: &'a StateDB, position: CodeIndex) -> Leaf<'a> {
         let node = self.tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
-                use crate::cache::ModuleIndex;
                 match t {
                     PythonTerminalType::Name => Leaf::Name(Box::new(
-                        TreeName::new(state_db, ModuleIndex(1), node)
+                        TreeName::new(state_db, self, node)
                     )),
                     _ => Leaf::None,
                 }

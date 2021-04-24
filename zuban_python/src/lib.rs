@@ -31,10 +31,10 @@ impl Project {
     fn complete_search(&self, string: &str, all_scopes: bool) {
     }
 
-    fn get_state(&self) -> Rc<RefCell<cache::StateDB>> {
+    fn get_state(&self) -> &cache::StateDB {
         // TODO cleanup
         match self {
-            Project::PythonProject(x) => x.state_db.clone(),
+            Project::PythonProject(x) => &x.state_db,
         }
     }
 }
@@ -44,7 +44,7 @@ pub struct PythonProject {
     //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
-    state_db: Rc<RefCell<cache::StateDB>>,
+    state_db: cache::StateDB,
 }
 
 pub enum Position {
@@ -64,7 +64,7 @@ fn sorted_names(names: Names) -> Names {
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let state = project.get_state();
-        let module = state.borrow_mut().get_module_by_path(path.unwrap().canonicalize().unwrap());
+        let module = state.get_module_by_path(path.unwrap().canonicalize().unwrap());
         todo!();
         //Self {project, module}
     }
@@ -80,8 +80,7 @@ impl<'a> Script<'a> {
 
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        todo!()
-        //self.module.get_leaf(self.project.get_state().borrow_mut() as &mut cache::StateDB, pos)
+        self.module.get_leaf(self.project.get_state(), pos)
     }
 
     pub fn complete(&self, position: Position) {
