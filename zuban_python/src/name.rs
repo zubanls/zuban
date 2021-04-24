@@ -5,11 +5,12 @@ use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
 
-pub struct TreePosition {
+pub struct TreePosition<'a> {
+    module: &'a dyn Module,
     position: CodeIndex,
 }
 
-impl TreePosition {
+impl TreePosition<'_> {
     fn get_byte_position(&self) -> CodeIndex {
         self.position
     }
@@ -24,10 +25,9 @@ pub trait Name<'a> {
 
     fn get_module_path(&self) -> Option<&str>;
 
+    fn get_start_position(&self) -> TreePosition<'a>;
 
-    fn get_start_position(&self) -> TreePosition;
-
-    fn get_end_position(&self) -> TreePosition;
+    fn get_end_position(&self) -> TreePosition<'a>;
 
     // TODO
     //fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
@@ -95,12 +95,12 @@ impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
         self.module.get_path()
     }
 
-    fn get_start_position(&self) -> TreePosition {
-        TreePosition {position: self.tree_node.start()}
+    fn get_start_position(&self) -> TreePosition<'a> {
+        TreePosition {module: self.module, position: self.tree_node.start()}
     }
 
-    fn get_end_position(&self) -> TreePosition {
-        TreePosition {position: self.tree_node.end()}
+    fn get_end_position(&self) -> TreePosition<'a> {
+        TreePosition {module: self.module, position: self.tree_node.end()}
     }
 
     fn get_documentation(&self) -> String {
