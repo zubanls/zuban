@@ -1,11 +1,11 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
+use crate::name::{Name, TreeName};
 
 pub type Names = Vec<()>;
-pub type Name = u32;
 
 pub enum Leaf {
-    Name(Name),
+    Name(Box<dyn Name>),
     String,
     Number,
     Keyword(String),
@@ -49,11 +49,13 @@ impl Module for PythonModule {
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
-                    PythonTerminalType::Name => Leaf::Name(3),
+                    //PythonTerminalType::Name => Leaf::Name(Box::new(TreeName {})),
                     _ => Leaf::None,
                 }
             }
-            PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => Leaf::Keyword("".to_owned()),
+            PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
+                Leaf::Keyword(node.get_code().to_owned())
+            }
             PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => panic!(),
         }
     }

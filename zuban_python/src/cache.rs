@@ -7,7 +7,7 @@ use parsa::NodeIndex;
 use crate::module::Module;
 
 #[derive(Clone, Copy)]
-pub struct ModuleIndex(u32);
+pub struct ModuleIndex(pub u32);
 
 type ComplexIndex = u32;
 

@@ -1,10 +1,7 @@
-use std::rc::Rc;
-use std::cell::{Cell};
-
 use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, StateDB};
 use crate::module::{Module, Names};
-use parsa::{CodeIndex, NodeIndex};
+use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
 
@@ -22,13 +19,11 @@ impl TreePosition {
     }
 }
 
-trait Name {
+pub trait Name {
     fn get_name(&self) -> &str;
 
     fn get_module_path(&self) -> Option<&str>;
 
-    // TODO
-    //fn get_kind(&self) -> Option<ValueKind>;
 
     fn get_start_position(&self) -> TreePosition;
 
@@ -47,7 +42,7 @@ trait Name {
         true
     }
 
-    fn get_type_hint(&self) -> Option<&str> {
+    fn get_type_hint(&self) -> Option<String> {
         None
     }
 
@@ -68,19 +63,22 @@ trait Name {
     }
 }
 
-struct TreeName {
-    module: ModuleIndex,
-    is_alive: Rc<Cell<bool>>,
-    state_db: *mut StateDB,
-    tree_id: NodeIndex,
+pub trait ValueName {
+    fn get_kind(&self) -> Option<ValueKind>;
 }
 
-impl TreeName {
+pub struct TreeName<N> {
+    module: ModuleIndex,
+    state_db: *mut StateDB,
+    tree_node: N,
+}
+
+impl<'a, N: Node<'a>> TreeName<N> {
+    fn new(state_db: *mut StateDB, tree_node: N, module: ModuleIndex) -> Self {
+        Self {state_db, tree_node, module}
+    }
     #[inline]
     fn get_state_db(&mut self) -> &mut StateDB {
-        if !self.is_alive.get() {
-            panic!("You should not access an old state of the project");
-        }
         unsafe {&mut *self.state_db}
     }
 
@@ -92,14 +90,17 @@ impl TreeName {
     }
 }
 
+/*
 struct ValueName {
     value: dyn Value,
 }
+*/
 
 
-impl Name for TreeName {
-    fn get_name(&self) -> &str {
-        self.get_module().get_tree_node(self.tree_id).get_code()
+impl<'a, N: Node<'a>> Name for TreeName<N> {
+    fn get_name<'b>(&'b self) -> &'b str {
+        todo!();
+        //self.tree_node.get_code()
     }
 
     fn get_module_path(&self) -> Option<&str> {
@@ -107,11 +108,11 @@ impl Name for TreeName {
     }
 
     fn get_start_position(&self) -> TreePosition {
-        TreePosition {position: self.get_module().get_tree_node(self.tree_id).start()}
+        TreePosition {position: self.tree_node.start()}
     }
 
     fn get_end_position(&self) -> TreePosition {
-        TreePosition {position: self.get_module().get_tree_node(self.tree_id).end()}
+        TreePosition {position: self.tree_node.end()}
     }
 
     fn get_documentation(&self) -> String {
