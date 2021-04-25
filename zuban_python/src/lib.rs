@@ -7,10 +7,9 @@ mod name;
 mod value;
 
 use std::path::PathBuf;
-use std::rc::Rc;
-use std::cell::RefCell;
 use parsa::CodeIndex;
-use module::{Names, Leaf};
+use module::{Leaf};
+use name::{Names};
 
 pub enum Project {
     PythonProject(PythonProject),
@@ -101,7 +100,12 @@ impl<'a> Script<'a> {
     }
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
-        todo!()
+        match self.get_leaf(position) {
+            Leaf::Name(name) => sorted_names(name.goto()),
+            Leaf::Number => todo!(),
+            Leaf::Keyword(keyword) => todo!(),
+            Leaf::Other | Leaf::None | Leaf::String => vec!(),
+        }
     }
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {

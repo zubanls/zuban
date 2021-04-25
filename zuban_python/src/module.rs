@@ -1,9 +1,7 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
-use crate::name::{Name, TreeName};
+use crate::name::{Name, Names, TreeName};
 use crate::cache::StateDB;
-
-pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
 
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),

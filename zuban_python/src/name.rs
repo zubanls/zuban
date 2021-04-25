@@ -1,9 +1,12 @@
 use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, StateDB};
-use crate::module::{Module, Names};
+use crate::module::Module;
 use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
+pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
+//pub type ValueNames<'a> = Vec<Box<dyn Name<'a>>>;
+
 
 pub struct TreePosition<'a> {
     module: &'a dyn Module,
@@ -50,13 +53,9 @@ pub trait Name<'a> {
         vec!()
     }
 
-    fn infer(&self) -> Names<'a> {
-        vec!()
-    }
+    fn infer(&self) -> Names<'a>;
 
-    fn goto(&self) -> Names<'a> {
-        vec!()
-    }
+    fn goto(&self) -> Names<'a>;
 
     fn is_definition(&self) -> bool {
         false
@@ -64,7 +63,7 @@ pub trait Name<'a> {
 }
 
 pub trait ValueName {
-    fn get_kind(&self) -> Option<ValueKind>;
+    fn get_kind(&self) -> ValueKind;
 }
 
 pub struct TreeName<'a, M: Module, N: Node<'a>> {
@@ -78,13 +77,6 @@ impl<'a, N: Node<'a>, M: Module> TreeName<'a, M, N> {
         Self {state_db, tree_node, module}
     }
 }
-
-/*
-struct ValueName {
-    value: dyn Value,
-}
-*/
-
 
 impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
     fn get_name(&self) -> &'a str {
@@ -119,4 +111,66 @@ impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
     fn is_implementation(&self) {
     }
     */
+
+    fn infer(&self) -> Names<'a> {
+        vec!()
+    }
+
+    fn goto(&self) -> Names<'a> {
+        todo!()
+    }
+}
+
+struct WithValueName<'a, V> {
+    state_db: &'a StateDB,
+    value: Box<V>,
+}
+
+impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
+    fn get_name(&self) -> &'a str {
+        self.value.get_name()
+    }
+
+    fn get_module_path(&self) -> Option<&str> {
+        self.value.get_module().get_path()
+    }
+
+    fn get_start_position(&self) -> TreePosition<'a> {
+        TreePosition {module: self.value.get_module(), position: todo!()}
+    }
+
+    fn get_end_position(&self) -> TreePosition<'a> {
+        TreePosition {module: self.value.get_module(), position: todo!()}
+    }
+
+    fn get_documentation(&self) -> String {
+        todo!()
+    }
+
+    fn get_description(&self) -> String {
+        todo!()
+    }
+
+    fn get_qualified_names(&self) -> Option<Vec<String>> {
+        todo!()
+    }
+
+    fn infer(&self) -> Names<'a> {
+        todo!()
+    }
+
+    fn goto(&self) -> Names<'a> {
+        todo!()
+    }
+
+    /*
+    fn is_implementation(&self) {
+    }
+    */
+}
+
+impl<'a, V: Value<'a>> ValueName for WithValueName<'a, V> {
+    fn get_kind(&self) -> ValueKind {
+        self.value.get_kind()
+    }
 }
