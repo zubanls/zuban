@@ -9,7 +9,7 @@ mod value;
 use std::path::PathBuf;
 use parsa::CodeIndex;
 use module::{Leaf};
-use name::{Names};
+use name::{Names, ValueNames};
 
 pub enum Project {
     PythonProject(PythonProject),
@@ -56,10 +56,6 @@ pub struct Script<'a> {
     module: Box<dyn module::Module>,
 }
 
-fn sorted_names(names: Names) -> Names {
-    names
-}
-
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let state = project.get_state();
@@ -85,23 +81,24 @@ impl<'a> Script<'a> {
     pub fn complete(&self, position: Position) {
     }
 
-    pub fn infer_definition(&self, position: Position) -> Names {
+    pub fn infer_definition(&self, position: Position) -> ValueNames {
         match self.get_leaf(position) {
-            Leaf::Name(name) => sorted_names(name.infer()),
+            Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
             Leaf::Other | Leaf::None | Leaf::String => vec!(),
         }
     }
 
-    pub fn infer_implementation(&self, position: Position) -> Names {
+    pub fn infer_implementation(&self, position: Position) -> ValueNames {
         let names = self.infer_definition(position);
-        self.module.get_implementation(names)
+        //self.module.get_implementation(names);
+        todo!()
     }
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
         match self.get_leaf(position) {
-            Leaf::Name(name) => sorted_names(name.goto()),
+            Leaf::Name(name) => name.goto(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
             Leaf::Other | Leaf::None | Leaf::String => vec!(),
@@ -109,7 +106,7 @@ impl<'a> Script<'a> {
     }
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
-        let names = self.infer_definition(position);
+        let names = self.goto_definition(position, follow_imports);
         self.module.get_implementation(names)
     }
 

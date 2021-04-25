@@ -5,7 +5,7 @@ use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
-//pub type ValueNames<'a> = Vec<Box<dyn Name<'a>>>;
+pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a>>>;
 
 
 pub struct TreePosition<'a> {
@@ -53,7 +53,7 @@ pub trait Name<'a> {
         vec!()
     }
 
-    fn infer(&self) -> Names<'a>;
+    fn infer(&self) -> ValueNames<'a>;
 
     fn goto(&self) -> Names<'a>;
 
@@ -62,7 +62,7 @@ pub trait Name<'a> {
     }
 }
 
-pub trait ValueName {
+pub trait ValueName<'a>: Name<'a> {
     fn get_kind(&self) -> ValueKind;
 }
 
@@ -112,7 +112,7 @@ impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
     }
     */
 
-    fn infer(&self) -> Names<'a> {
+    fn infer(&self) -> ValueNames<'a> {
         vec!()
     }
 
@@ -155,7 +155,7 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
         todo!()
     }
 
-    fn infer(&self) -> Names<'a> {
+    fn infer(&self) -> ValueNames<'a> {
         todo!()
     }
 
@@ -169,7 +169,7 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
     */
 }
 
-impl<'a, V: Value<'a>> ValueName for WithValueName<'a, V> {
+impl<'a, V: Value<'a>> ValueName<'a> for WithValueName<'a, V> {
     fn get_kind(&self) -> ValueKind {
         self.value.get_kind()
     }

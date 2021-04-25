@@ -15,7 +15,7 @@ pub enum Leaf<'a> {
 pub trait Module {
     fn get_path(&self) -> Option<&str>;
 
-    fn get_implementation(&self, names: Names) -> Names {
+    fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         vec!()
     }
     
@@ -35,7 +35,7 @@ impl Module for PythonModule {
         Some(&self.path)
     }
 
-    fn get_implementation(&self, names: Names) -> Names {
+    fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         todo!()
     }
 
