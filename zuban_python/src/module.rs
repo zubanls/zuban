@@ -1,8 +1,12 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
-use crate::cache::Database;
+use crate::cache::{Database, ModuleIndex, Locality, InternalValueOrReference, ComplexValue};
+use std::collections::HashMap;
 use std::pin::Pin;
+use std::cell::Cell;
+
+type InvalidatedDependencies = Vec<ModuleIndex>;
 
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
@@ -41,14 +45,24 @@ pub trait Module {
     }
     
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
-
-    fn get_tree_node(&self, index: NodeIndex) -> Box<dyn Node + '_>;
 }
 
 
+struct Issue {
+    issue_id: u32,
+    tree_node: NodeIndex,
+    locality: Locality,
+}
+
 pub struct PythonModule {
     path: String,
-    tree: PythonTree,
+    state: ModuleState<PythonTree>,
+    definition_names: HashMap<&'static str, NodeIndex>,
+    //reference_bloom_filter: BloomFilter<&str>,
+    values_or_references: Vec<Cell<InternalValueOrReference>>,
+    complex_values: Vec<ComplexValue>,
+    dependencies: Vec<ModuleIndex>,
+    issues: Vec<Issue>,
 }
 
 impl Module for PythonModule {
@@ -61,7 +75,7 @@ impl Module for PythonModule {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        let node = self.tree.get_leaf_by_position(position);
+        let node = self.state.get_tree().get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
@@ -77,8 +91,22 @@ impl Module for PythonModule {
             PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => panic!(),
         }
     }
+}
 
-    fn get_tree_node(&self, index: NodeIndex) -> Box<dyn Node + '_> {
-        Box::new(self.tree.get_node_by_index(index))
+enum ModuleState<T> {
+    DoesNotExist,
+    Unparsed,
+    Parsed(T),
+    InvalidatedDependencies(T, InvalidatedDependencies),
+}
+
+impl<T> ModuleState<T> {
+    fn get_tree(&self) -> &T {
+        match self {
+            Self::Parsed(x) | Self::InvalidatedDependencies(x, _) => {
+                x
+            }
+            Self::DoesNotExist | Self::Unparsed => panic!("Looks like a programming error")
+        }
     }
 }

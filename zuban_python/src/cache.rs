@@ -36,7 +36,7 @@ const MODULE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_EXTERN_MASK: u32 = 1 << 29;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-struct InternalValueOrReference {
+pub struct InternalValueOrReference {
     flags: u32,
     node_index: NodeIndex,
 }
@@ -132,7 +132,7 @@ enum Value {
 }
 
 #[repr(u32)]
-enum Locality {
+pub enum Locality {
     // Intern: 0xx
     Module,
     MostOuterClassOrFunction,
@@ -153,7 +153,7 @@ struct ValueLink {
     node_index: NodeIndex,
 }
 
-enum ComplexValue {
+pub enum ComplexValue {
     Union(Box<[ValueLink]>),
     Instance(Execution),
     Closure(ValueLink, Execution),
@@ -163,27 +163,6 @@ enum ComplexValue {
 struct Execution {
     function: ValueLink,
     args: Box<[Value]>,
-}
-
-type InvalidatedDependencies = Vec<ModuleIndex>;
-enum ModuleState<T> {
-    DoesNotExist,
-    Unparsed,
-    Parsed(T),
-    LocalReferencesCreated(T),
-    InvalidatedDependencies(T, InvalidatedDependencies),
-    FulllyInferred(T),
-}
-
-struct PythonModule {
-    path: PathBuf,
-    state: ModuleState<PythonTree>,
-    definition_names: HashMap<&'static str, NodeIndex>,
-    //reference_bloom_filter: BloomFilter<&str>,
-    dependencies: Vec<ModuleIndex>,
-    values_or_references: Vec<InternalValueOrReference>,
-    complex_values: Vec<ComplexValue>,
-    issues: Vec<Issue>,
 }
 
 struct Issue {
