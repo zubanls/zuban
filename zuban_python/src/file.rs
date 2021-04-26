@@ -56,13 +56,7 @@ struct Issue {
 
 pub struct PythonFile {
     path: String,
-    state: FileState<PythonTree>,
-    definition_names: HashMap<&'static str, NodeIndex>,
-    //reference_bloom_filter: BloomFilter<&str>,
-    values_or_references: Vec<Cell<InternalValueOrReference>>,
-    complex_values: Vec<ComplexValue>,
-    dependencies: Vec<FileIndex>,
-    issues: Vec<Issue>,
+    state: FileState<ParsedFile>,
 }
 
 impl File for PythonFile {
@@ -75,7 +69,7 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        let node = self.state.get_tree().get_leaf_by_position(position);
+        let node = self.state.get_parsed().tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
@@ -101,7 +95,7 @@ enum FileState<T> {
 }
 
 impl<T> FileState<T> {
-    fn get_tree(&self) -> &T {
+    fn get_parsed(&self) -> &T {
         match self {
             Self::Parsed(x) | Self::InvalidatedDependencies(x, _) => {
                 x
@@ -109,4 +103,14 @@ impl<T> FileState<T> {
             Self::DoesNotExist | Self::Unparsed => panic!("Looks like a programming error")
         }
     }
+}
+
+struct ParsedFile {
+    tree: PythonTree,
+    definition_names: HashMap<&'static str, NodeIndex>,
+    //reference_bloom_filter: BloomFilter<&str>,
+    values_or_references: Vec<Cell<InternalValueOrReference>>,
+    complex_values: Vec<ComplexValue>,
+    dependencies: Vec<FileIndex>,
+    issues: Vec<Issue>,
 }
