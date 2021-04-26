@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use parsa_python::PythonTree;
 use parsa::NodeIndex;
 
-use crate::module::{Module, ModuleLoader};
+use crate::file::{Module, ModuleLoader};
 
 #[derive(Clone, Copy)]
 pub struct ModuleIndex(pub u32);

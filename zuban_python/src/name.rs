@@ -1,6 +1,6 @@
 use crate::value::{Value, ValueKind};
 use crate::cache::{ModuleIndex, Database};
-use crate::module::Module;
+use crate::file::Module;
 use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;

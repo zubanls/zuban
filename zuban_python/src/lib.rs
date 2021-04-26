@@ -2,13 +2,13 @@
 #![allow(dead_code)]
 
 mod cache;
-mod module;
+mod file;
 mod name;
 mod value;
 
 use std::path::PathBuf;
 use parsa::CodeIndex;
-use module::{Module, Leaf};
+use file::{Module, Leaf};
 use name::{Names, ValueNames};
 
 pub enum Project {
@@ -57,7 +57,7 @@ pub enum Position {
 
 pub struct Script<'a> {
     project: &'a mut Project,
-    module: &'a dyn module::Module,
+    module: &'a dyn file::Module,
 }
 
 impl<'a> Script<'a> {
