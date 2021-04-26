@@ -8,7 +8,7 @@ mod value;
 
 use std::path::PathBuf;
 use parsa::CodeIndex;
-use file::{Module, Leaf};
+use file::{File, Leaf};
 use name::{Names, ValueNames};
 
 pub enum Project {
@@ -30,7 +30,7 @@ impl Project {
     pub fn complete_search(&self, string: &str, all_scopes: bool) {
     }
 
-    fn load_file(&self, path: String, code: String) -> &dyn Module {
+    fn load_file(&self, path: String, code: String) -> &dyn File {
         self.get_state().load_file(path, code)
     }
 
@@ -57,15 +57,15 @@ pub enum Position {
 
 pub struct Script<'a> {
     project: &'a mut Project,
-    module: &'a dyn file::Module,
+    file: &'a dyn file::File,
 }
 
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
         let state = project.get_state();
-        let module = state.get_module_by_path(path.unwrap().canonicalize().unwrap());
+        let file = state.get_file_by_path(path.unwrap().canonicalize().unwrap());
         todo!();
-        //Self {project, module}
+        //Self {project, file}
     }
 
     fn to_byte_position(&self, position: Position) -> CodeIndex {
@@ -79,7 +79,7 @@ impl<'a> Script<'a> {
 
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        self.module.get_leaf(self.project.get_state(), pos)
+        self.file.get_leaf(self.project.get_state(), pos)
     }
 
     pub fn complete(&self, position: Position) {
@@ -96,7 +96,7 @@ impl<'a> Script<'a> {
 
     pub fn infer_implementation(&self, position: Position) -> ValueNames {
         let names = self.infer_definition(position);
-        //self.module.get_implementation(names);
+        //self.file.get_implementation(names);
         todo!()
     }
 
@@ -111,7 +111,7 @@ impl<'a> Script<'a> {
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
         let names = self.goto_definition(position, follow_imports);
-        self.module.get_implementation(names)
+        self.file.get_implementation(names)
     }
 
     pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {

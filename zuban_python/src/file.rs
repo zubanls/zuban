@@ -1,12 +1,12 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
-use crate::cache::{Database, ModuleIndex, Locality, InternalValueOrReference, ComplexValue};
+use crate::cache::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::cell::Cell;
 
-type InvalidatedDependencies = Vec<ModuleIndex>;
+type InvalidatedDependencies = Vec<FileIndex>;
 
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
@@ -17,26 +17,26 @@ pub enum Leaf<'a> {
     None
 }
 
-pub trait ModuleLoader {
+pub trait FileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
-    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn Module>>;
+    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>>;
 }
 
-pub struct PythonModuleLoader {}
+pub struct PythonFileLoader {}
 
-impl ModuleLoader for PythonModuleLoader {
+impl FileLoader for PythonFileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str> {
         vec!(".py", ".pyi")
     }
 
-    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn Module>> {
+    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>> {
         todo!()
-        //Box::new(PythonModule {path, tree: PYTHON_GRAMMAR.parse(code)}).pin()
+        //Box::new(PythonFile {path, tree: PYTHON_GRAMMAR.parse(code)}).pin()
     }
 }
 
-pub trait Module {
+pub trait File {
     //fn new(path: String, code: String) -> Self;
     fn get_path(&self) -> Option<&str>;
 
@@ -54,18 +54,18 @@ struct Issue {
     locality: Locality,
 }
 
-pub struct PythonModule {
+pub struct PythonFile {
     path: String,
-    state: ModuleState<PythonTree>,
+    state: FileState<PythonTree>,
     definition_names: HashMap<&'static str, NodeIndex>,
     //reference_bloom_filter: BloomFilter<&str>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
-    dependencies: Vec<ModuleIndex>,
+    dependencies: Vec<FileIndex>,
     issues: Vec<Issue>,
 }
 
-impl Module for PythonModule {
+impl File for PythonFile {
     fn get_path(&self) -> Option<&str> {
         Some(&self.path)
     }
@@ -93,14 +93,14 @@ impl Module for PythonModule {
     }
 }
 
-enum ModuleState<T> {
+enum FileState<T> {
     DoesNotExist,
     Unparsed,
     Parsed(T),
     InvalidatedDependencies(T, InvalidatedDependencies),
 }
 
-impl<T> ModuleState<T> {
+impl<T> FileState<T> {
     fn get_tree(&self) -> &T {
         match self {
             Self::Parsed(x) | Self::InvalidatedDependencies(x, _) => {

@@ -5,10 +5,10 @@ use std::collections::HashMap;
 use parsa_python::PythonTree;
 use parsa::NodeIndex;
 
-use crate::file::{Module, ModuleLoader};
+use crate::file::{File, FileLoader};
 
 #[derive(Clone, Copy)]
-pub struct ModuleIndex(pub u32);
+pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
 
@@ -22,16 +22,16 @@ type ComplexIndex = u32;
 // -> 1xxxX unused
 // -> 1xxx0 non nullable
 // -> 1xxx1 nullable
-// Rest 27 bits = ModuleIndex
+// Rest 27 bits = FileIndex
 // If Internal second field = Value
-// If External second field = ModuleIndex
+// If External second field = FileIndex
 
 const IS_REFERENCE_MASK: u32 = 1 << 31;
 const IS_DEFINITION_MASK: u32 = 1 << 30;
 const LOCALITY_INDEX: usize = 27;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_INDEX;
 const REST_MASK: u32 = LOCALITY_MASK | IS_REFERENCE_MASK | IS_DEFINITION_MASK;
-const MODULE_MASK: u32 = 0xFFFFFF; // 24 bits
+const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 
 const IS_EXTERN_MASK: u32 = 1 << 29;
 
@@ -81,7 +81,7 @@ impl InternalValueOrReference {
             panic!();
             //ValueOrReference::Value(1)
         } else if self.is_extern() {
-            ValueOrReference::Reference(Reference::Link(ModuleIndex(self.flags & MODULE_MASK), self.node_index))
+            ValueOrReference::Reference(Reference::Link(FileIndex(self.flags & FILE_MASK), self.node_index))
         } else {
             ValueOrReference::Reference(Reference::LocalLink(self.node_index))
         }
@@ -98,7 +98,7 @@ enum ValueOrReference {
 
 enum Reference {
     LocalLink(NodeIndex),
-    Link(ModuleIndex, NodeIndex),
+    Link(FileIndex, NodeIndex),
     MultiReference(NodeIndex),
     Missing,
 }
@@ -124,7 +124,7 @@ enum Value {
     TypeVar(NodeIndex),
 
     LocalLink(NodeIndex),
-    Link(ModuleIndex, NodeIndex),
+    Link(FileIndex, NodeIndex),
     ComplexIndex(ComplexIndex),
 
     //Optional<Value>,
@@ -134,22 +134,22 @@ enum Value {
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
-    Module,
+    File,
     MostOuterClassOrFunction,
     ClassOrFunction,
     Stmt,
 
     // Extern: 1xx
     IndirectExtern,
-    CheckModuleExtern,
-    NeedsRecheckModuleExtern,
+    CheckFileExtern,
+    NeedsRecheckFileExtern,
     DirectExtern,
 }
 
 struct InternalValue(u32, u32);
 
 struct ValueLink {
-    module: ModuleIndex,
+    file: FileIndex,
     node_index: NodeIndex,
 }
 
@@ -173,40 +173,40 @@ struct Issue {
 
 #[derive(Default)]
 pub struct Database {
-    module_loaders: Box<[Box<dyn ModuleLoader>]>,
-    modules: Vec<Pin<Box<dyn Module>>>,
-    path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
+    file_loaders: Box<[Box<dyn FileLoader>]>,
+    files: Vec<Pin<Box<dyn File>>>,
+    path_to_file: HashMap<&'static PathBuf, FileIndex>,
     workspaces: Vec<Workspace>,
-    files_managed_by_client: HashMap<PathBuf, ModuleIndex>,
+    files_managed_by_client: HashMap<PathBuf, FileIndex>,
 }
 
 impl Database {
-    pub fn get_module(&self, index: ModuleIndex) -> &dyn Module {
-        &*self.modules[index.0 as usize]
+    pub fn get_file(&self, index: FileIndex) -> &dyn File {
+        &*self.files[index.0 as usize]
     }
 
-    pub fn get_module_by_path(&self, path: PathBuf) -> &dyn Module {
-        let index = self.path_to_module[&path];
-        self.get_module(index)
+    pub fn get_file_by_path(&self, path: PathBuf) -> &dyn File {
+        let index = self.path_to_file[&path];
+        self.get_file(index)
     }
 
-    pub fn load_file(&self, path: String, code: String) -> &dyn Module {
-        for module_loader in self.module_loaders.iter() {
+    pub fn load_file(&self, path: String, code: String) -> &dyn File {
+        for file_loader in self.file_loaders.iter() {
             let extension = Path::new(&path).extension().unwrap();
             // Can unwrap because path is unicode.
-            if module_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
-                let file = module_loader.load_file(path, code);
+            if file_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
+                let file = file_loader.load_file(path, code);
                 return unsafe {self.insert_file(file)}
             }
         }
         unreachable!()
     }
 
-    unsafe fn insert_file(&self, file: Pin<Box<dyn Module>>) -> &dyn Module {
-        //let modules = self.modules as *const Vec<Pin<Box<dyn Module>>>;
-        //let modules = modules as *mut Vec<_> as &mut Vec<_>;
-        //modules.push(file);
-        //&*module
+    unsafe fn insert_file(&self, file: Pin<Box<dyn File>>) -> &dyn File {
+        //let files = self.files as *const Vec<Pin<Box<dyn File>>>;
+        //let files = files as *mut Vec<_> as &mut Vec<_>;
+        //files.push(file);
+        //&*file
         todo!()
     }
 }
@@ -217,6 +217,6 @@ struct Workspace {
 }
 
 enum DirectoryOrFile {
-    File(&'static Path, Option<ModuleIndex>),
+    File(&'static Path, Option<FileIndex>),
     Directory(&'static Path, Vec<DirectoryOrFile>),
 }

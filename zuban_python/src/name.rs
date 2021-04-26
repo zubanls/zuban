@@ -1,6 +1,6 @@
 use crate::value::{Value, ValueKind};
-use crate::cache::{ModuleIndex, Database};
-use crate::file::Module;
+use crate::cache::{Database};
+use crate::file::File;
 use parsa::{CodeIndex, Node};
 
 type Signatures = Vec<()>;
@@ -9,7 +9,7 @@ pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a>>>;
 
 
 pub struct TreePosition<'a> {
-    module: &'a dyn Module,
+    file: &'a dyn File,
     position: CodeIndex,
 }
 
@@ -26,7 +26,7 @@ impl TreePosition<'_> {
 pub trait Name<'a> {
     fn get_name(&self) -> &'a str;
 
-    fn get_module_path(&self) -> Option<&str>;
+    fn get_file_path(&self) -> Option<&str>;
 
     fn get_start_position(&self) -> TreePosition<'a>;
 
@@ -66,33 +66,33 @@ pub trait ValueName<'a>: Name<'a> {
     fn get_kind(&self) -> ValueKind;
 }
 
-pub struct TreeName<'a, M: Module, N: Node<'a>> {
+pub struct TreeName<'a, F: File, N: Node<'a>> {
     database: &'a Database,
-    module: &'a M,
+    file: &'a F,
     tree_node: N,
 }
 
-impl<'a, N: Node<'a>, M: Module> TreeName<'a, M, N> {
-    pub fn new(database: &'a Database, module: &'a M, tree_node: N) -> Self {
-        Self {database, tree_node, module}
+impl<'a, N: Node<'a>, F: File> TreeName<'a, F, N> {
+    pub fn new(database: &'a Database, file: &'a F, tree_node: N) -> Self {
+        Self {database, tree_node, file}
     }
 }
 
-impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
+impl<'a, N: Node<'a>, F: File> Name<'a> for TreeName<'a, F, N> {
     fn get_name(&self) -> &'a str {
         self.tree_node.get_code()
     }
 
-    fn get_module_path(&self) -> Option<&str> {
-        self.module.get_path()
+    fn get_file_path(&self) -> Option<&str> {
+        self.file.get_path()
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
-        TreePosition {module: self.module, position: self.tree_node.start()}
+        TreePosition {file: self.file, position: self.tree_node.start()}
     }
 
     fn get_end_position(&self) -> TreePosition<'a> {
-        TreePosition {module: self.module, position: self.tree_node.end()}
+        TreePosition {file: self.file, position: self.tree_node.end()}
     }
 
     fn get_documentation(&self) -> String {
@@ -131,16 +131,16 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
         self.value.get_name()
     }
 
-    fn get_module_path(&self) -> Option<&str> {
-        self.value.get_module().get_path()
+    fn get_file_path(&self) -> Option<&str> {
+        self.value.get_file().get_path()
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
-        TreePosition {module: self.value.get_module(), position: todo!()}
+        TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
     fn get_end_position(&self) -> TreePosition<'a> {
-        TreePosition {module: self.value.get_module(), position: todo!()}
+        TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
     fn get_documentation(&self) -> String {
