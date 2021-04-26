@@ -173,6 +173,7 @@ struct Issue {
 
 #[derive(Default)]
 pub struct Database {
+    in_use: bool,
     file_loaders: Box<[Box<dyn FileLoader>]>,
     files: Vec<Pin<Box<dyn File>>>,
     path_to_file: HashMap<&'static PathBuf, FileIndex>,
@@ -181,6 +182,15 @@ pub struct Database {
 }
 
 impl Database {
+    pub fn acquire(&mut self) {
+        self.in_use = true;
+    }
+
+    pub fn release(&mut self) {
+        // todo handle watcher events here
+        self.in_use = false;
+    }
+
     pub fn get_file(&self, index: FileIndex) -> &dyn File {
         &*self.files[index.0 as usize]
     }

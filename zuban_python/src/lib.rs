@@ -57,6 +57,7 @@ pub struct Script<'a> {
 
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
+        project.database.acquire();
         let file = project.database.get_file_by_path(path.unwrap().canonicalize().unwrap());
         todo!();
         //Self {project, file}
@@ -156,6 +157,12 @@ impl<'a> Script<'a> {
     pub fn get_errors() {
     }
     */
+}
+
+impl<'a> Drop for Script<'a> {
+    fn drop(&mut self) {
+        self.project.database.release()
+    }
 }
 
 #[cfg(test)]
