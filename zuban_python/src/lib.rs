@@ -21,7 +21,7 @@ impl Project {
             path,
             sys_path: vec!(),
             is_django: false,
-            state_db: Default::default(),
+            database: Default::default(),
         })
     }
 
@@ -34,10 +34,10 @@ impl Project {
         self.get_state().load_file(path, code)
     }
 
-    fn get_state(&self) -> &cache::StateDB {
+    fn get_state(&self) -> &cache::Database {
         // TODO cleanup
         match self {
-            Project::PythonProject(x) => &x.state_db,
+            Project::PythonProject(x) => &x.database,
         }
     }
 }
@@ -47,7 +47,7 @@ pub struct PythonProject {
     //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
-    state_db: cache::StateDB,
+    database: cache::Database,
 }
 
 pub enum Position {

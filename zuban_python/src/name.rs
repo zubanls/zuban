@@ -1,5 +1,5 @@
 use crate::value::{Value, ValueKind};
-use crate::cache::{ModuleIndex, StateDB};
+use crate::cache::{ModuleIndex, Database};
 use crate::module::Module;
 use parsa::{CodeIndex, Node};
 
@@ -67,14 +67,14 @@ pub trait ValueName<'a>: Name<'a> {
 }
 
 pub struct TreeName<'a, M: Module, N: Node<'a>> {
-    state_db: &'a StateDB,
+    database: &'a Database,
     module: &'a M,
     tree_node: N,
 }
 
 impl<'a, N: Node<'a>, M: Module> TreeName<'a, M, N> {
-    pub fn new(state_db: &'a StateDB, module: &'a M, tree_node: N) -> Self {
-        Self {state_db, tree_node, module}
+    pub fn new(database: &'a Database, module: &'a M, tree_node: N) -> Self {
+        Self {database, tree_node, module}
     }
 }
 
@@ -122,7 +122,7 @@ impl<'a, N: Node<'a>, M: Module> Name<'a> for TreeName<'a, M, N> {
 }
 
 struct WithValueName<'a, V> {
-    state_db: &'a StateDB,
+    database: &'a Database,
     value: Box<V>,
 }
 

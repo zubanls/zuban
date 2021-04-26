@@ -1,7 +1,7 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
-use crate::cache::StateDB;
+use crate::cache::Database;
 use std::pin::Pin;
 
 pub enum Leaf<'a> {
@@ -40,7 +40,7 @@ pub trait Module {
         vec!()
     }
     
-    fn get_leaf<'a>(&'a self, state_db: &'a StateDB, position: CodeIndex) -> Leaf<'a>;
+    fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
 
     fn get_tree_node(&self, index: NodeIndex) -> Box<dyn Node + '_>;
 }
@@ -60,13 +60,13 @@ impl Module for PythonModule {
         todo!()
     }
 
-    fn get_leaf<'a>(&'a self, state_db: &'a StateDB, position: CodeIndex) -> Leaf<'a> {
+    fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
         let node = self.tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
                     PythonTerminalType::Name => Leaf::Name(Box::new(
-                        TreeName::new(state_db, self, node)
+                        TreeName::new(database, self, node)
                     )),
                     _ => Leaf::None,
                 }

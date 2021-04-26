@@ -193,7 +193,7 @@ struct Issue {
 }
 
 #[derive(Default)]
-pub struct StateDB {
+pub struct Database {
     module_loaders: Box<[Box<dyn ModuleLoader>]>,
     modules: Vec<Pin<Box<dyn Module>>>,
     path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
@@ -201,7 +201,7 @@ pub struct StateDB {
     files_managed_by_client: HashMap<PathBuf, ModuleIndex>,
 }
 
-impl StateDB {
+impl Database {
     pub fn get_module(&self, index: ModuleIndex) -> &dyn Module {
         &*self.modules[index.0 as usize]
     }
