@@ -1,9 +1,8 @@
 Copyright (c) 2020-2021 Dave Halter. All rights reserved.
 
 At the moment all rights are reserved. In the future this license will probably
-allow non-commercial use and commercial use in small companies. Bigger
-companies will probably have to pay. Feel free to ask me if you want to use
-this software.
+allow non-commercial use. Companies will probably have to pay. Feel free to ask
+me if you want to use this software.
 
 The above copyright notice and this permission notice shall be included in
 all copies or portions of the Software.
