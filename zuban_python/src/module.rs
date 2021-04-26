@@ -1,7 +1,8 @@
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType};
+use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
 use crate::cache::StateDB;
+use std::pin::Pin;
 
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
@@ -12,7 +13,27 @@ pub enum Leaf<'a> {
     None
 }
 
+pub trait ModuleLoader {
+    fn responsible_for_file_endings(&self) -> Vec<&str>;
+
+    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn Module>>;
+}
+
+pub struct PythonModuleLoader {}
+
+impl ModuleLoader for PythonModuleLoader {
+    fn responsible_for_file_endings(&self) -> Vec<&str> {
+        vec!(".py", ".pyi")
+    }
+
+    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn Module>> {
+        todo!()
+        //Box::new(PythonModule {path, tree: PYTHON_GRAMMAR.parse(code)}).pin()
+    }
+}
+
 pub trait Module {
+    //fn new(path: String, code: String) -> Self;
     fn get_path(&self) -> Option<&str>;
 
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
@@ -25,7 +46,7 @@ pub trait Module {
 }
 
 
-struct PythonModule {
+pub struct PythonModule {
     path: String,
     tree: PythonTree,
 }

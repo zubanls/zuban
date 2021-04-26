@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use parsa_python::PythonTree;
 use parsa::NodeIndex;
 
-use crate::module::Module;
+use crate::module::{Module, ModuleLoader};
 
 #[derive(Clone, Copy)]
 pub struct ModuleIndex(pub u32);
@@ -194,6 +194,7 @@ struct Issue {
 
 #[derive(Default)]
 pub struct StateDB {
+    module_loaders: Box<[Box<dyn ModuleLoader>]>,
     modules: Vec<Pin<Box<dyn Module>>>,
     path_to_module: HashMap<&'static PathBuf, ModuleIndex>,
     workspaces: Vec<Workspace>,
@@ -208,6 +209,26 @@ impl StateDB {
     pub fn get_module_by_path(&self, path: PathBuf) -> &dyn Module {
         let index = self.path_to_module[&path];
         self.get_module(index)
+    }
+
+    pub fn load_file(&self, path: String, code: String) -> &dyn Module {
+        for module_loader in self.module_loaders.iter() {
+            let extension = Path::new(&path).extension().unwrap();
+            // Can unwrap because path is unicode.
+            if module_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
+                let file = module_loader.load_file(path, code);
+                return unsafe {self.insert_file(file)}
+            }
+        }
+        unreachable!()
+    }
+
+    unsafe fn insert_file(&self, file: Pin<Box<dyn Module>>) -> &dyn Module {
+        //let modules = self.modules as *const Vec<Pin<Box<dyn Module>>>;
+        //let modules = modules as *mut Vec<_> as &mut Vec<_>;
+        //modules.push(file);
+        //&*module
+        todo!()
     }
 }
 

@@ -8,7 +8,7 @@ mod value;
 
 use std::path::PathBuf;
 use parsa::CodeIndex;
-use module::{Leaf};
+use module::{Module, Leaf};
 use name::{Names, ValueNames};
 
 pub enum Project {
@@ -25,9 +25,13 @@ impl Project {
         })
     }
 
-    fn search(&self, string: &str, all_scopes: bool) {
+    pub fn search(&self, string: &str, all_scopes: bool) {
     }
-    fn complete_search(&self, string: &str, all_scopes: bool) {
+    pub fn complete_search(&self, string: &str, all_scopes: bool) {
+    }
+
+    fn load_file(&self, path: String, code: String) -> &dyn Module {
+        self.get_state().load_file(path, code)
     }
 
     fn get_state(&self) -> &cache::StateDB {
@@ -53,7 +57,7 @@ pub enum Position {
 
 pub struct Script<'a> {
     project: &'a mut Project,
-    module: Box<dyn module::Module>,
+    module: &'a dyn module::Module,
 }
 
 impl<'a> Script<'a> {
