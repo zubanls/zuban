@@ -8,46 +8,41 @@ mod value;
 
 use std::path::PathBuf;
 use parsa::CodeIndex;
-use file::{File, Leaf};
+use file::{Leaf};
 use name::{Names, ValueNames};
 
-pub enum Project {
+pub enum ProjectType {
     PythonProject(PythonProject),
+}
+
+pub struct Project {
+    type_: ProjectType,
+    database: cache::Database,
 }
 
 impl Project {
     pub fn new(path: String) -> Self {
-        Self::PythonProject(PythonProject {
-            path,
-            sys_path: vec!(),
-            is_django: false,
+        Self {
+            type_: ProjectType::PythonProject(PythonProject {
+                path,
+                sys_path: vec!(),
+                is_django: false,
+            }),
             database: Default::default(),
-        })
+        }
     }
 
     pub fn search(&self, string: &str, all_scopes: bool) {
     }
+
     pub fn complete_search(&self, string: &str, all_scopes: bool) {
-    }
-
-    fn load_file(&self, path: String, code: String) -> &dyn File {
-        self.get_state().load_file(path, code)
-    }
-
-    fn get_state(&self) -> &cache::Database {
-        // TODO cleanup
-        match self {
-            Project::PythonProject(x) => &x.database,
-        }
     }
 }
 
 pub struct PythonProject {
     path: String,
-    //environment_path: String,
     sys_path: Vec<String>,
     is_django: bool,
-    database: cache::Database,
 }
 
 pub enum Position {
@@ -62,8 +57,7 @@ pub struct Script<'a> {
 
 impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
-        let state = project.get_state();
-        let file = state.get_file_by_path(path.unwrap().canonicalize().unwrap());
+        let file = project.database.get_file_by_path(path.unwrap().canonicalize().unwrap());
         todo!();
         //Self {project, file}
     }
@@ -79,7 +73,7 @@ impl<'a> Script<'a> {
 
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        self.file.get_leaf(self.project.get_state(), pos)
+        self.file.get_leaf(&self.project.database, pos)
     }
 
     pub fn complete(&self, position: Position) {
