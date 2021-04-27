@@ -2,7 +2,6 @@ use std::mem;
 use std::pin::Pin;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use parsa_python::PythonTree;
 use parsa::NodeIndex;
 
 use crate::file::{File, FileLoader};
@@ -11,6 +10,7 @@ use crate::file::{File, FileLoader};
 pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
+type FileLoaders = Box<[Box<dyn FileLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -148,7 +148,7 @@ pub enum Locality {
 
 struct InternalValue(u32, u32);
 
-struct ValueLink {
+pub struct ValueLink {
     file: FileIndex,
     node_index: NodeIndex,
 }
@@ -160,7 +160,7 @@ pub enum ComplexValue {
     Generic(Execution),
 }
 
-struct Execution {
+pub struct Execution {
     function: ValueLink,
     args: Box<[Value]>,
 }
@@ -174,7 +174,7 @@ struct Issue {
 #[derive(Default)]
 pub struct Database {
     in_use: bool,
-    file_loaders: Box<[Box<dyn FileLoader>]>,
+    file_loaders: FileLoaders,
     files: Vec<Pin<Box<dyn File>>>,
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
@@ -182,6 +182,13 @@ pub struct Database {
 }
 
 impl Database {
+    pub fn new(file_loaders: FileLoaders) -> Self {
+        Self {
+            file_loaders,
+            ..Default::default()
+        }
+    }
+
     pub fn acquire(&mut self) {
         self.in_use = true;
     }

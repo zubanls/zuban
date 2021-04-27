@@ -6,11 +6,10 @@ mod file;
 mod name;
 mod value;
 
-use std::path::PathBuf;
 use parsa::CodeIndex;
-use file::{Leaf};
+use file::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
-use cache::FileIndex;
+use cache::{FileIndex, Database};
 
 pub enum ProjectType {
     PythonProject(PythonProject),
@@ -18,18 +17,19 @@ pub enum ProjectType {
 
 pub struct Project {
     type_: ProjectType,
-    database: cache::Database,
+    database: Database,
 }
 
 impl Project {
     pub fn new(path: String) -> Self {
+        let loaders = vec!(Box::new(PythonFileLoader::default()) as Box<_>);
         Self {
             type_: ProjectType::PythonProject(PythonProject {
                 path,
                 sys_path: vec!(),
                 is_django: false,
             }),
-            database: Default::default(),
+            database: Database::new(loaders.into_boxed_slice()),
         }
     }
 

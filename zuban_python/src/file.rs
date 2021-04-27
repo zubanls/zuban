@@ -23,11 +23,12 @@ pub trait FileLoader {
     fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>>;
 }
 
+#[derive(Default)]
 pub struct PythonFileLoader {}
 
 impl FileLoader for PythonFileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str> {
-        vec!(".py", ".pyi")
+        vec!("py", "pyi")
     }
 
     fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>> {
