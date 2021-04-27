@@ -190,12 +190,14 @@ impl Database {
     }
 
     pub fn acquire(&mut self) {
+        assert!(!self.in_use);
         self.in_use = true;
     }
 
     pub fn release(&mut self) {
-        // todo handle watcher events here
+        assert!(self.in_use);
         self.in_use = false;
+        // todo handle watcher events here
     }
 
     pub fn get_file(&self, index: FileIndex) -> &dyn File {
