@@ -32,8 +32,14 @@ impl FileLoader for PythonFileLoader {
     }
 
     fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>> {
-        todo!()
-        //Box::new(PythonFile {path, tree: PYTHON_GRAMMAR.parse(code)}).pin()
+        Box::pin(
+            PythonFile {
+                path,
+                state: FileState::Parsed(
+                    ParsedFile::new(PYTHON_GRAMMAR.parse(code))
+                )
+            }
+        )
     }
 }
 
@@ -114,4 +120,17 @@ struct ParsedFile {
     complex_values: Vec<ComplexValue>,
     dependencies: Vec<FileIndex>,
     issues: Vec<Issue>,
+}
+
+impl ParsedFile {
+    fn new(tree: PythonTree) -> Self {
+        Self {
+            tree,
+            definition_names: Default::default(),
+            values_or_references: Default::default(),
+            complex_values: Default::default(),
+            dependencies: Default::default(),
+            issues: Default::default(),
+        }
+    }
 }
