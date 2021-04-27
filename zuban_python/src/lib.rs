@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use parsa::CodeIndex;
 use file::{Leaf};
 use name::{Names, ValueNames};
+use cache::FileIndex;
 
 pub enum ProjectType {
     PythonProject(PythonProject),
@@ -52,15 +53,17 @@ pub enum Position {
 
 pub struct Script<'a> {
     project: &'a mut Project,
-    file: &'a dyn file::File,
+    file_index: FileIndex,
 }
 
 impl<'a> Script<'a> {
-    pub fn new(project: &'a mut Project, path: Option<PathBuf>, code: Option<String>) -> Self {
-        project.database.acquire();
-        let file = project.database.get_file_by_path(path.unwrap().canonicalize().unwrap());
-        todo!();
-        //Self {project, file}
+    pub fn new(project: &'a mut Project, path: Option<String>, code: Option<String>) -> Self {
+        let database = &mut project.database;
+        database.acquire();
+        let path = path.unwrap();
+        let file_index = database.get_file_index_by_path(&path);
+        let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()).0);
+        Self {project, file_index}
     }
 
     fn to_byte_position(&self, position: Position) -> CodeIndex {
@@ -72,9 +75,13 @@ impl<'a> Script<'a> {
         }
     }
 
+    fn get_file(&self) -> &dyn file::File {
+        self.project.database.get_file(self.file_index)
+    }
+
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        self.file.get_leaf(&self.project.database, pos)
+        self.get_file().get_leaf(&self.project.database, pos)
     }
 
     pub fn complete(&self, position: Position) {
@@ -106,7 +113,7 @@ impl<'a> Script<'a> {
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
         let names = self.goto_definition(position, follow_imports);
-        self.file.get_implementation(names)
+        self.get_file().get_implementation(names)
     }
 
     pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {

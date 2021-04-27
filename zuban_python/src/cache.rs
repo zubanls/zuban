@@ -176,7 +176,7 @@ pub struct Database {
     in_use: bool,
     file_loaders: Box<[Box<dyn FileLoader>]>,
     files: Vec<Pin<Box<dyn File>>>,
-    path_to_file: HashMap<&'static PathBuf, FileIndex>,
+    path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
 }
@@ -195,12 +195,11 @@ impl Database {
         &*self.files[index.0 as usize]
     }
 
-    pub fn get_file_by_path(&self, path: PathBuf) -> &dyn File {
-        let index = self.path_to_file[&path];
-        self.get_file(index)
+    pub fn get_file_index_by_path(&self, path: &str) -> Option<FileIndex> {
+        self.path_to_file.get(path).copied()
     }
 
-    pub fn load_file(&self, path: String, code: String) -> &dyn File {
+    pub fn load_file(&self, path: String, code: String) -> (FileIndex, &dyn File) {
         for file_loader in self.file_loaders.iter() {
             let extension = Path::new(&path).extension().unwrap();
             // Can unwrap because path is unicode.
@@ -212,7 +211,7 @@ impl Database {
         unreachable!()
     }
 
-    unsafe fn insert_file(&self, file: Pin<Box<dyn File>>) -> &dyn File {
+    unsafe fn insert_file(&self, file: Pin<Box<dyn File>>) -> (FileIndex, &dyn File) {
         //let files = self.files as *const Vec<Pin<Box<dyn File>>>;
         //let files = files as *mut Vec<_> as &mut Vec<_>;
         //files.push(file);
