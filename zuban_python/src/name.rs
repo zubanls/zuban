@@ -74,8 +74,8 @@ pub struct TreeName<'a, F: File, N: Node<'a>> {
 }
 
 impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("WithValueName")
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TreeName")
          .field("file", self.file)
          .field("tree_node", &self.tree_node)
          .finish()
@@ -137,7 +137,7 @@ struct WithValueName<'a, V> {
 }
 
 impl<'a, V: fmt::Debug> fmt::Debug for WithValueName<'a, V> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
          .field("value", &self.value)
          .finish()

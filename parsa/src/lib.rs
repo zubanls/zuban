@@ -286,7 +286,17 @@ macro_rules! __create_node {
 
         impl std::fmt::Debug for $Node<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                write!(f, "Node {}: {:?}", self.type_str(), self.internal_node)
+                let mut code = self.get_code();
+                let x;
+                if code.len() > 40 {
+                    x = code[..40].to_owned() + "...";
+                    code = &x;
+                }
+                f.debug_struct(stringify!($Node))
+                 .field("type", &self.type_str())
+                 .field("content", &code)
+                 .field("internal_node", &self.internal_node)
+                 .finish()
             }
         }
     }
