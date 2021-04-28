@@ -1,4 +1,5 @@
 use std::mem;
+use std::cell::UnsafeCell;
 use std::pin::Pin;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
@@ -175,7 +176,7 @@ struct Issue {
 pub struct Database {
     in_use: bool,
     file_loaders: FileLoaders,
-    files: Vec<Pin<Box<dyn File>>>,
+    files: InsertOnlyVec<dyn File>,
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
@@ -201,20 +202,21 @@ impl Database {
     }
 
     pub fn get_file(&self, index: FileIndex) -> &dyn File {
-        &*self.files[index.0 as usize]
+        self.files.get(index.0 as usize).unwrap()
     }
 
     pub fn get_file_index_by_path(&self, path: &str) -> Option<FileIndex> {
         self.path_to_file.get(path).copied()
     }
 
-    pub fn load_file(&self, path: String, code: String) -> (FileIndex, &dyn File) {
+    pub fn load_file(&self, path: String, code: String) -> FileIndex {
         for file_loader in self.file_loaders.iter() {
             let extension = Path::new(&path).extension().unwrap();
             // Can unwrap because path is unicode.
             if file_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
                 let file = file_loader.load_file(path, code);
-                return unsafe {self.insert_file(file)}
+                self.files.push(file);
+                return FileIndex(self.files.len() as u32 - 1)
             }
         }
         unreachable!()
@@ -226,6 +228,31 @@ impl Database {
         //files.push(file);
         //&*file
         todo!()
+    }
+}
+
+#[derive(Debug)]
+struct InsertOnlyVec<T: ?Sized> {
+    vec: UnsafeCell<Vec<Pin<Box<T>>>>,
+}
+
+impl<T: ?Sized> Default for InsertOnlyVec<T> {
+    fn default() -> Self {
+        Self {vec: UnsafeCell::new(vec!())}
+    }
+}
+
+impl<T: ?Sized> InsertOnlyVec<T> where Pin<Box<T>>: Sized {
+    fn get(&self, index: usize) -> Option<&T> {
+        unsafe {&*self.vec.get()}.get(index).map(|x| x as &T)
+    }
+
+    fn push(&self, element: Pin<Box<T>>) {
+        unsafe {&mut *self.vec.get()}.push(element);
+    }
+
+    fn len(&self) -> usize {
+        unsafe {&*self.vec.get()}.len()
     }
 }
 

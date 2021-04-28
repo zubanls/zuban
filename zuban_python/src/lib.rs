@@ -62,7 +62,7 @@ impl<'a> Script<'a> {
         database.acquire();
         let path = path.unwrap();
         let file_index = database.get_file_index_by_path(&path);
-        let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()).0);
+        let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
         Self {project, file_index}
     }
 
