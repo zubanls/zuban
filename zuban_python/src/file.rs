@@ -5,6 +5,7 @@ use crate::cache::{Database, FileIndex, Locality, InternalValueOrReference, Comp
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::cell::Cell;
+use std::fmt;
 
 type InvalidatedDependencies = Vec<FileIndex>;
 
@@ -99,7 +100,6 @@ impl File for PythonFile {
     }
 }
 
-#[derive(Debug)]
 enum FileState<T> {
     DoesNotExist,
     Unparsed,
@@ -114,6 +114,19 @@ impl<T> FileState<T> {
                 x
             }
             Self::DoesNotExist | Self::Unparsed => panic!("Looks like a programming error")
+        }
+    }
+}
+
+impl<T> fmt::Debug for FileState<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Intentionally remove the T here, because it's usually huge and we are usually not
+        // interested in that while debugging.
+        match *self {
+            Self::DoesNotExist => write!(f, "DoesNotExist"),
+            Self::Unparsed => write!(f, "Unparsed"),
+            Self::Parsed(_) => write!(f, "Parsed(_)"),
+            Self::InvalidatedDependencies(_, _) => write!(f, "InvalidatedDependencies(_)"),
         }
     }
 }
