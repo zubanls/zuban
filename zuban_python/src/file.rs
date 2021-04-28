@@ -134,7 +134,7 @@ impl<T> fmt::Debug for FileState<T> {
 #[derive(Debug)]
 struct ParsedFile {
     tree: PythonTree,
-    definition_names: HashMap<&'static str, NodeIndex>,
+    definition_names: Option<HashMap<&'static str, NodeIndex>>,
     //reference_bloom_filter: BloomFilter<&str>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
@@ -144,13 +144,14 @@ struct ParsedFile {
 
 impl ParsedFile {
     fn new(tree: PythonTree) -> Self {
+        let length = tree.get_length();
         Self {
             tree,
-            definition_names: Default::default(),
-            values_or_references: Default::default(),
-            complex_values: Default::default(),
-            dependencies: Default::default(),
-            issues: Default::default(),
+            definition_names: None,
+            values_or_references: vec!(Default::default(); length),
+            complex_values: vec!(),
+            dependencies: vec!(),
+            issues: vec!(),
         }
     }
 }

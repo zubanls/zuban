@@ -91,6 +91,7 @@ impl<'a, F: File, N: Node<'a>> TreeName<'a, F, N> {
 
 pub trait LanguageTreeName<'a> {
     fn tree_infer(&self) -> ValueNames<'a>;
+    fn tree_goto(&self) -> Names<'a>;
 }
 
 impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PythonNode<'a>> {
@@ -99,6 +100,10 @@ impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PythonNode<'a>> {
             panic!("yay!")
         }
         vec!()
+    }
+
+    fn tree_goto(&self) -> Names<'a> {
+        todo!()
     }
 }
 
@@ -142,7 +147,7 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
     }
 
     fn goto(&self) -> Names<'a> {
-        todo!()
+        self.tree_goto()
     }
 }
 

@@ -36,7 +36,7 @@ const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 
 const IS_EXTERN_MASK: u32 = 1 << 29;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct InternalValueOrReference {
     flags: u32,
     node_index: NodeIndex,

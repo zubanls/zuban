@@ -538,6 +538,10 @@ macro_rules! create_grammar {
                 }
             }
 
+            pub fn get_length(&self) -> usize {
+                self.internal_tree.nodes.len()
+            }
+
             pub fn get_nodes(&self) -> Vec<$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
                     |(index, internal_node)| self.get_node(index as u32, internal_node)
