@@ -1,8 +1,9 @@
 use std::fmt;
 use crate::value::{Value, ValueKind};
 use crate::cache::{Database};
-use crate::file::File;
+use crate::file::{File, PythonFile};
 use parsa::{CodeIndex, Node};
+use parsa_python::{PythonNode, PythonNodeType, PythonTerminalType};
 
 type Signatures = Vec<()>;
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
@@ -82,13 +83,27 @@ impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> {
     }
 }
 
-impl<'a, N: Node<'a>, F: File> TreeName<'a, F, N> {
+impl<'a, F: File, N: Node<'a>> TreeName<'a, F, N> {
     pub fn new(database: &'a Database, file: &'a F, tree_node: N) -> Self {
         Self {database, tree_node, file}
     }
 }
 
-impl<'a, N: Node<'a>, F: File> Name<'a> for TreeName<'a, F, N> {
+pub trait LanguageTreeName<'a> {
+    fn tree_infer(&self) -> ValueNames<'a>;
+}
+
+impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PythonNode<'a>> {
+    fn tree_infer(&self) -> ValueNames<'a> {
+        if let PythonNodeType::Terminal(PythonTerminalType::Name) = self.tree_node.get_type() {
+            panic!("yay!")
+        }
+        vec!()
+    }
+}
+
+impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
+        where TreeName<'a, F, N>: LanguageTreeName<'a> {
     fn get_name(&self) -> &'a str {
         self.tree_node.get_code()
     }
@@ -123,7 +138,7 @@ impl<'a, N: Node<'a>, F: File> Name<'a> for TreeName<'a, F, N> {
     */
 
     fn infer(&self) -> ValueNames<'a> {
-        vec!()
+        self.tree_infer()
     }
 
     fn goto(&self) -> Names<'a> {
