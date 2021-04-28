@@ -20,7 +20,7 @@ pub use grammar::{
     Tokenizer,
 };
 
-pub trait Node<'a> {
+pub trait Node<'a>: std::fmt::Debug {
     fn get_code(&self) -> &'a str;
 
     fn get_prefix(&self) -> &'a str;
@@ -539,7 +539,8 @@ macro_rules! create_grammar {
             }
 
             pub fn get_leaf_by_position(&self, index: $crate::CodeIndex) -> $Node {
-                todo!()
+                // TODO
+                self.get_node(5, &self.internal_tree.nodes[8])
             }
         }
 

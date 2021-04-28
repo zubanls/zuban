@@ -7,7 +7,7 @@ use parsa::NodeIndex;
 
 use crate::file::{File, FileLoader};
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
@@ -132,6 +132,7 @@ enum Value {
     // list literal/vs func; instance; closure
 }
 
+#[derive(Debug)]
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
@@ -149,11 +150,13 @@ pub enum Locality {
 
 struct InternalValue(u32, u32);
 
+#[derive(Debug)]
 pub struct ValueLink {
     file: FileIndex,
     node_index: NodeIndex,
 }
 
+#[derive(Debug)]
 pub enum ComplexValue {
     Union(Box<[ValueLink]>),
     Instance(Execution),
@@ -161,15 +164,10 @@ pub enum ComplexValue {
     Generic(Execution),
 }
 
+#[derive(Debug)]
 pub struct Execution {
     function: ValueLink,
-    args: Box<[Value]>,
-}
-
-struct Issue {
-    issue_id: u32,
-    tree_node: NodeIndex,
-    locality: Locality,
+    //args: Box<[Value]>,
 }
 
 #[derive(Default)]

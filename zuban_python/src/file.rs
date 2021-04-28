@@ -8,6 +8,7 @@ use std::cell::Cell;
 
 type InvalidatedDependencies = Vec<FileIndex>;
 
+#[derive(Debug)]
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
     String,
@@ -43,7 +44,7 @@ impl FileLoader for PythonFileLoader {
     }
 }
 
-pub trait File {
+pub trait File: std::fmt::Debug {
     //fn new(path: String, code: String) -> Self;
     fn get_path(&self) -> Option<&str>;
 
@@ -55,12 +56,14 @@ pub trait File {
 }
 
 
+#[derive(Debug)]
 struct Issue {
     issue_id: u32,
     tree_node: NodeIndex,
     locality: Locality,
 }
 
+#[derive(Debug)]
 pub struct PythonFile {
     path: String,
     state: FileState<ParsedFile>,
@@ -89,11 +92,14 @@ impl File for PythonFile {
             PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
                 Leaf::Keyword(node.get_code().to_owned())
             }
-            PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => panic!(),
+            PythonNodeType::Nonterminal(n) | PythonNodeType::ErrorNonterminal(n) => {
+                panic!("{}", node.type_str())
+            }
         }
     }
 }
 
+#[derive(Debug)]
 enum FileState<T> {
     DoesNotExist,
     Unparsed,
@@ -112,6 +118,7 @@ impl<T> FileState<T> {
     }
 }
 
+#[derive(Debug)]
 struct ParsedFile {
     tree: PythonTree,
     definition_names: HashMap<&'static str, NodeIndex>,

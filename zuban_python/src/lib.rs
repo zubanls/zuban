@@ -46,6 +46,7 @@ pub struct PythonProject {
     is_django: bool,
 }
 
+#[derive(Clone, Copy)]
 pub enum Position {
     Byte(usize),
     LineColumn(usize, usize),
@@ -88,6 +89,7 @@ impl<'a> Script<'a> {
     }
 
     pub fn infer_definition(&self, position: Position) -> ValueNames {
+        dbg!(self.get_leaf(position));
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),

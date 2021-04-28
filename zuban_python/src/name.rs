@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::value::{Value, ValueKind};
 use crate::cache::{Database};
 use crate::file::File;
@@ -23,7 +24,7 @@ impl TreePosition<'_> {
     }
 }
 
-pub trait Name<'a> {
+pub trait Name<'a>: fmt::Debug {
     fn get_name(&self) -> &'a str;
 
     fn get_file_path(&self) -> Option<&str>;
@@ -70,6 +71,15 @@ pub struct TreeName<'a, F: File, N: Node<'a>> {
     database: &'a Database,
     file: &'a F,
     tree_node: N,
+}
+
+impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WithValueName")
+         .field("file", self.file)
+         .field("tree_node", &self.tree_node)
+         .finish()
+    }
 }
 
 impl<'a, N: Node<'a>, F: File> TreeName<'a, F, N> {
@@ -124,6 +134,14 @@ impl<'a, N: Node<'a>, F: File> Name<'a> for TreeName<'a, F, N> {
 struct WithValueName<'a, V> {
     database: &'a Database,
     value: Box<V>,
+}
+
+impl<'a, V: fmt::Debug> fmt::Debug for WithValueName<'a, V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("WithValueName")
+         .field("value", &self.value)
+         .finish()
+    }
 }
 
 impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
