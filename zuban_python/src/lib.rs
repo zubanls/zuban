@@ -5,6 +5,7 @@ mod cache;
 mod file;
 mod name;
 mod value;
+mod utils;
 
 use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};

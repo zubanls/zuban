@@ -1,11 +1,10 @@
 use std::mem;
-use std::cell::UnsafeCell;
-use std::pin::Pin;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use parsa::NodeIndex;
 
 use crate::file::{File, FileLoader};
+use crate::utils::InsertOnlyVec;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FileIndex(pub u32);
@@ -218,39 +217,6 @@ impl Database {
             }
         }
         unreachable!()
-    }
-
-    unsafe fn insert_file(&self, file: Pin<Box<dyn File>>) -> (FileIndex, &dyn File) {
-        //let files = self.files as *const Vec<Pin<Box<dyn File>>>;
-        //let files = files as *mut Vec<_> as &mut Vec<_>;
-        //files.push(file);
-        //&*file
-        todo!()
-    }
-}
-
-#[derive(Debug)]
-struct InsertOnlyVec<T: ?Sized> {
-    vec: UnsafeCell<Vec<Pin<Box<T>>>>,
-}
-
-impl<T: ?Sized> Default for InsertOnlyVec<T> {
-    fn default() -> Self {
-        Self {vec: UnsafeCell::new(vec!())}
-    }
-}
-
-impl<T: ?Sized> InsertOnlyVec<T> where Pin<Box<T>>: Sized {
-    fn get(&self, index: usize) -> Option<&T> {
-        unsafe {&*self.vec.get()}.get(index).map(|x| x as &T)
-    }
-
-    fn push(&self, element: Pin<Box<T>>) {
-        unsafe {&mut *self.vec.get()}.push(element);
-    }
-
-    fn len(&self) -> usize {
-        unsafe {&*self.vec.get()}.len()
     }
 }
 
