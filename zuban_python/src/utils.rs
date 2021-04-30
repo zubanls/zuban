@@ -12,7 +12,7 @@ impl<T: ?Sized> Default for InsertOnlyVec<T> {
     }
 }
 
-impl<T: ?Sized> InsertOnlyVec<T> where Pin<Box<T>>: Sized {
+impl<T: ?Sized> InsertOnlyVec<T> {
     pub fn get(&self, index: usize) -> Option<&T> {
         unsafe {&*self.vec.get()}.get(index).map(|x| x as &T)
     }
