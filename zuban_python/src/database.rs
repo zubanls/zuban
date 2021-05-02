@@ -22,19 +22,21 @@ type FileLoaders = Box<[Box<dyn FileLoader>]>;
 // -> XxxxX unused
 // -> Xxxx0 non nullable
 // -> Xxxx1 nullable
-// -> XXXXXx is_module
+// -> XXXXXx is_module_definition
+// -> XXXXXXx unused
 // Rest 26 bits = FileIndex
 // If Internal second field = Value
 // If External second field = FileIndex
 
-const IS_REFERENCE_MASK: u32 = 1 << 31;
-const IS_DEFINITION_MASK: u32 = 1 << 30;
-const LOCALITY_INDEX: usize = 26;
+const IS_VALUE_BIT_INDEX: usize = 31;
+const IS_VALUE_MASK: u32 = 1 << IS_VALUE_BIT_INDEX;
+const LOCALITY_INDEX: usize = 28;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_INDEX;
-const REST_MASK: u32 = LOCALITY_MASK | IS_REFERENCE_MASK | IS_DEFINITION_MASK;
+
+const REST_MASK: u32 = LOCALITY_MASK | IS_VALUE_MASK;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 
-const IS_EXTERN_MASK: u32 = 1 << 29;
+const IS_EXTERN_MASK: u32 = 1 << 30;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
 pub struct InternalValueOrReference {
@@ -43,6 +45,45 @@ pub struct InternalValueOrReference {
 }
 
 impl InternalValueOrReference {
+    #[inline]
+    fn calculate_flags(is_value: bool, other_module: FileIndex, locality: Locality,
+                       is_nullable: bool, is_simple_module_definition: bool) -> u32 {
+        (is_value as u32) << IS_VALUE_BIT_INDEX
+        | (locality as u32) << LOCALITY_INDEX
+        | (is_nullable as u32)
+        | (is_simple_module_definition as u32)
+    }
+
+    pub fn new_local_reference(node_index: NodeIndex, locality: Locality, is_nullable: bool) -> Self {
+        let flags = Self::calculate_flags(false, FileIndex(0), locality, is_nullable, false);
+        Self {flags, node_index}
+    }
+
+    pub fn new_reference(other_module: FileIndex, node_index: NodeIndex,
+                         locality: Locality, is_nullable: bool) -> Self {
+        let flags = Self::calculate_flags(false, other_module, locality, is_nullable, false);
+        Self {flags, node_index}
+    }
+
+    pub fn new_local_value_reference(node_index: NodeIndex, locality: Locality,
+                                     is_nullable: bool, is_simple_module_definition: bool) -> Self {
+        let flags = Self::calculate_flags(false, FileIndex(0), locality, is_nullable,
+                                          is_simple_module_definition);
+        Self {flags, node_index}
+    }
+
+    pub fn new_value_reference(file_index: FileIndex, node_index: NodeIndex,
+                               locality: Locality, is_nullable: bool,
+                               is_simple_module_definition: bool) -> Self {
+        let flags = Self::calculate_flags(false, file_index, locality,
+                                          is_nullable, is_simple_module_definition);
+        Self {flags, node_index}
+    }
+
+    pub fn new_complex_value(node_index: NodeIndex) -> Self {
+        todo!()
+    }
+
     fn get_locality(self) -> Locality {
         unsafe { mem::transmute(self.flags << 28 & 7) }
     }
@@ -65,9 +106,10 @@ impl InternalValueOrReference {
     }
 
     fn is_value(self) -> bool {
-        self.flags & IS_REFERENCE_MASK != 0
+        self.flags & IS_VALUE_MASK == 0
     }
 
+    /*
     fn get_x(self) -> ValueOrReference {
         if self.is_uncalculated() {
             return ValueOrReference::Uncalculated;
@@ -87,10 +129,11 @@ impl InternalValueOrReference {
             ValueOrReference::Reference(Reference::LocalLink(self.node_index))
         }
     }
+    */
 }
 
-enum ValueOrReference {
-    Value(Value),
+enum ValueOrReference<T> {
+    Value(Value<T>),
     Reference(Reference),
     Uncalculated,
     Calculating,
@@ -104,10 +147,7 @@ enum Reference {
     Missing,
 }
 
-enum Value {
-    Class(NodeIndex),
-    Function(NodeIndex),  // Result
-    NoReturnFunction(NodeIndex),
+enum PythonValueEnum {
     String,
     Bytes,
     Float,
@@ -116,21 +156,29 @@ enum Value {
     Bool,
     None,
 
-    Unknown,
-    Param,  // Can be optional if param has default `foo=None`
     SelfParam,
-    ParamWithDefault(NodeIndex),
     Any,
     SimpleGeneric, // primary: primary '[' slices ']'
+    NoReturnFunction(NodeIndex),
+    ParamWithDefault(NodeIndex),
     TypeVar(NodeIndex),
+    Class(NodeIndex),
+    Function(NodeIndex),  // Result
+    Param,  // Can be optional if param has default `foo=None`
+}
 
-    LocalLink(NodeIndex),
-    Link(FileIndex, NodeIndex),
+enum Value<T> {
+    Unknown,
+    Specific(T),
+    LocalRedirect(NodeIndex),
+    Redirect(FileIndex, NodeIndex),
     ComplexIndex(ComplexIndex),
 
     //Optional<Value>,
     // list literal/vs func; instance; closure
 }
+
+type Foo = Value<PythonValueEnum>;
 
 #[derive(Debug)]
 #[repr(u32)]
