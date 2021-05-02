@@ -1,7 +1,7 @@
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
-use crate::cache::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
+use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::cell::Cell;

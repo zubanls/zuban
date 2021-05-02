@@ -1,6 +1,6 @@
 use std::fmt;
 use crate::value::{Value, ValueKind};
-use crate::cache::{Database};
+use crate::database::{Database};
 use crate::file::{File, PythonFile};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PythonNode, PythonNodeType, PythonTerminalType};

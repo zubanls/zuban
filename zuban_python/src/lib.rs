@@ -1,7 +1,7 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
-mod cache;
+mod database;
 mod file;
 mod name;
 mod value;
@@ -10,7 +10,7 @@ mod utils;
 use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
-use cache::{FileIndex, Database};
+use database::{FileIndex, Database};
 
 pub enum ProjectType {
     PythonProject(PythonProject),
