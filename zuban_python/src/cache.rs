@@ -19,16 +19,17 @@ type FileLoaders = Box<[Box<dyn FileLoader>]>;
 // xYYYxx YYY = Locality
 // -> x0xx Internal
 // -> x1xx External
-// -> 1xxxX unused
-// -> 1xxx0 non nullable
-// -> 1xxx1 nullable
-// Rest 27 bits = FileIndex
+// -> XxxxX unused
+// -> Xxxx0 non nullable
+// -> Xxxx1 nullable
+// -> XXXXXx is_module
+// Rest 26 bits = FileIndex
 // If Internal second field = Value
 // If External second field = FileIndex
 
 const IS_REFERENCE_MASK: u32 = 1 << 31;
 const IS_DEFINITION_MASK: u32 = 1 << 30;
-const LOCALITY_INDEX: usize = 27;
+const LOCALITY_INDEX: usize = 26;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_INDEX;
 const REST_MASK: u32 = LOCALITY_MASK | IS_REFERENCE_MASK | IS_DEFINITION_MASK;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
