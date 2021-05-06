@@ -25,4 +25,3 @@ impl<T: ?Sized> InsertOnlyVec<T> {
         unsafe {&*self.vec.get()}.len()
     }
 }
-

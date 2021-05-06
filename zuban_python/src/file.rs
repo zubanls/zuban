@@ -134,7 +134,7 @@ impl<T> fmt::Debug for FileState<T> {
 #[derive(Debug)]
 struct ParsedFile {
     tree: PythonTree,
-    definition_names: Option<HashMap<&'static str, NodeIndex>>,
+    definition_names: Option<HashMap<*const str, NodeIndex>>,
     //reference_bloom_filter: BloomFilter<&str>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
