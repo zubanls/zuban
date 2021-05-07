@@ -14,19 +14,16 @@ type FileLoaders = Box<[Box<dyn FileLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
-// 0xxxxx Reference (or Node if not a Name)
-// 1xxxxx Value
-// xYYYxx YYY = Locality
-// -> x0xx Internal
-// -> x1xx External
-// -> XXXXx is_invalidated
-// -> XXXXXx is_module_definition
-// -> XXXXXXx is_analyzed
-// -> XXXXXXX1 nullable
-// -> XXXXXXX0 non nullable
-// -> XXXXXXXXx is_redirect
-// -> if true rest 23 bits = FileIndex
-// -> XXXXXXXXXx is_complex (A value is either a link or part of a value enum or complex)
+// 0xxxx Reference (or Node if not a Name)
+// 1xxxx Value
+// xooox Locality (xXxx is_external)
+// xxxxo is_analyzed
+// xxxxxo is_invalidated
+// xxxxxxo is_module_definition
+// xxxxxxxo is_nullable
+// xxxxxxxxo is_redirect
+// if true rest 23 bits = FileIndex
+// xxxxxxxxxo is_complex (A value is either a link or part of a value enum or complex)
 
 const IS_VALUE_BIT_INDEX: usize = 31;
 const IS_VALUE_MASK: u32 = 1 << IS_VALUE_BIT_INDEX;
@@ -120,6 +117,10 @@ enum ValueOrReference<T> {
     Uncalculated,
     Calculating,
     RecursionError,
+}
+
+enum ReferenceType {
+    Redirect = 1
 }
 
 enum Reference {
