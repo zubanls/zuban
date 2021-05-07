@@ -20,16 +20,16 @@ type FileLoaders = Box<[Box<dyn FileLoader>]>;
 // xxxxxo is_module_definition
 // xxxxxxo is_nullable
 // xxxxxxxooo ValueOrReferenceType
-// xxxxxxxo is_redirect
-// xxxxxxxxo is_complex (A value is either a link or part of a value enum or complex)
-// if true rest 23 bits = FileIndex
+// if true rest 22 bits reserved for ValueOrReference details
 
-const IS_VALUE_BIT_INDEX: usize = 31;
-const IS_VALUE_MASK: u32 = 1 << IS_VALUE_BIT_INDEX;
-const LOCALITY_INDEX: usize = 28;
-const LOCALITY_MASK: u32 = 0b111 << LOCALITY_INDEX;
+const IS_ANALIZED_BIT_INDEX: usize = 31;
+const IS_INVALIDATED_BIT_INDEX: usize = 30;
+const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
+const IS_MODULE_DEFINITION_BIT_INDEX: usize = 26;
+const IS_NULLABLE_BIT_INDEX: usize = 25;
+const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
-const REST_MASK: u32 = LOCALITY_MASK | IS_VALUE_MASK;
+const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 
 const IS_EXTERN_MASK: u32 = 1 << 30;
@@ -42,29 +42,41 @@ pub struct InternalValueOrReference {
 
 impl InternalValueOrReference {
     #[inline]
-    fn calculate_flags(is_value: bool, other_module: FileIndex, locality: Locality,
+    fn calculate_flags(other_module: FileIndex, locality: Locality,
                        is_nullable: bool, is_simple_module_definition: bool) -> u32 {
-        (is_value as u32) << IS_VALUE_BIT_INDEX
-        | (locality as u32) << LOCALITY_INDEX
+        (locality as u32)
         | (is_nullable as u32)
         | (is_simple_module_definition as u32)
     }
 
-    pub fn new_reference(other_module: FileIndex, node_index: NodeIndex,
-                         locality: Locality, is_nullable: bool) -> Self {
-        let flags = Self::calculate_flags(false, other_module, locality, is_nullable, false);
+    pub fn new_redirect(other_module: FileIndex, node_index: NodeIndex,
+                        locality: Locality, is_nullable: bool) -> Self {
+        let flags = Self::calculate_flags(other_module, locality, is_nullable, false);
         Self {flags, node_or_complex_index: node_index}
     }
 
-    pub fn new_value_reference(file_index: FileIndex, node_index: NodeIndex,
-                               locality: Locality, is_nullable: bool,
-                               is_simple_module_definition: bool) -> Self {
-        let flags = Self::calculate_flags(false, file_index, locality,
-                                          is_nullable, is_simple_module_definition);
-        Self {flags, node_or_complex_index: node_index}
+    pub fn new_multi_definition() -> Self {
+        todo!()
     }
 
-    pub fn new_complex_value(node_index: NodeIndex) -> Self {
+    pub fn new_complex_value() -> Self {
+        todo!()
+    }
+
+    pub fn new_missing_or_unknown() -> Self {
+        todo!()
+    }
+
+    pub fn new_language_specific() -> Self {
+        todo!()
+    }
+
+    pub fn new_file_reference() -> Self {
+        todo!()
+    }
+
+    pub fn new_missing_file() -> Self {
+        // Imports that point nowhere
         todo!()
     }
 
@@ -83,10 +95,6 @@ impl InternalValueOrReference {
     fn is_recursion_error(self) -> bool {
         unimplemented!();
         //self.flags & REST_MASK & 1 == 1
-    }
-
-    fn is_value(self) -> bool {
-        self.flags & IS_VALUE_MASK == 0
     }
 
     /*
@@ -123,15 +131,13 @@ enum ValueOrReference<T> {
 #[derive(Debug)]
 #[repr(u32)]
 enum ValueOrReferenceType {
-    Redirect,
+    Redirect = 1 << TYPE_BIT_INDEX,
     MultiDefinition,
     Complex,
     // In case of a reference it's missing otherwise unknown.
     MissingOrUnknown,
     LanguageSpecific,
     FileReference,
-    // Imports that point nowhere
-    MissingFile,
 }
 
 #[derive(Debug)]
@@ -161,7 +167,7 @@ enum PythonValueEnum {
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
-    Stmt = 1 << LOCALITY_INDEX,
+    Stmt = 1 << LOCALITY_BIT_INDEX,
     ClassOrFunction,
     MostOuterClassOrFunction,
     File,
