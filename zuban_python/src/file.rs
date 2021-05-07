@@ -39,7 +39,8 @@ impl FileLoader for PythonFileLoader {
                 path,
                 state: FileState::Parsed(
                     ParsedFile::new(PYTHON_GRAMMAR.parse(code))
-                )
+                ),
+                invalidates: vec!(),
             }
         )
     }
@@ -68,6 +69,7 @@ struct Issue {
 pub struct PythonFile {
     path: String,
     state: FileState<ParsedFile>,
+    invalidates: Vec<FileIndex>,
 }
 
 impl File for PythonFile {

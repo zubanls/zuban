@@ -130,7 +130,8 @@ enum ValueOrReferenceType {
     MissingOrUnknown,
     LanguageSpecific,
     FileReference,
-    NotExistingFile,  // TODO
+    // Imports that point nowhere
+    MissingFile,
 }
 
 #[derive(Debug)]
@@ -250,6 +251,6 @@ struct Workspace {
 }
 
 enum DirectoryOrFile {
-    File(&'static Path, Option<FileIndex>),
-    Directory(&'static Path, Vec<DirectoryOrFile>),
+    File(Box<str>, Option<FileIndex>),
+    Directory(Box<str>, Vec<DirectoryOrFile>),
 }
