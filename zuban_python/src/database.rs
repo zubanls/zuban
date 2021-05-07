@@ -14,16 +14,15 @@ type FileLoaders = Box<[Box<dyn FileLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
-// 0xxxx Reference (or Node if not a Name)
-// 1xxxx Value
-// xooox Locality (xXxx is_external)
-// xxxxo is_analyzed
-// xxxxxo is_invalidated
-// xxxxxxo is_module_definition
-// xxxxxxxo is_nullable
-// xxxxxxxxo is_redirect
+// oxxxx is_analyzed
+// xoxxx is_invalidated
+// xxooo Locality (xXxx is_external)
+// xxxxxo is_module_definition
+// xxxxxxo is_nullable
+// xxxxxxxooo ValueOrReferenceType
+// xxxxxxxo is_redirect
+// xxxxxxxxo is_complex (A value is either a link or part of a value enum or complex)
 // if true rest 23 bits = FileIndex
-// xxxxxxxxxo is_complex (A value is either a link or part of a value enum or complex)
 
 const IS_VALUE_BIT_INDEX: usize = 31;
 const IS_VALUE_MASK: u32 = 1 << IS_VALUE_BIT_INDEX;
@@ -111,6 +110,7 @@ impl InternalValueOrReference {
     */
 }
 
+/*
 enum ValueOrReference<T> {
     Value(Value<T>),
     Reference(Reference),
@@ -118,27 +118,23 @@ enum ValueOrReference<T> {
     Calculating,
     RecursionError,
 }
+*/
 
-enum ReferenceType {
-    Redirect = 1
+#[derive(Debug)]
+#[repr(u32)]
+enum ValueOrReferenceType {
+    Redirect,
+    MultiDefinition,
+    Complex,
+    // In case of a reference it's missing otherwise unknown.
+    MissingOrUnknown,
+    LanguageSpecific,
+    FileReference,
+    NotExistingFile,  // TODO
 }
 
-enum Reference {
-    Redirect(FileIndex, NodeIndex),
-    MultiDefinition(NodeIndex),
-    Missing,
-}
-
-enum Value<T> {
-    Redirect(FileIndex, NodeIndex),
-
-    Specific(T),
-    ComplexIndex(ComplexIndex),
-    Unknown,
-
-    // list literal/vs func; instance; closure
-}
-
+#[derive(Debug)]
+#[repr(u32)]
 enum PythonValueEnum {
     String,
     Bytes,
@@ -149,17 +145,16 @@ enum PythonValueEnum {
     None,
 
     SelfParam,
-    Any,
+    Param,
     SimpleGeneric, // primary: primary '[' slices ']'
-    NoReturnFunction,
-    ParamWithDefault(NodeIndex), // Link to Default
-    TypeVar,
+    ParamWithDefault, // TODO Redirect to default maybe?
     Class(NodeIndex), // The index to the __init__ name or 0
     Function(NodeIndex),  // Result
-    Param,
-}
+    NoReturnFunction,
 
-type Foo = Value<PythonValueEnum>;
+    TypeVar,
+    Any,
+}
 
 #[derive(Debug)]
 #[repr(u32)]
