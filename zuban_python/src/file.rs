@@ -55,7 +55,7 @@ impl FileStateLoader for PythonFileLoader {
         Box::pin(
             FileState2::new_parsed(
                 path,
-                PythonFile::new(code)
+                PythonFile::new(PYTHON_GRAMMAR.parse(code))
             )
         )
     }
@@ -99,8 +99,10 @@ impl<F: File> FileState3 for FileState2<F> {
     }
 }
 
+#[derive(Debug)]
 pub struct FileState2<F> {
     path: String,
+    // Unsafe, because the file is parsed lazily
     state: UnsafeCell<InternalFileExistence<F>>,
     invalidates: Vec<FileIndex>,
 }
@@ -137,17 +139,23 @@ enum InternalFileExistence<F> {
     Parsed(F),
 }
 
+impl<F> fmt::Debug for InternalFileExistence<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Intentionally remove the T here, because it's usually huge and we are usually not
+        // interested in that while debugging.
+        match *self {
+            Self::Missing => write!(f, "DoesNotExist"),
+            Self::Unparsed(_) => write!(f, "Unparsed"),
+            Self::Parsed(_) => write!(f, "Parsed(_)"),
+        }
+    }
+}
+
 #[derive(Debug)]
 struct Issue {
     issue_id: u32,
     tree_node: NodeIndex,
     locality: Locality,
-}
-
-#[derive(Debug)]
-pub struct PythonFile {
-    state: FileState<ParsedFile>,
-    invalidates: Vec<FileIndex>,
 }
 
 impl File for PythonFile {
@@ -156,7 +164,7 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        let node = self.state.get_parsed().unwrap().tree.get_leaf_by_position(position);
+        let node = self.tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
@@ -176,51 +184,8 @@ impl File for PythonFile {
     }
 }
 
-impl PythonFile {
-    fn new(code: String) -> Self {
-        Self {
-            state: FileState::Parsed(
-                ParsedFile::new(PYTHON_GRAMMAR.parse(code))
-            ),
-            invalidates: vec!(),
-        }
-    }
-}
-
-enum FileState<T> {
-    DoesNotExist,
-    Unparsed,
-    Parsed(T),
-}
-
-impl<T> FileState<T> {
-    fn get_parsed(&self) -> Option<&T> {
-        match self {
-            Self::Parsed(x) => {
-                Some(x)
-            }
-            Self::Unparsed => {
-                None
-            }
-            Self::DoesNotExist => None
-        }
-    }
-}
-
-impl<T> fmt::Debug for FileState<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Intentionally remove the T here, because it's usually huge and we are usually not
-        // interested in that while debugging.
-        match *self {
-            Self::DoesNotExist => write!(f, "DoesNotExist"),
-            Self::Unparsed => write!(f, "Unparsed"),
-            Self::Parsed(_) => write!(f, "Parsed(_)"),
-        }
-    }
-}
-
 #[derive(Debug)]
-struct ParsedFile {
+pub struct PythonFile {
     tree: PythonTree,
     definition_names: Option<HashMap<*const str, NodeIndex>>,
     //reference_bloom_filter: BloomFilter<&str>,
@@ -230,7 +195,7 @@ struct ParsedFile {
     issues: Vec<Issue>,
 }
 
-impl ParsedFile {
+impl PythonFile {
     fn new(tree: PythonTree) -> Self {
         let length = tree.get_length();
         Self {
