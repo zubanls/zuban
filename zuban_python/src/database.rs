@@ -203,7 +203,7 @@ pub struct Execution {
 
 pub struct Database {
     in_use: bool,
-    file_system_reader: Box<dyn VirtualFileSystemReader>,
+    pub file_system_reader: std::rc::Rc<dyn VirtualFileSystemReader>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState3>,
     path_to_file: HashMap<&'static str, FileIndex>,
@@ -215,7 +215,7 @@ impl Database {
     pub fn new(file_state_loaders: FileStateLoaders) -> Self {
         Self {
             in_use: false,
-            file_system_reader: Box::<FileSystemReader>::new(Default::default()),
+            file_system_reader: std::rc::Rc::<FileSystemReader>::new(Default::default()),
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),

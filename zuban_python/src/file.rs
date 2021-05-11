@@ -1,18 +1,18 @@
 use std::fs;
-use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
-use crate::name::{Name, Names, TreeName};
-use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use std::collections::HashMap;
 use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
 use std::fmt;
+use parsa::{CodeIndex, NodeIndex, Node};
+use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
+use crate::name::{Name, Names, TreeName};
+use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 
 type InvalidatedDependencies = Vec<FileIndex>;
-type LoadFileFunction<F> = Box<dyn Fn(&str) -> F>;
+type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
 
 pub trait VirtualFileSystemReader {
-    fn read(&self, path: &str) -> String;
+    fn read_file(&self, path: &str) -> String;
 }
 
 #[derive(Default)]
@@ -20,7 +20,7 @@ pub struct FileSystemReader {
 }
 
 impl VirtualFileSystemReader for FileSystemReader {
-    fn read(&self, path: &str) -> String {
+    fn read_file(&self, path: &str) -> String {
         // TODO can error
         fs::read_to_string(path).unwrap()
     }
@@ -55,16 +55,13 @@ impl FileStateLoader for PythonFileLoader {
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState3>> {
         Box::pin(
-            FileState2::new_parsed(
-                path,
-                PythonFile::new(PYTHON_GRAMMAR.parse(code))
-            )
+            FileState2::new_parsed(path, PythonFile::new(code))
         )
     }
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState3>> {
         Box::pin(
-            FileState2::new_unparsed(path, )
+            FileState2::new_unparsed(path, &PythonFile::new)
         )
     }
 }
@@ -83,7 +80,7 @@ pub trait File: std::fmt::Debug {
 
 pub trait FileState3 {
     fn get_path(&self) -> &str;
-    fn get_file(&self) -> Option<&dyn File>;
+    fn get_file(&self, database: &Database) -> Option<&dyn File>;
 }
 
 impl<F: File> FileState3 for FileState2<F> {
@@ -91,24 +88,24 @@ impl<F: File> FileState3 for FileState2<F> {
         &self.path
     }
 
-    fn get_file(&self) -> Option<&dyn File> {
+    fn get_file(&self, database: &Database) -> Option<&dyn File> {
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
             InternalFileExistence::Unparsed(loader) => {
                 unsafe {
                     *self.state.get() = InternalFileExistence::Parsed(
-                        loader(&self.path)
+                        loader(database.file_system_reader.read_file(&self.path))
                     )
                 };
-                self.get_file()
+                self.get_file(database)
             }
         }
     }
 }
 
 #[derive(Debug)]
-pub struct FileState2<F> {
+pub struct FileState2<F: 'static> {
     path: String,
     // Unsafe, because the file is parsed lazily
     state: UnsafeCell<InternalFileExistence<F>>,
@@ -141,9 +138,9 @@ impl<F: File> FileState2<F> {
     }
 }
 
-enum InternalFileExistence<F> {
+enum InternalFileExistence<F: 'static> {
     Missing,
-    Unparsed(Box<dyn Fn(&str) -> F>),
+    Unparsed(LoadFileFunction<F>),
     Parsed(F),
 }
 
@@ -204,7 +201,8 @@ pub struct PythonFile {
 }
 
 impl PythonFile {
-    fn new(tree: PythonTree) -> Self {
+    fn new(code: String) -> Self {
+        let tree = PYTHON_GRAMMAR.parse(code);
         let length = tree.get_length();
         Self {
             tree,

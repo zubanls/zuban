@@ -1,3 +1,4 @@
+#![allow(unreachable_code, unused_imports)]
 use std::fs;
 use std::path::PathBuf;
 

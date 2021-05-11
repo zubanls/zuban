@@ -78,7 +78,9 @@ impl<'a> Script<'a> {
     }
 
     fn get_file(&self) -> &dyn file::File {
-        self.project.database.get_file_state(self.file_index).get_file().unwrap()
+        self.project.database.get_file_state(self.file_index).get_file(
+            &self.project.database
+        ).unwrap()
     }
 
     fn get_leaf(&self, position: Position) -> Leaf {
