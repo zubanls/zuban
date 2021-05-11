@@ -40,7 +40,9 @@ pub enum Leaf<'a> {
 pub trait FileStateLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
-    fn load_file_state(&self, path: String, code: String) -> Pin<Box<dyn FileState3>>;
+    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState3>>;
+
+    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState3>>;
 }
 
 #[derive(Default)]
@@ -51,12 +53,18 @@ impl FileStateLoader for PythonFileLoader {
         vec!("py", "pyi")
     }
 
-    fn load_file_state(&self, path: String, code: String) -> Pin<Box<dyn FileState3>> {
+    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState3>> {
         Box::pin(
             FileState2::new_parsed(
                 path,
                 PythonFile::new(PYTHON_GRAMMAR.parse(code))
             )
+        )
+    }
+
+    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState3>> {
+        Box::pin(
+            FileState2::new_unparsed(path, )
         )
     }
 }

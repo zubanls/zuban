@@ -1,6 +1,7 @@
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
+use std::pin::Pin;
 use parsa::NodeIndex;
 
 use crate::file::{FileState3, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
@@ -254,12 +255,21 @@ impl Database {
         None
     }
 
+    fn add_file_state(&self, file_state: Pin<Box<dyn FileState3>>) -> FileIndex {
+        self.files.push(file_state);
+        FileIndex(self.files.len() as u32 - 1)
+    }
+
     pub fn load_file(&self, path: String, code: String) -> FileIndex {
         // This is the explicit version where we know that there's a loader.
         let loader = self.get_loader(&path).unwrap();
-        let file_state = loader.load_file_state(path, code);
-        self.files.push(file_state);
-        FileIndex(self.files.len() as u32 - 1)
+        self.add_file_state(loader.load_parsed(path, code))
+    }
+
+    pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
+        self.get_loader(&path).map(|loader| {
+            self.add_file_state(loader.load_unparsed(path))
+        })
     }
 }
 
