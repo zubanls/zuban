@@ -63,7 +63,7 @@ impl<'a> Script<'a> {
         let database = &mut project.database;
         database.acquire();
         let path = path.unwrap();
-        let file_index = database.get_file_index_by_path(&path);
+        let file_index = database.get_file_state_index_by_path(&path);
         let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
         Self {project, file_index}
     }
@@ -78,7 +78,7 @@ impl<'a> Script<'a> {
     }
 
     fn get_file(&self) -> &dyn file::File {
-        self.project.database.get_file(self.file_index)
+        self.project.database.get_file_state(self.file_index).get_file().unwrap()
     }
 
     fn get_leaf(&self, position: Position) -> Leaf {

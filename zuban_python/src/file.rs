@@ -1,13 +1,31 @@
+use std::fs;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use std::collections::HashMap;
+use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
-use std::cell::Cell;
 use std::fmt;
 
 type InvalidatedDependencies = Vec<FileIndex>;
+type LoadFileFunction<F> = Box<dyn Fn(&str) -> F>;
+
+pub trait VirtualFileSystemReader {
+    fn read(&self, path: &str) -> String;
+}
+
+#[derive(Default)]
+pub struct FileSystemReader {
+}
+
+impl VirtualFileSystemReader for FileSystemReader {
+    fn read(&self, path: &str) -> String {
+        // TODO can error
+        fs::read_to_string(path).unwrap()
+    }
+}
+
 
 #[derive(Debug)]
 pub enum Leaf<'a> {
@@ -19,37 +37,35 @@ pub enum Leaf<'a> {
     None
 }
 
-pub trait FileLoader {
+pub trait FileStateLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
-    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>>;
+    fn load_file_state(&self, path: String, code: String) -> Pin<Box<dyn FileState3>>;
 }
 
 #[derive(Default)]
 pub struct PythonFileLoader {}
 
-impl FileLoader for PythonFileLoader {
+impl FileStateLoader for PythonFileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str> {
         vec!("py", "pyi")
     }
 
-    fn load_file(&self, path: String, code: String) -> Pin<Box<dyn File>> {
+    fn load_file_state(&self, path: String, code: String) -> Pin<Box<dyn FileState3>> {
         Box::pin(
-            PythonFile {
+            FileState2::new_parsed(
                 path,
-                state: FileState::Parsed(
-                    ParsedFile::new(PYTHON_GRAMMAR.parse(code))
-                ),
-                invalidates: vec!(),
-            }
+                PythonFile::new(code)
+            )
         )
     }
 }
 
-pub trait File: std::fmt::Debug {
-    //fn new(path: String, code: String) -> Self;
-    fn get_path(&self) -> Option<&str>;
+pub trait FileLoader<F> {
+    fn load_file(&self, path: String, code: String) -> F;
+}
 
+pub trait File: std::fmt::Debug {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         vec!()
     }
@@ -57,6 +73,69 @@ pub trait File: std::fmt::Debug {
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
 }
 
+pub trait FileState3 {
+    fn get_path(&self) -> &str;
+    fn get_file(&self) -> Option<&dyn File>;
+}
+
+impl<F: File> FileState3 for FileState2<F> {
+    fn get_path(&self) -> &str {
+        &self.path
+    }
+
+    fn get_file(&self) -> Option<&dyn File> {
+        match unsafe {&*self.state.get()} {
+            InternalFileExistence::Missing => None,
+            InternalFileExistence::Parsed(f) => Some(f),
+            InternalFileExistence::Unparsed(loader) => {
+                unsafe {
+                    *self.state.get() = InternalFileExistence::Parsed(
+                        loader(&self.path)
+                    )
+                };
+                self.get_file()
+            }
+        }
+    }
+}
+
+pub struct FileState2<F> {
+    path: String,
+    state: UnsafeCell<InternalFileExistence<F>>,
+    invalidates: Vec<FileIndex>,
+}
+
+impl<F: File> FileState2<F> {
+    fn new_parsed(path: String, file: F) -> Self {
+        Self {
+            path,
+            state: UnsafeCell::new(
+                InternalFileExistence::Parsed(file)),
+            invalidates: vec!()}
+    }
+
+    fn new_unparsed(path: String, loader: LoadFileFunction<F>) -> Self {
+        Self {
+            path,
+            state: UnsafeCell::new(
+                InternalFileExistence::Unparsed(loader)),
+            invalidates: vec!()}
+    }
+
+    fn new_does_not_exist(path: String) -> Self {
+        Self {
+            path,
+            state: UnsafeCell::new(
+                InternalFileExistence::Missing),
+            invalidates: vec!()}
+    }
+}
+
+enum InternalFileExistence<F> {
+    Missing,
+    Unparsed(Box<dyn Fn(&str) -> F>),
+    Parsed(F),
+}
 
 #[derive(Debug)]
 struct Issue {
@@ -67,22 +146,17 @@ struct Issue {
 
 #[derive(Debug)]
 pub struct PythonFile {
-    path: String,
     state: FileState<ParsedFile>,
     invalidates: Vec<FileIndex>,
 }
 
 impl File for PythonFile {
-    fn get_path(&self) -> Option<&str> {
-        Some(&self.path)
-    }
-
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         todo!()
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        let node = self.state.get_parsed().tree.get_leaf_by_position(position);
+        let node = self.state.get_parsed().unwrap().tree.get_leaf_by_position(position);
         match node.get_type() {
             PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
                 match t {
@@ -102,20 +176,33 @@ impl File for PythonFile {
     }
 }
 
+impl PythonFile {
+    fn new(code: String) -> Self {
+        Self {
+            state: FileState::Parsed(
+                ParsedFile::new(PYTHON_GRAMMAR.parse(code))
+            ),
+            invalidates: vec!(),
+        }
+    }
+}
+
 enum FileState<T> {
     DoesNotExist,
     Unparsed,
     Parsed(T),
-    InvalidatedDependencies(T, InvalidatedDependencies),
 }
 
 impl<T> FileState<T> {
-    fn get_parsed(&self) -> &T {
+    fn get_parsed(&self) -> Option<&T> {
         match self {
-            Self::Parsed(x) | Self::InvalidatedDependencies(x, _) => {
-                x
+            Self::Parsed(x) => {
+                Some(x)
             }
-            Self::DoesNotExist | Self::Unparsed => panic!("Looks like a programming error")
+            Self::Unparsed => {
+                None
+            }
+            Self::DoesNotExist => None
         }
     }
 }
@@ -128,7 +215,6 @@ impl<T> fmt::Debug for FileState<T> {
             Self::DoesNotExist => write!(f, "DoesNotExist"),
             Self::Unparsed => write!(f, "Unparsed"),
             Self::Parsed(_) => write!(f, "Parsed(_)"),
-            Self::InvalidatedDependencies(_, _) => write!(f, "InvalidatedDependencies(_)"),
         }
     }
 }

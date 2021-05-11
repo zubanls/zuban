@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use parsa::NodeIndex;
 
-use crate::file::{File, FileLoader};
+use crate::file::{FileState3, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
 
 #[derive(Debug, Clone, Copy)]
 pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
-type FileLoaders = Box<[Box<dyn FileLoader>]>;
+type FileLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -200,11 +200,11 @@ pub struct Execution {
     //args: Box<[Value]>,
 }
 
-#[derive(Default)]
 pub struct Database {
     in_use: bool,
+    file_system_reader: Box<dyn VirtualFileSystemReader>,
     file_loaders: FileLoaders,
-    files: InsertOnlyVec<dyn File>,
+    files: InsertOnlyVec<dyn FileState3>,
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
@@ -213,8 +213,13 @@ pub struct Database {
 impl Database {
     pub fn new(file_loaders: FileLoaders) -> Self {
         Self {
+            in_use: false,
+            file_system_reader: Box::<FileSystemReader>::new(Default::default()),
             file_loaders,
-            ..Default::default()
+            files: Default::default(),
+            path_to_file: Default::default(),
+            workspaces: Default::default(),
+            files_managed_by_client: Default::default(),
         }
     }
 
@@ -229,11 +234,11 @@ impl Database {
         // todo handle watcher events here
     }
 
-    pub fn get_file(&self, index: FileIndex) -> &dyn File {
+    pub fn get_file_state(&self, index: FileIndex) -> &dyn FileState3 {
         self.files.get(index.0 as usize).unwrap()
     }
 
-    pub fn get_file_index_by_path(&self, path: &str) -> Option<FileIndex> {
+    pub fn get_file_state_index_by_path(&self, path: &str) -> Option<FileIndex> {
         self.path_to_file.get(path).copied()
     }
 
@@ -242,8 +247,8 @@ impl Database {
             let extension = Path::new(&path).extension().unwrap();
             // Can unwrap because path is unicode.
             if file_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
-                let file = file_loader.load_file(path, code);
-                self.files.push(file);
+                let file_state = file_loader.load_file_state(path, code);
+                self.files.push(file_state);
                 return FileIndex(self.files.len() as u32 - 1)
             }
         }

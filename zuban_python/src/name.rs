@@ -28,7 +28,7 @@ impl TreePosition<'_> {
 pub trait Name<'a>: fmt::Debug {
     fn get_name(&self) -> &'a str;
 
-    fn get_file_path(&self) -> Option<&str>;
+    fn get_file_path(&self) -> &str;
 
     fn get_start_position(&self) -> TreePosition<'a>;
 
@@ -113,8 +113,9 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
         self.tree_node.get_code()
     }
 
-    fn get_file_path(&self) -> Option<&str> {
-        self.file.get_path()
+    fn get_file_path(&self) -> &str {
+        todo!()
+        //self.file.get_path()
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
@@ -169,8 +170,9 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
         self.value.get_name()
     }
 
-    fn get_file_path(&self) -> Option<&str> {
-        self.value.get_file().get_path()
+    fn get_file_path(&self) -> &str {
+        todo!()
+        //self.value.get_file().get_path()
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
