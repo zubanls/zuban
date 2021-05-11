@@ -10,7 +10,7 @@ use crate::utils::InsertOnlyVec;
 pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
-type FileLoaders = Box<[Box<dyn FileStateLoader>]>;
+type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -203,7 +203,7 @@ pub struct Execution {
 pub struct Database {
     in_use: bool,
     file_system_reader: Box<dyn VirtualFileSystemReader>,
-    file_loaders: FileLoaders,
+    file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState3>,
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
@@ -211,11 +211,11 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(file_loaders: FileLoaders) -> Self {
+    pub fn new(file_state_loaders: FileStateLoaders) -> Self {
         Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
-            file_loaders,
+            file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),
             workspaces: Default::default(),
@@ -242,17 +242,24 @@ impl Database {
         self.path_to_file.get(path).copied()
     }
 
-    pub fn load_file(&self, path: String, code: String) -> FileIndex {
-        for file_loader in self.file_loaders.iter() {
-            let extension = Path::new(&path).extension().unwrap();
-            // Can unwrap because path is unicode.
-            if file_loader.responsible_for_file_endings().contains(&extension.to_str().unwrap()) {
-                let file_state = file_loader.load_file_state(path, code);
-                self.files.push(file_state);
-                return FileIndex(self.files.len() as u32 - 1)
+    fn get_loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
+        for loader in self.file_state_loaders.iter() {
+            let extension = Path::new(path).extension().and_then(|e| e.to_str());
+            if let Some(e) = extension {
+                if loader.responsible_for_file_endings().contains(&e) {
+                    return Some(loader.as_ref())
+                }
             }
         }
-        unreachable!()
+        None
+    }
+
+    pub fn load_file(&self, path: String, code: String) -> FileIndex {
+        // This is the explicit version where we know that there's a loader.
+        let loader = self.get_loader(&path).unwrap();
+        let file_state = loader.load_file_state(path, code);
+        self.files.push(file_state);
+        FileIndex(self.files.len() as u32 - 1)
     }
 }
 
