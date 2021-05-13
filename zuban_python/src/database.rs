@@ -20,7 +20,7 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // xxooo Locality (xXxx is_external)
 // xxxxxo is_module_definition
 // xxxxxxo is_nullable
-// xxxxxxxooo ValueOrReferenceType
+// xxxxxxxooo InternalValueOrReferenceType
 // if true rest 22 bits reserved for ValueOrReference details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
@@ -32,6 +32,7 @@ const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
+const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
@@ -85,11 +86,11 @@ impl InternalValueOrReference {
         unsafe { mem::transmute(self.flags << 28 & 7) }
     }
 
-    fn is_uncalculated(self) -> bool {
-        self.flags == 0
+    pub fn is_uncalculated(self) -> bool {
+        self.flags & IS_ANALIZED_MASK == 0
     }
 
-    fn is_calculating(self) -> bool {
+    pub fn is_calculating(self) -> bool {
         self.flags == 1
     }
 
@@ -131,7 +132,7 @@ enum ValueOrReference<T> {
 
 #[derive(Debug)]
 #[repr(u32)]
-enum ValueOrReferenceType {
+enum InternalValueOrReferenceType {
     Redirect = 1 << TYPE_BIT_INDEX,
     MultiDefinition,
     Complex,
@@ -203,7 +204,7 @@ pub struct Execution {
 
 pub struct Database {
     in_use: bool,
-    pub file_system_reader: std::rc::Rc<dyn VirtualFileSystemReader>,
+    pub file_system_reader: Box<dyn VirtualFileSystemReader>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState3>,
     path_to_file: HashMap<&'static str, FileIndex>,
@@ -215,7 +216,7 @@ impl Database {
     pub fn new(file_state_loaders: FileStateLoaders) -> Self {
         Self {
             in_use: false,
-            file_system_reader: std::rc::Rc::<FileSystemReader>::new(Default::default()),
+            file_system_reader: Box::<FileSystemReader>::new(Default::default()),
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),

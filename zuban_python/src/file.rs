@@ -4,7 +4,7 @@ use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
 use std::fmt;
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, PythonTerminalType, PythonNodeType, PYTHON_GRAMMAR};
+use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 
@@ -192,7 +192,7 @@ impl File for PythonFile {
 #[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: Option<HashMap<*const str, NodeIndex>>,
+    definition_names: Option<HashMap<*const str, Box<[NodeIndex]>>>,
     //reference_bloom_filter: BloomFilter<&str>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
@@ -211,6 +211,99 @@ impl PythonFile {
             complex_values: vec!(),
             dependencies: vec!(),
             issues: vec!(),
+        }
+    }
+
+    fn calculate_definition_names() {
+    }
+
+    pub fn infer(&self, node: PythonNode) {
+        let value = self.values_or_references[node.index as usize].get();
+        if value.is_uncalculated() {
+            if value.is_calculating() {
+                todo!();
+            }
+            let definition = get_definition(node);
+            if definition.is_some() {
+            }
+            panic!();
+            return self.infer(node)
+        }
+        panic!()
+    }
+}
+
+fn get_function_or_class_name() {
+}
+
+fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
+    use PythonNonterminalType::*;
+    match node.get_type() {
+        PythonNodeType::Nonterminal(expr_stmt) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(param) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(import_name) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(import_from) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(namedexpr_test) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(for_stmt) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(with_stmt) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(sync_comp_for) => {
+            todo!()
+        }
+        PythonNodeType::Nonterminal(del_stmt) => {
+            todo!()
+        }
+        _ => vec!()
+    }
+}
+
+fn get_definition(name: PythonNode) -> Option<PythonNode> {
+    use PythonNonterminalType::*;
+
+    debug_assert!(name.get_type() == PythonNodeType::Terminal(PythonTerminalType::Name));
+
+    let mut parent = name.get_parent().unwrap();
+    match parent.get_type() {
+        PythonNodeType::Nonterminal(funcdef | classdef) => {
+            // There shouldn't be any other names with a direct parent func/class
+            Some(parent)
+        }
+        PythonNodeType::Nonterminal(except_clause) => {
+            Some(parent)
+        }
+        _ => {
+            loop {
+                match parent.get_type() {
+                    PythonNodeType::Nonterminal(
+                        expr_stmt | param | sync_comp_for | with_stmt | for_stmt | import_name
+                        | import_from | del_stmt | namedexpr_test) => {
+
+                        if get_defined_names(&parent).iter().any(|n| n.index == name.index) {
+                            return Some(parent)
+                        }
+                        return None
+                    }
+                    PythonNodeType::Nonterminal(suite | file_input) => {
+                        return None;
+                    }
+                    _ => {}
+                }
+                dbg!(parent, parent.get_parent());
+                parent = parent.get_parent().unwrap();
+            }
         }
     }
 }
