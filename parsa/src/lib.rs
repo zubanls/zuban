@@ -10,6 +10,7 @@ pub use lazy_static::lazy_static;
 pub use std::collections::{HashSet};
 pub use std::io::Bytes;
 pub use std::mem;
+pub use std::marker::PhantomData;
 
 pub use automaton::{
     InternalNonterminalType, InternalSquashedType, InternalStrToNode, InternalStrToToken,
@@ -219,25 +220,19 @@ macro_rules! __create_node {
                 ])}
             }
 
-            pub fn get_children(&self) -> Vec<$Node<'a>> {
-                let mut v = Vec::new();
-                if !self.is_leaf() {
-                    // The next node must always be a child.
-                    let mut index = self.index + 1;
-                    loop {
-                        let n = &self.internal_tree.nodes[index as usize];
-                        v.push(Self {
-                            internal_tree: self.internal_tree,
-                            index: index,
-                            internal_node: n,
-                        });
-                        if n.next_node_offset == 0 {
-                            break
-                        }
-                        index += n.next_node_offset as usize;
-                    }
+            pub fn iter_children(&self) -> SiblingIterator<'a> {
+                let next_index;
+                let ended = self.is_leaf();
+                if ended {
+                    next_index = 0;
+                } else {
+                    next_index = self.index + 1;
                 }
-                v
+                SiblingIterator {
+                    internal_tree: self.internal_tree,
+                    next_index,
+                    ended,
+                }
             }
 
             pub fn is_error_recovery_node(&self) -> bool {
@@ -317,6 +312,33 @@ macro_rules! __create_node {
                  .field("content", &code)
                  .field("internal_node", &self.internal_node)
                  .finish()
+            }
+        }
+
+        pub struct SiblingIterator<'a> {
+            internal_tree: &'a $crate::InternalTree,
+            next_index: usize,
+            ended: bool,
+        }
+
+        impl<'a> Iterator for SiblingIterator<'a> {
+            type Item = $Node<'a>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.ended {
+                    return None;
+                }
+                let current_node = &self.internal_tree.nodes[self.next_index];
+                if current_node.next_node_offset == 0 {
+                    self.ended = true;
+                }
+                let current = Self::Item {
+                    internal_tree: self.internal_tree,
+                    index: self.next_index,
+                    internal_node: current_node,
+                };
+                self.next_index += current_node.next_node_offset as usize;
+                Some(current)
             }
         }
     }

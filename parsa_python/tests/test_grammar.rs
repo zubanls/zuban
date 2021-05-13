@@ -41,7 +41,7 @@ fn tree_to_string(tree: PythonTree) -> String {
                 "".to_string()
             }
         );
-        for c in node.get_children() {
+        for c in node.iter_children() {
             assert_eq!(node.index, c.get_parent().unwrap().index);
             recurse(code, &c, depth + 1);
         }
