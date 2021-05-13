@@ -42,12 +42,15 @@ fn tree_to_string(tree: PythonTree) -> String {
             }
         );
         for c in node.get_children() {
+            assert_eq!(node.index, c.get_parent().unwrap().index);
             recurse(code, &c, depth + 1);
         }
     }
 
+    let root = tree.get_root_node();
+    assert!(root.get_parent().is_none());
     let mut code = String::new();
-    recurse(&mut code, &tree.get_root_node(), 0);
+    recurse(&mut code, &root, 0);
     code
 }
 

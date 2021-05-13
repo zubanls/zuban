@@ -25,6 +25,7 @@ create_grammar!(
     funcdef: "def" Name parameters ["->" test] ":" suite
 
     parameters: "(" [typedargslist] ")"
+    param: Name "="  // TODO
     typedargslist: (
       (tfpdef ["=" test] ("," tfpdef ["=" test])* "," "/" ["," [ tfpdef ["=" test] (
             "," tfpdef ["=" test])* (["," [

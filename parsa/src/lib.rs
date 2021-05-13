@@ -155,9 +155,10 @@ macro_rules! __create_node {
             ErrorKeyword,
         }
 
+        #[derive(Clone, Copy)]
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
-            pub index: $crate::NodeIndex,
+            pub index: usize,
             internal_node: &'a $crate::InternalNode,
         }
 
@@ -171,7 +172,7 @@ macro_rules! __create_node {
                 if self.index == 0 {
                     start = 0;
                 } else {
-                    start = self.internal_tree.nodes[self.index as usize - 1].start_index;
+                    start = self.internal_tree.nodes[self.index - 1].start_index;
                 }
                 let string = self.get_code_slice(start, self.internal_node.start_index);
                 string
@@ -182,7 +183,7 @@ macro_rules! __create_node {
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
                 } else {
-                    end = self.internal_tree.nodes[self.index as usize + 1].start_index
+                    end = self.internal_tree.nodes[self.index + 1].start_index
                 }
                 let string = self.get_code_slice(
                     self.internal_node.start_index + self.internal_node.length,
@@ -225,7 +226,7 @@ macro_rules! __create_node {
                     let mut index = self.index + 1;
                     loop {
                         let n = &self.internal_tree.nodes[index as usize];
-                        v.push($Node {
+                        v.push(Self {
                             internal_tree: self.internal_tree,
                             index: index,
                             internal_node: n,
@@ -233,7 +234,7 @@ macro_rules! __create_node {
                         if n.next_node_offset == 0 {
                             break
                         }
-                        index += n.next_node_offset;
+                        index += n.next_node_offset as usize;
                     }
                 }
                 v
@@ -241,6 +242,25 @@ macro_rules! __create_node {
 
             pub fn is_error_recovery_node(&self) -> bool {
                 self.internal_node.type_.is_error_recovery()
+            }
+
+            pub fn get_parent(&self) -> Option<$Node<'a>> {
+                let mut sibling_i = 0;  // Note that i and sibling_i are reversed.
+                for (i, n) in self.internal_tree.nodes[..self.index].iter().rev().enumerate() {
+                    let i = i + 1;
+                    let offset = n.next_node_offset as usize;
+                    if (offset > i || offset == 0 && i == sibling_i + 1) && !n.type_.is_leaf() {
+                        return Some(Self {
+                            internal_tree: self.internal_tree,
+                            index: self.index - i,
+                            internal_node: n
+                        });
+                    }
+                    if sibling_i + offset == i {
+                        sibling_i = i;
+                    }
+                }
+                None
             }
 
             pub fn get_type(&self) -> $NodeType {
@@ -530,7 +550,7 @@ macro_rules! create_grammar {
             }
 
             #[inline]
-            fn get_node<'a>(&'a self, index: u32, internal_node: &'a $crate::InternalNode) -> $Node{
+            fn get_node<'a>(&'a self, index: usize, internal_node: &'a $crate::InternalNode) -> $Node{
                 $Node {
                     internal_tree: &self.internal_tree,
                     internal_node: internal_node,
@@ -544,7 +564,7 @@ macro_rules! create_grammar {
 
             pub fn get_nodes(&self) -> Vec<$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
-                    |(index, internal_node)| self.get_node(index as u32, internal_node)
+                    |(index, internal_node)| self.get_node(index, internal_node)
                 ).collect()
             }
 
