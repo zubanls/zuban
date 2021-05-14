@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file_input: 0-36
+file: 0-36
  stmt: 1-19
   simple_stmt: 1-19
    small_stmt: 1-17

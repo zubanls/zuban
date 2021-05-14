@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file_input: 0-3
+file: 0-3
  Error(stmt): 1-2
   Error(ErrorToken): 1-2 "?"
  stmt: 2-3

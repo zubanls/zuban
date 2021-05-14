@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file_input: 0-117
+file: 0-117
  stmt: 1-117
   compound_stmt: 1-117
    classdef: 1-117

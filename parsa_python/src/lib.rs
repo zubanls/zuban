@@ -13,7 +13,7 @@ create_grammar!(
         Name: "match" | "case" | "_"
     ]
 
-    file_input: stmt* Endmarker
+    file: stmt* Endmarker
     single_input: Newline | simple_stmt | compound_stmt Newline
     eval_input: testlist Newline* Endmarker
 
@@ -281,7 +281,7 @@ mod tests {
         let root_node = tree.get_root_node();
         assert_eq!(
             root_node.get_type(),
-            PythonNodeType::Nonterminal(PythonNonterminalType::file_input)
+            PythonNodeType::Nonterminal(PythonNonterminalType::file)
         );
     }
 }

@@ -363,7 +363,7 @@ fn get_definition(name: PythonNode) -> Option<PythonNode> {
                         }
                         return None
                     }
-                    PythonNodeType::Nonterminal(suite | file_input) => {
+                    PythonNodeType::Nonterminal(suite | file) => {
                         return None;
                     }
                     _ => {}
