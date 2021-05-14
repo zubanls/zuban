@@ -17,7 +17,7 @@ create_grammar!(
 
     decorator: "@" dotted_name [ "(" [arglist] ")" ] Newline
     decorators: decorator+
-    decorated: decorators (classdef | function_def | async_function_def)
+    decorated: decorators (class_def | function_def | async_function_def)
 
     async_function_def: "async" function_def
     function_def: "def" Name parameters ["->" test] ":" suite
@@ -85,7 +85,7 @@ create_grammar!(
 
     compound_stmt:
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
-        | function_def | classdef | decorated | async_stmt | match_stmt
+        | function_def | class_def | decorated | async_stmt | match_stmt
     async_stmt: "async" (function_def | with_stmt | for_stmt)
     if_stmt: "if" namedexpr_test ":" suite ("elif" namedexpr_test ":" suite)* ["else" ":" suite]
     while_stmt: "while" namedexpr_test ":" suite ["else" ":" suite]
@@ -232,7 +232,7 @@ create_grammar!(
                       ((test | star_expr)
                        (comp_for | ("," (test | star_expr))* [","])) )
 
-    classdef: "class" Name ["(" [arglist] ")"] ":" suite
+    class_def: "class" Name ["(" [arglist] ")"] ":" suite
 
     arglist: argument ("," argument)*  [","]
 

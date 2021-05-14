@@ -5,7 +5,7 @@ expression: tree_to_string(tree)
 file: 0-117
  stmt: 1-117
   compound_stmt: 1-117
-   classdef: 1-117
+   class_def: 1-117
     Keyword: 1-6 "class"
     Name: 7-10 "Foo"
     Keyword: 10-11 "("
