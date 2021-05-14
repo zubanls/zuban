@@ -207,11 +207,11 @@ create_grammar!(
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
     star_expr: "*" bitwise_or
-    bitwise_or: bitwise_or "|" xor_expr | xor_expr
-    xor_expr:? and_expr ("^" and_expr)*
-    and_expr:? [and_expr "&"] shift_expr
-    shift_expr:? arith_expr (("<<"|">>") arith_expr)*
-    arith_expr:? arith_expr ("+"|"-") term | term
+    bitwise_or: bitwise_or "|" bitwise_xor | bitwise_xor
+    bitwise_xor:? bitwise_and ("^" bitwise_and)*
+    bitwise_and:? [bitwise_and "&"] shift_expr
+    shift_expr:? sum (("<<"|">>") sum)*
+    sum:? sum ("+"|"-") term | term
     term:? [term ("*"|"@"|"/"|"%"|"//")] factor
     factor:? ("+"|"-"|"~") factor | power
     power:? atom_expr ["**" factor]

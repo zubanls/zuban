@@ -16,8 +16,8 @@ file: 0-37
          Keyword: 3-4 "|"
          Name: 5-6 "d"
         Keyword: 7-8 "|"
-        and_expr: 9-36
-         arith_expr: 9-14
+        bitwise_and: 9-36
+         sum: 9-14
           Name: 9-10 "c"
           Keyword: 11-12 "+"
           Number: 13-14 "5"

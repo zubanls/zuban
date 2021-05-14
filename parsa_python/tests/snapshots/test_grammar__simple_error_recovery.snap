@@ -14,11 +14,11 @@ file: 0-15
          Error(inversion): 1-8
           Error(comparison): 1-8
            Error(bitwise_or): 1-8
-            Error(xor_expr): 1-8
-             Error(and_expr): 1-8
+            Error(bitwise_xor): 1-8
+             Error(bitwise_and): 1-8
               Error(shift_expr): 1-8
-               Error(arith_expr): 1-8
-                arith_expr: 1-6
+               Error(sum): 1-8
+                sum: 1-6
                  Name: 1-2 "a"
                  Keyword: 3-4 "+"
                  Number: 5-6 "3"
