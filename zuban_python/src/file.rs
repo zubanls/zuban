@@ -193,7 +193,7 @@ impl File for PythonFile {
 pub struct PythonFile {
     tree: PythonTree,
     definition_names: Option<HashMap<*const str, Box<[NodeIndex]>>>,
-    //reference_bloom_filter: BloomFilter<&str>,
+    //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
     dependencies: Vec<FileIndex>,
@@ -214,7 +214,74 @@ impl PythonFile {
         }
     }
 
-    fn calculate_definition_names() {
+    fn calculate_global_definitions_and_references(&self) {
+        if self.definition_names.is_some() {
+            // It was already done.
+            return
+        }
+        for child in self.tree.get_root_node().iter_children() {
+        }
+    }
+
+    fn search_definitions(&self, node: &PythonNode) {
+        use PythonNonterminalType::*;
+        for child in node.iter_children() {
+            match child.get_type() {
+                PythonNodeType::Terminal(PythonTerminalType::Name)
+                | PythonNodeType::ErrorTerminal(PythonTerminalType::Name) => {
+                }
+                PythonNodeType::Nonterminal(expr_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(funcdef) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(classdef) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(import_name) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(import_from) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(for_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(with_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(sync_comp_for) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(match_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(if_stmt | while_stmt | try_stmt
+                                            | async_stmt | decorated ) => {
+                    self.search_definitions(&child);
+                }
+                PythonNodeType::Nonterminal(del_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(match_stmt) => {
+                    todo!()
+                }
+                PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => {
+                    todo!("Search for references");
+                }
+                    PythonNodeType::Nonterminal(namedexpr_test) => {
+                        todo!()
+                    }
+                _ => {
+                    node;
+                }
+            }
+        }
+    }
+
+    fn calculate_node_scope_definitions(&self, node: PythonNode) {
+        self.calculate_global_definitions_and_references();
     }
 
     pub fn infer(&self, node: PythonNode) {

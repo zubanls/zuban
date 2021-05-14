@@ -18,7 +18,7 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // oxxxx is_analyzed
 // xoxxx is_invalidated
 // xxooo Locality (xXxx is_external)
-// xxxxxo is_module_definition
+// xxxxxo in_module_scope
 // xxxxxxo is_nullable
 // xxxxxxxooo InternalValueOrReferenceType
 // if true rest 22 bits reserved for ValueOrReference details
@@ -26,7 +26,7 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 const IS_ANALIZED_BIT_INDEX: usize = 31;
 const IS_INVALIDATED_BIT_INDEX: usize = 30;
 const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
-const IS_MODULE_DEFINITION_BIT_INDEX: usize = 26;
+const IN_MODULE_SCOPE_BIT_INDEX: usize = 26;
 const IS_NULLABLE_BIT_INDEX: usize = 25;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
@@ -45,10 +45,10 @@ pub struct InternalValueOrReference {
 impl InternalValueOrReference {
     #[inline]
     fn calculate_flags(other_module: FileIndex, locality: Locality,
-                       is_nullable: bool, is_simple_module_definition: bool) -> u32 {
+                       is_nullable: bool, in_module_scope: bool) -> u32 {
         (locality as u32)
         | (is_nullable as u32)
-        | (is_simple_module_definition as u32)
+        | (in_module_scope as u32)
     }
 
     pub fn new_redirect(other_module: FileIndex, node_index: NodeIndex,
@@ -140,6 +140,8 @@ enum InternalValueOrReferenceType {
     MissingOrUnknown,
     LanguageSpecific,
     FileReference,
+    // Basically stuff like if/for nodes
+    NodeAnalysis,
 }
 
 #[derive(Debug)]
