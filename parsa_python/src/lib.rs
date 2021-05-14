@@ -215,13 +215,17 @@ create_grammar!(
     term:? [term ("*"|"@"|"/"|"%"|"//")] factor
     factor:? ("+"|"-"|"~") factor | power
     power:? await_primary ["**" factor]
-    await_primary:? ["await"] atom trailer*
+    await_primary:? ["await"] primary
+    primary:?
+          primary "." Name
+        | primary "(" [arglist] ")"
+        | primary "[" subscriptlist "]"
+        | atom
     atom:? ("(" [yield_expr|testlist_comp] ")" |
             "[" [testlist_comp] "]" |
             "{" [dictorsetmaker] "}" |
             Name | Number | strings | "..." | "None" | "True" | "False")
     testlist_comp: (namedexpr_test|star_expr) ( comp_for | ("," (namedexpr_test|star_expr))* [","] )
-    trailer: "(" [arglist] ")" | "[" subscriptlist "]" | "." Name
     subscriptlist: subscript ("," subscript)* [","]
     subscript: test | [test] ":" [test] [sliceop]
     sliceop: ":" [test]

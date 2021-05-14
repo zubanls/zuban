@@ -10,27 +10,26 @@ file: 0-36
      testlist_star_expr: 1-17
       test: 1-17
        bitwise_or: 1-17
-        await_primary: 1-17
+        primary: 1-17
          Name: 1-2 "a"
-         trailer: 2-17
-          Keyword: 2-3 "("
-          arglist: 3-16
-           argument: 3-8
-            Name: 3-6 "foo"
-            Keyword: 6-7 "="
-            test: 7-8
-             bitwise_or: 7-8
-              Number: 7-8 "1"
-           Keyword: 8-9 ","
-           argument: 10-16
-            test: 10-13
-             bitwise_or: 10-13
-              Name: 10-13 "bar"
-            Keyword: 13-15 ":="
-            test: 15-16
-             bitwise_or: 15-16
-              Number: 15-16 "1"
-          Keyword: 16-17 ")"
+         Keyword: 2-3 "("
+         arglist: 3-16
+          argument: 3-8
+           Name: 3-6 "foo"
+           Keyword: 6-7 "="
+           test: 7-8
+            bitwise_or: 7-8
+             Number: 7-8 "1"
+          Keyword: 8-9 ","
+          argument: 10-16
+           test: 10-13
+            bitwise_or: 10-13
+             Name: 10-13 "bar"
+           Keyword: 13-15 ":="
+           test: 15-16
+            bitwise_or: 15-16
+             Number: 15-16 "1"
+         Keyword: 16-17 ")"
    Keyword: 17-18 ";"
    Newline: 18-19 "\n"
  stmt: 19-36

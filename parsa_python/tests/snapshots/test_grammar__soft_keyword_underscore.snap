@@ -40,16 +40,15 @@ file: 0-63
          testlist_star_expr: 26-30
           test: 26-30
            bitwise_or: 26-30
-            await_primary: 26-30
+            primary: 26-30
              Name: 26-27 "_"
-             trailer: 27-30
-              Keyword: 27-28 "("
-              arglist: 28-29
-               argument: 28-29
-                test: 28-29
-                 bitwise_or: 28-29
-                  Name: 28-29 "_"
-              Keyword: 29-30 ")"
+             Keyword: 27-28 "("
+             arglist: 28-29
+              argument: 28-29
+               test: 28-29
+                bitwise_or: 28-29
+                 Name: 28-29 "_"
+             Keyword: 29-30 ")"
        Newline: 30-31 "\n"
     case_block: 35-53
      Keyword: 35-39 "case"
