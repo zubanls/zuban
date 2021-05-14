@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-171
  stmt: 1-12
-  simple_stmt: 1-12
-   small_stmt: 1-11
+  simple_stmts: 1-12
+   simple_stmt: 1-11
     import_name: 1-11
      Keyword: 1-7 "import"
      dotted_as_names: 8-11
@@ -14,8 +14,8 @@ file: 0-171
         Name: 8-11 "foo"
    Newline: 11-12 "\n"
  stmt: 12-34
-  simple_stmt: 12-34
-   small_stmt: 12-33
+  simple_stmts: 12-34
+   simple_stmt: 12-33
     import_name: 12-33
      Keyword: 12-18 "import"
      dotted_as_names: 19-33
@@ -28,8 +28,8 @@ file: 0-171
        Name: 30-33 "baz"
    Newline: 33-34 "\n"
  stmt: 34-54
-  simple_stmt: 34-54
-   small_stmt: 34-53
+  simple_stmts: 34-54
+   simple_stmt: 34-53
     import_from: 34-53
      Keyword: 34-38 "from"
      dotted_name: 39-42
@@ -40,8 +40,8 @@ file: 0-171
        Name: 50-53 "bar"
    Newline: 53-54 "\n"
  stmt: 54-81
-  simple_stmt: 54-81
-   small_stmt: 54-80
+  simple_stmts: 54-81
+   simple_stmt: 54-80
     import_from: 54-80
      Keyword: 54-58 "from"
      dotted_name: 59-62
@@ -54,8 +54,8 @@ file: 0-171
        Name: 77-80 "baz"
    Newline: 80-81 "\n"
  stmt: 81-102
-  simple_stmt: 81-102
-   small_stmt: 81-101
+  simple_stmts: 81-102
+   simple_stmt: 81-101
     import_name: 81-101
      Keyword: 81-87 "import"
      dotted_as_names: 88-101
@@ -72,8 +72,8 @@ file: 0-171
         Name: 98-101 "baz"
    Newline: 101-102 "\n"
  stmt: 102-120
-  simple_stmt: 102-120
-   small_stmt: 102-119
+  simple_stmts: 102-120
+   simple_stmt: 102-119
     import_from: 102-119
      Keyword: 102-106 "from"
      dotted_name: 107-110
@@ -82,8 +82,8 @@ file: 0-171
      Keyword: 118-119 "*"
    Newline: 119-120 "\n"
  stmt: 120-145
-  simple_stmt: 120-145
-   small_stmt: 120-144
+  simple_stmts: 120-145
+   simple_stmt: 120-144
     import_from: 120-144
      Keyword: 120-124 "from"
      Keyword: 125-126 "."
@@ -98,8 +98,8 @@ file: 0-171
      Keyword: 143-144 ")"
    Newline: 144-145 "\n"
  stmt: 145-171
-  simple_stmt: 145-171
-   small_stmt: 145-170
+  simple_stmts: 145-171
+   simple_stmt: 145-170
     import_from: 145-170
      Keyword: 145-149 "from"
      Keyword: 150-151 "."

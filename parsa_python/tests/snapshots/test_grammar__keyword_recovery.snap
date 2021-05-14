@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-23
  stmt: 1-5
-  simple_stmt: 1-5
-   small_stmt: 1-4
+  simple_stmts: 1-5
+   simple_stmt: 1-4
     expr_stmt: 1-4
      testlist_star_expr: 1-4
       test: 1-4
@@ -19,8 +19,8 @@ file: 0-23
  stmt: 8-9
   Newline: 8-9 "\n"
  stmt: 9-13
-  simple_stmt: 9-13
-   small_stmt: 9-12
+  simple_stmts: 9-13
+   simple_stmt: 9-12
     expr_stmt: 9-12
      testlist_star_expr: 9-12
       test: 9-12
@@ -34,8 +34,8 @@ file: 0-23
  stmt: 18-19
   Newline: 18-19 "\n"
  stmt: 19-23
-  simple_stmt: 19-23
-   small_stmt: 19-22
+  simple_stmts: 19-23
+   simple_stmt: 19-22
     expr_stmt: 19-22
      testlist_star_expr: 19-22
       test: 19-22

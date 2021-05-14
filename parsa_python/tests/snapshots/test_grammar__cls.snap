@@ -45,8 +45,8 @@ file: 0-117
          Newline: 55-56 "\n"
          Indent: 64-64 ""
          stmt: 64-69
-          simple_stmt: 64-69
-           small_stmt: 64-68
+          simple_stmts: 64-69
+           simple_stmt: 64-68
             pass_stmt: 64-68
              Keyword: 64-68 "pass"
            Newline: 68-69 "\n"
@@ -74,8 +74,8 @@ file: 0-117
           Newline: 103-104 "\n"
           Indent: 112-112 ""
           stmt: 112-117
-           simple_stmt: 112-117
-            small_stmt: 112-116
+           simple_stmts: 112-117
+            simple_stmt: 112-116
              pass_stmt: 112-116
               Keyword: 112-116 "pass"
             Newline: 116-117 "\n"

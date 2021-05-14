@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-21
  stmt: 1-5
-  simple_stmt: 1-5
-   small_stmt: 1-4
+  simple_stmts: 1-5
+   simple_stmt: 1-4
     expr_stmt: 1-4
      testlist_star_expr: 1-4
       test: 1-4
@@ -13,8 +13,8 @@ file: 0-21
         Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-10
-  Error(simple_stmt): 5-10
-   Error(small_stmt): 5-10
+  Error(simple_stmts): 5-10
+   Error(simple_stmt): 5-10
     Error(expr_stmt): 5-10
      Error(testlist_star_expr): 5-10
       Error(test): 5-10
@@ -39,8 +39,8 @@ file: 0-21
  Error(stmt): 11-12
   Error(ErrorToken): 11-12 "?"
  stmt: 13-17
-  simple_stmt: 13-17
-   small_stmt: 13-16
+  simple_stmts: 13-17
+   simple_stmt: 13-16
     expr_stmt: 13-16
      testlist_star_expr: 13-16
       test: 13-16
@@ -50,8 +50,8 @@ file: 0-21
          Name: 15-16 "c"
    Newline: 16-17 "\n"
  stmt: 17-21
-  simple_stmt: 17-21
-   small_stmt: 17-20
+  simple_stmts: 17-21
+   simple_stmt: 17-20
     expr_stmt: 17-20
      testlist_star_expr: 17-20
       test: 17-20

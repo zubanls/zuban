@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-15
  Error(stmt): 1-8
-  Error(simple_stmt): 1-8
-   Error(small_stmt): 1-8
+  Error(simple_stmts): 1-8
+   Error(simple_stmt): 1-8
     Error(expr_stmt): 1-8
      Error(testlist_star_expr): 1-8
       Error(test): 1-8
@@ -26,8 +26,8 @@ file: 0-15
  stmt: 8-9
   Newline: 8-9 "\n"
  stmt: 9-15
-  simple_stmt: 9-15
-   small_stmt: 9-14
+  simple_stmts: 9-15
+   simple_stmt: 9-14
     expr_stmt: 9-14
      testlist_star_expr: 9-10
       test: 9-10

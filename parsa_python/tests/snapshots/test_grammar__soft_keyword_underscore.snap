@@ -34,8 +34,8 @@ file: 0-63
           Keyword: 23-24 "]"
      Keyword: 24-25 ":"
      suite: 26-31
-      simple_stmt: 26-31
-       small_stmt: 26-30
+      simple_stmts: 26-31
+       simple_stmt: 26-30
         expr_stmt: 26-30
          testlist_star_expr: 26-30
           test: 26-30
@@ -64,8 +64,8 @@ file: 0-63
       Newline: 42-43 "\n"
       Indent: 51-51 ""
       stmt: 51-53
-       simple_stmt: 51-53
-        small_stmt: 51-52
+       simple_stmts: 51-53
+        simple_stmt: 51-52
          expr_stmt: 51-52
           testlist_star_expr: 51-52
            test: 51-52
@@ -75,8 +75,8 @@ file: 0-63
       Dedent: 53-53 ""
     Dedent: 53-53 ""
  stmt: 53-63
-  simple_stmt: 53-63
-   small_stmt: 53-62
+  simple_stmts: 53-63
+   simple_stmt: 53-62
     expr_stmt: 53-62
      testlist_star_expr: 53-58
       test: 53-58

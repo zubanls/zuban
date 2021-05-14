@@ -50,9 +50,9 @@ create_grammar!(
     )
     vfpdef: Name
 
-    stmt: @error_recovery simple_stmt | compound_stmt | Newline
-    simple_stmt: small_stmt (";" small_stmt)* [";"] Newline
-    small_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
+    stmt: @error_recovery simple_stmts | compound_stmt | Newline
+    simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
+    simple_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
     expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|testlist) |
                          ("=" (yield_expr|testlist_star_expr))*)
@@ -99,7 +99,7 @@ create_grammar!(
     with_item: test ["as" expr]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [test ["as" Name]]
-    suite: simple_stmt | Newline Indent stmt+ Dedent
+    suite: simple_stmts | Newline Indent stmt+ Dedent
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:

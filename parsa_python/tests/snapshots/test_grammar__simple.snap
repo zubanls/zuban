@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-36
  stmt: 1-19
-  simple_stmt: 1-19
-   small_stmt: 1-17
+  simple_stmts: 1-19
+   simple_stmt: 1-17
     expr_stmt: 1-17
      testlist_star_expr: 1-17
       test: 1-17
@@ -46,8 +46,8 @@ file: 0-36
      Newline: 24-25 "\n"
      Indent: 26-26 ""
      stmt: 26-28
-      simple_stmt: 26-28
-       small_stmt: 26-27
+      simple_stmts: 26-28
+       simple_stmt: 26-27
         expr_stmt: 26-27
          testlist_star_expr: 26-27
           test: 26-27
@@ -58,8 +58,8 @@ file: 0-36
     Keyword: 28-32 "else"
     Keyword: 32-33 ":"
     suite: 34-36
-     simple_stmt: 34-36
-      small_stmt: 34-35
+     simple_stmts: 34-36
+      simple_stmt: 34-35
        expr_stmt: 34-35
         testlist_star_expr: 34-35
          test: 34-35

@@ -4,8 +4,8 @@ expression: tree_to_string(tree)
 ---
 file: 0-9
  stmt: 0-9
-  simple_stmt: 0-9
-   small_stmt: 0-8
+  simple_stmts: 0-9
+   simple_stmt: 0-8
     expr_stmt: 0-8
      testlist_star_expr: 0-8
       test: 0-8

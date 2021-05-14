@@ -26,8 +26,8 @@ file: 0-36
  Error(stmt): 25-27
   Error(Keyword): 25-27 "as"
  Error(stmt): 28-30
-  Error(simple_stmt): 28-30
-   Error(small_stmt): 28-30
+  Error(simple_stmts): 28-30
+   Error(simple_stmt): 28-30
     Error(expr_stmt): 28-30
      testlist_star_expr: 28-29
       test: 28-29
@@ -36,8 +36,8 @@ file: 0-36
      Error(annassign): 29-30
       Keyword: 29-30 ":"
  stmt: 31-36
-  simple_stmt: 31-36
-   small_stmt: 31-35
+  simple_stmts: 31-36
+   simple_stmt: 31-35
     pass_stmt: 31-35
      Keyword: 31-35 "pass"
    Newline: 35-36 "\n"
