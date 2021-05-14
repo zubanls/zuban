@@ -27,7 +27,7 @@ file: 0-21
              Error(bitwise_and): 5-10
               Error(shift_expr): 5-10
                Error(sum): 5-10
-                atom: 5-8
+                primary: 5-8
                  Keyword: 5-6 "("
                  testlist_comp: 6-7
                   namedexpr_test: 6-7
