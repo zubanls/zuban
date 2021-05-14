@@ -18,7 +18,7 @@ file: 0-21
     Error(expr_stmt): 5-10
      Error(testlist_star_expr): 5-10
       Error(test): 5-10
-       Error(or_test): 5-10
+       Error(disjunction): 5-10
         Error(and_test): 5-10
          Error(not_test): 5-10
           Error(comparison): 5-10

@@ -9,7 +9,7 @@ file: 0-15
     Error(expr_stmt): 1-8
      Error(testlist_star_expr): 1-8
       Error(test): 1-8
-       Error(or_test): 1-8
+       Error(disjunction): 1-8
         Error(and_test): 1-8
          Error(not_test): 1-8
           Error(comparison): 1-8

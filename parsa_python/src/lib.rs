@@ -188,18 +188,18 @@ create_grammar!(
 
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression:
-        | "*" or_test
+        | "*" disjunction
         | named_expression
     named_expression:
         | Name ":=" test
         | test
 
     namedexpr_test: Name ":=" test | test
-    test: or_test ["if" or_test "else" test] | lambdef
-    test_nocond: or_test | lambdef_nocond
+    test: disjunction ["if" disjunction "else" test] | lambdef
+    test_nocond: disjunction | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" test
     lambdef_nocond: "lambda" [varargslist] ":" test_nocond
-    or_test:? and_test ("or" and_test)*
+    disjunction:? and_test ("or" and_test)*
     and_test:? not_test ("and" not_test)*
     not_test:? "not" not_test | comparison
     comparison:? expr (comp_op expr)*
@@ -252,7 +252,7 @@ create_grammar!(
                 "*" test )
 
     comp_iter: comp_for | comp_if
-    sync_comp_for: "for" exprlist "in" or_test [comp_iter]
+    sync_comp_for: "for" exprlist "in" disjunction [comp_iter]
     comp_for: ["async"] sync_comp_for
     comp_if: "if" test_nocond [comp_iter]
 
