@@ -10,7 +10,7 @@ file: 0-36
     subject_expr: 7-10
      named_expression: 7-10
       test: 7-10
-       expr: 7-10
+       bitwise_or: 7-10
         Name: 7-10 "foo"
     Keyword: 10-11 ":"
     Newline: 11-12 "\n"
@@ -31,7 +31,7 @@ file: 0-36
     Error(expr_stmt): 28-30
      testlist_star_expr: 28-29
       test: 28-29
-       expr: 28-29
+       bitwise_or: 28-29
         Name: 28-29 "_"
      Error(annassign): 29-30
       Keyword: 29-30 ":"

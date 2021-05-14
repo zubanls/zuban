@@ -10,7 +10,7 @@ file: 0-57
     subject_expr: 7-10
      named_expression: 7-10
       test: 7-10
-       expr: 7-10
+       bitwise_or: 7-10
         Name: 7-10 "foo"
     Keyword: 10-11 ":"
     Newline: 11-12 "\n"
@@ -39,7 +39,7 @@ file: 0-57
         expr_stmt: 28-31
          testlist_star_expr: 28-31
           test: 28-31
-           expr: 28-31
+           bitwise_or: 28-31
             Keyword: 28-31 "..."
        Newline: 31-32 "\n"
     case_block: 36-57

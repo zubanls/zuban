@@ -9,9 +9,9 @@ file: 0-37
     expr_stmt: 1-36
      testlist_star_expr: 1-36
       test: 1-36
-       expr: 1-36
-        expr: 1-6
-         expr: 1-2
+       bitwise_or: 1-36
+        bitwise_or: 1-6
+         bitwise_or: 1-2
           Name: 1-2 "f"
          Keyword: 3-4 "|"
          Name: 5-6 "d"

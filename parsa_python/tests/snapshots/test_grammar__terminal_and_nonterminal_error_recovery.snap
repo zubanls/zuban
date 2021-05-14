@@ -9,7 +9,7 @@ file: 0-21
     expr_stmt: 1-4
      testlist_star_expr: 1-4
       test: 1-4
-       expr: 1-4
+       bitwise_or: 1-4
         Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-10
@@ -22,7 +22,7 @@ file: 0-21
         Error(conjunction): 5-10
          Error(inversion): 5-10
           Error(comparison): 5-10
-           Error(expr): 5-10
+           Error(bitwise_or): 5-10
             Error(xor_expr): 5-10
              Error(and_expr): 5-10
               Error(shift_expr): 5-10
@@ -32,7 +32,7 @@ file: 0-21
                  testlist_comp: 6-7
                   namedexpr_test: 6-7
                    test: 6-7
-                    expr: 6-7
+                    bitwise_or: 6-7
                      Number: 6-7 "1"
                  Keyword: 7-8 ")"
                 Keyword: 9-10 "+"
@@ -44,7 +44,7 @@ file: 0-21
     expr_stmt: 13-16
      testlist_star_expr: 13-16
       test: 13-16
-       expr: 13-16
+       bitwise_or: 13-16
         factor: 13-16
          Keyword: 13-14 "+"
          Name: 15-16 "c"
@@ -55,7 +55,7 @@ file: 0-21
     expr_stmt: 17-20
      testlist_star_expr: 17-20
       test: 17-20
-       expr: 17-20
+       bitwise_or: 17-20
         Name: 17-20 "bar"
    Newline: 20-21 "\n"
  Endmarker: 21-21 ""

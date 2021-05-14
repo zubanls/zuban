@@ -96,7 +96,7 @@ create_grammar!(
                 ["finally" ":" suite] |
                "finally" ":" suite))
     with_stmt: "with" with_item ("," with_item)*  ":" suite
-    with_item: test ["as" expr]
+    with_item: test ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [test ["as" Name]]
     suite: simple_stmts | Newline Indent stmt+ Dedent
@@ -202,12 +202,12 @@ create_grammar!(
     disjunction:? conjunction ("or" conjunction)*
     conjunction:? inversion ("and" inversion)*
     inversion:? "not" inversion | comparison
-    comparison:? expr (comp_op expr)*
+    comparison:? bitwise_or (comp_op bitwise_or)*
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
-    star_expr: "*" expr
-    expr: expr "|" xor_expr | xor_expr
+    star_expr: "*" bitwise_or
+    bitwise_or: bitwise_or "|" xor_expr | xor_expr
     xor_expr:? and_expr ("^" and_expr)*
     and_expr:? [and_expr "&"] shift_expr
     shift_expr:? arith_expr (("<<"|">>") arith_expr)*
@@ -225,10 +225,10 @@ create_grammar!(
     subscriptlist: subscript ("," subscript)* [","]
     subscript: test | [test] ":" [test] [sliceop]
     sliceop: ":" [test]
-    exprlist: (expr|star_expr) ("," (expr|star_expr))* [","]
+    exprlist: (bitwise_or|star_expr) ("," (bitwise_or|star_expr))* [","]
     testlist: test ("," test)* [","]
-    dictorsetmaker: ( ((test ":" test | "**" expr)
-                       (comp_for | ("," (test ":" test | "**" expr))* [","])) |
+    dictorsetmaker: ( ((test ":" test | "**" bitwise_or)
+                       (comp_for | ("," (test ":" test | "**" bitwise_or))* [","])) |
                       ((test | star_expr)
                        (comp_for | ("," (test | star_expr))* [","])) )
 

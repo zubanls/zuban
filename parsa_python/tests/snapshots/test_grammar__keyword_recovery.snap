@@ -9,7 +9,7 @@ file: 0-23
     expr_stmt: 1-4
      testlist_star_expr: 1-4
       test: 1-4
-       expr: 1-4
+       bitwise_or: 1-4
         Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-8
@@ -24,7 +24,7 @@ file: 0-23
     expr_stmt: 9-12
      testlist_star_expr: 9-12
       test: 9-12
-       expr: 9-12
+       bitwise_or: 9-12
         Name: 9-12 "bar"
    Newline: 12-13 "\n"
  Error(stmt): 13-17
@@ -39,7 +39,7 @@ file: 0-23
     expr_stmt: 19-22
      testlist_star_expr: 19-22
       test: 19-22
-       expr: 19-22
+       bitwise_or: 19-22
         Name: 19-22 "baz"
    Newline: 22-23 "\n"
  Endmarker: 23-23 ""
