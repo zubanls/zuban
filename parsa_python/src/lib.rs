@@ -199,8 +199,8 @@ create_grammar!(
     test_nocond: disjunction | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" test
     lambdef_nocond: "lambda" [varargslist] ":" test_nocond
-    disjunction:? and_test ("or" and_test)*
-    and_test:? not_test ("and" not_test)*
+    disjunction:? conjunction ("or" conjunction)*
+    conjunction:? not_test ("and" not_test)*
     not_test:? "not" not_test | comparison
     comparison:? expr (comp_op expr)*
     // <> isn"t actually a valid comparison operator in Python. It"s here for the

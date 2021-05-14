@@ -10,7 +10,7 @@ file: 0-15
      Error(testlist_star_expr): 1-8
       Error(test): 1-8
        Error(disjunction): 1-8
-        Error(and_test): 1-8
+        Error(conjunction): 1-8
          Error(not_test): 1-8
           Error(comparison): 1-8
            Error(expr): 1-8
