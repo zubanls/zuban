@@ -21,7 +21,7 @@ file: 0-117
      Indent: 24-24 ""
      stmt: 24-74
       compound_stmt: 24-74
-       funcdef: 24-74
+       function_def: 24-74
         Keyword: 24-27 "def"
         Name: 28-36 "__init__"
         parameters: 36-54
@@ -60,7 +60,7 @@ file: 0-117
           dotted_name: 75-83
            Name: 75-83 "property"
           Newline: 83-84 "\n"
-        funcdef: 88-117
+        function_def: 88-117
          Keyword: 88-91 "def"
          Name: 92-96 "prop"
          parameters: 96-102

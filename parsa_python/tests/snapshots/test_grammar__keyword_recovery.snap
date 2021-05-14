@@ -14,7 +14,7 @@ file: 0-23
    Newline: 4-5 "\n"
  Error(stmt): 5-8
   Error(compound_stmt): 5-8
-   Error(funcdef): 5-8
+   Error(function_def): 5-8
     Keyword: 5-8 "def"
  stmt: 8-9
   Newline: 8-9 "\n"

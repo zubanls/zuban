@@ -233,7 +233,7 @@ impl PythonFile {
                 PythonNodeType::Nonterminal(expr_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(funcdef) => {
+                PythonNodeType::Nonterminal(function_def) => {
                     todo!()
                 }
                 PythonNodeType::Nonterminal(classdef) => {
@@ -344,7 +344,7 @@ fn get_definition(name: PythonNode) -> Option<PythonNode> {
 
     let mut parent = name.get_parent().unwrap();
     match parent.get_type() {
-        PythonNodeType::Nonterminal(funcdef | classdef) => {
+        PythonNodeType::Nonterminal(function_def | classdef) => {
             // There shouldn't be any other names with a direct parent func/class
             Some(parent)
         }

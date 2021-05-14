@@ -14,15 +14,13 @@ create_grammar!(
     ]
 
     file: stmt* Endmarker
-    single_input: Newline | simple_stmt | compound_stmt Newline
-    eval_input: testlist Newline* Endmarker
 
     decorator: "@" dotted_name [ "(" [arglist] ")" ] Newline
     decorators: decorator+
-    decorated: decorators (classdef | funcdef | async_funcdef)
+    decorated: decorators (classdef | function_def | async_function_def)
 
-    async_funcdef: "async" funcdef
-    funcdef: "def" Name parameters ["->" test] ":" suite
+    async_function_def: "async" function_def
+    function_def: "def" Name parameters ["->" test] ":" suite
 
     parameters: "(" [typedargslist] ")"
     param: Name "="  // TODO
@@ -87,8 +85,8 @@ create_grammar!(
 
     compound_stmt:
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
-        | funcdef | classdef | decorated | async_stmt | match_stmt
-    async_stmt: "async" (funcdef | with_stmt | for_stmt)
+        | function_def | classdef | decorated | async_stmt | match_stmt
+    async_stmt: "async" (function_def | with_stmt | for_stmt)
     if_stmt: "if" namedexpr_test ":" suite ("elif" namedexpr_test ":" suite)* ["else" ":" suite]
     while_stmt: "while" namedexpr_test ":" suite ["else" ":" suite]
     for_stmt: "for" exprlist "in" testlist ":" suite ["else" ":" suite]
