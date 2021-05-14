@@ -20,7 +20,7 @@ file: 0-21
       Error(test): 5-10
        Error(disjunction): 5-10
         Error(conjunction): 5-10
-         Error(not_test): 5-10
+         Error(inversion): 5-10
           Error(comparison): 5-10
            Error(expr): 5-10
             Error(xor_expr): 5-10

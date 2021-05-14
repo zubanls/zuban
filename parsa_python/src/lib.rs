@@ -200,8 +200,8 @@ create_grammar!(
     lambdef: "lambda" [varargslist] ":" test
     lambdef_nocond: "lambda" [varargslist] ":" test_nocond
     disjunction:? conjunction ("or" conjunction)*
-    conjunction:? not_test ("and" not_test)*
-    not_test:? "not" not_test | comparison
+    conjunction:? inversion ("and" inversion)*
+    inversion:? "not" inversion | comparison
     comparison:? expr (comp_op expr)*
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)

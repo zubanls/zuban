@@ -11,7 +11,7 @@ file: 0-15
       Error(test): 1-8
        Error(disjunction): 1-8
         Error(conjunction): 1-8
-         Error(not_test): 1-8
+         Error(inversion): 1-8
           Error(comparison): 1-8
            Error(expr): 1-8
             Error(xor_expr): 1-8
