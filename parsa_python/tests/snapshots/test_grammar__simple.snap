@@ -10,7 +10,7 @@ file: 0-36
      testlist_star_expr: 1-17
       test: 1-17
        bitwise_or: 1-17
-        atom_expr: 1-17
+        await_primary: 1-17
          Name: 1-2 "a"
          trailer: 2-17
           Keyword: 2-3 "("

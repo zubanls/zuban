@@ -214,8 +214,8 @@ create_grammar!(
     sum:? sum ("+"|"-") term | term
     term:? [term ("*"|"@"|"/"|"%"|"//")] factor
     factor:? ("+"|"-"|"~") factor | power
-    power:? atom_expr ["**" factor]
-    atom_expr:? ["await"] primary trailer*
+    power:? await_primary ["**" factor]
+    await_primary:? ["await"] primary trailer*
     primary:? ("(" [yield_expr|testlist_comp] ")" |
             "[" [testlist_comp] "]" |
             "{" [dictorsetmaker] "}" |

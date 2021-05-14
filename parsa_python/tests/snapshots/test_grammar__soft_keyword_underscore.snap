@@ -40,7 +40,7 @@ file: 0-63
          testlist_star_expr: 26-30
           test: 26-30
            bitwise_or: 26-30
-            atom_expr: 26-30
+            await_primary: 26-30
              Name: 26-27 "_"
              trailer: 27-30
               Keyword: 27-28 "("
