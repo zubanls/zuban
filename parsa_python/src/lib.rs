@@ -226,14 +226,6 @@ create_grammar!(
 
     class_def: "class" Name ["(" [arglist] ")"] ":" block
 
-    arglist: argument ("," argument)*  [","]
-
-    argument: ( Name "=" expression |
-                expression [for_if_clauses] |
-                expression ":=" expression |
-                "**" expression |
-                "*" expression )
-
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
     async_for_if_clause:? ["async"] sync_for_if_clause
@@ -249,6 +241,14 @@ create_grammar!(
 
     yield_expr: "yield" [yield_from | star_expressions]
     yield_from: "from" expression
+
+    arglist: argument ("," argument)*  [","]
+
+    argument: ( Name "=" expression |
+                expression [for_if_clauses] |
+                expression ":=" expression |
+                "**" expression |
+                "*" expression )
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd
