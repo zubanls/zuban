@@ -240,15 +240,6 @@ create_grammar!(
 
     arglist: argument ("," argument)*  [","]
 
-    // The reason that keywords are test nodes instead of Name is that using Name
-    // results in an ambiguity. ast.c makes sure it"s a Name.
-    // "test "=" test" is really "keyword "=" test", but we have no such token.
-    // These need to be in a single rule to avoid grammar that is ambiguous
-    // to our LL(1) parser. Even though "test" includes "*expr" in star_expr,
-    // we explicitly match "*" here, too, to give it proper precedence.
-    // Illegal combinations and orderings are blocked in ast.c:
-    // multiple (test comp_for) arguments are blocked; keyword unpackings
-    // that precede iterable unpackings are blocked; etc.
     argument: ( Name "=" expression |
                 expression [comp_for] |
                 expression ":=" expression |
