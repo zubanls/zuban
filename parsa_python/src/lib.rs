@@ -15,7 +15,7 @@ create_grammar!(
 
     file: stmt* Endmarker
 
-    decorator: "@" dotted_name [ "(" [arglist] ")" ] Newline
+    decorator: "@" dotted_name [ "(" [arguments] ")" ] Newline
     decorators: decorator+
     decorated: decorators (class_def | function_def | async_function_def)
 
@@ -212,7 +212,7 @@ create_grammar!(
     await_primary:? ["await"] primary
     primary:?
           primary "." Name
-        | primary "(" [arglist] ")"
+        | primary "(" [arguments] ")"
         | primary "[" slices "]"
         | atom
     atom:?
@@ -224,7 +224,7 @@ create_grammar!(
     slice: named_expression | expression? ":" expression? [":" expression?]
     exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
 
-    class_def: "class" Name ["(" [arglist] ")"] ":" block
+    class_def: "class" Name ["(" [arguments] ")"] ":" block
 
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
@@ -242,7 +242,7 @@ create_grammar!(
     yield_expr: "yield" [yield_from | star_expressions]
     yield_from: "from" expression
 
-    arglist: argument ("," argument)*  [","]
+    arguments: argument ("," argument)*  [","]
 
     argument: ( Name "=" expression |
                 expression [for_if_clauses] |
