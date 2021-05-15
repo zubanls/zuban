@@ -226,30 +226,30 @@ create_grammar!(
             "[" [testlist_comp] "]" |
             "{" [dictorsetmaker] "}" |
             Name | Number | strings | "..." | "None" | "True" | "False")
-    testlist_comp: (namedexpr_test|star_expr) ( comp_for | ("," (namedexpr_test|star_expr))* [","] )
+    testlist_comp: (namedexpr_test|star_expr) ( for_if_clauses | ("," (namedexpr_test|star_expr))* [","] )
     subscriptlist: subscript ("," subscript)* [","]
     subscript: expression | [expression] ":" [expression] [sliceop]
     sliceop: ":" [expression]
     exprlist: (bitwise_or|star_expr) ("," (bitwise_or|star_expr))* [","]
     dictorsetmaker: ( ((expression ":" expression | "**" bitwise_or)
-                       (comp_for | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
+                       (for_if_clauses | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
                       ((expression | star_expr)
-                       (comp_for | ("," (expression | star_expr))* [","])) )
+                       (for_if_clauses | ("," (expression | star_expr))* [","])) )
 
     class_def: "class" Name ["(" [arglist] ")"] ":" suite
 
     arglist: argument ("," argument)*  [","]
 
     argument: ( Name "=" expression |
-                expression [comp_for] |
+                expression [for_if_clauses] |
                 expression ":=" expression |
                 "**" expression |
                 "*" expression )
 
-    comp_iter: comp_for | comp_if
-    sync_comp_for: "for" exprlist "in" disjunction [comp_iter]
-    comp_for: ["async"] sync_comp_for
-    comp_if: "if" test_nocond [comp_iter]
+    for_if_clauses: async_for_if_clause+
+    async_for_if_clause:? ["async"] sync_for_if_clause
+    sync_for_if_clause: "for" exprlist "in" disjunction comp_if*
+    comp_if: "if" disjunction
 
     // not used in grammar, but may appear in "node" passed from Parser to Compiler
     encoding_decl: Name

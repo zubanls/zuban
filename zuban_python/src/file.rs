@@ -251,7 +251,7 @@ impl PythonFile {
                 PythonNodeType::Nonterminal(with_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(sync_comp_for) => {
+                PythonNodeType::Nonterminal(sync_for_if_clause) => {
                     todo!()
                 }
                 PythonNodeType::Nonterminal(match_stmt) => {
@@ -327,7 +327,7 @@ fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
         PythonNodeType::Nonterminal(with_stmt) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(sync_comp_for) => {
+        PythonNodeType::Nonterminal(sync_for_if_clause) => {
             todo!()
         }
         PythonNodeType::Nonterminal(del_stmt) => {
@@ -355,7 +355,7 @@ fn get_definition(name: PythonNode) -> Option<PythonNode> {
             loop {
                 match parent.get_type() {
                     PythonNodeType::Nonterminal(
-                        expr_stmt | param | sync_comp_for | with_stmt | for_stmt | import_name
+                        expr_stmt | param | sync_for_if_clause | with_stmt | for_stmt | import_name
                         | import_from | del_stmt | namedexpr_test) => {
 
                         if get_defined_names(&parent).iter().any(|n| n.index == name.index) {
