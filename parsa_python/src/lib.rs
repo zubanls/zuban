@@ -188,12 +188,8 @@ create_grammar!(
         | Name "=" pattern
 
     star_named_expressions: ",".star_named_expression+ [","]
-    star_named_expression:
-        | "*" disjunction
-        | named_expression
-    named_expression:
-        | Name ":=" expression
-        | expression
+    star_named_expression: "*" disjunction | named_expression
+    named_expression: Name ":=" expression | expression
 
     namedexpr_test: Name ":=" expression | expression
     expressions: expression ("," expression)* [","]
