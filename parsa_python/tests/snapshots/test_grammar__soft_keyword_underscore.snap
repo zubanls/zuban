@@ -43,7 +43,7 @@ file: 0-63
             primary: 26-30
              Name: 26-27 "_"
              Keyword: 27-28 "("
-             arglist: 28-29
+             arguments: 28-29
               argument: 28-29
                expression: 28-29
                 bitwise_or: 28-29

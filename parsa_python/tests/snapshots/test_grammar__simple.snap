@@ -13,7 +13,7 @@ file: 0-36
         primary: 1-17
          Name: 1-2 "a"
          Keyword: 2-3 "("
-         arglist: 3-16
+         arguments: 3-16
           argument: 3-8
            Name: 3-6 "foo"
            Keyword: 6-7 "="

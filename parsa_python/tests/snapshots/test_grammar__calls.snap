@@ -13,7 +13,7 @@ file: 0-55
         primary: 1-9
          Name: 1-4 "foo"
          Keyword: 4-5 "("
-         arglist: 5-8
+         arguments: 5-8
           argument: 5-8
            expression: 5-8
             bitwise_or: 5-8
@@ -30,7 +30,7 @@ file: 0-55
         primary: 10-24
          Name: 10-13 "foo"
          Keyword: 13-14 "("
-         arglist: 14-23
+         arguments: 14-23
           argument: 14-23
            Name: 14-21 "bar_foo"
            Keyword: 21-22 "="
@@ -49,7 +49,7 @@ file: 0-55
         primary: 25-40
          Name: 25-28 "foo"
          Keyword: 28-29 "("
-         arglist: 29-39
+         arguments: 29-39
           argument: 29-39
            expression: 29-36
             bitwise_or: 29-36
@@ -73,7 +73,7 @@ file: 0-55
         primary: 41-54
          Name: 41-44 "foo"
          Keyword: 44-45 "("
-         arglist: 45-53
+         arguments: 45-53
           argument: 45-53
            Keyword: 45-47 "**"
            expression: 47-53

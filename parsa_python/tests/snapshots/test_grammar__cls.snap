@@ -9,7 +9,7 @@ file: 0-117
     Keyword: 1-6 "class"
     Name: 7-10 "Foo"
     Keyword: 10-11 "("
-    arglist: 11-17
+    arguments: 11-17
      argument: 11-17
       expression: 11-17
        bitwise_or: 11-17
