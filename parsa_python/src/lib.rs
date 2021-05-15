@@ -88,8 +88,8 @@ create_grammar!(
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
         | function_def | class_def | decorated | async_stmt | match_stmt
     async_stmt: "async" (function_def | with_stmt | for_stmt)
-    if_stmt: "if" namedexpr_test ":" block ("elif" namedexpr_test ":" block)* ["else" ":" block]
-    while_stmt: "while" namedexpr_test ":" block ["else" ":" block]
+    if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* ["else" ":" block]
+    while_stmt: "while" named_expression ":" block ["else" ":" block]
     for_stmt: "for" exprlist "in" expressions ":" block ["else" ":" block]
     try_stmt: ("try" ":" block
                ((except_clause ":" block)+
@@ -191,7 +191,6 @@ create_grammar!(
     star_named_expression: "*" disjunction | named_expression
     named_expression: Name ":=" expression | expression
 
-    namedexpr_test: Name ":=" expression | expression
     expressions: expression ("," expression)* [","]
     expression: disjunction ["if" disjunction "else" expression] | lambda
     lambda: "lambda" [varargslist] ":" expression
@@ -220,7 +219,7 @@ create_grammar!(
             "[" [testlist_comp] "]" |
             "{" [dictorsetmaker] "}" |
             Name | Number | strings | "..." | "None" | "True" | "False")
-    testlist_comp: (namedexpr_test|star_expression) ( for_if_clauses | ("," (namedexpr_test|star_expression))* [","] )
+    testlist_comp: (named_expression|star_expression) ( for_if_clauses | ("," (named_expression|star_expression))* [","] )
     subscriptlist: subscript ("," subscript)* [","]
     subscript: expression | [expression] ":" [expression] [sliceop]
     sliceop: ":" [expression]
