@@ -8,7 +8,7 @@ file: 0-36
    simple_stmt: 1-17
     expr_stmt: 1-17
      testlist_star_expr: 1-17
-      test: 1-17
+      expression: 1-17
        bitwise_or: 1-17
         primary: 1-17
          Name: 1-2 "a"
@@ -17,16 +17,16 @@ file: 0-36
           argument: 3-8
            Name: 3-6 "foo"
            Keyword: 6-7 "="
-           test: 7-8
+           expression: 7-8
             bitwise_or: 7-8
              Number: 7-8 "1"
           Keyword: 8-9 ","
           argument: 10-16
-           test: 10-13
+           expression: 10-13
             bitwise_or: 10-13
              Name: 10-13 "bar"
            Keyword: 13-15 ":="
-           test: 15-16
+           expression: 15-16
             bitwise_or: 15-16
              Number: 15-16 "1"
          Keyword: 16-17 ")"
@@ -37,7 +37,7 @@ file: 0-36
    if_stmt: 19-36
     Keyword: 19-21 "if"
     namedexpr_test: 22-23
-     test: 22-23
+     expression: 22-23
       bitwise_or: 22-23
        Name: 22-23 "a"
     Keyword: 23-24 ":"
@@ -49,7 +49,7 @@ file: 0-36
        simple_stmt: 26-27
         expr_stmt: 26-27
          testlist_star_expr: 26-27
-          test: 26-27
+          expression: 26-27
            bitwise_or: 26-27
             Number: 26-27 "1"
        Newline: 27-28 "\n"
@@ -61,7 +61,7 @@ file: 0-36
       simple_stmt: 34-35
        expr_stmt: 34-35
         testlist_star_expr: 34-35
-         test: 34-35
+         expression: 34-35
           bitwise_or: 34-35
            Number: 34-35 "2"
       Newline: 35-36 "\n"

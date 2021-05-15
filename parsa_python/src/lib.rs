@@ -20,32 +20,32 @@ create_grammar!(
     decorated: decorators (class_def | function_def | async_function_def)
 
     async_function_def: "async" function_def
-    function_def: "def" Name parameters ["->" test] ":" suite
+    function_def: "def" Name parameters ["->" expression] ":" suite
 
     parameters: "(" [typedargslist] ")"
     param: Name "="  // TODO
     typedargslist: (
-      (tfpdef ["=" test] ("," tfpdef ["=" test])* "," "/" ["," [ tfpdef ["=" test] (
-            "," tfpdef ["=" test])* (["," [
-            "*" [tfpdef] ("," tfpdef ["=" test])* ["," ["**" tfpdef [","]]]
+      (tfpdef ["=" expression] ("," tfpdef ["=" expression])* "," "/" ["," [ tfpdef ["=" expression] (
+            "," tfpdef ["=" expression])* (["," [
+            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
           | "**" tfpdef [","]]])
-      | "*" [tfpdef] ("," tfpdef ["=" test])* (["," ["**" tfpdef [","]]])
+      | "*" [tfpdef] ("," tfpdef ["=" expression])* (["," ["**" tfpdef [","]]])
       | "**" tfpdef [","]]] )
-    |  (tfpdef ["=" test] ("," tfpdef ["=" test])* ["," [
-            "*" [tfpdef] ("," tfpdef ["=" test])* ["," ["**" tfpdef [","]]]
+    |  (tfpdef ["=" expression] ("," tfpdef ["=" expression])* ["," [
+            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
           | "**" tfpdef [","]]]
-      | "*" [tfpdef] ("," tfpdef ["=" test])* ["," ["**" tfpdef [","]]]
+      | "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
       | "**" tfpdef [","])
     )
-    tfpdef: Name [":" test]
-    varargslist: vfpdef ["=" test ]("," vfpdef ["=" test])* "," "/" ["," [ (vfpdef ["=" test] ("," vfpdef ["=" test])* ["," [
-            "*" [vfpdef] ("," vfpdef ["=" test])* ["," ["**" vfpdef [","]]]
+    tfpdef: Name [":" expression]
+    varargslist: vfpdef ["=" expression ]("," vfpdef ["=" expression])* "," "/" ["," [ (vfpdef ["=" expression] ("," vfpdef ["=" expression])* ["," [
+            "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
           | "**" vfpdef [","]]]
-      | "*" [vfpdef] ("," vfpdef ["=" test])* ["," ["**" vfpdef [","]]]
-      | "**" vfpdef [","]) ]] | (vfpdef ["=" test] ("," vfpdef ["=" test])* ["," [
-            "*" [vfpdef] ("," vfpdef ["=" test])* ["," ["**" vfpdef [","]]]
+      | "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
+      | "**" vfpdef [","]) ]] | (vfpdef ["=" expression] ("," vfpdef ["=" expression])* ["," [
+            "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
           | "**" vfpdef [","]]]
-      | "*" [vfpdef] ("," vfpdef ["=" test])* ["," ["**" vfpdef [","]]]
+      | "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
       | "**" vfpdef [","]
     )
     vfpdef: Name
@@ -56,8 +56,8 @@ create_grammar!(
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
     expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|testlist) |
                          ("=" (yield_expr|testlist_star_expr))*)
-    annassign: ":" test ["=" (yield_expr|testlist_star_expr)]
-    testlist_star_expr: (test|star_expr) ("," (test|star_expr))* [","]
+    annassign: ":" expression ["=" (yield_expr|testlist_star_expr)]
+    testlist_star_expr: (expression|star_expr) ("," (expression|star_expr))* [","]
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
     // For normal and annotated assignments, additional restrictions enforced by the interpreter
@@ -68,7 +68,7 @@ create_grammar!(
     continue_stmt: "continue"
     return_stmt: "return" [testlist_star_expr]
     yield_stmt: yield_expr
-    raise_stmt: "raise" [test ["from" test]]
+    raise_stmt: "raise" [expression ["from" expression]]
     import_stmt:? import_name | import_from
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
@@ -81,7 +81,7 @@ create_grammar!(
     dotted_name: Name ("." Name)*
     global_stmt: "global" Name ("," Name)*
     nonlocal_stmt: "nonlocal" Name ("," Name)*
-    assert_stmt: "assert" test ["," test]
+    assert_stmt: "assert" expression ["," expression]
 
     compound_stmt:
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
@@ -96,9 +96,9 @@ create_grammar!(
                 ["finally" ":" suite] |
                "finally" ":" suite))
     with_stmt: "with" with_item ("," with_item)*  ":" suite
-    with_item: test ["as" bitwise_or]
+    with_item: expression ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last
-    except_clause: "except" [test ["as" Name]]
+    except_clause: "except" [expression ["as" Name]]
     suite: simple_stmts | Newline Indent stmt+ Dedent
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
@@ -191,13 +191,13 @@ create_grammar!(
         | "*" disjunction
         | named_expression
     named_expression:
-        | Name ":=" test
-        | test
+        | Name ":=" expression
+        | expression
 
-    namedexpr_test: Name ":=" test | test
-    test: disjunction ["if" disjunction "else" test] | lambdef
+    namedexpr_test: Name ":=" expression | expression
+    expression: disjunction ["if" disjunction "else" expression] | lambdef
     test_nocond: disjunction | lambdef_nocond
-    lambdef: "lambda" [varargslist] ":" test
+    lambdef: "lambda" [varargslist] ":" expression
     lambdef_nocond: "lambda" [varargslist] ":" test_nocond
     disjunction:? conjunction ("or" conjunction)*
     conjunction:? inversion ("and" inversion)*
@@ -227,14 +227,14 @@ create_grammar!(
             Name | Number | strings | "..." | "None" | "True" | "False")
     testlist_comp: (namedexpr_test|star_expr) ( comp_for | ("," (namedexpr_test|star_expr))* [","] )
     subscriptlist: subscript ("," subscript)* [","]
-    subscript: test | [test] ":" [test] [sliceop]
-    sliceop: ":" [test]
+    subscript: expression | [expression] ":" [expression] [sliceop]
+    sliceop: ":" [expression]
     exprlist: (bitwise_or|star_expr) ("," (bitwise_or|star_expr))* [","]
-    testlist: test ("," test)* [","]
-    dictorsetmaker: ( ((test ":" test | "**" bitwise_or)
-                       (comp_for | ("," (test ":" test | "**" bitwise_or))* [","])) |
-                      ((test | star_expr)
-                       (comp_for | ("," (test | star_expr))* [","])) )
+    testlist: expression ("," expression)* [","]
+    dictorsetmaker: ( ((expression ":" expression | "**" bitwise_or)
+                       (comp_for | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
+                      ((expression | star_expr)
+                       (comp_for | ("," (expression | star_expr))* [","])) )
 
     class_def: "class" Name ["(" [arglist] ")"] ":" suite
 
@@ -249,11 +249,11 @@ create_grammar!(
     // Illegal combinations and orderings are blocked in ast.c:
     // multiple (test comp_for) arguments are blocked; keyword unpackings
     // that precede iterable unpackings are blocked; etc.
-    argument: ( Name "=" test |
-                test [comp_for] |
-                test ":=" test |
-                "**" test |
-                "*" test )
+    argument: ( Name "=" expression |
+                expression [comp_for] |
+                expression ":=" expression |
+                "**" expression |
+                "*" expression )
 
     comp_iter: comp_for | comp_if
     sync_comp_for: "for" exprlist "in" disjunction [comp_iter]
@@ -264,7 +264,7 @@ create_grammar!(
     encoding_decl: Name
 
     yield_expr: "yield" [yield_arg]
-    yield_arg: "from" test | testlist_star_expr
+    yield_arg: "from" expression | testlist_star_expr
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd

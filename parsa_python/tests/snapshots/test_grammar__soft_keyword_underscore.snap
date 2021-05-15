@@ -9,7 +9,7 @@ file: 0-63
     Keyword: 1-6 "match"
     subject_expr: 7-8
      named_expression: 7-8
-      test: 7-8
+      expression: 7-8
        bitwise_or: 7-8
         Name: 7-8 "_"
     Keyword: 8-9 ":"
@@ -38,14 +38,14 @@ file: 0-63
        simple_stmt: 26-30
         expr_stmt: 26-30
          testlist_star_expr: 26-30
-          test: 26-30
+          expression: 26-30
            bitwise_or: 26-30
             primary: 26-30
              Name: 26-27 "_"
              Keyword: 27-28 "("
              arglist: 28-29
               argument: 28-29
-               test: 28-29
+               expression: 28-29
                 bitwise_or: 28-29
                  Name: 28-29 "_"
              Keyword: 29-30 ")"
@@ -67,7 +67,7 @@ file: 0-63
         simple_stmt: 51-52
          expr_stmt: 51-52
           testlist_star_expr: 51-52
-           test: 51-52
+           expression: 51-52
             bitwise_or: 51-52
              Name: 51-52 "_"
         Newline: 52-53 "\n"
@@ -78,12 +78,12 @@ file: 0-63
    simple_stmt: 53-62
     expr_stmt: 53-62
      testlist_star_expr: 53-58
-      test: 53-58
+      expression: 53-58
        bitwise_or: 53-58
         Name: 53-58 "match"
      Keyword: 59-60 "="
      testlist_star_expr: 61-62
-      test: 61-62
+      expression: 61-62
        bitwise_or: 61-62
         Number: 61-62 "3"
    Newline: 62-63 "\n"

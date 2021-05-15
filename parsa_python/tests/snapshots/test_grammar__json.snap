@@ -8,16 +8,16 @@ file: 0-9
    simple_stmt: 0-8
     expr_stmt: 0-8
      testlist_star_expr: 0-8
-      test: 0-8
+      expression: 0-8
        bitwise_or: 0-8
         atom: 0-8
          Keyword: 0-1 "{"
          dictorsetmaker: 1-7
-          test: 1-4
+          expression: 1-4
            bitwise_or: 1-4
             Name: 1-4 "foo"
           Keyword: 4-5 ":"
-          test: 6-7
+          expression: 6-7
            bitwise_or: 6-7
             Number: 6-7 "1"
          Keyword: 7-8 "}"

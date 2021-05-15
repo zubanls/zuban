@@ -11,7 +11,7 @@ file: 0-117
     Keyword: 10-11 "("
     arglist: 11-17
      argument: 11-17
-      test: 11-17
+      expression: 11-17
        bitwise_or: 11-17
         Name: 11-17 "object"
     Keyword: 17-18 ")"
