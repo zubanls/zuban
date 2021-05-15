@@ -251,9 +251,6 @@ create_grammar!(
     sync_for_if_clause: "for" exprlist "in" disjunction comp_if*
     comp_if: "if" disjunction
 
-    // not used in grammar, but may appear in "node" passed from Parser to Compiler
-    encoding_decl: Name
-
     yield_expr: "yield" [yield_arg]
     yield_arg: "from" expression | testlist_star_expr
 
