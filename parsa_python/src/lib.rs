@@ -54,10 +54,11 @@ create_grammar!(
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     simple_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
-    expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|expressions) |
-                         ("=" (yield_expr|testlist_star_expr))*)
-    annassign: ":" expression ["=" (yield_expr|testlist_star_expr)]
-    testlist_star_expr: (expression|star_expr) ("," (expression|star_expr))* [","]
+    expr_stmt: star_expressions (annassign | augassign (yield_expr|expressions) |
+                         ("=" (yield_expr|star_expressions))*)
+    annassign: ":" expression ["=" (yield_expr|star_expressions)]
+    star_expressions: (expression|star_expression) ("," (expression|star_expression))* [","]
+    star_expression: "*" bitwise_or
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
     // For normal and annotated assignments, additional restrictions enforced by the interpreter
@@ -66,7 +67,7 @@ create_grammar!(
     flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
     break_stmt: "break"
     continue_stmt: "continue"
-    return_stmt: "return" [testlist_star_expr]
+    return_stmt: "return" [star_expressions]
     yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
     import_stmt:? import_name | import_from
@@ -205,7 +206,6 @@ create_grammar!(
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
-    star_expr: "*" bitwise_or
     bitwise_or:   [bitwise_or "|"] bitwise_xor
     bitwise_xor:? [bitwise_xor "^"] bitwise_and
     bitwise_and:? [bitwise_and "&"] shift_expr
@@ -224,15 +224,15 @@ create_grammar!(
             "[" [testlist_comp] "]" |
             "{" [dictorsetmaker] "}" |
             Name | Number | strings | "..." | "None" | "True" | "False")
-    testlist_comp: (namedexpr_test|star_expr) ( for_if_clauses | ("," (namedexpr_test|star_expr))* [","] )
+    testlist_comp: (namedexpr_test|star_expression) ( for_if_clauses | ("," (namedexpr_test|star_expression))* [","] )
     subscriptlist: subscript ("," subscript)* [","]
     subscript: expression | [expression] ":" [expression] [sliceop]
     sliceop: ":" [expression]
-    exprlist: (bitwise_or|star_expr) ("," (bitwise_or|star_expr))* [","]
+    exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
     dictorsetmaker: ( ((expression ":" expression | "**" bitwise_or)
                        (for_if_clauses | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
-                      ((expression | star_expr)
-                       (for_if_clauses | ("," (expression | star_expr))* [","])) )
+                      ((expression | star_expression)
+                       (for_if_clauses | ("," (expression | star_expression))* [","])) )
 
     class_def: "class" Name ["(" [arglist] ")"] ":" block
 
@@ -250,7 +250,7 @@ create_grammar!(
     comp_if: "if" disjunction
 
     yield_expr: "yield" [yield_arg]
-    yield_arg: "from" expression | testlist_star_expr
+    yield_arg: "from" expression | star_expressions
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd

@@ -7,7 +7,7 @@ file: 0-23
   simple_stmts: 1-5
    simple_stmt: 1-4
     expr_stmt: 1-4
-     testlist_star_expr: 1-4
+     star_expressions: 1-4
       expression: 1-4
        bitwise_or: 1-4
         Name: 1-4 "foo"
@@ -22,7 +22,7 @@ file: 0-23
   simple_stmts: 9-13
    simple_stmt: 9-12
     expr_stmt: 9-12
-     testlist_star_expr: 9-12
+     star_expressions: 9-12
       expression: 9-12
        bitwise_or: 9-12
         Name: 9-12 "bar"
@@ -37,7 +37,7 @@ file: 0-23
   simple_stmts: 19-23
    simple_stmt: 19-22
     expr_stmt: 19-22
-     testlist_star_expr: 19-22
+     star_expressions: 19-22
       expression: 19-22
        bitwise_or: 19-22
         Name: 19-22 "baz"

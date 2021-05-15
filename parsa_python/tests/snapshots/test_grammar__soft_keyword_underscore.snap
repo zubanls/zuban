@@ -37,7 +37,7 @@ file: 0-63
       simple_stmts: 26-31
        simple_stmt: 26-30
         expr_stmt: 26-30
-         testlist_star_expr: 26-30
+         star_expressions: 26-30
           expression: 26-30
            bitwise_or: 26-30
             primary: 26-30
@@ -66,7 +66,7 @@ file: 0-63
        simple_stmts: 51-53
         simple_stmt: 51-52
          expr_stmt: 51-52
-          testlist_star_expr: 51-52
+          star_expressions: 51-52
            expression: 51-52
             bitwise_or: 51-52
              Name: 51-52 "_"
@@ -77,12 +77,12 @@ file: 0-63
   simple_stmts: 53-63
    simple_stmt: 53-62
     expr_stmt: 53-62
-     testlist_star_expr: 53-58
+     star_expressions: 53-58
       expression: 53-58
        bitwise_or: 53-58
         Name: 53-58 "match"
      Keyword: 59-60 "="
-     testlist_star_expr: 61-62
+     star_expressions: 61-62
       expression: 61-62
        bitwise_or: 61-62
         Number: 61-62 "3"

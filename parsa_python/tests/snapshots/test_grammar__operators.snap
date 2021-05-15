@@ -7,7 +7,7 @@ file: 0-37
   simple_stmts: 1-37
    simple_stmt: 1-36
     expr_stmt: 1-36
-     testlist_star_expr: 1-36
+     star_expressions: 1-36
       expression: 1-36
        bitwise_or: 1-36
         bitwise_or: 1-6

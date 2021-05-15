@@ -7,7 +7,7 @@ file: 0-55
   simple_stmts: 1-10
    simple_stmt: 1-9
     expr_stmt: 1-9
-     testlist_star_expr: 1-9
+     star_expressions: 1-9
       expression: 1-9
        bitwise_or: 1-9
         primary: 1-9
@@ -24,7 +24,7 @@ file: 0-55
   simple_stmts: 10-25
    simple_stmt: 10-24
     expr_stmt: 10-24
-     testlist_star_expr: 10-24
+     star_expressions: 10-24
       expression: 10-24
        bitwise_or: 10-24
         primary: 10-24
@@ -43,7 +43,7 @@ file: 0-55
   simple_stmts: 25-41
    simple_stmt: 25-40
     expr_stmt: 25-40
-     testlist_star_expr: 25-40
+     star_expressions: 25-40
       expression: 25-40
        bitwise_or: 25-40
         primary: 25-40
@@ -67,7 +67,7 @@ file: 0-55
   simple_stmts: 41-55
    simple_stmt: 41-54
     expr_stmt: 41-54
-     testlist_star_expr: 41-54
+     star_expressions: 41-54
       expression: 41-54
        bitwise_or: 41-54
         primary: 41-54

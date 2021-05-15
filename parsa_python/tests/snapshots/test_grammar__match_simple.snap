@@ -37,7 +37,7 @@ file: 0-57
       simple_stmts: 28-32
        simple_stmt: 28-31
         expr_stmt: 28-31
-         testlist_star_expr: 28-31
+         star_expressions: 28-31
           expression: 28-31
            bitwise_or: 28-31
             Keyword: 28-31 "..."
