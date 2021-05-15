@@ -215,19 +215,15 @@ create_grammar!(
         | primary "(" [arglist] ")"
         | primary "[" subscriptlist "]"
         | atom
-    atom:? ("(" [yield_expr|testlist_comp] ")" |
-            "[" [testlist_comp] "]" |
-            "{" [dictorsetmaker] "}" |
-            Name | Number | strings | "..." | "None" | "True" | "False")
-    testlist_comp: (named_expression|star_expression) ( for_if_clauses | ("," (named_expression|star_expression))* [","] )
-    subscriptlist: subscript ("," subscript)* [","]
+    atom:?
+          "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
+        | "[" [star_named_expressions | comprehension] "]"
+        | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
+        | Name | Number | strings | "..." | "None" | "True" | "False"
+    subscriptlist: ",".subscript+ [","]
     subscript: expression | [expression] ":" [expression] [sliceop]
     sliceop: ":" [expression]
     exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
-    dictorsetmaker: ( ((expression ":" expression | "**" bitwise_or)
-                       (for_if_clauses | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
-                      ((expression | star_expression)
-                       (for_if_clauses | ("," (expression | star_expression))* [","])) )
 
     class_def: "class" Name ["(" [arglist] ")"] ":" block
 
@@ -239,13 +235,21 @@ create_grammar!(
                 "**" expression |
                 "*" expression )
 
+    comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
     async_for_if_clause:? ["async"] sync_for_if_clause
     sync_for_if_clause: "for" exprlist "in" disjunction comp_if*
     comp_if: "if" disjunction
 
-    yield_expr: "yield" [yield_arg]
-    yield_arg: "from" expression | star_expressions
+    dict_comprehension: dict_key_value for_if_clauses
+    dict_content: ",".dict_element+ [","]
+    dict_element: "**" bitwise_or | dict_key_value
+    dict_key_value: expression ":" expression
+
+    tuple_content: star_named_expression "," [star_named_expressions]
+
+    yield_expr: "yield" [yield_from | star_expressions]
+    yield_from: "from" expression
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd
