@@ -213,16 +213,15 @@ create_grammar!(
     primary:?
           primary "." Name
         | primary "(" [arglist] ")"
-        | primary "[" subscriptlist "]"
+        | primary "[" slices "]"
         | atom
     atom:?
           "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
         | "[" [star_named_expressions | comprehension] "]"
         | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
         | Name | Number | strings | "..." | "None" | "True" | "False"
-    subscriptlist: ",".subscript+ [","]
-    subscript: expression | [expression] ":" [expression] [sliceop]
-    sliceop: ":" [expression]
+    slices: ",".slice+ [","]
+    slice: named_expression | expression? ":" expression? [":" expression?]
     exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
 
     class_def: "class" Name ["(" [arglist] ")"] ":" block
