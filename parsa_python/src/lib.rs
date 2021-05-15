@@ -197,9 +197,7 @@ create_grammar!(
     namedexpr_test: Name ":=" expression | expression
     expressions: expression ("," expression)* [","]
     expression: disjunction ["if" disjunction "else" expression] | lambdef
-    test_nocond: disjunction | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" expression
-    lambdef_nocond: "lambda" [varargslist] ":" test_nocond
     disjunction:? conjunction ("or" conjunction)*
     conjunction:? inversion ("and" inversion)*
     inversion:? "not" inversion | comparison
