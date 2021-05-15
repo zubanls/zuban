@@ -54,7 +54,7 @@ create_grammar!(
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     simple_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
-    expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|testlist) |
+    expr_stmt: testlist_star_expr (annassign | augassign (yield_expr|expressions) |
                          ("=" (yield_expr|testlist_star_expr))*)
     annassign: ":" expression ["=" (yield_expr|testlist_star_expr)]
     testlist_star_expr: (expression|star_expr) ("," (expression|star_expr))* [","]
@@ -89,7 +89,7 @@ create_grammar!(
     async_stmt: "async" (function_def | with_stmt | for_stmt)
     if_stmt: "if" namedexpr_test ":" suite ("elif" namedexpr_test ":" suite)* ["else" ":" suite]
     while_stmt: "while" namedexpr_test ":" suite ["else" ":" suite]
-    for_stmt: "for" exprlist "in" testlist ":" suite ["else" ":" suite]
+    for_stmt: "for" exprlist "in" expressions ":" suite ["else" ":" suite]
     try_stmt: ("try" ":" suite
                ((except_clause ":" suite)+
                 ["else" ":" suite]
@@ -195,6 +195,7 @@ create_grammar!(
         | expression
 
     namedexpr_test: Name ":=" expression | expression
+    expressions: expression ("," expression)* [","]
     expression: disjunction ["if" disjunction "else" expression] | lambdef
     test_nocond: disjunction | lambdef_nocond
     lambdef: "lambda" [varargslist] ":" expression
@@ -230,7 +231,6 @@ create_grammar!(
     subscript: expression | [expression] ":" [expression] [sliceop]
     sliceop: ":" [expression]
     exprlist: (bitwise_or|star_expr) ("," (bitwise_or|star_expr))* [","]
-    testlist: expression ("," expression)* [","]
     dictorsetmaker: ( ((expression ":" expression | "**" bitwise_or)
                        (comp_for | ("," (expression ":" expression | "**" bitwise_or))* [","])) |
                       ((expression | star_expr)
@@ -261,7 +261,7 @@ create_grammar!(
     fstring: FStringStart fstring_content* FStringEnd
     fstring_content: FStringString | fstring_expr
     fstring_conversion: "!" Name
-    fstring_expr: "{" testlist ["="] [ fstring_conversion ] [ fstring_format_spec ] "}"
+    fstring_expr: "{" expressions ["="] [ fstring_conversion ] [ fstring_format_spec ] "}"
     fstring_format_spec: ":" fstring_content*
 );
 
