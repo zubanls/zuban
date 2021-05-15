@@ -41,7 +41,7 @@ file: 0-36
       bitwise_or: 22-23
        Name: 22-23 "a"
     Keyword: 23-24 ":"
-    suite: 24-28
+    block: 24-28
      Newline: 24-25 "\n"
      Indent: 26-26 ""
      stmt: 26-28
@@ -56,7 +56,7 @@ file: 0-36
      Dedent: 28-28 ""
     Keyword: 28-32 "else"
     Keyword: 32-33 ":"
-    suite: 34-36
+    block: 34-36
      simple_stmts: 34-36
       simple_stmt: 34-35
        expr_stmt: 34-35

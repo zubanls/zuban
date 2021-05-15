@@ -20,7 +20,7 @@ create_grammar!(
     decorated: decorators (class_def | function_def | async_function_def)
 
     async_function_def: "async" function_def
-    function_def: "def" Name parameters ["->" expression] ":" suite
+    function_def: "def" Name parameters ["->" expression] ":" block
 
     parameters: "(" [typedargslist] ")"
     param: Name "="  // TODO
@@ -87,26 +87,26 @@ create_grammar!(
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
         | function_def | class_def | decorated | async_stmt | match_stmt
     async_stmt: "async" (function_def | with_stmt | for_stmt)
-    if_stmt: "if" namedexpr_test ":" suite ("elif" namedexpr_test ":" suite)* ["else" ":" suite]
-    while_stmt: "while" namedexpr_test ":" suite ["else" ":" suite]
-    for_stmt: "for" exprlist "in" expressions ":" suite ["else" ":" suite]
-    try_stmt: ("try" ":" suite
-               ((except_clause ":" suite)+
-                ["else" ":" suite]
-                ["finally" ":" suite] |
-               "finally" ":" suite))
-    with_stmt: "with" with_item ("," with_item)*  ":" suite
+    if_stmt: "if" namedexpr_test ":" block ("elif" namedexpr_test ":" block)* ["else" ":" block]
+    while_stmt: "while" namedexpr_test ":" block ["else" ":" block]
+    for_stmt: "for" exprlist "in" expressions ":" block ["else" ":" block]
+    try_stmt: ("try" ":" block
+               ((except_clause ":" block)+
+                ["else" ":" block]
+                ["finally" ":" block] |
+               "finally" ":" block))
+    with_stmt: "with" with_item ("," with_item)*  ":" block
     with_item: expression ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [expression ["as" Name]]
-    suite: simple_stmts | Newline Indent stmt+ Dedent
+    block: simple_stmts | Newline Indent stmt+ Dedent
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:
         | star_named_expression "," star_named_expressions?
         | named_expression
     case_block:
-        | "case" patterns guard? ":" suite
+        | "case" patterns guard? ":" block
     guard: "if" named_expression
 
     patterns:
@@ -236,7 +236,7 @@ create_grammar!(
                       ((expression | star_expr)
                        (for_if_clauses | ("," (expression | star_expr))* [","])) )
 
-    class_def: "class" Name ["(" [arglist] ")"] ":" suite
+    class_def: "class" Name ["(" [arglist] ")"] ":" block
 
     arglist: argument ("," argument)*  [","]
 

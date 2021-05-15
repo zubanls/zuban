@@ -33,7 +33,7 @@ file: 0-63
                  String: 20-23 "\'a\'"
           Keyword: 23-24 "]"
      Keyword: 24-25 ":"
-     suite: 26-31
+     block: 26-31
       simple_stmts: 26-31
        simple_stmt: 26-30
         expr_stmt: 26-30
@@ -59,7 +59,7 @@ file: 0-63
          wildcard_pattern: 40-41
           Keyword: 40-41 "_"
      Keyword: 41-42 ":"
-     suite: 42-53
+     block: 42-53
       Newline: 42-43 "\n"
       Indent: 51-51 ""
       stmt: 51-53
