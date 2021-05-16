@@ -10,7 +10,7 @@ file: 0-117
     Name: 7-10 "Foo"
     Keyword: 10-11 "("
     arguments: 11-17
-     argument: 11-17
+     named_expression: 11-17
       expression: 11-17
        bitwise_or: 11-17
         Name: 11-17 "object"
@@ -57,8 +57,10 @@ file: 0-117
         decorators: 74-84
          decorator: 74-84
           Keyword: 74-75 "@"
-          dotted_name: 75-83
-           Name: 75-83 "property"
+          named_expression: 75-83
+           expression: 75-83
+            bitwise_or: 75-83
+             Name: 75-83 "property"
           Newline: 83-84 "\n"
         function_def: 88-117
          Keyword: 88-91 "def"

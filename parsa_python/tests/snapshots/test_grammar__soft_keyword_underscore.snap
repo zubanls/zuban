@@ -44,7 +44,7 @@ file: 0-63
              Name: 26-27 "_"
              Keyword: 27-28 "("
              arguments: 28-29
-              argument: 28-29
+              named_expression: 28-29
                expression: 28-29
                 bitwise_or: 28-29
                  Name: 28-29 "_"

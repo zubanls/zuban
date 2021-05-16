@@ -14,21 +14,20 @@ file: 0-36
          Name: 1-2 "a"
          Keyword: 2-3 "("
          arguments: 3-16
-          argument: 3-8
-           Name: 3-6 "foo"
-           Keyword: 6-7 "="
-           expression: 7-8
-            bitwise_or: 7-8
-             Number: 7-8 "1"
-          Keyword: 8-9 ","
-          argument: 10-16
-           expression: 10-13
-            bitwise_or: 10-13
-             Name: 10-13 "bar"
-           Keyword: 13-15 ":="
-           expression: 15-16
-            bitwise_or: 15-16
-             Number: 15-16 "1"
+          named_expression: 3-9
+           Name: 3-6 "bar"
+           Keyword: 6-8 ":="
+           expression: 8-9
+            bitwise_or: 8-9
+             Number: 8-9 "1"
+          Keyword: 9-10 ","
+          kwargs: 11-16
+           kwarg_or_starred: 11-16
+            Name: 11-14 "foo"
+            Keyword: 14-15 "="
+            expression: 15-16
+             bitwise_or: 15-16
+              Number: 15-16 "1"
          Keyword: 16-17 ")"
    Keyword: 17-18 ";"
    Newline: 18-19 "\n"

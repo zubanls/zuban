@@ -15,9 +15,9 @@ create_grammar!(
 
     file: stmt* Endmarker
 
-    decorator: "@" dotted_name [ "(" [arguments] ")" ] Newline
+    decorator: "@" named_expression Newline
     decorators: decorator+
-    decorated: decorators (class_def | function_def | async_function_def)
+    decorated:? decorators (class_def | function_def | async_function_def)
 
     async_function_def: "async" function_def
     function_def: "def" Name parameters ["->" expression] ":" block
@@ -242,13 +242,17 @@ create_grammar!(
     yield_expr: "yield" [yield_from | star_expressions]
     yield_from: "from" expression
 
-    arguments: argument ("," argument)*  [","]
-
-    argument: ( Name "=" expression |
-                expression [for_if_clauses] |
-                expression ":=" expression |
-                "**" expression |
-                "*" expression )
+    arguments:
+        | ",".(starred_expression | named_expression !"=")+ ["," kwargs?]
+        | kwargs
+    kwargs:
+        //| ",".kwarg_or_starred+ ["," [",".kwarg_or_double_starred+ ","?]]
+        | ",".kwarg_or_starred+ ","?
+        | ",".kwarg_or_starred+ "," ",".kwarg_or_double_starred+ ","?
+        | ",".kwarg_or_double_starred+ ","?
+    kwarg_or_starred: Name "=" expression | starred_expression
+    kwarg_or_double_starred: Name "=" expression | "**" expression
+    starred_expression: "*" expression
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd

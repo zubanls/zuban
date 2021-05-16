@@ -664,6 +664,9 @@ pub fn generate_automatons(
                 .transition_to_plan
                 .extend(left_recursion_plans);
         }
+        //if nonterminal_map["arguments"] == *rule_label {
+        //    println!("{}", &automatons.get(rule_label).unwrap().illustrate_dfas(nonterminal_map));
+        //}
     }
     (automatons, keywords)
 }

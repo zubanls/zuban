@@ -67,7 +67,7 @@ macro_rules! parametrize_snapshots {
 parametrize_snapshots!(
     json: "{foo: 1}\n".to_owned();
     simple: dedent("
-        a(foo=1, bar:=1);
+        a(bar:=1, foo=1);
         if a:
          1
         else: 2

@@ -369,14 +369,14 @@ macro_rules! __parse_operators {
     ($input:expr, ? $($rule:tt)*) => (
         $crate::__parse_next_identifier!($crate::Rule::Maybe(&$input), $($rule)*)
     );
-    ($separator:expr, . $label:ident + $($rule:tt)*) => ({
+    ($separator:expr, . $label:tt + $($rule:tt)*) => ({
         // Basically turns s.e+ to (e (s e)*)
         $crate::__parse_next_identifier!(
             $crate::Rule::Next(
-                &$crate::Rule::Identifier(stringify!($label)),
+                &$crate::__parse_identifier!($label),
                 &$crate::Rule::Maybe(&$crate::Rule::Multiple(&$crate::Rule::Next(
                     &$separator,
-                    &$crate::Rule::Identifier(stringify!($label))
+                    &$crate::__parse_identifier!($label)
                 )))
             ),
             $($rule)*
@@ -390,12 +390,12 @@ macro_rules! __parse_operators {
 #[macro_export]
 macro_rules! __parse_identifier {
     // Negative Lookahead
-    (! $lookahead:tt $($rule:tt)+) => (
+    (! $lookahead:tt $($rule:tt)*) => (
         $crate::__parse_next_identifier!(
             $crate::Rule::NegativeLookahead(&$crate::__parse_identifier!($lookahead)), $($rule)*)
     );
     // Positive Lookahead
-    (& $lookahead:tt $($rule:tt)+) => (
+    (& $lookahead:tt $($rule:tt)*) => (
         $crate::__parse_next_identifier!(
             $crate::Rule::PositiveLookahead(&$crate::__parse_identifier!($lookahead)), $($rule)*)
     );
