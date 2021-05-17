@@ -71,7 +71,7 @@ file: 0-55
          Keyword: 44-45 "("
          arguments: 45-53
           kwargs: 45-53
-           kwarg_or_double_starred: 45-53
+           double_starred_expression: 45-53
             Keyword: 45-47 "**"
             expression: 47-53
              bitwise_or: 47-53

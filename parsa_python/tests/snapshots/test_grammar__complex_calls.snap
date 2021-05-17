@@ -109,7 +109,7 @@ file: 0-148
              bitwise_or: 71-72
               Number: 71-72 "3"
            Keyword: 72-73 ","
-           kwarg_or_double_starred: 74-82
+           double_starred_expression: 74-82
             Keyword: 74-76 "**"
             expression: 76-82
              bitwise_or: 76-82
@@ -146,13 +146,13 @@ file: 0-148
              bitwise_or: 104-105
               Number: 104-105 "3"
            Keyword: 105-106 ","
-           kwarg_or_double_starred: 107-115
+           double_starred_expression: 107-115
             Keyword: 107-109 "**"
             expression: 109-115
              bitwise_or: 109-115
               Name: 109-115 "kwargs"
            Keyword: 115-116 ","
-           kwarg_or_double_starred: 117-120
+           kwarg: 117-120
             Name: 117-118 "b"
             Keyword: 118-119 "="
             expression: 119-120
@@ -172,20 +172,20 @@ file: 0-148
          Keyword: 125-126 "("
          arguments: 126-146
           kwargs: 126-146
-           kwarg_or_double_starred: 126-134
+           double_starred_expression: 126-134
             Keyword: 126-128 "**"
             expression: 128-134
              bitwise_or: 128-134
               Name: 128-134 "kwargs"
            Keyword: 134-135 ","
-           kwarg_or_double_starred: 136-139
+           kwarg: 136-139
             Name: 136-137 "b"
             Keyword: 137-138 "="
             expression: 138-139
              bitwise_or: 138-139
               Number: 138-139 "3"
            Keyword: 139-140 ","
-           kwarg_or_double_starred: 141-146
+           double_starred_expression: 141-146
             Keyword: 141-143 "**"
             expression: 143-146
              bitwise_or: 143-146
