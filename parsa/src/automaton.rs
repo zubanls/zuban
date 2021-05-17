@@ -354,8 +354,7 @@ impl RuleAutomaton {
         let is_final = grouped_nfas.contains(&end)
             || grouped_nfas
                 .iter()
-                .any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end()
-                     );//|| self.get_nfa_state(*nfa_id).has_negative_lookahead_at_end(&self.nfa_states, self.nfa_end_id));
+                .any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
         self.dfa_states.push(Pin::new(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final,
@@ -373,6 +372,10 @@ impl RuleAutomaton {
         let dfa = self.nfa_to_dfa(vec![start], end);
         self.construct_powerset_for_dfa(dfa, end);
 
+        // At this point we have to account for negative lookaheads that are "final" dfas. The
+        // problem is that the final calculation thinks it's not at the end, because there is still
+        // a negative lookahead following. However the negative lookahead means that as long as a
+        // specific token does not appear, it will in fact be final.
         for dfa in &mut self.dfa_states {
             if dfa.transitions.iter().any(
                 |t| t.type_ == TransitionType::NegativeLookaheadStart && {
@@ -569,38 +572,6 @@ impl NFAState {
         self.transitions
             .iter()
             .any(|t| t.type_ == Some(TransitionType::LookaheadEnd))
-    }
-
-    fn has_negative_lookahead_at_end(&self, nfa_states: &[NFAState], nfa_end_id: NFAStateId) -> bool {
-        fn is_final(nfa_states: &[NFAState], nfa_end_id: NFAStateId, nfa_state: &NFAState) -> bool {
-            // This implementation is very simplistic for now. At the moment negative lookaheads
-            // may also only be simple terminals.
-            dbg!(&nfa_state.transitions);
-            nfa_state.transitions.iter().any(
-                |t| t.to == nfa_end_id || match t.type_ {
-                    None => is_final(nfa_states, nfa_end_id, &nfa_states[t.to.0]),
-                    Some(_) => false
-                }
-            )
-        };
-        self.transitions
-            .iter()
-            .any(|t| {
-                if t.type_ == Some(TransitionType::NegativeLookaheadStart) {
-                    let lookahead = &nfa_states[t.to.0];
-                    assert!(lookahead.transitions.len() == 1);
-                    let lookahead_end = &nfa_states[lookahead.transitions[0].to.0];
-                    assert!(lookahead_end.transitions.len() == 1);
-                    assert!(lookahead_end.transitions[0].type_ == Some(TransitionType::LookaheadEnd));
-                    let maybe_final = &nfa_states[lookahead_end.transitions[0].to.0];
-                    dbg!(&lookahead.transitions[0]);
-                    let x= is_final(nfa_states, nfa_end_id, &maybe_final);
-                    dbg!("X", nfa_end_id == lookahead.transitions[0].to, x);
-                    x
-                } else {
-                    false
-                }
-            })
     }
 }
 
