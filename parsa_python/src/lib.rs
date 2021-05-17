@@ -246,7 +246,6 @@ create_grammar!(
         | ",".(starred_expression | named_expression !"=")+ ["," kwargs?]
         | kwargs
     kwargs:
-        //| ",".kwarg_or_starred+ ["," [",".kwarg_or_double_starred+ ","?]]
         | ",".kwarg_or_starred+ ","?
         | ",".kwarg_or_starred+ "," ",".kwarg_or_double_starred+ ","?
         | ",".kwarg_or_double_starred+ ","?

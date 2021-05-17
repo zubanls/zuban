@@ -199,6 +199,7 @@ pub struct RuleAutomaton {
     name: &'static str,
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
+    no_transition_dfa_id: Option<DFAStateId>,
     fallback_plans: Vec<Pin<Box<Plan>>>,
     pub does_error_recovery: bool,
 }
@@ -424,6 +425,25 @@ impl RuleAutomaton {
         }
     }
 
+    fn add_no_transition_dfa_if_necessary(&mut self) {
+        if self.nfa_states.iter().any(|nfa| nfa.transitions.iter().any(
+            |t| t.type_ == Some(TransitionType::NegativeLookaheadStart)
+        )) {
+            let list_index = DFAStateId(self.dfa_states.len());
+            self.dfa_states.push(Box::pin(DFAState {
+                nfa_set: HashSet::new(),
+                is_final: false,
+                is_calculated: true,
+                list_index,
+                node_may_be_omitted: self.node_may_be_omitted,
+                from_rule: self.name,
+                transition_to_plan: Default::default(),
+                transitions: Default::default(),
+            }));
+            self.no_transition_dfa_id = Some(list_index);
+        }
+    }
+
     pub fn illustrate_dfas(&self, nonterminal_map: &InternalStrToNode) -> String {
         // Sorry for this code, it's really ugly, but since it's really only for debugging
         // purposes, I don't care too much. ~dave
@@ -606,6 +626,7 @@ pub fn generate_automatons(
         let (start, end) = automaton.build(nonterminal_map, terminal_map, &mut keywords, rule);
         automaton.nfa_end_id = end;
         automaton.construct_powerset(start, end);
+        automaton.add_no_transition_dfa_if_necessary();
         automatons.insert(*internal_type, automaton);
     }
 
@@ -664,7 +685,7 @@ pub fn generate_automatons(
                 .transition_to_plan
                 .extend(left_recursion_plans);
         }
-        //if nonterminal_map["arguments"] == *rule_label {
+        //if nonterminal_map.get("arguments") == Some(rule_label) {
         //    println!("{}", &automatons.get(rule_label).unwrap().illustrate_dfas(nonterminal_map));
         //}
     }
@@ -884,9 +905,18 @@ fn plans_for_dfa(
                             panic!("Only terminal lookaheads are allowed");
                         }
                     };
-                    // Because negative lookaheads are only allowed to be simple terminals, we can
-                    // just remove those terminals from plans and everything should work.
-                    inner_plans.remove(&t);
+                    // Negative lookaheads are only allowed to be simple terminals.
+                    // However we can not just remove those terminals from plans,
+                    // because that would not be sufficient for final states.
+                    let automaton = &automatons[&automaton_key];
+                    let empty_dfa_id = automaton.no_transition_dfa_id.unwrap();
+                    inner_plans.insert(t, Plan {
+                        debug_text: "negative lookahead abort",
+                        is_left_recursive: false,
+                        next_dfa: &*automaton.dfa_states[empty_dfa_id.0],
+                        pushes: vec!(),
+                        type_: t,
+                    });
                 }
                 plans.extend(
                     inner_plans
