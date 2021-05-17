@@ -1,0 +1,89 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-45
+ stmt: 1-8
+  simple_stmts: 1-8
+   simple_stmt: 1-7
+    expr_stmt: 1-7
+     star_expressions: 1-7
+      expression: 1-7
+       bitwise_or: 1-7
+        atom: 1-7
+         Keyword: 1-2 "{"
+         dict_content: 2-6
+          dict_key_value: 2-6
+           expression: 2-3
+            bitwise_or: 2-3
+             Number: 2-3 "1"
+           Keyword: 3-4 ":"
+           expression: 5-6
+            bitwise_or: 5-6
+             Number: 5-6 "2"
+         Keyword: 6-7 "}"
+   Newline: 7-8 "\n"
+ stmt: 8-16
+  simple_stmts: 8-16
+   simple_stmt: 8-15
+    expr_stmt: 8-15
+     star_expressions: 8-15
+      expression: 8-15
+       bitwise_or: 8-15
+        atom: 8-15
+         Keyword: 8-9 "{"
+         dict_content: 9-14
+          dict_starred: 9-14
+           Keyword: 9-11 "**"
+           bitwise_or: 11-14
+            Name: 11-14 "foo"
+         Keyword: 14-15 "}"
+   Newline: 15-16 "\n"
+ stmt: 16-30
+  simple_stmts: 16-30
+   simple_stmt: 16-29
+    expr_stmt: 16-29
+     star_expressions: 16-29
+      expression: 16-29
+       bitwise_or: 16-29
+        atom: 16-29
+         Keyword: 16-17 "{"
+         dict_content: 17-28
+          dict_starred: 17-22
+           Keyword: 17-19 "**"
+           bitwise_or: 19-22
+            Name: 19-22 "foo"
+          Keyword: 22-23 ","
+          dict_key_value: 24-28
+           expression: 24-25
+            bitwise_or: 24-25
+             Number: 24-25 "1"
+           Keyword: 25-26 ":"
+           expression: 27-28
+            bitwise_or: 27-28
+             Number: 27-28 "2"
+         Keyword: 28-29 "}"
+   Newline: 29-30 "\n"
+ stmt: 30-45
+  simple_stmts: 30-45
+   simple_stmt: 30-44
+    expr_stmt: 30-44
+     star_expressions: 30-44
+      expression: 30-44
+       bitwise_or: 30-44
+        atom: 30-44
+         Keyword: 30-31 "{"
+         dict_content: 31-43
+          dict_starred: 31-36
+           Keyword: 31-33 "**"
+           bitwise_or: 33-36
+            Name: 33-36 "foo"
+          Keyword: 36-37 ","
+          dict_starred: 38-43
+           Keyword: 38-40 "**"
+           bitwise_or: 40-43
+            Name: 40-43 "bar"
+         Keyword: 43-44 "}"
+   Newline: 44-45 "\n"
+ Endmarker: 45-45 ""
+

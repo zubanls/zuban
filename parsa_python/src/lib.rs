@@ -233,8 +233,8 @@ create_grammar!(
     comp_if: "if" disjunction
 
     dict_comprehension: dict_key_value for_if_clauses
-    dict_content: ",".dict_element+ [","]
-    dict_element: "**" bitwise_or | dict_key_value
+    dict_content: ",".(dict_starred | dict_key_value)+ [","]
+    dict_starred: "**" bitwise_or
     dict_key_value: expression ":" expression
 
     tuple_content: star_named_expression "," [star_named_expressions]

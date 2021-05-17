@@ -144,4 +144,10 @@ parametrize_snapshots!(
         match foo:
             case bar as _: pass
         ");
+    dict_literal1: dedent("
+        {1: 2}
+        {**foo}
+        {**foo, 1: 2}
+        {**foo, **bar}
+        ");
 );
