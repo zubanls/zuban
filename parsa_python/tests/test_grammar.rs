@@ -97,6 +97,14 @@ parametrize_snapshots!(
         foo(bar_baz:=2)
         foo(**kwargs)
         ");
+    complex_calls: dedent("
+        foo(bar, 3)
+        foo(bar, *foo)
+        foo(bar, *foo, name=3)
+        foo(bar, *foo, name=3, **kwargs)
+        foo(bar, *foo, name=3, **kwargs, b=3)
+        foo(**kwargs, b=3, **foo)
+        ");
     operators: dedent("
         f | d | c + 5 & 2 * 3 * 4 ** 5 ** 6
         ");
