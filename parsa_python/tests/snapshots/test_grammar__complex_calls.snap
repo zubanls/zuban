@@ -71,7 +71,7 @@ file: 0-148
              Name: 38-41 "foo"
           Keyword: 41-42 ","
           kwargs: 43-49
-           kwarg_or_starred: 43-49
+           kwarg: 43-49
             Name: 43-47 "name"
             Keyword: 47-48 "="
             expression: 48-49
@@ -102,7 +102,7 @@ file: 0-148
              Name: 61-64 "foo"
           Keyword: 64-65 ","
           kwargs: 66-82
-           kwarg_or_starred: 66-72
+           kwarg: 66-72
             Name: 66-70 "name"
             Keyword: 70-71 "="
             expression: 71-72
@@ -139,7 +139,7 @@ file: 0-148
              Name: 94-97 "foo"
           Keyword: 97-98 ","
           kwargs: 99-120
-           kwarg_or_starred: 99-105
+           kwarg: 99-105
             Name: 99-103 "name"
             Keyword: 103-104 "="
             expression: 104-105

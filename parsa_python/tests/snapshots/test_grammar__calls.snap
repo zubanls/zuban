@@ -32,7 +32,7 @@ file: 0-55
          Keyword: 13-14 "("
          arguments: 14-23
           kwargs: 14-23
-           kwarg_or_starred: 14-23
+           kwarg: 14-23
             Name: 14-21 "bar_foo"
             Keyword: 21-22 "="
             expression: 22-23

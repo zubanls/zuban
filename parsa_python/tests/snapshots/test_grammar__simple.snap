@@ -22,7 +22,7 @@ file: 0-36
              Number: 8-9 "1"
           Keyword: 9-10 ","
           kwargs: 11-16
-           kwarg_or_starred: 11-16
+           kwarg: 11-16
             Name: 11-14 "foo"
             Keyword: 14-15 "="
             expression: 15-16

@@ -246,11 +246,9 @@ create_grammar!(
         | ",".(starred_expression | named_expression !"=")+ ["," kwargs?]
         | kwargs
     kwargs:
-        | ",".kwarg_or_starred+ ","?
-        | ",".kwarg_or_starred+ "," ",".kwarg_or_double_starred+ ","?
-        | ",".kwarg_or_double_starred+ ","?
-    kwarg_or_starred:? Name "=" expression | starred_expression
-    kwarg_or_double_starred:? kwarg | double_starred_expression
+        | ",".(kwarg | starred_expression)+ ","?
+        | ",".(kwarg | starred_expression)+ "," ",".(kwarg | double_starred_expression)+ ","?
+        | ",".(kwarg | double_starred_expression)+ ","?
     kwarg: Name "=" expression
     starred_expression: "*" expression
     double_starred_expression: "**" expression
