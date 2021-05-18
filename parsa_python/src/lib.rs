@@ -1,3 +1,4 @@
+// Heavily inspired by https://docs.python.org/3.10/reference/grammar.html
 #![recursion_limit = "1024"]
 mod tokenizer;
 
@@ -38,17 +39,6 @@ create_grammar!(
       | "**" tfpdef [","])
     )
     tfpdef: Name [":" expression]
-    varargslist: vfpdef ["=" expression ]("," vfpdef ["=" expression])* "," "/" ["," [ (vfpdef ["=" expression] ("," vfpdef ["=" expression])* ["," [
-            "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
-          | "**" vfpdef [","]]]
-      | "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
-      | "**" vfpdef [","]) ]] | (vfpdef ["=" expression] ("," vfpdef ["=" expression])* ["," [
-            "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
-          | "**" vfpdef [","]]]
-      | "*" [vfpdef] ("," vfpdef ["=" expression])* ["," ["**" vfpdef [","]]]
-      | "**" vfpdef [","]
-    )
-    vfpdef: Name
 
     stmt: @error_recovery simple_stmts | compound_stmt | Newline
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
@@ -187,13 +177,38 @@ create_grammar!(
     keyword_pattern:
         | Name "=" pattern
 
+    lambda: "lambda" [lambda_parameters] ":" expression
+
+    lambda_parameters:
+        | Name ["=" expression ]("," Name ["=" expression])* "," "/" [
+                "," [(
+                    Name ["=" expression] ("," Name ["=" expression])* [
+                        "," [
+                            "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
+                            | "**" Name [","]
+                        ]
+                    ]
+                    | "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
+                    | "**" Name [","]
+                )]
+            ]
+        | (
+                    Name ["=" expression] ("," Name ["=" expression])* [
+                        "," [
+                            "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
+                            | "**" Name [","]
+                        ]
+                    ]
+                    | "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
+                    | "**" Name [","]
+        )
+
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression: "*" disjunction | named_expression
     named_expression: Name ":=" expression | expression
 
     expressions: expression ("," expression)* [","]
     expression: disjunction ["if" disjunction "else" expression] | lambda
-    lambda: "lambda" [varargslist] ":" expression
     disjunction:? conjunction ("or" conjunction)*
     conjunction:? inversion ("and" inversion)*
     inversion:? "not" inversion | comparison
