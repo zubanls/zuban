@@ -12,7 +12,7 @@ file: 0-124
        lambda: 1-22
         Keyword: 1-7 "lambda"
         lambda_parameters: 8-17
-         lambda_param: 8-9
+         lambda_param_no_default: 8-9
           Name: 8-9 "a"
          Keyword: 9-10 ","
          lambda_star_etc: 11-17
@@ -38,7 +38,7 @@ file: 0-124
        lambda: 23-44
         Keyword: 23-29 "lambda"
         lambda_parameters: 30-39
-         lambda_param: 30-33
+         lambda_param_with_default: 30-33
           Name: 30-31 "a"
           Keyword: 31-32 "="
           expression: 32-33
@@ -64,7 +64,7 @@ file: 0-124
        lambda: 45-74
         Keyword: 45-51 "lambda"
         lambda_parameters: 52-69
-         lambda_param: 52-53
+         lambda_param_no_default: 52-53
           Name: 52-53 "a"
          Keyword: 53-54 ","
          lambda_star_etc: 55-69
@@ -90,7 +90,7 @@ file: 0-124
        lambda: 75-105
         Keyword: 75-81 "lambda"
         lambda_parameters: 82-100
-         lambda_param: 82-83
+         lambda_param_no_default: 82-83
           Name: 82-83 "a"
          Keyword: 83-84 ","
          lambda_star_etc: 85-100

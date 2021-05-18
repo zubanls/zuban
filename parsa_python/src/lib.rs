@@ -185,12 +185,15 @@ create_grammar!(
                     | lambda_star_etc
                 ]
             ]
-        | ",".lambda_param+ ["," [lambda_star_etc ]]
+        | ",".lambda_param_no_default+ [",".lambda_param_with_default+] ["," [lambda_star_etc ]]
+        | ",".lambda_param_with_default+ ["," [lambda_star_etc ]]
         | lambda_star_etc
     lambda_star_etc:
         | "*" Name ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
         | "*" "," ",".lambda_param+ ["," [lambda_double_starred_param ","?]]
         | lambda_double_starred_param [","]
+    lambda_param_no_default: Name !"="
+    lambda_param_with_default: Name "=" expression
     lambda_param: Name ["=" expression ]
     lambda_double_starred_param: "**" Name
 

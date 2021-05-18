@@ -3,21 +3,28 @@ source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
 file: 0-100
- Error(stmt): 1-13
-  Error(simple_stmts): 1-13
-   Error(simple_stmt): 1-13
-    Error(expr_stmt): 1-13
-     Error(star_expressions): 1-13
-      Error(expression): 1-13
-       Error(lambda): 1-13
+ Error(stmt): 1-9
+  Error(simple_stmts): 1-9
+   Error(simple_stmt): 1-9
+    Error(expr_stmt): 1-9
+     Error(star_expressions): 1-9
+      Error(expression): 1-9
+       Error(lambda): 1-9
         Keyword: 1-7 "lambda"
-        Error(lambda_parameters): 8-13
-         lambda_param: 8-9
+        Error(lambda_parameters): 8-9
+         Error(lambda_param_with_default): 8-9
           Name: 8-9 "a"
-         Keyword: 9-10 ","
-         Error(lambda_star_etc): 11-13
-          Keyword: 11-12 "*"
-          Keyword: 12-13 ","
+ Error(stmt): 9-10
+  Error(Keyword): 9-10 ","
+ Error(stmt): 11-12
+  Error(simple_stmts): 11-12
+   Error(simple_stmt): 11-12
+    Error(expr_stmt): 11-12
+     Error(star_expressions): 11-12
+      Error(star_expression): 11-12
+       Keyword: 11-12 "*"
+ Error(stmt): 12-13
+  Error(Keyword): 12-13 ","
  Error(stmt): 14-16
   Error(Keyword): 14-16 "**"
  stmt: 16-28
@@ -34,28 +41,34 @@ file: 0-100
        bitwise_or: 24-27
         Keyword: 24-27 "..."
    Newline: 27-28 "\n"
- stmt: 28-47
-  simple_stmts: 28-47
-   simple_stmt: 28-46
-    expr_stmt: 28-46
-     star_expressions: 28-46
-      expression: 28-46
-       lambda: 28-46
+ Error(stmt): 28-41
+  Error(simple_stmts): 28-41
+   Error(simple_stmt): 28-41
+    Error(expr_stmt): 28-41
+     Error(star_expressions): 28-41
+      Error(expression): 28-41
+       Error(lambda): 28-41
         Keyword: 28-34 "lambda"
-        lambda_parameters: 35-41
-         lambda_param: 35-38
+        Error(lambda_parameters): 35-41
+         lambda_param_with_default: 35-38
           Name: 35-36 "a"
           Keyword: 36-37 "="
           expression: 37-38
            bitwise_or: 37-38
             Number: 37-38 "3"
          Keyword: 38-39 ","
-         lambda_param: 40-41
+         Error(lambda_param_with_default): 40-41
           Name: 40-41 "b"
-        Keyword: 41-42 ":"
-        expression: 43-46
-         bitwise_or: 43-46
-          Keyword: 43-46 "..."
+ Error(stmt): 41-42
+  Error(Keyword): 41-42 ":"
+ stmt: 43-47
+  simple_stmts: 43-47
+   simple_stmt: 43-46
+    expr_stmt: 43-46
+     star_expressions: 43-46
+      expression: 43-46
+       bitwise_or: 43-46
+        Keyword: 43-46 "..."
    Newline: 46-47 "\n"
  Error(stmt): 47-58
   Error(simple_stmts): 47-58
@@ -94,7 +107,7 @@ file: 0-100
        Error(lambda): 66-80
         Keyword: 66-72 "lambda"
         Error(lambda_parameters): 73-80
-         lambda_param: 73-76
+         lambda_param_with_default: 73-76
           Name: 73-74 "a"
           Keyword: 74-75 "="
           expression: 75-76

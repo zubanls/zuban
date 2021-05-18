@@ -30,7 +30,7 @@ file: 0-108
        lambda: 22-47
         Keyword: 22-28 "lambda"
         lambda_parameters: 29-42
-         lambda_param: 29-32
+         lambda_param_with_default: 29-32
           Name: 29-30 "a"
           Keyword: 30-31 "="
           expression: 31-32
@@ -55,7 +55,7 @@ file: 0-108
        lambda: 48-71
         Keyword: 48-54 "lambda"
         lambda_parameters: 55-66
-         lambda_param: 55-56
+         lambda_param_no_default: 55-56
           Name: 55-56 "a"
          Keyword: 56-57 ","
          lambda_star_etc: 58-66
