@@ -12,15 +12,17 @@ file: 0-144
        lambda: 1-22
         Keyword: 1-7 "lambda"
         lambda_parameters: 8-17
-         Name: 8-9 "a"
+         lambda_param: 8-9
+          Name: 8-9 "a"
          Keyword: 9-10 ","
          Keyword: 11-12 "*"
          Keyword: 12-13 ","
-         Name: 14-15 "b"
-         Keyword: 15-16 "="
-         expression: 16-17
-          bitwise_or: 16-17
-           Number: 16-17 "3"
+         lambda_param: 14-17
+          Name: 14-15 "b"
+          Keyword: 15-16 "="
+          expression: 16-17
+           bitwise_or: 16-17
+            Number: 16-17 "3"
         Keyword: 17-18 ":"
         expression: 19-22
          bitwise_or: 19-22
@@ -35,11 +37,12 @@ file: 0-144
        lambda: 23-42
         Keyword: 23-29 "lambda"
         lambda_parameters: 30-37
-         Name: 30-31 "a"
-         Keyword: 31-32 "="
-         expression: 32-33
-          bitwise_or: 32-33
-           Number: 32-33 "3"
+         lambda_param: 30-33
+          Name: 30-31 "a"
+          Keyword: 31-32 "="
+          expression: 32-33
+           bitwise_or: 32-33
+            Number: 32-33 "3"
          Keyword: 33-34 ","
          Keyword: 35-36 "*"
          Keyword: 36-37 ","
@@ -57,15 +60,17 @@ file: 0-144
        lambda: 43-64
         Keyword: 43-49 "lambda"
         lambda_parameters: 50-59
-         Name: 50-51 "a"
-         Keyword: 51-52 "="
-         expression: 52-53
-          bitwise_or: 52-53
-           Number: 52-53 "3"
+         lambda_param: 50-53
+          Name: 50-51 "a"
+          Keyword: 51-52 "="
+          expression: 52-53
+           bitwise_or: 52-53
+            Number: 52-53 "3"
          Keyword: 53-54 ","
          Keyword: 55-56 "*"
          Keyword: 56-57 ","
-         Name: 58-59 "c"
+         lambda_param: 58-59
+          Name: 58-59 "c"
         Keyword: 59-60 ":"
         expression: 61-64
          bitwise_or: 61-64
@@ -80,11 +85,13 @@ file: 0-144
        lambda: 65-94
         Keyword: 65-71 "lambda"
         lambda_parameters: 72-89
-         Name: 72-73 "a"
+         lambda_param: 72-73
+          Name: 72-73 "a"
          Keyword: 73-74 ","
          Keyword: 75-76 "*"
          Keyword: 76-77 ","
-         Name: 78-79 "x"
+         lambda_param: 78-79
+          Name: 78-79 "x"
          Keyword: 79-80 ","
          Keyword: 81-83 "**"
          Name: 83-89 "kwargs"
@@ -102,7 +109,8 @@ file: 0-144
        lambda: 95-125
         Keyword: 95-101 "lambda"
         lambda_parameters: 102-120
-         Name: 102-103 "a"
+         lambda_param: 102-103
+          Name: 102-103 "a"
          Keyword: 103-104 ","
          Keyword: 105-106 "*"
          Name: 106-110 "args"
