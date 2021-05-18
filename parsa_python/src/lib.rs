@@ -183,25 +183,26 @@ create_grammar!(
                 "," [
                     lambda_param ("," lambda_param)* [
                         "," [
-                            "*" [Name] ("," lambda_param)* ["," ["**" Name [","]]]
-                            | "**" Name [","]
+                            "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
+                            | lambda_double_starred_param [","]
                         ]
                     ]
-                    | "*" [Name] ("," lambda_param)* ["," ["**" Name [","]]]
-                    | "**" Name [","]
+                    | "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
+                    | lambda_double_starred_param [","]
                 ]
             ]
         | (
                     lambda_param ("," lambda_param)* [
                         "," [
-                            "*" [Name] ("," lambda_param)* ["," ["**" Name [","]]]
-                            | "**" Name [","]
+                            "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
+                            | lambda_double_starred_param [","]
                         ]
                     ]
-                    | "*" [Name] ("," lambda_param)* ["," ["**" Name [","]]]
-                    | "**" Name [","]
+                    | "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
+                    | lambda_double_starred_param [","]
         )
     lambda_param: Name ["=" expression ]
+    lambda_double_starred_param: "**" Name
 
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression: "*" disjunction | named_expression

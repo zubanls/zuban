@@ -12,8 +12,9 @@ file: 0-108
        lambda: 1-21
         Keyword: 1-7 "lambda"
         lambda_parameters: 8-16
-         Keyword: 8-10 "**"
-         Name: 10-16 "kwargs"
+         lambda_double_starred_param: 8-16
+          Keyword: 8-10 "**"
+          Name: 10-16 "kwargs"
         Keyword: 16-17 ":"
         expression: 18-21
          bitwise_or: 18-21
@@ -35,8 +36,9 @@ file: 0-108
            bitwise_or: 31-32
             Number: 31-32 "3"
          Keyword: 32-33 ","
-         Keyword: 34-36 "**"
-         Name: 36-42 "kwargs"
+         lambda_double_starred_param: 34-42
+          Keyword: 34-36 "**"
+          Name: 36-42 "kwargs"
         Keyword: 42-43 ":"
         expression: 44-47
          bitwise_or: 44-47
@@ -54,8 +56,9 @@ file: 0-108
          lambda_param: 55-56
           Name: 55-56 "a"
          Keyword: 56-57 ","
-         Keyword: 58-60 "**"
-         Name: 60-66 "kwargs"
+         lambda_double_starred_param: 58-66
+          Keyword: 58-60 "**"
+          Name: 60-66 "kwargs"
         Keyword: 66-67 ":"
         expression: 68-71
          bitwise_or: 68-71
@@ -83,8 +86,9 @@ file: 0-108
          lambda_param: 91-92
           Name: 91-92 "x"
          Keyword: 92-93 ","
-         Keyword: 94-96 "**"
-         Name: 96-102 "kwargs"
+         lambda_double_starred_param: 94-102
+          Keyword: 94-96 "**"
+          Name: 96-102 "kwargs"
         Keyword: 102-103 ":"
         expression: 104-107
          bitwise_or: 104-107

@@ -93,8 +93,9 @@ file: 0-144
          lambda_param: 78-79
           Name: 78-79 "x"
          Keyword: 79-80 ","
-         Keyword: 81-83 "**"
-         Name: 83-89 "kwargs"
+         lambda_double_starred_param: 81-89
+          Keyword: 81-83 "**"
+          Name: 83-89 "kwargs"
         Keyword: 89-90 ":"
         expression: 91-94
          bitwise_or: 91-94
@@ -115,8 +116,9 @@ file: 0-144
          Keyword: 105-106 "*"
          Name: 106-110 "args"
          Keyword: 110-111 ","
-         Keyword: 112-114 "**"
-         Name: 114-120 "kwargs"
+         lambda_double_starred_param: 112-120
+          Keyword: 112-114 "**"
+          Name: 114-120 "kwargs"
         Keyword: 120-121 ":"
         expression: 122-125
          bitwise_or: 122-125
