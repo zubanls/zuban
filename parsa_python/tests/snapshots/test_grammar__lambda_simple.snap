@@ -1,0 +1,78 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-66
+ stmt: 1-13
+  simple_stmts: 1-13
+   simple_stmt: 1-12
+    expr_stmt: 1-12
+     star_expressions: 1-12
+      expression: 1-12
+       lambda: 1-12
+        Keyword: 1-7 "lambda"
+        Keyword: 7-8 ":"
+        expression: 9-12
+         bitwise_or: 9-12
+          Keyword: 9-12 "..."
+   Newline: 12-13 "\n"
+ stmt: 13-27
+  simple_stmts: 13-27
+   simple_stmt: 13-26
+    expr_stmt: 13-26
+     star_expressions: 13-26
+      expression: 13-26
+       lambda: 13-26
+        Keyword: 13-19 "lambda"
+        lambda_parameters: 20-21
+         Name: 20-21 "a"
+        Keyword: 21-22 ":"
+        expression: 23-26
+         bitwise_or: 23-26
+          Keyword: 23-26 "..."
+   Newline: 26-27 "\n"
+ stmt: 27-45
+  simple_stmts: 27-45
+   simple_stmt: 27-44
+    expr_stmt: 27-44
+     star_expressions: 27-44
+      expression: 27-44
+       lambda: 27-44
+        Keyword: 27-33 "lambda"
+        lambda_parameters: 34-39
+         Name: 34-35 "a"
+         Keyword: 35-36 ","
+         Name: 37-38 "b"
+         Keyword: 38-39 ","
+        Keyword: 39-40 ":"
+        expression: 41-44
+         bitwise_or: 41-44
+          Keyword: 41-44 "..."
+   Newline: 44-45 "\n"
+ stmt: 45-66
+  simple_stmts: 45-66
+   simple_stmt: 45-65
+    expr_stmt: 45-65
+     star_expressions: 45-65
+      expression: 45-65
+       lambda: 45-65
+        Keyword: 45-51 "lambda"
+        lambda_parameters: 52-60
+         Name: 52-53 "a"
+         Keyword: 53-54 "="
+         expression: 54-55
+          bitwise_or: 54-55
+           Number: 54-55 "3"
+         Keyword: 55-56 ","
+         Name: 57-58 "b"
+         Keyword: 58-59 "="
+         expression: 59-60
+          bitwise_or: 59-60
+           Number: 59-60 "4"
+        Keyword: 60-61 ":"
+        expression: 62-65
+         bitwise_or: 62-65
+          Keyword: 62-65 "..."
+   Newline: 65-66 "\n"
+ Endmarker: 66-66 ""
+

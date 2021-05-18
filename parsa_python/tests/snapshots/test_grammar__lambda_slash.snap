@@ -1,0 +1,103 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-93
+ stmt: 1-23
+  simple_stmts: 1-23
+   simple_stmt: 1-22
+    expr_stmt: 1-22
+     star_expressions: 1-22
+      expression: 1-22
+       lambda: 1-22
+        Keyword: 1-7 "lambda"
+        lambda_parameters: 8-17
+         Name: 8-9 "a"
+         Keyword: 9-10 ","
+         Keyword: 11-12 "/"
+         Keyword: 12-13 ","
+         Name: 14-15 "b"
+         Keyword: 15-16 "="
+         expression: 16-17
+          bitwise_or: 16-17
+           Number: 16-17 "3"
+        Keyword: 17-18 ":"
+        expression: 19-22
+         bitwise_or: 19-22
+          Keyword: 19-22 "..."
+   Newline: 22-23 "\n"
+ stmt: 23-43
+  simple_stmts: 23-43
+   simple_stmt: 23-42
+    expr_stmt: 23-42
+     star_expressions: 23-42
+      expression: 23-42
+       lambda: 23-42
+        Keyword: 23-29 "lambda"
+        lambda_parameters: 30-37
+         Name: 30-31 "a"
+         Keyword: 31-32 "="
+         expression: 32-33
+          bitwise_or: 32-33
+           Number: 32-33 "3"
+         Keyword: 33-34 ","
+         Keyword: 35-36 "/"
+         Keyword: 36-37 ","
+        Keyword: 37-38 ":"
+        expression: 39-42
+         bitwise_or: 39-42
+          Keyword: 39-42 "..."
+   Newline: 42-43 "\n"
+ stmt: 43-62
+  simple_stmts: 43-62
+   simple_stmt: 43-61
+    expr_stmt: 43-61
+     star_expressions: 43-61
+      expression: 43-61
+       lambda: 43-61
+        Keyword: 43-49 "lambda"
+        lambda_parameters: 50-56
+         Name: 50-51 "a"
+         Keyword: 51-52 "="
+         expression: 52-53
+          bitwise_or: 52-53
+           Number: 52-53 "3"
+         Keyword: 53-54 ","
+         Keyword: 55-56 "/"
+        Keyword: 56-57 ":"
+        expression: 58-61
+         bitwise_or: 58-61
+          Keyword: 58-61 "..."
+   Newline: 61-62 "\n"
+ stmt: 62-93
+  simple_stmts: 62-93
+   simple_stmt: 62-92
+    expr_stmt: 62-92
+     star_expressions: 62-92
+      expression: 62-92
+       lambda: 62-92
+        Keyword: 62-68 "lambda"
+        lambda_parameters: 69-87
+         Name: 69-70 "a"
+         Keyword: 70-71 "="
+         expression: 71-72
+          bitwise_or: 71-72
+           Number: 71-72 "3"
+         Keyword: 72-73 ","
+         Keyword: 74-75 "/"
+         Keyword: 75-76 ","
+         Keyword: 77-78 "*"
+         Name: 78-82 "args"
+         Keyword: 82-83 ","
+         Name: 84-85 "c"
+         Keyword: 85-86 "="
+         expression: 86-87
+          bitwise_or: 86-87
+           Number: 86-87 "3"
+        Keyword: 87-88 ":"
+        expression: 89-92
+         bitwise_or: 89-92
+          Keyword: 89-92 "..."
+   Newline: 92-93 "\n"
+ Endmarker: 93-93 ""
+
