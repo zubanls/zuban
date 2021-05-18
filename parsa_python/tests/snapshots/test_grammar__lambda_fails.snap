@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file: 0-86
+file: 0-100
  Error(stmt): 1-13
   Error(simple_stmts): 1-13
    Error(simple_stmt): 1-13
@@ -115,5 +115,26 @@ file: 0-86
        bitwise_or: 82-85
         Keyword: 82-85 "..."
    Newline: 85-86 "\n"
- Endmarker: 86-86 ""
+ Error(stmt): 86-92
+  Error(simple_stmts): 86-92
+   Error(simple_stmt): 86-92
+    Error(expr_stmt): 86-92
+     Error(star_expressions): 86-92
+      Error(expression): 86-92
+       Error(lambda): 86-92
+        Keyword: 86-92 "lambda"
+ Error(stmt): 93-94
+  Error(Keyword): 93-94 ","
+ Error(stmt): 94-95
+  Error(Keyword): 94-95 ":"
+ stmt: 96-100
+  simple_stmts: 96-100
+   simple_stmt: 96-99
+    expr_stmt: 96-99
+     star_expressions: 96-99
+      expression: 96-99
+       bitwise_or: 96-99
+        Keyword: 96-99 "..."
+   Newline: 99-100 "\n"
+ Endmarker: 100-100 ""
 
