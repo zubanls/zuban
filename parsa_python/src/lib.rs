@@ -181,26 +181,18 @@ create_grammar!(
     lambda_parameters:
         | lambda_param ("," lambda_param)* "," "/" [
                 "," [
-                    lambda_param ("," lambda_param)* [
-                        "," [
-                            "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
-                            | lambda_double_starred_param [","]
-                        ]
-                    ]
-                    | "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
-                    | lambda_double_starred_param [","]
+                    lambda_param ("," lambda_param)* ["," [lambda_star_etc]]
+                    | lambda_star_etc
                 ]
             ]
         | (
-                    lambda_param ("," lambda_param)* [
-                        "," [
-                            "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
-                            | lambda_double_starred_param [","]
-                        ]
-                    ]
-                    | "*" [Name] ("," lambda_param)* ["," [lambda_double_starred_param [","]]]
-                    | lambda_double_starred_param [","]
+                    lambda_param ("," lambda_param)* ["," [lambda_star_etc ]]
+                    | lambda_star_etc
         )
+    lambda_star_etc:
+        | "*" Name ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
+        | "*" "," ",".lambda_param+ ["," [lambda_double_starred_param ","?]]
+        | lambda_double_starred_param [","]
     lambda_param: Name ["=" expression ]
     lambda_double_starred_param: "**" Name
 

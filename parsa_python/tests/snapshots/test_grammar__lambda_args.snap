@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file: 0-144
+file: 0-124
  stmt: 1-23
   simple_stmts: 1-23
    simple_stmt: 1-22
@@ -15,28 +15,29 @@ file: 0-144
          lambda_param: 8-9
           Name: 8-9 "a"
          Keyword: 9-10 ","
-         Keyword: 11-12 "*"
-         Keyword: 12-13 ","
-         lambda_param: 14-17
-          Name: 14-15 "b"
-          Keyword: 15-16 "="
-          expression: 16-17
-           bitwise_or: 16-17
-            Number: 16-17 "3"
+         lambda_star_etc: 11-17
+          Keyword: 11-12 "*"
+          Keyword: 12-13 ","
+          lambda_param: 14-17
+           Name: 14-15 "b"
+           Keyword: 15-16 "="
+           expression: 16-17
+            bitwise_or: 16-17
+             Number: 16-17 "3"
         Keyword: 17-18 ":"
         expression: 19-22
          bitwise_or: 19-22
           Keyword: 19-22 "..."
    Newline: 22-23 "\n"
- stmt: 23-43
-  simple_stmts: 23-43
-   simple_stmt: 23-42
-    expr_stmt: 23-42
-     star_expressions: 23-42
-      expression: 23-42
-       lambda: 23-42
+ stmt: 23-45
+  simple_stmts: 23-45
+   simple_stmt: 23-44
+    expr_stmt: 23-44
+     star_expressions: 23-44
+      expression: 23-44
+       lambda: 23-44
         Keyword: 23-29 "lambda"
-        lambda_parameters: 30-37
+        lambda_parameters: 30-39
          lambda_param: 30-33
           Name: 30-31 "a"
           Keyword: 31-32 "="
@@ -44,101 +45,82 @@ file: 0-144
            bitwise_or: 32-33
             Number: 32-33 "3"
          Keyword: 33-34 ","
-         Keyword: 35-36 "*"
-         Keyword: 36-37 ","
-        Keyword: 37-38 ":"
-        expression: 39-42
-         bitwise_or: 39-42
-          Keyword: 39-42 "..."
-   Newline: 42-43 "\n"
- stmt: 43-65
-  simple_stmts: 43-65
-   simple_stmt: 43-64
-    expr_stmt: 43-64
-     star_expressions: 43-64
-      expression: 43-64
-       lambda: 43-64
-        Keyword: 43-49 "lambda"
-        lambda_parameters: 50-59
-         lambda_param: 50-53
-          Name: 50-51 "a"
-          Keyword: 51-52 "="
-          expression: 52-53
-           bitwise_or: 52-53
-            Number: 52-53 "3"
+         lambda_star_etc: 35-39
+          Keyword: 35-36 "*"
+          Keyword: 36-37 ","
+          lambda_param: 38-39
+           Name: 38-39 "c"
+        Keyword: 39-40 ":"
+        expression: 41-44
+         bitwise_or: 41-44
+          Keyword: 41-44 "..."
+   Newline: 44-45 "\n"
+ stmt: 45-75
+  simple_stmts: 45-75
+   simple_stmt: 45-74
+    expr_stmt: 45-74
+     star_expressions: 45-74
+      expression: 45-74
+       lambda: 45-74
+        Keyword: 45-51 "lambda"
+        lambda_parameters: 52-69
+         lambda_param: 52-53
+          Name: 52-53 "a"
          Keyword: 53-54 ","
-         Keyword: 55-56 "*"
-         Keyword: 56-57 ","
-         lambda_param: 58-59
-          Name: 58-59 "c"
-        Keyword: 59-60 ":"
-        expression: 61-64
-         bitwise_or: 61-64
-          Keyword: 61-64 "..."
-   Newline: 64-65 "\n"
- stmt: 65-95
-  simple_stmts: 65-95
-   simple_stmt: 65-94
-    expr_stmt: 65-94
-     star_expressions: 65-94
-      expression: 65-94
-       lambda: 65-94
-        Keyword: 65-71 "lambda"
-        lambda_parameters: 72-89
-         lambda_param: 72-73
-          Name: 72-73 "a"
-         Keyword: 73-74 ","
-         Keyword: 75-76 "*"
-         Keyword: 76-77 ","
-         lambda_param: 78-79
-          Name: 78-79 "x"
-         Keyword: 79-80 ","
-         lambda_double_starred_param: 81-89
-          Keyword: 81-83 "**"
-          Name: 83-89 "kwargs"
-        Keyword: 89-90 ":"
-        expression: 91-94
-         bitwise_or: 91-94
-          Keyword: 91-94 "..."
-   Newline: 94-95 "\n"
- stmt: 95-126
-  simple_stmts: 95-126
-   simple_stmt: 95-125
-    expr_stmt: 95-125
-     star_expressions: 95-125
-      expression: 95-125
-       lambda: 95-125
-        Keyword: 95-101 "lambda"
-        lambda_parameters: 102-120
-         lambda_param: 102-103
-          Name: 102-103 "a"
-         Keyword: 103-104 ","
-         Keyword: 105-106 "*"
-         Name: 106-110 "args"
-         Keyword: 110-111 ","
-         lambda_double_starred_param: 112-120
-          Keyword: 112-114 "**"
-          Name: 114-120 "kwargs"
-        Keyword: 120-121 ":"
-        expression: 122-125
-         bitwise_or: 122-125
-          Keyword: 122-125 "..."
-   Newline: 125-126 "\n"
- stmt: 126-144
-  simple_stmts: 126-144
-   simple_stmt: 126-143
-    expr_stmt: 126-143
-     star_expressions: 126-143
-      expression: 126-143
-       lambda: 126-143
-        Keyword: 126-132 "lambda"
-        lambda_parameters: 133-138
-         Keyword: 133-134 "*"
-         Name: 134-138 "args"
-        Keyword: 138-139 ":"
-        expression: 140-143
-         bitwise_or: 140-143
-          Keyword: 140-143 "..."
-   Newline: 143-144 "\n"
- Endmarker: 144-144 ""
+         lambda_star_etc: 55-69
+          Keyword: 55-56 "*"
+          Keyword: 56-57 ","
+          lambda_param: 58-59
+           Name: 58-59 "x"
+          Keyword: 59-60 ","
+          lambda_double_starred_param: 61-69
+           Keyword: 61-63 "**"
+           Name: 63-69 "kwargs"
+        Keyword: 69-70 ":"
+        expression: 71-74
+         bitwise_or: 71-74
+          Keyword: 71-74 "..."
+   Newline: 74-75 "\n"
+ stmt: 75-106
+  simple_stmts: 75-106
+   simple_stmt: 75-105
+    expr_stmt: 75-105
+     star_expressions: 75-105
+      expression: 75-105
+       lambda: 75-105
+        Keyword: 75-81 "lambda"
+        lambda_parameters: 82-100
+         lambda_param: 82-83
+          Name: 82-83 "a"
+         Keyword: 83-84 ","
+         lambda_star_etc: 85-100
+          Keyword: 85-86 "*"
+          Name: 86-90 "args"
+          Keyword: 90-91 ","
+          lambda_double_starred_param: 92-100
+           Keyword: 92-94 "**"
+           Name: 94-100 "kwargs"
+        Keyword: 100-101 ":"
+        expression: 102-105
+         bitwise_or: 102-105
+          Keyword: 102-105 "..."
+   Newline: 105-106 "\n"
+ stmt: 106-124
+  simple_stmts: 106-124
+   simple_stmt: 106-123
+    expr_stmt: 106-123
+     star_expressions: 106-123
+      expression: 106-123
+       lambda: 106-123
+        Keyword: 106-112 "lambda"
+        lambda_parameters: 113-118
+         lambda_star_etc: 113-118
+          Keyword: 113-114 "*"
+          Name: 114-118 "args"
+        Keyword: 118-119 ":"
+        expression: 120-123
+         bitwise_or: 120-123
+          Keyword: 120-123 "..."
+   Newline: 123-124 "\n"
+ Endmarker: 124-124 ""
 

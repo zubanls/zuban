@@ -91,15 +91,16 @@ file: 0-93
          Keyword: 72-73 ","
          Keyword: 74-75 "/"
          Keyword: 75-76 ","
-         Keyword: 77-78 "*"
-         Name: 78-82 "args"
-         Keyword: 82-83 ","
-         lambda_param: 84-87
-          Name: 84-85 "c"
-          Keyword: 85-86 "="
-          expression: 86-87
-           bitwise_or: 86-87
-            Number: 86-87 "3"
+         lambda_star_etc: 77-87
+          Keyword: 77-78 "*"
+          Name: 78-82 "args"
+          Keyword: 82-83 ","
+          lambda_param: 84-87
+           Name: 84-85 "c"
+           Keyword: 85-86 "="
+           expression: 86-87
+            bitwise_or: 86-87
+             Number: 86-87 "3"
         Keyword: 87-88 ":"
         expression: 89-92
          bitwise_or: 89-92
