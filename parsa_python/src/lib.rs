@@ -178,10 +178,9 @@ create_grammar!(
         | Name "=" pattern
 
     lambda: "lambda" [lambda_parameters] ":" expression
-
     lambda_parameters:
         | Name ["=" expression ]("," Name ["=" expression])* "," "/" [
-                "," [(
+                "," [
                     Name ["=" expression] ("," Name ["=" expression])* [
                         "," [
                             "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
@@ -190,7 +189,7 @@ create_grammar!(
                     ]
                     | "*" [Name] ("," Name ["=" expression])* ["," ["**" Name [","]]]
                     | "**" Name [","]
-                )]
+                ]
             ]
         | (
                     Name ["=" expression] ("," Name ["=" expression])* [
