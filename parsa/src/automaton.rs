@@ -464,12 +464,12 @@ impl RuleAutomaton {
     pub fn illustrate_dfas(&self, nonterminal_map: &InternalStrToNode) -> String {
         // Sorry for this code, it's really ugly, but since it's really only for debugging
         // purposes, I don't care too much. ~dave
-        let format_index = |id: usize, dfa: &DFAState| {
-            (id + 1).to_string() + (if dfa.is_final { " (final)" } else { "" })
+        let format_index = |id: usize, dfa: Option<&Pin<Box<DFAState>>>| {
+            id.to_string() + (if dfa.map_or(false, |d| d.is_final) { " (final)" } else { "" })
         };
         let mut out_strings = vec![];
         let mut transition_list = vec![];
-        let mut first_line = vec![format_index(0, &self.dfa_states[0]), "#".to_owned()];
+        let mut first_line = vec![format_index(0, Some(&self.dfa_states[0])), "#".to_owned()];
         first_line.extend(
             repeat("o".to_owned())
                 .take(self.dfa_states[0].transitions.len())
@@ -477,11 +477,6 @@ impl RuleAutomaton {
         );
         out_strings.push(first_line);
         for (i, dfa) in self.dfa_states.iter().enumerate() {
-            if i + 1 == self.dfa_states.len() {
-                // Was already displayed.
-                break;
-            }
-
             while transition_list.last() == Some(&None) {
                 transition_list.pop();
             }
@@ -517,7 +512,7 @@ impl RuleAutomaton {
             let mut v1 = vec!["".to_owned(), "#".to_owned()];
             let mut v2 = vec!["".to_owned(), "#".to_owned()];
             let mut v3 = vec!["".to_owned(), "#".to_owned()];
-            let mut v4 = vec![format_index(i + 1, &self.dfa_states[i + 1]), "#".to_owned()];
+            let mut v4 = vec![format_index(i + 1, self.dfa_states.get(i + 1)), "#".to_owned()];
             let len = transition_list.len();
             for t in transition_list.iter_mut() {
                 if let Some((to, s)) = t.clone() {
@@ -553,10 +548,12 @@ impl RuleAutomaton {
             out_strings.push(v1);
             out_strings.push(v2);
             out_strings.push(v3);
-            if len == 0 {
-                v4.push(calc_alt(i + 1));
+            if i + 1 != self.dfa_states.len() {  // Means we are not done
+                if len == 0 {
+                    v4.push(calc_alt(i + 1));
+                }
+                out_strings.push(v4);
             }
-            out_strings.push(v4);
         }
         let mut column_widths = vec![];
         for line in &out_strings {
