@@ -371,21 +371,6 @@ impl RuleAutomaton {
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) {
         let dfa = self.nfa_to_dfa(vec![start], end);
         self.construct_powerset_for_dfa(dfa, end);
-
-        // At this point we have to account for negative lookaheads that are "final" dfas. The
-        // problem is that the final calculation thinks it's not at the end, because there is still
-        // a negative lookahead following. However the negative lookahead means that as long as a
-        // specific token does not appear, it will in fact be final.
-        for dfa in &mut self.dfa_states {
-            if dfa.transitions.iter().any(
-                |t| t.type_ == TransitionType::NegativeLookaheadStart && {
-                    let end = search_lookahead_end(unsafe {&*t.to});
-                    unsafe {&*end}.is_final
-                }
-            ) {
-                dfa.is_final = true;
-            }
-        }
     }
 
     fn construct_powerset_for_dfa(&mut self, dfa: *mut DFAState, end: NFAStateId) {
@@ -437,6 +422,19 @@ impl RuleAutomaton {
         let transitions = state.transitions.clone();
         for transition in transitions {
             self.construct_powerset_for_dfa(transition.to, end)
+        }
+
+        // At this point we have to account for negative lookaheads that are "final" dfas. The
+        // problem is that the final calculation thinks it's not at the end, because there is still
+        // a negative lookahead following. However the negative lookahead means that as long as a
+        // specific token does not appear, it will in fact be final.
+        if state.transitions.iter().any(
+            |t| t.type_ == TransitionType::NegativeLookaheadStart && {
+                let end = search_lookahead_end(unsafe {&*t.to});
+                unsafe {&*end}.is_final
+            }
+        ) {
+            state.is_final = true;
         }
     }
 
@@ -700,7 +698,7 @@ pub fn generate_automatons(
                 .transition_to_plan
                 .extend(left_recursion_plans);
         }
-        //if nonterminal_map.get("arguments") == Some(rule_label) {
+        //if nonterminal_map.get("lambda_parameters") == Some(rule_label) {
         //    println!("{}", &automatons.get(rule_label).unwrap().illustrate_dfas(nonterminal_map));
         //}
     }

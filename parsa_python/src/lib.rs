@@ -179,14 +179,34 @@ create_grammar!(
 
     lambda: "lambda" [lambda_parameters] ":" expression
     lambda_parameters:
-        | ",".lambda_param+ "," "/" [
-                "," [
-                    ",".lambda_param+ ["," [lambda_star_etc]]
-                    | lambda_star_etc
-                ]
-            ]
-        | ",".lambda_param_no_default+ [",".lambda_param_with_default+] ["," [lambda_star_etc ]]
-        | ",".lambda_param_with_default+ ["," [lambda_star_etc ]]
+        // no-default slash no-default default
+        | ",".lambda_param_no_default+ "," "/" ["," [
+                ",".lambda_param_no_default+ ["," [",".lambda_param_with_default+
+                                                   ["," [lambda_star_etc]]]]
+                | lambda_star_etc
+            ]]
+        // no-default slash default
+        | ",".lambda_param_no_default+ "," "/" ["," [
+                ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+                | lambda_star_etc
+            ]]
+        // no-default default slash default
+        | ",".lambda_param_no_default+ "," ",".lambda_param_with_default+ "," "/" ["," [
+                ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+                | lambda_star_etc
+            ]]
+        // no-default
+        | ",".lambda_param_no_default+ ["," [lambda_star_etc]]
+        // no-default default
+        | ",".lambda_param_no_default+ "," ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+        // default slash default
+        | ",".lambda_param_with_default+ "," "/" ["," [
+                ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+                | lambda_star_etc
+            ]]
+        // default
+        | ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+        // just star args
         | lambda_star_etc
     lambda_star_etc:
         | "*" Name ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
