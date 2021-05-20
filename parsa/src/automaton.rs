@@ -102,6 +102,7 @@ pub struct DFAState {
     is_calculated: bool,
     pub node_may_be_omitted: bool,
     list_index: DFAStateId, // The index in the dfa_states vec in the automaton.
+    from_alternative_list_index: Option<DFAStateId>,
 
     // This is the important part that will be used by the parser. The rest is
     // just there to generate this information.
@@ -342,7 +343,8 @@ impl RuleAutomaton {
         set
     }
 
-    fn nfa_to_dfa(&mut self, starts: Vec<NFAStateId>, end: NFAStateId) -> *mut DFAState {
+    fn nfa_to_dfa(&mut self, starts: Vec<NFAStateId>, end: NFAStateId,
+                  from_alternative_list_index: Option<DFAStateId>) -> *mut DFAState {
         // Since we have the intial `starts` grouped by the mode change, we can
         // now just check for all ε-transitions that have no mode change.
         let grouped_nfas = self.group_nfas(starts);
@@ -360,6 +362,7 @@ impl RuleAutomaton {
             is_final,
             is_calculated: false,
             list_index: DFAStateId(self.dfa_states.len()),
+            from_alternative_list_index,
             node_may_be_omitted: self.node_may_be_omitted,
             from_rule: self.name,
             transition_to_plan: Default::default(),
@@ -369,7 +372,7 @@ impl RuleAutomaton {
     }
 
     fn construct_powerset(&mut self, start: NFAStateId, end: NFAStateId) {
-        let dfa = self.nfa_to_dfa(vec![start], end);
+        let dfa = self.nfa_to_dfa(vec![start], end, None);
         self.construct_powerset_for_dfa(dfa, end);
     }
 
@@ -410,7 +413,7 @@ impl RuleAutomaton {
 
         let mut transitions = Vec::new();
         for (type_, grouped_starts) in grouped_transitions {
-            let new_dfa_id = self.nfa_to_dfa(grouped_starts, end);
+            let new_dfa_id = self.nfa_to_dfa(grouped_starts, end, None);
             transitions.push(DFATransition {
                 type_,
                 to: new_dfa_id,
@@ -448,6 +451,7 @@ impl RuleAutomaton {
                 is_final: false,
                 is_calculated: true,
                 list_index,
+                from_alternative_list_index: None,
                 node_may_be_omitted: self.node_may_be_omitted,
                 from_rule: self.name,
                 transition_to_plan: Default::default(),
@@ -499,6 +503,17 @@ impl RuleAutomaton {
                 )));
             }
 
+            let calc_alt = |i| {
+                let alt = self.dfa_states.get(i).map(
+                    |d: &Pin<Box<DFAState>>| d.from_alternative_list_index
+                ).flatten();
+                if let Some(a) = alt {
+                    format!("(alt from {})", a.0)
+                } else {
+                    "".to_owned()
+                }
+            };
+
             let mut v1 = vec!["".to_owned(), "#".to_owned()];
             let mut v2 = vec!["".to_owned(), "#".to_owned()];
             let mut v3 = vec!["".to_owned(), "#".to_owned()];
@@ -520,25 +535,27 @@ impl RuleAutomaton {
                         "|".to_owned()
                     });
                     v4.push(
-                        (if to.0 == i + 1 {
-                            "o"
+                        if to.0 == i + 1 {
+                            "o".to_owned()
                         } else if to.0 <= i {
-                            ""
+                            calc_alt(i + 1)
                         } else {
-                            "|"
-                        })
-                        .to_owned(),
+                            "|".to_owned()
+                        },
                     );
                 } else {
                     v1.push("".to_owned());
                     v2.push("".to_owned());
                     v3.push("".to_owned());
-                    v4.push("".to_owned());
+                    v4.push(calc_alt(i + 1));
                 }
             }
             out_strings.push(v1);
             out_strings.push(v2);
             out_strings.push(v3);
+            if len == 0 {
+                v4.push(calc_alt(i + 1));
+            }
             out_strings.push(v4);
         }
         let mut column_widths = vec![];
@@ -1173,7 +1190,7 @@ fn split_tokens(
         }
     }
 
-    let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id);
+    let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
     let first_new_index = automaton.dfa_states.len();
 
     let mut as_list: Vec<_> = transition_to_nfas
@@ -1203,7 +1220,10 @@ fn split_tokens(
         }
         debug_assert!(!new_dfa_nfa_ids.is_empty());
 
-        let dfa = automaton.nfa_to_dfa(new_dfa_nfa_ids, automaton.nfa_end_id);
+        let dfa = automaton.nfa_to_dfa(
+            new_dfa_nfa_ids,
+            automaton.nfa_end_id,
+            Some(dfa.list_index));
         automaton.construct_powerset_for_dfa(dfa, automaton.nfa_end_id);
         //dbg!(x.dfa_states.len(), x.dfa_states.last().unwrap());
     }
