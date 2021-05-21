@@ -183,8 +183,11 @@ create_grammar!(
         | ",".lambda_param_no_default+ ["," [lambda_star_etc]]
         // no-default slash no-default default
         | ",".lambda_param_no_default+ "," "/" ["," [
-                ",".lambda_param_no_default+ ["," [",".lambda_param_with_default+
-                                                   ["," [lambda_star_etc]]]]
+                ",".lambda_param_no_default+ [
+                    "," [
+                             ",".lambda_param_with_default+ ["," [lambda_star_etc]]
+                             | [lambda_star_etc]
+                        ]]
                 | lambda_star_etc
             ]]
         // no-default slash default
@@ -193,12 +196,14 @@ create_grammar!(
                 | lambda_star_etc
             ]]
         // no-default default
-        | ",".lambda_param_no_default+ "," ",".lambda_param_with_default+ ["," [lambda_star_etc]]
-        // no-default default slash default
-        | ",".lambda_param_no_default+ "," ",".lambda_param_with_default+ "," "/" ["," [
+        | ",".lambda_param_no_default+ "," ",".lambda_param_with_default+ (
+            ["," [lambda_star_etc]]
+            // no-default default slash default
+            | "," "/" ["," [
                 ",".lambda_param_with_default+ ["," [lambda_star_etc]]
                 | lambda_star_etc
             ]]
+        )
         // default slash default
         | ",".lambda_param_with_default+ "," "/" ["," [
                 ",".lambda_param_with_default+ ["," [lambda_star_etc]]
