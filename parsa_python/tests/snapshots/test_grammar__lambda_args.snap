@@ -97,9 +97,10 @@ file: 0-124
           Keyword: 85-86 "*"
           Name: 86-90 "args"
           Keyword: 90-91 ","
-          lambda_double_starred_param: 92-100
+          lambda_double_starred_param: 92-98
            Keyword: 92-94 "**"
-           Name: 94-100 "kwargs"
+           Name: 94-98 "fooo"
+          Keyword: 99-100 ","
         Keyword: 100-101 ":"
         expression: 102-105
          bitwise_or: 102-105
