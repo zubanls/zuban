@@ -136,21 +136,45 @@ struct DFATransition {
     to: *mut DFAState,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum StackMode {
     PositiveLookahead,
     Alternative(*const Plan),
     Normal,
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Debug for StackMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::PositiveLookahead => write!(f, "PositiveLookahead"),
+            Self::Alternative(plan) => {
+                let dfa = unsafe {&*(**plan).next_dfa};
+                write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
+            }
+            Self::Normal => write!(f, "Normal"),
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Push {
     pub node_type: InternalNonterminalType,
     pub next_dfa: *const DFAState,
     pub stack_mode: StackMode,
 }
 
-#[derive(Debug, Clone)]
+impl std::fmt::Debug for Push {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let dfa = unsafe {&*self.next_dfa};
+        f.debug_struct("Push")
+         .field("node_type", &self.node_type.0)
+         .field("next_dfa", &format!("{} #{}", dfa.from_rule, dfa.list_index.0))
+         .field("stack_mode", &self.stack_mode)
+         .finish()
+    }
+}
+
+#[derive(Clone)]
 pub struct Plan {
     pub pushes: Vec<Push>,
     pub next_dfa: *const DFAState,
@@ -158,6 +182,20 @@ pub struct Plan {
     pub is_left_recursive: bool,
     pub debug_text: &'static str,
 }
+
+impl std::fmt::Debug for Plan {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let dfa = unsafe {&*self.next_dfa};
+        f.debug_struct("Plan")
+         .field("pushes", &self.pushes)
+         .field("next_dfa", &format!("{} #{}", dfa.from_rule, dfa.list_index.0))
+         .field("type_", &self.type_.0)
+         .field("is_left_recursive", &self.is_left_recursive)
+         .field("debug_text", &self.debug_text)
+         .finish()
+    }
+}
+
 
 // Safe, because plan pointers are behind a pinned box that never gets changed
 unsafe impl Sync for Plan {}
