@@ -137,3 +137,27 @@ fn it_works() {
         );
     }
 }
+
+#[test]
+fn complicated_alternatives() {
+    /// Test an alternative syntax that is not json
+    create_grammar!(
+        static GRAMMAR, struct TempGrammar, struct TempTree, struct TempNode,
+        enum TempNodeType, enum NonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
+        soft_keywords=[]
+
+        document: content Endmarker
+        content:
+            | foo ","+
+            | bar ","+
+            | foo ":"+
+        foo: Label "[" Number "]"
+        bar: Label ":"
+    );
+
+    GRAMMAR.parse("last[3]::".to_owned());
+    GRAMMAR.parse("foo[3],".to_owned());
+    GRAMMAR.parse("foo[3],,".to_owned());
+    GRAMMAR.parse("bar :,,".to_owned());
+    GRAMMAR.parse("bar :,".to_owned());
+}

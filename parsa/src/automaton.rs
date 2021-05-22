@@ -750,7 +750,7 @@ pub fn generate_automatons(
                 .transition_to_plan
                 .extend(left_recursion_plans);
         }
-        //if nonterminal_map.get("lambda_parameters") == Some(rule_label) {
+        //if nonterminal_map.get("content") == Some(rule_label) {
         //    println!("{}", &automatons.get(rule_label).unwrap().illustrate_dfas(nonterminal_map));
         //}
     }
@@ -1016,9 +1016,9 @@ fn plans_for_dfa(
         .collect();
     if !conflict_tokens.is_empty() {
         let automaton = automatons.get_mut(&automaton_key).unwrap();
-        let (start, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
+        let (generated_dfa_ids, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
         let t = automaton.type_;
-        for dfa_id in (start..automaton.dfa_states.len()).rev() {
+        for &dfa_id in generated_dfa_ids.iter().rev() {
             let (new_plans, left_recursive) = plans_for_dfa(
                 nonterminal_map,
                 keywords,
@@ -1026,7 +1026,7 @@ fn plans_for_dfa(
                 automatons,
                 first_plans,
                 automaton_key,
-                DFAStateId(dfa_id),
+                dfa_id,
                 is_first_plan,
             );
             debug_assert!(!left_recursive);
@@ -1048,7 +1048,6 @@ fn plans_for_dfa(
                             ),
                         );
                     }
-                    //dbg!(&transition, &new_plan);
                     result.insert(transition, new_plan);
                 }
             }
@@ -1206,7 +1205,7 @@ fn split_tokens(
     automaton: &mut RuleAutomaton,
     dfa: &DFAState,
     conflict_transitions: HashSet<TransitionType>,
-) -> (usize, *const DFAState) {
+) -> (Vec<DFAStateId>, *const DFAState) {
     let mut transition_to_nfas = new_fast_hash_map::<_, Vec<_>>();
     let mut nfas: Vec<_> = dfa.nfa_set.iter().collect();
     nfas.sort_by_key(|id| id.0);
@@ -1225,8 +1224,8 @@ fn split_tokens(
         }
     }
 
+    let mut generated_dfa_ids = vec![];
     let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
-    let first_new_index = automaton.dfa_states.len();
 
     let mut as_list: Vec<_> = transition_to_nfas
         .iter()
@@ -1255,14 +1254,15 @@ fn split_tokens(
         }
         debug_assert!(!new_dfa_nfa_ids.is_empty());
 
-        let dfa = automaton.nfa_to_dfa(
+        let new_dfa = automaton.nfa_to_dfa(
             new_dfa_nfa_ids,
             automaton.nfa_end_id,
             Some(dfa.list_index));
-        automaton.construct_powerset_for_dfa(dfa, automaton.nfa_end_id);
+        generated_dfa_ids.push(unsafe {&*new_dfa}.list_index);
+        automaton.construct_powerset_for_dfa(new_dfa, automaton.nfa_end_id);
         //dbg!(x.dfa_states.len(), x.dfa_states.last().unwrap());
     }
-    (first_new_index, end_dfa)
+    (generated_dfa_ids, end_dfa)
 }
 
 fn nonterminal_to_str(
