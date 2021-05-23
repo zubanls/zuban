@@ -16,15 +16,6 @@ create_grammar!(
 
     file: stmt* Endmarker
 
-    decorator: "@" named_expression Newline
-    decorators: decorator+
-    decorated:? decorators (class_def | function_def | async_function_def)
-
-    async_function_def: "async" function_def
-    function_def: "def" Name parameters ["->" expression] ":" block
-
-    parameters: "(" [typedargslist] ")"
-    param: Name "="  // TODO
     typedargslist: (
       (tfpdef ["=" expression] ("," tfpdef ["=" expression])* "," "/" ["," [ tfpdef ["=" expression] (
             "," tfpdef ["=" expression])* (["," [
@@ -88,7 +79,6 @@ create_grammar!(
     with_item: expression ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [expression ["as" Name]]
-    block: simple_stmts | Newline Indent stmt+ Dedent
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:
@@ -175,6 +165,20 @@ create_grammar!(
     keyword_pattern:
         | Name "=" pattern
 
+    async_function_def: "async" function_def
+    function_def: "def" Name parameters ["->" expression] ":" block
+
+    parameters: "(" [typedargslist] ")"
+    param: Name "="  // TODO
+
+    decorator: "@" named_expression Newline
+    decorators: decorator+
+    decorated:? decorators (class_def | function_def | async_function_def)
+
+    class_def: "class" Name ["(" [arguments] ")"] ":" block
+
+    block: simple_stmts | Newline Indent stmt+ Dedent
+
     star_expressions: (expression|star_expression) ("," (expression|star_expression))* [","]
     star_expression: "*" bitwise_or
     star_named_expressions: ",".star_named_expression+ [","]
@@ -259,8 +263,6 @@ create_grammar!(
     slices: ",".slice+ [","]
     slice: named_expression | expression? ":" expression? [":" expression?]
     exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
-
-    class_def: "class" Name ["(" [arguments] ")"] ":" block
 
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
