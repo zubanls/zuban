@@ -1,0 +1,204 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-186
+ stmt: 1-25
+  compound_stmt: 1-25
+   function_def: 1-25
+    Keyword: 1-4 "def"
+    Name: 5-8 "foo"
+    Keyword: 8-9 "("
+    parameters: 9-18
+     param_no_default: 9-10
+      Name: 9-10 "a"
+     Keyword: 10-11 ","
+     star_etc: 12-18
+      Keyword: 12-13 "*"
+      Keyword: 13-14 ","
+      param: 15-18
+       Name: 15-16 "b"
+       Keyword: 16-17 "="
+       expression: 17-18
+        bitwise_or: 17-18
+         Number: 17-18 "3"
+    Keyword: 18-19 ")"
+    Keyword: 19-20 ":"
+    block: 21-25
+     simple_stmts: 21-25
+      simple_stmt: 21-24
+       expr_stmt: 21-24
+        star_expressions: 21-24
+         expression: 21-24
+          bitwise_or: 21-24
+           Keyword: 21-24 "..."
+      Newline: 24-25 "\n"
+ stmt: 25-49
+  compound_stmt: 25-49
+   function_def: 25-49
+    Keyword: 25-28 "def"
+    Name: 29-32 "foo"
+    Keyword: 32-33 "("
+    parameters: 33-42
+     param_with_default: 33-36
+      Name: 33-34 "a"
+      Keyword: 34-35 "="
+      expression: 35-36
+       bitwise_or: 35-36
+        Number: 35-36 "3"
+     Keyword: 36-37 ","
+     star_etc: 38-42
+      Keyword: 38-39 "*"
+      Keyword: 39-40 ","
+      param: 41-42
+       Name: 41-42 "c"
+    Keyword: 42-43 ")"
+    Keyword: 43-44 ":"
+    block: 45-49
+     simple_stmts: 45-49
+      simple_stmt: 45-48
+       expr_stmt: 45-48
+        star_expressions: 45-48
+         expression: 45-48
+          bitwise_or: 45-48
+           Keyword: 45-48 "..."
+      Newline: 48-49 "\n"
+ stmt: 49-81
+  compound_stmt: 49-81
+   function_def: 49-81
+    Keyword: 49-52 "def"
+    Name: 53-56 "foo"
+    Keyword: 56-57 "("
+    parameters: 57-74
+     param_no_default: 57-58
+      Name: 57-58 "a"
+     Keyword: 58-59 ","
+     star_etc: 60-74
+      Keyword: 60-61 "*"
+      Keyword: 61-62 ","
+      param: 63-64
+       Name: 63-64 "x"
+      Keyword: 64-65 ","
+      double_starred_param: 66-74
+       Keyword: 66-68 "**"
+       Name: 68-74 "kwargs"
+    Keyword: 74-75 ")"
+    Keyword: 75-76 ":"
+    block: 77-81
+     simple_stmts: 77-81
+      simple_stmt: 77-80
+       expr_stmt: 77-80
+        star_expressions: 77-80
+         expression: 77-80
+          bitwise_or: 77-80
+           Keyword: 77-80 "..."
+      Newline: 80-81 "\n"
+ stmt: 81-123
+  compound_stmt: 81-123
+   function_def: 81-123
+    Keyword: 81-84 "def"
+    Name: 85-88 "foo"
+    Keyword: 88-89 "("
+    parameters: 89-116
+     param_no_default: 89-90
+      Name: 89-90 "a"
+     Keyword: 90-91 ","
+     star_etc: 92-116
+      Keyword: 92-93 "*"
+      Name: 93-97 "args"
+      annotation: 97-102
+       Keyword: 97-98 ":"
+       expression: 99-102
+        bitwise_or: 99-102
+         Name: 99-102 "int"
+      Keyword: 102-103 ","
+      double_starred_param: 104-115
+       Keyword: 104-106 "**"
+       Name: 106-110 "fooo"
+       annotation: 110-115
+        Keyword: 110-111 ":"
+        expression: 112-115
+         bitwise_or: 112-115
+          Name: 112-115 "str"
+      Keyword: 115-116 ","
+    Keyword: 116-117 ")"
+    Keyword: 117-118 ":"
+    block: 119-123
+     simple_stmts: 119-123
+      simple_stmt: 119-122
+       expr_stmt: 119-122
+        star_expressions: 119-122
+         expression: 119-122
+          bitwise_or: 119-122
+           Keyword: 119-122 "..."
+      Newline: 122-123 "\n"
+ stmt: 123-166
+  compound_stmt: 123-166
+   function_def: 123-166
+    Keyword: 123-126 "def"
+    Name: 127-130 "foo"
+    Keyword: 130-131 "("
+    parameters: 131-159
+     param_no_default: 131-132
+      Name: 131-132 "a"
+     Keyword: 132-133 ","
+     Keyword: 134-135 "/"
+     Keyword: 135-136 ","
+     param_no_default: 137-141
+      Name: 137-138 "b"
+      annotation: 138-141
+       Keyword: 138-139 ":"
+       expression: 140-141
+        bitwise_or: 140-141
+         Name: 140-141 "i"
+     Keyword: 141-142 ","
+     param_with_default: 143-149
+      Name: 143-144 "c"
+      annotation: 144-147
+       Keyword: 144-145 ":"
+       expression: 146-147
+        bitwise_or: 146-147
+         Name: 146-147 "i"
+      Keyword: 147-148 "="
+      expression: 148-149
+       bitwise_or: 148-149
+        Number: 148-149 "3"
+     Keyword: 149-150 ","
+     star_etc: 151-159
+      double_starred_param: 151-159
+       Keyword: 151-153 "**"
+       Name: 153-159 "kwargs"
+    Keyword: 159-160 ")"
+    Keyword: 160-161 ":"
+    block: 162-166
+     simple_stmts: 162-166
+      simple_stmt: 162-165
+       expr_stmt: 162-165
+        star_expressions: 162-165
+         expression: 162-165
+          bitwise_or: 162-165
+           Keyword: 162-165 "..."
+      Newline: 165-166 "\n"
+ stmt: 166-186
+  compound_stmt: 166-186
+   function_def: 166-186
+    Keyword: 166-169 "def"
+    Name: 170-173 "foo"
+    Keyword: 173-174 "("
+    parameters: 174-179
+     star_etc: 174-179
+      Keyword: 174-175 "*"
+      Name: 175-179 "args"
+    Keyword: 179-180 ")"
+    Keyword: 180-181 ":"
+    block: 182-186
+     simple_stmts: 182-186
+      simple_stmt: 182-185
+       expr_stmt: 182-185
+        star_expressions: 182-185
+         expression: 182-185
+          bitwise_or: 182-185
+           Keyword: 182-185 "..."
+      Newline: 185-186 "\n"
+ Endmarker: 186-186 ""
+

@@ -209,7 +209,7 @@ create_grammar!(
         // just star args
         | star_etc
     star_etc:
-        | "*" Name ["," ",".param+] ["," [double_starred_param ","?]]
+        | "*" Name annotation? ["," ",".param+] ["," [double_starred_param ","?]]
         | "*" "," ",".param+ ["," [double_starred_param ","?]]
         | double_starred_param [","]
     param_no_default: Name annotation? !"="
