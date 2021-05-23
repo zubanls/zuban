@@ -16,21 +16,6 @@ create_grammar!(
 
     file: stmt* Endmarker
 
-    typedargslist: (
-      (tfpdef ["=" expression] ("," tfpdef ["=" expression])* "," "/" ["," [ tfpdef ["=" expression] (
-            "," tfpdef ["=" expression])* (["," [
-            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-          | "**" tfpdef [","]]])
-      | "*" [tfpdef] ("," tfpdef ["=" expression])* (["," ["**" tfpdef [","]]])
-      | "**" tfpdef [","]]] )
-    |  (tfpdef ["=" expression] ("," tfpdef ["=" expression])* ["," [
-            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-          | "**" tfpdef [","]]]
-      | "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-      | "**" tfpdef [","])
-    )
-    tfpdef: Name [":" expression]
-
     stmt: @error_recovery simple_stmts | compound_stmt | Newline
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     simple_stmt: (expr_stmt | del_stmt | pass_stmt | flow_stmt |
@@ -166,10 +151,7 @@ create_grammar!(
         | Name "=" pattern
 
     async_function_def: "async" function_def
-    function_def: "def" Name parameters ["->" expression] ":" block
-
-    parameters: "(" [typedargslist] ")"
-    param: Name "="  // TODO
+    function_def: "def" Name "(" [parameters] ")" ["->" expression] ":" block
 
     decorator: "@" named_expression Newline
     decorators: decorator+
@@ -190,6 +172,23 @@ create_grammar!(
     expression: disjunction ["if" disjunction "else" expression] | lambda
 
     lambda: "lambda" [lambda_parameters] ":" expression
+
+    param: Name "="  // TODO
+    parameters: (
+      (tfpdef ["=" expression] ("," tfpdef ["=" expression])* "," "/" ["," [ tfpdef ["=" expression] (
+            "," tfpdef ["=" expression])* (["," [
+            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
+          | "**" tfpdef [","]]])
+      | "*" [tfpdef] ("," tfpdef ["=" expression])* (["," ["**" tfpdef [","]]])
+      | "**" tfpdef [","]]] )
+    |  (tfpdef ["=" expression] ("," tfpdef ["=" expression])* ["," [
+            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
+          | "**" tfpdef [","]]]
+      | "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
+      | "**" tfpdef [","])
+    )
+    tfpdef: Name [":" expression]
+
     lambda_parameters:
         // no-default
         | ",".lambda_param_no_default+ ["," [lambda_star_etc]]
