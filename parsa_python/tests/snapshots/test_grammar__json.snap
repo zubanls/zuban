@@ -6,7 +6,7 @@ file: 0-9
  stmt: 0-9
   simple_stmts: 0-9
    simple_stmt: 0-8
-    expr_stmt: 0-8
+    assignment: 0-8
      star_expressions: 0-8
       expression: 0-8
        bitwise_or: 0-8

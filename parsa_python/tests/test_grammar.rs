@@ -72,6 +72,14 @@ parametrize_snapshots!(
          1
         else: 2
         ");
+    assignments_simple: dedent("
+        a = 1
+        a, b = 2
+        a, b, = 2
+        (a, b) = 2
+        ((a, b)) = 2
+        a = b = 3
+        ");
     cls: dedent("
         class Foo(object):
             def __init__(self, /, f, *, g):

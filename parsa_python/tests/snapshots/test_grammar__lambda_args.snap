@@ -6,7 +6,7 @@ file: 0-124
  stmt: 1-23
   simple_stmts: 1-23
    simple_stmt: 1-22
-    expr_stmt: 1-22
+    assignment: 1-22
      star_expressions: 1-22
       expression: 1-22
        lambda: 1-22
@@ -32,7 +32,7 @@ file: 0-124
  stmt: 23-45
   simple_stmts: 23-45
    simple_stmt: 23-44
-    expr_stmt: 23-44
+    assignment: 23-44
      star_expressions: 23-44
       expression: 23-44
        lambda: 23-44
@@ -58,7 +58,7 @@ file: 0-124
  stmt: 45-75
   simple_stmts: 45-75
    simple_stmt: 45-74
-    expr_stmt: 45-74
+    assignment: 45-74
      star_expressions: 45-74
       expression: 45-74
        lambda: 45-74
@@ -84,7 +84,7 @@ file: 0-124
  stmt: 75-106
   simple_stmts: 75-106
    simple_stmt: 75-105
-    expr_stmt: 75-105
+    assignment: 75-105
      star_expressions: 75-105
       expression: 75-105
        lambda: 75-105
@@ -110,7 +110,7 @@ file: 0-124
  stmt: 106-124
   simple_stmts: 106-124
    simple_stmt: 106-123
-    expr_stmt: 106-123
+    assignment: 106-123
      star_expressions: 106-123
       expression: 106-123
        lambda: 106-123

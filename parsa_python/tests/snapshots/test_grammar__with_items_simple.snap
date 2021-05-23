@@ -21,7 +21,7 @@ file: 0-48
     block: 18-22
      simple_stmts: 18-22
       simple_stmt: 18-21
-       expr_stmt: 18-21
+       assignment: 18-21
         star_expressions: 18-21
          expression: 18-21
           bitwise_or: 18-21
@@ -50,7 +50,7 @@ file: 0-48
     block: 44-48
      simple_stmts: 44-48
       simple_stmt: 44-47
-       expr_stmt: 44-47
+       assignment: 44-47
         star_expressions: 44-47
          expression: 44-47
           bitwise_or: 44-47

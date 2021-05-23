@@ -36,7 +36,7 @@ file: 0-63
      block: 26-31
       simple_stmts: 26-31
        simple_stmt: 26-30
-        expr_stmt: 26-30
+        assignment: 26-30
          star_expressions: 26-30
           expression: 26-30
            bitwise_or: 26-30
@@ -65,7 +65,7 @@ file: 0-63
       stmt: 51-53
        simple_stmts: 51-53
         simple_stmt: 51-52
-         expr_stmt: 51-52
+         assignment: 51-52
           star_expressions: 51-52
            expression: 51-52
             bitwise_or: 51-52
@@ -76,7 +76,7 @@ file: 0-63
  stmt: 53-63
   simple_stmts: 53-63
    simple_stmt: 53-62
-    expr_stmt: 53-62
+    assignment: 53-62
      star_expressions: 53-58
       expression: 53-58
        bitwise_or: 53-58

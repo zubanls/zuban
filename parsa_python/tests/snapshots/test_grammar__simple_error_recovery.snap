@@ -6,7 +6,7 @@ file: 0-15
  Error(stmt): 1-8
   Error(simple_stmts): 1-8
    Error(simple_stmt): 1-8
-    Error(expr_stmt): 1-8
+    Error(assignment): 1-8
      Error(star_expressions): 1-8
       Error(expression): 1-8
        Error(disjunction): 1-8
@@ -28,7 +28,7 @@ file: 0-15
  stmt: 9-15
   simple_stmts: 9-15
    simple_stmt: 9-14
-    expr_stmt: 9-14
+    assignment: 9-14
      star_expressions: 9-10
       expression: 9-10
        bitwise_or: 9-10

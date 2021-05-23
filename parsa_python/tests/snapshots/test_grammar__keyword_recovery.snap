@@ -6,7 +6,7 @@ file: 0-23
  stmt: 1-5
   simple_stmts: 1-5
    simple_stmt: 1-4
-    expr_stmt: 1-4
+    assignment: 1-4
      star_expressions: 1-4
       expression: 1-4
        bitwise_or: 1-4
@@ -21,7 +21,7 @@ file: 0-23
  stmt: 9-13
   simple_stmts: 9-13
    simple_stmt: 9-12
-    expr_stmt: 9-12
+    assignment: 9-12
      star_expressions: 9-12
       expression: 9-12
        bitwise_or: 9-12
@@ -36,7 +36,7 @@ file: 0-23
  stmt: 19-23
   simple_stmts: 19-23
    simple_stmt: 19-22
-    expr_stmt: 19-22
+    assignment: 19-22
      star_expressions: 19-22
       expression: 19-22
        bitwise_or: 19-22

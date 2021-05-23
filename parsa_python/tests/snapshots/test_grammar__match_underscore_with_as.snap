@@ -28,7 +28,7 @@ file: 0-36
  Error(stmt): 28-30
   Error(simple_stmts): 28-30
    Error(simple_stmt): 28-30
-    Error(expr_stmt): 28-30
+    Error(assignment): 28-30
      star_expressions: 28-29
       expression: 28-29
        bitwise_or: 28-29

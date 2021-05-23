@@ -6,7 +6,7 @@ file: 0-45
  stmt: 1-8
   simple_stmts: 1-8
    simple_stmt: 1-7
-    expr_stmt: 1-7
+    assignment: 1-7
      star_expressions: 1-7
       expression: 1-7
        bitwise_or: 1-7
@@ -26,7 +26,7 @@ file: 0-45
  stmt: 8-16
   simple_stmts: 8-16
    simple_stmt: 8-15
-    expr_stmt: 8-15
+    assignment: 8-15
      star_expressions: 8-15
       expression: 8-15
        bitwise_or: 8-15
@@ -42,7 +42,7 @@ file: 0-45
  stmt: 16-30
   simple_stmts: 16-30
    simple_stmt: 16-29
-    expr_stmt: 16-29
+    assignment: 16-29
      star_expressions: 16-29
       expression: 16-29
        bitwise_or: 16-29
@@ -67,7 +67,7 @@ file: 0-45
  stmt: 30-45
   simple_stmts: 30-45
    simple_stmt: 30-44
-    expr_stmt: 30-44
+    assignment: 30-44
      star_expressions: 30-44
       expression: 30-44
        bitwise_or: 30-44

@@ -6,7 +6,7 @@ file: 0-148
  stmt: 1-13
   simple_stmts: 1-13
    simple_stmt: 1-12
-    expr_stmt: 1-12
+    assignment: 1-12
      star_expressions: 1-12
       expression: 1-12
        bitwise_or: 1-12
@@ -28,7 +28,7 @@ file: 0-148
  stmt: 13-28
   simple_stmts: 13-28
    simple_stmt: 13-27
-    expr_stmt: 13-27
+    assignment: 13-27
      star_expressions: 13-27
       expression: 13-27
        bitwise_or: 13-27
@@ -51,7 +51,7 @@ file: 0-148
  stmt: 28-51
   simple_stmts: 28-51
    simple_stmt: 28-50
-    expr_stmt: 28-50
+    assignment: 28-50
      star_expressions: 28-50
       expression: 28-50
        bitwise_or: 28-50
@@ -82,7 +82,7 @@ file: 0-148
  stmt: 51-84
   simple_stmts: 51-84
    simple_stmt: 51-83
-    expr_stmt: 51-83
+    assignment: 51-83
      star_expressions: 51-83
       expression: 51-83
        bitwise_or: 51-83
@@ -119,7 +119,7 @@ file: 0-148
  stmt: 84-122
   simple_stmts: 84-122
    simple_stmt: 84-121
-    expr_stmt: 84-121
+    assignment: 84-121
      star_expressions: 84-121
       expression: 84-121
        bitwise_or: 84-121
@@ -163,7 +163,7 @@ file: 0-148
  stmt: 122-148
   simple_stmts: 122-148
    simple_stmt: 122-147
-    expr_stmt: 122-147
+    assignment: 122-147
      star_expressions: 122-147
       expression: 122-147
        bitwise_or: 122-147

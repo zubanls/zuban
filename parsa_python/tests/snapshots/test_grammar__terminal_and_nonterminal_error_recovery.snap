@@ -6,7 +6,7 @@ file: 0-21
  stmt: 1-5
   simple_stmts: 1-5
    simple_stmt: 1-4
-    expr_stmt: 1-4
+    assignment: 1-4
      star_expressions: 1-4
       expression: 1-4
        bitwise_or: 1-4
@@ -15,7 +15,7 @@ file: 0-21
  Error(stmt): 5-10
   Error(simple_stmts): 5-10
    Error(simple_stmt): 5-10
-    Error(expr_stmt): 5-10
+    Error(assignment): 5-10
      Error(star_expressions): 5-10
       Error(expression): 5-10
        Error(disjunction): 5-10
@@ -40,7 +40,7 @@ file: 0-21
  stmt: 13-17
   simple_stmts: 13-17
    simple_stmt: 13-16
-    expr_stmt: 13-16
+    assignment: 13-16
      star_expressions: 13-16
       expression: 13-16
        bitwise_or: 13-16
@@ -51,7 +51,7 @@ file: 0-21
  stmt: 17-21
   simple_stmts: 17-21
    simple_stmt: 17-20
-    expr_stmt: 17-20
+    assignment: 17-20
      star_expressions: 17-20
       expression: 17-20
        bitwise_or: 17-20

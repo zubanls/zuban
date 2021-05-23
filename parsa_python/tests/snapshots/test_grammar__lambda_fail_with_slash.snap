@@ -6,7 +6,7 @@ file: 0-103
  Error(stmt): 1-17
   Error(simple_stmts): 1-17
    Error(simple_stmt): 1-17
-    Error(expr_stmt): 1-17
+    Error(assignment): 1-17
      Error(star_expressions): 1-17
       Error(expression): 1-17
        Error(lambda): 1-17
@@ -28,7 +28,7 @@ file: 0-103
  stmt: 19-23
   simple_stmts: 19-23
    simple_stmt: 19-22
-    expr_stmt: 19-22
+    assignment: 19-22
      star_expressions: 19-22
       expression: 19-22
        bitwise_or: 19-22
@@ -37,7 +37,7 @@ file: 0-103
  Error(stmt): 23-44
   Error(simple_stmts): 23-44
    Error(simple_stmt): 23-44
-    Error(expr_stmt): 23-44
+    Error(assignment): 23-44
      Error(star_expressions): 23-44
       Error(expression): 23-44
        Error(lambda): 23-44
@@ -66,7 +66,7 @@ file: 0-103
  stmt: 46-50
   simple_stmts: 46-50
    simple_stmt: 46-49
-    expr_stmt: 46-49
+    assignment: 46-49
      star_expressions: 46-49
       expression: 46-49
        bitwise_or: 46-49
@@ -75,7 +75,7 @@ file: 0-103
  Error(stmt): 50-58
   Error(simple_stmts): 50-58
    Error(simple_stmt): 50-58
-    Error(expr_stmt): 50-58
+    Error(assignment): 50-58
      Error(star_expressions): 50-58
       Error(expression): 50-58
        Error(lambda): 50-58
@@ -92,7 +92,7 @@ file: 0-103
  Error(stmt): 63-69
   Error(simple_stmts): 63-69
    simple_stmt: 63-69
-    expr_stmt: 63-69
+    assignment: 63-69
      star_expressions: 63-64
       expression: 63-64
        bitwise_or: 63-64
@@ -111,7 +111,7 @@ file: 0-103
  stmt: 71-75
   simple_stmts: 71-75
    simple_stmt: 71-74
-    expr_stmt: 71-74
+    assignment: 71-74
      star_expressions: 71-74
       expression: 71-74
        bitwise_or: 71-74
@@ -120,7 +120,7 @@ file: 0-103
  Error(stmt): 75-83
   Error(simple_stmts): 75-83
    Error(simple_stmt): 75-83
-    Error(expr_stmt): 75-83
+    Error(assignment): 75-83
      Error(star_expressions): 75-83
       Error(expression): 75-83
        Error(lambda): 75-83
@@ -133,7 +133,7 @@ file: 0-103
  Error(stmt): 85-92
   Error(simple_stmts): 85-92
    simple_stmt: 85-92
-    expr_stmt: 85-92
+    assignment: 85-92
      star_expressions: 85-86
       expression: 85-86
        bitwise_or: 85-86
@@ -155,7 +155,7 @@ file: 0-103
  stmt: 96-103
   simple_stmts: 96-103
    simple_stmt: 96-102
-    expr_stmt: 96-102
+    assignment: 96-102
      star_expressions: 96-97
       expression: 96-97
        bitwise_or: 96-97

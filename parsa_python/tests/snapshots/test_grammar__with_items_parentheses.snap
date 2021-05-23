@@ -23,7 +23,7 @@ file: 0-116
     block: 20-24
      simple_stmts: 20-24
       simple_stmt: 20-23
-       expr_stmt: 20-23
+       assignment: 20-23
         star_expressions: 20-23
          expression: 20-23
           bitwise_or: 20-23
@@ -54,7 +54,7 @@ file: 0-116
     block: 48-52
      simple_stmts: 48-52
       simple_stmt: 48-51
-       expr_stmt: 48-51
+       assignment: 48-51
         star_expressions: 48-51
          expression: 48-51
           bitwise_or: 48-51
@@ -80,7 +80,7 @@ file: 0-116
     block: 66-70
      simple_stmts: 66-70
       simple_stmt: 66-69
-       expr_stmt: 66-69
+       assignment: 66-69
         star_expressions: 66-69
          expression: 66-69
           bitwise_or: 66-69
@@ -117,7 +117,7 @@ file: 0-116
     block: 92-96
      simple_stmts: 92-96
       simple_stmt: 92-95
-       expr_stmt: 92-95
+       assignment: 92-95
         star_expressions: 92-95
          expression: 92-95
           bitwise_or: 92-95
@@ -143,7 +143,7 @@ file: 0-116
     block: 112-116
      simple_stmts: 112-116
       simple_stmt: 112-115
-       expr_stmt: 112-115
+       assignment: 112-115
         star_expressions: 112-115
          expression: 112-115
           bitwise_or: 112-115
