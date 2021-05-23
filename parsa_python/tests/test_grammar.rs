@@ -79,6 +79,25 @@ parametrize_snapshots!(
         (a, b) = 2
         ((a, b)) = 2
         a = b = 3
+        a = (b, c) = 3
+        a = (b, c,) = 3
+        a = b, c, = 3
+        ");
+    assignments_star: dedent("
+        *foo = *bar = *baz
+        i, *foo = ((j, [*bar, k])) = *baz
+        *foo, *bar = yield baz
+        ");
+    assignments_aug: dedent("
+        foo += 3
+        foo.bar |= 3
+        foo, bar += 3
+        ");
+    assignments_annotation: dedent("
+        foo: bar
+        foo: int = 3
+        foo.bar: baz
+        foo: bar = a = 4
         ");
     cls: dedent("
         class Foo(object):

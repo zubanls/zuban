@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file: 0-60
+file: 0-105
  stmt: 1-7
   simple_stmts: 1-7
    simple_stmt: 1-6
@@ -149,5 +149,106 @@ file: 0-60
        bitwise_or: 58-59
         Number: 58-59 "3"
    Newline: 59-60 "\n"
- Endmarker: 60-60 ""
+ stmt: 60-75
+  simple_stmts: 60-75
+   simple_stmt: 60-74
+    assignment: 60-74
+     star_targets: 60-61
+      star_target: 60-61
+       target_with_star_atom: 60-61
+        star_atom: 60-61
+         name_definition: 60-61
+          Name: 60-61 "a"
+     Keyword: 62-63 "="
+     star_targets: 64-70
+      star_target: 64-70
+       target_with_star_atom: 64-70
+        star_atom: 64-70
+         Keyword: 64-65 "("
+         star_targets: 65-69
+          star_target: 65-66
+           target_with_star_atom: 65-66
+            star_atom: 65-66
+             name_definition: 65-66
+              Name: 65-66 "b"
+          Keyword: 66-67 ","
+          star_target: 68-69
+           target_with_star_atom: 68-69
+            star_atom: 68-69
+             name_definition: 68-69
+              Name: 68-69 "c"
+         Keyword: 69-70 ")"
+     Keyword: 71-72 "="
+     star_expressions: 73-74
+      expression: 73-74
+       bitwise_or: 73-74
+        Number: 73-74 "3"
+   Newline: 74-75 "\n"
+ stmt: 75-91
+  simple_stmts: 75-91
+   simple_stmt: 75-90
+    assignment: 75-90
+     star_targets: 75-76
+      star_target: 75-76
+       target_with_star_atom: 75-76
+        star_atom: 75-76
+         name_definition: 75-76
+          Name: 75-76 "a"
+     Keyword: 77-78 "="
+     star_targets: 79-86
+      star_target: 79-86
+       target_with_star_atom: 79-86
+        star_atom: 79-86
+         Keyword: 79-80 "("
+         star_targets: 80-85
+          star_target: 80-81
+           target_with_star_atom: 80-81
+            star_atom: 80-81
+             name_definition: 80-81
+              Name: 80-81 "b"
+          Keyword: 81-82 ","
+          star_target: 83-84
+           target_with_star_atom: 83-84
+            star_atom: 83-84
+             name_definition: 83-84
+              Name: 83-84 "c"
+          Keyword: 84-85 ","
+         Keyword: 85-86 ")"
+     Keyword: 87-88 "="
+     star_expressions: 89-90
+      expression: 89-90
+       bitwise_or: 89-90
+        Number: 89-90 "3"
+   Newline: 90-91 "\n"
+ stmt: 91-105
+  simple_stmts: 91-105
+   simple_stmt: 91-104
+    assignment: 91-104
+     star_targets: 91-92
+      star_target: 91-92
+       target_with_star_atom: 91-92
+        star_atom: 91-92
+         name_definition: 91-92
+          Name: 91-92 "a"
+     Keyword: 93-94 "="
+     star_targets: 95-100
+      star_target: 95-96
+       target_with_star_atom: 95-96
+        star_atom: 95-96
+         name_definition: 95-96
+          Name: 95-96 "b"
+      Keyword: 96-97 ","
+      star_target: 98-99
+       target_with_star_atom: 98-99
+        star_atom: 98-99
+         name_definition: 98-99
+          Name: 98-99 "c"
+      Keyword: 99-100 ","
+     Keyword: 101-102 "="
+     star_expressions: 103-104
+      expression: 103-104
+       bitwise_or: 103-104
+        Number: 103-104 "3"
+   Newline: 104-105 "\n"
+ Endmarker: 105-105 ""
 

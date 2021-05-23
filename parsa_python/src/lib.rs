@@ -18,6 +18,8 @@ create_grammar!(
 
     stmt: @error_recovery simple_stmts | compound_stmt | Newline
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
+    // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
+    // will throw a SyntaxError.
     simple_stmt: (assignment | star_expressions | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
     assignment:
@@ -27,7 +29,6 @@ create_grammar!(
 
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
-    // For normal and annotated assignments, additional restrictions enforced by the interpreter
     del_stmt: "del" targets
     pass_stmt: "pass"
     flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
@@ -60,11 +61,10 @@ create_grammar!(
     for_stmt: "for" star_targets "in" expressions ":" block else_block?
     try_stmt: "try" ":" block (except_block+ else_block? finally_block | finally_block)
     except_block: except_clause ":" block
+    except_clause: "except" [expression ["as" name_definition]]
     finally_block: "finally" ":" block
     with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
     with_item: expression ["as" star_target]
-    // NB compile.c makes sure that the default except clause is last
-    except_clause: "except" [expression ["as" Name]]
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:
@@ -322,7 +322,6 @@ create_grammar!(
     starred_expression: "*" expression
     double_starred_expression: "**" expression
 
-    // NOTE: star_targets may contain *bitwise_or, targets may not.
     star_targets: ",".star_target+ [","]
     star_target: "*"? target_with_star_atom
     target_with_star_atom:
