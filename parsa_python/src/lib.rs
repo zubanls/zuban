@@ -59,7 +59,7 @@ create_grammar!(
     try_stmt: "try" ":" block (except_block+ else_block? finally_block | finally_block)
     except_block: except_clause ":" block
     finally_block: "finally" ":" block
-    with_stmt: "with" with_item ("," with_item)*  ":" block
+    with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
     with_item: expression ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [expression ["as" Name]]
