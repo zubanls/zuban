@@ -47,8 +47,6 @@ create_grammar!(
     expr_stmt: star_expressions (annassign | augassign (yield_expr|expressions) |
                          ("=" (yield_expr|star_expressions))*)
     annassign: ":" expression ["=" (yield_expr|star_expressions)]
-    star_expressions: (expression|star_expression) ("," (expression|star_expression))* [","]
-    star_expression: "*" bitwise_or
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
     // For normal and annotated assignments, additional restrictions enforced by the interpreter
@@ -177,6 +175,16 @@ create_grammar!(
     keyword_pattern:
         | Name "=" pattern
 
+    star_expressions: (expression|star_expression) ("," (expression|star_expression))* [","]
+    star_expression: "*" bitwise_or
+    star_named_expressions: ",".star_named_expression+ [","]
+    star_named_expression: "*" disjunction | named_expression
+
+    named_expression: Name ":=" expression | expression
+
+    expressions: expression ("," expression)* [","]
+    expression: disjunction ["if" disjunction "else" expression] | lambda
+
     lambda: "lambda" [lambda_parameters] ":" expression
     lambda_parameters:
         // no-default
@@ -222,12 +230,6 @@ create_grammar!(
     lambda_param: Name ["=" expression ]
     lambda_double_starred_param: "**" Name
 
-    star_named_expressions: ",".star_named_expression+ [","]
-    star_named_expression: "*" disjunction | named_expression
-    named_expression: Name ":=" expression | expression
-
-    expressions: expression ("," expression)* [","]
-    expression: disjunction ["if" disjunction "else" expression] | lambda
     disjunction:? conjunction ("or" conjunction)*
     conjunction:? inversion ("and" inversion)*
     inversion:? "not" inversion | comparison
