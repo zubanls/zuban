@@ -161,3 +161,42 @@ fn complicated_alternatives() {
     GRAMMAR.parse("bar :,,".to_owned());
     GRAMMAR.parse("bar :,".to_owned());
 }
+
+#[test]
+#[should_panic(expected = "Found an unreachable alternative in the rule \"content\"")]
+fn unreachable_alternatives1() {
+    create_grammar!(
+        static GRAMMAR, struct TempGrammar, struct TempTree, struct TempNode,
+        enum TempNodeType, enum NonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
+        soft_keywords=[]
+
+        document: content Endmarker
+        content:
+            | foo [","]
+            | bar [","]
+            | foo [":"]
+        foo: Label "[" Number "]"
+        bar: Label ":"
+    );
+    GRAMMAR.parse("".to_owned());
+}
+
+
+#[test]
+#[should_panic(expected = "Found an unreachable alternative in the rule \"content\"")]
+fn unreachable_alternatives2() {
+    create_grammar!(
+        static GRAMMAR, struct TempGrammar, struct TempTree, struct TempNode,
+        enum TempNodeType, enum NonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
+        soft_keywords=[]
+
+        document: content Endmarker
+        content:
+            | foo "(" [","]
+            | bar "(" [","]
+            | foo "(" [":"]
+        foo: Label "[" Number "]"
+        bar: Label ":"
+    );
+    GRAMMAR.parse("".to_owned());
+}

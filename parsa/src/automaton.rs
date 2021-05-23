@@ -1224,7 +1224,7 @@ fn split_tokens(
         }
     }
 
-    let mut generated_dfa_ids = vec![];
+    let mut generated_dfa_ids: Vec<DFAStateId> = vec![];
     let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
 
     let mut as_list: Vec<_> = transition_to_nfas
@@ -1258,11 +1258,49 @@ fn split_tokens(
             new_dfa_nfa_ids,
             automaton.nfa_end_id,
             Some(dfa.list_index));
-        generated_dfa_ids.push(unsafe {&*new_dfa}.list_index);
         automaton.construct_powerset_for_dfa(new_dfa, automaton.nfa_end_id);
+
+        // This is not optimal, since it might check the same dfa multiple times, but it
+        // shouldn't matter, because the amount of dfa's is always very low here.
+        for generated_dfa_id in generated_dfa_ids.iter().rev() {
+            let higher_prio_dfa = &automaton.dfa_states[generated_dfa_id.0];
+            // First check if the new dfa has the same transition than an one with higher priority.
+            if higher_prio_dfa.transitions.iter().any(
+                |transition| unsafe {&*new_dfa}.transitions.iter().any(
+                    |t| t.type_ == transition.type_)
+            ) {
+                panic_if_unreachable_transition(dfa, higher_prio_dfa);
+            }
+        }
+
+        generated_dfa_ids.push(unsafe {&*new_dfa}.list_index);
         //dbg!(x.dfa_states.len(), x.dfa_states.last().unwrap());
     }
     (generated_dfa_ids, end_dfa)
+}
+
+fn panic_if_unreachable_transition(original_dfa: &DFAState, split_dfa: &DFAState) {
+    /// Check XXX
+    fn check(already_checked: &mut Vec<DFAStateId>, original_dfa: &DFAState, split_dfa: &DFAState) {
+        already_checked.push(split_dfa.list_index);
+        let t1: Vec<_> = original_dfa.transitions.iter().map(|t| t.type_).collect();
+        let t2: Vec<_> = split_dfa.transitions.iter().map(|t| t.type_).collect();
+        if t1 != t2 && split_dfa.is_final {
+            panic!("Found an unreachable alternative in the rule {:?}", original_dfa.from_rule);
+        }
+        for t in split_dfa.transitions.iter() {
+            let dfa = unsafe {&*t.to};
+            if !already_checked.contains(&dfa.list_index) {
+                for t2 in original_dfa.transitions.iter() {
+                    if t2.type_ == t.type_ {
+                        check(already_checked, unsafe {&*t2.to}, dfa);
+                    }
+                }
+            }
+        }
+    }
+    let mut already_checked = vec![];
+    check(&mut already_checked, original_dfa, split_dfa);
 }
 
 fn nonterminal_to_str(
