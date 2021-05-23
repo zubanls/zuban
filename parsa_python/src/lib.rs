@@ -26,7 +26,7 @@ create_grammar!(
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
     // For normal and annotated assignments, additional restrictions enforced by the interpreter
-    del_stmt: "del" exprlist
+    del_stmt: "del" targets
     pass_stmt: "pass"
     flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
     break_stmt: "break"
@@ -55,12 +55,12 @@ create_grammar!(
     if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     else_block: "else" ":" block
     while_stmt: "while" named_expression ":" block else_block?
-    for_stmt: "for" exprlist "in" expressions ":" block else_block?
+    for_stmt: "for" star_targets "in" expressions ":" block else_block?
     try_stmt: "try" ":" block (except_block+ else_block? finally_block | finally_block)
     except_block: except_clause ":" block
     finally_block: "finally" ":" block
     with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
-    with_item: expression ["as" bitwise_or]
+    with_item: expression ["as" star_target]
     // NB compile.c makes sure that the default except clause is last
     except_clause: "except" [expression ["as" Name]]
 
@@ -292,12 +292,11 @@ create_grammar!(
         | Name | Number | strings | "..." | "None" | "True" | "False"
     slices: ",".slice+ [","]
     slice: named_expression | expression? ":" expression? [":" expression?]
-    exprlist: (bitwise_or|star_expression) ("," (bitwise_or|star_expression))* [","]
 
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
     async_for_if_clause:? ["async"] sync_for_if_clause
-    sync_for_if_clause: "for" exprlist "in" disjunction comp_if*
+    sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
     comp_if: "if" disjunction
 
     dict_comprehension: dict_key_value for_if_clauses
@@ -320,6 +319,43 @@ create_grammar!(
     kwarg: Name "=" expression
     starred_expression: "*" expression
     double_starred_expression: "**" expression
+
+    // NOTE: star_targets may contain *bitwise_or, targets may not.
+    star_targets: ",".star_target+ [","]
+    star_target: "*"? target_with_star_atom
+    target_with_star_atom:
+        | t_primary "." name_definition
+        | t_primary "[" slices "]"
+        | star_atom
+    star_atom:
+        | name_definition
+        | "(" [star_targets] ")"
+        | "[" [star_targets] "]"
+
+    single_target:
+        | single_subscript_attribute_target
+        | name_definition
+        | "(" single_target ")"
+    single_subscript_attribute_target:
+        | t_primary "." name_definition
+        | t_primary "[" slices "]"
+
+    targets: ",".target+ [","]
+    target:
+        | t_primary "." name_definition
+        | t_primary "[" slices "]"
+        | t_atom
+    t_primary: (
+              t_primary "." Name
+            | t_primary "[" slices "]"
+            | t_primary "(" [arguments] ")"
+            | atom
+        ) &("."|"["|"(")
+    t_atom:
+        | name_definition
+        | "(" [targets] ")"
+        | "[" [targets] "]"
+    name_definition: Name
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd
