@@ -26,18 +26,19 @@ file: 0-117
         Name: 28-36 "__init__"
         Keyword: 36-37 "("
         parameters: 37-53
-         tfpdef: 37-41
+         param_no_default: 37-41
           Name: 37-41 "self"
          Keyword: 41-42 ","
          Keyword: 43-44 "/"
          Keyword: 44-45 ","
-         tfpdef: 46-47
+         param_no_default: 46-47
           Name: 46-47 "f"
          Keyword: 47-48 ","
-         Keyword: 49-50 "*"
-         Keyword: 50-51 ","
-         tfpdef: 52-53
-          Name: 52-53 "g"
+         star_etc: 49-53
+          Keyword: 49-50 "*"
+          Keyword: 50-51 ","
+          param: 52-53
+           Name: 52-53 "g"
         Keyword: 53-54 ")"
         Keyword: 54-55 ":"
         block: 55-74
@@ -66,7 +67,7 @@ file: 0-117
          Name: 92-96 "prop"
          Keyword: 96-97 "("
          parameters: 97-101
-          tfpdef: 97-101
+          param_no_default: 97-101
            Name: 97-101 "self"
          Keyword: 101-102 ")"
          Keyword: 102-103 ":"

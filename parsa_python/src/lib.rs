@@ -173,22 +173,52 @@ create_grammar!(
 
     lambda: "lambda" [lambda_parameters] ":" expression
 
-    param: Name "="  // TODO
-    parameters: (
-      (tfpdef ["=" expression] ("," tfpdef ["=" expression])* "," "/" ["," [ tfpdef ["=" expression] (
-            "," tfpdef ["=" expression])* (["," [
-            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-          | "**" tfpdef [","]]])
-      | "*" [tfpdef] ("," tfpdef ["=" expression])* (["," ["**" tfpdef [","]]])
-      | "**" tfpdef [","]]] )
-    |  (tfpdef ["=" expression] ("," tfpdef ["=" expression])* ["," [
-            "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-          | "**" tfpdef [","]]]
-      | "*" [tfpdef] ("," tfpdef ["=" expression])* ["," ["**" tfpdef [","]]]
-      | "**" tfpdef [","])
-    )
-    tfpdef: Name [":" expression]
+    parameters: 
+        // no-default
+        | ",".param_no_default+ ["," [star_etc]]
+        // no-default slash no-default default
+        | ",".param_no_default+ "," "/" ["," [
+                ",".param_no_default+ [
+                    "," [
+                             ",".param_with_default+ ["," [star_etc]]
+                             | [star_etc]
+                        ]]
+                | star_etc
+            ]]
+        // no-default slash default
+        | ",".param_no_default+ "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        // no-default default
+        | ",".param_no_default+ "," ",".param_with_default+ (
+            ["," [star_etc]]
+            // no-default default slash default
+            | "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        )
+        // default slash default
+        | ",".param_with_default+ "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        // default
+        | ",".param_with_default+ ["," [star_etc]]
+        // just star args
+        | star_etc
+    star_etc:
+        | "*" Name ["," ",".param+] ["," [double_starred_param ","?]]
+        | "*" "," ",".param+ ["," [double_starred_param ","?]]
+        | double_starred_param [","]
+    param_no_default: Name annotation? !"="
+    param_with_default: Name annotation? "=" expression
+    param: Name annotation? ["=" expression ]
+    double_starred_param: "**" Name annotation?
+    annotation: ":" expression
 
+    // Lambda params is basically a repetition of normal params without annotations
     lambda_parameters:
         // no-default
         | ",".lambda_param_no_default+ ["," [lambda_star_etc]]
