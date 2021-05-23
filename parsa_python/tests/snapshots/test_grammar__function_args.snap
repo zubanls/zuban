@@ -105,12 +105,13 @@ file: 0-186
      Keyword: 90-91 ","
      star_etc: 92-116
       Keyword: 92-93 "*"
-      Name: 93-97 "args"
-      annotation: 97-102
-       Keyword: 97-98 ":"
-       expression: 99-102
-        bitwise_or: 99-102
-         Name: 99-102 "int"
+      starred_param: 93-102
+       Name: 93-97 "args"
+       annotation: 97-102
+        Keyword: 97-98 ":"
+        expression: 99-102
+         bitwise_or: 99-102
+          Name: 99-102 "int"
       Keyword: 102-103 ","
       double_starred_param: 104-115
        Keyword: 104-106 "**"
@@ -188,7 +189,8 @@ file: 0-186
     parameters: 174-179
      star_etc: 174-179
       Keyword: 174-175 "*"
-      Name: 175-179 "args"
+      starred_param: 175-179
+       Name: 175-179 "args"
     Keyword: 179-180 ")"
     Keyword: 180-181 ":"
     block: 182-186

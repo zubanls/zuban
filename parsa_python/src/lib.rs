@@ -1,5 +1,5 @@
 // Heavily inspired by https://docs.python.org/3.10/reference/grammar.html
-#![recursion_limit = "1024"]
+#![recursion_limit = "2048"]
 mod tokenizer;
 
 pub use crate::tokenizer::PythonTerminalType;
@@ -209,12 +209,13 @@ create_grammar!(
         // just star args
         | star_etc
     star_etc:
-        | "*" Name annotation? ["," ",".param+] ["," [double_starred_param ","?]]
+        | "*" starred_param ["," ",".param+] ["," [double_starred_param ","?]]
         | "*" "," ",".param+ ["," [double_starred_param ","?]]
         | double_starred_param [","]
     param_no_default: Name annotation? !"="
     param_with_default: Name annotation? "=" expression
     param: Name annotation? ["=" expression ]
+    starred_param: Name annotation?
     double_starred_param: "**" Name annotation?
     annotation: ":" expression
 
@@ -255,12 +256,13 @@ create_grammar!(
         // just star args
         | lambda_star_etc
     lambda_star_etc:
-        | "*" Name ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
+        | "*" lambda_starred_param ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
         | "*" "," ",".lambda_param+ ["," [lambda_double_starred_param ","?]]
         | lambda_double_starred_param [","]
     lambda_param_no_default: Name !"="
     lambda_param_with_default: Name "=" expression
     lambda_param: Name ["=" expression ]
+    lambda_starred_param: Name
     lambda_double_starred_param: "**" Name
 
     disjunction:? conjunction ("or" conjunction)*

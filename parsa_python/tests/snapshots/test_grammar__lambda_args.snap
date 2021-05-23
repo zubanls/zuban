@@ -95,7 +95,8 @@ file: 0-124
          Keyword: 83-84 ","
          lambda_star_etc: 85-100
           Keyword: 85-86 "*"
-          Name: 86-90 "args"
+          lambda_starred_param: 86-90
+           Name: 86-90 "args"
           Keyword: 90-91 ","
           lambda_double_starred_param: 92-98
            Keyword: 92-94 "**"
@@ -117,7 +118,8 @@ file: 0-124
         lambda_parameters: 113-118
          lambda_star_etc: 113-118
           Keyword: 113-114 "*"
-          Name: 114-118 "args"
+          lambda_starred_param: 114-118
+           Name: 114-118 "args"
         Keyword: 118-119 ":"
         expression: 120-123
          bitwise_or: 120-123
