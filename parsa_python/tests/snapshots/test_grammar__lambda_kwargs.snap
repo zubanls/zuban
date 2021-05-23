@@ -6,97 +6,93 @@ file: 0-108
  stmt: 1-22
   simple_stmts: 1-22
    simple_stmt: 1-21
-    assignment: 1-21
-     star_expressions: 1-21
-      expression: 1-21
-       lambda: 1-21
-        Keyword: 1-7 "lambda"
-        lambda_parameters: 8-16
-         lambda_star_etc: 8-16
-          lambda_double_starred_param: 8-16
-           Keyword: 8-10 "**"
-           Name: 10-16 "kwargs"
-        Keyword: 16-17 ":"
-        expression: 18-21
-         bitwise_or: 18-21
-          Keyword: 18-21 "..."
+    star_expressions: 1-21
+     expression: 1-21
+      lambda: 1-21
+       Keyword: 1-7 "lambda"
+       lambda_parameters: 8-16
+        lambda_star_etc: 8-16
+         lambda_double_starred_param: 8-16
+          Keyword: 8-10 "**"
+          Name: 10-16 "kwargs"
+       Keyword: 16-17 ":"
+       expression: 18-21
+        bitwise_or: 18-21
+         Keyword: 18-21 "..."
    Newline: 21-22 "\n"
  stmt: 22-48
   simple_stmts: 22-48
    simple_stmt: 22-47
-    assignment: 22-47
-     star_expressions: 22-47
-      expression: 22-47
-       lambda: 22-47
-        Keyword: 22-28 "lambda"
-        lambda_parameters: 29-42
-         lambda_param_with_default: 29-32
-          Name: 29-30 "a"
-          Keyword: 30-31 "="
-          expression: 31-32
-           bitwise_or: 31-32
-            Number: 31-32 "3"
-         Keyword: 32-33 ","
-         lambda_star_etc: 34-42
-          lambda_double_starred_param: 34-42
-           Keyword: 34-36 "**"
-           Name: 36-42 "kwargs"
-        Keyword: 42-43 ":"
-        expression: 44-47
-         bitwise_or: 44-47
-          Keyword: 44-47 "..."
+    star_expressions: 22-47
+     expression: 22-47
+      lambda: 22-47
+       Keyword: 22-28 "lambda"
+       lambda_parameters: 29-42
+        lambda_param_with_default: 29-32
+         Name: 29-30 "a"
+         Keyword: 30-31 "="
+         expression: 31-32
+          bitwise_or: 31-32
+           Number: 31-32 "3"
+        Keyword: 32-33 ","
+        lambda_star_etc: 34-42
+         lambda_double_starred_param: 34-42
+          Keyword: 34-36 "**"
+          Name: 36-42 "kwargs"
+       Keyword: 42-43 ":"
+       expression: 44-47
+        bitwise_or: 44-47
+         Keyword: 44-47 "..."
    Newline: 47-48 "\n"
  stmt: 48-72
   simple_stmts: 48-72
    simple_stmt: 48-71
-    assignment: 48-71
-     star_expressions: 48-71
-      expression: 48-71
-       lambda: 48-71
-        Keyword: 48-54 "lambda"
-        lambda_parameters: 55-66
-         lambda_param_no_default: 55-56
-          Name: 55-56 "a"
-         Keyword: 56-57 ","
-         lambda_star_etc: 58-66
-          lambda_double_starred_param: 58-66
-           Keyword: 58-60 "**"
-           Name: 60-66 "kwargs"
-        Keyword: 66-67 ":"
-        expression: 68-71
-         bitwise_or: 68-71
-          Keyword: 68-71 "..."
+    star_expressions: 48-71
+     expression: 48-71
+      lambda: 48-71
+       Keyword: 48-54 "lambda"
+       lambda_parameters: 55-66
+        lambda_param_no_default: 55-56
+         Name: 55-56 "a"
+        Keyword: 56-57 ","
+        lambda_star_etc: 58-66
+         lambda_double_starred_param: 58-66
+          Keyword: 58-60 "**"
+          Name: 60-66 "kwargs"
+       Keyword: 66-67 ":"
+       expression: 68-71
+        bitwise_or: 68-71
+         Keyword: 68-71 "..."
    Newline: 71-72 "\n"
  stmt: 72-108
   simple_stmts: 72-108
    simple_stmt: 72-107
-    assignment: 72-107
-     star_expressions: 72-107
-      expression: 72-107
-       lambda: 72-107
-        Keyword: 72-78 "lambda"
-        lambda_parameters: 79-102
-         lambda_param_no_default: 79-80
-          Name: 79-80 "a"
-         Keyword: 80-81 ","
-         Keyword: 82-83 "/"
-         Keyword: 83-84 ","
-         lambda_param_no_default: 85-86
-          Name: 85-86 "b"
-         Keyword: 86-87 ","
-         lambda_star_etc: 88-102
-          Keyword: 88-89 "*"
-          Keyword: 89-90 ","
-          lambda_param: 91-92
-           Name: 91-92 "x"
-          Keyword: 92-93 ","
-          lambda_double_starred_param: 94-102
-           Keyword: 94-96 "**"
-           Name: 96-102 "kwargs"
-        Keyword: 102-103 ":"
-        expression: 104-107
-         bitwise_or: 104-107
-          Keyword: 104-107 "..."
+    star_expressions: 72-107
+     expression: 72-107
+      lambda: 72-107
+       Keyword: 72-78 "lambda"
+       lambda_parameters: 79-102
+        lambda_param_no_default: 79-80
+         Name: 79-80 "a"
+        Keyword: 80-81 ","
+        Keyword: 82-83 "/"
+        Keyword: 83-84 ","
+        lambda_param_no_default: 85-86
+         Name: 85-86 "b"
+        Keyword: 86-87 ","
+        lambda_star_etc: 88-102
+         Keyword: 88-89 "*"
+         Keyword: 89-90 ","
+         lambda_param: 91-92
+          Name: 91-92 "x"
+         Keyword: 92-93 ","
+         lambda_double_starred_param: 94-102
+          Keyword: 94-96 "**"
+          Name: 96-102 "kwargs"
+       Keyword: 102-103 ":"
+       expression: 104-107
+        bitwise_or: 104-107
+         Keyword: 104-107 "..."
    Newline: 107-108 "\n"
  Endmarker: 108-108 ""
 

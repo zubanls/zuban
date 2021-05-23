@@ -6,56 +6,52 @@ file: 0-21
  stmt: 1-5
   simple_stmts: 1-5
    simple_stmt: 1-4
-    assignment: 1-4
-     star_expressions: 1-4
-      expression: 1-4
-       bitwise_or: 1-4
-        Name: 1-4 "foo"
+    star_expressions: 1-4
+     expression: 1-4
+      bitwise_or: 1-4
+       Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-10
   Error(simple_stmts): 5-10
    Error(simple_stmt): 5-10
-    Error(assignment): 5-10
-     Error(star_expressions): 5-10
-      Error(expression): 5-10
-       Error(disjunction): 5-10
-        Error(conjunction): 5-10
-         Error(inversion): 5-10
-          Error(comparison): 5-10
-           Error(bitwise_or): 5-10
-            Error(bitwise_xor): 5-10
-             Error(bitwise_and): 5-10
-              Error(shift_expr): 5-10
-               Error(sum): 5-10
-                atom: 5-8
-                 Keyword: 5-6 "("
-                 named_expression: 6-7
-                  expression: 6-7
-                   bitwise_or: 6-7
-                    Number: 6-7 "1"
-                 Keyword: 7-8 ")"
-                Keyword: 9-10 "+"
+    Error(star_expressions): 5-10
+     Error(expression): 5-10
+      Error(disjunction): 5-10
+       Error(conjunction): 5-10
+        Error(inversion): 5-10
+         Error(comparison): 5-10
+          Error(bitwise_or): 5-10
+           Error(bitwise_xor): 5-10
+            Error(bitwise_and): 5-10
+             Error(shift_expr): 5-10
+              Error(sum): 5-10
+               atom: 5-8
+                Keyword: 5-6 "("
+                named_expression: 6-7
+                 expression: 6-7
+                  bitwise_or: 6-7
+                   Number: 6-7 "1"
+                Keyword: 7-8 ")"
+               Keyword: 9-10 "+"
  Error(stmt): 11-12
   Error(ErrorToken): 11-12 "?"
  stmt: 13-17
   simple_stmts: 13-17
    simple_stmt: 13-16
-    assignment: 13-16
-     star_expressions: 13-16
-      expression: 13-16
-       bitwise_or: 13-16
-        factor: 13-16
-         Keyword: 13-14 "+"
-         Name: 15-16 "c"
+    star_expressions: 13-16
+     expression: 13-16
+      bitwise_or: 13-16
+       factor: 13-16
+        Keyword: 13-14 "+"
+        Name: 15-16 "c"
    Newline: 16-17 "\n"
  stmt: 17-21
   simple_stmts: 17-21
    simple_stmt: 17-20
-    assignment: 17-20
-     star_expressions: 17-20
-      expression: 17-20
-       bitwise_or: 17-20
-        Name: 17-20 "bar"
+    star_expressions: 17-20
+     expression: 17-20
+      bitwise_or: 17-20
+       Name: 17-20 "bar"
    Newline: 20-21 "\n"
  Endmarker: 21-21 ""
 

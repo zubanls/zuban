@@ -6,29 +6,28 @@ file: 0-36
  stmt: 1-19
   simple_stmts: 1-19
    simple_stmt: 1-17
-    assignment: 1-17
-     star_expressions: 1-17
-      expression: 1-17
-       bitwise_or: 1-17
-        primary: 1-17
-         Name: 1-2 "a"
-         Keyword: 2-3 "("
-         arguments: 3-16
-          named_expression: 3-9
-           Name: 3-6 "bar"
-           Keyword: 6-8 ":="
-           expression: 8-9
-            bitwise_or: 8-9
-             Number: 8-9 "1"
-          Keyword: 9-10 ","
-          kwargs: 11-16
-           kwarg: 11-16
-            Name: 11-14 "foo"
-            Keyword: 14-15 "="
-            expression: 15-16
-             bitwise_or: 15-16
-              Number: 15-16 "1"
-         Keyword: 16-17 ")"
+    star_expressions: 1-17
+     expression: 1-17
+      bitwise_or: 1-17
+       primary: 1-17
+        Name: 1-2 "a"
+        Keyword: 2-3 "("
+        arguments: 3-16
+         named_expression: 3-9
+          Name: 3-6 "bar"
+          Keyword: 6-8 ":="
+          expression: 8-9
+           bitwise_or: 8-9
+            Number: 8-9 "1"
+         Keyword: 9-10 ","
+         kwargs: 11-16
+          kwarg: 11-16
+           Name: 11-14 "foo"
+           Keyword: 14-15 "="
+           expression: 15-16
+            bitwise_or: 15-16
+             Number: 15-16 "1"
+        Keyword: 16-17 ")"
    Keyword: 17-18 ";"
    Newline: 18-19 "\n"
  stmt: 19-36
@@ -46,11 +45,10 @@ file: 0-36
      stmt: 26-28
       simple_stmts: 26-28
        simple_stmt: 26-27
-        assignment: 26-27
-         star_expressions: 26-27
-          expression: 26-27
-           bitwise_or: 26-27
-            Number: 26-27 "1"
+        star_expressions: 26-27
+         expression: 26-27
+          bitwise_or: 26-27
+           Number: 26-27 "1"
        Newline: 27-28 "\n"
      Dedent: 28-28 ""
     else_block: 28-36
@@ -59,11 +57,10 @@ file: 0-36
      block: 34-36
       simple_stmts: 34-36
        simple_stmt: 34-35
-        assignment: 34-35
-         star_expressions: 34-35
-          expression: 34-35
-           bitwise_or: 34-35
-            Number: 34-35 "2"
+        star_expressions: 34-35
+         expression: 34-35
+          bitwise_or: 34-35
+           Number: 34-35 "2"
        Newline: 35-36 "\n"
  Endmarker: 36-36 ""
 

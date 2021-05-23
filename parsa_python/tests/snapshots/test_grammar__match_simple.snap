@@ -36,11 +36,10 @@ file: 0-57
      block: 28-32
       simple_stmts: 28-32
        simple_stmt: 28-31
-        assignment: 28-31
-         star_expressions: 28-31
-          expression: 28-31
-           bitwise_or: 28-31
-            Keyword: 28-31 "..."
+        star_expressions: 28-31
+         expression: 28-31
+          bitwise_or: 28-31
+           Keyword: 28-31 "..."
        Newline: 31-32 "\n"
     case_block: 36-57
      Keyword: 36-40 "case"

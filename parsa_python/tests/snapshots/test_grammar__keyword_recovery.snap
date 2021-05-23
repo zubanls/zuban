@@ -6,11 +6,10 @@ file: 0-23
  stmt: 1-5
   simple_stmts: 1-5
    simple_stmt: 1-4
-    assignment: 1-4
-     star_expressions: 1-4
-      expression: 1-4
-       bitwise_or: 1-4
-        Name: 1-4 "foo"
+    star_expressions: 1-4
+     expression: 1-4
+      bitwise_or: 1-4
+       Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-8
   Error(compound_stmt): 5-8
@@ -21,11 +20,10 @@ file: 0-23
  stmt: 9-13
   simple_stmts: 9-13
    simple_stmt: 9-12
-    assignment: 9-12
-     star_expressions: 9-12
-      expression: 9-12
-       bitwise_or: 9-12
-        Name: 9-12 "bar"
+    star_expressions: 9-12
+     expression: 9-12
+      bitwise_or: 9-12
+       Name: 9-12 "bar"
    Newline: 12-13 "\n"
  Error(stmt): 13-17
   Error(Keyword): 13-17 "else"
@@ -36,11 +34,10 @@ file: 0-23
  stmt: 19-23
   simple_stmts: 19-23
    simple_stmt: 19-22
-    assignment: 19-22
-     star_expressions: 19-22
-      expression: 19-22
-       bitwise_or: 19-22
-        Name: 19-22 "baz"
+    star_expressions: 19-22
+     expression: 19-22
+      bitwise_or: 19-22
+       Name: 19-22 "baz"
    Newline: 22-23 "\n"
  Endmarker: 23-23 ""
 

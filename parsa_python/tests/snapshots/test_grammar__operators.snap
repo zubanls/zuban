@@ -6,35 +6,34 @@ file: 0-37
  stmt: 1-37
   simple_stmts: 1-37
    simple_stmt: 1-36
-    assignment: 1-36
-     star_expressions: 1-36
-      expression: 1-36
-       bitwise_or: 1-36
-        bitwise_or: 1-6
-         bitwise_or: 1-2
-          Name: 1-2 "f"
-         Keyword: 3-4 "|"
-         Name: 5-6 "d"
-        Keyword: 7-8 "|"
-        bitwise_and: 9-36
-         sum: 9-14
-          Name: 9-10 "c"
-          Keyword: 11-12 "+"
-          Number: 13-14 "5"
-         Keyword: 15-16 "&"
-         term: 17-36
-          term: 17-22
-           Number: 17-18 "2"
-           Keyword: 19-20 "*"
-           Number: 21-22 "3"
-          Keyword: 23-24 "*"
-          power: 25-36
-           Number: 25-26 "4"
-           Keyword: 27-29 "**"
-           power: 30-36
-            Number: 30-31 "5"
-            Keyword: 32-34 "**"
-            Number: 35-36 "6"
+    star_expressions: 1-36
+     expression: 1-36
+      bitwise_or: 1-36
+       bitwise_or: 1-6
+        bitwise_or: 1-2
+         Name: 1-2 "f"
+        Keyword: 3-4 "|"
+        Name: 5-6 "d"
+       Keyword: 7-8 "|"
+       bitwise_and: 9-36
+        sum: 9-14
+         Name: 9-10 "c"
+         Keyword: 11-12 "+"
+         Number: 13-14 "5"
+        Keyword: 15-16 "&"
+        term: 17-36
+         term: 17-22
+          Number: 17-18 "2"
+          Keyword: 19-20 "*"
+          Number: 21-22 "3"
+         Keyword: 23-24 "*"
+         power: 25-36
+          Number: 25-26 "4"
+          Keyword: 27-29 "**"
+          power: 30-36
+           Number: 30-31 "5"
+           Keyword: 32-34 "**"
+           Number: 35-36 "6"
    Newline: 36-37 "\n"
  Endmarker: 37-37 ""
 

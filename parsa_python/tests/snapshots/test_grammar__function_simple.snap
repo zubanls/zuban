@@ -14,11 +14,10 @@ file: 0-106
     block: 12-16
      simple_stmts: 12-16
       simple_stmt: 12-15
-       assignment: 12-15
-        star_expressions: 12-15
-         expression: 12-15
-          bitwise_or: 12-15
-           Keyword: 12-15 "..."
+       star_expressions: 12-15
+        expression: 12-15
+         bitwise_or: 12-15
+          Keyword: 12-15 "..."
       Newline: 15-16 "\n"
  stmt: 16-35
   compound_stmt: 16-35
@@ -39,11 +38,10 @@ file: 0-106
     block: 31-35
      simple_stmts: 31-35
       simple_stmt: 31-34
-       assignment: 31-34
-        star_expressions: 31-34
-         expression: 31-34
-          bitwise_or: 31-34
-           Keyword: 31-34 "..."
+       star_expressions: 31-34
+        expression: 31-34
+         bitwise_or: 31-34
+          Keyword: 31-34 "..."
       Newline: 34-35 "\n"
  stmt: 35-55
   compound_stmt: 35-55
@@ -63,11 +61,10 @@ file: 0-106
     block: 51-55
      simple_stmts: 51-55
       simple_stmt: 51-54
-       assignment: 51-54
-        star_expressions: 51-54
-         expression: 51-54
-          bitwise_or: 51-54
-           Keyword: 51-54 "..."
+       star_expressions: 51-54
+        expression: 51-54
+         bitwise_or: 51-54
+          Keyword: 51-54 "..."
       Newline: 54-55 "\n"
  stmt: 55-83
   compound_stmt: 55-83
@@ -99,11 +96,10 @@ file: 0-106
     block: 79-83
      simple_stmts: 79-83
       simple_stmt: 79-82
-       assignment: 79-82
-        star_expressions: 79-82
-         expression: 79-82
-          bitwise_or: 79-82
-           Keyword: 79-82 "..."
+       star_expressions: 79-82
+        expression: 79-82
+         bitwise_or: 79-82
+          Keyword: 79-82 "..."
       Newline: 82-83 "\n"
  stmt: 83-106
   compound_stmt: 83-106
@@ -130,11 +126,10 @@ file: 0-106
     block: 102-106
      simple_stmts: 102-106
       simple_stmt: 102-105
-       assignment: 102-105
-        star_expressions: 102-105
-         expression: 102-105
-          bitwise_or: 102-105
-           Keyword: 102-105 "..."
+       star_expressions: 102-105
+        expression: 102-105
+         bitwise_or: 102-105
+          Keyword: 102-105 "..."
       Newline: 105-106 "\n"
  Endmarker: 106-106 ""
 

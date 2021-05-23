@@ -36,19 +36,18 @@ file: 0-63
      block: 26-31
       simple_stmts: 26-31
        simple_stmt: 26-30
-        assignment: 26-30
-         star_expressions: 26-30
-          expression: 26-30
-           bitwise_or: 26-30
-            primary: 26-30
-             Name: 26-27 "_"
-             Keyword: 27-28 "("
-             arguments: 28-29
-              named_expression: 28-29
-               expression: 28-29
-                bitwise_or: 28-29
-                 Name: 28-29 "_"
-             Keyword: 29-30 ")"
+        star_expressions: 26-30
+         expression: 26-30
+          bitwise_or: 26-30
+           primary: 26-30
+            Name: 26-27 "_"
+            Keyword: 27-28 "("
+            arguments: 28-29
+             named_expression: 28-29
+              expression: 28-29
+               bitwise_or: 28-29
+                Name: 28-29 "_"
+            Keyword: 29-30 ")"
        Newline: 30-31 "\n"
     case_block: 35-53
      Keyword: 35-39 "case"
@@ -65,11 +64,10 @@ file: 0-63
       stmt: 51-53
        simple_stmts: 51-53
         simple_stmt: 51-52
-         assignment: 51-52
-          star_expressions: 51-52
-           expression: 51-52
-            bitwise_or: 51-52
-             Name: 51-52 "_"
+         star_expressions: 51-52
+          expression: 51-52
+           bitwise_or: 51-52
+            Name: 51-52 "_"
         Newline: 52-53 "\n"
       Dedent: 53-53 ""
     Dedent: 53-53 ""
@@ -77,10 +75,12 @@ file: 0-63
   simple_stmts: 53-63
    simple_stmt: 53-62
     assignment: 53-62
-     star_expressions: 53-58
-      expression: 53-58
-       bitwise_or: 53-58
-        Name: 53-58 "match"
+     star_targets: 53-58
+      star_target: 53-58
+       target_with_star_atom: 53-58
+        star_atom: 53-58
+         name_definition: 53-58
+          Name: 53-58 "match"
      Keyword: 59-60 "="
      star_expressions: 61-62
       expression: 61-62

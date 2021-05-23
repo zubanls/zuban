@@ -1,0 +1,153 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-60
+ stmt: 1-7
+  simple_stmts: 1-7
+   simple_stmt: 1-6
+    assignment: 1-6
+     star_targets: 1-2
+      star_target: 1-2
+       target_with_star_atom: 1-2
+        star_atom: 1-2
+         name_definition: 1-2
+          Name: 1-2 "a"
+     Keyword: 3-4 "="
+     star_expressions: 5-6
+      expression: 5-6
+       bitwise_or: 5-6
+        Number: 5-6 "1"
+   Newline: 6-7 "\n"
+ stmt: 7-16
+  simple_stmts: 7-16
+   simple_stmt: 7-15
+    assignment: 7-15
+     star_targets: 7-11
+      star_target: 7-8
+       target_with_star_atom: 7-8
+        star_atom: 7-8
+         name_definition: 7-8
+          Name: 7-8 "a"
+      Keyword: 8-9 ","
+      star_target: 10-11
+       target_with_star_atom: 10-11
+        star_atom: 10-11
+         name_definition: 10-11
+          Name: 10-11 "b"
+     Keyword: 12-13 "="
+     star_expressions: 14-15
+      expression: 14-15
+       bitwise_or: 14-15
+        Number: 14-15 "2"
+   Newline: 15-16 "\n"
+ stmt: 16-26
+  simple_stmts: 16-26
+   simple_stmt: 16-25
+    assignment: 16-25
+     star_targets: 16-21
+      star_target: 16-17
+       target_with_star_atom: 16-17
+        star_atom: 16-17
+         name_definition: 16-17
+          Name: 16-17 "a"
+      Keyword: 17-18 ","
+      star_target: 19-20
+       target_with_star_atom: 19-20
+        star_atom: 19-20
+         name_definition: 19-20
+          Name: 19-20 "b"
+      Keyword: 20-21 ","
+     Keyword: 22-23 "="
+     star_expressions: 24-25
+      expression: 24-25
+       bitwise_or: 24-25
+        Number: 24-25 "2"
+   Newline: 25-26 "\n"
+ stmt: 26-37
+  simple_stmts: 26-37
+   simple_stmt: 26-36
+    assignment: 26-36
+     star_targets: 26-32
+      star_target: 26-32
+       target_with_star_atom: 26-32
+        star_atom: 26-32
+         Keyword: 26-27 "("
+         star_targets: 27-31
+          star_target: 27-28
+           target_with_star_atom: 27-28
+            star_atom: 27-28
+             name_definition: 27-28
+              Name: 27-28 "a"
+          Keyword: 28-29 ","
+          star_target: 30-31
+           target_with_star_atom: 30-31
+            star_atom: 30-31
+             name_definition: 30-31
+              Name: 30-31 "b"
+         Keyword: 31-32 ")"
+     Keyword: 33-34 "="
+     star_expressions: 35-36
+      expression: 35-36
+       bitwise_or: 35-36
+        Number: 35-36 "2"
+   Newline: 36-37 "\n"
+ stmt: 37-50
+  simple_stmts: 37-50
+   simple_stmt: 37-49
+    assignment: 37-49
+     star_targets: 37-45
+      star_target: 37-45
+       target_with_star_atom: 37-45
+        star_atom: 37-45
+         Keyword: 37-38 "("
+         star_targets: 38-44
+          star_target: 38-44
+           target_with_star_atom: 38-44
+            star_atom: 38-44
+             Keyword: 38-39 "("
+             star_targets: 39-43
+              star_target: 39-40
+               target_with_star_atom: 39-40
+                star_atom: 39-40
+                 name_definition: 39-40
+                  Name: 39-40 "a"
+              Keyword: 40-41 ","
+              star_target: 42-43
+               target_with_star_atom: 42-43
+                star_atom: 42-43
+                 name_definition: 42-43
+                  Name: 42-43 "b"
+             Keyword: 43-44 ")"
+         Keyword: 44-45 ")"
+     Keyword: 46-47 "="
+     star_expressions: 48-49
+      expression: 48-49
+       bitwise_or: 48-49
+        Number: 48-49 "2"
+   Newline: 49-50 "\n"
+ stmt: 50-60
+  simple_stmts: 50-60
+   simple_stmt: 50-59
+    assignment: 50-59
+     star_targets: 50-51
+      star_target: 50-51
+       target_with_star_atom: 50-51
+        star_atom: 50-51
+         name_definition: 50-51
+          Name: 50-51 "a"
+     Keyword: 52-53 "="
+     star_targets: 54-55
+      star_target: 54-55
+       target_with_star_atom: 54-55
+        star_atom: 54-55
+         name_definition: 54-55
+          Name: 54-55 "b"
+     Keyword: 56-57 "="
+     star_expressions: 58-59
+      expression: 58-59
+       bitwise_or: 58-59
+        Number: 58-59 "3"
+   Newline: 59-60 "\n"
+ Endmarker: 60-60 ""
+

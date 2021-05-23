@@ -6,23 +6,21 @@ file: 0-100
  Error(stmt): 1-9
   Error(simple_stmts): 1-9
    Error(simple_stmt): 1-9
-    Error(assignment): 1-9
-     Error(star_expressions): 1-9
-      Error(expression): 1-9
-       Error(lambda): 1-9
-        Keyword: 1-7 "lambda"
-        Error(lambda_parameters): 8-9
-         Error(lambda_param_with_default): 8-9
-          Name: 8-9 "a"
+    Error(star_expressions): 1-9
+     Error(expression): 1-9
+      Error(lambda): 1-9
+       Keyword: 1-7 "lambda"
+       Error(lambda_parameters): 8-9
+        Error(lambda_param_with_default): 8-9
+         Name: 8-9 "a"
  Error(stmt): 9-10
   Error(Keyword): 9-10 ","
  Error(stmt): 11-12
   Error(simple_stmts): 11-12
    Error(simple_stmt): 11-12
-    Error(assignment): 11-12
-     Error(star_expressions): 11-12
-      Error(star_expression): 11-12
-       Keyword: 11-12 "*"
+    Error(star_expressions): 11-12
+     Error(star_expression): 11-12
+      Keyword: 11-12 "*"
  Error(stmt): 12-13
   Error(Keyword): 12-13 ","
  Error(stmt): 14-16
@@ -31,111 +29,101 @@ file: 0-100
   simple_stmts: 16-28
    simple_stmt: 16-27
     assignment: 16-27
-     star_expressions: 16-22
-      expression: 16-22
-       bitwise_or: 16-22
-        Name: 16-22 "kwargs"
-     annassign: 22-27
-      Keyword: 22-23 ":"
-      expression: 24-27
-       bitwise_or: 24-27
-        Keyword: 24-27 "..."
+     single_target: 16-22
+      name_definition: 16-22
+       Name: 16-22 "kwargs"
+     Keyword: 22-23 ":"
+     expression: 24-27
+      bitwise_or: 24-27
+       Keyword: 24-27 "..."
    Newline: 27-28 "\n"
  Error(stmt): 28-41
   Error(simple_stmts): 28-41
    Error(simple_stmt): 28-41
-    Error(assignment): 28-41
-     Error(star_expressions): 28-41
-      Error(expression): 28-41
-       Error(lambda): 28-41
-        Keyword: 28-34 "lambda"
-        Error(lambda_parameters): 35-41
-         lambda_param_with_default: 35-38
-          Name: 35-36 "a"
-          Keyword: 36-37 "="
-          expression: 37-38
-           bitwise_or: 37-38
-            Number: 37-38 "3"
-         Keyword: 38-39 ","
-         Error(lambda_param_with_default): 40-41
-          Name: 40-41 "b"
+    Error(star_expressions): 28-41
+     Error(expression): 28-41
+      Error(lambda): 28-41
+       Keyword: 28-34 "lambda"
+       Error(lambda_parameters): 35-41
+        lambda_param_with_default: 35-38
+         Name: 35-36 "a"
+         Keyword: 36-37 "="
+         expression: 37-38
+          bitwise_or: 37-38
+           Number: 37-38 "3"
+        Keyword: 38-39 ","
+        Error(lambda_param_with_default): 40-41
+         Name: 40-41 "b"
  Error(stmt): 41-42
   Error(Keyword): 41-42 ":"
  stmt: 43-47
   simple_stmts: 43-47
    simple_stmt: 43-46
-    assignment: 43-46
-     star_expressions: 43-46
-      expression: 43-46
-       bitwise_or: 43-46
-        Keyword: 43-46 "..."
+    star_expressions: 43-46
+     expression: 43-46
+      bitwise_or: 43-46
+       Keyword: 43-46 "..."
    Newline: 46-47 "\n"
  Error(stmt): 47-58
   Error(simple_stmts): 47-58
    Error(simple_stmt): 47-58
-    Error(assignment): 47-58
-     Error(star_expressions): 47-58
-      Error(expression): 47-58
-       Error(lambda): 47-58
-        Keyword: 47-53 "lambda"
-        lambda_parameters: 54-58
-         lambda_star_etc: 54-58
-          lambda_double_starred_param: 54-57
-           Keyword: 54-56 "**"
-           Name: 56-57 "a"
-          Keyword: 57-58 ","
+    Error(star_expressions): 47-58
+     Error(expression): 47-58
+      Error(lambda): 47-58
+       Keyword: 47-53 "lambda"
+       lambda_parameters: 54-58
+        lambda_star_etc: 54-58
+         lambda_double_starred_param: 54-57
+          Keyword: 54-56 "**"
+          Name: 56-57 "a"
+         Keyword: 57-58 ","
  stmt: 59-66
   simple_stmts: 59-66
    simple_stmt: 59-65
     assignment: 59-65
-     star_expressions: 59-60
-      expression: 59-60
-       bitwise_or: 59-60
-        Name: 59-60 "b"
-     annassign: 60-65
-      Keyword: 60-61 ":"
-      expression: 62-65
-       bitwise_or: 62-65
-        Keyword: 62-65 "..."
+     single_target: 59-60
+      name_definition: 59-60
+       Name: 59-60 "b"
+     Keyword: 60-61 ":"
+     expression: 62-65
+      bitwise_or: 62-65
+       Keyword: 62-65 "..."
    Newline: 65-66 "\n"
  Error(stmt): 66-80
   Error(simple_stmts): 66-80
    Error(simple_stmt): 66-80
-    Error(assignment): 66-80
-     Error(star_expressions): 66-80
-      Error(expression): 66-80
-       Error(lambda): 66-80
-        Keyword: 66-72 "lambda"
-        Error(lambda_parameters): 73-80
-         lambda_param_with_default: 73-76
-          Name: 73-74 "a"
-          Keyword: 74-75 "="
-          expression: 75-76
-           bitwise_or: 75-76
-            Number: 75-76 "3"
-         Keyword: 76-77 ","
-         Error(lambda_star_etc): 78-80
-          Keyword: 78-79 "*"
-          Keyword: 79-80 ","
+    Error(star_expressions): 66-80
+     Error(expression): 66-80
+      Error(lambda): 66-80
+       Keyword: 66-72 "lambda"
+       Error(lambda_parameters): 73-80
+        lambda_param_with_default: 73-76
+         Name: 73-74 "a"
+         Keyword: 74-75 "="
+         expression: 75-76
+          bitwise_or: 75-76
+           Number: 75-76 "3"
+        Keyword: 76-77 ","
+        Error(lambda_star_etc): 78-80
+         Keyword: 78-79 "*"
+         Keyword: 79-80 ","
  Error(stmt): 80-81
   Error(Keyword): 80-81 ":"
  stmt: 82-86
   simple_stmts: 82-86
    simple_stmt: 82-85
-    assignment: 82-85
-     star_expressions: 82-85
-      expression: 82-85
-       bitwise_or: 82-85
-        Keyword: 82-85 "..."
+    star_expressions: 82-85
+     expression: 82-85
+      bitwise_or: 82-85
+       Keyword: 82-85 "..."
    Newline: 85-86 "\n"
  Error(stmt): 86-92
   Error(simple_stmts): 86-92
    Error(simple_stmt): 86-92
-    Error(assignment): 86-92
-     Error(star_expressions): 86-92
-      Error(expression): 86-92
-       Error(lambda): 86-92
-        Keyword: 86-92 "lambda"
+    Error(star_expressions): 86-92
+     Error(expression): 86-92
+      Error(lambda): 86-92
+       Keyword: 86-92 "lambda"
  Error(stmt): 93-94
   Error(Keyword): 93-94 ","
  Error(stmt): 94-95
@@ -143,11 +131,10 @@ file: 0-100
  stmt: 96-100
   simple_stmts: 96-100
    simple_stmt: 96-99
-    assignment: 96-99
-     star_expressions: 96-99
-      expression: 96-99
-       bitwise_or: 96-99
-        Keyword: 96-99 "..."
+    star_expressions: 96-99
+     expression: 96-99
+      bitwise_or: 96-99
+       Keyword: 96-99 "..."
    Newline: 99-100 "\n"
  Endmarker: 100-100 ""
 

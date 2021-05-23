@@ -18,11 +18,13 @@ create_grammar!(
 
     stmt: @error_recovery simple_stmts | compound_stmt | Newline
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
-    simple_stmt: (assignment | del_stmt | pass_stmt | flow_stmt |
+    simple_stmt: (assignment | star_expressions | del_stmt | pass_stmt | flow_stmt |
                  import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
-    assignment: star_expressions (annassign | augassign (yield_expr|expressions) |
-                         ("=" (yield_expr|star_expressions))*)
-    annassign: ":" expression ["=" (yield_expr|star_expressions)]
+    assignment:
+        | (star_targets "=" )+ (yield_expr | star_expressions)
+        | single_target ":" expression ["=" (yield_expr | star_expressions)]
+        | single_target augassign (yield_expr | star_expressions)
+
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
     // For normal and annotated assignments, additional restrictions enforced by the interpreter
