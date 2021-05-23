@@ -52,14 +52,13 @@ create_grammar!(
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
         | function_def | class_def | decorated | async_stmt | match_stmt
     async_stmt: "async" (function_def | with_stmt | for_stmt)
-    if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* ["else" ":" block]
-    while_stmt: "while" named_expression ":" block ["else" ":" block]
-    for_stmt: "for" exprlist "in" expressions ":" block ["else" ":" block]
-    try_stmt: ("try" ":" block
-               ((except_clause ":" block)+
-                ["else" ":" block]
-                ["finally" ":" block] |
-               "finally" ":" block))
+    if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
+    else_block: "else" ":" block
+    while_stmt: "while" named_expression ":" block else_block?
+    for_stmt: "for" exprlist "in" expressions ":" block else_block?
+    try_stmt: "try" ":" block (except_block+ else_block? finally_block | finally_block)
+    except_block: except_clause ":" block
+    finally_block: "finally" ":" block
     with_stmt: "with" with_item ("," with_item)*  ":" block
     with_item: expression ["as" bitwise_or]
     // NB compile.c makes sure that the default except clause is last

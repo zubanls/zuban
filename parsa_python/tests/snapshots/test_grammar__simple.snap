@@ -53,16 +53,17 @@ file: 0-36
             Number: 26-27 "1"
        Newline: 27-28 "\n"
      Dedent: 28-28 ""
-    Keyword: 28-32 "else"
-    Keyword: 32-33 ":"
-    block: 34-36
-     simple_stmts: 34-36
-      simple_stmt: 34-35
-       expr_stmt: 34-35
-        star_expressions: 34-35
-         expression: 34-35
-          bitwise_or: 34-35
-           Number: 34-35 "2"
-      Newline: 35-36 "\n"
+    else_block: 28-36
+     Keyword: 28-32 "else"
+     Keyword: 32-33 ":"
+     block: 34-36
+      simple_stmts: 34-36
+       simple_stmt: 34-35
+        expr_stmt: 34-35
+         star_expressions: 34-35
+          expression: 34-35
+           bitwise_or: 34-35
+            Number: 34-35 "2"
+       Newline: 35-36 "\n"
  Endmarker: 36-36 ""
 
