@@ -82,7 +82,7 @@ pub struct Grammar<T> {
 enum ModeData<'a> {
     Alternative(BacktrackingPoint<'a>),
     PositiveLookahead(usize),
-    Normal,
+    LL,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -217,7 +217,7 @@ impl<'a, T: Token> Grammar<T> {
         mode: ModeData<'a>,
     ) {
         match mode {
-            ModeData::Normal => {
+            ModeData::LL => {
                 stack.pop_normal();
             }
             ModeData::PositiveLookahead(token_index) => {
@@ -380,7 +380,7 @@ impl<'a, T: Token> Grammar<T> {
                 push.next_dfa,
                 start_index,
                 match push.stack_mode {
-                    StackMode::Normal => ModeData::Normal,
+                    StackMode::LL => ModeData::LL,
                     StackMode::PositivePeek => {
                         ModeData::PositiveLookahead(backtracking_tokenizer.start(token))
                     }
@@ -418,7 +418,7 @@ impl<'a> Stack<'a> {
         stack.stack_nodes.reserve(128);
         // TODO need some research in how much we should reserve.
         stack.tree_nodes.reserve(string_len / 4);
-        stack.push(node_id, dfa_state, 0, ModeData::Normal, false);
+        stack.push(node_id, dfa_state, 0, ModeData::LL, false);
         stack
     }
 
@@ -465,7 +465,7 @@ impl<'a> Stack<'a> {
         });
         // ModeData::Alternative(_) needs to be excluded here, because the tree node is already
         // part of the parent stack node.
-        if matches!(mode, ModeData::Normal) {
+        if matches!(mode, ModeData::LL) {
             self.tree_nodes.push(InternalNode {
                 next_node_offset: 0,
                 type_: node_id.to_squashed(),

@@ -140,7 +140,7 @@ struct DFATransition {
 pub enum StackMode {
     PositivePeek,
     Alternative(*const Plan),
-    Normal,
+    LL,
 }
 
 impl std::fmt::Debug for StackMode {
@@ -151,7 +151,7 @@ impl std::fmt::Debug for StackMode {
                 let dfa = unsafe {&*(**plan).next_dfa};
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
             }
-            Self::Normal => write!(f, "Normal"),
+            Self::LL => write!(f, "LL"),
         }
     }
 }
@@ -895,7 +895,7 @@ fn plans_for_dfa(
                                         nested_plan,
                                         node_id,
                                         transition.to,
-                                        StackMode::Normal,
+                                        StackMode::LL,
                                     )
                                 },
                             );
