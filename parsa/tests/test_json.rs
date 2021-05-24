@@ -140,7 +140,7 @@ fn it_works() {
 
 #[test]
 fn complicated_alternatives() {
-    /// Test an alternative syntax that is not json
+    // Test an alternative syntax that is not json
     create_grammar!(
         static GRAMMAR, struct TempGrammar, struct TempTree, struct TempNode,
         enum TempNodeType, enum NonterminalType, JsonTokenizer, JsonTerminal, JsonTerminalType,
