@@ -81,7 +81,6 @@ pub struct Grammar<T> {
 #[derive(Debug, Clone, Copy)]
 enum ModeData<'a> {
     Alternative(BacktrackingPoint<'a>),
-    PositiveLookahead(usize),
     LL,
 }
 
@@ -219,10 +218,6 @@ impl<'a, T: Token> Grammar<T> {
         match mode {
             ModeData::LL => {
                 stack.pop_normal();
-            }
-            ModeData::PositiveLookahead(token_index) => {
-                stack.stack_nodes.pop();
-                backtracking_tokenizer.reset(token_index);
             }
             ModeData::Alternative(backtracking_point) => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
@@ -381,15 +376,15 @@ impl<'a, T: Token> Grammar<T> {
                 start_index,
                 match push.stack_mode {
                     StackMode::LL => ModeData::LL,
-                    StackMode::PositivePeek => {
-                        ModeData::PositiveLookahead(backtracking_tokenizer.start(token))
-                    }
                     StackMode::Alternative(alternative_plan) => {
                         ModeData::Alternative(BacktrackingPoint {
                             tree_node_count: stack.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
                             fallback_plan: unsafe { &*alternative_plan },
                         })
+                    }
+                    StackMode::PositivePeek => {
+                        panic!("Pushing peeks is currently not supported")
                     }
                 },
                 enabled_token_recording,
