@@ -16,7 +16,6 @@ pub type InternalStrToNode = FastHashMap<&'static str, InternalNonterminalType>;
 pub type RuleMap = FastHashMap<InternalNonterminalType, (&'static str, Rule)>;
 pub type SoftKeywords = FastHashMap<InternalTerminalType, HashSet<&'static str>>;
 type FirstPlans = FastHashMap<InternalNonterminalType, FirstPlan>;
-type DFAStates = Vec<Pin<Box<DFAState>>>;
 pub type FastHashMap<K, V> = FnvHashMap<K, V>;
 
 pub fn new_fast_hash_map<K, V>() -> FastHashMap<K, V> {
@@ -241,7 +240,7 @@ impl Keywords {
 pub struct RuleAutomaton {
     pub type_: InternalNonterminalType,
     nfa_states: Vec<NFAState>,
-    pub dfa_states: DFAStates,
+    pub dfa_states: Vec<Pin<Box<DFAState>>>,
     name: &'static str,
     node_may_be_omitted: bool,
     nfa_end_id: NFAStateId,
