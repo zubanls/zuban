@@ -372,7 +372,7 @@ impl<'a, T: Token> Grammar<T> {
             }
             stack.push(
                 push.node_type,
-                push.next_dfa,
+                push.get_next_dfa(),
                 start_index,
                 match push.stack_mode {
                     StackMode::LL => ModeData::LL,
@@ -444,7 +444,7 @@ impl<'a> Stack<'a> {
     fn push(
         &mut self,
         node_id: InternalNonterminalType,
-        dfa_state: *const DFAState,
+        dfa_state: &'a DFAState,
         start: CodeIndex,
         mode: ModeData<'a>,
         enabled_token_recording: bool,
@@ -453,7 +453,7 @@ impl<'a> Stack<'a> {
             node_id,
             tree_node_index: self.tree_nodes.len(),
             latest_child_node_index: 0,
-            dfa_state: unsafe { &*dfa_state },
+            dfa_state,
             children_count: 0,
             mode,
             enabled_token_recording,
