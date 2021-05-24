@@ -670,7 +670,7 @@ mod tests {
         &*GRAMMAR;
     }
     #[test]
-    #[should_panic(expected = "Left recursion with lookaheads is not supported")]
+    #[should_panic(expected = "Only terminal lookaheads are allowed")]
     fn left_recursion_in_lookaheads() {
         create_grammar!(
             static GRAMMAR, struct TestGrammar, struct TestTree, struct TestNode,

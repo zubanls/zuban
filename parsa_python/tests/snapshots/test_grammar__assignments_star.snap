@@ -1,0 +1,121 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-77
+ stmt: 1-20
+  simple_stmts: 1-20
+   simple_stmt: 1-19
+    assignment: 1-19
+     star_targets: 1-5
+      star_target: 1-5
+       Keyword: 1-2 "*"
+       target_with_star_atom: 2-5
+        star_atom: 2-5
+         name_definition: 2-5
+          Name: 2-5 "foo"
+     Keyword: 6-7 "="
+     star_targets: 8-12
+      star_target: 8-12
+       Keyword: 8-9 "*"
+       target_with_star_atom: 9-12
+        star_atom: 9-12
+         name_definition: 9-12
+          Name: 9-12 "bar"
+     Keyword: 13-14 "="
+     star_expressions: 15-19
+      star_expression: 15-19
+       Keyword: 15-16 "*"
+       bitwise_or: 16-19
+        Name: 16-19 "baz"
+   Newline: 19-20 "\n"
+ stmt: 20-54
+  simple_stmts: 20-54
+   simple_stmt: 20-53
+    assignment: 20-53
+     star_targets: 20-27
+      star_target: 20-21
+       target_with_star_atom: 20-21
+        star_atom: 20-21
+         name_definition: 20-21
+          Name: 20-21 "i"
+      Keyword: 21-22 ","
+      star_target: 23-27
+       Keyword: 23-24 "*"
+       target_with_star_atom: 24-27
+        star_atom: 24-27
+         name_definition: 24-27
+          Name: 24-27 "foo"
+     Keyword: 28-29 "="
+     star_targets: 30-46
+      star_target: 30-46
+       target_with_star_atom: 30-46
+        star_atom: 30-46
+         Keyword: 30-31 "("
+         star_targets: 31-45
+          star_target: 31-45
+           target_with_star_atom: 31-45
+            star_atom: 31-45
+             Keyword: 31-32 "("
+             star_targets: 32-44
+              star_target: 32-33
+               target_with_star_atom: 32-33
+                star_atom: 32-33
+                 name_definition: 32-33
+                  Name: 32-33 "j"
+              Keyword: 33-34 ","
+              star_target: 35-44
+               target_with_star_atom: 35-44
+                star_atom: 35-44
+                 Keyword: 35-36 "["
+                 star_targets: 36-43
+                  star_target: 36-40
+                   Keyword: 36-37 "*"
+                   target_with_star_atom: 37-40
+                    star_atom: 37-40
+                     name_definition: 37-40
+                      Name: 37-40 "bar"
+                  Keyword: 40-41 ","
+                  star_target: 42-43
+                   target_with_star_atom: 42-43
+                    star_atom: 42-43
+                     name_definition: 42-43
+                      Name: 42-43 "k"
+                 Keyword: 43-44 "]"
+             Keyword: 44-45 ")"
+         Keyword: 45-46 ")"
+     Keyword: 47-48 "="
+     star_expressions: 49-53
+      star_expression: 49-53
+       Keyword: 49-50 "*"
+       bitwise_or: 50-53
+        Name: 50-53 "baz"
+   Newline: 53-54 "\n"
+ stmt: 54-77
+  simple_stmts: 54-77
+   simple_stmt: 54-76
+    assignment: 54-76
+     star_targets: 54-64
+      star_target: 54-58
+       Keyword: 54-55 "*"
+       target_with_star_atom: 55-58
+        star_atom: 55-58
+         name_definition: 55-58
+          Name: 55-58 "foo"
+      Keyword: 58-59 ","
+      star_target: 60-64
+       Keyword: 60-61 "*"
+       target_with_star_atom: 61-64
+        star_atom: 61-64
+         name_definition: 61-64
+          Name: 61-64 "bar"
+     Keyword: 65-66 "="
+     yield_expr: 67-76
+      Keyword: 67-72 "yield"
+      star_expressions: 73-76
+       expression: 73-76
+        bitwise_or: 73-76
+         Name: 73-76 "baz"
+   Newline: 76-77 "\n"
+ Endmarker: 77-77 ""
+

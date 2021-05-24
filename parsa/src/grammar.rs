@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::automaton::{
     generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
     InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, Rule,
-    RuleAutomaton, RuleMap, SoftKeywords, StackMode,
+    RuleAutomaton, RuleMap, SoftKeywords, StackMode, PlanMode
 };
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
@@ -197,8 +197,13 @@ impl<'a, T: Token> Grammar<T> {
                     }
                 }
                 Some(plan) => {
-                    self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
-                    break;
+                    if plan.mode == PlanMode::PositivePeek {
+                        let tos_mut = stack.stack_nodes.last_mut().unwrap();
+                        tos_mut.dfa_state = unsafe { &*plan.next_dfa };
+                    } else {
+                        self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
+                        break;
+                    }
                 }
             }
         }
@@ -335,14 +340,13 @@ impl<'a, T: Token> Grammar<T> {
     ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = unsafe { &*plan.next_dfa };
-        let mut enabled_token_recording = tos_mut.enabled_token_recording;
 
         let start_index = token.get_start_index();
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
         // There's one exception: If the node can be omitted we don't even have to do it.
-        if plan.is_left_recursive && !tos_mut.can_omit_children() {
+        if plan.mode == PlanMode::LeftRecursive && !tos_mut.can_omit_children() {
             tos_mut.children_count = 1;
             tos_mut.latest_child_node_index = tos_mut.tree_node_index + 1;
 
@@ -359,6 +363,8 @@ impl<'a, T: Token> Grammar<T> {
                 },
             );
         }
+
+        let mut enabled_token_recording = tos_mut.enabled_token_recording;
         stack.calculate_previous_next_node();
 
         for push in &plan.pushes {
@@ -375,7 +381,7 @@ impl<'a, T: Token> Grammar<T> {
                 start_index,
                 match push.stack_mode {
                     StackMode::Normal => ModeData::Normal,
-                    StackMode::PositiveLookahead => {
+                    StackMode::PositivePeek => {
                         ModeData::PositiveLookahead(backtracking_tokenizer.start(token))
                     }
                     StackMode::Alternative(alternative_plan) => {

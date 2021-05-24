@@ -138,7 +138,7 @@ struct DFATransition {
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum StackMode {
-    PositiveLookahead,
+    PositivePeek,
     Alternative(*const Plan),
     Normal,
 }
@@ -146,7 +146,7 @@ pub enum StackMode {
 impl std::fmt::Debug for StackMode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::PositiveLookahead => write!(f, "PositiveLookahead"),
+            Self::PositivePeek => write!(f, "PositivePeek"),
             Self::Alternative(plan) => {
                 let dfa = unsafe {&*(**plan).next_dfa};
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
@@ -174,12 +174,19 @@ impl std::fmt::Debug for Push {
     }
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum PlanMode {
+    LeftRecursive,
+    LL,
+    PositivePeek,
+}
+
 #[derive(Clone)]
 pub struct Plan {
     pub pushes: Vec<Push>,
     pub next_dfa: *const DFAState,
     pub type_: InternalSquashedType,
-    pub is_left_recursive: bool,
+    pub mode: PlanMode,
     pub debug_text: &'static str,
 }
 
@@ -190,7 +197,7 @@ impl std::fmt::Debug for Plan {
          .field("pushes", &self.pushes)
          .field("next_dfa", &format!("{} #{}", dfa.from_rule, dfa.list_index.0))
          .field("type_", &self.type_.0)
-         .field("is_left_recursive", &self.is_left_recursive)
+         .field("mode", &self.mode)
          .field("debug_text", &self.debug_text)
          .finish()
     }
@@ -827,7 +834,7 @@ fn plans_for_dfa(
                         next_dfa: transition.to,
                         type_: t,
                         debug_text,
-                        is_left_recursive: false,
+                        mode: PlanMode::LL,
                     },
                 );
                 if let Some(kws) = soft_keywords.get(&type_) {
@@ -847,7 +854,7 @@ fn plans_for_dfa(
                                 next_dfa: transition.to,
                                 type_: t,
                                 debug_text,
-                                is_left_recursive: false,
+                                mode: PlanMode::LL,
                             },
                         );
                     }
@@ -912,47 +919,25 @@ fn plans_for_dfa(
                         next_dfa: transition.to,
                         type_: t,
                         debug_text: keyword,
-                        is_left_recursive: false,
+                        mode: PlanMode::LL,
                     },
                 );
             }
             TransitionType::PositiveLookaheadStart => {
-                let (inner_plans, inner_is_left_recursive) = plans_for_dfa(
-                    nonterminal_map,
-                    keywords,
-                    soft_keywords,
-                    automatons,
-                    first_plans,
-                    automaton_key,
-                    transition.get_next_dfa().list_index,
-                    is_first_plan,
-                );
-                if inner_is_left_recursive {
-                    panic!(
-                        "Left recursion with lookaheads is not supported (in rule {:?})",
-                        nonterminal_to_str(nonterminal_map, automaton_key)
-                    );
-                }
-                for (&t, plan) in &create_lookahead_plans(automaton_key, transition, &inner_plans) {
-                    add_if_no_conflict(
-                        &mut plans,
-                        &mut conflict_transitions,
-                        &mut conflict_tokens,
-                        transition,
-                        t,
-                        || plan.clone(),
-                    );
+                let (mut next_dfa, peek_terminals) = get_peek_dfa(keywords, &transition);
+                for t in peek_terminals {
+                    plans.insert(t, (transition, Plan {
+                        debug_text: "positive lookahead",
+                        mode: PlanMode::PositivePeek,
+                        next_dfa,
+                        pushes: vec!(),
+                        type_: t,
+                    }));
                 }
             }
             TransitionType::NegativeLookaheadStart => {
-                let dfa = transition.get_next_dfa();
-                let lookahead_end = dfa.transitions[0].get_next_dfa();
-                assert!(lookahead_end.is_lookahead_end());
-                assert_eq!(lookahead_end.transitions.len(), 1);
-
-                let next_dfa = lookahead_end.transitions[0].get_next_dfa();
-                // Only simple peeks are allowed at the moment.
-                let (mut inner_plans, _) = plans_for_dfa(
+                let (mut next_dfa, peek_terminals) = get_peek_dfa(keywords, &transition);
+                let (mut next_plans, _) = plans_for_dfa(
                     nonterminal_map,
                     keywords,
                     soft_keywords,
@@ -962,29 +947,22 @@ fn plans_for_dfa(
                     next_dfa.list_index,
                     is_first_plan,
                 );
-                for transition in &dfa.transitions {
-                    let t = match transition.type_ {
-                        TransitionType::Terminal(type_, debug_text) => type_.to_squashed(),
-                        TransitionType::Keyword(keyword) => keywords.get_squashed(keyword).unwrap(),
-                        _ => {
-                            panic!("Only terminal lookaheads are allowed");
-                        }
-                    };
+                for t in peek_terminals {
                     // Negative lookaheads are only allowed to be simple terminals.
-                    // However we can not just remove those terminals from plans,
+                    // However we cannot simply remove those terminals from plans,
                     // because that would not be sufficient for final states.
                     let automaton = &automatons[&automaton_key];
                     let empty_dfa_id = automaton.no_transition_dfa_id.unwrap();
-                    inner_plans.insert(t, Plan {
+                    next_plans.insert(t, Plan {
                         debug_text: "negative lookahead abort",
-                        is_left_recursive: false,
+                        mode: PlanMode::LL,
                         next_dfa: &*automaton.dfa_states[empty_dfa_id.0],
                         pushes: vec!(),
                         type_: t,
                     });
                 }
                 plans.extend(
-                    inner_plans
+                    next_plans
                         .iter()
                         .map(|(&key, plan)| (key, (transition, plan.clone()))),
                 );
@@ -1086,7 +1064,7 @@ fn create_lookahead_plans(
     inner_plans: &SquashedTransitions,
 ) -> SquashedTransitions {
     let mode = match transition.type_ {
-        TransitionType::PositiveLookaheadStart => StackMode::PositiveLookahead,
+        TransitionType::PositiveLookaheadStart => StackMode::PositivePeek,
         _ => unreachable!(),
     };
     inner_plans
@@ -1135,7 +1113,7 @@ fn create_left_recursion_plans(
                                             next_dfa: p.next_dfa,
                                             type_: t,
                                             debug_text: p.debug_text,
-                                            is_left_recursive: true,
+                                            mode: PlanMode::LeftRecursive,
                                         },
                                     );
                                 }
@@ -1170,8 +1148,28 @@ fn nest_plan(
         next_dfa,
         type_: plan.type_,
         debug_text: plan.debug_text,
-        is_left_recursive: false,
+        mode: PlanMode::LL,
     }
+}
+
+fn get_peek_dfa<'a>(keywords: &'a Keywords, transition: &'a DFATransition) -> (&'a DFAState, Vec<InternalSquashedType>) {
+    let dfa = transition.get_next_dfa();
+    let lookahead_end = dfa.transitions[0].get_next_dfa();
+    assert!(lookahead_end.is_lookahead_end());
+    assert_eq!(lookahead_end.transitions.len(), 1);
+
+    let next_dfa = lookahead_end.transitions[0].get_next_dfa();
+    // Only simple peeks are allowed at the moment.
+    let terminals = dfa.transitions.iter().map(|transition| {
+        match transition.type_ {
+            TransitionType::Terminal(type_, debug_text) => type_.to_squashed(),
+            TransitionType::Keyword(keyword) => keywords.get_squashed(keyword).unwrap(),
+            _ => {
+                panic!("Only terminal lookaheads are allowed");
+            }
+        }
+    }).collect();
+    (next_dfa, terminals)
 }
 
 fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {

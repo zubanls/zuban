@@ -325,8 +325,7 @@ create_grammar!(
     star_targets: ",".star_target+ [","]
     star_target: "*"? target_with_star_atom
     target_with_star_atom:
-        | t_primary "." name_definition
-        | t_primary "[" slices "]"
+        | t_primary
         | star_atom
     star_atom:
         | name_definition
@@ -334,24 +333,22 @@ create_grammar!(
         | "[" [star_targets] "]"
 
     single_target:
-        | single_subscript_attribute_target
+        | t_primary
         | name_definition
         | "(" single_target ")"
-    single_subscript_attribute_target:
-        | t_primary "." name_definition
-        | t_primary "[" slices "]"
 
     targets: ",".target+ [","]
     target:
-        | t_primary "." name_definition
-        | t_primary "[" slices "]"
+        | t_primary
         | t_atom
-    t_primary: (
-              t_primary "." Name
-            | t_primary "[" slices "]"
-            | t_primary "(" [arguments] ")"
-            | atom
-        ) &("."|"["|"(")
+    t_primary:
+        | (
+              t_primary "." Name &("."|"["|"(")
+            | t_primary "(" [arguments] ")" &("."|"["|"(")
+            | atom &("."|"["|"(")
+        )// &("."|"["|"(")
+        | t_primary "[" slices "]"
+        | t_primary "." name_definition
     t_atom:
         | name_definition
         | "(" [targets] ")"
