@@ -1284,7 +1284,14 @@ fn split_tokens(
 }
 
 fn panic_if_unreachable_transition(original_dfa: &DFAState, split_dfa: &DFAState) {
-    /// Check XXX
+    // Check if a transition that is part of an alternative is even reachable.
+    // This could look like this:
+    //
+    //     foo: "foo" "." [";"] | bar | "foo" "." [","]
+    //     bar: "bar" ":"
+    //
+    // Here it might look like `foo.,` is matched. However this is never the case,
+    // because it will have matched `foo.`, because that is good enough for this rule.
     fn check(already_checked: &mut Vec<DFAStateId>, original_dfa: &DFAState, split_dfa: &DFAState) {
         already_checked.push(split_dfa.list_index);
         let t1: Vec<_> = original_dfa.transitions.iter().map(|t| t.type_).collect();
