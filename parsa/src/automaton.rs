@@ -476,13 +476,10 @@ impl RuleAutomaton {
         // problem is that the final calculation thinks it's not at the end, because there is still
         // a negative lookahead following. However the negative lookahead means that as long as a
         // specific token does not appear, it will in fact be final.
-        if state.transitions.iter().any(
+        state.is_final |= state.transitions.iter().any(
             |t| t.type_ == TransitionType::NegativeLookaheadStart && {
-                search_lookahead_end(t.get_next_dfa()).is_final
-            }
-        ) {
-            state.is_final = true;
-        }
+            search_lookahead_end(t.get_next_dfa()).is_final
+        });
     }
 
     fn add_no_transition_dfa_if_necessary(&mut self) {
