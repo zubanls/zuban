@@ -198,7 +198,7 @@ impl<'a, T: Token> Grammar<T> {
                 Some(plan) => {
                     if plan.mode == PlanMode::PositivePeek {
                         let tos_mut = stack.stack_nodes.last_mut().unwrap();
-                        tos_mut.dfa_state = unsafe { &*plan.next_dfa };
+                        tos_mut.dfa_state = plan.get_next_dfa();
                     } else {
                         self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
                         break;
@@ -328,13 +328,13 @@ impl<'a, T: Token> Grammar<T> {
     #[inline]
     fn apply_plan<I: Iterator<Item = T>>(
         &self,
-        stack: &mut Stack,
-        plan: &Plan,
+        stack: &mut Stack<'a>,
+        plan: &'a Plan,
         token: &T,
         backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
     ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = unsafe { &*plan.next_dfa };
+        tos_mut.dfa_state = plan.get_next_dfa();
 
         let start_index = token.get_start_index();
         // If we have left recursion we have to do something a bit weird: We push the same tree
