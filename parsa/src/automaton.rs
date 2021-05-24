@@ -148,7 +148,7 @@ impl std::fmt::Debug for StackMode {
         match self {
             Self::PositivePeek => write!(f, "PositivePeek"),
             Self::Alternative(plan) => {
-                let dfa = unsafe {&*(**plan).next_dfa};
+                let dfa = unsafe {&(**plan)}.get_next_dfa();
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
             }
             Self::LL => write!(f, "LL"),
@@ -165,7 +165,7 @@ pub struct Push {
 
 impl std::fmt::Debug for Push {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dfa = unsafe {&*self.next_dfa};
+        let dfa = self.get_next_dfa();
         f.debug_struct("Push")
          .field("node_type", &self.node_type.0)
          .field("next_dfa", &format!("{} #{}", dfa.from_rule, dfa.list_index.0))
@@ -192,7 +192,7 @@ pub struct Plan {
 
 impl std::fmt::Debug for Plan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dfa = unsafe {&*self.next_dfa};
+        let dfa = self.get_next_dfa();
         f.debug_struct("Plan")
          .field("pushes", &self.pushes)
          .field("next_dfa", &format!("{} #{}", dfa.from_rule, dfa.list_index.0))
@@ -478,8 +478,7 @@ impl RuleAutomaton {
         // specific token does not appear, it will in fact be final.
         if state.transitions.iter().any(
             |t| t.type_ == TransitionType::NegativeLookaheadStart && {
-                let end = search_lookahead_end(unsafe {&*t.to});
-                unsafe {&*end}.is_final
+                search_lookahead_end(t.get_next_dfa()).is_final
             }
         ) {
             state.is_final = true;
@@ -1178,14 +1177,14 @@ fn get_peek_dfa<'a>(keywords: &'a Keywords, transition: &'a DFATransition) -> (&
     (next_dfa, terminals)
 }
 
-fn search_lookahead_end(dfa_state: &DFAState) -> *const DFAState {
+fn search_lookahead_end(dfa_state: &DFAState) -> &DFAState {
     let mut already_checked = HashSet::new();
     already_checked.insert(dfa_state.list_index);
 
-    fn search(already_checked: &mut HashSet<DFAStateId>, dfa_state: &DFAState) -> *const DFAState {
+    fn search<'a, 'b>(already_checked: &'a mut HashSet<DFAStateId>, dfa_state: &'b DFAState) -> &'b DFAState {
         for transition in &dfa_state.transitions {
             match transition.type_ {
-                TransitionType::LookaheadEnd => return transition.to,
+                TransitionType::LookaheadEnd => return transition.get_next_dfa(),
                 TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
                     unimplemented!()
                 }
@@ -1300,11 +1299,11 @@ fn panic_if_unreachable_transition(original_dfa: &DFAState, split_dfa: &DFAState
             panic!("Found an unreachable alternative in the rule {:?}", original_dfa.from_rule);
         }
         for t in split_dfa.transitions.iter() {
-            let dfa = unsafe {&*t.to};
+            let dfa = t.get_next_dfa();
             if !already_checked.contains(&dfa.list_index) {
                 for t2 in original_dfa.transitions.iter() {
                     if t2.type_ == t.type_ {
-                        check(already_checked, unsafe {&*t2.to}, dfa);
+                        check(already_checked, t2.get_next_dfa(), dfa);
                     }
                 }
             }
