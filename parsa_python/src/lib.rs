@@ -290,23 +290,16 @@ create_grammar!(
 
     star_targets: ",".star_target+ [","]
     star_target: "*"? target_with_star_atom
-    target_with_star_atom:
-        | t_primary
-        | star_atom
+    target_with_star_atom: t_primary | star_atom
     star_atom:
         | name_definition
         | "(" [star_targets] ")"
         | "[" [star_targets] "]"
 
-    single_target:
-        | t_primary
-        | name_definition
-        | "(" single_target ")"
+    single_target: t_primary | name_definition | "(" single_target ")"
 
     targets: ",".target+ [","]
-    target:
-        | t_primary
-        | t_atom
+    target: t_primary | t_atom
     t_primary:
         | (
               t_primary "." Name
@@ -315,10 +308,7 @@ create_grammar!(
         ) &("."|"["|"(")
         | t_primary "[" slices "]"
         | t_primary "." name_definition
-    t_atom:
-        | name_definition
-        | "(" [targets] ")"
-        | "[" [targets] "]"
+    t_atom: name_definition | "(" [targets] ")" | "[" [targets] "]"
     name_definition: Name
 
     strings: (String | fstring)+
