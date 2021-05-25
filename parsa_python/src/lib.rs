@@ -44,10 +44,10 @@ create_grammar!(
     import_as_name: Name ["as" Name]
     dotted_as_name: dotted_name ["as" Name]
     import_as_names: ",".import_as_name+ ","?
-    dotted_as_names: dotted_as_name ("," dotted_as_name)*
+    dotted_as_names: ",".dotted_as_name+
     dotted_name: Name ("." Name)*
-    global_stmt: "global" Name ("," Name)*
-    nonlocal_stmt: "nonlocal" Name ("," Name)*
+    global_stmt: "global" ",".Name+
+    nonlocal_stmt: "nonlocal" ",".Name+
     assert_stmt: "assert" expression ["," expression]
 
     compound_stmt:
@@ -161,14 +161,14 @@ create_grammar!(
 
     block: simple_stmts | Newline Indent stmt+ Dedent
 
-    star_expressions: (expression|star_expression) ("," (expression|star_expression))* [","]
+    star_expressions: ",".(expression|star_expression)+ [","]
     star_expression: "*" bitwise_or
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression: "*" disjunction | named_expression
 
     named_expression: Name ":=" expression | expression
 
-    expressions: expression ("," expression)* [","]
+    expressions: ",".expression+ [","]
     expression: disjunction ["if" disjunction "else" expression] | lambda
 
     lambda: "lambda" [lambda_parameters] ":" expression
