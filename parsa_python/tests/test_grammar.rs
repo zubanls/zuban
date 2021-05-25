@@ -141,13 +141,17 @@ parametrize_snapshots!(
             def prop(self):
                 pass
         ");
-    imports: dedent("
+    import_names: dedent("
         import foo
         import foo.bar as baz
+        import foo, bar, baz
+        ");
+    import_from_normal: dedent("
         from foo import bar
         from foo import bar as baz
-        import foo, bar, baz
         from foo import *
+        ");
+    import_from_dotted: dedent("
         from . import (foo, bar)
         from . import (foo, bar,)
         ");

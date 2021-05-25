@@ -1,0 +1,44 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-66
+ stmt: 1-21
+  simple_stmts: 1-21
+   simple_stmt: 1-20
+    import_from: 1-20
+     Keyword: 1-5 "from"
+     dotted_name: 6-9
+      Name: 6-9 "foo"
+     Keyword: 10-16 "import"
+     import_from_targets: 17-20
+      import_from_as_name: 17-20
+       Name: 17-20 "bar"
+   Newline: 20-21 "\n"
+ stmt: 21-48
+  simple_stmts: 21-48
+   simple_stmt: 21-47
+    import_from: 21-47
+     Keyword: 21-25 "from"
+     dotted_name: 26-29
+      Name: 26-29 "foo"
+     Keyword: 30-36 "import"
+     import_from_targets: 37-47
+      import_from_as_name: 37-47
+       Name: 37-40 "bar"
+       Keyword: 41-43 "as"
+       Name: 44-47 "baz"
+   Newline: 47-48 "\n"
+ stmt: 48-66
+  simple_stmts: 48-66
+   simple_stmt: 48-65
+    import_from: 48-65
+     Keyword: 48-52 "from"
+     dotted_name: 53-56
+      Name: 53-56 "foo"
+     Keyword: 57-63 "import"
+     import_from_targets: 64-65
+      Keyword: 64-65 "*"
+   Newline: 65-66 "\n"
+ Endmarker: 66-66 ""
+
