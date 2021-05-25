@@ -37,6 +37,10 @@ create_grammar!(
     return_stmt: "return" [star_expressions]
     yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
+    global_stmt: "global" ",".Name+
+    nonlocal_stmt: "nonlocal" ",".Name+
+    assert_stmt: "assert" expression ["," expression]
+
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from: ("from" (("." | "...")* dotted_name | ("." | "...")+)
@@ -46,9 +50,6 @@ create_grammar!(
     dotted_name: Name ("." Name)*
     import_as_names: ",".import_as_name+ ","?
     import_as_name: Name ["as" Name]
-    global_stmt: "global" ",".Name+
-    nonlocal_stmt: "nonlocal" ",".Name+
-    assert_stmt: "assert" expression ["," expression]
 
     compound_stmt:
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
