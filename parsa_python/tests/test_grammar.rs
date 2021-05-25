@@ -93,6 +93,12 @@ parametrize_snapshots!(
         foo.bar |= 3
         foo, bar += 3
         ");
+    assignments_setitem: dedent("
+        foo[0] += 3
+        foo[0] = a = 3
+        foo[a, b] = c
+        foo[a::, b:f, c:=3] = c
+        ");
     assignments_annotation: dedent("
         foo: bar
         foo: int = 3
