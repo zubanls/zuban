@@ -21,7 +21,7 @@ create_grammar!(
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
     simple_stmt:
-        | assignment | star_expressions | del_stmt | pass_stmt | flow_stmt
+        | assignment | star_expressions | del_stmt | pass_stmt
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
     assignment:
@@ -44,13 +44,14 @@ create_grammar!(
 
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
-    import_from: ("from" (("." | "...")* dotted_name | ("." | "...")+)
-                  "import" ("*" | "(" import_as_names ")" | import_as_names))
+    import_from:
+        | "from" ("." | "...")* dotted_name "import" import_from_targets
+        | "from" ("." | "...")+ "import" import_from_targets
     dotted_as_names: ",".dotted_as_name+
     dotted_as_name: dotted_name ["as" Name]
-    dotted_name: Name ("." Name)*
-    import_as_names: ",".import_as_name+ ","?
-    import_as_name: Name ["as" Name]
+    dotted_name: [dotted_name "."] Name
+    import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+    import_from_as_name: Name ["as" Name]
 
     compound_stmt:
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt

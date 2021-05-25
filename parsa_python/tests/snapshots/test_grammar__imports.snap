@@ -21,7 +21,8 @@ file: 0-171
      dotted_as_names: 19-33
       dotted_as_name: 19-33
        dotted_name: 19-26
-        Name: 19-22 "foo"
+        dotted_name: 19-22
+         Name: 19-22 "foo"
         Keyword: 22-23 "."
         Name: 23-26 "bar"
        Keyword: 27-29 "as"
@@ -35,8 +36,8 @@ file: 0-171
      dotted_name: 39-42
       Name: 39-42 "foo"
      Keyword: 43-49 "import"
-     import_as_names: 50-53
-      import_as_name: 50-53
+     import_from_targets: 50-53
+      import_from_as_name: 50-53
        Name: 50-53 "bar"
    Newline: 53-54 "\n"
  stmt: 54-81
@@ -47,8 +48,8 @@ file: 0-171
      dotted_name: 59-62
       Name: 59-62 "foo"
      Keyword: 63-69 "import"
-     import_as_names: 70-80
-      import_as_name: 70-80
+     import_from_targets: 70-80
+      import_from_as_name: 70-80
        Name: 70-73 "bar"
        Keyword: 74-76 "as"
        Name: 77-80 "baz"
@@ -79,7 +80,8 @@ file: 0-171
      dotted_name: 107-110
       Name: 107-110 "foo"
      Keyword: 111-117 "import"
-     Keyword: 118-119 "*"
+     import_from_targets: 118-119
+      Keyword: 118-119 "*"
    Newline: 119-120 "\n"
  stmt: 120-145
   simple_stmts: 120-145
@@ -88,14 +90,14 @@ file: 0-171
      Keyword: 120-124 "from"
      Keyword: 125-126 "."
      Keyword: 127-133 "import"
-     Keyword: 134-135 "("
-     import_as_names: 135-143
-      import_as_name: 135-138
+     import_from_targets: 134-144
+      Keyword: 134-135 "("
+      import_from_as_name: 135-138
        Name: 135-138 "foo"
       Keyword: 138-139 ","
-      import_as_name: 140-143
+      import_from_as_name: 140-143
        Name: 140-143 "bar"
-     Keyword: 143-144 ")"
+      Keyword: 143-144 ")"
    Newline: 144-145 "\n"
  stmt: 145-171
   simple_stmts: 145-171
@@ -104,15 +106,15 @@ file: 0-171
      Keyword: 145-149 "from"
      Keyword: 150-151 "."
      Keyword: 152-158 "import"
-     Keyword: 159-160 "("
-     import_as_names: 160-169
-      import_as_name: 160-163
+     import_from_targets: 159-170
+      Keyword: 159-160 "("
+      import_from_as_name: 160-163
        Name: 160-163 "foo"
       Keyword: 163-164 ","
-      import_as_name: 165-168
+      import_from_as_name: 165-168
        Name: 165-168 "bar"
       Keyword: 168-169 ","
-     Keyword: 169-170 ")"
+      Keyword: 169-170 ")"
    Newline: 170-171 "\n"
  Endmarker: 171-171 ""
 
