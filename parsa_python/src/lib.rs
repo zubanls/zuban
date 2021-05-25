@@ -343,10 +343,10 @@ create_grammar!(
         | t_atom
     t_primary:
         | (
-              t_primary "." Name &("."|"["|"(")
-            | t_primary "(" [arguments|comprehension] ")" &("."|"["|"(")
-            | atom &("."|"["|"(")
-        )// &("."|"["|"(")
+              t_primary "." Name
+            | t_primary "(" [arguments|comprehension] ")"
+            | atom
+        ) &("."|"["|"(")
         | t_primary "[" slices "]"
         | t_primary "." name_definition
     t_atom:
