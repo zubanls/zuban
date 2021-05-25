@@ -99,6 +99,12 @@ parametrize_snapshots!(
         foo.bar: baz
         foo: bar = a = 4
         ");
+    for_stmt: dedent("
+        for x in [1,2]:
+            ...
+        for *b in *c: ...
+        for c.x, (*b, d.y[0]) in i, *j, k: ...
+        ");
     del_stmt: dedent("
         del foo
         del foo,

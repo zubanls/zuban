@@ -58,7 +58,7 @@ create_grammar!(
     if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     else_block: "else" ":" block
     while_stmt: "while" named_expression ":" block else_block?
-    for_stmt: "for" star_targets "in" expressions ":" block else_block?
+    for_stmt: "for" star_targets "in" star_expressions ":" block else_block?
     try_stmt: "try" ":" block (except_block+ else_block? finally_block | finally_block)
     except_block: except_clause ":" block
     except_clause: "except" [expression ["as" name_definition]]
