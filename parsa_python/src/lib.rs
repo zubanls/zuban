@@ -20,8 +20,10 @@ create_grammar!(
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
-    simple_stmt: (assignment | star_expressions | del_stmt | pass_stmt | flow_stmt |
-                  import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt)
+    simple_stmt:
+        | assignment | star_expressions | del_stmt | pass_stmt | flow_stmt
+        | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
+        | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
     assignment:
         | (star_targets "=" )+ (yield_expr | star_expressions)
         | single_target ":" expression ["=" (yield_expr | star_expressions)]
@@ -31,7 +33,6 @@ create_grammar!(
                 "<<=" | ">>=" | "**=" | "//=")
     del_stmt: "del" targets
     pass_stmt: "pass"
-    flow_stmt: break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
     break_stmt: "break"
     continue_stmt: "continue"
     return_stmt: "return" [star_expressions]
