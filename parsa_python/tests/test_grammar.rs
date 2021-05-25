@@ -105,6 +105,11 @@ parametrize_snapshots!(
         foo.bar: baz
         foo: bar = a = 4
         ");
+    assignments_with_call: dedent("
+        foo().bar = 1
+        foo(1,).bar[1] = 1
+        foo(a for a in b).bar[1] = 1
+        ");
     for_stmt: dedent("
         for x in [1,2]:
             ...
