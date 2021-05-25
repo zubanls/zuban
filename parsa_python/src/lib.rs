@@ -72,63 +72,35 @@ create_grammar!(
     subject_expr:
         | star_named_expression "," star_named_expressions?
         | named_expression
-    case_block:
-        | "case" patterns guard? ":" block
+    case_block: "case" patterns guard? ":" block
     guard: "if" named_expression
 
-    patterns:
-        | open_sequence_pattern
-        | pattern
-    pattern:
-        | as_pattern
-        | or_pattern
-    as_pattern:
-        | or_pattern "as" pattern_capture_target
-    or_pattern:
-        | "|".closed_pattern+
+    patterns: open_sequence_pattern | pattern
+    pattern: as_pattern | or_pattern
+    as_pattern: or_pattern "as" pattern_capture_target
+    or_pattern: "|".closed_pattern+
     closed_pattern:
-        | literal_pattern
-        | wildcard_pattern
-        | pattern_capture_target
-        | value_pattern
-        | group_pattern
-        | sequence_pattern
-        | mapping_pattern
-        | class_pattern
+        | literal_pattern | wildcard_pattern | pattern_capture_target | value_pattern
+        | group_pattern | sequence_pattern | mapping_pattern | class_pattern
 
     literal_pattern:
-        | complex_number
-        | signed_number
-        | strings
-        | "None"
-        | "True"
-        | "False"
+        | complex_number | signed_number | strings
+        | "None" | "True" | "False"
     complex_number: signed_number ("+"|"-") Number
     signed_number: "-"? Number
 
-    pattern_capture_target:
-        | !"_" Name
-
-    wildcard_pattern:
-        | "_"
-
+    pattern_capture_target: !"_" Name
+    wildcard_pattern: "_"
     value_pattern: dotted_name
 
-    group_pattern:
-        | "(" pattern ")"
-
+    group_pattern: "(" pattern ")"
     sequence_pattern:
         | "[" maybe_sequence_pattern? "]"
         | "(" open_sequence_pattern? ")"
-    open_sequence_pattern:
-        | maybe_star_pattern "," maybe_sequence_pattern?
-    maybe_sequence_pattern:
-        | ",".maybe_star_pattern+ ","?
-    maybe_star_pattern:
-        | star_pattern
-        | pattern
-    star_pattern:
-        | "*" (pattern_capture_target | wildcard_pattern)
+    open_sequence_pattern: maybe_star_pattern "," maybe_sequence_pattern?
+    maybe_sequence_pattern: ",".maybe_star_pattern+ ","?
+    maybe_star_pattern: star_pattern | pattern
+    star_pattern: "*" (pattern_capture_target | wildcard_pattern)
 
     mapping_pattern:
         | "{" double_star_pattern? "}"
@@ -141,12 +113,9 @@ create_grammar!(
         | dotted_name "(" positional_patterns ","? ")"
         | dotted_name "(" keyword_patterns ","? ")"
         | dotted_name "(" positional_patterns "," keyword_patterns ","? ")"
-    positional_patterns:
-        | ",".pattern+
-    keyword_patterns:
-        | ",".keyword_pattern+
-    keyword_pattern:
-        | Name "=" pattern
+    positional_patterns: ",".pattern+
+    keyword_patterns: ",".keyword_pattern+
+    keyword_pattern: Name "=" pattern
 
     async_function_def: "async" function_def
     function_def: "def" Name "(" [parameters] ")" ["->" expression] ":" block
