@@ -146,14 +146,24 @@ parametrize_snapshots!(
         import foo.bar as baz
         import foo, bar, baz
         ");
+    import_name_fails: dedent("
+        import foo,
+        import foo, bar,
+        ");
     import_from_normal: dedent("
         from foo import bar
         from foo import bar as baz
         from foo import *
         ");
     import_from_dotted: dedent("
-        from . import (foo, bar)
+        from . import (foo as baz, bar)
         from . import (foo, bar,)
+        from ..foo import bar as baz
+        from ... import *
+        ");
+    import_from_fails: dedent("
+        from . import foo,
+        from . import foo, bar,
         ");
     calls: dedent("
         foo(bar)

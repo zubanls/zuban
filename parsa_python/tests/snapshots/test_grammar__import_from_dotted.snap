@@ -2,39 +2,67 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file: 0-52
- stmt: 1-26
-  simple_stmts: 1-26
-   simple_stmt: 1-25
-    import_from: 1-25
+file: 0-106
+ stmt: 1-33
+  simple_stmts: 1-33
+   simple_stmt: 1-32
+    import_from: 1-32
      Keyword: 1-5 "from"
      Keyword: 6-7 "."
      Keyword: 8-14 "import"
-     import_from_targets: 15-25
+     import_from_targets: 15-32
       Keyword: 15-16 "("
-      import_from_as_name: 16-19
+      import_from_as_name: 16-26
        Name: 16-19 "foo"
-      Keyword: 19-20 ","
-      import_from_as_name: 21-24
-       Name: 21-24 "bar"
-      Keyword: 24-25 ")"
-   Newline: 25-26 "\n"
- stmt: 26-52
-  simple_stmts: 26-52
-   simple_stmt: 26-51
-    import_from: 26-51
-     Keyword: 26-30 "from"
-     Keyword: 31-32 "."
-     Keyword: 33-39 "import"
-     import_from_targets: 40-51
-      Keyword: 40-41 "("
-      import_from_as_name: 41-44
-       Name: 41-44 "foo"
-      Keyword: 44-45 ","
-      import_from_as_name: 46-49
-       Name: 46-49 "bar"
-      Keyword: 49-50 ","
-      Keyword: 50-51 ")"
-   Newline: 51-52 "\n"
- Endmarker: 52-52 ""
+       Keyword: 20-22 "as"
+       Name: 23-26 "baz"
+      Keyword: 26-27 ","
+      import_from_as_name: 28-31
+       Name: 28-31 "bar"
+      Keyword: 31-32 ")"
+   Newline: 32-33 "\n"
+ stmt: 33-59
+  simple_stmts: 33-59
+   simple_stmt: 33-58
+    import_from: 33-58
+     Keyword: 33-37 "from"
+     Keyword: 38-39 "."
+     Keyword: 40-46 "import"
+     import_from_targets: 47-58
+      Keyword: 47-48 "("
+      import_from_as_name: 48-51
+       Name: 48-51 "foo"
+      Keyword: 51-52 ","
+      import_from_as_name: 53-56
+       Name: 53-56 "bar"
+      Keyword: 56-57 ","
+      Keyword: 57-58 ")"
+   Newline: 58-59 "\n"
+ stmt: 59-88
+  simple_stmts: 59-88
+   simple_stmt: 59-87
+    import_from: 59-87
+     Keyword: 59-63 "from"
+     Keyword: 64-65 "."
+     Keyword: 65-66 "."
+     dotted_name: 66-69
+      Name: 66-69 "foo"
+     Keyword: 70-76 "import"
+     import_from_targets: 77-87
+      import_from_as_name: 77-87
+       Name: 77-80 "bar"
+       Keyword: 81-83 "as"
+       Name: 84-87 "baz"
+   Newline: 87-88 "\n"
+ stmt: 88-106
+  simple_stmts: 88-106
+   simple_stmt: 88-105
+    import_from: 88-105
+     Keyword: 88-92 "from"
+     Keyword: 93-96 "..."
+     Keyword: 97-103 "import"
+     import_from_targets: 104-105
+      Keyword: 104-105 "*"
+   Newline: 105-106 "\n"
+ Endmarker: 106-106 ""
 
