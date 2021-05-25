@@ -265,10 +265,10 @@ create_grammar!(
     lambda_starred_param: Name
     lambda_double_starred_param: "**" Name
 
-    disjunction:? conjunction ("or" conjunction)*
-    conjunction:? inversion ("and" inversion)*
+    disjunction:? [disjunction "or"] conjunction
+    conjunction:? [conjunction "and"] inversion
     inversion:? "not" inversion | comparison
-    comparison:? bitwise_or (comp_op bitwise_or)*
+    comparison:? [comparison comp_op] bitwise_or
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
