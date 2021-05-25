@@ -1,0 +1,111 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-52
+ Error(stmt): 9-20
+  Error(simple_stmts): 9-20
+   Error(simple_stmt): 9-20
+    Error(star_expressions): 9-20
+     Error(expression): 9-20
+      Error(disjunction): 9-20
+       Error(conjunction): 9-20
+        Error(inversion): 9-20
+         Error(comparison): 9-20
+          Error(bitwise_or): 9-20
+           Error(bitwise_xor): 9-20
+            Error(bitwise_and): 9-20
+             Error(shift_expr): 9-20
+              Error(sum): 9-20
+               Error(term): 9-20
+                Error(factor): 9-20
+                 Error(power): 9-20
+                  Error(await_primary): 9-20
+                   Error(primary): 9-20
+                    Error(atom): 9-20
+                     Keyword: 9-10 "["
+                     Error(comprehension): 10-20
+                      named_expression: 10-11
+                       expression: 10-11
+                        bitwise_or: 10-11
+                         Number: 10-11 "1"
+                      Error(for_if_clauses): 12-20
+                       Error(async_for_if_clause): 12-20
+                        Error(sync_for_if_clause): 12-20
+                         Keyword: 12-15 "for"
+                         star_targets: 16-17
+                          star_target: 16-17
+                           target_with_star_atom: 16-17
+                            star_atom: 16-17
+                             name_definition: 16-17
+                              Name: 16-17 "a"
+                         Keyword: 18-20 "in"
+ Error(stmt): 21-23
+  Error(simple_stmts): 21-23
+   simple_stmt: 21-23
+    star_expressions: 21-23
+     star_expression: 21-23
+      Keyword: 21-22 "*"
+      bitwise_or: 22-23
+       Name: 22-23 "b"
+ Error(stmt): 23-24
+  Error(Keyword): 23-24 "]"
+ stmt: 24-25
+  Newline: 24-25 "\n"
+ Error(stmt): 25-43
+  Error(simple_stmts): 25-43
+   Error(simple_stmt): 25-43
+    Error(star_expressions): 25-43
+     Error(expression): 25-43
+      Error(disjunction): 25-43
+       Error(conjunction): 25-43
+        Error(inversion): 25-43
+         Error(comparison): 25-43
+          Error(bitwise_or): 25-43
+           Error(bitwise_xor): 25-43
+            Error(bitwise_and): 25-43
+             Error(shift_expr): 25-43
+              Error(sum): 25-43
+               Error(term): 25-43
+                Error(factor): 25-43
+                 Error(power): 25-43
+                  Error(await_primary): 25-43
+                   Error(primary): 25-43
+                    Error(atom): 25-43
+                     Keyword: 25-26 "["
+                     comprehension: 26-43
+                      named_expression: 26-27
+                       expression: 26-27
+                        bitwise_or: 26-27
+                         Number: 26-27 "1"
+                      for_if_clauses: 28-43
+                       sync_for_if_clause: 28-43
+                        Keyword: 28-31 "for"
+                        star_targets: 32-33
+                         star_target: 32-33
+                          target_with_star_atom: 32-33
+                           star_atom: 32-33
+                            name_definition: 32-33
+                             Name: 32-33 "a"
+                        Keyword: 34-36 "in"
+                        bitwise_or: 37-38
+                         Name: 37-38 "b"
+                        comp_if: 39-43
+                         Keyword: 39-41 "if"
+                         bitwise_or: 42-43
+                          Name: 42-43 "a"
+ Error(stmt): 44-48
+  Error(Keyword): 44-48 "else"
+ Error(stmt): 49-50
+  Error(simple_stmts): 49-50
+   simple_stmt: 49-50
+    star_expressions: 49-50
+     expression: 49-50
+      bitwise_or: 49-50
+       Name: 49-50 "c"
+ Error(stmt): 50-51
+  Error(Keyword): 50-51 "]"
+ stmt: 51-52
+  Newline: 51-52 "\n"
+ Endmarker: 52-52 ""
+

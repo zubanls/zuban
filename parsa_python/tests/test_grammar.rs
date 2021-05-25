@@ -105,6 +105,16 @@ parametrize_snapshots!(
         for *b in *c: ...
         for c.x, (*b, d.y[0]) in i, *j, k: ...
         ");
+    comprehension_simple: dedent("
+        [1 for a in b]
+        [a for *a, c in b if c if d]
+        foo(a for (*a, (*c, b),), in d)
+        ");
+    comprehension_fails: dedent("
+        # fails
+        [1 for a in *b]
+        [1 for a in b if a else c]
+        ");
     del_stmt: dedent("
         del foo
         del foo,

@@ -284,7 +284,7 @@ create_grammar!(
     await_primary:? ["await"] primary
     primary:?
           primary "." Name
-        | primary "(" [arguments] ")"
+        | primary "(" [arguments | comprehension] ")"
         | primary "[" slices "]"
         | atom
     atom:?
