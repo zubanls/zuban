@@ -21,7 +21,7 @@ create_grammar!(
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
     simple_stmt: (assignment | star_expressions | del_stmt | pass_stmt | flow_stmt |
-                 import_stmt | global_stmt | nonlocal_stmt | assert_stmt)
+                  import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt)
     assignment:
         | (star_targets "=" )+ (yield_expr | star_expressions)
         | single_target ":" expression ["=" (yield_expr | star_expressions)]
@@ -37,7 +37,6 @@ create_grammar!(
     return_stmt: "return" [star_expressions]
     yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
-    import_stmt:? import_name | import_from
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from: ("from" (("." | "...")* dotted_name | ("." | "...")+)
