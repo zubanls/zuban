@@ -83,36 +83,36 @@ create_grammar!(
         | as_pattern
         | or_pattern
     as_pattern:
-        | or_pattern "as" capture_pattern
+        | or_pattern "as" pattern_capture_target
     or_pattern:
         | "|".closed_pattern+
     closed_pattern:
         | literal_pattern
         | wildcard_pattern
+        | pattern_capture_target
         | value_pattern
         | group_pattern
         | sequence_pattern
         | mapping_pattern
         | class_pattern
-        | capture_pattern
 
     literal_pattern:
-        | signed_number [("+" | "-") Number]
+        | complex_number
+        | signed_number
         | strings
         | "None"
         | "True"
         | "False"
-    signed_number:
-        | Number
-        | "-" Number
+    complex_number: signed_number ("+"|"-") Number
+    signed_number: "-"? Number
 
-    capture_pattern:
+    pattern_capture_target:
         | !"_" Name
 
     wildcard_pattern:
         | "_"
 
-    value_pattern: Name "." ".".Name+
+    value_pattern: dotted_name
 
     group_pattern:
         | "(" pattern ")"
@@ -128,24 +128,19 @@ create_grammar!(
         | star_pattern
         | pattern
     star_pattern:
-        | "*" (capture_pattern | wildcard_pattern)
+        | "*" (pattern_capture_target | wildcard_pattern)
 
     mapping_pattern:
-        | "{" items_pattern? "}"
-    items_pattern:
-        | ",".key_value_pattern+ ","?
-    key_value_pattern:
-        | (literal_pattern | value_pattern) ":" pattern
-        | double_star_pattern
-    double_star_pattern:
-        | "**" capture_pattern
+        | "{" double_star_pattern? "}"
+        | "{" ",".key_value_pattern+ ["," double_star_pattern?] "}"
+    key_value_pattern: (literal_pattern | value_pattern) ":" pattern
+    double_star_pattern: "**" pattern_capture_target ","?
 
-    name_or_attr: ".".Name+
     class_pattern:
-        | name_or_attr "(" ")"
-        | name_or_attr "(" positional_patterns ","? ")"
-        | name_or_attr "(" keyword_patterns ","? ")"
-        | name_or_attr "(" positional_patterns "," keyword_patterns ","? ")"
+        | dotted_name "(" ")"
+        | dotted_name "(" positional_patterns ","? ")"
+        | dotted_name "(" keyword_patterns ","? ")"
+        | dotted_name "(" positional_patterns "," keyword_patterns ","? ")"
     positional_patterns:
         | ",".pattern+
     keyword_patterns:
