@@ -153,7 +153,7 @@ parametrize_snapshots!(
     import_from_normal: dedent("
         from foo import bar
         from foo import bar as baz
-        from foo import *
+        from foo.bar.baz import *
         ");
     import_from_dotted: dedent("
         from . import (foo as baz, bar)
