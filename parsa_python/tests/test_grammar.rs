@@ -99,6 +99,12 @@ parametrize_snapshots!(
         foo.bar: baz
         foo: bar = a = 4
         ");
+    del_stmt: dedent("
+        del foo
+        del foo,
+        del foo, bar.baz
+        del foo[1]
+        ");
     cls: dedent("
         class Foo(object):
             def __init__(self, /, f, *, g):
