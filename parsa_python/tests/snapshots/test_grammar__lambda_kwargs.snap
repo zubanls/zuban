@@ -90,7 +90,7 @@ file: 0-108
         lambda_star_etc: 88-102
          Keyword: 88-89 "*"
          Keyword: 89-90 ","
-         lambda_param: 91-92
+         lambda_param_maybe_default: 91-92
           name_definition: 91-92
            Name: 91-92 "x"
          Keyword: 92-93 ","

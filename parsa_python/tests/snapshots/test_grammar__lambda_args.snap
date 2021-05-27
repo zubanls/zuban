@@ -18,7 +18,7 @@ file: 0-124
         lambda_star_etc: 11-17
          Keyword: 11-12 "*"
          Keyword: 12-13 ","
-         lambda_param: 14-17
+         lambda_param_maybe_default: 14-17
           name_definition: 14-15
            Name: 14-15 "b"
           Keyword: 15-16 "="
@@ -49,7 +49,7 @@ file: 0-124
         lambda_star_etc: 35-39
          Keyword: 35-36 "*"
          Keyword: 36-37 ","
-         lambda_param: 38-39
+         lambda_param_maybe_default: 38-39
           name_definition: 38-39
            Name: 38-39 "c"
        Keyword: 39-40 ":"
@@ -72,7 +72,7 @@ file: 0-124
         lambda_star_etc: 55-69
          Keyword: 55-56 "*"
          Keyword: 56-57 ","
-         lambda_param: 58-59
+         lambda_param_maybe_default: 58-59
           name_definition: 58-59
            Name: 58-59 "x"
          Keyword: 59-60 ","

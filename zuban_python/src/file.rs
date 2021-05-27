@@ -310,7 +310,7 @@ fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
         PythonNodeType::Nonterminal(assignment) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(param) => {
+        PythonNodeType::Nonterminal(param_maybe_default) => {
             todo!()
         }
         PythonNodeType::Nonterminal(import_name) => {
@@ -356,7 +356,7 @@ fn get_definition(name: PythonNode) -> Option<PythonNode> {
             loop {
                 match parent.get_type() {
                     PythonNodeType::Nonterminal(
-                        assignment | param | sync_for_if_clause | with_stmt | for_stmt | import_name
+                        assignment | param_maybe_default | sync_for_if_clause | with_stmt | for_stmt | import_name
                         | import_from | del_stmt | named_expression) => {
 
                         if get_defined_names(&parent).iter().any(|n| n.index == name.index) {

@@ -18,7 +18,7 @@ file: 0-186
      star_etc: 12-18
       Keyword: 12-13 "*"
       Keyword: 13-14 ","
-      param: 15-18
+      param_maybe_default: 15-18
        name_definition: 15-16
         Name: 15-16 "b"
        Keyword: 16-17 "="
@@ -54,7 +54,7 @@ file: 0-186
      star_etc: 38-42
       Keyword: 38-39 "*"
       Keyword: 39-40 ","
-      param: 41-42
+      param_maybe_default: 41-42
        name_definition: 41-42
         Name: 41-42 "c"
     Keyword: 42-43 ")"
@@ -82,7 +82,7 @@ file: 0-186
      star_etc: 60-74
       Keyword: 60-61 "*"
       Keyword: 61-62 ","
-      param: 63-64
+      param_maybe_default: 63-64
        name_definition: 63-64
         Name: 63-64 "x"
       Keyword: 64-65 ","

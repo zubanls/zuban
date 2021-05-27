@@ -41,7 +41,7 @@ file: 0-117
          star_etc: 49-53
           Keyword: 49-50 "*"
           Keyword: 50-51 ","
-          param: 52-53
+          param_maybe_default: 52-53
            name_definition: 52-53
             Name: 52-53 "g"
         Keyword: 53-54 ")"

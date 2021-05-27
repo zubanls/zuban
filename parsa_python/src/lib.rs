@@ -176,12 +176,12 @@ create_grammar!(
         // just star args
         | star_etc
     star_etc:
-        | "*" starred_param ["," ",".param+] ["," [double_starred_param ","?]]
-        | "*" "," ",".param+ ["," [double_starred_param ","?]]
+        | "*" starred_param ["," ",".param_maybe_default+] ["," [double_starred_param ","?]]
+        | "*" "," ",".param_maybe_default+ ["," [double_starred_param ","?]]
         | double_starred_param [","]
     param_no_default: name_definition annotation? !"="
     param_with_default: name_definition annotation? "=" expression
-    param: name_definition annotation? ["=" expression ]
+    param_maybe_default: name_definition annotation? ["=" expression ]
     starred_param: name_definition annotation?
     double_starred_param: "**" name_definition annotation?
     annotation: ":" expression
@@ -223,12 +223,12 @@ create_grammar!(
         // just star args
         | lambda_star_etc
     lambda_star_etc:
-        | "*" lambda_starred_param ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
-        | "*" "," ",".lambda_param+ ["," [lambda_double_starred_param ","?]]
+        | "*" lambda_starred_param ["," ",".lambda_param_maybe_default+] ["," [lambda_double_starred_param ","?]]
+        | "*" "," ",".lambda_param_maybe_default+ ["," [lambda_double_starred_param ","?]]
         | lambda_double_starred_param [","]
     lambda_param_no_default: name_definition !"="
     lambda_param_with_default: name_definition "=" expression
-    lambda_param: name_definition ["=" expression ]
+    lambda_param_maybe_default: name_definition ["=" expression ]
     lambda_starred_param: name_definition
     lambda_double_starred_param: "**" name_definition
 
