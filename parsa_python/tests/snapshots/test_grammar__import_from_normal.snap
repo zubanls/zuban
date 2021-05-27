@@ -13,7 +13,8 @@ file: 0-74
      Keyword: 10-16 "import"
      import_from_targets: 17-20
       import_from_as_name: 17-20
-       Name: 17-20 "bar"
+       name_definition: 17-20
+        Name: 17-20 "bar"
    Newline: 20-21 "\n"
  stmt: 21-48
   simple_stmts: 21-48
@@ -27,7 +28,8 @@ file: 0-74
       import_from_as_name: 37-47
        Name: 37-40 "bar"
        Keyword: 41-43 "as"
-       Name: 44-47 "baz"
+       name_definition: 44-47
+        Name: 44-47 "baz"
    Newline: 47-48 "\n"
  stmt: 48-74
   simple_stmts: 48-74
