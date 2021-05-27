@@ -48,7 +48,7 @@ create_grammar!(
         | "from" ("." | "...")* dotted_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
     dotted_as_names: ",".dotted_as_name+
-    dotted_as_name: dotted_name ["as" name_definition]
+    dotted_as_name: dotted_name "as" name_definition | name_definition ["." dotted_name]
     dotted_name: [dotted_name "."] Name
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
     import_from_as_name: Name "as" name_definition | name_definition

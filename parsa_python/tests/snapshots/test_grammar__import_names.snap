@@ -2,7 +2,7 @@
 source: parsa_python/tests/test_grammar.rs
 expression: tree_to_string(tree)
 ---
-file: 0-55
+file: 0-74
  stmt: 1-12
   simple_stmts: 1-12
    simple_stmt: 1-11
@@ -10,7 +10,7 @@ file: 0-55
      Keyword: 1-7 "import"
      dotted_as_names: 8-11
       dotted_as_name: 8-11
-       dotted_name: 8-11
+       name_definition: 8-11
         Name: 8-11 "foo"
    Newline: 11-12 "\n"
  stmt: 12-34
@@ -36,16 +36,32 @@ file: 0-55
      Keyword: 34-40 "import"
      dotted_as_names: 41-54
       dotted_as_name: 41-44
-       dotted_name: 41-44
+       name_definition: 41-44
         Name: 41-44 "foo"
       Keyword: 44-45 ","
       dotted_as_name: 46-49
-       dotted_name: 46-49
+       name_definition: 46-49
         Name: 46-49 "bar"
       Keyword: 49-50 ","
       dotted_as_name: 51-54
-       dotted_name: 51-54
+       name_definition: 51-54
         Name: 51-54 "baz"
    Newline: 54-55 "\n"
- Endmarker: 55-55 ""
+ stmt: 55-74
+  simple_stmts: 55-74
+   simple_stmt: 55-73
+    import_name: 55-73
+     Keyword: 55-61 "import"
+     dotted_as_names: 62-73
+      dotted_as_name: 62-73
+       name_definition: 62-65
+        Name: 62-65 "foo"
+       Keyword: 65-66 "."
+       dotted_name: 66-73
+        dotted_name: 66-69
+         Name: 66-69 "bar"
+        Keyword: 69-70 "."
+        Name: 70-73 "baz"
+   Newline: 73-74 "\n"
+ Endmarker: 74-74 ""
 

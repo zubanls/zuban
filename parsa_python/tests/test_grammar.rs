@@ -145,6 +145,7 @@ parametrize_snapshots!(
         import foo
         import foo.bar as baz
         import foo, bar, baz
+        import foo.bar.baz
         ");
     import_name_fails: dedent("
         import foo,
