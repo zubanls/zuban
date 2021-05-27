@@ -93,8 +93,8 @@ file: 0-185
         Keyword: 74-75 "/"
         Keyword: 75-76 ","
         lambda_star_etc: 77-87
-         Keyword: 77-78 "*"
-         lambda_starred_param: 78-82
+         lambda_starred_param: 77-82
+          Keyword: 77-78 "*"
           name_definition: 78-82
            Name: 78-82 "args"
          Keyword: 82-83 ","

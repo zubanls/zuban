@@ -113,8 +113,8 @@ file: 0-186
        Name: 89-90 "a"
      Keyword: 90-91 ","
      star_etc: 92-116
-      Keyword: 92-93 "*"
-      starred_param: 93-102
+      starred_param: 92-102
+       Keyword: 92-93 "*"
        name_definition: 93-97
         Name: 93-97 "args"
        annotation: 97-102
@@ -203,8 +203,8 @@ file: 0-186
     Keyword: 173-174 "("
     parameters: 174-179
      star_etc: 174-179
-      Keyword: 174-175 "*"
-      starred_param: 175-179
+      starred_param: 174-179
+       Keyword: 174-175 "*"
        name_definition: 175-179
         Name: 175-179 "args"
     Keyword: 179-180 ")"
