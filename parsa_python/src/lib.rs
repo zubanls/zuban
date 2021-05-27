@@ -38,8 +38,8 @@ create_grammar!(
     return_stmt: "return" [star_expressions]
     yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
-    global_stmt: "global" ",".name_definition+
-    nonlocal_stmt: "nonlocal" ",".name_definition+
+    global_stmt: "global" ",".Name+
+    nonlocal_stmt: "nonlocal" ",".Name+
     assert_stmt: "assert" expression ["," expression]
 
     import_name: "import" dotted_as_names
