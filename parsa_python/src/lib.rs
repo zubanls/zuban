@@ -38,8 +38,8 @@ create_grammar!(
     return_stmt: "return" [star_expressions]
     yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
-    global_stmt: "global" ",".Name+
-    nonlocal_stmt: "nonlocal" ",".Name+
+    global_stmt: "global" ",".name_definition+
+    nonlocal_stmt: "nonlocal" ",".name_definition+
     assert_stmt: "assert" expression ["," expression]
 
     import_name: "import" dotted_as_names
@@ -89,7 +89,7 @@ create_grammar!(
     complex_number: signed_number ("+"|"-") Number
     signed_number: "-"? Number
 
-    pattern_capture_target: !"_" Name
+    pattern_capture_target: !"_" name_definition
     wildcard_pattern: "_"
     value_pattern: dotted_name
 
@@ -118,13 +118,13 @@ create_grammar!(
     keyword_pattern: Name "=" pattern
 
     async_function_def: "async" function_def
-    function_def: "def" Name "(" [parameters] ")" ["->" expression] ":" block
+    function_def: "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
 
     decorator: "@" named_expression Newline
     decorators: decorator+
     decorated:? decorators (class_def | function_def | async_function_def)
 
-    class_def: "class" Name ["(" [arguments] ")"] ":" block
+    class_def: "class" name_definition ["(" [arguments] ")"] ":" block
 
     block: simple_stmts | Newline Indent stmt+ Dedent
 
@@ -133,7 +133,7 @@ create_grammar!(
     star_named_expressions: ",".star_named_expression+ [","]
     star_named_expression: "*" disjunction | named_expression
 
-    named_expression: Name ":=" expression | expression
+    named_expression: name_definition ":=" expression | expression
 
     expressions: ",".expression+ [","]
     expression: disjunction ["if" disjunction "else" expression] | lambda

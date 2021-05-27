@@ -285,14 +285,15 @@ impl PythonFile {
     }
 
     pub fn infer(&self, node: PythonNode) {
+        self.calculate_global_definitions_and_references();
         let value = self.values_or_references[node.index as usize].get();
         if value.is_uncalculated() {
             if value.is_calculating() {
                 todo!();
             }
-            let definition = get_definition(node);
-            if definition.is_some() {
-            }
+            //let definition = get_definition(node);
+            //if definition.is_some() {
+            //}
             panic!();
             return self.infer(node)
         }

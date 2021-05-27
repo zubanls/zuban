@@ -596,7 +596,7 @@ macro_rules! create_grammar {
 
             pub fn get_leaf_by_position(&self, index: $crate::CodeIndex) -> $Node {
                 // TODO
-                self.get_node(5, &self.internal_tree.nodes[8])
+                self.get_node(7, &self.internal_tree.nodes[7])
             }
         }
 

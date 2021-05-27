@@ -49,7 +49,8 @@ file: 0-55
         Keyword: 28-29 "("
         arguments: 29-39
          named_expression: 29-39
-          Name: 29-36 "bar_baz"
+          name_definition: 29-36
+           Name: 29-36 "bar_baz"
           Keyword: 36-38 ":="
           expression: 38-39
            bitwise_or: 38-39

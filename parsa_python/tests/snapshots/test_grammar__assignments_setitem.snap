@@ -117,7 +117,8 @@ file: 0-66
           Keyword: 54-55 ","
           slice: 56-60
            named_expression: 56-60
-            Name: 56-57 "c"
+            name_definition: 56-57
+             Name: 56-57 "c"
             Keyword: 57-59 ":="
             expression: 59-60
              bitwise_or: 59-60

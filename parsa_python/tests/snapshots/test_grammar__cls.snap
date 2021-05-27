@@ -7,7 +7,8 @@ file: 0-117
   compound_stmt: 1-117
    class_def: 1-117
     Keyword: 1-6 "class"
-    Name: 7-10 "Foo"
+    name_definition: 7-10
+     Name: 7-10 "Foo"
     Keyword: 10-11 "("
     arguments: 11-17
      named_expression: 11-17
@@ -23,7 +24,8 @@ file: 0-117
       compound_stmt: 24-74
        function_def: 24-74
         Keyword: 24-27 "def"
-        Name: 28-36 "__init__"
+        name_definition: 28-36
+         Name: 28-36 "__init__"
         Keyword: 36-37 "("
         parameters: 37-53
          param_no_default: 37-41
@@ -64,7 +66,8 @@ file: 0-117
           Newline: 83-84 "\n"
         function_def: 88-117
          Keyword: 88-91 "def"
-         Name: 92-96 "prop"
+         name_definition: 92-96
+          Name: 92-96 "prop"
          Keyword: 96-97 "("
          parameters: 97-101
           param_no_default: 97-101

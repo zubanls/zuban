@@ -7,7 +7,8 @@ file: 0-186
   compound_stmt: 1-25
    function_def: 1-25
     Keyword: 1-4 "def"
-    Name: 5-8 "foo"
+    name_definition: 5-8
+     Name: 5-8 "foo"
     Keyword: 8-9 "("
     parameters: 9-18
      param_no_default: 9-10
@@ -36,7 +37,8 @@ file: 0-186
   compound_stmt: 25-49
    function_def: 25-49
     Keyword: 25-28 "def"
-    Name: 29-32 "foo"
+    name_definition: 29-32
+     Name: 29-32 "foo"
     Keyword: 32-33 "("
     parameters: 33-42
      param_with_default: 33-36
@@ -65,7 +67,8 @@ file: 0-186
   compound_stmt: 49-81
    function_def: 49-81
     Keyword: 49-52 "def"
-    Name: 53-56 "foo"
+    name_definition: 53-56
+     Name: 53-56 "foo"
     Keyword: 56-57 "("
     parameters: 57-74
      param_no_default: 57-58
@@ -94,7 +97,8 @@ file: 0-186
   compound_stmt: 81-123
    function_def: 81-123
     Keyword: 81-84 "def"
-    Name: 85-88 "foo"
+    name_definition: 85-88
+     Name: 85-88 "foo"
     Keyword: 88-89 "("
     parameters: 89-116
      param_no_default: 89-90
@@ -133,7 +137,8 @@ file: 0-186
   compound_stmt: 123-166
    function_def: 123-166
     Keyword: 123-126 "def"
-    Name: 127-130 "foo"
+    name_definition: 127-130
+     Name: 127-130 "foo"
     Keyword: 130-131 "("
     parameters: 131-159
      param_no_default: 131-132
@@ -179,7 +184,8 @@ file: 0-186
   compound_stmt: 166-186
    function_def: 166-186
     Keyword: 166-169 "def"
-    Name: 170-173 "foo"
+    name_definition: 170-173
+     Name: 170-173 "foo"
     Keyword: 173-174 "("
     parameters: 174-179
      star_etc: 174-179

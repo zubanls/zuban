@@ -7,7 +7,8 @@ file: 0-106
   compound_stmt: 1-16
    function_def: 1-16
     Keyword: 1-4 "def"
-    Name: 5-8 "foo"
+    name_definition: 5-8
+     Name: 5-8 "foo"
     Keyword: 8-9 "("
     Keyword: 9-10 ")"
     Keyword: 10-11 ":"
@@ -23,7 +24,8 @@ file: 0-106
   compound_stmt: 16-35
    function_def: 16-35
     Keyword: 16-19 "def"
-    Name: 20-23 "foo"
+    name_definition: 20-23
+     Name: 20-23 "foo"
     Keyword: 23-24 "("
     parameters: 24-28
      param_no_default: 24-28
@@ -47,7 +49,8 @@ file: 0-106
   compound_stmt: 35-55
    function_def: 35-55
     Keyword: 35-38 "def"
-    Name: 39-42 "foo"
+    name_definition: 39-42
+     Name: 39-42 "foo"
     Keyword: 42-43 "("
     parameters: 43-48
      param_no_default: 43-44
@@ -70,7 +73,8 @@ file: 0-106
   compound_stmt: 55-83
    function_def: 55-83
     Keyword: 55-58 "def"
-    Name: 59-62 "foo"
+    name_definition: 59-62
+     Name: 59-62 "foo"
     Keyword: 62-63 "("
     parameters: 63-76
      param_with_default: 63-71
@@ -105,7 +109,8 @@ file: 0-106
   compound_stmt: 83-106
    function_def: 83-106
     Keyword: 83-86 "def"
-    Name: 87-90 "foo"
+    name_definition: 87-90
+     Name: 87-90 "foo"
     Keyword: 90-91 "("
     parameters: 91-99
      param_with_default: 91-94
