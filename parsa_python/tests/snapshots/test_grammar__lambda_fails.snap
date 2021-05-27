@@ -12,7 +12,8 @@ file: 0-100
        Keyword: 1-7 "lambda"
        Error(lambda_parameters): 8-9
         Error(lambda_param_with_default): 8-9
-         Name: 8-9 "a"
+         name_definition: 8-9
+          Name: 8-9 "a"
  Error(stmt): 9-10
   Error(Keyword): 9-10 ","
  Error(stmt): 11-12
@@ -46,14 +47,16 @@ file: 0-100
        Keyword: 28-34 "lambda"
        Error(lambda_parameters): 35-41
         lambda_param_with_default: 35-38
-         Name: 35-36 "a"
+         name_definition: 35-36
+          Name: 35-36 "a"
          Keyword: 36-37 "="
          expression: 37-38
           bitwise_or: 37-38
            Number: 37-38 "3"
         Keyword: 38-39 ","
         Error(lambda_param_with_default): 40-41
-         Name: 40-41 "b"
+         name_definition: 40-41
+          Name: 40-41 "b"
  Error(stmt): 41-42
   Error(Keyword): 41-42 ":"
  stmt: 43-47
@@ -75,7 +78,8 @@ file: 0-100
         lambda_star_etc: 54-58
          lambda_double_starred_param: 54-57
           Keyword: 54-56 "**"
-          Name: 56-57 "a"
+          name_definition: 56-57
+           Name: 56-57 "a"
          Keyword: 57-58 ","
  stmt: 59-66
   simple_stmts: 59-66
@@ -98,7 +102,8 @@ file: 0-100
        Keyword: 66-72 "lambda"
        Error(lambda_parameters): 73-80
         lambda_param_with_default: 73-76
-         Name: 73-74 "a"
+         name_definition: 73-74
+          Name: 73-74 "a"
          Keyword: 74-75 "="
          expression: 75-76
           bitwise_or: 75-76

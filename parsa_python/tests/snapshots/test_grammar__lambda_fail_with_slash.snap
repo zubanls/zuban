@@ -12,7 +12,8 @@ file: 0-103
        Keyword: 1-7 "lambda"
        Error(lambda_parameters): 8-17
         lambda_param_with_default: 8-11
-         Name: 8-9 "a"
+         name_definition: 8-9
+          Name: 8-9 "a"
          Keyword: 9-10 "="
          expression: 10-11
           bitwise_or: 10-11
@@ -21,7 +22,8 @@ file: 0-103
         Keyword: 13-14 "/"
         Keyword: 14-15 ","
         Error(lambda_param_with_default): 16-17
-         Name: 16-17 "b"
+         name_definition: 16-17
+          Name: 16-17 "b"
  Error(stmt): 17-18
   Error(Keyword): 17-18 ":"
  stmt: 19-23
@@ -41,7 +43,8 @@ file: 0-103
        Keyword: 23-29 "lambda"
        Error(lambda_parameters): 30-44
         lambda_param_with_default: 30-33
-         Name: 30-31 "a"
+         name_definition: 30-31
+          Name: 30-31 "a"
          Keyword: 31-32 "="
          expression: 32-33
           bitwise_or: 32-33
@@ -50,14 +53,16 @@ file: 0-103
         Keyword: 35-36 "/"
         Keyword: 36-37 ","
         lambda_param_with_default: 38-41
-         Name: 38-39 "b"
+         name_definition: 38-39
+          Name: 38-39 "b"
          Keyword: 39-40 "="
          expression: 40-41
           bitwise_or: 40-41
            Number: 40-41 "3"
         Keyword: 41-42 ","
         Error(lambda_param_with_default): 43-44
-         Name: 43-44 "c"
+         name_definition: 43-44
+          Name: 43-44 "c"
  Error(stmt): 44-45
   Error(Keyword): 44-45 ":"
  stmt: 46-50
@@ -77,7 +82,8 @@ file: 0-103
        Keyword: 50-56 "lambda"
        Error(lambda_parameters): 57-58
         Error(lambda_param_with_default): 57-58
-         Name: 57-58 "a"
+         name_definition: 57-58
+          Name: 57-58 "a"
  Error(stmt): 58-59
   Error(Keyword): 58-59 ","
  Error(stmt): 60-61
@@ -122,7 +128,8 @@ file: 0-103
        Keyword: 75-81 "lambda"
        Error(lambda_parameters): 82-83
         Error(lambda_param_with_default): 82-83
-         Name: 82-83 "z"
+         name_definition: 82-83
+          Name: 82-83 "z"
  Error(stmt): 83-84
   Error(Keyword): 83-84 ","
  Error(stmt): 85-92

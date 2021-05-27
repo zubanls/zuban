@@ -12,13 +12,15 @@ file: 0-186
     Keyword: 8-9 "("
     parameters: 9-18
      param_no_default: 9-10
-      Name: 9-10 "a"
+      name_definition: 9-10
+       Name: 9-10 "a"
      Keyword: 10-11 ","
      star_etc: 12-18
       Keyword: 12-13 "*"
       Keyword: 13-14 ","
       param: 15-18
-       Name: 15-16 "b"
+       name_definition: 15-16
+        Name: 15-16 "b"
        Keyword: 16-17 "="
        expression: 17-18
         bitwise_or: 17-18
@@ -42,7 +44,8 @@ file: 0-186
     Keyword: 32-33 "("
     parameters: 33-42
      param_with_default: 33-36
-      Name: 33-34 "a"
+      name_definition: 33-34
+       Name: 33-34 "a"
       Keyword: 34-35 "="
       expression: 35-36
        bitwise_or: 35-36
@@ -52,7 +55,8 @@ file: 0-186
       Keyword: 38-39 "*"
       Keyword: 39-40 ","
       param: 41-42
-       Name: 41-42 "c"
+       name_definition: 41-42
+        Name: 41-42 "c"
     Keyword: 42-43 ")"
     Keyword: 43-44 ":"
     block: 45-49
@@ -72,17 +76,20 @@ file: 0-186
     Keyword: 56-57 "("
     parameters: 57-74
      param_no_default: 57-58
-      Name: 57-58 "a"
+      name_definition: 57-58
+       Name: 57-58 "a"
      Keyword: 58-59 ","
      star_etc: 60-74
       Keyword: 60-61 "*"
       Keyword: 61-62 ","
       param: 63-64
-       Name: 63-64 "x"
+       name_definition: 63-64
+        Name: 63-64 "x"
       Keyword: 64-65 ","
       double_starred_param: 66-74
        Keyword: 66-68 "**"
-       Name: 68-74 "kwargs"
+       name_definition: 68-74
+        Name: 68-74 "kwargs"
     Keyword: 74-75 ")"
     Keyword: 75-76 ":"
     block: 77-81
@@ -102,12 +109,14 @@ file: 0-186
     Keyword: 88-89 "("
     parameters: 89-116
      param_no_default: 89-90
-      Name: 89-90 "a"
+      name_definition: 89-90
+       Name: 89-90 "a"
      Keyword: 90-91 ","
      star_etc: 92-116
       Keyword: 92-93 "*"
       starred_param: 93-102
-       Name: 93-97 "args"
+       name_definition: 93-97
+        Name: 93-97 "args"
        annotation: 97-102
         Keyword: 97-98 ":"
         expression: 99-102
@@ -116,7 +125,8 @@ file: 0-186
       Keyword: 102-103 ","
       double_starred_param: 104-115
        Keyword: 104-106 "**"
-       Name: 106-110 "fooo"
+       name_definition: 106-110
+        Name: 106-110 "fooo"
        annotation: 110-115
         Keyword: 110-111 ":"
         expression: 112-115
@@ -142,12 +152,14 @@ file: 0-186
     Keyword: 130-131 "("
     parameters: 131-159
      param_no_default: 131-132
-      Name: 131-132 "a"
+      name_definition: 131-132
+       Name: 131-132 "a"
      Keyword: 132-133 ","
      Keyword: 134-135 "/"
      Keyword: 135-136 ","
      param_no_default: 137-141
-      Name: 137-138 "b"
+      name_definition: 137-138
+       Name: 137-138 "b"
       annotation: 138-141
        Keyword: 138-139 ":"
        expression: 140-141
@@ -155,7 +167,8 @@ file: 0-186
          Name: 140-141 "i"
      Keyword: 141-142 ","
      param_with_default: 143-149
-      Name: 143-144 "c"
+      name_definition: 143-144
+       Name: 143-144 "c"
       annotation: 144-147
        Keyword: 144-145 ":"
        expression: 146-147
@@ -169,7 +182,8 @@ file: 0-186
      star_etc: 151-159
       double_starred_param: 151-159
        Keyword: 151-153 "**"
-       Name: 153-159 "kwargs"
+       name_definition: 153-159
+        Name: 153-159 "kwargs"
     Keyword: 159-160 ")"
     Keyword: 160-161 ":"
     block: 162-166
@@ -191,7 +205,8 @@ file: 0-186
      star_etc: 174-179
       Keyword: 174-175 "*"
       starred_param: 175-179
-       Name: 175-179 "args"
+       name_definition: 175-179
+        Name: 175-179 "args"
     Keyword: 179-180 ")"
     Keyword: 180-181 ":"
     block: 182-186

@@ -179,11 +179,11 @@ create_grammar!(
         | "*" starred_param ["," ",".param+] ["," [double_starred_param ","?]]
         | "*" "," ",".param+ ["," [double_starred_param ","?]]
         | double_starred_param [","]
-    param_no_default: Name annotation? !"="
-    param_with_default: Name annotation? "=" expression
-    param: Name annotation? ["=" expression ]
-    starred_param: Name annotation?
-    double_starred_param: "**" Name annotation?
+    param_no_default: name_definition annotation? !"="
+    param_with_default: name_definition annotation? "=" expression
+    param: name_definition annotation? ["=" expression ]
+    starred_param: name_definition annotation?
+    double_starred_param: "**" name_definition annotation?
     annotation: ":" expression
 
     // Lambda params is basically a repetition of normal params without annotations
@@ -226,11 +226,11 @@ create_grammar!(
         | "*" lambda_starred_param ["," ",".lambda_param+] ["," [lambda_double_starred_param ","?]]
         | "*" "," ",".lambda_param+ ["," [lambda_double_starred_param ","?]]
         | lambda_double_starred_param [","]
-    lambda_param_no_default: Name !"="
-    lambda_param_with_default: Name "=" expression
-    lambda_param: Name ["=" expression ]
-    lambda_starred_param: Name
-    lambda_double_starred_param: "**" Name
+    lambda_param_no_default: name_definition !"="
+    lambda_param_with_default: name_definition "=" expression
+    lambda_param: name_definition ["=" expression ]
+    lambda_starred_param: name_definition
+    lambda_double_starred_param: "**" name_definition
 
     disjunction:? [disjunction "or"] conjunction
     conjunction:? [conjunction "and"] inversion

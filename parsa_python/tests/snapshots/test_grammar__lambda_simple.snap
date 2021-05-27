@@ -24,7 +24,8 @@ file: 0-66
        Keyword: 13-19 "lambda"
        lambda_parameters: 20-21
         lambda_param_no_default: 20-21
-         Name: 20-21 "a"
+         name_definition: 20-21
+          Name: 20-21 "a"
        Keyword: 21-22 ":"
        expression: 23-26
         bitwise_or: 23-26
@@ -39,10 +40,12 @@ file: 0-66
        Keyword: 27-33 "lambda"
        lambda_parameters: 34-39
         lambda_param_no_default: 34-35
-         Name: 34-35 "a"
+         name_definition: 34-35
+          Name: 34-35 "a"
         Keyword: 35-36 ","
         lambda_param_no_default: 37-38
-         Name: 37-38 "b"
+         name_definition: 37-38
+          Name: 37-38 "b"
         Keyword: 38-39 ","
        Keyword: 39-40 ":"
        expression: 41-44
@@ -58,14 +61,16 @@ file: 0-66
        Keyword: 45-51 "lambda"
        lambda_parameters: 52-60
         lambda_param_with_default: 52-55
-         Name: 52-53 "a"
+         name_definition: 52-53
+          Name: 52-53 "a"
          Keyword: 53-54 "="
          expression: 54-55
           bitwise_or: 54-55
            Number: 54-55 "3"
         Keyword: 55-56 ","
         lambda_param_with_default: 57-60
-         Name: 57-58 "b"
+         name_definition: 57-58
+          Name: 57-58 "b"
          Keyword: 58-59 "="
          expression: 59-60
           bitwise_or: 59-60
