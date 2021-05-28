@@ -12,9 +12,8 @@ file: 0-23
        Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-8
-  Error(compound_stmt): 5-8
-   Error(function_def): 5-8
-    Keyword: 5-8 "def"
+  Error(function_def): 5-8
+   Keyword: 5-8 "def"
  stmt: 8-9
   Newline: 8-9 "\n"
  stmt: 9-13

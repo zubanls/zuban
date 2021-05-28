@@ -4,90 +4,87 @@ expression: tree_to_string(tree)
 ---
 file: 0-117
  stmt: 1-117
-  compound_stmt: 1-117
-   class_def: 1-117
-    Keyword: 1-6 "class"
-    name_definition: 7-10
-     Name: 7-10 "Foo"
-    Keyword: 10-11 "("
-    arguments: 11-17
-     named_expression: 11-17
-      expression: 11-17
-       bitwise_or: 11-17
-        Name: 11-17 "object"
-    Keyword: 17-18 ")"
-    Keyword: 18-19 ":"
-    block: 19-117
-     Newline: 19-20 "\n"
-     Indent: 24-24 ""
-     stmt: 24-74
-      compound_stmt: 24-74
-       function_def: 24-74
-        Keyword: 24-27 "def"
-        name_definition: 28-36
-         Name: 28-36 "__init__"
-        Keyword: 36-37 "("
-        parameters: 37-53
-         param_no_default: 37-41
-          name_definition: 37-41
-           Name: 37-41 "self"
-         Keyword: 41-42 ","
-         Keyword: 43-44 "/"
-         Keyword: 44-45 ","
-         param_no_default: 46-47
-          name_definition: 46-47
-           Name: 46-47 "f"
-         Keyword: 47-48 ","
-         star_etc: 49-53
-          Keyword: 49-50 "*"
-          Keyword: 50-51 ","
-          param_maybe_default: 52-53
-           name_definition: 52-53
-            Name: 52-53 "g"
-        Keyword: 53-54 ")"
-        Keyword: 54-55 ":"
-        block: 55-74
-         Newline: 55-56 "\n"
-         Indent: 64-64 ""
-         stmt: 64-69
-          simple_stmts: 64-69
-           simple_stmt: 64-68
-            pass_stmt: 64-68
-             Keyword: 64-68 "pass"
-           Newline: 68-69 "\n"
-         Dedent: 74-74 ""
-     stmt: 74-117
-      compound_stmt: 74-117
-       decorated: 74-117
-        decorators: 74-84
-         decorator: 74-84
-          Keyword: 74-75 "@"
-          named_expression: 75-83
-           expression: 75-83
-            bitwise_or: 75-83
-             Name: 75-83 "property"
-          Newline: 83-84 "\n"
-        function_def: 88-117
-         Keyword: 88-91 "def"
-         name_definition: 92-96
-          Name: 92-96 "prop"
-         Keyword: 96-97 "("
-         parameters: 97-101
-          param_no_default: 97-101
-           name_definition: 97-101
-            Name: 97-101 "self"
-         Keyword: 101-102 ")"
-         Keyword: 102-103 ":"
-         block: 103-117
-          Newline: 103-104 "\n"
-          Indent: 112-112 ""
-          stmt: 112-117
-           simple_stmts: 112-117
-            simple_stmt: 112-116
-             pass_stmt: 112-116
-              Keyword: 112-116 "pass"
-            Newline: 116-117 "\n"
-          Dedent: 117-117 ""
-     Dedent: 117-117 ""
+  class_def: 1-117
+   Keyword: 1-6 "class"
+   name_definition: 7-10
+    Name: 7-10 "Foo"
+   Keyword: 10-11 "("
+   arguments: 11-17
+    named_expression: 11-17
+     expression: 11-17
+      bitwise_or: 11-17
+       Name: 11-17 "object"
+   Keyword: 17-18 ")"
+   Keyword: 18-19 ":"
+   block: 19-117
+    Newline: 19-20 "\n"
+    Indent: 24-24 ""
+    stmt: 24-74
+     function_def: 24-74
+      Keyword: 24-27 "def"
+      name_definition: 28-36
+       Name: 28-36 "__init__"
+      Keyword: 36-37 "("
+      parameters: 37-53
+       param_no_default: 37-41
+        name_definition: 37-41
+         Name: 37-41 "self"
+       Keyword: 41-42 ","
+       Keyword: 43-44 "/"
+       Keyword: 44-45 ","
+       param_no_default: 46-47
+        name_definition: 46-47
+         Name: 46-47 "f"
+       Keyword: 47-48 ","
+       star_etc: 49-53
+        Keyword: 49-50 "*"
+        Keyword: 50-51 ","
+        param_maybe_default: 52-53
+         name_definition: 52-53
+          Name: 52-53 "g"
+      Keyword: 53-54 ")"
+      Keyword: 54-55 ":"
+      block: 55-74
+       Newline: 55-56 "\n"
+       Indent: 64-64 ""
+       stmt: 64-69
+        simple_stmts: 64-69
+         simple_stmt: 64-68
+          pass_stmt: 64-68
+           Keyword: 64-68 "pass"
+         Newline: 68-69 "\n"
+       Dedent: 74-74 ""
+    stmt: 74-117
+     decorated: 74-117
+      decorators: 74-84
+       decorator: 74-84
+        Keyword: 74-75 "@"
+        named_expression: 75-83
+         expression: 75-83
+          bitwise_or: 75-83
+           Name: 75-83 "property"
+        Newline: 83-84 "\n"
+      function_def: 88-117
+       Keyword: 88-91 "def"
+       name_definition: 92-96
+        Name: 92-96 "prop"
+       Keyword: 96-97 "("
+       parameters: 97-101
+        param_no_default: 97-101
+         name_definition: 97-101
+          Name: 97-101 "self"
+       Keyword: 101-102 ")"
+       Keyword: 102-103 ":"
+       block: 103-117
+        Newline: 103-104 "\n"
+        Indent: 112-112 ""
+        stmt: 112-117
+         simple_stmts: 112-117
+          simple_stmt: 112-116
+           pass_stmt: 112-116
+            Keyword: 112-116 "pass"
+          Newline: 116-117 "\n"
+        Dedent: 117-117 ""
+    Dedent: 117-117 ""
  Endmarker: 117-117 ""
 

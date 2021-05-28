@@ -4,26 +4,25 @@ expression: tree_to_string(tree)
 ---
 file: 0-36
  Error(stmt): 1-24
-  Error(compound_stmt): 1-24
-   Error(match_stmt): 1-24
-    Keyword: 1-6 "match"
-    subject_expr: 7-10
-     named_expression: 7-10
-      expression: 7-10
-       bitwise_or: 7-10
-        Name: 7-10 "foo"
-    Keyword: 10-11 ":"
-    Newline: 11-12 "\n"
-    Indent: 16-16 ""
-    Error(case_block): 16-24
-     Keyword: 16-20 "case"
-     patterns: 21-24
-      pattern: 21-24
-       or_pattern: 21-24
-        closed_pattern: 21-24
-         pattern_capture_target: 21-24
-          name_definition: 21-24
-           Name: 21-24 "bar"
+  Error(match_stmt): 1-24
+   Keyword: 1-6 "match"
+   subject_expr: 7-10
+    named_expression: 7-10
+     expression: 7-10
+      bitwise_or: 7-10
+       Name: 7-10 "foo"
+   Keyword: 10-11 ":"
+   Newline: 11-12 "\n"
+   Indent: 16-16 ""
+   Error(case_block): 16-24
+    Keyword: 16-20 "case"
+    patterns: 21-24
+     pattern: 21-24
+      or_pattern: 21-24
+       closed_pattern: 21-24
+        pattern_capture_target: 21-24
+         name_definition: 21-24
+          Name: 21-24 "bar"
  Error(stmt): 25-27
   Error(Keyword): 25-27 "as"
  Error(stmt): 28-29

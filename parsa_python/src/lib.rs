@@ -16,7 +16,10 @@ create_grammar!(
 
     file: stmt* Endmarker
 
-    stmt: @error_recovery simple_stmts | compound_stmt | Newline
+    stmt: @error_recovery
+          simple_stmts | Newline
+        | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
+        | function_def | class_def | decorated | async_stmt | match_stmt
     simple_stmts: simple_stmt (";" simple_stmt)* [";"] Newline
     // NOTE: assignment MUST precede expression, otherwise parsing a simple assignment
     // will throw a SyntaxError.
@@ -53,9 +56,6 @@ create_grammar!(
     import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
     import_from_as_name: Name "as" name_definition | name_definition
 
-    compound_stmt:
-        | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
-        | function_def | class_def | decorated | async_stmt | match_stmt
     async_stmt: "async" (function_def | with_stmt | for_stmt)
     if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     else_block: "else" ":" block
