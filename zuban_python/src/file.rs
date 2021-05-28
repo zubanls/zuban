@@ -219,6 +219,11 @@ impl PythonFile {
             // It was already done.
             return
         }
+        // - while_stmt, for_stmt: ignore order (at least mostly)
+        // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
+        // - sync_for_if_clause: reversed order and only in scope
+        // - lambda: only in scope
+        // - function_def, class_def: ignore
         for child in self.tree.get_root_node().iter_children() {
         }
     }
@@ -284,21 +289,48 @@ impl PythonFile {
         self.calculate_global_definitions_and_references();
     }
 
-    pub fn infer(&self, node: PythonNode) {
+    fn calculate_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
+        panic!("IMPL tuple unpack");
+        //let definition = get_definition(name);
+        //if definition.is_some() {
+        //}
+    }
+
+    pub fn infer_name(&self, name: PythonNode) {
         self.calculate_global_definitions_and_references();
-        let value = self.values_or_references[node.index as usize].get();
+        let value = self.values_or_references[name.index as usize].get();
         if value.is_uncalculated() {
             if value.is_calculating() {
                 todo!();
             }
-            //let definition = get_definition(node);
-            //if definition.is_some() {
-            //}
-            panic!();
-            return self.infer(node)
+
+            let stmt = name; // todo!
+            /*let stmt = name.get_parent_until(
+                PythonNodeType::Nonterminal(PythonNonterminalType::stmt)
+            );*/
+
+            if self.values_or_references[stmt.index as usize].get().is_uncalculated() {
+                self.calculate_node_scope_definitions(name);
+                if is_name_reference(name) {
+                    panic!("is extern");
+                } else {
+                    // Is a reference and should have been calculated.
+                    self.calculate_stmt_name(stmt, name);
+                }
+            }
+            let value = self.values_or_references[name.index as usize].get();
+            debug_assert!(!value.is_uncalculated());
+            return self.infer_name(name)
         }
         panic!()
     }
+}
+
+fn is_name_reference(name: PythonNode) -> bool {
+    debug_assert!(name.is_type(PythonNodeType::Terminal(PythonTerminalType::Name)));
+    name.get_parent().unwrap().is_type(
+        PythonNodeType::Nonterminal(PythonNonterminalType::name_definition)
+    )
 }
 
 fn get_function_or_class_name() {

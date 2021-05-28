@@ -156,6 +156,24 @@ macro_rules! __create_node {
             ErrorKeyword,
         }
 
+        impl $NodeType {
+            #[inline]
+            fn to_internal(self) -> $crate::InternalSquashedType {
+                match self {
+                    Self::Nonterminal(t) =>
+                        $crate::InternalSquashedType(t as u16),
+                    Self::Terminal(t) =>
+                        $crate::InternalSquashedType(t as u16),
+                    Self::ErrorNonterminal(t) =>
+                        $crate::InternalSquashedType(t as u16).set_error_recovery_bit(),
+                    Self::ErrorTerminal(t) =>
+                        $crate::InternalSquashedType(t as u16).set_error_recovery_bit(),
+                    Self::Keyword | Self::ErrorKeyword =>
+                        panic!("It's not possible to reverse keyword types"),
+                }
+            }
+        }
+
         #[derive(Clone, Copy)]
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
@@ -284,6 +302,10 @@ macro_rules! __create_node {
                         $NodeType::Nonterminal(g(self.internal_node.type_))
                     }
                 }
+            }
+
+            pub fn is_type(&self, type_: $NodeType) -> bool {
+                self.internal_node.type_ == type_.to_internal()
             }
 
             pub fn type_str(&self) -> String {
