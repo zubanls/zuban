@@ -44,7 +44,7 @@ pub struct InternalValueOrReference {
 
 impl InternalValueOrReference {
     #[inline]
-    fn calculate_flags(other_module: FileIndex, locality: Locality,
+    fn calculate_flags(other_module: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
         (locality as u32)
         | (is_nullable as u32)
@@ -53,7 +53,7 @@ impl InternalValueOrReference {
 
     pub fn new_redirect(other_module: FileIndex, node_index: NodeIndex,
                         locality: Locality, is_nullable: bool) -> Self {
-        let flags = Self::calculate_flags(other_module, locality, is_nullable, false);
+        let flags = Self::calculate_flags(other_module.0, locality, is_nullable, false);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -82,12 +82,16 @@ impl InternalValueOrReference {
         todo!()
     }
 
+    pub fn new_node_analysis(locality: Locality) -> Self {
+        Self {flags: Self::calculate_flags(0, locality, false, false), node_or_complex_index: 0}
+    }
+
     fn get_locality(self) -> Locality {
         unsafe { mem::transmute(self.flags << 28 & 7) }
     }
 
-    pub fn is_uncalculated(self) -> bool {
-        self.flags & IS_ANALIZED_MASK == 0
+    pub fn is_calculated(self) -> bool {
+        self.flags & IS_ANALIZED_MASK != 0
     }
 
     pub fn is_calculating(self) -> bool {

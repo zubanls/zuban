@@ -6,6 +6,7 @@ use std::fmt;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
+use crate::utils::InsertOnlyHashMapVec;
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 
@@ -193,7 +194,7 @@ impl File for PythonFile {
 #[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: Option<HashMap<*const str, Box<[NodeIndex]>>>,
+    definition_names: InsertOnlyHashMapVec<*const str, NodeIndex>,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
@@ -207,7 +208,7 @@ impl PythonFile {
         let length = tree.get_length();
         Self {
             tree,
-            definition_names: None,
+            definition_names: Default::default(),
             values_or_references: vec!(Default::default(); length),
             complex_values: vec!(),
             dependencies: vec!(),
@@ -216,27 +217,34 @@ impl PythonFile {
     }
 
     fn calculate_global_definitions_and_references(&self) {
-        if self.definition_names.is_some() {
+        if self.values_or_references[0].get().is_calculated() {
             // It was already done.
             return
         }
+        self.index_block(self.tree.get_root_node(), true);
+
+        self.values_or_references[0].set(InternalValueOrReference::new_node_analysis(
+            Locality::File
+        ));
+    }
+
+    fn index_block(&self, block_node: PythonNode, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-    }
-
-    fn index_block(&self, block_node: PythonNode) {
         use PythonNonterminalType::*;
         for child in self.tree.get_root_node().iter_children() {
             if child.is_type(Nonterminal(simple_stmts)) {
+                let iterator = self.tree.get_root_node().iter_children();
             } else if child.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
+                self.definition_names.push_to_vec("foo", 42);
             } else if child.is_type(Nonterminal(decorated)) {
                 self.index_decorated(child);
             } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_for_stmt(child);
+                self.index_while_stmt(child);
             } else if child.is_type(Nonterminal(for_stmt)){
                 self.index_for_stmt(child);
             } else if child.is_type(Nonterminal(with_stmt)){
@@ -251,6 +259,8 @@ impl PythonFile {
                 } else if inner.is_type(Nonterminal(with_stmt)) {
                     self.index_with_stmt(child);
                 }
+            } else {
+                assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
             }
         }
     }
@@ -259,12 +269,15 @@ impl PythonFile {
     }
 
     fn index_for_stmt(&self, for_stmt: PythonNode) {
+        debug_assert_eq!(for_stmt.get_type(), Nonterminal(PythonNonterminalType::for_stmt));
     }
 
     fn index_while_stmt(&self, while_stmt: PythonNode) {
+        debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
     }
 
     fn index_with_stmt(&self, with_stmt: PythonNode) {
+        debug_assert_eq!(with_stmt.get_type(), Nonterminal(PythonNonterminalType::with_stmt));
     }
 
     fn search_definitions(&self, node: PythonNode) {
@@ -338,7 +351,7 @@ impl PythonFile {
     pub fn infer_name(&self, name: PythonNode) {
         self.calculate_global_definitions_and_references();
         let value = self.values_or_references[name.index as usize].get();
-        if value.is_uncalculated() {
+        if !value.is_calculated() {
             if value.is_calculating() {
                 todo!();
             }
@@ -348,7 +361,7 @@ impl PythonFile {
                 Nonterminal(PythonNonterminalType::stmt)
             );*/
 
-            if self.values_or_references[stmt.index as usize].get().is_uncalculated() {
+            if !self.values_or_references[stmt.index as usize].get().is_calculated() {
                 self.calculate_node_scope_definitions(name);
                 if is_name_reference(name) {
                     panic!("is extern");
@@ -358,7 +371,7 @@ impl PythonFile {
                 }
             }
             let value = self.values_or_references[name.index as usize].get();
-            debug_assert!(!value.is_uncalculated());
+            debug_assert!(value.is_calculated());
             return self.infer_name(name)
         }
         panic!()
