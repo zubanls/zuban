@@ -122,7 +122,7 @@ create_grammar!(
 
     decorator: "@" named_expression Newline
     decorators: decorator+
-    decorated:? decorators (class_def | function_def | async_function_def)
+    decorated: decorators (class_def | function_def | async_function_def)
 
     class_def: "class" name_definition ["(" [arguments] ")"] ":" block
 

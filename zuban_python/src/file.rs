@@ -5,6 +5,7 @@ use std::pin::Pin;
 use std::fmt;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
+use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 
@@ -171,7 +172,7 @@ impl File for PythonFile {
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
         let node = self.tree.get_leaf_by_position(position);
         match node.get_type() {
-            PythonNodeType::Terminal(t) | PythonNodeType::ErrorTerminal(t) => {
+            Terminal(t) | ErrorTerminal(t) => {
                 match t {
                     PythonTerminalType::Name => Leaf::Name(Box::new(
                         TreeName::new(database, self, node)
@@ -182,7 +183,7 @@ impl File for PythonFile {
             PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
                 Leaf::Keyword(node.get_code().to_owned())
             }
-            PythonNodeType::Nonterminal(n) | PythonNodeType::ErrorNonterminal(n) => {
+            Nonterminal(n) | ErrorNonterminal(n) => {
                 panic!("{}", node.type_str())
             }
         }
@@ -219,63 +220,101 @@ impl PythonFile {
             // It was already done.
             return
         }
+        // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
+    }
+
+    fn index_block(&self, block_node: PythonNode) {
+        use PythonNonterminalType::*;
         for child in self.tree.get_root_node().iter_children() {
+            if child.is_type(Nonterminal(simple_stmts)) {
+            } else if child.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
+            } else if child.is_type(Nonterminal(decorated)) {
+                self.index_decorated(child);
+            } else if child.is_type(Nonterminal(while_stmt)) {
+                self.index_for_stmt(child);
+            } else if child.is_type(Nonterminal(for_stmt)){
+                self.index_for_stmt(child);
+            } else if child.is_type(Nonterminal(with_stmt)){
+                self.index_with_stmt(child);
+            } else if child.is_type(Nonterminal(async_stmt)) {
+                let iterator = self.tree.get_root_node().iter_children();
+                let mut iterator = iterator.skip(1);
+                let inner = iterator.next().unwrap();
+                if inner.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
+                } else if inner.is_type(Nonterminal(for_stmt)) {
+                    self.index_for_stmt(inner);
+                } else if inner.is_type(Nonterminal(with_stmt)) {
+                    self.index_with_stmt(child);
+                }
+            }
         }
     }
 
-    fn search_definitions(&self, node: &PythonNode) {
+    fn index_decorated(&self, decorated: PythonNode) {
+    }
+
+    fn index_for_stmt(&self, for_stmt: PythonNode) {
+    }
+
+    fn index_while_stmt(&self, while_stmt: PythonNode) {
+    }
+
+    fn index_with_stmt(&self, with_stmt: PythonNode) {
+    }
+
+    fn search_definitions(&self, node: PythonNode) {
         use PythonNonterminalType::*;
         for child in node.iter_children() {
             match child.get_type() {
-                PythonNodeType::Terminal(PythonTerminalType::Name)
-                | PythonNodeType::ErrorTerminal(PythonTerminalType::Name) => {
+                Terminal(PythonTerminalType::Name)
+                | ErrorTerminal(PythonTerminalType::Name) => {
                 }
-                PythonNodeType::Nonterminal(assignment) => {
+                Nonterminal(assignment) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(function_def) => {
+                Nonterminal(function_def) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(class_def) => {
+                Nonterminal(class_def) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(import_name) => {
+                Nonterminal(import_name) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(import_from) => {
+                Nonterminal(import_from) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(for_stmt) => {
+                Nonterminal(for_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(with_stmt) => {
+                Nonterminal(with_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(sync_for_if_clause) => {
+                Nonterminal(sync_for_if_clause) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(match_stmt) => {
+                Nonterminal(match_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(if_stmt | while_stmt | try_stmt
+                Nonterminal(if_stmt | while_stmt | try_stmt
                                             | async_stmt | decorated ) => {
-                    self.search_definitions(&child);
+                    self.search_definitions(child);
                 }
-                PythonNodeType::Nonterminal(del_stmt) => {
+                Nonterminal(del_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(match_stmt) => {
+                Nonterminal(match_stmt) => {
                     todo!()
                 }
-                PythonNodeType::Nonterminal(_) | PythonNodeType::ErrorNonterminal(_) => {
+                Nonterminal(_) | ErrorNonterminal(_) => {
                     todo!("Search for references");
                 }
-                    PythonNodeType::Nonterminal(named_expression) => {
+                    Nonterminal(named_expression) => {
                         todo!()
                     }
                 _ => {
@@ -306,7 +345,7 @@ impl PythonFile {
 
             let stmt = name; // todo!
             /*let stmt = name.get_parent_until(
-                PythonNodeType::Nonterminal(PythonNonterminalType::stmt)
+                Nonterminal(PythonNonterminalType::stmt)
             );*/
 
             if self.values_or_references[stmt.index as usize].get().is_uncalculated() {
@@ -327,9 +366,9 @@ impl PythonFile {
 }
 
 fn is_name_reference(name: PythonNode) -> bool {
-    debug_assert!(name.is_type(PythonNodeType::Terminal(PythonTerminalType::Name)));
+    debug_assert!(name.is_type(Terminal(PythonTerminalType::Name)));
     name.get_parent().unwrap().is_type(
-        PythonNodeType::Nonterminal(PythonNonterminalType::name_definition)
+        Nonterminal(PythonNonterminalType::name_definition)
     )
 }
 
@@ -339,31 +378,31 @@ fn get_function_or_class_name() {
 fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
     use PythonNonterminalType::*;
     match node.get_type() {
-        PythonNodeType::Nonterminal(assignment) => {
+        Nonterminal(assignment) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(param_maybe_default) => {
+        Nonterminal(param_maybe_default) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(import_name) => {
+        Nonterminal(import_name) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(import_from) => {
+        Nonterminal(import_from) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(named_expression) => {
+        Nonterminal(named_expression) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(for_stmt) => {
+        Nonterminal(for_stmt) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(with_stmt) => {
+        Nonterminal(with_stmt) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(sync_for_if_clause) => {
+        Nonterminal(sync_for_if_clause) => {
             todo!()
         }
-        PythonNodeType::Nonterminal(del_stmt) => {
+        Nonterminal(del_stmt) => {
             todo!()
         }
         _ => vec!()
@@ -373,21 +412,21 @@ fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
 fn get_definition(name: PythonNode) -> Option<PythonNode> {
     use PythonNonterminalType::*;
 
-    debug_assert!(name.get_type() == PythonNodeType::Terminal(PythonTerminalType::Name));
+    debug_assert!(name.get_type() == Terminal(PythonTerminalType::Name));
 
     let mut parent = name.get_parent().unwrap();
     match parent.get_type() {
-        PythonNodeType::Nonterminal(function_def | class_def) => {
+        Nonterminal(function_def | class_def) => {
             // There shouldn't be any other names with a direct parent func/class
             Some(parent)
         }
-        PythonNodeType::Nonterminal(except_clause) => {
+        Nonterminal(except_clause) => {
             Some(parent)
         }
         _ => {
             loop {
                 match parent.get_type() {
-                    PythonNodeType::Nonterminal(
+                    Nonterminal(
                         assignment | param_maybe_default | sync_for_if_clause | with_stmt | for_stmt | import_name
                         | import_from | del_stmt | named_expression) => {
 
@@ -396,7 +435,7 @@ fn get_definition(name: PythonNode) -> Option<PythonNode> {
                         }
                         return None
                     }
-                    PythonNodeType::Nonterminal(block | file) => {
+                    Nonterminal(block | file) => {
                         return None;
                     }
                     _ => {}
