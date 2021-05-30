@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::iter::Cloned;
 use std::hash::{Hash, Hasher};
+use std::fmt;
 use parsa::NodeIndex;
 
 
@@ -70,17 +71,35 @@ pub struct HashableRawStr {
     ptr: *const str
 }
 
+impl HashableRawStr {
+    pub fn new(string: &str) -> Self {
+        Self {ptr: string}
+    }
+
+    fn get_str(&self) -> &str {
+        // This is REALLY unsafe. The user of HashableRawStr is responsible for
+        // ensuring that the code part lives longer than this piece.
+        unsafe {&*self.ptr}
+    }
+}
+
 impl Hash for HashableRawStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        unsafe {&*self.ptr}.hash(state);
+        self.get_str().hash(state);
     }
 }
 
 
 impl PartialEq for HashableRawStr {
     fn eq(&self, other: &Self) -> bool {
-        (unsafe {&*self.ptr}) == (unsafe {&*other.ptr})
+        self.get_str() == other.get_str()
     }
 }
 
 impl Eq for HashableRawStr {}
+
+impl fmt::Debug for HashableRawStr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self.get_str())
+    }
+}

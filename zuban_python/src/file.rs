@@ -194,7 +194,7 @@ impl File for PythonFile {
 #[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: InsertOnlyHashMapVec<&'static str, NodeIndex>,
+    definition_names: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
@@ -240,7 +240,7 @@ impl PythonFile {
             if child.is_type(Nonterminal(simple_stmts)) {
                 let iterator = self.tree.get_root_node().iter_children();
             } else if child.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
-                self.definition_names.push_to_vec("foo", 42);
+                self.definition_names.push_to_vec(HashableRawStr::new("foo"), 42);
             } else if child.is_type(Nonterminal(decorated)) {
                 self.index_decorated(child);
             } else if child.is_type(Nonterminal(while_stmt)) {
