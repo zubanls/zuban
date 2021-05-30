@@ -29,34 +29,31 @@ impl<T: ?Sized> InsertOnlyVec<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InsertOnlyHashMapVec<K, T> {
-    map: UnsafeCell<HashMap<K, Vec<T>>>,
+    map: HashMap<K, Vec<T>>,
 }
 
 impl<K, T: std::fmt::Debug> InsertOnlyHashMapVec<K, T> {
     pub fn len(&self) -> usize {
-        unsafe {&*self.map.get()}.len()
+        self.map.len()
     }
 }
 
 impl<K: Eq + std::hash::Hash, T: std::fmt::Debug> InsertOnlyHashMapVec<K, T> {
     // unsafe, because the vec might be changed during its use.
-    unsafe fn get_iterator<'a, 'b>(&'a self, key: &'b K) -> std::option::Iter<&'a Vec<T>> {
-        unsafe {&*self.map.get()}.get(key).iter()
+    unsafe fn get_iterator<'a, 'b>(&'a self, key: &'b K) -> std::slice::Iter<T> {
+        match self.map.get(key) {
+            Some(v) => v.iter(),
+            None => [].iter(),
+        }
     }
 
     pub fn push_to_vec(&self, key: K, value: T) {
-        let map = unsafe {&mut *self.map.get()};
-        match map.get_mut(&key) {
+        let mut_self = unsafe {&mut *(self as *const Self as *mut Self)};
+        match mut_self.map.get_mut(&key) {
             Some(entry) => entry.push(value),
-            None => {map.insert(key, vec![value]);},
+            None => {mut_self.map.insert(key, vec![value]);},
         };
-    }
-}
-
-impl<K, T> Default for InsertOnlyHashMapVec<K, T> {
-    fn default() -> Self {
-        Self {map: UnsafeCell::new(HashMap::new())}
     }
 }

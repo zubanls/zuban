@@ -194,7 +194,7 @@ impl File for PythonFile {
 #[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: InsertOnlyHashMapVec<*const str, NodeIndex>,
+    definition_names: InsertOnlyHashMapVec<&'static str, NodeIndex>,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<InternalValueOrReference>>,
     complex_values: Vec<ComplexValue>,
