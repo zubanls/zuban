@@ -173,8 +173,9 @@ pub enum PythonValueEnum {
     Param,
     SimpleGeneric, // primary: primary '[' slices ']'
     ParamWithDefault, // TODO Redirect to default maybe?
-    Class(NodeIndex), // The index to the __init__ name or 0
+    LazyInferredClass, // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
+    Class(NodeIndex), // The index to the __init__ name or 0
     Function(NodeIndex),  // Result
     NoReturnFunction,
 
