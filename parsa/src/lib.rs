@@ -253,6 +253,11 @@ macro_rules! __create_node {
                 }
             }
 
+            pub fn get_nth_child(&self, index: usize) -> $Node<'a> {
+                debug_assert!(!self.is_leaf());
+                self.iter_children().skip(index).next().expect("There is no child")
+            }
+
             pub fn is_error_recovery_node(&self) -> bool {
                 self.internal_node.type_.is_error_recovery()
             }

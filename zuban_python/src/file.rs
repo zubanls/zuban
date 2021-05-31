@@ -221,14 +221,14 @@ impl PythonFile {
             // It was already done.
             return
         }
-        self.index_block(self.tree.get_root_node(), true);
+        self.index_block(self.tree.get_root_node(), true, true);
 
         self.values_or_references[0].set(InternalValueOrReference::new_node_analysis(
             Locality::File
         ));
     }
 
-    fn index_block(&self, block_node: PythonNode, ordered: bool) {
+    fn index_block(&self, block_node: PythonNode, ordered: bool, is_global_scope: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -240,7 +240,11 @@ impl PythonFile {
             if child.is_type(Nonterminal(simple_stmts)) {
                 let iterator = self.tree.get_root_node().iter_children();
             } else if child.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
-                self.definition_names.push_to_vec(HashableRawStr::new("foo"), 42);
+                let name_def = child.get_nth_child(1);
+                debug_assert!(name_def.is_type(Nonterminal(name_definition)));
+                let name = name_def.get_nth_child(0);
+                self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
+                self.values_or_references[name.index] = InternalValueOrReference::
             } else if child.is_type(Nonterminal(decorated)) {
                 self.index_decorated(child);
             } else if child.is_type(Nonterminal(while_stmt)) {
