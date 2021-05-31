@@ -44,7 +44,7 @@ pub struct InternalValueOrReference {
 
 impl InternalValueOrReference {
     #[inline]
-    fn calculate_flags(other_module: u32, locality: Locality,
+    fn calculate_flags(rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
         (locality as u32)
         | (is_nullable as u32)
@@ -69,7 +69,17 @@ impl InternalValueOrReference {
         todo!()
     }
 
-    pub fn new_language_specific() -> Self {
+    pub fn new_simple_language_specific(
+        type_: PythonValueEnum, locality: Locality, is_nullable: bool,
+        in_module_scope: bool
+    ) -> Self {
+        let flags = Self::calculate_flags(0, locality, is_nullable, in_module_scope);
+        Self {flags, node_or_complex_index: 0}
+    }
+
+    pub fn new_language_specific(
+        type_: PythonValueEnum,
+        node_index: NodeIndex, locality: Locality, is_nullable: bool) -> Self {
         todo!()
     }
 
@@ -150,7 +160,7 @@ enum InternalValueOrReferenceType {
 
 #[derive(Debug)]
 #[repr(u32)]
-enum PythonValueEnum {
+pub enum PythonValueEnum {
     String,
     Bytes,
     Float,
@@ -164,6 +174,7 @@ enum PythonValueEnum {
     SimpleGeneric, // primary: primary '[' slices ']'
     ParamWithDefault, // TODO Redirect to default maybe?
     Class(NodeIndex), // The index to the __init__ name or 0
+    LazyInferredFunction, // A function that will be inferred later.
     Function(NodeIndex),  // Result
     NoReturnFunction,
 

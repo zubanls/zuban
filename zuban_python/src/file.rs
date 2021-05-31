@@ -8,7 +8,7 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, Python
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::{InsertOnlyHashMapVec, HashableRawStr};
 use crate::name::{Name, Names, TreeName};
-use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
+use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue, PythonValueEnum};
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
@@ -244,7 +244,14 @@ impl PythonFile {
                 debug_assert!(name_def.is_type(Nonterminal(name_definition)));
                 let name = name_def.get_nth_child(0);
                 self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
-                self.values_or_references[name.index] = InternalValueOrReference::
+                self.values_or_references[name.index].set(
+                    InternalValueOrReference::new_simple_language_specific(
+                        PythonValueEnum::LazyInferredFunction,
+                        Locality::ClassOrFunction,
+                        false,
+                        is_global_scope,
+                    )
+                )
             } else if child.is_type(Nonterminal(decorated)) {
                 self.index_decorated(child);
             } else if child.is_type(Nonterminal(while_stmt)) {
