@@ -266,7 +266,27 @@ impl PythonFile {
                     is_global_scope,
                 );
             } else if child.is_type(Nonterminal(decorated)) {
-                self.index_decorated(child);
+                let not_decorated = child.get_nth_child(1);
+                if not_decorated.is_type(Nonterminal(function_def)) {
+                    self.add_new_definition(
+                        not_decorated.get_nth_child(1),
+                        PythonValueEnum::LazyInferredFunction,
+                        is_global_scope,
+                    );
+                } else if not_decorated.is_type(Nonterminal(class_def)) {
+                    self.add_new_definition(
+                        not_decorated.get_nth_child(1),
+                        PythonValueEnum::LazyInferredClass,
+                        is_global_scope,
+                    );
+                } else {
+                    debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
+                    self.add_new_definition(
+                        not_decorated.get_nth_child(0).get_nth_child(1),
+                        PythonValueEnum::LazyInferredClass,
+                        is_global_scope,
+                    );
+                }
             } else if child.is_type(Nonterminal(while_stmt)) {
                 self.index_while_stmt(child);
             } else if child.is_type(Nonterminal(for_stmt)){
@@ -277,7 +297,12 @@ impl PythonFile {
                 let iterator = self.tree.get_root_node().iter_children();
                 let mut iterator = iterator.skip(1);
                 let inner = iterator.next().unwrap();
-                if inner.is_type(Nonterminal(function_def)) || child.is_type(Nonterminal(class_def)) {
+                if inner.is_type(Nonterminal(function_def)) {
+                    self.add_new_definition(
+                        inner.get_nth_child(1),
+                        PythonValueEnum::LazyInferredFunction,
+                        is_global_scope,
+                    );
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner);
                 } else if inner.is_type(Nonterminal(with_stmt)) {
@@ -287,9 +312,6 @@ impl PythonFile {
                 assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
             }
         }
-    }
-
-    fn index_decorated(&self, decorated: PythonNode) {
     }
 
     fn index_for_stmt(&self, for_stmt: PythonNode) {
