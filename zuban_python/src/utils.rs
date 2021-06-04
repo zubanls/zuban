@@ -1,10 +1,8 @@
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
 use std::pin::Pin;
-use std::iter::Cloned;
 use std::hash::{Hash, Hasher};
 use std::fmt;
-use parsa::NodeIndex;
 
 
 #[derive(Debug)]
@@ -46,7 +44,7 @@ impl<K, T: std::fmt::Debug> InsertOnlyHashMapVec<K, T> {
 impl<K: Eq + Hash, T: std::fmt::Debug> InsertOnlyHashMapVec<K, T> {
     // unsafe, because the vec might be changed during its use.
     unsafe fn get_iterator<'a, 'b>(&'a self, key: &'b K) -> std::slice::Iter<T> {
-        match unsafe {&*self.map.get()}.get(key) {
+        match {&*self.map.get()}.get(key) {
             Some(v) => v.iter(),
             None => [].iter(),
         }

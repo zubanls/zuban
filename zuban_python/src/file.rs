@@ -1,5 +1,4 @@
 use std::fs;
-use std::collections::HashMap;
 use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
 use std::fmt;
@@ -8,7 +7,7 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, Python
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::{InsertOnlyHashMapVec, HashableRawStr};
 use crate::name::{Name, Names, TreeName};
-use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue, PythonValueEnum};
+use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use crate::indexer::IndexerState;
 
 type InvalidatedDependencies = Vec<FileIndex>;
@@ -224,7 +223,7 @@ impl PythonFile {
             // It was already done.
             return
         }
-        let mut indexer_state = IndexerState::new(
+        let indexer_state = IndexerState::new(
             &self.definition_names,
             &self.values_or_references,
             true, // is_global_scope
@@ -277,17 +276,14 @@ impl PythonFile {
                 Nonterminal(del_stmt) => {
                     todo!()
                 }
-                Nonterminal(match_stmt) => {
+                Nonterminal(named_expression) => {
                     todo!()
                 }
                 Nonterminal(_) | ErrorNonterminal(_) => {
                     todo!("Search for references");
                 }
-                    Nonterminal(named_expression) => {
-                        todo!()
-                    }
                 _ => {
-                    node;
+                    todo!()
                 }
             }
         }

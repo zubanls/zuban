@@ -1,5 +1,5 @@
 use parsa_python::{PythonNode, PythonNonterminalType, PythonTerminalType};
-use parsa_python::PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
+use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::Node;
 use crate::file::{DefinitionNames, ValuesOrReferences};
 use crate::utils::HashableRawStr;

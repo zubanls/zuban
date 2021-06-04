@@ -177,11 +177,13 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
-        TreePosition {file: self.value.get_file(), position: todo!()}
+        todo!()
+        //TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
     fn get_end_position(&self) -> TreePosition<'a> {
-        TreePosition {file: self.value.get_file(), position: todo!()}
+        todo!()
+        //TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
     fn get_documentation(&self) -> String {
