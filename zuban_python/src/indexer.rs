@@ -82,10 +82,16 @@ impl<'a> IndexerState<'a> {
                         self.is_global_scope,
                     );
                 }
-            } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(child, ordered);
+            } else if child.is_type(Nonterminal(if_stmt)){
+                self.index_if_stmt(child, ordered);
+            } else if child.is_type(Nonterminal(try_stmt)){
+                self.index_try_stmt(child, ordered);
             } else if child.is_type(Nonterminal(for_stmt)){
                 self.index_for_stmt(child, ordered);
+            } else if child.is_type(Nonterminal(while_stmt)) {
+                self.index_while_stmt(child, ordered);
+            } else if child.is_type(Nonterminal(match_stmt)) {
+                self.index_match_stmt(child, ordered);
             } else if child.is_type(Nonterminal(with_stmt)){
                 self.index_with_stmt(child, ordered);
             } else if child.is_type(Nonterminal(async_stmt)) {
@@ -155,6 +161,19 @@ impl<'a> IndexerState<'a> {
                 _ => (),
             }
         }
+    }
+
+    fn index_if_stmt(&self, if_stmt: PythonNode, ordered: bool) {
+        debug_assert_eq!(if_stmt.get_type(), Nonterminal(PythonNonterminalType::if_stmt));
+    }
+
+    fn index_try_stmt(&self, try_stmt: PythonNode, ordered: bool) {
+        debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::try_stmt));
+    }
+
+    fn index_match_stmt(&self, match_stmt: PythonNode, ordered: bool) {
+        debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
+        todo!()
     }
 
     fn index_star_targets(&self, node: PythonNode, ordered: bool) {
