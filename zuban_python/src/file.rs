@@ -9,9 +9,12 @@ use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::{InsertOnlyHashMapVec, HashableRawStr};
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue, PythonValueEnum};
+use crate::indexer::IndexerState;
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
+pub type DefinitionNames = InsertOnlyHashMapVec<HashableRawStr, NodeIndex>;
+pub type ValuesOrReferences = Vec<Cell<InternalValueOrReference>>;
 
 pub trait VirtualFileSystemReader {
     fn read_file(&self, path: &str) -> String;
@@ -191,19 +194,12 @@ impl File for PythonFile {
     }
 }
 
-#[derive(Default)]
-struct IndexerState<'a> {
-    unresolved_references: Vec<PythonNode<'a>>,
-    unresolved_nodes: Vec<PythonNode<'a>>,
-    is_global_scope: bool,
-}
-
 #[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
+    definition_names: DefinitionNames,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    values_or_references: Vec<Cell<InternalValueOrReference>>,
+    values_or_references: ValuesOrReferences,
     complex_values: Vec<ComplexValue>,
     dependencies: Vec<FileIndex>,
     issues: Vec<Issue>,
@@ -228,109 +224,16 @@ impl PythonFile {
             // It was already done.
             return
         }
-        let mut indexer_state = IndexerState {is_global_scope: true, .. Default::default()};
-        self.index_block(self.tree.get_root_node(), &mut indexer_state, true);
+        let mut indexer_state = IndexerState::new(
+            &self.definition_names,
+            &self.values_or_references,
+            true, // is_global_scope
+        );
+        indexer_state.index_block(self.tree.get_root_node(), true);
 
         self.values_or_references[0].set(InternalValueOrReference::new_node_analysis(
             Locality::File
         ));
-    }
-
-    fn add_new_definition(&self, name_def: PythonNode, type_: PythonValueEnum, is_global_scope: bool) {
-        debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
-        let name = name_def.get_nth_child(0);
-        self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
-        self.values_or_references[name.index].set(
-            InternalValueOrReference::new_simple_language_specific(
-                type_,
-                Locality::Stmt,
-                false,
-                is_global_scope,
-            )
-        );
-    }
-
-    fn index_block(&self, block_node: PythonNode, state: &mut IndexerState, ordered: bool) {
-        // Theory:
-        // - while_stmt, for_stmt: ignore order (at least mostly)
-        // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
-        // - sync_for_if_clause: reversed order and only in scope
-        // - lambda: only in scope
-        // - function_def, class_def: ignore
-        use PythonNonterminalType::*;
-        for child in self.tree.get_root_node().iter_children() {
-            if child.is_type(Nonterminal(simple_stmts)) {
-            } else if child.is_type(Nonterminal(function_def)) {
-                self.add_new_definition(
-                    child.get_nth_child(1),
-                    PythonValueEnum::LazyInferredFunction,
-                    state.is_global_scope,
-                );
-            } else if child.is_type(Nonterminal(class_def)) {
-                self.add_new_definition(
-                    child.get_nth_child(1),
-                    PythonValueEnum::LazyInferredClass,
-                    state.is_global_scope,
-                );
-            } else if child.is_type(Nonterminal(decorated)) {
-                let not_decorated = child.get_nth_child(1);
-                if not_decorated.is_type(Nonterminal(function_def)) {
-                    self.add_new_definition(
-                        not_decorated.get_nth_child(1),
-                        PythonValueEnum::LazyInferredFunction,
-                        state.is_global_scope,
-                    );
-                } else if not_decorated.is_type(Nonterminal(class_def)) {
-                    self.add_new_definition(
-                        not_decorated.get_nth_child(1),
-                        PythonValueEnum::LazyInferredClass,
-                        state.is_global_scope,
-                    );
-                } else {
-                    debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
-                    self.add_new_definition(
-                        not_decorated.get_nth_child(0).get_nth_child(1),
-                        PythonValueEnum::LazyInferredClass,
-                        state.is_global_scope,
-                    );
-                }
-            } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(child, state);
-            } else if child.is_type(Nonterminal(for_stmt)){
-                self.index_for_stmt(child, state);
-            } else if child.is_type(Nonterminal(with_stmt)){
-                self.index_with_stmt(child, state);
-            } else if child.is_type(Nonterminal(async_stmt)) {
-                let iterator = self.tree.get_root_node().iter_children();
-                let mut iterator = iterator.skip(1);
-                let inner = iterator.next().unwrap();
-                if inner.is_type(Nonterminal(function_def)) {
-                    self.add_new_definition(
-                        inner.get_nth_child(1),
-                        PythonValueEnum::LazyInferredFunction,
-                        state.is_global_scope,
-                    );
-                } else if inner.is_type(Nonterminal(for_stmt)) {
-                    self.index_for_stmt(inner, state);
-                } else if inner.is_type(Nonterminal(with_stmt)) {
-                    self.index_with_stmt(child, state);
-                }
-            } else {
-                assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
-            }
-        }
-    }
-
-    fn index_for_stmt(&self, for_stmt: PythonNode, state: &mut IndexerState) {
-        debug_assert_eq!(for_stmt.get_type(), Nonterminal(PythonNonterminalType::for_stmt));
-    }
-
-    fn index_while_stmt(&self, while_stmt: PythonNode, state: &mut IndexerState) {
-        debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
-    }
-
-    fn index_with_stmt(&self, with_stmt: PythonNode, state: &mut IndexerState) {
-        debug_assert_eq!(with_stmt.get_type(), Nonterminal(PythonNonterminalType::with_stmt));
     }
 
     fn search_definitions(&self, node: PythonNode) {
