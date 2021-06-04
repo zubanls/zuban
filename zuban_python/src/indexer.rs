@@ -83,11 +83,11 @@ impl<'a> IndexerState<'a> {
                     );
                 }
             } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(child);
+                self.index_while_stmt(child, ordered);
             } else if child.is_type(Nonterminal(for_stmt)){
-                self.index_for_stmt(child);
+                self.index_for_stmt(child, ordered);
             } else if child.is_type(Nonterminal(with_stmt)){
-                self.index_with_stmt(child);
+                self.index_with_stmt(child, ordered);
             } else if child.is_type(Nonterminal(async_stmt)) {
                 let iterator = child.iter_children();
                 let mut iterator = iterator.skip(1);
@@ -99,9 +99,9 @@ impl<'a> IndexerState<'a> {
                         self.is_global_scope,
                     );
                 } else if inner.is_type(Nonterminal(for_stmt)) {
-                    self.index_for_stmt(inner);
+                    self.index_for_stmt(inner, ordered);
                 } else if inner.is_type(Nonterminal(with_stmt)) {
-                    self.index_with_stmt(child);
+                    self.index_with_stmt(child, ordered);
                 }
             } else {
                 assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
@@ -109,15 +109,47 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_for_stmt(&self, for_stmt: PythonNode) {
+    fn index_for_stmt(&self, for_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(for_stmt.get_type(), Nonterminal(PythonNonterminalType::for_stmt));
+        // "for" star_targets "in" star_expressions ":" block else_block?
+        let iterator = for_stmt.iter_children();
+        let mut iterator = iterator.skip(1);
+
+        self.index_star_targets(iterator.next().unwrap(), ordered);
+        let mut iterator = iterator.skip(1);
+        self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let mut iterator = iterator.skip(1);
+        self.index_block(iterator.next().unwrap(), ordered);
+        if let Some(else_) = iterator.next() {
+            // "else" ":" block
+            self.index_block(else_.get_nth_child(2), ordered);
+        }
     }
 
-    fn index_while_stmt(&self, while_stmt: PythonNode) {
+    fn index_while_stmt(&self, while_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
+        // "while" named_expression ":" block else_block?
     }
 
-    fn index_with_stmt(&self, with_stmt: PythonNode) {
+    fn index_with_stmt(&self, with_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(with_stmt.get_type(), Nonterminal(PythonNonterminalType::with_stmt));
+        // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
+        for child in with_stmt.iter_children() {
+            match child.get_type() {
+                Nonterminal(PythonNonterminalType::with_item) => {
+                    // expression ["as" star_target]
+                    self.index_non_block_node(child.get_nth_child(0), ordered);
+                    self.index_star_targets(child.get_nth_child(2), ordered);
+                }
+                Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
+                _ => (),
+            }
+        }
+    }
+
+    fn index_star_targets(&self, node: PythonNode, ordered: bool) {
+    }
+
+    fn index_non_block_node(&self, node: PythonNode, ordered: bool) {
     }
 }
