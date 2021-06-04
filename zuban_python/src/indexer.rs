@@ -129,6 +129,16 @@ impl<'a> IndexerState<'a> {
     fn index_while_stmt(&self, while_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
         // "while" named_expression ":" block else_block?
+        let iterator = for_stmt.iter_children();
+        let mut iterator = iterator.skip(1);
+
+        self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let mut iterator = iterator.skip(1);
+        self.index_non_block_node(iterator.next().unwrap(), true);
+        if let Some(else_) = iterator.next() {
+            // "else" ":" block
+            self.index_block(else_.get_nth_child(2), ordered);
+        }
     }
 
     fn index_with_stmt(&self, with_stmt: PythonNode, ordered: bool) {
