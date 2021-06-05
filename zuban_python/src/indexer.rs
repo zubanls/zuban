@@ -1,4 +1,4 @@
-use parsa_python::{PythonNode, PythonNonterminalType, PythonTerminalType};
+use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::file::{DefinitionNames, ValuesOrReferences};
@@ -66,6 +66,7 @@ impl<'a> IndexerState<'a> {
         use PythonNonterminalType::*;
         for child in block_node.iter_children() {
             if child.is_type(Nonterminal(simple_stmts)) {
+                self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
                 self.add_value_definition(
                     child.get_nth_child(1),
@@ -221,5 +222,29 @@ impl<'a> IndexerState<'a> {
     }
 
     fn index_non_block_node(&self, node: PythonNode, ordered: bool) {
+        use PythonNonterminalType::*;
+        const SEARCH_NAMES: &'static [PythonNodeType] = &[
+            Terminal(PythonTerminalType::Name),
+            Nonterminal(PythonNonterminalType::lambda),
+            Nonterminal(PythonNonterminalType::comprehension),
+            Nonterminal(PythonNonterminalType::dict_comprehension),
+        ];
+        for node in node.search(SEARCH_NAMES) {
+            node.get_parent();
+        }
+        /*
+        const SEARCH_DEFINITIONS: &'static [i32] = &[
+            dotted_as_name
+            import_from_as_name
+            except_clause
+            pattern_capture_target
+            named_expression
+
+            t_atom
+            single_target
+            star_atom
+            t_primary
+        ];
+        */
     }
 }

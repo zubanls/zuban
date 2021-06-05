@@ -146,7 +146,7 @@ macro_rules! __create_node {
 
         use $crate::Node;
 
-        #[derive(Debug, PartialEq, Eq)]
+        #[derive(Debug, PartialEq, Eq, Copy, Clone)]
         pub enum $NodeType{
             Nonterminal($NonterminalType),
             Terminal($TerminalType),
@@ -229,6 +229,14 @@ macro_rules! __create_node {
         }
 
         impl<'a> $Node<'a> {
+            fn new(
+                internal_tree: &'a $crate::InternalTree,
+                index: usize,
+                internal_node: &'a $crate::InternalNode
+            ) -> Self {
+                Self {internal_tree, index, internal_node}
+            }
+
             fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
@@ -279,6 +287,16 @@ macro_rules! __create_node {
                     }
                 }
                 None
+            }
+
+            pub fn search(&self, types: &'static [$NodeType]) -> SearchIterator<'a> {
+                assert!(!self.is_leaf());
+                SearchIterator {
+                    internal_tree: self.internal_tree,
+                    next_index: self.index,
+                    end_code_index: self.end(),
+                    search_types: types,
+                }
             }
 
             pub fn get_type(&self) -> $NodeType {
@@ -366,6 +384,34 @@ macro_rules! __create_node {
                 };
                 self.next_index += current_node.next_node_offset as usize;
                 Some(current)
+            }
+        }
+
+        pub struct SearchIterator<'a> {
+            internal_tree: &'a $crate::InternalTree,
+            next_index: usize,
+            end_code_index: $crate::CodeIndex,
+            search_types: &'static [$NodeType],
+        }
+
+        impl<'a> Iterator for SearchIterator<'a> {
+            type Item = $Node<'a>;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                for (i, n) in self.internal_tree.nodes[self.next_index..].iter().enumerate() {
+                    if n.start_index >= self.end_code_index {
+                        assert!(n.length != 0);
+                        return None;
+                    }
+                    for t in self.search_types {
+                        if t.to_internal() == n.type_ {
+                            let node = $Node::new(self.internal_tree, self.next_index + i, n);
+                            self.next_index += i + 1;
+                            return Some(node)
+                        }
+                    }
+                }
+                unreachable!();
             }
         }
     }
