@@ -165,14 +165,48 @@ impl<'a> IndexerState<'a> {
 
     fn index_if_stmt(&self, if_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(PythonNonterminalType::if_stmt));
+        // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     }
 
     fn index_try_stmt(&self, try_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::try_stmt));
+        // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
+        for child in with_stmt.iter_children() {
+            match child.get_type() {
+                Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(PythonNonterminalType::except_block) => {
+                    // except_clause ":" block
+                    let except_clause = child.get_nth_child(0);
+                    // except_clause: "except" [expression ["as" name_definition]]
+                    for child in except_clause.get_children() {
+                        if child.is_type(Nonterminal(PythonNonterminalType::expression)) {
+                            self.index_non_block_node(child, ordered);
+                        } else if child.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
+                            self.add_new_definition(
+                                child,
+                                // TODO!
+                                PythonValueEnum::LazyInferredFunction,
+                                self.is_global_scope,
+                            );
+                        }
+                    }
+                    // block
+                    self.index_block(child.get_nth_child(2), ordered)
+                }
+                Nonterminal(PythonNonterminalType::finally_block)
+                | Nonterminal(PythonNonterminalType::else_block) => {
+                    // "finally" ":" block
+                    // "else" ":" block
+                    self.index_block(child.get_nth_child(2), ordered)
+                }
+                _ => (),
+            }
+        }
     }
 
     fn index_match_stmt(&self, match_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
+        // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!()
     }
 
