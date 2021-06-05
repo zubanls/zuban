@@ -225,26 +225,56 @@ impl<'a> IndexerState<'a> {
         use PythonNonterminalType::*;
         const SEARCH_NAMES: &'static [PythonNodeType] = &[
             Terminal(PythonTerminalType::Name),
-            Nonterminal(PythonNonterminalType::lambda),
-            Nonterminal(PythonNonterminalType::comprehension),
-            Nonterminal(PythonNonterminalType::dict_comprehension),
+            Nonterminal(lambda),
+            Nonterminal(comprehension),
+            Nonterminal(dict_comprehension),
         ];
         for node in node.search(SEARCH_NAMES) {
-            node.get_parent();
+            if node.is_type(Terminal(PythonTerminalType::Name)) {
+                let parent = node.get_parent().unwrap();
+                if parent.is_type(Nonterminal(name_definition)) {
+                    let parent_parent = parent.get_parent().unwrap();
+                    match parent_parent.get_type() {
+                        Nonterminal(dotted_as_name) => {
+                            // import foo.bar.baz
+                        }
+                        Nonterminal(import_from_as_name) => {
+                            // Name "as" name_definition | name_definition
+                        }
+                        Nonterminal(pattern_capture_target) => {
+                            // Pattern matching
+                            todo!()
+                        }
+                        Nonterminal(named_expression) => {
+                            todo!()
+                        }
+                        Nonterminal(t_atom) => {
+                            todo!()
+                        }
+                        Nonterminal(single_target) => {
+                            todo!()
+                        }
+                        Nonterminal(star_atom) => {
+                            todo!()
+                        }
+                        Nonterminal(t_primary) => {
+                            todo!()
+                        }
+                        _ => panic!("Should probably not happen: {:?}", parent_parent)
+                    }
+                } else {
+                    self.lookup_name(node);
+                }
+            } else {
+                // self.unresolved_nodes.push(node);
+            }
         }
         /*
-        const SEARCH_DEFINITIONS: &'static [i32] = &[
-            dotted_as_name
-            import_from_as_name
-            except_clause
-            pattern_capture_target
-            named_expression
-
-            t_atom
-            single_target
-            star_atom
-            t_primary
-        ];
         */
+    }
+
+    fn lookup_name(&self, name: PythonNode) {
+        debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
+        todo!()
     }
 }
