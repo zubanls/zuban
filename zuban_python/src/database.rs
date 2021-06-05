@@ -52,8 +52,8 @@ impl InternalValueOrReference {
     }
 
     pub fn new_redirect(other_module: FileIndex, node_index: NodeIndex,
-                        locality: Locality, is_nullable: bool) -> Self {
-        let flags = Self::calculate_flags(other_module.0, locality, is_nullable, false);
+                        locality: Locality, is_nullable: bool, in_module_scope: bool) -> Self {
+        let flags = Self::calculate_flags(other_module.0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: node_index}
     }
 

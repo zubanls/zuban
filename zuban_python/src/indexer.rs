@@ -1,9 +1,9 @@
 use parsa_python::{PythonNode, PythonNonterminalType, PythonTerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
-use parsa::Node;
+use parsa::{Node, NodeIndex};
 use crate::file::{DefinitionNames, ValuesOrReferences};
 use crate::utils::HashableRawStr;
-use crate::database::{InternalValueOrReference, PythonValueEnum, Locality};
+use crate::database::{InternalValueOrReference, PythonValueEnum, Locality, FileIndex};
 
 pub struct IndexerState<'a> {
     definition_names: &'a DefinitionNames,
@@ -24,13 +24,31 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn add_new_definition(&self, name_def: PythonNode, type_: PythonValueEnum) {
+    fn add_new_definition(&self, name_def: PythonNode, value: InternalValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
-        self.values_or_references[name.index].set(
+        self.values_or_references[name.index].set(value);
+    }
+
+    fn add_value_definition(&self, name_def: PythonNode, type_: PythonValueEnum) {
+        self.add_new_definition(
+            name_def,
             InternalValueOrReference::new_simple_language_specific(
                 type_,
+                Locality::Stmt,
+                false,
+                self.is_global_scope,
+            )
+        );
+    }
+
+    fn add_redirect_definition(&self, name_def: PythonNode, file_index: FileIndex, node_index: NodeIndex) {
+        self.add_new_definition(
+            name_def,
+            InternalValueOrReference::new_redirect(
+                file_index,
+                node_index,
                 Locality::Stmt,
                 false,
                 self.is_global_scope,
@@ -49,30 +67,30 @@ impl<'a> IndexerState<'a> {
         for child in block_node.iter_children() {
             if child.is_type(Nonterminal(simple_stmts)) {
             } else if child.is_type(Nonterminal(function_def)) {
-                self.add_new_definition(
+                self.add_value_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredFunction,
                 );
             } else if child.is_type(Nonterminal(class_def)) {
-                self.add_new_definition(
+                self.add_value_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredClass,
                 );
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
-                    self.add_new_definition(
+                    self.add_value_definition(
                         not_decorated.get_nth_child(1),
                         PythonValueEnum::LazyInferredFunction,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
-                    self.add_new_definition(
+                    self.add_value_definition(
                         not_decorated.get_nth_child(1),
                         PythonValueEnum::LazyInferredClass,
                     );
                 } else {
                     debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
-                    self.add_new_definition(
+                    self.add_value_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
                         PythonValueEnum::LazyInferredClass,
                     );
@@ -94,7 +112,7 @@ impl<'a> IndexerState<'a> {
                 let mut iterator = iterator.skip(1);
                 let inner = iterator.next().unwrap();
                 if inner.is_type(Nonterminal(function_def)) {
-                    self.add_new_definition(
+                    self.add_value_definition(
                         inner.get_nth_child(1),
                         PythonValueEnum::LazyInferredFunction,
                     );
@@ -129,7 +147,7 @@ impl<'a> IndexerState<'a> {
     fn index_while_stmt(&self, while_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
         // "while" named_expression ":" block else_block?
-        let iterator = for_stmt.iter_children();
+        let iterator = while_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
         self.index_non_block_node(iterator.next().unwrap(), ordered);
@@ -165,21 +183,21 @@ impl<'a> IndexerState<'a> {
     fn index_try_stmt(&self, try_stmt: PythonNode, ordered: bool) {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::try_stmt));
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
-        for child in with_stmt.iter_children() {
+        for child in try_stmt.iter_children() {
             match child.get_type() {
                 Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
                 Nonterminal(PythonNonterminalType::except_block) => {
                     // except_clause ":" block
                     let except_clause = child.get_nth_child(0);
                     // except_clause: "except" [expression ["as" name_definition]]
-                    for child in except_clause.get_children() {
+                    for child in except_clause.iter_children() {
                         if child.is_type(Nonterminal(PythonNonterminalType::expression)) {
                             self.index_non_block_node(child, ordered);
                         } else if child.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
-                            self.add_new_definition(
+                            self.add_redirect_definition(
                                 child,
-                                // TODO!
-                                PythonValueEnum::LazyInferredFunction,
+                                FileIndex(0),
+                                except_clause.index as u32,
                             );
                         }
                     }
@@ -198,7 +216,7 @@ impl<'a> IndexerState<'a> {
     }
 
     fn index_match_stmt(&self, match_stmt: PythonNode, ordered: bool) {
-        debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
+        debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!()
     }
