@@ -232,7 +232,23 @@ impl<'a> IndexerState<'a> {
         for node in node.search(SEARCH_NAMES) {
             if node.is_type(Terminal(PythonTerminalType::Name)) {
                 let parent = node.get_parent().unwrap();
-                if parent.is_type(Nonterminal(name_definition)) {
+                if !parent.is_type(Nonterminal(name_definition)) {
+                    self.lookup_name(node);
+                }
+            } else {
+                // self.unresolved_nodes.push(node);
+            }
+        }
+        /*
+        */
+    }
+
+    fn lookup_name(&self, name: PythonNode) {
+        debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
+        todo!()
+    }
+}
+                    /*
                     let parent_parent = parent.get_parent().unwrap();
                     match parent_parent.get_type() {
                         Nonterminal(dotted_as_name) => {
@@ -240,6 +256,10 @@ impl<'a> IndexerState<'a> {
                         }
                         Nonterminal(import_from_as_name) => {
                             // Name "as" name_definition | name_definition
+                            first_child = parent_parent.get_nth_child(0)
+                            if first_child.is_type(Nonterminal()) {
+                                first_child = 
+                            }
                         }
                         Nonterminal(pattern_capture_target) => {
                             // Pattern matching
@@ -262,19 +282,4 @@ impl<'a> IndexerState<'a> {
                         }
                         _ => panic!("Should probably not happen: {:?}", parent_parent)
                     }
-                } else {
-                    self.lookup_name(node);
-                }
-            } else {
-                // self.unresolved_nodes.push(node);
-            }
-        }
-        /*
-        */
-    }
-
-    fn lookup_name(&self, name: PythonNode) {
-        debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
-        todo!()
-    }
-}
+                    */
