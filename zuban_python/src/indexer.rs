@@ -43,11 +43,11 @@ impl<'a> IndexerState<'a> {
         );
     }
 
-    fn add_redirect_definition(&self, name_def: PythonNode, file_index: FileIndex, node_index: NodeIndex) {
+    fn add_redirect_definition(&self, name_def: PythonNode, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
             InternalValueOrReference::new_redirect(
-                file_index,
+                FileIndex(0), // TODO
                 node_index,
                 Locality::Stmt,
                 false,
@@ -194,11 +194,7 @@ impl<'a> IndexerState<'a> {
                         if child.is_type(Nonterminal(PythonNonterminalType::expression)) {
                             self.index_non_block_node(child, ordered);
                         } else if child.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
-                            self.add_redirect_definition(
-                                child,
-                                FileIndex(0),
-                                except_clause.index as u32,
-                            );
+                            self.add_redirect_definition(child, except_clause.index as u32);
                         }
                     }
                     // block
