@@ -54,6 +54,7 @@ impl<'a> IndexerState<'a> {
                 self.is_global_scope,
             )
         );
+        todo!();
     }
 
     pub fn index_block(&mut self, block_node: PythonNode<'a>, ordered: bool) {
@@ -226,17 +227,41 @@ impl<'a> IndexerState<'a> {
             Nonterminal(comprehension),
             Nonterminal(dict_comprehension),
         ];
-        for node in node.search(SEARCH_NAMES) {
-            if node.is_type(Terminal(PythonTerminalType::Name)) {
-                let parent = node.get_parent().unwrap();
+        for n in node.search(SEARCH_NAMES) {
+            if n.is_type(Terminal(PythonTerminalType::Name)) {
+                let parent = n.get_parent().unwrap();
                 // name_definitions are resolved later.
                 if !parent.is_type(Nonterminal(name_definition)) {
-                    self.lookup_name(node);
+                    self.lookup_name(n);
                 }
             } else {
-                self.unresolved_nodes.push(node);
+                if n.is_type(Nonterminal(lambda)) {
+                    self.index_lambda_params(n, ordered);
+                } else {
+                    // Index the first expression of a comprehension, which is always executed
+                    // in the current scope.
+                    // comprehension: named_expression for_if_clauses
+                    // dict_comprehension: dict_key_value for_if_clauses
+                    let clauses = n.get_nth_child(1);
+                    debug_assert_eq!(clauses.get_type(), Nonterminal(for_if_clauses));
+
+                    // for_if_clauses: async_for_if_clause+
+                    let mut for_if_clause = clauses.get_nth_child(0);
+                    if for_if_clause.is_type(Nonterminal(async_for_if_clause)) {
+                        // async_for_if_clause:? ["async"] sync_for_if_clause
+                        for_if_clause = for_if_clause.get_nth_child(1);
+                    }
+
+                    // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
+                    debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
+                    self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
+                }
+                self.unresolved_nodes.push(n);
             }
         }
+    }
+
+    fn index_lambda_params(&mut self, node: PythonNode<'a>, ordered: bool) {
     }
 
     fn lookup_name(&self, name: PythonNode<'a>) {
