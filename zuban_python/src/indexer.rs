@@ -24,14 +24,14 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn add_new_definition(&self, name_def: PythonNode, value: InternalValueOrReference) {
+    fn add_new_definition(&self, name_def: PythonNode<'a>, value: InternalValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
         self.values_or_references[name.index].set(value);
     }
 
-    fn add_value_definition(&self, name_def: PythonNode, type_: PythonValueEnum) {
+    fn add_value_definition(&mut self, name_def: PythonNode<'a>, type_: PythonValueEnum) {
         self.add_new_definition(
             name_def,
             InternalValueOrReference::new_simple_language_specific(
@@ -43,7 +43,7 @@ impl<'a> IndexerState<'a> {
         );
     }
 
-    fn add_redirect_definition(&self, name_def: PythonNode, node_index: NodeIndex) {
+    fn add_redirect_definition(&mut self, name_def: PythonNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
             InternalValueOrReference::new_redirect(
@@ -56,7 +56,7 @@ impl<'a> IndexerState<'a> {
         );
     }
 
-    pub fn index_block(&self, block_node: PythonNode, ordered: bool) {
+    pub fn index_block(&mut self, block_node: PythonNode<'a>, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -128,7 +128,7 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_for_stmt(&self, for_stmt: PythonNode, ordered: bool) {
+    fn index_for_stmt(&mut self, for_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(for_stmt.get_type(), Nonterminal(PythonNonterminalType::for_stmt));
         // "for" star_targets "in" star_expressions ":" block else_block?
         let iterator = for_stmt.iter_children();
@@ -145,7 +145,7 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_while_stmt(&self, while_stmt: PythonNode, ordered: bool) {
+    fn index_while_stmt(&mut self, while_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
         // "while" named_expression ":" block else_block?
         let iterator = while_stmt.iter_children();
@@ -160,7 +160,7 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_with_stmt(&self, with_stmt: PythonNode, ordered: bool) {
+    fn index_with_stmt(&mut self, with_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(with_stmt.get_type(), Nonterminal(PythonNonterminalType::with_stmt));
         // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
         for child in with_stmt.iter_children() {
@@ -176,12 +176,12 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_if_stmt(&self, if_stmt: PythonNode, ordered: bool) {
+    fn index_if_stmt(&mut self, if_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(PythonNonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     }
 
-    fn index_try_stmt(&self, try_stmt: PythonNode, ordered: bool) {
+    fn index_try_stmt(&mut self, try_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::try_stmt));
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
         for child in try_stmt.iter_children() {
@@ -212,16 +212,16 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_match_stmt(&self, match_stmt: PythonNode, ordered: bool) {
+    fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!()
     }
 
-    fn index_star_targets(&self, node: PythonNode, ordered: bool) {
+    fn index_star_targets(&mut self, node: PythonNode<'a>, ordered: bool) {
     }
 
-    fn index_non_block_node(&self, node: PythonNode, ordered: bool) {
+    fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         const SEARCH_NAMES: &'static [PythonNodeType] = &[
             Terminal(PythonTerminalType::Name),
@@ -232,18 +232,17 @@ impl<'a> IndexerState<'a> {
         for node in node.search(SEARCH_NAMES) {
             if node.is_type(Terminal(PythonTerminalType::Name)) {
                 let parent = node.get_parent().unwrap();
+                // name_definitions are resolved later.
                 if !parent.is_type(Nonterminal(name_definition)) {
                     self.lookup_name(node);
                 }
             } else {
-                // self.unresolved_nodes.push(node);
+                self.unresolved_nodes.push(node);
             }
         }
-        /*
-        */
     }
 
-    fn lookup_name(&self, name: PythonNode) {
+    fn lookup_name(&self, name: PythonNode<'a>) {
         debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
         todo!()
     }

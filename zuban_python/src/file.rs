@@ -223,7 +223,7 @@ impl PythonFile {
             // It was already done.
             return
         }
-        let indexer_state = IndexerState::new(
+        let mut indexer_state = IndexerState::new(
             &self.definition_names,
             &self.values_or_references,
             true, // is_global_scope
