@@ -134,7 +134,7 @@ impl<'a> IndexerState<'a> {
         let iterator = for_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
-        self.index_star_targets(iterator.next().unwrap(), ordered);
+        self.index_non_block_node(iterator.next().unwrap(), ordered);
         let mut iterator = iterator.skip(1);
         self.index_non_block_node(iterator.next().unwrap(), ordered);
         let mut iterator = iterator.skip(1);
@@ -168,7 +168,7 @@ impl<'a> IndexerState<'a> {
                 Nonterminal(PythonNonterminalType::with_item) => {
                     // expression ["as" star_target]
                     self.index_non_block_node(child.get_nth_child(0), ordered);
-                    self.index_star_targets(child.get_nth_child(2), ordered);
+                    self.index_non_block_node(child.get_nth_child(2), ordered);
                 }
                 Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
                 _ => (),
@@ -216,9 +216,6 @@ impl<'a> IndexerState<'a> {
         debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!()
-    }
-
-    fn index_star_targets(&mut self, node: PythonNode<'a>, ordered: bool) {
     }
 
     fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
