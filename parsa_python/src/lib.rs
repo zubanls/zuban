@@ -26,7 +26,7 @@ create_grammar!(
     simple_stmt:
         | assignment | star_expressions | del_stmt | pass_stmt
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
-        | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_stmt
+        | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     assignment:
         | (star_targets "=" )+ (yield_expr | star_expressions)
         | single_target ":" expression ["=" (yield_expr | star_expressions)]
@@ -39,7 +39,6 @@ create_grammar!(
     break_stmt: "break"
     continue_stmt: "continue"
     return_stmt: "return" [star_expressions]
-    yield_stmt: yield_expr
     raise_stmt: "raise" [expression ["from" expression]]
     global_stmt: "global" ",".Name+
     nonlocal_stmt: "nonlocal" ",".Name+
