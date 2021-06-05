@@ -252,6 +252,10 @@ impl<'a> IndexerState<'a> {
                         for_if_clause = for_if_clause.get_nth_child(1);
                     }
 
+                    if clauses.iter_children().count() > 1 {
+                        todo!("This is not handled yet");
+                    }
+
                     // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
                     debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
                     self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
