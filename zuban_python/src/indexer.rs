@@ -262,6 +262,18 @@ impl<'a> IndexerState<'a> {
     }
 
     fn index_lambda_params(&mut self, node: PythonNode<'a>, ordered: bool) {
+        use PythonNonterminalType::*;
+        // lambda: "lambda" [lambda_parameters] ":" expression
+        let params = node.get_nth_child(1);
+        if params.is_type(Nonterminal(lambda_parameters)) {
+            for n in params.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
+                if n.is_type(Nonterminal(annotation)) {
+                    self.unresolved_nodes.push(n);
+                } else {
+                    self.index_non_block_node(n, ordered);
+                }
+            }
+        }
     }
 
     fn lookup_name(&self, name: PythonNode<'a>) {
