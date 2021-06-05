@@ -20,11 +20,11 @@ impl<'a> IndexerState<'a> {
             values_or_references: values_or_references,
             unresolved_references: vec![],
             unresolved_nodes: vec![],
-            is_global_scope: true,
+            is_global_scope,
         }
     }
 
-    fn add_new_definition(&self, name_def: PythonNode, type_: PythonValueEnum, is_global_scope: bool) {
+    fn add_new_definition(&self, name_def: PythonNode, type_: PythonValueEnum) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
@@ -33,7 +33,7 @@ impl<'a> IndexerState<'a> {
                 type_,
                 Locality::Stmt,
                 false,
-                is_global_scope,
+                self.is_global_scope,
             )
         );
     }
@@ -52,13 +52,11 @@ impl<'a> IndexerState<'a> {
                 self.add_new_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredFunction,
-                    self.is_global_scope,
                 );
             } else if child.is_type(Nonterminal(class_def)) {
                 self.add_new_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredClass,
-                    self.is_global_scope,
                 );
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
@@ -66,20 +64,17 @@ impl<'a> IndexerState<'a> {
                     self.add_new_definition(
                         not_decorated.get_nth_child(1),
                         PythonValueEnum::LazyInferredFunction,
-                        self.is_global_scope,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
                     self.add_new_definition(
                         not_decorated.get_nth_child(1),
                         PythonValueEnum::LazyInferredClass,
-                        self.is_global_scope,
                     );
                 } else {
                     debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
                     self.add_new_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
                         PythonValueEnum::LazyInferredClass,
-                        self.is_global_scope,
                     );
                 }
             } else if child.is_type(Nonterminal(if_stmt)){
@@ -102,7 +97,6 @@ impl<'a> IndexerState<'a> {
                     self.add_new_definition(
                         inner.get_nth_child(1),
                         PythonValueEnum::LazyInferredFunction,
-                        self.is_global_scope,
                     );
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered);
@@ -186,7 +180,6 @@ impl<'a> IndexerState<'a> {
                                 child,
                                 // TODO!
                                 PythonValueEnum::LazyInferredFunction,
-                                self.is_global_scope,
                             );
                         }
                     }
