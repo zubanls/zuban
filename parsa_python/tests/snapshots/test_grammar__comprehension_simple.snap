@@ -15,7 +15,8 @@ file: 0-77
          named_expression: 2-3
           expression: 2-3
            bitwise_or: 2-3
-            Number: 2-3 "1"
+            atom: 2-3
+             Number: 2-3 "1"
          for_if_clauses: 4-14
           sync_for_if_clause: 4-14
            Keyword: 4-7 "for"
@@ -27,7 +28,8 @@ file: 0-77
                 Name: 8-9 "a"
            Keyword: 10-12 "in"
            bitwise_or: 13-14
-            Name: 13-14 "b"
+            atom: 13-14
+             Name: 13-14 "b"
         Keyword: 14-15 "]"
    Newline: 15-16 "\n"
  stmt: 16-45
@@ -42,7 +44,8 @@ file: 0-77
          named_expression: 17-18
           expression: 17-18
            bitwise_or: 17-18
-            Name: 17-18 "a"
+            atom: 17-18
+             Name: 17-18 "a"
          for_if_clauses: 19-43
           sync_for_if_clause: 19-43
            Keyword: 19-22 "for"
@@ -61,15 +64,18 @@ file: 0-77
                 Name: 27-28 "c"
            Keyword: 29-31 "in"
            bitwise_or: 32-33
-            Name: 32-33 "b"
+            atom: 32-33
+             Name: 32-33 "b"
            comp_if: 34-38
             Keyword: 34-36 "if"
             bitwise_or: 37-38
-             Name: 37-38 "c"
+             atom: 37-38
+              Name: 37-38 "c"
            comp_if: 39-43
             Keyword: 39-41 "if"
             bitwise_or: 42-43
-             Name: 42-43 "d"
+             atom: 42-43
+              Name: 42-43 "d"
         Keyword: 43-44 "]"
    Newline: 44-45 "\n"
  stmt: 45-77
@@ -79,13 +85,15 @@ file: 0-77
      expression: 45-76
       bitwise_or: 45-76
        primary: 45-76
-        Name: 45-48 "foo"
+        atom: 45-48
+         Name: 45-48 "foo"
         Keyword: 48-49 "("
         comprehension: 49-75
          named_expression: 49-50
           expression: 49-50
            bitwise_or: 49-50
-            Name: 49-50 "a"
+            atom: 49-50
+             Name: 49-50 "a"
          for_if_clauses: 51-75
           sync_for_if_clause: 51-75
            Keyword: 51-54 "for"
@@ -125,7 +133,8 @@ file: 0-77
             Keyword: 69-70 ","
            Keyword: 71-73 "in"
            bitwise_or: 74-75
-            Name: 74-75 "d"
+            atom: 74-75
+             Name: 74-75 "d"
         Keyword: 75-76 ")"
    Newline: 76-77 "\n"
  Endmarker: 77-77 ""

@@ -17,7 +17,8 @@ file: 0-103
          Keyword: 9-10 "="
          expression: 10-11
           bitwise_or: 10-11
-           Number: 10-11 "3"
+           atom: 10-11
+            Number: 10-11 "3"
         Keyword: 11-12 ","
         Keyword: 13-14 "/"
         Keyword: 14-15 ","
@@ -32,7 +33,8 @@ file: 0-103
     star_expressions: 19-22
      expression: 19-22
       bitwise_or: 19-22
-       Keyword: 19-22 "..."
+       atom: 19-22
+        Keyword: 19-22 "..."
    Newline: 22-23 "\n"
  Error(stmt): 23-44
   Error(simple_stmts): 23-44
@@ -48,7 +50,8 @@ file: 0-103
          Keyword: 31-32 "="
          expression: 32-33
           bitwise_or: 32-33
-           Number: 32-33 "3"
+           atom: 32-33
+            Number: 32-33 "3"
         Keyword: 33-34 ","
         Keyword: 35-36 "/"
         Keyword: 36-37 ","
@@ -58,7 +61,8 @@ file: 0-103
          Keyword: 39-40 "="
          expression: 40-41
           bitwise_or: 40-41
-           Number: 40-41 "3"
+           atom: 40-41
+            Number: 40-41 "3"
         Keyword: 41-42 ","
         Error(lambda_param_with_default): 43-44
          name_definition: 43-44
@@ -71,7 +75,8 @@ file: 0-103
     star_expressions: 46-49
      expression: 46-49
       bitwise_or: 46-49
-       Keyword: 46-49 "..."
+       atom: 46-49
+        Keyword: 46-49 "..."
    Newline: 49-50 "\n"
  Error(stmt): 50-58
   Error(simple_stmts): 50-58
@@ -104,11 +109,13 @@ file: 0-103
      star_expressions: 65-69
       expression: 65-66
        bitwise_or: 65-66
-        Number: 65-66 "3"
+        atom: 65-66
+         Number: 65-66 "3"
       Keyword: 66-67 ","
       expression: 68-69
        bitwise_or: 68-69
-        Name: 68-69 "c"
+        atom: 68-69
+         Name: 68-69 "c"
  Error(stmt): 69-70
   Error(Keyword): 69-70 ":"
  stmt: 71-75
@@ -117,7 +124,8 @@ file: 0-103
     star_expressions: 71-74
      expression: 71-74
       bitwise_or: 71-74
-       Keyword: 71-74 "..."
+       atom: 71-74
+        Keyword: 71-74 "..."
    Newline: 74-75 "\n"
  Error(stmt): 75-83
   Error(simple_stmts): 75-83
@@ -146,11 +154,13 @@ file: 0-103
      star_expressions: 87-92
       expression: 87-88
        bitwise_or: 87-88
-        Number: 87-88 "3"
+        atom: 87-88
+         Number: 87-88 "3"
       Keyword: 88-89 ","
       expression: 90-91
        bitwise_or: 90-91
-        Name: 90-91 "d"
+        atom: 90-91
+         Name: 90-91 "d"
       Keyword: 91-92 ","
  Error(stmt): 93-94
   Error(Keyword): 93-94 "/"
@@ -166,7 +176,8 @@ file: 0-103
      Keyword: 97-98 ":"
      expression: 99-102
       bitwise_or: 99-102
-       Keyword: 99-102 "..."
+       atom: 99-102
+        Keyword: 99-102 "..."
    Newline: 102-103 "\n"
  Endmarker: 103-103 ""
 

@@ -10,7 +10,8 @@ file: 0-57
     named_expression: 7-10
      expression: 7-10
       bitwise_or: 7-10
-       Name: 7-10 "foo"
+       atom: 7-10
+        Name: 7-10 "foo"
    Keyword: 10-11 ":"
    Newline: 11-12 "\n"
    Indent: 16-16 ""
@@ -38,7 +39,8 @@ file: 0-57
        star_expressions: 28-31
         expression: 28-31
          bitwise_or: 28-31
-          Keyword: 28-31 "..."
+          atom: 28-31
+           Keyword: 28-31 "..."
       Newline: 31-32 "\n"
    case_block: 36-57
     Keyword: 36-40 "case"

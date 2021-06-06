@@ -27,7 +27,8 @@ file: 0-77
       star_expression: 15-19
        Keyword: 15-16 "*"
        bitwise_or: 16-19
-        Name: 16-19 "baz"
+        atom: 16-19
+         Name: 16-19 "baz"
    Newline: 19-20 "\n"
  stmt: 20-54
   simple_stmts: 20-54
@@ -89,7 +90,8 @@ file: 0-77
       star_expression: 49-53
        Keyword: 49-50 "*"
        bitwise_or: 50-53
-        Name: 50-53 "baz"
+        atom: 50-53
+         Name: 50-53 "baz"
    Newline: 53-54 "\n"
  stmt: 54-77
   simple_stmts: 54-77
@@ -115,7 +117,8 @@ file: 0-77
       star_expressions: 73-76
        expression: 73-76
         bitwise_or: 73-76
-         Name: 73-76 "baz"
+         atom: 73-76
+          Name: 73-76 "baz"
    Newline: 76-77 "\n"
  Endmarker: 77-77 ""
 

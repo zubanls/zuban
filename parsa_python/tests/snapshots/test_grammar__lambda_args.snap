@@ -24,11 +24,13 @@ file: 0-124
           Keyword: 15-16 "="
           expression: 16-17
            bitwise_or: 16-17
-            Number: 16-17 "3"
+            atom: 16-17
+             Number: 16-17 "3"
        Keyword: 17-18 ":"
        expression: 19-22
         bitwise_or: 19-22
-         Keyword: 19-22 "..."
+         atom: 19-22
+          Keyword: 19-22 "..."
    Newline: 22-23 "\n"
  stmt: 23-45
   simple_stmts: 23-45
@@ -44,7 +46,8 @@ file: 0-124
          Keyword: 31-32 "="
          expression: 32-33
           bitwise_or: 32-33
-           Number: 32-33 "3"
+           atom: 32-33
+            Number: 32-33 "3"
         Keyword: 33-34 ","
         lambda_star_etc: 35-39
          Keyword: 35-36 "*"
@@ -55,7 +58,8 @@ file: 0-124
        Keyword: 39-40 ":"
        expression: 41-44
         bitwise_or: 41-44
-         Keyword: 41-44 "..."
+         atom: 41-44
+          Keyword: 41-44 "..."
    Newline: 44-45 "\n"
  stmt: 45-75
   simple_stmts: 45-75
@@ -83,7 +87,8 @@ file: 0-124
        Keyword: 69-70 ":"
        expression: 71-74
         bitwise_or: 71-74
-         Keyword: 71-74 "..."
+         atom: 71-74
+          Keyword: 71-74 "..."
    Newline: 74-75 "\n"
  stmt: 75-106
   simple_stmts: 75-106
@@ -111,7 +116,8 @@ file: 0-124
        Keyword: 100-101 ":"
        expression: 102-105
         bitwise_or: 102-105
-         Keyword: 102-105 "..."
+         atom: 102-105
+          Keyword: 102-105 "..."
    Newline: 105-106 "\n"
  stmt: 106-124
   simple_stmts: 106-124
@@ -129,7 +135,8 @@ file: 0-124
        Keyword: 118-119 ":"
        expression: 120-123
         bitwise_or: 120-123
-         Keyword: 120-123 "..."
+         atom: 120-123
+          Keyword: 120-123 "..."
    Newline: 123-124 "\n"
  Endmarker: 124-124 ""
 

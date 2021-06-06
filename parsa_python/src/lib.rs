@@ -252,7 +252,7 @@ create_grammar!(
         | primary "(" [arguments | comprehension] ")"
         | primary "[" slices "]"
         | atom
-    atom:?
+    atom:
           "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
         | "[" [star_named_expressions | comprehension] "]"
         | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"

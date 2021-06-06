@@ -10,7 +10,8 @@ file: 0-116
    with_item: 7-17
     expression: 7-10
      bitwise_or: 7-10
-      Name: 7-10 "foo"
+      atom: 7-10
+       Name: 7-10 "foo"
     Keyword: 11-13 "as"
     star_target: 14-17
      target_with_star_atom: 14-17
@@ -25,7 +26,8 @@ file: 0-116
       star_expressions: 20-23
        expression: 20-23
         bitwise_or: 20-23
-         Keyword: 20-23 "..."
+         atom: 20-23
+          Keyword: 20-23 "..."
      Newline: 23-24 "\n"
  stmt: 24-52
   with_stmt: 24-52
@@ -34,7 +36,8 @@ file: 0-116
    with_item: 30-40
     expression: 30-33
      bitwise_or: 30-33
-      Name: 30-33 "foo"
+      atom: 30-33
+       Name: 30-33 "foo"
     Keyword: 34-36 "as"
     star_target: 37-40
      target_with_star_atom: 37-40
@@ -45,7 +48,8 @@ file: 0-116
    with_item: 42-45
     expression: 42-45
      bitwise_or: 42-45
-      Name: 42-45 "baz"
+      atom: 42-45
+       Name: 42-45 "baz"
    Keyword: 45-46 ")"
    Keyword: 46-47 ":"
    block: 48-52
@@ -54,7 +58,8 @@ file: 0-116
       star_expressions: 48-51
        expression: 48-51
         bitwise_or: 48-51
-         Keyword: 48-51 "..."
+         atom: 48-51
+          Keyword: 48-51 "..."
      Newline: 51-52 "\n"
  stmt: 52-70
   with_stmt: 52-70
@@ -68,7 +73,8 @@ file: 0-116
        named_expression: 59-62
         expression: 59-62
          bitwise_or: 59-62
-          Name: 59-62 "foo"
+          atom: 59-62
+           Name: 59-62 "foo"
        Keyword: 62-63 ")"
    Keyword: 63-64 ")"
    Keyword: 64-65 ":"
@@ -78,7 +84,8 @@ file: 0-116
       star_expressions: 66-69
        expression: 66-69
         bitwise_or: 66-69
-         Keyword: 66-69 "..."
+         atom: 66-69
+          Keyword: 66-69 "..."
      Newline: 69-70 "\n"
  stmt: 70-96
   with_stmt: 70-96
@@ -92,7 +99,8 @@ file: 0-116
         named_expression: 76-77
          expression: 76-77
           bitwise_or: 76-77
-           Name: 76-77 "i"
+           atom: 76-77
+            Name: 76-77 "i"
         for_if_clauses: 78-89
          sync_for_if_clause: 78-89
           Keyword: 78-81 "for"
@@ -104,7 +112,8 @@ file: 0-116
                Name: 82-83 "i"
           Keyword: 84-86 "in"
           bitwise_or: 87-89
-           Number: 87-89 "42"
+           atom: 87-89
+            Number: 87-89 "42"
        Keyword: 89-90 ")"
    Keyword: 90-91 ":"
    block: 92-96
@@ -113,7 +122,8 @@ file: 0-116
       star_expressions: 92-95
        expression: 92-95
         bitwise_or: 92-95
-         Keyword: 92-95 "..."
+         atom: 92-95
+          Keyword: 92-95 "..."
      Newline: 95-96 "\n"
  stmt: 96-116
   with_stmt: 96-116
@@ -128,7 +138,8 @@ file: 0-116
         star_expressions: 108-109
          expression: 108-109
           bitwise_or: 108-109
-           Name: 108-109 "y"
+           atom: 108-109
+            Name: 108-109 "y"
        Keyword: 109-110 ")"
    Keyword: 110-111 ":"
    block: 112-116
@@ -137,7 +148,8 @@ file: 0-116
       star_expressions: 112-115
        expression: 112-115
         bitwise_or: 112-115
-         Keyword: 112-115 "..."
+         atom: 112-115
+          Keyword: 112-115 "..."
      Newline: 115-116 "\n"
  Endmarker: 116-116 ""
 

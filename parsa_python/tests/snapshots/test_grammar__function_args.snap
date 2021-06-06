@@ -23,7 +23,8 @@ file: 0-186
       Keyword: 16-17 "="
       expression: 17-18
        bitwise_or: 17-18
-        Number: 17-18 "3"
+        atom: 17-18
+         Number: 17-18 "3"
    Keyword: 18-19 ")"
    Keyword: 19-20 ":"
    block: 21-25
@@ -32,7 +33,8 @@ file: 0-186
       star_expressions: 21-24
        expression: 21-24
         bitwise_or: 21-24
-         Keyword: 21-24 "..."
+         atom: 21-24
+          Keyword: 21-24 "..."
      Newline: 24-25 "\n"
  stmt: 25-49
   function_def: 25-49
@@ -47,7 +49,8 @@ file: 0-186
      Keyword: 34-35 "="
      expression: 35-36
       bitwise_or: 35-36
-       Number: 35-36 "3"
+       atom: 35-36
+        Number: 35-36 "3"
     Keyword: 36-37 ","
     star_etc: 38-42
      Keyword: 38-39 "*"
@@ -63,7 +66,8 @@ file: 0-186
       star_expressions: 45-48
        expression: 45-48
         bitwise_or: 45-48
-         Keyword: 45-48 "..."
+         atom: 45-48
+          Keyword: 45-48 "..."
      Newline: 48-49 "\n"
  stmt: 49-81
   function_def: 49-81
@@ -95,7 +99,8 @@ file: 0-186
       star_expressions: 77-80
        expression: 77-80
         bitwise_or: 77-80
-         Keyword: 77-80 "..."
+         atom: 77-80
+          Keyword: 77-80 "..."
      Newline: 80-81 "\n"
  stmt: 81-123
   function_def: 81-123
@@ -117,7 +122,8 @@ file: 0-186
        Keyword: 97-98 ":"
        expression: 99-102
         bitwise_or: 99-102
-         Name: 99-102 "int"
+         atom: 99-102
+          Name: 99-102 "int"
      Keyword: 102-103 ","
      double_starred_param: 104-115
       Keyword: 104-106 "**"
@@ -127,7 +133,8 @@ file: 0-186
        Keyword: 110-111 ":"
        expression: 112-115
         bitwise_or: 112-115
-         Name: 112-115 "str"
+         atom: 112-115
+          Name: 112-115 "str"
      Keyword: 115-116 ","
    Keyword: 116-117 ")"
    Keyword: 117-118 ":"
@@ -137,7 +144,8 @@ file: 0-186
       star_expressions: 119-122
        expression: 119-122
         bitwise_or: 119-122
-         Keyword: 119-122 "..."
+         atom: 119-122
+          Keyword: 119-122 "..."
      Newline: 122-123 "\n"
  stmt: 123-166
   function_def: 123-166
@@ -159,7 +167,8 @@ file: 0-186
       Keyword: 138-139 ":"
       expression: 140-141
        bitwise_or: 140-141
-        Name: 140-141 "i"
+        atom: 140-141
+         Name: 140-141 "i"
     Keyword: 141-142 ","
     param_with_default: 143-149
      name_definition: 143-144
@@ -168,11 +177,13 @@ file: 0-186
       Keyword: 144-145 ":"
       expression: 146-147
        bitwise_or: 146-147
-        Name: 146-147 "i"
+        atom: 146-147
+         Name: 146-147 "i"
      Keyword: 147-148 "="
      expression: 148-149
       bitwise_or: 148-149
-       Number: 148-149 "3"
+       atom: 148-149
+        Number: 148-149 "3"
     Keyword: 149-150 ","
     star_etc: 151-159
      double_starred_param: 151-159
@@ -187,7 +198,8 @@ file: 0-186
       star_expressions: 162-165
        expression: 162-165
         bitwise_or: 162-165
-         Keyword: 162-165 "..."
+         atom: 162-165
+          Keyword: 162-165 "..."
      Newline: 165-166 "\n"
  stmt: 166-186
   function_def: 166-186
@@ -209,7 +221,8 @@ file: 0-186
       star_expressions: 182-185
        expression: 182-185
         bitwise_or: 182-185
-         Keyword: 182-185 "..."
+         atom: 182-185
+          Keyword: 182-185 "..."
      Newline: 185-186 "\n"
  Endmarker: 186-186 ""
 

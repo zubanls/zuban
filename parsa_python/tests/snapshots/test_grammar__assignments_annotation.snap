@@ -13,7 +13,8 @@ file: 0-53
      Keyword: 4-5 ":"
      expression: 6-9
       bitwise_or: 6-9
-       Name: 6-9 "bar"
+       atom: 6-9
+        Name: 6-9 "bar"
    Newline: 9-10 "\n"
  stmt: 10-23
   simple_stmts: 10-23
@@ -25,12 +26,14 @@ file: 0-53
      Keyword: 13-14 ":"
      expression: 15-18
       bitwise_or: 15-18
-       Name: 15-18 "int"
+       atom: 15-18
+        Name: 15-18 "int"
      Keyword: 19-20 "="
      star_expressions: 21-22
       expression: 21-22
        bitwise_or: 21-22
-        Number: 21-22 "3"
+        atom: 21-22
+         Number: 21-22 "3"
    Newline: 22-23 "\n"
  stmt: 23-36
   simple_stmts: 23-36
@@ -39,14 +42,16 @@ file: 0-53
      single_target: 23-30
       t_primary: 23-30
        t_primary: 23-26
-        Name: 23-26 "foo"
+        atom: 23-26
+         Name: 23-26 "foo"
        Keyword: 26-27 "."
        name_definition: 27-30
         Name: 27-30 "bar"
      Keyword: 30-31 ":"
      expression: 32-35
       bitwise_or: 32-35
-       Name: 32-35 "baz"
+       atom: 32-35
+        Name: 32-35 "baz"
    Newline: 35-36 "\n"
  Error(stmt): 36-48
   Error(simple_stmts): 36-48
@@ -58,12 +63,14 @@ file: 0-53
      Keyword: 39-40 ":"
      expression: 41-44
       bitwise_or: 41-44
-       Name: 41-44 "bar"
+       atom: 41-44
+        Name: 41-44 "bar"
      Keyword: 45-46 "="
      star_expressions: 47-48
       expression: 47-48
        bitwise_or: 47-48
-        Name: 47-48 "a"
+        atom: 47-48
+         Name: 47-48 "a"
  Error(stmt): 49-50
   Error(Keyword): 49-50 "="
  stmt: 51-53
@@ -72,7 +79,8 @@ file: 0-53
     star_expressions: 51-52
      expression: 51-52
       bitwise_or: 51-52
-       Number: 51-52 "4"
+       atom: 51-52
+        Number: 51-52 "4"
    Newline: 52-53 "\n"
  Endmarker: 53-53 ""
 

@@ -17,7 +17,8 @@ file: 0-106
       star_expressions: 12-15
        expression: 12-15
         bitwise_or: 12-15
-         Keyword: 12-15 "..."
+         atom: 12-15
+          Keyword: 12-15 "..."
      Newline: 15-16 "\n"
  stmt: 16-35
   function_def: 16-35
@@ -33,7 +34,8 @@ file: 0-106
       Keyword: 25-26 ":"
       expression: 27-28
        bitwise_or: 27-28
-        Number: 27-28 "3"
+        atom: 27-28
+         Number: 27-28 "3"
    Keyword: 28-29 ")"
    Keyword: 29-30 ":"
    block: 31-35
@@ -42,7 +44,8 @@ file: 0-106
       star_expressions: 31-34
        expression: 31-34
         bitwise_or: 31-34
-         Keyword: 31-34 "..."
+         atom: 31-34
+          Keyword: 31-34 "..."
      Newline: 34-35 "\n"
  stmt: 35-55
   function_def: 35-55
@@ -67,7 +70,8 @@ file: 0-106
       star_expressions: 51-54
        expression: 51-54
         bitwise_or: 51-54
-         Keyword: 51-54 "..."
+         atom: 51-54
+          Keyword: 51-54 "..."
      Newline: 54-55 "\n"
  stmt: 55-83
   function_def: 55-83
@@ -83,11 +87,13 @@ file: 0-106
       Keyword: 64-65 ":"
       expression: 66-67
        bitwise_or: 66-67
-        Name: 66-67 "f"
+        atom: 66-67
+         Name: 66-67 "f"
      Keyword: 68-69 "="
      expression: 70-71
       bitwise_or: 70-71
-       Number: 70-71 "3"
+       atom: 70-71
+        Number: 70-71 "3"
     Keyword: 71-72 ","
     param_with_default: 73-76
      name_definition: 73-74
@@ -95,7 +101,8 @@ file: 0-106
      Keyword: 74-75 "="
      expression: 75-76
       bitwise_or: 75-76
-       Number: 75-76 "4"
+       atom: 75-76
+        Number: 75-76 "4"
    Keyword: 76-77 ")"
    Keyword: 77-78 ":"
    block: 79-83
@@ -104,7 +111,8 @@ file: 0-106
       star_expressions: 79-82
        expression: 79-82
         bitwise_or: 79-82
-         Keyword: 79-82 "..."
+         atom: 79-82
+          Keyword: 79-82 "..."
      Newline: 82-83 "\n"
  stmt: 83-106
   function_def: 83-106
@@ -119,7 +127,8 @@ file: 0-106
      Keyword: 92-93 "="
      expression: 93-94
       bitwise_or: 93-94
-       Number: 93-94 "3"
+       atom: 93-94
+        Number: 93-94 "3"
     Keyword: 94-95 ","
     param_with_default: 96-99
      name_definition: 96-97
@@ -127,7 +136,8 @@ file: 0-106
      Keyword: 97-98 "="
      expression: 98-99
       bitwise_or: 98-99
-       Number: 98-99 "4"
+       atom: 98-99
+        Number: 98-99 "4"
    Keyword: 99-100 ")"
    Keyword: 100-101 ":"
    block: 102-106
@@ -136,7 +146,8 @@ file: 0-106
       star_expressions: 102-105
        expression: 102-105
         bitwise_or: 102-105
-         Keyword: 102-105 "..."
+         atom: 102-105
+          Keyword: 102-105 "..."
      Newline: 105-106 "\n"
  Endmarker: 106-106 ""
 

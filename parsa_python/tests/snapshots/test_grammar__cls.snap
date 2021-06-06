@@ -13,7 +13,8 @@ file: 0-117
     named_expression: 11-17
      expression: 11-17
       bitwise_or: 11-17
-       Name: 11-17 "object"
+       atom: 11-17
+        Name: 11-17 "object"
    Keyword: 17-18 ")"
    Keyword: 18-19 ":"
    block: 19-117
@@ -62,7 +63,8 @@ file: 0-117
         named_expression: 75-83
          expression: 75-83
           bitwise_or: 75-83
-           Name: 75-83 "property"
+           atom: 75-83
+            Name: 75-83 "property"
         Newline: 83-84 "\n"
       function_def: 88-117
        Keyword: 88-91 "def"

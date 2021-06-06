@@ -19,7 +19,8 @@ file: 0-108
        Keyword: 16-17 ":"
        expression: 18-21
         bitwise_or: 18-21
-         Keyword: 18-21 "..."
+         atom: 18-21
+          Keyword: 18-21 "..."
    Newline: 21-22 "\n"
  stmt: 22-48
   simple_stmts: 22-48
@@ -35,7 +36,8 @@ file: 0-108
          Keyword: 30-31 "="
          expression: 31-32
           bitwise_or: 31-32
-           Number: 31-32 "3"
+           atom: 31-32
+            Number: 31-32 "3"
         Keyword: 32-33 ","
         lambda_star_etc: 34-42
          lambda_double_starred_param: 34-42
@@ -45,7 +47,8 @@ file: 0-108
        Keyword: 42-43 ":"
        expression: 44-47
         bitwise_or: 44-47
-         Keyword: 44-47 "..."
+         atom: 44-47
+          Keyword: 44-47 "..."
    Newline: 47-48 "\n"
  stmt: 48-72
   simple_stmts: 48-72
@@ -67,7 +70,8 @@ file: 0-108
        Keyword: 66-67 ":"
        expression: 68-71
         bitwise_or: 68-71
-         Keyword: 68-71 "..."
+         atom: 68-71
+          Keyword: 68-71 "..."
    Newline: 71-72 "\n"
  stmt: 72-108
   simple_stmts: 72-108
@@ -101,7 +105,8 @@ file: 0-108
        Keyword: 102-103 ":"
        expression: 104-107
         bitwise_or: 104-107
-         Keyword: 104-107 "..."
+         atom: 104-107
+          Keyword: 104-107 "..."
    Newline: 107-108 "\n"
  Endmarker: 108-108 ""
 
