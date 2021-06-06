@@ -8,7 +8,7 @@ use crate::database::{InternalValueOrReference, PythonValueEnum, Locality, FileI
 pub struct IndexerState<'a> {
     definition_names: &'a DefinitionNames,
     values_or_references: &'a ValuesOrReferences,
-    unresolved_references: Vec<PythonNode<'a>>,
+    unordered_references: Vec<PythonNode<'a>>,
     unresolved_nodes: Vec<PythonNode<'a>>,
     is_global_scope: bool,
 }
@@ -18,7 +18,7 @@ impl<'a> IndexerState<'a> {
         IndexerState {
             definition_names: definition_names,
             values_or_references: values_or_references,
-            unresolved_references: vec![],
+            unordered_references: vec![],
             unresolved_nodes: vec![],
             is_global_scope,
         }
@@ -133,6 +133,18 @@ impl<'a> IndexerState<'a> {
                 assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
             }
         }
+
+        self.index_unordered_references();
+
+        for n in &self.unresolved_nodes {
+            if n.is_type(Nonterminal(comprehension)) {
+                todo!();
+            } else if n.is_type(Nonterminal(lambda)) {
+                todo!();
+            } else {
+                unreachable!();
+            }
+        }
     }
 
     fn index_for_stmt(&mut self, for_stmt: PythonNode<'a>, ordered: bool) {
@@ -144,8 +156,13 @@ impl<'a> IndexerState<'a> {
         self.index_non_block_node(iterator.next().unwrap(), ordered);
         let mut iterator = iterator.skip(1);
         self.index_non_block_node(iterator.next().unwrap(), ordered);
+
         let mut iterator = iterator.skip(1);
-        self.index_block(iterator.next().unwrap(), ordered);
+        self.index_block(iterator.next().unwrap(), false);
+
+        if ordered {
+            self.index_unordered_references();
+        }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
             self.index_block(else_.get_nth_child(2), ordered);
@@ -160,7 +177,10 @@ impl<'a> IndexerState<'a> {
 
         self.index_non_block_node(iterator.next().unwrap(), ordered);
         let mut iterator = iterator.skip(1);
-        self.index_non_block_node(iterator.next().unwrap(), true);
+        self.index_non_block_node(iterator.next().unwrap(), false);
+        if ordered {
+            self.index_unordered_references();
+        }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
             self.index_block(else_.get_nth_child(2), ordered);
@@ -238,11 +258,12 @@ impl<'a> IndexerState<'a> {
                 let parent = n.get_parent().unwrap();
                 // name_definitions are resolved later.
                 if !parent.is_type(Nonterminal(name_definition)) {
-                    self.index_reference(n, parent);
+                    self.index_reference(n, parent, ordered);
                 }
             } else {
                 if n.is_type(Nonterminal(lambda)) {
                     self.index_lambda_params(n, ordered);
+                    self.unresolved_nodes.push(n);
                 } else {
                     // Index the first expression of a comprehension, which is always executed
                     // in the current scope.
@@ -265,8 +286,9 @@ impl<'a> IndexerState<'a> {
                     // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
                     debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
                     self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
+
+                    todo!("we need to add GENERATOR comprehensions here");
                 }
-                self.unresolved_nodes.push(n);
             }
         }
     }
@@ -286,10 +308,36 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn index_reference(&self, name: PythonNode<'a>, parent: PythonNode<'a>) {
+    fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
+        use PythonNonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
-        todo!()
+        if parent.is_type(Nonterminal(nonlocal_stmt)) {
+            todo!();
+        }
+        if parent.is_type(Nonterminal(atom)) {
+            self.add_reference(name, ordered);
+        } else if parent.is_type(Nonterminal(global_stmt)) {
+            self.add_reference(name, ordered);
+        }
+        // All other names are not references or part of imports and should be resolved later.
     }
+
+    #[inline]
+    fn add_reference(&mut self, name: PythonNode<'a>, ordered: bool) {
+        if ordered {
+            todo!()
+        } else {
+            self.unordered_references.push(name);
+        }
+    }
+
+    fn index_unordered_references(&mut self) {
+        for name in &self.unordered_references {
+            todo!()
+        }
+        self.unordered_references.truncate(0);
+    }
+
 }
                     /*
                     let parent_parent = parent.get_parent().unwrap();
