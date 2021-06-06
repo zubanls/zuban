@@ -59,13 +59,13 @@ impl FileStateLoader for PythonFileLoader {
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
         Box::pin(
-            FileState2::new_parsed(path, PythonFile::new(code))
+            LanguageFileState::new_parsed(path, PythonFile::new(code))
         )
     }
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
         Box::pin(
-            FileState2::new_unparsed(path, &PythonFile::new)
+            LanguageFileState::new_unparsed(path, &PythonFile::new)
         )
     }
 }
@@ -87,7 +87,7 @@ pub trait FileState {
     fn get_file(&self, database: &Database) -> Option<&dyn File>;
 }
 
-impl<F: File> FileState for FileState2<F> {
+impl<F: File> FileState for LanguageFileState<F> {
     fn get_path(&self) -> &str {
         &self.path
     }
@@ -109,14 +109,14 @@ impl<F: File> FileState for FileState2<F> {
 }
 
 #[derive(Debug)]
-pub struct FileState2<F: 'static> {
+pub struct LanguageFileState<F: 'static> {
     path: String,
     // Unsafe, because the file is parsed lazily
     state: UnsafeCell<InternalFileExistence<F>>,
     invalidates: Vec<FileIndex>,
 }
 
-impl<F: File> FileState2<F> {
+impl<F: File> LanguageFileState<F> {
     fn new_parsed(path: String, file: F) -> Self {
         Self {
             path,
