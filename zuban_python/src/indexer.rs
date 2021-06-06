@@ -315,25 +315,37 @@ impl<'a> IndexerState<'a> {
             todo!();
         }
         if parent.is_type(Nonterminal(atom)) {
-            self.add_reference(name, ordered);
+            self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
-            self.add_reference(name, ordered);
+            self.maybe_add_reference(name, ordered);
         }
         // All other names are not references or part of imports and should be resolved later.
     }
 
     #[inline]
-    fn add_reference(&mut self, name: PythonNode<'a>, ordered: bool) {
+    fn maybe_add_reference(&mut self, name: PythonNode<'a>, ordered: bool) {
         if ordered {
-            todo!()
+            self.add_reference(name);
         } else {
             self.unordered_references.push(name);
         }
     }
 
+    #[inline]
+    fn add_reference(&self, name: PythonNode<'a>) {
+        let value = InternalValueOrReference::new_redirect(
+            FileIndex(0), // TODO
+            0, // TODO lookup
+            Locality::File,
+            false,
+            self.is_global_scope,
+        );
+        self.values_or_references[name.index].set(value);
+    }
+
     fn index_unordered_references(&mut self) {
-        for name in &self.unordered_references {
-            todo!()
+        for &name in &self.unordered_references {
+            self.add_reference(name);
         }
         self.unordered_references.truncate(0);
     }
