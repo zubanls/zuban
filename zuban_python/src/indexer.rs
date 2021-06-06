@@ -238,7 +238,7 @@ impl<'a> IndexerState<'a> {
                 let parent = n.get_parent().unwrap();
                 // name_definitions are resolved later.
                 if !parent.is_type(Nonterminal(name_definition)) {
-                    self.lookup_name(n);
+                    self.index_reference(n, parent);
                 }
             } else {
                 if n.is_type(Nonterminal(lambda)) {
@@ -286,7 +286,7 @@ impl<'a> IndexerState<'a> {
         }
     }
 
-    fn lookup_name(&self, name: PythonNode<'a>) {
+    fn index_reference(&self, name: PythonNode<'a>, parent: PythonNode<'a>) {
         debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
         todo!()
     }
