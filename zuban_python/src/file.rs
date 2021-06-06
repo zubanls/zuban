@@ -44,9 +44,9 @@ pub enum Leaf<'a> {
 pub trait FileStateLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState3>>;
+    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
 
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState3>>;
+    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
 }
 
 #[derive(Default)]
@@ -57,13 +57,13 @@ impl FileStateLoader for PythonFileLoader {
         vec!("py", "pyi")
     }
 
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState3>> {
+    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
         Box::pin(
             FileState2::new_parsed(path, PythonFile::new(code))
         )
     }
 
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState3>> {
+    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
         Box::pin(
             FileState2::new_unparsed(path, &PythonFile::new)
         )
@@ -82,12 +82,12 @@ pub trait File: std::fmt::Debug {
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
 }
 
-pub trait FileState3 {
+pub trait FileState {
     fn get_path(&self) -> &str;
     fn get_file(&self, database: &Database) -> Option<&dyn File>;
 }
 
-impl<F: File> FileState3 for FileState2<F> {
+impl<F: File> FileState for FileState2<F> {
     fn get_path(&self) -> &str {
         &self.path
     }

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use parsa::NodeIndex;
 
-use crate::file::{FileState3, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
+use crate::file::{FileState, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
 
 #[derive(Debug, Clone, Copy)]
@@ -224,7 +224,7 @@ pub struct Database {
     in_use: bool,
     pub file_system_reader: Box<dyn VirtualFileSystemReader>,
     file_state_loaders: FileStateLoaders,
-    files: InsertOnlyVec<dyn FileState3>,
+    files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
@@ -254,7 +254,7 @@ impl Database {
         // todo handle watcher events here
     }
 
-    pub fn get_file_state(&self, index: FileIndex) -> &dyn FileState3 {
+    pub fn get_file_state(&self, index: FileIndex) -> &dyn FileState {
         self.files.get(index.0 as usize).unwrap()
     }
 
@@ -274,7 +274,7 @@ impl Database {
         None
     }
 
-    fn add_file_state(&self, file_state: Pin<Box<dyn FileState3>>) -> FileIndex {
+    fn add_file_state(&self, file_state: Pin<Box<dyn FileState>>) -> FileIndex {
         self.files.push(file_state);
         FileIndex(self.files.len() as u32 - 1)
     }
