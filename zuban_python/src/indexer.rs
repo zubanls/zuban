@@ -69,11 +69,17 @@ impl<'a> IndexerState<'a> {
             if child.is_type(Nonterminal(simple_stmts)) {
                 self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
+                if !self.is_global_scope {
+                    todo!("need to index closures");
+                }
                 self.add_value_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredFunction,
                 );
             } else if child.is_type(Nonterminal(class_def)) {
+                if !self.is_global_scope {
+                    todo!("need to index closures and classes within functions");
+                }
                 self.add_value_definition(
                     child.get_nth_child(1),
                     PythonValueEnum::LazyInferredClass,
