@@ -10,16 +10,18 @@ pub struct IndexerState<'a> {
     values_or_references: &'a ValuesOrReferences,
     unordered_references: Vec<PythonNode<'a>>,
     unresolved_nodes: Vec<PythonNode<'a>>,
+    file_index: FileIndex,
     is_global_scope: bool,
 }
 
 impl<'a> IndexerState<'a> {
-    pub fn new(definition_names: &'a DefinitionNames, values_or_references: &'a ValuesOrReferences, is_global_scope: bool) -> Self {
+    pub fn new(definition_names: &'a DefinitionNames, values_or_references: &'a ValuesOrReferences, file_index: FileIndex, is_global_scope: bool) -> Self {
         IndexerState {
             definition_names: definition_names,
             values_or_references: values_or_references,
             unordered_references: vec![],
             unresolved_nodes: vec![],
+            file_index,
             is_global_scope,
         }
     }
@@ -47,7 +49,7 @@ impl<'a> IndexerState<'a> {
         self.add_new_definition(
             name_def,
             InternalValueOrReference::new_redirect(
-                FileIndex(0), // TODO
+                self.file_index,
                 node_index,
                 Locality::Stmt,
                 false,
@@ -334,7 +336,7 @@ impl<'a> IndexerState<'a> {
     #[inline]
     fn add_reference(&self, name: PythonNode<'a>) {
         let value = InternalValueOrReference::new_redirect(
-            FileIndex(0), // TODO
+            self.file_index,
             0, // TODO lookup
             Locality::File,
             false,

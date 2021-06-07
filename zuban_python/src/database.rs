@@ -276,7 +276,9 @@ impl Database {
 
     fn add_file_state(&self, file_state: Pin<Box<dyn FileState>>) -> FileIndex {
         self.files.push(file_state);
-        FileIndex(self.files.len() as u32 - 1)
+        let file_index = FileIndex(self.files.len() as u32 - 1);
+        self.files.last().unwrap().set_file_index(file_index);
+        file_index
     }
 
     pub fn load_file(&self, path: String, code: String) -> FileIndex {

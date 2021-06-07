@@ -28,6 +28,10 @@ impl<T: ?Sized> InsertOnlyVec<T> {
     pub fn len(&self) -> usize {
         unsafe {&*self.vec.get()}.len()
     }
+
+    pub fn last(&self) -> Option<&T> {
+        unsafe {&*self.vec.get()}.last().map(|x| x as &T)
+    }
 }
 
 #[derive(Debug)]

@@ -78,13 +78,14 @@ pub trait File: std::fmt::Debug {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         vec!()
     }
-    
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
+    fn set_file_index(&self, index: FileIndex);
 }
 
 pub trait FileState {
     fn get_path(&self) -> &str;
     fn get_file(&self, database: &Database) -> Option<&dyn File>;
+    fn set_file_index(&self, index: FileIndex);
 }
 
 impl<F: File> FileState for LanguageFileState<F> {
@@ -96,14 +97,25 @@ impl<F: File> FileState for LanguageFileState<F> {
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
-            InternalFileExistence::Unparsed(loader) => {
+            InternalFileExistence::Unparsed(loader, file_index_cell) => {
                 unsafe {
                     *self.state.get() = InternalFileExistence::Parsed(
                         loader(database.file_system_reader.read_file(&self.path))
                     )
                 };
-                self.get_file(database)
+                let file = self.get_file(database);
+                file.unwrap().set_file_index(file_index_cell.get().unwrap());
+                file
             }
+        }
+    }
+
+    fn set_file_index(&self, index: FileIndex) {
+        match unsafe {&*self.state.get()} {
+            InternalFileExistence::Missing => {},
+            InternalFileExistence::Parsed(f) => f.set_file_index(index),
+            InternalFileExistence::Unparsed(loader, file_index_cell) =>
+                file_index_cell.set(Some(index)),
         }
     }
 }
@@ -129,7 +141,7 @@ impl<F: File> LanguageFileState<F> {
         Self {
             path,
             state: UnsafeCell::new(
-                InternalFileExistence::Unparsed(loader)),
+                InternalFileExistence::Unparsed(loader, Cell::new(None))),
             invalidates: vec!()}
     }
 
@@ -144,7 +156,7 @@ impl<F: File> LanguageFileState<F> {
 
 enum InternalFileExistence<F: 'static> {
     Missing,
-    Unparsed(LoadFileFunction<F>),
+    Unparsed(LoadFileFunction<F>, Cell<Option<FileIndex>>),
     Parsed(F),
 }
 
@@ -154,7 +166,7 @@ impl<F> fmt::Debug for InternalFileExistence<F> {
         // interested in that while debugging.
         match *self {
             Self::Missing => write!(f, "DoesNotExist"),
-            Self::Unparsed(_) => write!(f, "Unparsed"),
+            Self::Unparsed(_, _) => write!(f, "Unparsed"),
             Self::Parsed(_) => write!(f, "Parsed(_)"),
         }
     }
@@ -191,6 +203,10 @@ impl File for PythonFile {
             }
         }
     }
+
+    fn set_file_index(&self, index: FileIndex) {
+        self.file_index.set(Some(index));
+    }
 }
 
 #[derive(Debug)]
@@ -201,6 +217,7 @@ pub struct PythonFile {
     values_or_references: ValuesOrReferences,
     complex_values: Vec<ComplexValue>,
     dependencies: Vec<FileIndex>,
+    file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
 }
 
@@ -210,6 +227,7 @@ impl PythonFile {
         let length = tree.get_length();
         Self {
             tree,
+            file_index: Cell::new(None),
             definition_names: Default::default(),
             values_or_references: vec!(Default::default(); length),
             complex_values: vec!(),
@@ -226,6 +244,7 @@ impl PythonFile {
         let mut indexer_state = IndexerState::new(
             &self.definition_names,
             &self.values_or_references,
+            self.file_index.get().unwrap(),
             true, // is_global_scope
         );
         indexer_state.index_block(self.tree.get_root_node(), true);
