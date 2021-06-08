@@ -33,6 +33,7 @@ const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
+const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
 
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
@@ -47,13 +48,13 @@ impl InternalValueOrReference {
     fn calculate_flags(rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
         (locality as u32)
-        | (is_nullable as u32)
-        | (in_module_scope as u32)
+        | (is_nullable as u32) << IS_NULLABLE_BIT_INDEX
+        | (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX
     }
 
-    pub fn new_redirect(other_module: FileIndex, node_index: NodeIndex,
+    pub fn new_redirect(module: FileIndex, node_index: NodeIndex,
                         locality: Locality, is_nullable: bool, in_module_scope: bool) -> Self {
-        let flags = Self::calculate_flags(other_module.0, locality, is_nullable, in_module_scope);
+        let flags = Self::calculate_flags(module.0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -65,8 +66,9 @@ impl InternalValueOrReference {
         todo!()
     }
 
-    pub fn new_missing_or_unknown() -> Self {
-        todo!()
+    pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(module.0, locality, false, false);
+        Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_simple_language_specific(
@@ -98,6 +100,10 @@ impl InternalValueOrReference {
 
     fn get_locality(self) -> Locality {
         unsafe { mem::transmute(self.flags << 28 & 7) }
+    }
+
+    pub fn in_module_scope(self) -> bool {
+        self.flags & IN_MODULE_SCOPE_MASK != 0
     }
 
     pub fn is_calculated(self) -> bool {

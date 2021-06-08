@@ -5,14 +5,13 @@ use std::fmt;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
-use crate::utils::{InsertOnlyHashMapVec, HashableRawStr};
+use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
 use crate::indexer::IndexerState;
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
-pub type DefinitionNames = InsertOnlyHashMapVec<HashableRawStr, NodeIndex>;
 pub type ValuesOrReferences = Vec<Cell<InternalValueOrReference>>;
 
 pub trait VirtualFileSystemReader {
@@ -246,6 +245,7 @@ impl PythonFile {
             &self.values_or_references,
             self.file_index.get().unwrap(),
             true, // is_global_scope
+            None,
         );
         indexer_state.index_block(self.tree.get_root_node(), true);
 

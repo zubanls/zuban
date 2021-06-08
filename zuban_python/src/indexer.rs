@@ -1,35 +1,45 @@
 use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
-use crate::file::{DefinitionNames, ValuesOrReferences};
-use crate::utils::HashableRawStr;
+use crate::file::ValuesOrReferences;
+use crate::utils::DefinitionNames;
 use crate::database::{InternalValueOrReference, PythonValueEnum, Locality, FileIndex};
 
-pub struct IndexerState<'a> {
+pub struct IndexerState<'a, 'b> {
     definition_names: &'a DefinitionNames,
+    scope_definition_names: DefinitionNames,
     values_or_references: &'a ValuesOrReferences,
     unordered_references: Vec<PythonNode<'a>>,
     unresolved_nodes: Vec<PythonNode<'a>>,
     file_index: FileIndex,
     is_global_scope: bool,
+    parent: Option<&'b IndexerState<'a, 'b>>,
 }
 
-impl<'a> IndexerState<'a> {
-    pub fn new(definition_names: &'a DefinitionNames, values_or_references: &'a ValuesOrReferences, file_index: FileIndex, is_global_scope: bool) -> Self {
+impl<'a, 'b> IndexerState<'a, 'b> {
+    pub fn new(
+        definition_names: &'a DefinitionNames,
+        values_or_references: &'a ValuesOrReferences,
+        file_index: FileIndex,
+        is_global_scope: bool,
+        parent: Option<&'b IndexerState<'a, 'b>>,
+    ) -> Self {
         IndexerState {
             definition_names: definition_names,
+            scope_definition_names: Default::default(),
             values_or_references: values_or_references,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             file_index,
             is_global_scope,
+            parent,
         }
     }
 
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: InternalValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
-        self.definition_names.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
+        self.definition_names.add_definition(name);
         self.values_or_references[name.index].set(value);
     }
 
@@ -335,13 +345,32 @@ impl<'a> IndexerState<'a> {
 
     #[inline]
     fn add_reference(&self, name: PythonNode<'a>) {
-        let value = InternalValueOrReference::new_redirect(
-            self.file_index,
-            0, // TODO lookup
-            Locality::File,
-            false,
-            self.is_global_scope,
-        );
+        let definition = {
+            if self.is_global_scope {
+                self.definition_names.lookup_global_definition(
+                    self.values_or_references,
+                    name.get_code(),
+                )
+            } else {
+                self.definition_names.lookup_definition(name.get_code())
+            }
+        };
+        let value = {
+            if let Some(definition) = definition {
+                InternalValueOrReference::new_redirect(
+                    self.file_index,
+                    definition,
+                    Locality::File,
+                    false,
+                    self.is_global_scope,
+                )
+            } else {
+                InternalValueOrReference::new_missing_or_unknown(
+                    self.file_index,
+                    Locality::File,
+                )
+            }
+        };
         self.values_or_references[name.index].set(value);
     }
 
