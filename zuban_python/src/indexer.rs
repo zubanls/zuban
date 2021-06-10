@@ -274,7 +274,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 }
             } else {
                 if n.is_type(Nonterminal(lambda)) {
-                    self.index_lambda_params(n, ordered);
+                    self.index_lambda_param_defaults(n, ordered);
                     self.unresolved_nodes.push(n);
                 } else {
                     // Index the first expression of a comprehension, which is always executed
@@ -305,7 +305,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
-    fn index_lambda_params(&mut self, node: PythonNode<'a>, ordered: bool) {
+    fn index_lambda_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
