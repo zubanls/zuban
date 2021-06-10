@@ -150,7 +150,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
         for &n in &self.unresolved_nodes {
             if n.is_type(Nonterminal(comprehension)) {
-                todo!();
+                todo!("generator comprehension");
             } else if n.is_type(Nonterminal(lambda)) {
                 IndexerState::new(
                     self.definition_names, self.values_or_references,
@@ -256,7 +256,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
-        todo!()
+        todo!("match_stmt")
     }
 
     fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
@@ -294,7 +294,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                     }
 
                     if clauses.iter_children().count() > 1 {
-                        todo!("This is not handled yet");
+                        todo!("comprehensions not handled yet");
                     }
 
                     // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
@@ -339,7 +339,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         use PythonNonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
         if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            todo!();
+            todo!("nonlocal");
         }
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
