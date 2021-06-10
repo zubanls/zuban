@@ -323,17 +323,23 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
-    fn index_lambda(&mut self, node: PythonNode<'a>) {
+    fn index_lambda(&mut self, lambda: PythonNode<'a>) {
         use PythonNonterminalType::*;
-        debug_assert_eq!(node.get_type(), Nonterminal(lambda));
-        for child in node.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
-            if child.is_type(Nonterminal(name_definition)) {
-                self.add_value_definition(child, PythonValueEnum::Param);
-            } else {
-                self.index_non_block_node(child, true);
+        debug_assert_eq!(lambda.get_type(), Nonterminal(lambda));
+        for child in lambda.iter_children() {
+            if child.is_type(Nonterminal(lambda_parameters)) {
+                for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
+                    if n.is_type(Nonterminal(name_definition)) {
+                        self.add_value_definition(n, PythonValueEnum::Param);
+                    } // defaults are already indexed
+                }
+            }
+            if child.is_type(Nonterminal(expression)) {
+               self.index_non_block_node(child);
             }
         }
     }
+
 
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
