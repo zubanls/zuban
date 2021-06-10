@@ -148,11 +148,13 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
         self.index_unordered_references();
 
-        for n in &self.unresolved_nodes {
+        for &n in &self.unresolved_nodes {
             if n.is_type(Nonterminal(comprehension)) {
                 todo!();
             } else if n.is_type(Nonterminal(lambda)) {
-                todo!();
+                IndexerState::new(
+                    self.definition_names, self.values_or_references,
+                    self.file_index, false, Some(self)).index_lambda(n);
             } else {
                 unreachable!();
             }
@@ -310,12 +312,25 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
         if params.is_type(Nonterminal(lambda_parameters)) {
+            // TODO annotation is not part of a lambda
             for n in params.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
                 if n.is_type(Nonterminal(annotation)) {
                     self.unresolved_nodes.push(n);
                 } else {
                     self.index_non_block_node(n, ordered);
                 }
+            }
+        }
+    }
+
+    fn index_lambda(&mut self, node: PythonNode<'a>) {
+        use PythonNonterminalType::*;
+        debug_assert_eq!(node.get_type(), Nonterminal(lambda));
+        for child in node.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
+            if child.is_type(Nonterminal(name_definition)) {
+                self.add_value_definition(child, PythonValueEnum::Param);
+            } else {
+                self.index_non_block_node(child, true);
             }
         }
     }
