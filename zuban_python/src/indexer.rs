@@ -36,6 +36,12 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
+    fn new_nested(&self) -> IndexerState<'a, '_> {
+        IndexerState::new(
+            self.definition_names, self.values_or_references,
+            self.file_index, false, Some(self))
+    }
+
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: InternalValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
@@ -152,9 +158,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
             if n.is_type(Nonterminal(comprehension)) {
                 todo!("generator comprehension");
             } else if n.is_type(Nonterminal(lambda)) {
-                IndexerState::new(
-                    self.definition_names, self.values_or_references,
-                    self.file_index, false, Some(self)).index_lambda(n);
+                self.new_nested().index_lambda(n);
             } else {
                 unreachable!();
             }
@@ -323,10 +327,10 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
-    fn index_lambda(&mut self, lambda: PythonNode<'a>) {
+    fn index_lambda(&mut self, node: PythonNode<'a>) {
         use PythonNonterminalType::*;
-        debug_assert_eq!(lambda.get_type(), Nonterminal(lambda));
-        for child in lambda.iter_children() {
+        debug_assert_eq!(node.get_type(), Nonterminal(lambda));
+        for child in node.iter_children() {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
@@ -335,7 +339,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 }
             }
             if child.is_type(Nonterminal(expression)) {
-               self.index_non_block_node(child);
+               self.index_non_block_node(child, true);
             }
         }
     }
