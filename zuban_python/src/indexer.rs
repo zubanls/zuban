@@ -88,20 +88,12 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
                 if !self.is_global_scope {
-                    todo!("need to index closures");
+                    // Has to be resolved, because we otherwise have no knowledge about globals
+                    self.unresolved_nodes.push(child);
                 }
-                self.add_value_definition(
-                    child.get_nth_child(1),
-                    PythonValueEnum::LazyInferredFunction,
-                );
+                self.index_function_name_and_param_defaults(child, ordered);
             } else if child.is_type(Nonterminal(class_def)) {
-                if !self.is_global_scope {
-                    todo!("need to index closures and classes within functions");
-                }
-                self.add_value_definition(
-                    child.get_nth_child(1),
-                    PythonValueEnum::LazyInferredClass,
-                );
+                self.new_nested().index_class(child);
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
@@ -257,6 +249,22 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
+    fn index_class(&mut self, class: PythonNode<'a>) {
+        for child in class.iter_children() {
+            if child.is_type(Nonterminal(PythonNonterminalType::arguments)) {
+                self.index_non_block_node(child, true);
+            } else if child.is_type(Nonterminal(PythonNonterminalType::block)) {
+                self.new_nested().index_block(child, true);
+            }
+        }
+        // Need to first index the class, because the class body does not have access to
+        // the class name.
+        self.add_value_definition(
+            class.get_nth_child(1),
+            PythonValueEnum::LazyInferredClass,
+        );
+    }
+
     fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
         debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
@@ -311,18 +319,38 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
+    fn index_function_name_and_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
+        use PythonNonterminalType::*;
+        // function_def: "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
+        for child in node.iter_children() {
+            if child.is_type(Nonterminal(parameters)) {
+                for n in child.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
+                    // expressions are resolved immediately while annotations are inferred at the
+                    // end of a module.
+                    if n.is_type(Nonterminal(annotation)) {
+                        self.unresolved_nodes.push(n);
+                    } else {
+                        self.index_non_block_node(n, ordered);
+                    }
+                }
+            } else if child.is_type(Nonterminal(expression)) {
+                // This is the -> annotation that needs to be resolved at the end of a module.
+                self.unresolved_nodes.push(child);
+            }
+        }
+        self.add_value_definition(
+            node.get_nth_child(1),
+            PythonValueEnum::LazyInferredFunction,
+        );
+    }
+
     fn index_lambda_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
         if params.is_type(Nonterminal(lambda_parameters)) {
-            // TODO annotation is not part of a lambda
-            for n in params.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
-                if n.is_type(Nonterminal(annotation)) {
-                    self.unresolved_nodes.push(n);
-                } else {
-                    self.index_non_block_node(n, ordered);
-                }
+            for n in params.search(&[Nonterminal(expression)]) {
+                self.index_non_block_node(n, ordered);
             }
         }
     }
