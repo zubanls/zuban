@@ -376,13 +376,12 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
-        if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            todo!("nonlocal");
-        }
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
             self.maybe_add_reference(name, ordered);
+        } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
+            todo!("nonlocal");
         }
         // All other names are not references or part of imports and should be resolved later.
     }
