@@ -359,6 +359,42 @@ fn is_name_reference(name: PythonNode) -> bool {
 fn get_function_or_class_name() {
 }
 
+                    /*
+                    let parent_parent = parent.get_parent().unwrap();
+                    match parent_parent.get_type() {
+                        Nonterminal(dotted_as_name) => {
+                            // import foo.bar.baz
+                        }
+                        Nonterminal(import_from_as_name) => {
+                            // Name "as" name_definition | name_definition
+                            first_child = parent_parent.get_nth_child(0)
+                            if first_child.is_type(Nonterminal()) {
+                                first_child = 
+                            }
+                        }
+                        Nonterminal(pattern_capture_target) => {
+                            // Pattern matching
+                            todo!()
+                        }
+                        Nonterminal(named_expression) => {
+                            todo!()
+                        }
+                        Nonterminal(t_atom) => {
+                            todo!()
+                        }
+                        Nonterminal(single_target) => {
+                            todo!()
+                        }
+                        Nonterminal(star_atom) => {
+                            todo!()
+                        }
+                        Nonterminal(t_primary) => {
+                            todo!()
+                        }
+                        _ => panic!("Should probably not happen: {:?}", parent_parent)
+                    }
+                    */
+
 fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
     use PythonNonterminalType::*;
     match node.get_type() {
