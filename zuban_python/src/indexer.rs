@@ -72,7 +72,6 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 self.is_global_scope,
             )
         );
-        todo!();
     }
 
     pub fn index_block(&mut self, block_node: PythonNode<'a>, ordered: bool) {
@@ -405,9 +404,10 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
-            self.maybe_add_reference(name, ordered);
+            //self.maybe_add_reference(name, ordered);
+            // TODO global
         } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            todo!("nonlocal");
+            // TODO nonlocal
         }
         // All other names are not references or part of imports and should be resolved later.
     }
@@ -423,18 +423,8 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
     #[inline]
     fn add_reference(&self, name: PythonNode<'a>) {
-        let definition = {
-            if self.is_global_scope {
-                self.definition_names.lookup_global_definition(
-                    self.values_or_references,
-                    name.get_code(),
-                )
-            } else {
-                self.definition_names.lookup_definition(name.get_code())
-            }
-        };
         let value = {
-            if let Some(definition) = definition {
+            if let Some(definition) = self.lookup_name(name) {
                 InternalValueOrReference::new_redirect(
                     self.file_index,
                     definition,
@@ -450,6 +440,19 @@ impl<'a, 'b> IndexerState<'a, 'b> {
             }
         };
         self.values_or_references[name.index].set(value);
+    }
+
+    fn lookup_name(&self, name: PythonNode<'a>) -> Option<NodeIndex> {
+        if self.is_global_scope {
+            self.definition_names.lookup_global_definition(
+                self.values_or_references,
+                name.get_code(),
+            )
+        } else {
+            self.definition_names
+                .lookup_definition(name.get_code())
+                .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
+        }
     }
 
     fn index_unordered_references(&mut self) {
