@@ -292,36 +292,44 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 if !parent.is_type(Nonterminal(name_definition)) {
                     self.index_reference(n, parent, ordered);
                 }
+            } else if n.is_type(Nonterminal(lambda)) {
+                self.index_lambda_param_defaults(n, ordered);
+                self.unresolved_nodes.push(n);
             } else {
-                if n.is_type(Nonterminal(lambda)) {
-                    self.index_lambda_param_defaults(n, ordered);
-                    self.unresolved_nodes.push(n);
+                // Index the first expression of a comprehension, which is always executed
+                // in the current scope.
+                let parent = n.get_parent().unwrap();
+                let bracket = parent.get_nth_child(0).get_code();
+                if (bracket == "[" || bracket == "{") && parent.is_type(Nonterminal(atom)) {
+                    self.index_comprehension(n, ordered);
                 } else {
-                    // Index the first expression of a comprehension, which is always executed
-                    // in the current scope.
-                    // comprehension: named_expression for_if_clauses
-                    // dict_comprehension: dict_key_value for_if_clauses
-                    let clauses = n.get_nth_child(1);
-                    debug_assert_eq!(clauses.get_type(), Nonterminal(for_if_clauses));
-
-                    // for_if_clauses: async_for_if_clause+
-                    let mut for_if_clause = clauses.get_nth_child(0);
-                    if for_if_clause.is_type(Nonterminal(async_for_if_clause)) {
-                        // async_for_if_clause:? ["async"] sync_for_if_clause
-                        for_if_clause = for_if_clause.get_nth_child(1);
-                    }
-
-                    if clauses.iter_children().count() > 1 {
-                        todo!("comprehensions not handled yet");
-                    }
-
-                    // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
-                    debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
-                    self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
-
-                    todo!("we need to add GENERATOR comprehensions here");
+                    self.unresolved_nodes.push(n);
                 }
             }
+        }
+    }
+
+    fn index_comprehension(&mut self, comp: PythonNode<'a>, ordered: bool) {
+        use PythonNonterminalType::*;
+
+        // comprehension: named_expression for_if_clauses
+        // dict_comprehension: dict_key_value for_if_clauses
+        let clauses = comp.get_nth_child(1);
+        debug_assert_eq!(clauses.get_type(), Nonterminal(for_if_clauses));
+
+        // for_if_clauses: async_for_if_clause+
+        for mut for_if_clause in clauses.iter_children() {
+            if for_if_clause.is_type(Nonterminal(async_for_if_clause)) {
+                // async_for_if_clause:? ["async"] sync_for_if_clause
+                for_if_clause = for_if_clause.get_nth_child(1);
+            }
+
+            // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
+            debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
+            self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
+
+            let t = for_if_clause.get_nth_child(1);
+            self.new_nested();
         }
     }
 
