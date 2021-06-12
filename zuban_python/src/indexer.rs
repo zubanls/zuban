@@ -146,11 +146,16 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
         self.index_unordered_references();
 
-        for &n in &self.unresolved_nodes {
+        while let Some(n) = self.unresolved_nodes.pop() {
             if n.is_type(Nonterminal(comprehension)) {
                 todo!("generator comprehension");
             } else if n.is_type(Nonterminal(lambda)) {
                 self.new_nested().index_lambda(n);
+            } else if n.is_type(Nonterminal(expression)) {
+                // Typically annotations
+                self.index_non_block_node(n, true);
+            } else if n.is_type(Nonterminal(function_def)) {
+                self.new_nested().index_function(n);
             } else {
                 unreachable!();
             }
@@ -250,6 +255,8 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     }
 
     fn index_class(&mut self, class: PythonNode<'a>) {
+        // "class" name_definition ["(" [arguments] ")"] ":" block
+        debug_assert_eq!(class.get_type(), Nonterminal(PythonNonterminalType::class_def));
         for child in class.iter_children() {
             if child.is_type(Nonterminal(PythonNonterminalType::arguments)) {
                 self.index_non_block_node(child, true);
@@ -344,6 +351,26 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         );
     }
 
+    pub fn index_function(&mut self, func: PythonNode<'a>) {
+        // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
+        use PythonNonterminalType::*;
+        debug_assert_eq!(func.get_type(), Nonterminal(function_def));
+
+        // Function name was indexed already.
+        for child in func.iter_children() {
+            if child.is_type(Nonterminal(parameters)) {
+                for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
+                    if n.is_type(Nonterminal(name_definition)) {
+                        self.add_value_definition(n, PythonValueEnum::Param);
+                    } // defaults and annotations are already indexed
+                }
+            }
+            if child.is_type(Nonterminal(block)) {
+               self.index_block(child, true);
+            }
+        }
+    }
+
     fn index_lambda_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
@@ -371,7 +398,6 @@ impl<'a, 'b> IndexerState<'a, 'b> {
             }
         }
     }
-
 
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
