@@ -310,26 +310,43 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     }
 
     fn index_comprehension(&mut self, comp: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
-
         // comprehension: named_expression for_if_clauses
         // dict_comprehension: dict_key_value for_if_clauses
         let clauses = comp.get_nth_child(1);
-        debug_assert_eq!(clauses.get_type(), Nonterminal(for_if_clauses));
+        debug_assert_eq!(clauses.get_type(), Nonterminal(PythonNonterminalType::for_if_clauses));
+        let mut iterator = clauses.iter_children();
 
-        // for_if_clauses: async_for_if_clause+
-        for mut for_if_clause in clauses.iter_children() {
-            if for_if_clause.is_type(Nonterminal(async_for_if_clause)) {
-                // async_for_if_clause:? ["async"] sync_for_if_clause
-                for_if_clause = for_if_clause.get_nth_child(1);
+        let first_clause = iterator.next().unwrap();
+        self.index_comprehension_clause(iterator, first_clause, comp.get_nth_child(0));
+    }
+
+    fn index_comprehension_clause(
+        &mut self,
+        mut clauses: impl Iterator<Item=PythonNode<'a>>,
+        mut clause: PythonNode<'a>,
+        // Either a named_expression or a dict_key_value
+        result_node: PythonNode<'a>,
+    ) {
+        use PythonNonterminalType::*;
+        if clause.is_type(Nonterminal(async_for_if_clause)) {
+            // async_for_if_clause:? ["async"] sync_for_if_clause
+            clause = clause.get_nth_child(1);
+        }
+
+        // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
+        debug_assert_eq!(clause.get_type(), Nonterminal(sync_for_if_clause));
+        for child in clause.iter_children() {
+            if child.is_type(Nonterminal(disjunction)) || child.is_type(Nonterminal(comp_if)) {
+                self.index_non_block_node(child, true);
             }
-
-            // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
-            debug_assert_eq!(for_if_clause.get_type(), Nonterminal(sync_for_if_clause));
-            self.index_non_block_node(for_if_clause.get_nth_child(3), ordered);
-
-            let t = for_if_clause.get_nth_child(1);
-            self.new_nested();
+        }
+        // TODO this is not exactly correct for named expressions and their scopes.
+        let mut nested = self.new_nested();
+        nested.index_non_block_node(clause.get_nth_child(1), true);
+        if let Some(clause) = clauses.next() {
+            nested.index_comprehension_clause(clauses, clause, result_node);
+        } else {
+            nested.index_non_block_node(result_node, true);
         }
     }
 
