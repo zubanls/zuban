@@ -142,7 +142,11 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                 assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
             }
         }
+        self.close_scope();
+    }
 
+    fn close_scope(&mut self) {
+        use PythonNonterminalType::*;
         self.index_unordered_references();
 
         while let Some(n) = self.unresolved_nodes.pop() {
@@ -271,6 +275,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
             class.get_nth_child(1),
             PythonValueEnum::LazyInferredClass,
         );
+        self.close_scope();
     }
 
     fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
@@ -351,6 +356,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         } else {
             nested.index_non_block_node(result_node, true);
         }
+        nested.close_scope();
     }
 
     fn index_function_name_and_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
@@ -424,6 +430,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                self.index_non_block_node(child, true);
             }
         }
+        self.close_scope();
     }
 
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
@@ -489,5 +496,4 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
         self.unordered_references.truncate(0);
     }
-
 }
