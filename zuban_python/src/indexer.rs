@@ -147,7 +147,9 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
         while let Some(n) = self.unresolved_nodes.pop() {
             if n.is_type(Nonterminal(comprehension)) {
-                todo!("generator comprehension");
+                // TODO It is not correct to index the last part of the expression here. It should
+                // have been done at the point where the generator was created.
+                self.index_comprehension(n, true);
             } else if n.is_type(Nonterminal(lambda)) {
                 self.new_nested().index_lambda(n);
             } else if n.is_type(Nonterminal(expression)) {
@@ -317,6 +319,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         let mut iterator = clauses.iter_children();
 
         let first_clause = iterator.next().unwrap();
+        // TODO the ordered argument is not used here currently and it should probably be used.
         self.index_comprehension_clause(iterator, first_clause, comp.get_nth_child(0));
     }
 
