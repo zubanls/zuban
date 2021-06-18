@@ -298,7 +298,7 @@ macro_rules! __create_node {
                             return node
                         }
                     }
-                    self.get_parent();
+                    node = n.get_parent();
                 }
                 None
             }
@@ -414,7 +414,7 @@ macro_rules! __create_node {
             fn next(&mut self) -> Option<Self::Item> {
                 for (i, n) in self.internal_tree.nodes[self.next_index..].iter().enumerate() {
                     if n.start_index >= self.end_code_index {
-                        assert!(n.length != 0);
+                        // TODO this might be an issue with zero length nodes
                         return None;
                     }
                     for t in self.search_types {
@@ -683,7 +683,7 @@ macro_rules! create_grammar {
 
             pub fn get_leaf_by_position(&self, index: $crate::CodeIndex) -> $Node {
                 // TODO
-                self.get_node(7, &self.internal_tree.nodes[7])
+                self.get_node(8, &self.internal_tree.nodes[8])
             }
         }
 

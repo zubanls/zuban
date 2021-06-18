@@ -327,10 +327,12 @@ impl PythonFile {
                 todo!();
             }
 
-            let stmt = name; // todo!
-            /*let stmt = name.get_parent_until(
-                Nonterminal(PythonNonterminalType::stmt)
-            );*/
+            let stmt = name.get_parent_until(&[
+                Nonterminal(PythonNonterminalType::lambda),
+                Nonterminal(PythonNonterminalType::comprehension),
+                Nonterminal(PythonNonterminalType::dict_comprehension),
+                Nonterminal(PythonNonterminalType::stmt),
+            ]).expect("There should always be a stmt");
 
             if !self.values_or_references[stmt.index as usize].get().is_calculated() {
                 self.calculate_node_scope_definitions(name);

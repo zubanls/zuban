@@ -83,6 +83,10 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         // - function_def, class_def: ignore
         use PythonNonterminalType::*;
         for child in block_node.iter_children() {
+            if child.is_type(Terminal(PythonTerminalType::Endmarker)) {
+                continue
+            }
+            let child = child.get_nth_child(0);
             if child.is_type(Nonterminal(simple_stmts)) {
                 self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
