@@ -289,6 +289,20 @@ macro_rules! __create_node {
                 None
             }
 
+            #[inline]
+            pub fn get_parent_until(&self, types: &'static [$NodeType]) -> Option<$Node<'a>> {
+                let mut node = self.get_parent();
+                while let Some(n) = node {
+                    for &t in types {
+                        if n.is_type(t) {
+                            return node
+                        }
+                    }
+                    self.get_parent();
+                }
+                None
+            }
+
             pub fn search(&self, types: &'static [$NodeType]) -> SearchIterator<'a> {
                 assert!(!self.is_leaf());
                 SearchIterator {
