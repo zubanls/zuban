@@ -5,7 +5,9 @@ use std::path::PathBuf;
 fn main() -> std::io::Result<()> {
     let mut project = zuban_python::Project::new("foo".to_owned());
     let script = zuban_python::Script::new(&mut project, Some("/foo/bar.py".to_owned()), Some("foo\n".to_owned()));
-    for name in script.infer_definition(zuban_python::Position::Byte(1)) {
+    let defs = script.infer_definition(zuban_python::Position::Byte(1));
+    dbg!(defs.len());
+    for name in defs {
         name.get_kind();
         name.get_name();
     }

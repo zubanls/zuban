@@ -34,6 +34,8 @@ const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
+const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
+const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
 
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
@@ -45,16 +47,19 @@ pub struct InternalValueOrReference {
 
 impl InternalValueOrReference {
     #[inline]
-    fn calculate_flags(rest: u32, locality: Locality,
+    fn calculate_flags(type_: InternalValueOrReferenceType, rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
         (locality as u32)
         | (is_nullable as u32) << IS_NULLABLE_BIT_INDEX
         | (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX
+        | IS_ANALIZED_MASK
+        | type_ as u32
     }
 
     pub fn new_redirect(module: FileIndex, node_index: NodeIndex,
                         locality: Locality, is_nullable: bool, in_module_scope: bool) -> Self {
-        let flags = Self::calculate_flags(module.0, locality, is_nullable, in_module_scope);
+        let flags = Self::calculate_flags(
+            InternalValueOrReferenceType::Redirect, module.0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -67,7 +72,8 @@ impl InternalValueOrReference {
     }
 
     pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(module.0, locality, false, false);
+        let flags = Self::calculate_flags(
+            InternalValueOrReferenceType::MissingOrUnknown, module.0, locality, false, false);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -75,7 +81,8 @@ impl InternalValueOrReference {
         type_: PythonValueEnum, locality: Locality, is_nullable: bool,
         in_module_scope: bool
     ) -> Self {
-        let flags = Self::calculate_flags(0, locality, is_nullable, in_module_scope);
+        let flags = Self::calculate_flags(
+            InternalValueOrReferenceType::LanguageSpecific, 0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -95,11 +102,19 @@ impl InternalValueOrReference {
     }
 
     pub fn new_node_analysis(locality: Locality) -> Self {
-        Self {flags: Self::calculate_flags(0, locality, false, false), node_or_complex_index: 0}
+        Self {
+            flags: Self::calculate_flags(
+                InternalValueOrReferenceType::NodeAnalysis, 0, locality, false, false),
+            node_or_complex_index: 0
+        }
+    }
+
+    pub fn get_type(self) -> InternalValueOrReferenceType {
+        unsafe { mem::transmute(self.flags & TYPE_MASK >> TYPE_BIT_INDEX) }
     }
 
     fn get_locality(self) -> Locality {
-        unsafe { mem::transmute(self.flags << 28 & 7) }
+        unsafe { mem::transmute(self.flags & LOCALITY_MASK >> LOCALITY_BIT_INDEX) }
     }
 
     pub fn in_module_scope(self) -> bool {
@@ -140,20 +155,10 @@ impl InternalValueOrReference {
     */
 }
 
-/*
-enum ValueOrReference<T> {
-    Value(Value<T>),
-    Reference(Reference),
-    Uncalculated,
-    Calculating,
-    RecursionError,
-}
-*/
-
 #[derive(Debug)]
 #[repr(u32)]
-enum InternalValueOrReferenceType {
-    Redirect = 1 << TYPE_BIT_INDEX,
+pub enum InternalValueOrReferenceType {
+    Redirect,
     MultiDefinition,
     Complex,
     // In case of a reference it's missing otherwise unknown.
@@ -193,7 +198,7 @@ pub enum PythonValueEnum {
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
-    Stmt = 1 << LOCALITY_BIT_INDEX,
+    Stmt,
     ClassOrFunction,
     MostOuterClassOrFunction,
     File,

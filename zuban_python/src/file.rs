@@ -6,8 +6,8 @@ use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::DefinitionNames;
-use crate::name::{Name, Names, TreeName};
-use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, ComplexValue};
+use crate::name::{Name, Names, TreeName, ValueNames};
+use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, InternalValueOrReferenceType, ComplexValue};
 use crate::indexer::IndexerState;
 
 type InvalidatedDependencies = Vec<FileIndex>;
@@ -319,10 +319,35 @@ impl PythonFile {
         //}
     }
 
-    pub fn infer_name(&self, name: PythonNode) {
+    pub fn infer_name(&self, name: PythonNode) -> ValueNames {
+        use InternalValueOrReferenceType::*;
         self.calculate_global_definitions_and_references();
         let value = self.values_or_references[name.index as usize].get();
-        if !value.is_calculated() {
+        if value.is_calculated() {
+            match value.get_type() {
+                Redirect => {
+                    todo!();
+                }
+                LanguageSpecific => {
+                    todo!();
+                }
+                MultiDefinition => {
+                    todo!();
+                }
+                MissingOrUnknown => {
+                    vec![]
+                }
+                Complex => {
+                    todo!();
+                }
+                FileReference => {
+                    todo!();
+                }
+                NodeAnalysis => {
+                    todo!();
+                }
+            }
+        } else {
             if value.is_calculating() {
                 todo!();
             }
@@ -345,15 +370,14 @@ impl PythonFile {
             }
             let value = self.values_or_references[name.index as usize].get();
             debug_assert!(value.is_calculated());
-            return self.infer_name(name)
+            self.infer_name(name)
         }
-        panic!()
     }
 }
 
 fn is_name_reference(name: PythonNode) -> bool {
     debug_assert!(name.is_type(Terminal(PythonTerminalType::Name)));
-    name.get_parent().unwrap().is_type(
+    !name.get_parent().unwrap().is_type(
         Nonterminal(PythonNonterminalType::name_definition)
     )
 }
