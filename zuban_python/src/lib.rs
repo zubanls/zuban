@@ -94,7 +94,6 @@ impl<'a> Script<'a> {
     }
 
     pub fn infer_definition(&self, position: Position) -> ValueNames {
-        dbg!(self.get_leaf(position));
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),

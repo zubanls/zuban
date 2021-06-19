@@ -681,9 +681,14 @@ macro_rules! create_grammar {
                 todo!()
             }
 
-            pub fn get_leaf_by_position(&self, index: $crate::CodeIndex) -> $Node {
-                // TODO
-                self.get_node(8, &self.internal_tree.nodes[8])
+            pub fn get_leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
+                let index = self.internal_tree.nodes.partition_point(|node| node.start_index <= position);
+                for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
+                    if node.type_.is_leaf() {
+                        return self.get_node(i, node)
+                    }
+                }
+                unreachable!();
             }
         }
 
