@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 parsa_python = { path = "../parsa_python" }
 parsa = { path = "../parsa" }
+
+[[test]]
+name = "blackbox"
+harness = false
