@@ -650,6 +650,10 @@ macro_rules! create_grammar {
         }
 
         impl $Tree {
+            pub fn get_code(&self) -> &str {
+                &self.internal_tree.code
+            }
+
             pub fn get_root_node(&self) -> $Node {
                 self.get_node(0, &self.internal_tree.nodes[0])
             }
@@ -685,14 +689,6 @@ macro_rules! create_grammar {
                     }
                 }
                 unreachable!();
-            }
-
-            pub fn line_column_to_byte(&self, line: usize, column: usize) -> $crate::CodeIndex {
-                self.internal_tree.line_column_to_byte(line, column)
-            }
-
-            pub fn byte_to_line_column(&self, byte: $crate::CodeIndex) -> (usize, usize) {
-                self.internal_tree.byte_to_line_column(byte)
             }
         }
 

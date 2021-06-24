@@ -2,6 +2,7 @@ use std::fs;
 use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
 use std::fmt;
+use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
@@ -9,6 +10,10 @@ use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, InternalValueOrReferenceType, ComplexValue};
 use crate::indexer::IndexerState;
+
+lazy_static::lazy_static! {
+    static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
+}
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
@@ -80,7 +85,8 @@ pub trait File: std::fmt::Debug {
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
     fn set_file_index(&self, index: FileIndex);
 
-    fn to_byte_position(&self, line: usize, column: usize) -> CodeIndex;
+    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
+    fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 }
 
 pub trait FileState {
@@ -209,9 +215,18 @@ impl File for PythonFile {
         self.file_index.set(Some(index));
     }
 
-    fn to_byte_position(&self, line: usize, column: usize) -> CodeIndex {
-        self.tree.line_column_to_byte(line, column)
+    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
+        let byte = self.get_lines()[line];
+        // TODO column can be unicode, is that an issue?
+        // TODO Also column can be bigger than the current line.
+        byte + column as CodeIndex
     }
+
+    fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
+        let line = self.get_lines().partition_point(|&l| l < byte as CodeIndex);
+        (line, byte as usize - line)
+    }
+
 }
 
 #[derive(Debug)]
@@ -224,6 +239,8 @@ pub struct PythonFile {
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
+
+    new_line_indices: UnsafeCell<Option<Vec<u32>>>,
 }
 
 impl PythonFile {
@@ -238,7 +255,21 @@ impl PythonFile {
             complex_values: vec!(),
             dependencies: vec!(),
             issues: vec!(),
+            new_line_indices: UnsafeCell::new(None),
         }
+    }
+
+    fn get_lines(&self) -> &[u32] {
+        let ptr = unsafe {&mut *self.new_line_indices.get()};
+        if ptr.is_none() {
+            // TODO probably use a OnceCell or something
+            let mut v = vec![0];
+            for m in NEWLINES.find_iter(self.tree.get_code()) {
+                v.push(m.end() as CodeIndex);
+            }
+            *ptr = Some(v);
+        }
+        ptr.as_ref().unwrap()
     }
 
     fn calculate_global_definitions_and_references(&self) {

@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 parsa_python = { path = "../parsa_python" }
 parsa = { path = "../parsa" }
+lazy_static = "*"
+regex = "*"
 
 [[test]]
 name = "blackbox"
