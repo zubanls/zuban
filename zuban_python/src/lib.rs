@@ -73,9 +73,7 @@ impl<'a> Script<'a> {
     fn to_byte_position(&self, position: Position) -> CodeIndex {
         match position {
             Position::Byte(pos) => pos as u32,
-            Position::LineColumn(line, column) => {
-                todo!();
-            },
+            Position::LineColumn(line, column) => self.get_file().to_byte_position(line, column),
         }
     }
 

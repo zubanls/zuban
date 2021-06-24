@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::cell::UnsafeCell;
 
 use crate::automaton::{
     generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
@@ -27,7 +28,7 @@ pub trait Tokenizer<'a, T: Token>: Iterator {
 pub struct InternalTree {
     pub code: String,
     pub nodes: Vec<InternalNode>,
-    pub lines: Option<Vec<u32>>,
+    pub new_line_indices: UnsafeCell<Option<Vec<u32>>>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -65,6 +66,33 @@ mod tests {
         assert_eq!(size_of::<CompressedNode>(), 6);
         assert_eq!(align_of::<InternalNode>(), 4);
         assert_eq!(align_of::<CompressedNode>(), 2);
+    }
+}
+
+impl InternalTree {
+    pub fn new(code: String, nodes: Vec<InternalNode>) -> Self {
+        Self {code, nodes, new_line_indices: UnsafeCell::new(None)}
+    }
+
+    fn get_lines(&self) -> &[u32] {
+        let ptr = unsafe {&mut *self.new_line_indices.get()};
+        if ptr.is_none() {
+            // TODO probably use a OnceCell or something
+            *ptr = Some(vec![0]);
+        }
+        ptr.as_ref().unwrap()
+    }
+
+    pub fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
+        let byte = self.get_lines()[line];
+        // TODO column can be unicode, is that an issue?
+        // TODO Also column can be bigger than the current line.
+        byte + column as CodeIndex
+    }
+
+    pub fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
+        let line = self.get_lines().partition_point(|&l| l < byte as CodeIndex);
+        (line, byte as usize - line)
     }
 }
 

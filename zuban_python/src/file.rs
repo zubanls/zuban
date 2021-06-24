@@ -79,6 +79,8 @@ pub trait File: std::fmt::Debug {
     }
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
     fn set_file_index(&self, index: FileIndex);
+
+    fn to_byte_position(&self, line: usize, column: usize) -> CodeIndex;
 }
 
 pub trait FileState {
@@ -205,6 +207,10 @@ impl File for PythonFile {
 
     fn set_file_index(&self, index: FileIndex) {
         self.file_index.set(Some(index));
+    }
+
+    fn to_byte_position(&self, line: usize, column: usize) -> CodeIndex {
+        self.tree.line_column_to_byte(line, column)
     }
 }
 

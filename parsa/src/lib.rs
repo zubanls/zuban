@@ -639,11 +639,7 @@ macro_rules! create_grammar {
                 let start = $NonterminalType::get_map()[stringify!($first_node)];
                 let nodes = self.internal_grammar.parse(&code, $Tokenizer::new(&code), start);
                 $Tree {
-                    internal_tree: $crate::InternalTree {
-                        code: code,
-                        nodes: nodes,
-                        lines: None
-                    }
+                    internal_tree: $crate::InternalTree::new(code, nodes)
                 }
             }
         }
@@ -689,6 +685,14 @@ macro_rules! create_grammar {
                     }
                 }
                 unreachable!();
+            }
+
+            pub fn line_column_to_byte(&self, line: usize, column: usize) -> $crate::CodeIndex {
+                self.internal_tree.line_column_to_byte(line, column)
+            }
+
+            pub fn byte_to_line_column(&self, byte: $crate::CodeIndex) -> (usize, usize) {
+                self.internal_tree.byte_to_line_column(byte)
             }
         }
 
