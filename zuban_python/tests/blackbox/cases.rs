@@ -44,7 +44,7 @@ impl TestFile {
     fn get_test_cases(&self) -> Vec<TestCase> {
         let mut cases = vec![];
         let lines: Vec<_> = self.code.split('\n').collect();
-        for (i, line) in lines.iter().enumerate() {
+        for (line_nr, line) in lines.iter().enumerate() {
             let trimmed = line.trim_start();
             if trimmed.starts_with("#? ") {
                 let mut names: Vec<_> = trimmed[3..].split(" ").collect();
@@ -53,12 +53,13 @@ impl TestFile {
                         names.remove(0);
                         c
                     } else {
-                        lines[i + 1].len()
+                        lines[line_nr + 1].len()
                     }
                 };
                 cases.push(TestCase {
-                    line: i + 1,
-                    column: 1,
+                    // We need to add one, because we're evaluating the next line
+                    line: line_nr + 1,
+                    column,
                     type_: CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect()),
                 });
             }

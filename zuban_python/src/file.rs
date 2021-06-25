@@ -83,6 +83,7 @@ pub trait File: std::fmt::Debug {
         vec!()
     }
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
+    fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
@@ -193,6 +194,7 @@ impl File for PythonFile {
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
         let node = self.tree.get_leaf_by_position(position);
+        dbg!(node);
         match node.get_type() {
             Terminal(t) | ErrorTerminal(t) => {
                 match t {
@@ -209,6 +211,10 @@ impl File for PythonFile {
                 panic!("{}", node.type_str())
             }
         }
+    }
+
+    fn get_file_index(&self) -> FileIndex {
+        self.file_index.get().unwrap()
     }
 
     fn set_file_index(&self, index: FileIndex) {
@@ -229,7 +235,6 @@ impl File for PythonFile {
 
 }
 
-#[derive(Debug)]
 pub struct PythonFile {
     tree: PythonTree,
     definition_names: DefinitionNames,
@@ -241,6 +246,14 @@ pub struct PythonFile {
     issues: Vec<Issue>,
 
     new_line_indices: UnsafeCell<Option<Vec<u32>>>,
+}
+
+impl fmt::Debug for PythonFile {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("PythonFile")
+         .field("file_index", &self.file_index.get())
+         .finish()
+    }
 }
 
 impl PythonFile {

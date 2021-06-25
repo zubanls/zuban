@@ -49,7 +49,7 @@ pub struct PythonProject {
     is_django: bool,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Position {
     Byte(usize),
     LineColumn(usize, usize),
@@ -86,7 +86,7 @@ impl<'a> Script<'a> {
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
         let leaf = self.get_file().get_leaf(&self.project.database, pos);
-        debug!("On leaf: {:?}", leaf);
+        debug!("Position {:?} is on leaf {:?}", position, leaf);
         leaf
     }
 

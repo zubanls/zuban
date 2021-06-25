@@ -74,11 +74,11 @@ pub struct TreeName<'a, F: File, N: Node<'a>> {
     tree_node: N,
 }
 
-impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> {
+impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> where Self: LanguageTreeName<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
-         .field("file", self.file)
-         .field("tree_node", &self.tree_node)
+         .field("file", &self.get_file_path())
+         .field("name", &self.get_name())
          .finish()
     }
 }
@@ -115,8 +115,7 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
     }
 
     fn get_file_path(&self) -> &str {
-        todo!()
-        //self.file.get_path()
+        self.database.get_file_path(self.file.get_file_index())
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {

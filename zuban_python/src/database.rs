@@ -269,6 +269,10 @@ impl Database {
         self.files.get(index.0 as usize).unwrap()
     }
 
+    pub fn get_file_path(&self, index: FileIndex) -> &str {
+        self.get_file_state(index).get_path()
+    }
+
     pub fn get_file_state_index_by_path(&self, path: &str) -> Option<FileIndex> {
         self.path_to_file.get(path).copied()
     }
