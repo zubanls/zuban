@@ -682,8 +682,12 @@ macro_rules! create_grammar {
             }
 
             pub fn get_leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
-                let index = self.internal_tree.nodes.partition_point(|node| node.start_index <= position);
-                for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
+                // Returns the leaf under the cursor. Start positions are higher prioritized than
+                // end positions. Also if the position is on the prefix, the leaf is returned.
+                let index = self.internal_tree.nodes.partition_point(
+                    |node| node.start_index + node.length <= position
+                );
+                for (i, node) in self.internal_tree.nodes[index..].iter().enumerate() {
                     if node.type_.is_leaf() {
                         return self.get_node(i, node)
                     }
