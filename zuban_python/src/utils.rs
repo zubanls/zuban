@@ -9,6 +9,15 @@ use parsa_python::PythonNode;
 use parsa::{Node, NodeIndex};
 
 
+#[macro_export]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        if cfg!(feature="zuban_debug") {
+            println!($($arg)*);
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,

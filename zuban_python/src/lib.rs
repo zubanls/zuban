@@ -85,7 +85,9 @@ impl<'a> Script<'a> {
 
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        self.get_file().get_leaf(&self.project.database, pos)
+        let leaf = self.get_file().get_leaf(&self.project.database, pos);
+        debug!("On leaf: {:?}", leaf);
+        leaf
     }
 
     pub fn complete(&self, position: Position) {

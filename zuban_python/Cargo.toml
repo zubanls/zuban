@@ -12,6 +12,9 @@ parsa = { path = "../parsa" }
 lazy_static = "*"
 regex = "*"
 
+[features]
+zuban_debug = []
+
 [[test]]
 name = "blackbox"
 harness = false
