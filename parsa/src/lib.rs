@@ -672,7 +672,7 @@ macro_rules! create_grammar {
             }
 
             #[inline]
-            fn get_node<'a>(&'a self, index: usize, internal_node: &'a $crate::InternalNode) -> $Node{
+            fn get_node<'a>(&'a self, index: usize, internal_node: &'a $crate::InternalNode) -> $Node {
                 $Node {
                     internal_tree: &self.internal_tree,
                     internal_node: internal_node,
@@ -690,8 +690,8 @@ macro_rules! create_grammar {
                 ).collect()
             }
 
-            pub fn get_node_by_index(&self, index: $crate::NodeIndex) -> $Node {
-                todo!()
+            pub fn get_node_by_index(&self, index: usize) -> $Node {
+                self.get_node(index, &self.internal_tree.nodes[index])
             }
 
             pub fn get_leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {

@@ -8,7 +8,7 @@ use parsa::NodeIndex;
 use crate::file::{FileState, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 
 type ComplexIndex = u32;
@@ -147,6 +147,16 @@ impl ValueOrReference {
         unimplemented!();
         //self.flags & REST_MASK & 1 == 1
     }
+
+    pub fn get_file_index(self) -> FileIndex {
+        debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
+        FileIndex(self.flags & REST_MASK)
+    }
+
+    pub fn get_node_index(self) -> usize {
+        debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
+        self.node_or_complex_index as usize
+    }
 }
 
 impl fmt::Debug for ValueOrReference {
@@ -167,7 +177,7 @@ impl fmt::Debug for ValueOrReference {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ValueOrReferenceType {
     Redirect,

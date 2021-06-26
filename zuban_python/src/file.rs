@@ -382,14 +382,24 @@ impl PythonFile {
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
-        use ValueOrReferenceType::*;
         self.calculate_global_definitions_and_references();
-        let value = self.values_or_references[name.index as usize].get();
+        self.infer_node(name)
+    }
+
+    fn infer_node(&self, node: PythonNode) -> ValueNames {
+        use ValueOrReferenceType::*;
+        let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
-            debug!("Infer {:?} from cache: {:?}", name.get_code(), value.get_type());
+            debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
                 Redirect => {
-                    todo!();
+                    let file_index = value.get_file_index();
+                    if self.file_index.get().unwrap() == file_index {
+                        let next = self.tree.get_node_by_index(value.get_node_index());
+                        self.infer_node(next)
+                    } else {
+                        todo!()
+                    }
                 }
                 LanguageSpecific => {
                     todo!();
@@ -415,7 +425,7 @@ impl PythonFile {
                 todo!();
             }
 
-            let stmt = name.get_parent_until(&[
+            let stmt = node.get_parent_until(&[
                 Nonterminal(PythonNonterminalType::lambda),
                 Nonterminal(PythonNonterminalType::comprehension),
                 Nonterminal(PythonNonterminalType::dict_comprehension),
@@ -423,17 +433,17 @@ impl PythonFile {
             ]).expect("There should always be a stmt");
 
             if !self.values_or_references[stmt.index as usize].get().is_calculated() {
-                self.calculate_node_scope_definitions(name);
-                if is_name_reference(name) {
+                self.calculate_node_scope_definitions(node);
+                if is_name_reference(node) {
                     panic!("is extern");
                 } else {
                     // Is a reference and should have been calculated.
-                    self.calculate_stmt_name(stmt, name);
+                    self.calculate_stmt_name(stmt, node);
                 }
             }
-            let value = self.values_or_references[name.index as usize].get();
+            let value = self.values_or_references[node.index as usize].get();
             debug_assert!(value.is_calculated());
-            self.infer_name(name)
+            self.infer_node(node)
         }
     }
 }
