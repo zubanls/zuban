@@ -3,7 +3,7 @@ use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::file::ValuesOrReferences;
 use crate::utils::DefinitionNames;
-use crate::database::{InternalValueOrReference, PythonValueEnum, Locality, FileIndex};
+use crate::database::{ValueOrReference, PythonValueEnum, Locality, FileIndex};
 
 pub struct IndexerState<'a, 'b> {
     definition_names: &'a DefinitionNames,
@@ -42,7 +42,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
             self.file_index, false, Some(self))
     }
 
-    fn add_new_definition(&self, name_def: PythonNode<'a>, value: InternalValueOrReference) {
+    fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         self.definition_names.add_definition(name);
@@ -52,7 +52,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     fn add_value_definition(&mut self, name_def: PythonNode<'a>, type_: PythonValueEnum) {
         self.add_new_definition(
             name_def,
-            InternalValueOrReference::new_simple_language_specific(
+            ValueOrReference::new_simple_language_specific(
                 type_,
                 Locality::Stmt,
                 false,
@@ -64,7 +64,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     fn add_redirect_definition(&mut self, name_def: PythonNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
-            InternalValueOrReference::new_redirect(
+            ValueOrReference::new_redirect(
                 self.file_index,
                 node_index,
                 Locality::Stmt,
@@ -303,7 +303,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                     // The types are inferred later.
                     self.add_new_definition(
                         parent,
-                        InternalValueOrReference::new_uncalculated(self.is_global_scope),
+                        ValueOrReference::new_uncalculated(self.is_global_scope),
                     )
                 } else {
                     self.index_reference(n, parent, ordered);
@@ -469,7 +469,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
     fn add_reference(&self, name: PythonNode<'a>) {
         let value = {
             if let Some(definition) = self.lookup_name(name) {
-                InternalValueOrReference::new_redirect(
+                ValueOrReference::new_redirect(
                     self.file_index,
                     definition,
                     Locality::File,
@@ -477,7 +477,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
                     self.is_global_scope,
                 )
             } else {
-                InternalValueOrReference::new_missing_or_unknown(
+                ValueOrReference::new_missing_or_unknown(
                     self.file_index,
                     Locality::File,
                 )

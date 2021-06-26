@@ -8,7 +8,7 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, Python
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
-use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, InternalValueOrReferenceType, ComplexValue};
+use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueOrReferenceType, ComplexValue};
 use crate::indexer::IndexerState;
 use crate::debug;
 
@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
-pub type ValuesOrReferences = Vec<Cell<InternalValueOrReference>>;
+pub type ValuesOrReferences = Vec<Cell<ValueOrReference>>;
 
 pub trait VirtualFileSystemReader {
     fn read_file(&self, path: &str) -> String;
@@ -311,7 +311,7 @@ impl PythonFile {
         );
         indexer_state.index_block(self.tree.get_root_node(), true);
 
-        self.values_or_references[0].set(InternalValueOrReference::new_node_analysis(
+        self.values_or_references[0].set(ValueOrReference::new_node_analysis(
             Locality::File
         ));
     }
@@ -382,7 +382,7 @@ impl PythonFile {
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
-        use InternalValueOrReferenceType::*;
+        use ValueOrReferenceType::*;
         self.calculate_global_definitions_and_references();
         let value = self.values_or_references[name.index as usize].get();
         if value.is_calculated() {

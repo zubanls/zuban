@@ -21,7 +21,7 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // xxooo Locality (xXxx is_external)
 // xxxxxo in_module_scope
 // xxxxxxo is_nullable
-// xxxxxxxooo InternalValueOrReferenceType
+// xxxxxxxooo ValueOrReferenceType
 // if true rest 22 bits reserved for ValueOrReference details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
@@ -42,14 +42,14 @@ const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
-pub struct InternalValueOrReference {
+pub struct ValueOrReference {
     flags: u32,
     node_or_complex_index: u32,
 }
 
-impl InternalValueOrReference {
+impl ValueOrReference {
     #[inline]
-    fn calculate_flags(type_: InternalValueOrReferenceType, rest: u32, locality: Locality,
+    fn calculate_flags(type_: ValueOrReferenceType, rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
         rest
         | IS_ANALIZED_MASK
@@ -62,7 +62,7 @@ impl InternalValueOrReference {
     pub fn new_redirect(module: FileIndex, node_index: NodeIndex,
                         locality: Locality, is_nullable: bool, in_module_scope: bool) -> Self {
         let flags = Self::calculate_flags(
-            InternalValueOrReferenceType::Redirect, module.0, locality, is_nullable, in_module_scope);
+            ValueOrReferenceType::Redirect, module.0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -76,7 +76,7 @@ impl InternalValueOrReference {
 
     pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            InternalValueOrReferenceType::MissingOrUnknown, module.0, locality, false, false);
+            ValueOrReferenceType::MissingOrUnknown, module.0, locality, false, false);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -85,7 +85,7 @@ impl InternalValueOrReference {
         in_module_scope: bool
     ) -> Self {
         let flags = Self::calculate_flags(
-            InternalValueOrReferenceType::LanguageSpecific, 0, locality, is_nullable, in_module_scope);
+            ValueOrReferenceType::LanguageSpecific, 0, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -107,7 +107,7 @@ impl InternalValueOrReference {
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
             flags: Self::calculate_flags(
-                InternalValueOrReferenceType::NodeAnalysis, 0, locality, false, false),
+                ValueOrReferenceType::NodeAnalysis, 0, locality, false, false),
             node_or_complex_index: 0
         }
     }
@@ -119,7 +119,7 @@ impl InternalValueOrReference {
         }
     }
 
-    pub fn get_type(self) -> InternalValueOrReferenceType {
+    pub fn get_type(self) -> ValueOrReferenceType {
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
 
@@ -149,9 +149,9 @@ impl InternalValueOrReference {
     }
 }
 
-impl fmt::Debug for InternalValueOrReference {
+impl fmt::Debug for ValueOrReference {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = f.debug_struct("InternalValueOrReference");
+        let mut s = f.debug_struct("ValueOrReference");
         if self.is_calculating() {
             s.field("is_calculating", &self.is_calculating());
         } else if !self.is_calculated() {
@@ -169,7 +169,7 @@ impl fmt::Debug for InternalValueOrReference {
 
 #[derive(Debug)]
 #[repr(u32)]
-pub enum InternalValueOrReferenceType {
+pub enum ValueOrReferenceType {
     Redirect,
     MultiDefinition,
     Complex,
@@ -220,8 +220,6 @@ pub enum Locality {
     ComplexExtern,  // Means we have to recalculate the value all the links
     ImplicitExtern,  // Contains star imports for now (always recheck on invalidation of the module)
 }
-
-struct InternalValue(u32, u32);
 
 #[derive(Debug)]
 pub struct ValueLink {
