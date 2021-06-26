@@ -22,7 +22,7 @@ enum CaseType {
 impl TestFile {
     pub fn test(&self) {
         let mut project = zuban_python::Project::new("foo".to_owned());
-        let script = zuban_python::Script::new(
+        let script = Script::new(
             &mut project,
             Some(self.path.to_str().unwrap().to_owned()),
             Some(self.code.clone()),

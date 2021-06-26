@@ -313,6 +313,19 @@ macro_rules! __create_node {
                 }
             }
 
+            pub fn get_previous_leaf(&self) -> Option<$Node<'a>> {
+                for (index, node) in self.internal_tree.nodes[..self.index].iter().enumerate().rev() {
+                    if node.type_.is_leaf() {
+                        return Some($Node {
+                            internal_tree: &self.internal_tree,
+                            internal_node: node,
+                            index,
+                        });
+                    }
+                }
+                return None
+            }
+
             pub fn get_type(&self) -> $NodeType {
                 let f = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 let g = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
@@ -689,7 +702,7 @@ macro_rules! create_grammar {
                 );
                 for (i, node) in self.internal_tree.nodes[index..].iter().enumerate() {
                     if node.type_.is_leaf() {
-                        return self.get_node(i, node)
+                        return self.get_node(index + i, node)
                     }
                 }
                 unreachable!();

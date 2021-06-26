@@ -193,24 +193,35 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        let node = self.tree.get_leaf_by_position(position);
-        dbg!(node);
-        match node.get_type() {
-            Terminal(t) | ErrorTerminal(t) => {
-                match t {
-                    PythonTerminalType::Name => Leaf::Name(Box::new(
-                        TreeName::new(database, self, node)
-                    )),
-                    _ => Leaf::None,
+        fn calculate<'b>(file: &'b PythonFile, database: &'b Database, node: PythonNode<'b>, position: CodeIndex) -> Leaf<'b> {
+            match node.get_type() {
+                Terminal(t) | ErrorTerminal(t) => {
+                    match t {
+                        PythonTerminalType::Name => Leaf::Name(Box::new(
+                            TreeName::new(database, file, node)
+                        )),
+                        PythonTerminalType::Newline => {
+                            if node.start() == position {
+                                if let Some(prev) = node.get_previous_leaf() {
+                                    if prev.end() == position {
+                                        return calculate(file, database, prev, position);
+                                    }
+                                }
+                            }
+                            Leaf::None
+                        }
+                        _ => Leaf::None,
+                    }
+                }
+                PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
+                    Leaf::Keyword(node.get_code().to_owned())
+                }
+                Nonterminal(n) | ErrorNonterminal(n) => {
+                    panic!("{}", node.type_str())
                 }
             }
-            PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
-                Leaf::Keyword(node.get_code().to_owned())
-            }
-            Nonterminal(n) | ErrorNonterminal(n) => {
-                panic!("{}", node.type_str())
-            }
         }
+        calculate(self, database, self.tree.get_leaf_by_position(position), position)
     }
 
     fn get_file_index(&self) -> FileIndex {
