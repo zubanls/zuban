@@ -1,4 +1,5 @@
 use std::mem;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -34,12 +35,13 @@ const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
+const IS_NULLABLE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
 
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub struct InternalValueOrReference {
     flags: u32,
     node_or_complex_index: u32,
@@ -49,11 +51,12 @@ impl InternalValueOrReference {
     #[inline]
     fn calculate_flags(type_: InternalValueOrReferenceType, rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
-        (locality as u32)
+        rest
+        | IS_ANALIZED_MASK
+        | (locality as u32) << LOCALITY_BIT_INDEX
         | (is_nullable as u32) << IS_NULLABLE_BIT_INDEX
         | (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX
-        | IS_ANALIZED_MASK
-        | type_ as u32
+        | (type_ as u32) << TYPE_BIT_INDEX
     }
 
     pub fn new_redirect(module: FileIndex, node_index: NodeIndex,
@@ -109,20 +112,31 @@ impl InternalValueOrReference {
         }
     }
 
-    pub fn get_type(self) -> InternalValueOrReferenceType {
-        unsafe { mem::transmute(self.flags & TYPE_MASK >> TYPE_BIT_INDEX) }
+    pub fn new_uncalculated(in_module_scope: bool) -> Self {
+        Self {
+            flags: (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX,
+            node_or_complex_index: 0,
+        }
     }
 
-    fn get_locality(self) -> Locality {
-        unsafe { mem::transmute(self.flags & LOCALITY_MASK >> LOCALITY_BIT_INDEX) }
+    pub fn get_type(self) -> InternalValueOrReferenceType {
+        unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
+    }
+
+    pub fn get_locality(self) -> Locality {
+        unsafe { mem::transmute((self.flags & LOCALITY_MASK) >> LOCALITY_BIT_INDEX) }
     }
 
     pub fn in_module_scope(self) -> bool {
-        self.flags & IN_MODULE_SCOPE_MASK != 0
+        (self.flags & IN_MODULE_SCOPE_MASK) != 0
+    }
+
+    pub fn is_nullable(self) -> bool {
+        (self.flags & IS_NULLABLE_MASK) != 0
     }
 
     pub fn is_calculated(self) -> bool {
-        self.flags & IS_ANALIZED_MASK != 0
+        (self.flags & IS_ANALIZED_MASK) != 0
     }
 
     pub fn is_calculating(self) -> bool {
@@ -133,26 +147,24 @@ impl InternalValueOrReference {
         unimplemented!();
         //self.flags & REST_MASK & 1 == 1
     }
+}
 
-    /*
-    fn get_x(self) -> ValueOrReference {
-        if self.is_uncalculated() {
-            return ValueOrReference::Uncalculated;
-        }
+impl fmt::Debug for InternalValueOrReference {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut s = f.debug_struct("InternalValueOrReference");
         if self.is_calculating() {
-            return ValueOrReference::Calculating;
-        }
-        if self.is_recursion_error() {
-            return ValueOrReference::RecursionError;
-        }
-        if self.is_value() {
-            panic!();
-            //ValueOrReference::Value(1)
+            s.field("is_calculating", &self.is_calculating());
+        } else if !self.is_calculated() {
+            s.field("is_calculated", &self.is_calculated());
         } else {
-            ValueOrReference::Reference(Reference::Redirect(FileIndex(self.flags & FILE_MASK), self.node_index))
+            self.get_type();
+            s
+             .field("type", &self.get_type())
+             .field("locality", &self.get_locality())
+             .field("is_nullable", &self.is_nullable());
         }
+        s.field("in_module_scope", &self.in_module_scope()).finish()
     }
-    */
 }
 
 #[derive(Debug)]

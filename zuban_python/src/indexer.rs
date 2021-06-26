@@ -299,8 +299,13 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         for n in node.search(SEARCH_NAMES) {
             if n.is_type(Terminal(PythonTerminalType::Name)) {
                 let parent = n.get_parent().unwrap();
-                // name_definitions are resolved later.
-                if !parent.is_type(Nonterminal(name_definition)) {
+                if parent.is_type(Nonterminal(name_definition)) {
+                    // The types are inferred later.
+                    self.add_new_definition(
+                        parent,
+                        InternalValueOrReference::new_uncalculated(self.is_global_scope),
+                    )
+                } else {
                     self.index_reference(n, parent, ordered);
                 }
             } else if n.is_type(Nonterminal(lambda)) {
