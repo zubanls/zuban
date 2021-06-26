@@ -10,6 +10,7 @@ use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, InternalValueOrReference, InternalValueOrReferenceType, ComplexValue};
 use crate::indexer::IndexerState;
+use crate::debug;
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -385,6 +386,7 @@ impl PythonFile {
         self.calculate_global_definitions_and_references();
         let value = self.values_or_references[name.index as usize].get();
         if value.is_calculated() {
+            debug!("Infer {:?} from cache: {:?}", name.get_code(), value.get_type());
             match value.get_type() {
                 Redirect => {
                     todo!();
