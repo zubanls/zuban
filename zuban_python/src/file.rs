@@ -372,13 +372,59 @@ impl PythonFile {
 
     fn calculate_node_scope_definitions(&self, node: PythonNode) {
         self.calculate_global_definitions_and_references();
+        todo!();
     }
 
     fn calculate_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
-        panic!("IMPL tuple unpack");
-        //let definition = get_definition(name);
-        //if definition.is_some() {
-        //}
+        let child = stmt.get_nth_child(0);
+        if child.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+            for node in child.iter_children() {
+                if node.is_type(Nonterminal(PythonNonterminalType::simple_stmt)) {
+                    let simple_child = node.get_nth_child(0);
+                    if simple_child.is_type(Nonterminal(PythonNonterminalType::assignment)) {
+                        self.cache_assignment(simple_child);
+                        todo!("asdf")
+                    } else {
+                        unreachable!("Found type {:?}", simple_child.get_type());
+                    }
+                }
+            }
+        } else {
+            unreachable!("Found type {:?}", child.get_type());
+        }
+    }
+
+    fn cache_assignment(&self, assignment_node: PythonNode) {
+        // | (star_targets "=" )+ (yield_expr | star_expressions)
+        // | single_target ":" expression ["=" (yield_expr | star_expressions)]
+        // | single_target augassign (yield_expr | star_expressions)
+        use PythonNonterminalType::*;
+        let mut expression_node = None;
+        let mut annotation_node = None;
+        for child in assignment_node.iter_children() {
+            match child.get_type() {
+                Nonterminal(expression) => {
+                    annotation_node = Some(child);
+                }
+                Nonterminal(yield_expr | star_expressions) => {
+                    expression_node = Some(child);
+                }
+                _ => {}
+            }
+        }
+        if let Some(annotation_node) = annotation_node {
+            todo!();
+        } else {
+            debug_assert!(expression_node.is_some());
+        }
+        for child in assignment_node.iter_children() {
+            match child.get_type() {
+                Nonterminal(star_targets | single_target) => {
+                    todo!();
+                }
+                _ => {}
+            }
+        }
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
@@ -398,7 +444,7 @@ impl PythonFile {
                         let next = self.tree.get_node_by_index(value.get_node_index());
                         self.infer_node(next)
                     } else {
-                        todo!()
+                        todo!("External Module Redirect")
                     }
                 }
                 LanguageSpecific => {
@@ -433,9 +479,12 @@ impl PythonFile {
             ]).expect("There should always be a stmt");
 
             if !self.values_or_references[stmt.index as usize].get().is_calculated() {
-                self.calculate_node_scope_definitions(node);
+                if !stmt.is_type(Nonterminal(PythonNonterminalType::stmt)) {
+                    todo!()
+                }
+                //self.calculate_node_scope_definitions(node);
                 if is_name_reference(node) {
-                    panic!("is extern");
+                    todo!("is extern");
                 } else {
                     // Is a reference and should have been calculated.
                     self.calculate_stmt_name(stmt, node);
