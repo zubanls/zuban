@@ -10,9 +10,8 @@ file: 0-37
      expression: 1-36
       bitwise_or: 1-36
        bitwise_or: 1-6
-        bitwise_or: 1-2
-         atom: 1-2
-          Name: 1-2 "f"
+        atom: 1-2
+         Name: 1-2 "f"
         Keyword: 3-4 "|"
         atom: 5-6
          Name: 5-6 "d"

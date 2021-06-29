@@ -16,9 +16,8 @@ file: 0-105
      Keyword: 3-4 "="
      star_expressions: 5-6
       expression: 5-6
-       bitwise_or: 5-6
-        atom: 5-6
-         Number: 5-6 "1"
+       atom: 5-6
+        Number: 5-6 "1"
    Newline: 6-7 "\n"
  stmt: 7-16
   simple_stmts: 7-16
@@ -39,9 +38,8 @@ file: 0-105
      Keyword: 12-13 "="
      star_expressions: 14-15
       expression: 14-15
-       bitwise_or: 14-15
-        atom: 14-15
-         Number: 14-15 "2"
+       atom: 14-15
+        Number: 14-15 "2"
    Newline: 15-16 "\n"
  stmt: 16-26
   simple_stmts: 16-26
@@ -63,9 +61,8 @@ file: 0-105
      Keyword: 22-23 "="
      star_expressions: 24-25
       expression: 24-25
-       bitwise_or: 24-25
-        atom: 24-25
-         Number: 24-25 "2"
+       atom: 24-25
+        Number: 24-25 "2"
    Newline: 25-26 "\n"
  stmt: 26-37
   simple_stmts: 26-37
@@ -92,9 +89,8 @@ file: 0-105
      Keyword: 33-34 "="
      star_expressions: 35-36
       expression: 35-36
-       bitwise_or: 35-36
-        atom: 35-36
-         Number: 35-36 "2"
+       atom: 35-36
+        Number: 35-36 "2"
    Newline: 36-37 "\n"
  stmt: 37-50
   simple_stmts: 37-50
@@ -127,9 +123,8 @@ file: 0-105
      Keyword: 46-47 "="
      star_expressions: 48-49
       expression: 48-49
-       bitwise_or: 48-49
-        atom: 48-49
-         Number: 48-49 "2"
+       atom: 48-49
+        Number: 48-49 "2"
    Newline: 49-50 "\n"
  stmt: 50-60
   simple_stmts: 50-60
@@ -151,9 +146,8 @@ file: 0-105
      Keyword: 56-57 "="
      star_expressions: 58-59
       expression: 58-59
-       bitwise_or: 58-59
-        atom: 58-59
-         Number: 58-59 "3"
+       atom: 58-59
+        Number: 58-59 "3"
    Newline: 59-60 "\n"
  stmt: 60-75
   simple_stmts: 60-75
@@ -187,9 +181,8 @@ file: 0-105
      Keyword: 71-72 "="
      star_expressions: 73-74
       expression: 73-74
-       bitwise_or: 73-74
-        atom: 73-74
-         Number: 73-74 "3"
+       atom: 73-74
+        Number: 73-74 "3"
    Newline: 74-75 "\n"
  stmt: 75-91
   simple_stmts: 75-91
@@ -224,9 +217,8 @@ file: 0-105
      Keyword: 87-88 "="
      star_expressions: 89-90
       expression: 89-90
-       bitwise_or: 89-90
-        atom: 89-90
-         Number: 89-90 "3"
+       atom: 89-90
+        Number: 89-90 "3"
    Newline: 90-91 "\n"
  stmt: 91-105
   simple_stmts: 91-105
@@ -255,9 +247,8 @@ file: 0-105
      Keyword: 101-102 "="
      star_expressions: 103-104
       expression: 103-104
-       bitwise_or: 103-104
-        atom: 103-104
-         Number: 103-104 "3"
+       atom: 103-104
+        Number: 103-104 "3"
    Newline: 104-105 "\n"
  Endmarker: 105-105 ""
 

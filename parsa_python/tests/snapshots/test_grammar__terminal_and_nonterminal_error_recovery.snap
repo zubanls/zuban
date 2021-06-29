@@ -8,9 +8,8 @@ file: 0-21
    simple_stmt: 1-4
     star_expressions: 1-4
      expression: 1-4
-      bitwise_or: 1-4
-       atom: 1-4
-        Name: 1-4 "foo"
+      atom: 1-4
+       Name: 1-4 "foo"
    Newline: 4-5 "\n"
  Error(stmt): 5-10
   Error(simple_stmts): 5-10
@@ -30,9 +29,8 @@ file: 0-21
                 Keyword: 5-6 "("
                 named_expression: 6-7
                  expression: 6-7
-                  bitwise_or: 6-7
-                   atom: 6-7
-                    Number: 6-7 "1"
+                  atom: 6-7
+                   Number: 6-7 "1"
                 Keyword: 7-8 ")"
                Keyword: 9-10 "+"
  Error(stmt): 11-12
@@ -42,20 +40,18 @@ file: 0-21
    simple_stmt: 13-16
     star_expressions: 13-16
      expression: 13-16
-      bitwise_or: 13-16
-       factor: 13-16
-        Keyword: 13-14 "+"
-        atom: 15-16
-         Name: 15-16 "c"
+      factor: 13-16
+       Keyword: 13-14 "+"
+       atom: 15-16
+        Name: 15-16 "c"
    Newline: 16-17 "\n"
  stmt: 17-21
   simple_stmts: 17-21
    simple_stmt: 17-20
     star_expressions: 17-20
      expression: 17-20
-      bitwise_or: 17-20
-       atom: 17-20
-        Name: 17-20 "bar"
+      atom: 17-20
+       Name: 17-20 "bar"
    Newline: 20-21 "\n"
  Endmarker: 21-21 ""
 

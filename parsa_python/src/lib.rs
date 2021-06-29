@@ -238,7 +238,7 @@ create_grammar!(
     // <> isn"t actually a valid comparison operator in Python. It"s here for the
     // sake of a __future__ import described in PEP 401 (which really works :-)
     comp_op: "<"|">"|"=="|">="|"<="|"<>"|"!="|"in"|"not" "in"|"is"|"is" "not"
-    bitwise_or:   [bitwise_or "|"] bitwise_xor
+    bitwise_or:?   [bitwise_or "|"] bitwise_xor
     bitwise_xor:? [bitwise_xor "^"] bitwise_and
     bitwise_and:? [bitwise_and "&"] shift_expr
     shift_expr:?  [shift_expr ("<<"|">>")] sum

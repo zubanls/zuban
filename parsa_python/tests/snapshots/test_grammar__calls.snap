@@ -8,80 +8,72 @@ file: 0-55
    simple_stmt: 1-9
     star_expressions: 1-9
      expression: 1-9
-      bitwise_or: 1-9
-       primary: 1-9
-        atom: 1-4
-         Name: 1-4 "foo"
-        Keyword: 4-5 "("
-        arguments: 5-8
-         named_expression: 5-8
-          expression: 5-8
-           bitwise_or: 5-8
-            atom: 5-8
-             Name: 5-8 "bar"
-        Keyword: 8-9 ")"
+      primary: 1-9
+       atom: 1-4
+        Name: 1-4 "foo"
+       Keyword: 4-5 "("
+       arguments: 5-8
+        named_expression: 5-8
+         expression: 5-8
+          atom: 5-8
+           Name: 5-8 "bar"
+       Keyword: 8-9 ")"
    Newline: 9-10 "\n"
  stmt: 10-25
   simple_stmts: 10-25
    simple_stmt: 10-24
     star_expressions: 10-24
      expression: 10-24
-      bitwise_or: 10-24
-       primary: 10-24
-        atom: 10-13
-         Name: 10-13 "foo"
-        Keyword: 13-14 "("
-        arguments: 14-23
-         kwargs: 14-23
-          kwarg: 14-23
-           Name: 14-21 "bar_foo"
-           Keyword: 21-22 "="
-           expression: 22-23
-            bitwise_or: 22-23
-             atom: 22-23
-              Number: 22-23 "3"
-        Keyword: 23-24 ")"
+      primary: 10-24
+       atom: 10-13
+        Name: 10-13 "foo"
+       Keyword: 13-14 "("
+       arguments: 14-23
+        kwargs: 14-23
+         kwarg: 14-23
+          Name: 14-21 "bar_foo"
+          Keyword: 21-22 "="
+          expression: 22-23
+           atom: 22-23
+            Number: 22-23 "3"
+       Keyword: 23-24 ")"
    Newline: 24-25 "\n"
  stmt: 25-41
   simple_stmts: 25-41
    simple_stmt: 25-40
     star_expressions: 25-40
      expression: 25-40
-      bitwise_or: 25-40
-       primary: 25-40
-        atom: 25-28
-         Name: 25-28 "foo"
-        Keyword: 28-29 "("
-        arguments: 29-39
-         named_expression: 29-39
-          name_definition: 29-36
-           Name: 29-36 "bar_baz"
-          Keyword: 36-38 ":="
-          expression: 38-39
-           bitwise_or: 38-39
-            atom: 38-39
-             Number: 38-39 "2"
-        Keyword: 39-40 ")"
+      primary: 25-40
+       atom: 25-28
+        Name: 25-28 "foo"
+       Keyword: 28-29 "("
+       arguments: 29-39
+        named_expression: 29-39
+         name_definition: 29-36
+          Name: 29-36 "bar_baz"
+         Keyword: 36-38 ":="
+         expression: 38-39
+          atom: 38-39
+           Number: 38-39 "2"
+       Keyword: 39-40 ")"
    Newline: 40-41 "\n"
  stmt: 41-55
   simple_stmts: 41-55
    simple_stmt: 41-54
     star_expressions: 41-54
      expression: 41-54
-      bitwise_or: 41-54
-       primary: 41-54
-        atom: 41-44
-         Name: 41-44 "foo"
-        Keyword: 44-45 "("
-        arguments: 45-53
-         kwargs: 45-53
-          double_starred_expression: 45-53
-           Keyword: 45-47 "**"
-           expression: 47-53
-            bitwise_or: 47-53
-             atom: 47-53
-              Name: 47-53 "kwargs"
-        Keyword: 53-54 ")"
+      primary: 41-54
+       atom: 41-44
+        Name: 41-44 "foo"
+       Keyword: 44-45 "("
+       arguments: 45-53
+        kwargs: 45-53
+         double_starred_expression: 45-53
+          Keyword: 45-47 "**"
+          expression: 47-53
+           atom: 47-53
+            Name: 47-53 "kwargs"
+       Keyword: 53-54 ")"
    Newline: 54-55 "\n"
  Endmarker: 55-55 ""
 

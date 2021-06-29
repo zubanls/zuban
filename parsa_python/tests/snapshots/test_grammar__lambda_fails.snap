@@ -35,9 +35,8 @@ file: 0-100
        Name: 16-22 "kwargs"
      Keyword: 22-23 ":"
      expression: 24-27
-      bitwise_or: 24-27
-       atom: 24-27
-        Keyword: 24-27 "..."
+      atom: 24-27
+       Keyword: 24-27 "..."
    Newline: 27-28 "\n"
  Error(stmt): 28-41
   Error(simple_stmts): 28-41
@@ -52,9 +51,8 @@ file: 0-100
           Name: 35-36 "a"
          Keyword: 36-37 "="
          expression: 37-38
-          bitwise_or: 37-38
-           atom: 37-38
-            Number: 37-38 "3"
+          atom: 37-38
+           Number: 37-38 "3"
         Keyword: 38-39 ","
         Error(lambda_param_with_default): 40-41
          name_definition: 40-41
@@ -66,9 +64,8 @@ file: 0-100
    simple_stmt: 43-46
     star_expressions: 43-46
      expression: 43-46
-      bitwise_or: 43-46
-       atom: 43-46
-        Keyword: 43-46 "..."
+      atom: 43-46
+       Keyword: 43-46 "..."
    Newline: 46-47 "\n"
  Error(stmt): 47-58
   Error(simple_stmts): 47-58
@@ -93,9 +90,8 @@ file: 0-100
        Name: 59-60 "b"
      Keyword: 60-61 ":"
      expression: 62-65
-      bitwise_or: 62-65
-       atom: 62-65
-        Keyword: 62-65 "..."
+      atom: 62-65
+       Keyword: 62-65 "..."
    Newline: 65-66 "\n"
  Error(stmt): 66-80
   Error(simple_stmts): 66-80
@@ -110,9 +106,8 @@ file: 0-100
           Name: 73-74 "a"
          Keyword: 74-75 "="
          expression: 75-76
-          bitwise_or: 75-76
-           atom: 75-76
-            Number: 75-76 "3"
+          atom: 75-76
+           Number: 75-76 "3"
         Keyword: 76-77 ","
         Error(lambda_star_etc): 78-80
          Keyword: 78-79 "*"
@@ -124,9 +119,8 @@ file: 0-100
    simple_stmt: 82-85
     star_expressions: 82-85
      expression: 82-85
-      bitwise_or: 82-85
-       atom: 82-85
-        Keyword: 82-85 "..."
+      atom: 82-85
+       Keyword: 82-85 "..."
    Newline: 85-86 "\n"
  Error(stmt): 86-92
   Error(simple_stmts): 86-92
@@ -144,9 +138,8 @@ file: 0-100
    simple_stmt: 96-99
     star_expressions: 96-99
      expression: 96-99
-      bitwise_or: 96-99
-       atom: 96-99
-        Keyword: 96-99 "..."
+      atom: 96-99
+       Keyword: 96-99 "..."
    Newline: 99-100 "\n"
  Endmarker: 100-100 ""
 

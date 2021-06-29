@@ -15,24 +15,21 @@ file: 0-82
    Keyword: 7-9 "in"
    star_expressions: 10-15
     expression: 10-15
-     bitwise_or: 10-15
-      atom: 10-15
-       Keyword: 10-11 "["
-       star_named_expressions: 11-14
-        star_named_expression: 11-12
-         named_expression: 11-12
-          expression: 11-12
-           bitwise_or: 11-12
-            atom: 11-12
-             Number: 11-12 "1"
-        Keyword: 12-13 ","
-        star_named_expression: 13-14
-         named_expression: 13-14
-          expression: 13-14
-           bitwise_or: 13-14
-            atom: 13-14
-             Number: 13-14 "2"
-       Keyword: 14-15 "]"
+     atom: 10-15
+      Keyword: 10-11 "["
+      star_named_expressions: 11-14
+       star_named_expression: 11-12
+        named_expression: 11-12
+         expression: 11-12
+          atom: 11-12
+           Number: 11-12 "1"
+       Keyword: 12-13 ","
+       star_named_expression: 13-14
+        named_expression: 13-14
+         expression: 13-14
+          atom: 13-14
+           Number: 13-14 "2"
+      Keyword: 14-15 "]"
    Keyword: 15-16 ":"
    block: 16-25
     Newline: 16-17 "\n"
@@ -42,9 +39,8 @@ file: 0-82
       simple_stmt: 21-24
        star_expressions: 21-24
         expression: 21-24
-         bitwise_or: 21-24
-          atom: 21-24
-           Keyword: 21-24 "..."
+         atom: 21-24
+          Keyword: 21-24 "..."
       Newline: 24-25 "\n"
     Dedent: 25-25 ""
  stmt: 25-43
@@ -61,18 +57,16 @@ file: 0-82
    star_expressions: 35-37
     star_expression: 35-37
      Keyword: 35-36 "*"
-     bitwise_or: 36-37
-      atom: 36-37
-       Name: 36-37 "c"
+     atom: 36-37
+      Name: 36-37 "c"
    Keyword: 37-38 ":"
    block: 39-43
     simple_stmts: 39-43
      simple_stmt: 39-42
       star_expressions: 39-42
        expression: 39-42
-        bitwise_or: 39-42
-         atom: 39-42
-          Keyword: 39-42 "..."
+        atom: 39-42
+         Keyword: 39-42 "..."
      Newline: 42-43 "\n"
  stmt: 43-82
   for_stmt: 43-82
@@ -112,29 +106,25 @@ file: 0-82
    Keyword: 65-67 "in"
    star_expressions: 68-76
     expression: 68-69
-     bitwise_or: 68-69
-      atom: 68-69
-       Name: 68-69 "i"
+     atom: 68-69
+      Name: 68-69 "i"
     Keyword: 69-70 ","
     star_expression: 71-73
      Keyword: 71-72 "*"
-     bitwise_or: 72-73
-      atom: 72-73
-       Name: 72-73 "j"
+     atom: 72-73
+      Name: 72-73 "j"
     Keyword: 73-74 ","
     expression: 75-76
-     bitwise_or: 75-76
-      atom: 75-76
-       Name: 75-76 "k"
+     atom: 75-76
+      Name: 75-76 "k"
    Keyword: 76-77 ":"
    block: 78-82
     simple_stmts: 78-82
      simple_stmt: 78-81
       star_expressions: 78-81
        expression: 78-81
-        bitwise_or: 78-81
-         atom: 78-81
-          Keyword: 78-81 "..."
+        atom: 78-81
+         Keyword: 78-81 "..."
      Newline: 81-82 "\n"
  Endmarker: 82-82 ""
 

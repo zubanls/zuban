@@ -9,9 +9,8 @@ file: 0-36
    subject_expr: 7-10
     named_expression: 7-10
      expression: 7-10
-      bitwise_or: 7-10
-       atom: 7-10
-        Name: 7-10 "foo"
+      atom: 7-10
+       Name: 7-10 "foo"
    Keyword: 10-11 ":"
    Newline: 11-12 "\n"
    Indent: 16-16 ""
@@ -31,9 +30,8 @@ file: 0-36
    simple_stmt: 28-29
     star_expressions: 28-29
      expression: 28-29
-      bitwise_or: 28-29
-       atom: 28-29
-        Name: 28-29 "_"
+      atom: 28-29
+       Name: 28-29 "_"
  Error(stmt): 29-30
   Error(Keyword): 29-30 ":"
  stmt: 31-36

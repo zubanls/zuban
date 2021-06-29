@@ -39,9 +39,8 @@ file: 0-15
      Keyword: 11-12 "="
      star_expressions: 13-14
       expression: 13-14
-       bitwise_or: 13-14
-        atom: 13-14
-         Number: 13-14 "3"
+       atom: 13-14
+        Number: 13-14 "3"
    Newline: 14-15 "\n"
  Endmarker: 15-15 ""
 

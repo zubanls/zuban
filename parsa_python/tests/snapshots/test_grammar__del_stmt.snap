@@ -62,9 +62,8 @@ file: 0-46
          slice: 43-44
           named_expression: 43-44
            expression: 43-44
-            bitwise_or: 43-44
-             atom: 43-44
-              Number: 43-44 "1"
+            atom: 43-44
+             Number: 43-44 "1"
         Keyword: 44-45 "]"
    Newline: 45-46 "\n"
  Endmarker: 46-46 ""

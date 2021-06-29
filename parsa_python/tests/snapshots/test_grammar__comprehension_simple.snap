@@ -8,134 +8,123 @@ file: 0-77
    simple_stmt: 1-15
     star_expressions: 1-15
      expression: 1-15
-      bitwise_or: 1-15
-       atom: 1-15
-        Keyword: 1-2 "["
-        comprehension: 2-14
-         named_expression: 2-3
-          expression: 2-3
-           bitwise_or: 2-3
-            atom: 2-3
-             Number: 2-3 "1"
-         for_if_clauses: 4-14
-          sync_for_if_clause: 4-14
-           Keyword: 4-7 "for"
-           star_targets: 8-9
-            star_target: 8-9
-             target_with_star_atom: 8-9
-              star_atom: 8-9
-               name_definition: 8-9
-                Name: 8-9 "a"
-           Keyword: 10-12 "in"
-           bitwise_or: 13-14
-            atom: 13-14
-             Name: 13-14 "b"
-        Keyword: 14-15 "]"
+      atom: 1-15
+       Keyword: 1-2 "["
+       comprehension: 2-14
+        named_expression: 2-3
+         expression: 2-3
+          atom: 2-3
+           Number: 2-3 "1"
+        for_if_clauses: 4-14
+         sync_for_if_clause: 4-14
+          Keyword: 4-7 "for"
+          star_targets: 8-9
+           star_target: 8-9
+            target_with_star_atom: 8-9
+             star_atom: 8-9
+              name_definition: 8-9
+               Name: 8-9 "a"
+          Keyword: 10-12 "in"
+          atom: 13-14
+           Name: 13-14 "b"
+       Keyword: 14-15 "]"
    Newline: 15-16 "\n"
  stmt: 16-45
   simple_stmts: 16-45
    simple_stmt: 16-44
     star_expressions: 16-44
      expression: 16-44
-      bitwise_or: 16-44
-       atom: 16-44
-        Keyword: 16-17 "["
-        comprehension: 17-43
-         named_expression: 17-18
-          expression: 17-18
-           bitwise_or: 17-18
-            atom: 17-18
-             Name: 17-18 "a"
-         for_if_clauses: 19-43
-          sync_for_if_clause: 19-43
-           Keyword: 19-22 "for"
-           star_targets: 23-28
-            star_target: 23-25
-             Keyword: 23-24 "*"
-             target_with_star_atom: 24-25
-              star_atom: 24-25
-               name_definition: 24-25
-                Name: 24-25 "a"
-            Keyword: 25-26 ","
-            star_target: 27-28
-             target_with_star_atom: 27-28
-              star_atom: 27-28
-               name_definition: 27-28
-                Name: 27-28 "c"
-           Keyword: 29-31 "in"
-           bitwise_or: 32-33
-            atom: 32-33
-             Name: 32-33 "b"
-           comp_if: 34-38
-            Keyword: 34-36 "if"
-            bitwise_or: 37-38
-             atom: 37-38
-              Name: 37-38 "c"
-           comp_if: 39-43
-            Keyword: 39-41 "if"
-            bitwise_or: 42-43
-             atom: 42-43
-              Name: 42-43 "d"
-        Keyword: 43-44 "]"
+      atom: 16-44
+       Keyword: 16-17 "["
+       comprehension: 17-43
+        named_expression: 17-18
+         expression: 17-18
+          atom: 17-18
+           Name: 17-18 "a"
+        for_if_clauses: 19-43
+         sync_for_if_clause: 19-43
+          Keyword: 19-22 "for"
+          star_targets: 23-28
+           star_target: 23-25
+            Keyword: 23-24 "*"
+            target_with_star_atom: 24-25
+             star_atom: 24-25
+              name_definition: 24-25
+               Name: 24-25 "a"
+           Keyword: 25-26 ","
+           star_target: 27-28
+            target_with_star_atom: 27-28
+             star_atom: 27-28
+              name_definition: 27-28
+               Name: 27-28 "c"
+          Keyword: 29-31 "in"
+          atom: 32-33
+           Name: 32-33 "b"
+          comp_if: 34-38
+           Keyword: 34-36 "if"
+           atom: 37-38
+            Name: 37-38 "c"
+          comp_if: 39-43
+           Keyword: 39-41 "if"
+           atom: 42-43
+            Name: 42-43 "d"
+       Keyword: 43-44 "]"
    Newline: 44-45 "\n"
  stmt: 45-77
   simple_stmts: 45-77
    simple_stmt: 45-76
     star_expressions: 45-76
      expression: 45-76
-      bitwise_or: 45-76
-       primary: 45-76
-        atom: 45-48
-         Name: 45-48 "foo"
-        Keyword: 48-49 "("
-        comprehension: 49-75
-         named_expression: 49-50
-          expression: 49-50
-           bitwise_or: 49-50
-            atom: 49-50
-             Name: 49-50 "a"
-         for_if_clauses: 51-75
-          sync_for_if_clause: 51-75
-           Keyword: 51-54 "for"
-           star_targets: 55-70
-            star_target: 55-69
-             target_with_star_atom: 55-69
-              star_atom: 55-69
-               Keyword: 55-56 "("
-               star_targets: 56-68
-                star_target: 56-58
-                 Keyword: 56-57 "*"
-                 target_with_star_atom: 57-58
-                  star_atom: 57-58
-                   name_definition: 57-58
-                    Name: 57-58 "a"
-                Keyword: 58-59 ","
-                star_target: 60-67
-                 target_with_star_atom: 60-67
-                  star_atom: 60-67
-                   Keyword: 60-61 "("
-                   star_targets: 61-66
-                    star_target: 61-63
-                     Keyword: 61-62 "*"
-                     target_with_star_atom: 62-63
-                      star_atom: 62-63
-                       name_definition: 62-63
-                        Name: 62-63 "c"
-                    Keyword: 63-64 ","
-                    star_target: 65-66
-                     target_with_star_atom: 65-66
-                      star_atom: 65-66
-                       name_definition: 65-66
-                        Name: 65-66 "b"
-                   Keyword: 66-67 ")"
-                Keyword: 67-68 ","
-               Keyword: 68-69 ")"
-            Keyword: 69-70 ","
-           Keyword: 71-73 "in"
-           bitwise_or: 74-75
-            atom: 74-75
-             Name: 74-75 "d"
-        Keyword: 75-76 ")"
+      primary: 45-76
+       atom: 45-48
+        Name: 45-48 "foo"
+       Keyword: 48-49 "("
+       comprehension: 49-75
+        named_expression: 49-50
+         expression: 49-50
+          atom: 49-50
+           Name: 49-50 "a"
+        for_if_clauses: 51-75
+         sync_for_if_clause: 51-75
+          Keyword: 51-54 "for"
+          star_targets: 55-70
+           star_target: 55-69
+            target_with_star_atom: 55-69
+             star_atom: 55-69
+              Keyword: 55-56 "("
+              star_targets: 56-68
+               star_target: 56-58
+                Keyword: 56-57 "*"
+                target_with_star_atom: 57-58
+                 star_atom: 57-58
+                  name_definition: 57-58
+                   Name: 57-58 "a"
+               Keyword: 58-59 ","
+               star_target: 60-67
+                target_with_star_atom: 60-67
+                 star_atom: 60-67
+                  Keyword: 60-61 "("
+                  star_targets: 61-66
+                   star_target: 61-63
+                    Keyword: 61-62 "*"
+                    target_with_star_atom: 62-63
+                     star_atom: 62-63
+                      name_definition: 62-63
+                       Name: 62-63 "c"
+                   Keyword: 63-64 ","
+                   star_target: 65-66
+                    target_with_star_atom: 65-66
+                     star_atom: 65-66
+                      name_definition: 65-66
+                       Name: 65-66 "b"
+                  Keyword: 66-67 ")"
+               Keyword: 67-68 ","
+              Keyword: 68-69 ")"
+           Keyword: 69-70 ","
+          Keyword: 71-73 "in"
+          atom: 74-75
+           Name: 74-75 "d"
+       Keyword: 75-76 ")"
    Newline: 76-77 "\n"
  Endmarker: 77-77 ""
 
