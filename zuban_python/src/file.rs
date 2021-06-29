@@ -415,7 +415,12 @@ impl PythonFile {
         if let Some(annotation_node) = annotation_node {
             todo!();
         } else {
-            debug_assert!(expression_node.is_some());
+            let expression_node = expression_node.unwrap();
+            if expression_node.is_type(Nonterminal(yield_expr)) {
+                todo!("cache yield expr");
+            } else {
+                self.cache_star_expressions(expression_node);
+            }
         }
         for child in assignment_node.iter_children() {
             match child.get_type() {
@@ -424,6 +429,22 @@ impl PythonFile {
                 }
                 _ => {}
             }
+        }
+    }
+
+    fn cache_star_expressions(&self, node: PythonNode) {
+        debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expressions)));
+        let mut iter = node.iter_children();
+        let expression = iter.next().unwrap();
+        if iter.next().is_none() {
+            if expression.is_type(Nonterminal(PythonNonterminalType::expression)) {
+                todo!("expr")
+            } else {
+                debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expression)));
+                todo!("Add error: can't use starred expression here");
+            }
+        } else {
+            todo!("it's a tuple, cache that!")
         }
     }
 
