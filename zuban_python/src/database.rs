@@ -202,6 +202,10 @@ pub enum PythonValueEnum {
     Bool,
     None,
 
+    Ellipsis,
+    ComprehensionGenerator,
+    Tuple,
+
     SelfParam,
     Param,
     SimpleGeneric, // primary: primary '[' slices ']'

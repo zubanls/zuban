@@ -8,7 +8,8 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, Python
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
-use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueOrReferenceType, ComplexValue};
+use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
+                      ValueLink, ValueOrReferenceType, ComplexValue};
 use crate::indexer::IndexerState;
 use crate::debug;
 
@@ -465,7 +466,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_expression_part(&self, node: PythonNode) {
+    fn infer_expression_part(&self, node: PythonNode) -> Inferred {
         // Responsible for all
         use PythonNonterminalType::*;
         match node.get_type() {
@@ -474,7 +475,89 @@ impl PythonFile {
         }
     }
 
-    fn infer_atom(&self, node: PythonNode) {
+    fn infer_atom(&self, node: PythonNode) -> Inferred {
+        use PythonNonterminalType::*;
+        debug_assert!(node.is_type(Nonterminal(atom)));
+        let mut iter = node.iter_children();
+        let first = iter.next().unwrap();
+        let value = match first.get_type() {
+            Terminal(Name) => {
+                return self.infer_name_reference()
+            }
+            Terminal(Number) => {
+                let code = first.get_code();
+                if code.contains("j") {
+                    PythonValueEnum::Complex
+                } else if code.contains(".") {
+                    PythonValueEnum::Float
+                } else {
+                    PythonValueEnum::Integer
+                }
+            }
+            Nonterminal(strings) => {
+                let code = first.get_nth_child(0).get_code();
+                let mut is_byte = false;
+                for byte in code.bytes() {
+                    if byte == b'"' || byte == b'\'' {
+                        break
+                    } else if byte == b'b' || byte == b'B' {
+                        is_byte = true;
+                        break
+                    }
+                }
+                if is_byte {
+                    PythonValueEnum::Bytes
+                } else {
+                    PythonValueEnum::String
+                }
+            }
+            PythonNodeType::Keyword => {
+                match first.get_code() {
+                    "None" => PythonValueEnum::None,
+                    "True" | "False" => PythonValueEnum::Bool,
+                    "..." => PythonValueEnum::Ellipsis,
+                    "(" => {
+                        let next_node = iter.next().unwrap();
+                        match next_node.get_type() {
+                            Nonterminal(tuple_content) => PythonValueEnum::Tuple,
+                            Nonterminal(yield_expr) => {
+                                todo!("yield_expr");
+                            }
+                            Nonterminal(named_expression) => {
+                                todo!("named_expression");
+                            }
+                            Nonterminal(comprehension) => PythonValueEnum::ComprehensionGenerator,
+                            Keyword => {
+                                debug_assert_eq!(next_node.get_code(), ")");
+                                PythonValueEnum::Tuple
+                            }
+                            _ => unreachable!()
+                        }
+                    }
+                    "[" => {
+                        todo!("List literal")
+                    }
+                    "{" => {
+                        match iter.next().unwrap().get_type() {
+                            Nonterminal(dict_content) | Nonterminal(dict_comprehension) => {
+                                todo!("dict literal")
+                            }
+                            Nonterminal(star_named_expression) | Nonterminal(comprehension) => {
+                                todo!("set literal")
+                            }
+                            _ => unreachable!()
+                        }
+                    }
+                    _ => unreachable!()
+                }
+            }
+            _ => unreachable!()
+        };
+        todo!("value {:?}", value);
+    }
+
+    fn infer_name_reference(&self) -> Inferred {
+        todo!("name reference")
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
@@ -545,6 +628,11 @@ impl PythonFile {
             self.infer_node(node)
         }
     }
+}
+
+struct Inferred {
+    first_redirect: ValueLink,
+    definition: ValueLink,
 }
 
 fn is_name_reference(name: PythonNode) -> bool {
