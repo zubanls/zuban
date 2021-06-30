@@ -438,7 +438,7 @@ impl PythonFile {
         let expression = iter.next().unwrap();
         if iter.next().is_none() {
             if expression.is_type(Nonterminal(PythonNonterminalType::expression)) {
-                todo!("expr")
+                self.cache_expression(expression);
             } else {
                 debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expression)));
                 todo!("Add error: can't use starred expression here");
@@ -446,6 +446,35 @@ impl PythonFile {
         } else {
             todo!("it's a tuple, cache that!")
         }
+    }
+
+    fn cache_expression(&self, node: PythonNode) {
+        // disjunction ["if" disjunction "else" expression] | lambda
+        debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::expression)));
+        let mut iter = node.iter_children();
+        let first = iter.next().unwrap();
+        if first.is_type(Nonterminal(PythonNonterminalType::lambda)) {
+            todo!("lambda");
+        } else {
+            if iter.next().is_none() {
+                // No if
+                self.infer_expression_part(first);
+            } else {
+                todo!("has an if in expression");
+            }
+        }
+    }
+
+    fn infer_expression_part(&self, node: PythonNode) {
+        // Responsible for all
+        use PythonNonterminalType::*;
+        match node.get_type() {
+            Nonterminal(atom) => self.infer_atom(node),
+            _ => todo!("Did not handle {:?}", node),
+        }
+    }
+
+    fn infer_atom(&self, node: PythonNode) {
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
