@@ -481,10 +481,10 @@ impl PythonFile {
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
         let value = match first.get_type() {
-            Terminal(Name) => {
-                return self.infer_name_reference()
+            Terminal(PythonTerminalType::Name) => {
+                return self.infer_name_reference(first)
             }
-            Terminal(Number) => {
+            Terminal(PythonTerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains("j") {
                     PythonValueEnum::Complex
@@ -527,7 +527,7 @@ impl PythonFile {
                                 todo!("named_expression");
                             }
                             Nonterminal(comprehension) => PythonValueEnum::ComprehensionGenerator,
-                            Keyword => {
+                            PythonNodeType::Keyword => {
                                 debug_assert_eq!(next_node.get_code(), ")");
                                 PythonValueEnum::Tuple
                             }
@@ -556,8 +556,8 @@ impl PythonFile {
         todo!("value {:?}", value);
     }
 
-    fn infer_name_reference(&self) -> Inferred {
-        todo!("name reference")
+    fn infer_name_reference(&self, node: PythonNode) -> Inferred {
+        todo!("name reference {:?}", node)
     }
 
     pub fn infer_name(&self, name: PythonNode) -> ValueNames {
