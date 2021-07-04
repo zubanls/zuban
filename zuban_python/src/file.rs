@@ -475,6 +475,10 @@ impl PythonFile {
     }
 
     fn infer_expression_part(&self, node: PythonNode) -> Inferred {
+        if let Some(result) = self.check_node_cache(node) {
+            return result
+        }
+
         // Responsible for all
         use PythonNonterminalType::*;
         match node.get_type() {
@@ -486,9 +490,13 @@ impl PythonFile {
     fn infer_atom(&self, node: PythonNode) -> Inferred {
         use PythonNonterminalType::*;
         debug_assert!(node.is_type(Nonterminal(atom)));
+        if let Some(result) = self.check_node_cache(node) {
+            return result
+        }
+
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
-        let value = match first.get_type() {
+        let value_enum = match first.get_type() {
             Terminal(PythonTerminalType::Name) => {
                 return self.infer_name_reference(first)
             }
@@ -561,7 +569,7 @@ impl PythonFile {
             }
             _ => unreachable!()
         };
-        todo!("value {:?}", value);
+        todo!("value_enum {:?}", value_enum);
     }
 
     fn infer_name_reference(&self, node: PythonNode) -> Inferred {
