@@ -569,7 +569,15 @@ impl PythonFile {
             }
             _ => unreachable!()
         };
-        todo!("value_enum {:?}", value_enum);
+        self.values_or_references[node.index].set(
+            ValueOrReference::new_simple_language_specific(
+                value_enum,
+                Locality::Stmt,
+                false, // is_nullable
+                false,
+            )
+        );
+        Inferred::new_fixed_value(self.get_file_index(), node.index as u32)
     }
 
     fn infer_name_reference(&self, node: PythonNode) -> Inferred {
@@ -583,7 +591,7 @@ impl PythonFile {
 
     #[inline]
     fn check_node_cache(&self, node: PythonNode) -> Option<Inferred> {
-        let value = self.values_or_references[node.index as usize].get();
+        let value = self.values_or_references[node.index].get();
         if value.is_calculated() {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
