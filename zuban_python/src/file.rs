@@ -433,13 +433,17 @@ impl PythonFile {
         }
     }
 
-    fn cache_star_expressions(&self, node: PythonNode) {
+    fn cache_star_expressions(&self, node: PythonNode) -> Inferred {
         debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expressions)));
+        if let Some(result) = self.check_node_cache(node) {
+            return result
+        }
+
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
         if iter.next().is_none() {
             if expression.is_type(Nonterminal(PythonNonterminalType::expression)) {
-                self.cache_expression(expression);
+                self.cache_expression(expression)
             } else {
                 debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expression)));
                 todo!("Add error: can't use starred expression here");
@@ -449,9 +453,13 @@ impl PythonFile {
         }
     }
 
-    fn cache_expression(&self, node: PythonNode) {
+    fn cache_expression(&self, node: PythonNode) -> Inferred {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::expression)));
+        if let Some(result) = self.check_node_cache(node) {
+            return result
+        }
+
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
         if first.is_type(Nonterminal(PythonNonterminalType::lambda)) {
@@ -459,7 +467,7 @@ impl PythonFile {
         } else {
             if iter.next().is_none() {
                 // No if
-                self.infer_expression_part(first);
+                self.infer_expression_part(first)
             } else {
                 todo!("has an if in expression");
             }
@@ -565,11 +573,34 @@ impl PythonFile {
         self.infer_node(name)
     }
 
+    #[inline]
+    fn check_node_cache(&self, node: PythonNode) -> Option<Inferred> {
+        let value = self.values_or_references[node.index as usize].get();
+        if value.is_calculated() {
+            debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
+            match value.get_type() {
+                ValueOrReferenceType::Redirect => {
+                    todo!("FOOO");
+                }
+                ValueOrReferenceType::NodeAnalysis => {
+                    panic!("Invalid state, should not happen {:?}", node);
+                }
+                _ => {
+                    Some(Inferred::new_fixed_value(self.get_file_index(), node.index as u32))
+                }
+            }
+        } else {
+            if value.is_calculating() {
+                todo!("Set recursion error and return that");
+            }
+            None
+        }
+    }
+
     fn infer_node(&self, node: PythonNode) -> ValueNames {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
-            debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
                 Redirect => {
                     let file_index = value.get_file_index();
@@ -600,10 +631,6 @@ impl PythonFile {
                 }
             }
         } else {
-            if value.is_calculating() {
-                todo!();
-            }
-
             let stmt = node.get_parent_until(&[
                 Nonterminal(PythonNonterminalType::lambda),
                 Nonterminal(PythonNonterminalType::comprehension),
@@ -633,6 +660,13 @@ impl PythonFile {
 struct Inferred {
     first_redirect: ValueLink,
     definition: ValueLink,
+}
+
+impl Inferred {
+    fn new_fixed_value(file: FileIndex, node_index: NodeIndex) -> Self {
+        let value = ValueLink {file, node_index};
+        Self {first_redirect: value, definition: value}
+    }
 }
 
 fn is_name_reference(name: PythonNode) -> bool {

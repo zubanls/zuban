@@ -235,10 +235,10 @@ pub enum Locality {
     ImplicitExtern,  // Contains star imports for now (always recheck on invalidation of the module)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ValueLink {
-    file: FileIndex,
-    node_index: NodeIndex,
+    pub file: FileIndex,
+    pub node_index: NodeIndex,
 }
 
 #[derive(Debug)]
