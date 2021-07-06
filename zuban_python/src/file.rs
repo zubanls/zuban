@@ -4,7 +4,8 @@ use std::pin::Pin;
 use std::fmt;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
+use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
+                   SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
@@ -383,7 +384,7 @@ impl PythonFile {
                 if node.is_type(Nonterminal(PythonNonterminalType::simple_stmt)) {
                     let simple_child = node.get_nth_child(0);
                     if simple_child.is_type(Nonterminal(PythonNonterminalType::assignment)) {
-                        self.cache_assignment(simple_child);
+                        self.infer_assignment_nodes(simple_child);
                         todo!("asdf")
                     } else {
                         unreachable!("Found type {:?}", simple_child.get_type());
@@ -395,7 +396,7 @@ impl PythonFile {
         }
     }
 
-    fn cache_assignment(&self, assignment_node: PythonNode) {
+    fn infer_assignment_nodes(&self, assignment_node: PythonNode) {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
@@ -425,7 +426,21 @@ impl PythonFile {
         }
         for child in assignment_node.iter_children() {
             match child.get_type() {
-                Nonterminal(star_targets | single_target) => {
+                Nonterminal(star_targets) => {
+                    match Target::new(child) {
+                        Target::Tuple(target_iterator) => {
+                            todo!("Tuple unpack");
+                        }
+                        Target::Single(n) => {
+                            todo!("{:?}", n);
+                        }
+                        Target::Starred(n) => {
+                            todo!("Star tuple unpack");
+                        }
+                    };
+                    todo!();
+                }
+                Nonterminal(single_target) => {
                     todo!();
                 }
                 _ => {}
@@ -690,6 +705,45 @@ fn is_name_reference(name: PythonNode) -> bool {
     !name.get_parent().unwrap().is_type(
         Nonterminal(PythonNonterminalType::name_definition)
     )
+}
+
+enum Target<'a> {
+    Tuple(TargetIterator<'a>),
+    Single(PythonNode<'a>),
+    Starred(PythonNode<'a>),
+}
+
+impl<'a> Target<'a> {
+    fn new(node: PythonNode<'a>) -> Self {
+        // star_targets: ",".star_target+ [","]
+        let mut iterator = node.iter_children();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_none() {
+            if !first.is_type(Nonterminal(PythonNonterminalType::star_target)) {
+            }
+            Self::Single(first)
+        } else {
+            Self::Tuple(TargetIterator{siblings: node.iter_children()})
+        }
+    }
+}
+
+struct TargetIterator<'a> {
+    siblings: SiblingIterator<'a>
+}
+
+impl<'a> Iterator for TargetIterator<'a> {
+    type Item = Target<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.siblings.next();
+        if let Some(sibling) = current {
+            self.siblings.next();
+            Some(Target::new(sibling))
+        } else {
+            None
+        }
+    }
 }
 
 fn get_function_or_class_name() {
