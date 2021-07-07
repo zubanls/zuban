@@ -12,11 +12,8 @@ file: 0-116
      atom: 7-10
       Name: 7-10 "foo"
     Keyword: 11-13 "as"
-    star_target: 14-17
-     target_with_star_atom: 14-17
-      star_atom: 14-17
-       name_definition: 14-17
-        Name: 14-17 "bar"
+    name_definition: 14-17
+     Name: 14-17 "bar"
    Keyword: 17-18 ")"
    Keyword: 18-19 ":"
    block: 20-24
@@ -36,11 +33,8 @@ file: 0-116
      atom: 30-33
       Name: 30-33 "foo"
     Keyword: 34-36 "as"
-    star_target: 37-40
-     target_with_star_atom: 37-40
-      star_atom: 37-40
-       name_definition: 37-40
-        Name: 37-40 "bar"
+    name_definition: 37-40
+     Name: 37-40 "bar"
    Keyword: 40-41 ","
    with_item: 42-45
     expression: 42-45
@@ -95,11 +89,8 @@ file: 0-116
         sync_for_if_clause: 78-89
          Keyword: 78-81 "for"
          star_targets: 82-83
-          star_target: 82-83
-           target_with_star_atom: 82-83
-            star_atom: 82-83
-             name_definition: 82-83
-              Name: 82-83 "i"
+          name_definition: 82-83
+           Name: 82-83 "i"
          Keyword: 84-86 "in"
          atom: 87-89
           Number: 87-89 "42"

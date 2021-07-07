@@ -31,11 +31,8 @@ file: 0-15
    simple_stmt: 9-14
     assignment: 9-14
      star_targets: 9-10
-      star_target: 9-10
-       target_with_star_atom: 9-10
-        star_atom: 9-10
-         name_definition: 9-10
-          Name: 9-10 "b"
+      name_definition: 9-10
+       Name: 9-10 "b"
      Keyword: 11-12 "="
      star_expressions: 13-14
       expression: 13-14

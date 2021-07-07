@@ -7,11 +7,8 @@ file: 0-82
   for_stmt: 1-25
    Keyword: 1-4 "for"
    star_targets: 5-6
-    star_target: 5-6
-     target_with_star_atom: 5-6
-      star_atom: 5-6
-       name_definition: 5-6
-        Name: 5-6 "x"
+    name_definition: 5-6
+     Name: 5-6 "x"
    Keyword: 7-9 "in"
    star_expressions: 10-15
     expression: 10-15
@@ -49,10 +46,8 @@ file: 0-82
    star_targets: 29-31
     star_target: 29-31
      Keyword: 29-30 "*"
-     target_with_star_atom: 30-31
-      star_atom: 30-31
-       name_definition: 30-31
-        Name: 30-31 "b"
+     name_definition: 30-31
+      Name: 30-31 "b"
    Keyword: 32-34 "in"
    star_expressions: 35-37
     star_expression: 35-37
@@ -72,37 +67,29 @@ file: 0-82
   for_stmt: 43-82
    Keyword: 43-46 "for"
    star_targets: 47-64
-    star_target: 47-50
-     target_with_star_atom: 47-50
-      t_primary: 47-50
-       t_primary: 47-48
-        atom: 47-48
-         Name: 47-48 "c"
-       Keyword: 48-49 "."
-       name_definition: 49-50
-        Name: 49-50 "x"
+    t_primary: 47-50
+     t_primary: 47-48
+      atom: 47-48
+       Name: 47-48 "c"
+     Keyword: 48-49 "."
+     name_definition: 49-50
+      Name: 49-50 "x"
     Keyword: 50-51 ","
-    star_target: 52-64
-     target_with_star_atom: 52-64
-      star_atom: 52-64
-       Keyword: 52-53 "("
-       star_targets: 53-63
-        star_target: 53-55
-         Keyword: 53-54 "*"
-         target_with_star_atom: 54-55
-          star_atom: 54-55
-           name_definition: 54-55
-            Name: 54-55 "b"
-        Keyword: 55-56 ","
-        star_target: 57-63
-         target_with_star_atom: 57-63
-          t_primary: 57-63
-           t_primary: 57-58
-            atom: 57-58
-             Name: 57-58 "d"
-           Keyword: 58-59 "."
-           Name: 59-59 ""
-       Keyword: 63-64 ")"
+    star_target_brackets: 52-64
+     Keyword: 52-53 "("
+     star_targets: 53-63
+      star_target: 53-55
+       Keyword: 53-54 "*"
+       name_definition: 54-55
+        Name: 54-55 "b"
+      Keyword: 55-56 ","
+      t_primary: 57-63
+       t_primary: 57-58
+        atom: 57-58
+         Name: 57-58 "d"
+       Keyword: 58-59 "."
+       Name: 59-59 ""
+     Keyword: 63-64 ")"
    Keyword: 65-67 "in"
    star_expressions: 68-76
     expression: 68-69

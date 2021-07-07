@@ -95,11 +95,8 @@ file: 0-103
    simple_stmt: 63-69
     assignment: 63-69
      star_targets: 63-64
-      star_target: 63-64
-       target_with_star_atom: 63-64
-        star_atom: 63-64
-         name_definition: 63-64
-          Name: 63-64 "b"
+      name_definition: 63-64
+       Name: 63-64 "b"
      Keyword: 64-65 "="
      star_expressions: 65-69
       expression: 65-66
@@ -137,11 +134,8 @@ file: 0-103
    simple_stmt: 85-92
     assignment: 85-92
      star_targets: 85-86
-      star_target: 85-86
-       target_with_star_atom: 85-86
-        star_atom: 85-86
-         name_definition: 85-86
-          Name: 85-86 "a"
+      name_definition: 85-86
+       Name: 85-86 "a"
      Keyword: 86-87 "="
      star_expressions: 87-92
       expression: 87-88

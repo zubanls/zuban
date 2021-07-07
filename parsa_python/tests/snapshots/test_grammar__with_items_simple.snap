@@ -11,11 +11,8 @@ file: 0-48
      atom: 6-9
       Name: 6-9 "foo"
     Keyword: 10-12 "as"
-    star_target: 13-16
-     target_with_star_atom: 13-16
-      star_atom: 13-16
-       name_definition: 13-16
-        Name: 13-16 "bar"
+    name_definition: 13-16
+     Name: 13-16 "bar"
    Keyword: 16-17 ":"
    block: 18-22
     simple_stmts: 18-22
@@ -33,11 +30,8 @@ file: 0-48
      atom: 27-30
       Name: 27-30 "foo"
     Keyword: 31-33 "as"
-    star_target: 34-37
-     target_with_star_atom: 34-37
-      star_atom: 34-37
-       name_definition: 34-37
-        Name: 34-37 "bar"
+    name_definition: 34-37
+     Name: 34-37 "bar"
    Keyword: 37-38 ","
    with_item: 39-42
     expression: 39-42

@@ -8,11 +8,8 @@ file: 0-105
    simple_stmt: 1-6
     assignment: 1-6
      star_targets: 1-2
-      star_target: 1-2
-       target_with_star_atom: 1-2
-        star_atom: 1-2
-         name_definition: 1-2
-          Name: 1-2 "a"
+      name_definition: 1-2
+       Name: 1-2 "a"
      Keyword: 3-4 "="
      star_expressions: 5-6
       expression: 5-6
@@ -24,17 +21,11 @@ file: 0-105
    simple_stmt: 7-15
     assignment: 7-15
      star_targets: 7-11
-      star_target: 7-8
-       target_with_star_atom: 7-8
-        star_atom: 7-8
-         name_definition: 7-8
-          Name: 7-8 "a"
+      name_definition: 7-8
+       Name: 7-8 "a"
       Keyword: 8-9 ","
-      star_target: 10-11
-       target_with_star_atom: 10-11
-        star_atom: 10-11
-         name_definition: 10-11
-          Name: 10-11 "b"
+      name_definition: 10-11
+       Name: 10-11 "b"
      Keyword: 12-13 "="
      star_expressions: 14-15
       expression: 14-15
@@ -46,17 +37,11 @@ file: 0-105
    simple_stmt: 16-25
     assignment: 16-25
      star_targets: 16-21
-      star_target: 16-17
-       target_with_star_atom: 16-17
-        star_atom: 16-17
-         name_definition: 16-17
-          Name: 16-17 "a"
+      name_definition: 16-17
+       Name: 16-17 "a"
       Keyword: 17-18 ","
-      star_target: 19-20
-       target_with_star_atom: 19-20
-        star_atom: 19-20
-         name_definition: 19-20
-          Name: 19-20 "b"
+      name_definition: 19-20
+       Name: 19-20 "b"
       Keyword: 20-21 ","
      Keyword: 22-23 "="
      star_expressions: 24-25
@@ -69,23 +54,15 @@ file: 0-105
    simple_stmt: 26-36
     assignment: 26-36
      star_targets: 26-32
-      star_target: 26-32
-       target_with_star_atom: 26-32
-        star_atom: 26-32
-         Keyword: 26-27 "("
-         star_targets: 27-31
-          star_target: 27-28
-           target_with_star_atom: 27-28
-            star_atom: 27-28
-             name_definition: 27-28
-              Name: 27-28 "a"
-          Keyword: 28-29 ","
-          star_target: 30-31
-           target_with_star_atom: 30-31
-            star_atom: 30-31
-             name_definition: 30-31
-              Name: 30-31 "b"
-         Keyword: 31-32 ")"
+      star_target_brackets: 26-32
+       Keyword: 26-27 "("
+       star_targets: 27-31
+        name_definition: 27-28
+         Name: 27-28 "a"
+        Keyword: 28-29 ","
+        name_definition: 30-31
+         Name: 30-31 "b"
+       Keyword: 31-32 ")"
      Keyword: 33-34 "="
      star_expressions: 35-36
       expression: 35-36
@@ -97,29 +74,19 @@ file: 0-105
    simple_stmt: 37-49
     assignment: 37-49
      star_targets: 37-45
-      star_target: 37-45
-       target_with_star_atom: 37-45
-        star_atom: 37-45
-         Keyword: 37-38 "("
-         star_targets: 38-44
-          star_target: 38-44
-           target_with_star_atom: 38-44
-            star_atom: 38-44
-             Keyword: 38-39 "("
-             star_targets: 39-43
-              star_target: 39-40
-               target_with_star_atom: 39-40
-                star_atom: 39-40
-                 name_definition: 39-40
-                  Name: 39-40 "a"
-              Keyword: 40-41 ","
-              star_target: 42-43
-               target_with_star_atom: 42-43
-                star_atom: 42-43
-                 name_definition: 42-43
-                  Name: 42-43 "b"
-             Keyword: 43-44 ")"
-         Keyword: 44-45 ")"
+      star_target_brackets: 37-45
+       Keyword: 37-38 "("
+       star_targets: 38-44
+        star_target_brackets: 38-44
+         Keyword: 38-39 "("
+         star_targets: 39-43
+          name_definition: 39-40
+           Name: 39-40 "a"
+          Keyword: 40-41 ","
+          name_definition: 42-43
+           Name: 42-43 "b"
+         Keyword: 43-44 ")"
+       Keyword: 44-45 ")"
      Keyword: 46-47 "="
      star_expressions: 48-49
       expression: 48-49
@@ -131,18 +98,12 @@ file: 0-105
    simple_stmt: 50-59
     assignment: 50-59
      star_targets: 50-51
-      star_target: 50-51
-       target_with_star_atom: 50-51
-        star_atom: 50-51
-         name_definition: 50-51
-          Name: 50-51 "a"
+      name_definition: 50-51
+       Name: 50-51 "a"
      Keyword: 52-53 "="
      star_targets: 54-55
-      star_target: 54-55
-       target_with_star_atom: 54-55
-        star_atom: 54-55
-         name_definition: 54-55
-          Name: 54-55 "b"
+      name_definition: 54-55
+       Name: 54-55 "b"
      Keyword: 56-57 "="
      star_expressions: 58-59
       expression: 58-59
@@ -154,30 +115,19 @@ file: 0-105
    simple_stmt: 60-74
     assignment: 60-74
      star_targets: 60-61
-      star_target: 60-61
-       target_with_star_atom: 60-61
-        star_atom: 60-61
-         name_definition: 60-61
-          Name: 60-61 "a"
+      name_definition: 60-61
+       Name: 60-61 "a"
      Keyword: 62-63 "="
      star_targets: 64-70
-      star_target: 64-70
-       target_with_star_atom: 64-70
-        star_atom: 64-70
-         Keyword: 64-65 "("
-         star_targets: 65-69
-          star_target: 65-66
-           target_with_star_atom: 65-66
-            star_atom: 65-66
-             name_definition: 65-66
-              Name: 65-66 "b"
-          Keyword: 66-67 ","
-          star_target: 68-69
-           target_with_star_atom: 68-69
-            star_atom: 68-69
-             name_definition: 68-69
-              Name: 68-69 "c"
-         Keyword: 69-70 ")"
+      star_target_brackets: 64-70
+       Keyword: 64-65 "("
+       star_targets: 65-69
+        name_definition: 65-66
+         Name: 65-66 "b"
+        Keyword: 66-67 ","
+        name_definition: 68-69
+         Name: 68-69 "c"
+       Keyword: 69-70 ")"
      Keyword: 71-72 "="
      star_expressions: 73-74
       expression: 73-74
@@ -189,31 +139,20 @@ file: 0-105
    simple_stmt: 75-90
     assignment: 75-90
      star_targets: 75-76
-      star_target: 75-76
-       target_with_star_atom: 75-76
-        star_atom: 75-76
-         name_definition: 75-76
-          Name: 75-76 "a"
+      name_definition: 75-76
+       Name: 75-76 "a"
      Keyword: 77-78 "="
      star_targets: 79-86
-      star_target: 79-86
-       target_with_star_atom: 79-86
-        star_atom: 79-86
-         Keyword: 79-80 "("
-         star_targets: 80-85
-          star_target: 80-81
-           target_with_star_atom: 80-81
-            star_atom: 80-81
-             name_definition: 80-81
-              Name: 80-81 "b"
-          Keyword: 81-82 ","
-          star_target: 83-84
-           target_with_star_atom: 83-84
-            star_atom: 83-84
-             name_definition: 83-84
-              Name: 83-84 "c"
-          Keyword: 84-85 ","
-         Keyword: 85-86 ")"
+      star_target_brackets: 79-86
+       Keyword: 79-80 "("
+       star_targets: 80-85
+        name_definition: 80-81
+         Name: 80-81 "b"
+        Keyword: 81-82 ","
+        name_definition: 83-84
+         Name: 83-84 "c"
+        Keyword: 84-85 ","
+       Keyword: 85-86 ")"
      Keyword: 87-88 "="
      star_expressions: 89-90
       expression: 89-90
@@ -225,24 +164,15 @@ file: 0-105
    simple_stmt: 91-104
     assignment: 91-104
      star_targets: 91-92
-      star_target: 91-92
-       target_with_star_atom: 91-92
-        star_atom: 91-92
-         name_definition: 91-92
-          Name: 91-92 "a"
+      name_definition: 91-92
+       Name: 91-92 "a"
      Keyword: 93-94 "="
      star_targets: 95-100
-      star_target: 95-96
-       target_with_star_atom: 95-96
-        star_atom: 95-96
-         name_definition: 95-96
-          Name: 95-96 "b"
+      name_definition: 95-96
+       Name: 95-96 "b"
       Keyword: 96-97 ","
-      star_target: 98-99
-       target_with_star_atom: 98-99
-        star_atom: 98-99
-         name_definition: 98-99
-          Name: 98-99 "c"
+      name_definition: 98-99
+       Name: 98-99 "c"
       Keyword: 99-100 ","
      Keyword: 101-102 "="
      star_expressions: 103-104

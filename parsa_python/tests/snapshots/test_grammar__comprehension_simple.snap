@@ -19,11 +19,8 @@ file: 0-77
          sync_for_if_clause: 4-14
           Keyword: 4-7 "for"
           star_targets: 8-9
-           star_target: 8-9
-            target_with_star_atom: 8-9
-             star_atom: 8-9
-              name_definition: 8-9
-               Name: 8-9 "a"
+           name_definition: 8-9
+            Name: 8-9 "a"
           Keyword: 10-12 "in"
           atom: 13-14
            Name: 13-14 "b"
@@ -47,16 +44,11 @@ file: 0-77
           star_targets: 23-28
            star_target: 23-25
             Keyword: 23-24 "*"
-            target_with_star_atom: 24-25
-             star_atom: 24-25
-              name_definition: 24-25
-               Name: 24-25 "a"
+            name_definition: 24-25
+             Name: 24-25 "a"
            Keyword: 25-26 ","
-           star_target: 27-28
-            target_with_star_atom: 27-28
-             star_atom: 27-28
-              name_definition: 27-28
-               Name: 27-28 "c"
+           name_definition: 27-28
+            Name: 27-28 "c"
           Keyword: 29-31 "in"
           atom: 32-33
            Name: 32-33 "b"
@@ -88,38 +80,27 @@ file: 0-77
          sync_for_if_clause: 51-75
           Keyword: 51-54 "for"
           star_targets: 55-70
-           star_target: 55-69
-            target_with_star_atom: 55-69
-             star_atom: 55-69
-              Keyword: 55-56 "("
-              star_targets: 56-68
-               star_target: 56-58
-                Keyword: 56-57 "*"
-                target_with_star_atom: 57-58
-                 star_atom: 57-58
-                  name_definition: 57-58
-                   Name: 57-58 "a"
-               Keyword: 58-59 ","
-               star_target: 60-67
-                target_with_star_atom: 60-67
-                 star_atom: 60-67
-                  Keyword: 60-61 "("
-                  star_targets: 61-66
-                   star_target: 61-63
-                    Keyword: 61-62 "*"
-                    target_with_star_atom: 62-63
-                     star_atom: 62-63
-                      name_definition: 62-63
-                       Name: 62-63 "c"
-                   Keyword: 63-64 ","
-                   star_target: 65-66
-                    target_with_star_atom: 65-66
-                     star_atom: 65-66
-                      name_definition: 65-66
-                       Name: 65-66 "b"
-                  Keyword: 66-67 ")"
-               Keyword: 67-68 ","
-              Keyword: 68-69 ")"
+           star_target_brackets: 55-69
+            Keyword: 55-56 "("
+            star_targets: 56-68
+             star_target: 56-58
+              Keyword: 56-57 "*"
+              name_definition: 57-58
+               Name: 57-58 "a"
+             Keyword: 58-59 ","
+             star_target_brackets: 60-67
+              Keyword: 60-61 "("
+              star_targets: 61-66
+               star_target: 61-63
+                Keyword: 61-62 "*"
+                name_definition: 62-63
+                 Name: 62-63 "c"
+               Keyword: 63-64 ","
+               name_definition: 65-66
+                Name: 65-66 "b"
+              Keyword: 66-67 ")"
+             Keyword: 67-68 ","
+            Keyword: 68-69 ")"
            Keyword: 69-70 ","
           Keyword: 71-73 "in"
           atom: 74-75

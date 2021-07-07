@@ -288,12 +288,8 @@ create_grammar!(
     double_starred_expression: "**" expression
 
     star_targets: ",".star_target+ [","]
-    star_target: "*"? target_with_star_atom
-    target_with_star_atom: t_primary | star_atom
-    star_atom:
-        | name_definition
-        | "(" [star_targets] ")"
-        | "[" [star_targets] "]"
+    star_target:? "*"? (t_primary | star_target_brackets | name_definition)
+    star_target_brackets: "(" [star_targets] ")" | "[" [star_targets] "]"
 
     single_target: t_primary | name_definition | "(" single_target ")"
 
