@@ -431,7 +431,10 @@ impl PythonFile {
                         Target::Tuple(target_iterator) => {
                             todo!("Tuple unpack");
                         }
-                        Target::Single(n) => {
+                        Target::Name(n) => {
+                            todo!("{:?}", n);
+                        }
+                        Target::Expression(n) => {
                             todo!("{:?}", n);
                         }
                         Target::Starred(n) => {
@@ -709,7 +712,8 @@ fn is_name_reference(name: PythonNode) -> bool {
 
 enum Target<'a> {
     Tuple(TargetIterator<'a>),
-    Single(PythonNode<'a>),
+    Name(PythonNode<'a>),
+    Expression(PythonNode<'a>),
     Starred(PythonNode<'a>),
 }
 
@@ -719,9 +723,17 @@ impl<'a> Target<'a> {
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
-            if !first.is_type(Nonterminal(PythonNonterminalType::star_target)) {
+            if first.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
+                Self::Name(first)
+            } else if first.is_type(Nonterminal(PythonNonterminalType::t_primary)) {
+                Self::Expression(first)
+            } else if first.is_type(Nonterminal(PythonNonterminalType::star_target_brackets)) {
+                todo!("star_target_brackets")
+            } else if first.is_type(Nonterminal(PythonNonterminalType::star_target)) {
+                Self::Starred(first.get_nth_child(1))
+            } else {
+                unreachable!();
             }
-            Self::Single(first)
         } else {
             Self::Tuple(TargetIterator{siblings: node.iter_children()})
         }

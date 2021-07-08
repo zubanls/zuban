@@ -256,7 +256,6 @@ impl<'a, T: Token> Grammar<T> {
                     .truncate(backtracking_point.tree_node_count);
                 let tos = stack.stack_nodes.last_mut().unwrap();
                 tos.children_count = backtracking_point.children_count;
-                dbg!("AAAAHHHH", tos.children_count);
                 backtracking_tokenizer.reset(backtracking_point.token_index);
                 let t = backtracking_tokenizer.next().unwrap();
                 self.apply_plan(
@@ -441,7 +440,6 @@ impl<'a> Stack<'a> {
     #[inline]
     fn pop_normal(&mut self) {
         let stack_node = self.stack_nodes.pop().unwrap();
-        dbg!(stack_node.dfa_state.from_rule, stack_node.children_count);
         if stack_node.can_omit_children() {
             self.tree_nodes.remove(stack_node.tree_node_index);
         } else {
