@@ -405,9 +405,6 @@ impl PythonFile {
 
     fn cache_star_expressions(&self, node: PythonNode) -> Inferred {
         debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expressions)));
-        if let Some(result) = self.check_node_cache(node) {
-            return result
-        }
 
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
@@ -432,23 +429,24 @@ impl PythonFile {
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
-        if first.is_type(Nonterminal(PythonNonterminalType::lambda)) {
-            todo!("lambda");
-        } else {
-            if iter.next().is_none() {
-                // No if
-                self.infer_expression_part(first)
-            } else {
-                todo!("has an if in expression");
+        let inferred = match first.is_type(Nonterminal(PythonNonterminalType::lambda)) {
+            true => {
+                todo!("lambda")
             }
-        }
+            false => {
+                if iter.next().is_none() {
+                    // No if
+                    self.infer_expression_part(first)
+                } else {
+                    todo!("has an if in expression");
+                }
+            }
+        };
+        self.values_or_references[node.index].set(inferred.value_or_ref);
+        inferred
     }
 
     fn infer_expression_part(&self, node: PythonNode) -> Inferred {
-        if let Some(result) = self.check_node_cache(node) {
-            return result
-        }
-
         // Responsible for all
         use PythonNonterminalType::*;
         match node.get_type() {
