@@ -594,7 +594,10 @@ impl PythonFile {
                     }
                 }
                 LanguageSpecific => {
-                    todo!();
+                    match value.get_language_specific() {
+                        PythonValueEnum::String => todo!(),
+                        actual => todo!("{:?}", actual)
+                    }
                 }
                 MultiDefinition => {
                     todo!();

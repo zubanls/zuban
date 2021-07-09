@@ -157,6 +157,11 @@ impl ValueOrReference {
         debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
         self.node_or_complex_index as usize
     }
+
+    pub fn get_language_specific(self) -> PythonValueEnum {
+        debug_assert!(self.get_type() == ValueOrReferenceType::LanguageSpecific);
+        unsafe { mem::transmute(self.flags & REST_MASK) }
+    }
 }
 
 impl fmt::Debug for ValueOrReference {
@@ -212,8 +217,8 @@ pub enum PythonValueEnum {
     ParamWithDefault, // TODO Redirect to default maybe?
     LazyInferredClass, // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
-    Class(NodeIndex), // The index to the __init__ name or 0
-    Function(NodeIndex),  // Result
+    Class, // The node points to the index of __init__ name or 0
+    Function,  // The node point so the index of the result
     NoReturnFunction,
 
     TypeVar,
