@@ -593,15 +593,14 @@ impl PythonFile {
             }
             _ => unreachable!()
         };
-        self.values_or_references[node.index].set(
-            ValueOrReference::new_simple_language_specific(
-                value_enum,
-                Locality::Stmt,
-                false, // is_nullable
-                false,
-            )
+        let val = ValueOrReference::new_simple_language_specific(
+            value_enum,
+            Locality::Stmt,
+            false, // is_nullable
+            false,
         );
-        Inferred::new_fixed_value(self.get_file_index(), node.index as u32)
+        self.values_or_references[node.index].set(val);
+        Inferred::new(val, self.get_file_index(), node.index as u32)
     }
 
     fn infer_name_reference(&self, node: PythonNode) -> Inferred {
@@ -626,7 +625,7 @@ impl PythonFile {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    Some(Inferred::new_fixed_value(self.get_file_index(), node.index as u32))
+                    Some(Inferred::new(value, self.get_file_index(), node.index as u32))
                 }
             }
         } else {
@@ -698,14 +697,14 @@ impl PythonFile {
 }
 
 struct Inferred {
-    first_redirect: ValueLink,
+    value_or_ref: ValueOrReference,
     definition: ValueLink,
 }
 
 impl Inferred {
-    fn new_fixed_value(file: FileIndex, node_index: NodeIndex) -> Self {
+    fn new(value_or_ref: ValueOrReference, file: FileIndex, node_index: NodeIndex) -> Self {
         let value = ValueLink {file, node_index};
-        Self {first_redirect: value, definition: value}
+        Self {value_or_ref, definition: value}
     }
 }
 
