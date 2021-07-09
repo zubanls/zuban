@@ -331,7 +331,6 @@ impl PythonFile {
                     let simple_child = node.get_nth_child(0);
                     if simple_child.is_type(Nonterminal(PythonNonterminalType::assignment)) {
                         self.cache_assignment_nodes(simple_child);
-                        todo!("asdf")
                     } else {
                         unreachable!("Found type {:?}", simple_child.get_type());
                     }
@@ -385,7 +384,7 @@ impl PythonFile {
                             if val.get().is_calculated() {
                                 todo!("{:?}", val.get().get_type());
                             }
-                            //val.set(inferred);
+                            val.set(inferred.value_or_ref);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -633,8 +632,7 @@ impl PythonFile {
                     self.cache_stmt_name(stmt, node);
                 }
             }
-            let value = self.values_or_references[node.index as usize].get();
-            debug_assert!(value.is_calculated());
+            debug_assert!(self.values_or_references[node.index as usize].get().is_calculated());
             self.infer_node(node)
         }
     }
@@ -683,7 +681,7 @@ impl<'a> Target<'a> {
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
             if first.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
-                Self::Name(first)
+                Self::Name(first.get_nth_child(0))
             } else if first.is_type(Nonterminal(PythonNonterminalType::t_primary)) {
                 Self::Expression(first)
             } else if first.is_type(Nonterminal(PythonNonterminalType::star_target_brackets)) {
