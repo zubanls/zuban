@@ -318,60 +318,6 @@ impl PythonFile {
         ));
     }
 
-    fn search_definitions(&self, node: PythonNode) {
-        use PythonNonterminalType::*;
-        for child in node.iter_children() {
-            match child.get_type() {
-                Terminal(PythonTerminalType::Name)
-                | ErrorTerminal(PythonTerminalType::Name) => {
-                }
-                Nonterminal(assignment) => {
-                    todo!()
-                }
-                Nonterminal(function_def) => {
-                    todo!()
-                }
-                Nonterminal(class_def) => {
-                    todo!()
-                }
-                Nonterminal(import_name) => {
-                    todo!()
-                }
-                Nonterminal(import_from) => {
-                    todo!()
-                }
-                Nonterminal(for_stmt) => {
-                    todo!()
-                }
-                Nonterminal(with_stmt) => {
-                    todo!()
-                }
-                Nonterminal(sync_for_if_clause) => {
-                    todo!()
-                }
-                Nonterminal(match_stmt) => {
-                    todo!()
-                }
-                Nonterminal(if_stmt | while_stmt | try_stmt
-                                            | async_stmt | decorated ) => {
-                    self.search_definitions(child);
-                }
-                Nonterminal(del_stmt) => {
-                    todo!()
-                }
-                Nonterminal(named_expression) => {
-                    todo!()
-                }
-                Nonterminal(_) | ErrorNonterminal(_) => {
-                    todo!("Search for references");
-                }
-                _ => {
-                    todo!()
-                }
-            }
-        }
-    }
-
     fn calculate_node_scope_definitions(&self, node: PythonNode) {
         self.calculate_global_definitions_and_references();
         todo!();
@@ -762,10 +708,6 @@ impl<'a> Iterator for TargetIterator<'a> {
         }
     }
 }
-
-fn get_function_or_class_name() {
-}
-
                     /*
                     let parent_parent = parent.get_parent().unwrap();
                     match parent_parent.get_type() {
@@ -801,75 +743,3 @@ fn get_function_or_class_name() {
                         _ => panic!("Should probably not happen: {:?}", parent_parent)
                     }
                     */
-
-fn get_defined_names<'a>(node: &PythonNode<'a>) -> Vec<PythonNode<'a>> {
-    use PythonNonterminalType::*;
-    match node.get_type() {
-        Nonterminal(assignment) => {
-            todo!()
-        }
-        Nonterminal(param_maybe_default) => {
-            todo!()
-        }
-        Nonterminal(import_name) => {
-            todo!()
-        }
-        Nonterminal(import_from) => {
-            todo!()
-        }
-        Nonterminal(named_expression) => {
-            todo!()
-        }
-        Nonterminal(for_stmt) => {
-            todo!()
-        }
-        Nonterminal(with_stmt) => {
-            todo!()
-        }
-        Nonterminal(sync_for_if_clause) => {
-            todo!()
-        }
-        Nonterminal(del_stmt) => {
-            todo!()
-        }
-        _ => vec!()
-    }
-}
-
-fn get_definition(name: PythonNode) -> Option<PythonNode> {
-    use PythonNonterminalType::*;
-
-    debug_assert!(name.get_type() == Terminal(PythonTerminalType::Name));
-
-    let mut parent = name.get_parent().unwrap();
-    match parent.get_type() {
-        Nonterminal(function_def | class_def) => {
-            // There shouldn't be any other names with a direct parent func/class
-            Some(parent)
-        }
-        Nonterminal(except_clause) => {
-            Some(parent)
-        }
-        _ => {
-            loop {
-                match parent.get_type() {
-                    Nonterminal(
-                        assignment | param_maybe_default | sync_for_if_clause | with_stmt | for_stmt | import_name
-                        | import_from | del_stmt | named_expression) => {
-
-                        if get_defined_names(&parent).iter().any(|n| n.index == name.index) {
-                            return Some(parent)
-                        }
-                        return None
-                    }
-                    Nonterminal(block | file) => {
-                        return None;
-                    }
-                    _ => {}
-                }
-                dbg!(parent, parent.get_parent());
-                parent = parent.get_parent().unwrap();
-            }
-        }
-    }
-}
