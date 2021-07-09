@@ -427,7 +427,7 @@ impl PythonFile {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
-            return result
+            return result.as_local_redirect(self.get_file_index(), node.index as NodeIndex)
         }
 
         let mut iter = node.iter_children();
@@ -649,8 +649,18 @@ struct Inferred {
 
 impl Inferred {
     fn new(value_or_ref: ValueOrReference, file: FileIndex, node_index: NodeIndex) -> Self {
-        let value = ValueLink {file, node_index};
-        Self {value_or_ref, definition: value}
+        Self {value_or_ref, definition: ValueLink {file, node_index}}
+    }
+
+    fn as_local_redirect(&self, file: FileIndex, node_index: NodeIndex) -> Self {
+        let value_or_ref = ValueOrReference::new_redirect(
+            file,
+            node_index,
+            Locality::Stmt,
+            false,
+            false,
+        );
+        Self {value_or_ref, definition: self.definition}
     }
 }
 
