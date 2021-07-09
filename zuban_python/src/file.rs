@@ -377,14 +377,14 @@ impl PythonFile {
         todo!();
     }
 
-    fn calculate_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
+    fn cache_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
             for node in child.iter_children() {
                 if node.is_type(Nonterminal(PythonNonterminalType::simple_stmt)) {
                     let simple_child = node.get_nth_child(0);
                     if simple_child.is_type(Nonterminal(PythonNonterminalType::assignment)) {
-                        self.infer_assignment_nodes(simple_child);
+                        self.cache_assignment_nodes(simple_child);
                         todo!("asdf")
                     } else {
                         unreachable!("Found type {:?}", simple_child.get_type());
@@ -396,7 +396,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_assignment_nodes(&self, assignment_node: PythonNode) {
+    fn cache_assignment_nodes(&self, assignment_node: PythonNode) {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
@@ -414,16 +414,19 @@ impl PythonFile {
                 _ => {}
             }
         }
-        if let Some(annotation_node) = annotation_node {
-            todo!();
-        } else {
-            let expression_node = expression_node.unwrap();
-            if expression_node.is_type(Nonterminal(yield_expr)) {
-                todo!("cache yield expr");
-            } else {
-                self.cache_star_expressions(expression_node);
+        let inferred = match annotation_node {
+            Some(annotation_node) => {
+                todo!();
             }
-        }
+            None => {
+                let expression_node = expression_node.unwrap();
+                if expression_node.is_type(Nonterminal(yield_expr)) {
+                    todo!("cache yield expr");
+                } else {
+                    self.cache_star_expressions(expression_node)
+                }
+            }
+        };
         for child in assignment_node.iter_children() {
             match child.get_type() {
                 Nonterminal(star_targets) => {
@@ -432,7 +435,11 @@ impl PythonFile {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            todo!("{:?}", n);
+                            let val = &self.values_or_references[n.index];
+                            if val.get().is_calculated() {
+                                todo!("{:?}", val.get().get_type());
+                            }
+                            //val.set(inferred);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -441,7 +448,6 @@ impl PythonFile {
                             todo!("Star tuple unpack");
                         }
                     };
-                    todo!();
                 }
                 Nonterminal(single_target) => {
                     todo!();
@@ -681,7 +687,7 @@ impl PythonFile {
                     todo!("is extern");
                 } else {
                     // Is a reference and should have been calculated.
-                    self.calculate_stmt_name(stmt, node);
+                    self.cache_stmt_name(stmt, node);
                 }
             }
             let value = self.values_or_references[node.index as usize].get();
