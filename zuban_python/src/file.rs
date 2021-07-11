@@ -2,6 +2,7 @@ use std::fs;
 use std::cell::{Cell, UnsafeCell};
 use std::pin::Pin;
 use std::fmt;
+use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
@@ -81,7 +82,25 @@ pub trait FileLoader<F> {
     fn load_file(&self, path: String, code: String) -> F;
 }
 
-pub trait File: std::fmt::Debug {
+pub trait AsAny {
+    fn as_any (self: &'_ Self) -> &'_ (dyn Any + '_);
+}
+
+/*
+impl<T> AsAny for T {
+    fn as_any (self: &'_ Self) -> &'_ dyn Any where Self : 'static {
+        self
+    }
+}
+*/
+
+impl AsAny for PythonFile {
+    fn as_any (&self) -> &(dyn Any + '_) {
+        self
+    }
+}
+
+pub trait File: std::fmt::Debug+AsAny {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         vec!()
     }
@@ -95,7 +114,7 @@ pub trait File: std::fmt::Debug {
 
 pub trait FileState {
     fn get_path(&self) -> &str;
-    fn get_file(&self, database: &Database) -> Option<&dyn File>;
+    fn get_file(&self, database: &Database) -> Option<&(dyn File + '_)>;
     fn set_file_index(&self, index: FileIndex);
 }
 
@@ -104,7 +123,7 @@ impl<F: File> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn get_file(&self, database: &Database) -> Option<&dyn File> {
+    fn get_file(&self, database: &Database) -> Option<&(dyn File + '_)> {
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
@@ -550,9 +569,9 @@ impl PythonFile {
         todo!("name reference {:?}", node)
     }
 
-    pub fn infer_name(&self, name: PythonNode) -> ValueNames {
+    pub fn infer_name(&self, database: &Database, name: PythonNode) -> ValueNames {
         self.calculate_global_definitions_and_references();
-        self.infer_node(name)
+        self.infer_node(database, name)
     }
 
     #[inline]
@@ -579,7 +598,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_node(&self, node: PythonNode) -> ValueNames {
+    fn infer_node(&self, database: &Database, node: PythonNode) -> ValueNames {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
@@ -588,7 +607,7 @@ impl PythonFile {
                     let file_index = value.get_file_index();
                     if self.file_index.get().unwrap() == file_index {
                         let next = self.tree.get_node_by_index(value.get_node_index());
-                        self.infer_node(next)
+                        self.infer_node(database, next)
                     } else {
                         todo!("External Module Redirect")
                     }
@@ -636,7 +655,7 @@ impl PythonFile {
                 }
             }
             debug_assert!(self.values_or_references[node.index as usize].get().is_calculated());
-            self.infer_node(node)
+            self.infer_node(database, node)
         }
     }
 }

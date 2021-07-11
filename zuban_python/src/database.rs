@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use parsa::NodeIndex;
 
-use crate::file::{FileState, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
+use crate::file::{PythonFile, FileState, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -268,6 +268,8 @@ pub struct Database {
     path_to_file: HashMap<&'static str, FileIndex>,
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
+
+    python_state: PythonState,
 }
 
 impl Database {
@@ -280,6 +282,8 @@ impl Database {
             path_to_file: Default::default(),
             workspaces: Default::default(),
             files_managed_by_client: Default::default(),
+
+            python_state: PythonState::new()
         }
     }
 
@@ -336,6 +340,17 @@ impl Database {
             self.add_file_state(loader.load_unparsed(path))
         })
     }
+
+    fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
+        let file_index = self.load_unparsed(p.to_owned()).unwrap();
+        let file = self.get_file_state(file_index).get_file(self).unwrap();
+        let x = file.as_any();
+        x.downcast_ref().unwrap()
+    }
+
+    fn initial_python_load(&mut self) {
+        let builtins = self.py_load_tmp("typeshed/stdlib/3/builtins.pyi");
+    }
 }
 
 struct Workspace {
@@ -346,4 +361,14 @@ struct Workspace {
 enum DirectoryOrFile {
     File(Box<str>, Option<FileIndex>),
     Directory(Box<str>, Vec<DirectoryOrFile>),
+}
+
+struct PythonState {
+}
+
+impl PythonState {
+    fn new() -> Self {
+        Self {}
+    }
+
 }
