@@ -29,7 +29,7 @@ file: 0-63
              closed_pattern: 20-23
               literal_pattern: 20-23
                strings: 20-23
-                String: 20-23 "\'a\'"
+                String: 20-23 "'a'"
          Keyword: 23-24 "]"
     Keyword: 24-25 ":"
     block: 26-31
