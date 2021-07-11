@@ -207,7 +207,7 @@ impl<'a, T: Token> Grammar<T> {
                         let tos_mut = stack.stack_nodes.last_mut().unwrap();
                         tos_mut.dfa_state = plan.get_next_dfa();
                     } else {
-                        self.apply_plan(stack, &plan, &token, backtracking_tokenizer);
+                        self.apply_plan(stack, plan, token, backtracking_tokenizer);
                         break;
                     }
                 }

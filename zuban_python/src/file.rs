@@ -62,7 +62,7 @@ pub struct PythonFileLoader {}
 
 impl FileStateLoader for PythonFileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str> {
-        vec!("py", "pyi")
+        vec!["py", "pyi"]
     }
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
@@ -83,18 +83,18 @@ pub trait FileLoader<F> {
 }
 
 pub trait AsAny {
-    fn as_any(self: &Self) -> &dyn Any where Self : 'static;
+    fn as_any(&self) -> &dyn Any where Self : 'static;
 }
 
 impl<T> AsAny for T {
-    fn as_any(self: &Self) -> &dyn Any where Self : 'static {
+    fn as_any(&self) -> &dyn Any where Self : 'static {
         self
     }
 }
 
 pub trait File: std::fmt::Debug+AsAny {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
-        vec!()
+        vec![]
     }
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
     fn get_file_index(&self) -> FileIndex;
@@ -156,7 +156,7 @@ impl<F: File> LanguageFileState<F> {
             path,
             state: UnsafeCell::new(
                 InternalFileExistence::Parsed(file)),
-            invalidates: vec!()}
+            invalidates: vec![]}
     }
 
     fn new_unparsed(path: String, loader: LoadFileFunction<F>) -> Self {
@@ -164,7 +164,7 @@ impl<F: File> LanguageFileState<F> {
             path,
             state: UnsafeCell::new(
                 InternalFileExistence::Unparsed(loader, Cell::new(None))),
-            invalidates: vec!()}
+            invalidates: vec![]}
     }
 
     fn new_does_not_exist(path: String) -> Self {
@@ -172,7 +172,7 @@ impl<F: File> LanguageFileState<F> {
             path,
             state: UnsafeCell::new(
                 InternalFileExistence::Missing),
-            invalidates: vec!()}
+            invalidates: vec![]}
     }
 }
 
@@ -289,10 +289,10 @@ impl PythonFile {
             tree,
             file_index: Cell::new(None),
             definition_names: Default::default(),
-            values_or_references: vec!(Default::default(); length),
-            complex_values: vec!(),
-            dependencies: vec!(),
-            issues: vec!(),
+            values_or_references: vec![Default::default(); length],
+            complex_values: vec![],
+            dependencies: vec![],
+            issues: vec![],
             new_line_indices: UnsafeCell::new(None),
         }
     }
@@ -480,9 +480,9 @@ impl PythonFile {
             }
             Terminal(PythonTerminalType::Number) => {
                 let code = first.get_code();
-                if code.contains("j") {
+                if code.contains('j') {
                     PythonValueEnum::Complex
-                } else if code.contains(".") {
+                } else if code.contains('.') {
                     PythonValueEnum::Float
                 } else {
                     PythonValueEnum::Integer

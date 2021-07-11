@@ -52,7 +52,7 @@ pub trait Name<'a>: fmt::Debug {
     }
 
     fn get_signatures(&self) -> Signatures {
-        vec!()
+        vec![]
     }
 
     fn infer(&self) -> ValueNames<'a>;
@@ -99,7 +99,7 @@ impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PythonNode<'a>> {
         if let PythonNodeType::Terminal(PythonTerminalType::Name) = self.tree_node.get_type() {
             self.file.infer_name(self.database, self.tree_node)
         } else {
-            vec!()
+            vec![]
         }
     }
 

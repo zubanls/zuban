@@ -24,11 +24,11 @@ pub struct Project {
 
 impl Project {
     pub fn new(path: String) -> Self {
-        let loaders = vec!(Box::new(PythonFileLoader::default()) as Box<_>);
+        let loaders = vec![Box::new(PythonFileLoader::default()) as Box<_>];
         Self {
             type_: ProjectType::PythonProject(PythonProject {
                 path,
-                sys_path: vec!(),
+                sys_path: vec![],
                 is_django: false,
             }),
             database: Database::new(loaders.into_boxed_slice()),
@@ -97,7 +97,7 @@ impl<'a> Script<'a> {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
-            Leaf::Other | Leaf::None | Leaf::String => vec!(),
+            Leaf::Other | Leaf::None | Leaf::String => vec![],
         }
     }
 
@@ -112,7 +112,7 @@ impl<'a> Script<'a> {
             Leaf::Name(name) => name.goto(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
-            Leaf::Other | Leaf::None | Leaf::String => vec!(),
+            Leaf::Other | Leaf::None | Leaf::String => vec![],
         }
     }
 

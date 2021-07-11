@@ -25,9 +25,9 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         parent: Option<&'b IndexerState<'a, 'b>>,
     ) -> Self {
         IndexerState {
-            definition_names: definition_names,
+            definition_names,
             scope_definition_names: Default::default(),
-            values_or_references: values_or_references,
+            values_or_references,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             file_index,
@@ -290,7 +290,7 @@ impl<'a, 'b> IndexerState<'a, 'b> {
 
     fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
-        const SEARCH_NAMES: &'static [PythonNodeType] = &[
+        const SEARCH_NAMES: &[PythonNodeType] = &[
             Terminal(PythonTerminalType::Name),
             Nonterminal(lambda),
             Nonterminal(comprehension),
