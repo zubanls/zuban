@@ -83,19 +83,11 @@ pub trait FileLoader<F> {
 }
 
 pub trait AsAny {
-    fn as_any (self: &'_ Self) -> &'_ (dyn Any + '_);
+    fn as_any(self: &Self) -> &dyn Any where Self : 'static;
 }
 
-/*
 impl<T> AsAny for T {
-    fn as_any (self: &'_ Self) -> &'_ dyn Any where Self : 'static {
-        self
-    }
-}
-*/
-
-impl AsAny for PythonFile {
-    fn as_any (&self) -> &(dyn Any + '_) {
+    fn as_any(self: &Self) -> &dyn Any where Self : 'static {
         self
     }
 }
@@ -114,7 +106,7 @@ pub trait File: std::fmt::Debug+AsAny {
 
 pub trait FileState {
     fn get_path(&self) -> &str;
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + '_)>;
+    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
 }
 
@@ -123,7 +115,7 @@ impl<F: File> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + '_)> {
+    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),

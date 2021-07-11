@@ -298,7 +298,7 @@ impl Database {
         // todo handle watcher events here
     }
 
-    pub fn get_file_state(&self, index: FileIndex) -> &dyn FileState {
+    pub fn get_file_state(&self, index: FileIndex) -> &(dyn FileState+'static) {
         self.files.get(index.0 as usize).unwrap()
     }
 
