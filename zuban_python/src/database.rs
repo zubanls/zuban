@@ -269,7 +269,7 @@ pub struct Database {
     workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
 
-    python_state: PythonState,
+    pub python_state: PythonState,
 }
 
 impl Database {
@@ -363,12 +363,11 @@ enum DirectoryOrFile {
     Directory(Box<str>, Vec<DirectoryOrFile>),
 }
 
-struct PythonState {
+pub struct PythonState {
 }
 
 impl PythonState {
     fn new() -> Self {
         Self {}
     }
-
 }

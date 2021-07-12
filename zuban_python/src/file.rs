@@ -605,10 +605,8 @@ impl PythonFile {
                     }
                 }
                 LanguageSpecific => {
-                    match value.get_language_specific() {
-                        PythonValueEnum::String => todo!(),
-                        actual => todo!("{:?}", actual)
-                    }
+                    self.resolve_type(database, value.get_language_specific());
+                    todo!()
                 }
                 MultiDefinition => {
                     todo!();
@@ -648,6 +646,13 @@ impl PythonFile {
             }
             debug_assert!(self.values_or_references[node.index as usize].get().is_calculated());
             self.infer_node(database, node)
+        }
+    }
+
+    fn resolve_type(&self, database: &Database, value: PythonValueEnum) {
+        match value {
+            PythonValueEnum::String => todo!(),
+            actual => todo!("{:?}", actual)
         }
     }
 }
