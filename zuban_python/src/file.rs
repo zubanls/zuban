@@ -655,6 +655,14 @@ impl PythonFile {
             actual => todo!("{:?}", actual)
         }
     }
+
+    /*
+    fn lookup_global(&self, name: &str) -> Option<Box<dyn ValueName>> {
+        self.calculate_global_definitions_and_references();
+        self.definition_names.get(name).map(
+            |index| self.values_or_references[index])
+    }
+    */
 }
 
 struct Inferred {

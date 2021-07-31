@@ -1,5 +1,6 @@
 use std::mem;
 use std::fmt;
+use std::ptr::null;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::pin::Pin;
@@ -274,7 +275,7 @@ pub struct Database {
 
 impl Database {
     pub fn new(file_state_loaders: FileStateLoaders) -> Self {
-        Self {
+        let mut this = Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
             file_state_loaders,
@@ -284,7 +285,9 @@ impl Database {
             files_managed_by_client: Default::default(),
 
             python_state: PythonState::new()
-        }
+        };
+        this.initial_python_load();
+        this
     }
 
     pub fn acquire(&mut self) {
@@ -349,7 +352,8 @@ impl Database {
     }
 
     fn initial_python_load(&mut self) {
-        let builtins = self.py_load_tmp("typeshed/stdlib/3/builtins.pyi");
+        self.python_state.builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
+        self.python_state.typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
     }
 }
 
@@ -364,10 +368,12 @@ enum DirectoryOrFile {
 }
 
 pub struct PythonState {
+    builtins: *const PythonFile,
+    typing: *const PythonFile,
 }
 
 impl PythonState {
     fn new() -> Self {
-        Self {}
+        Self {builtins: null(), typing: null()}
     }
 }
