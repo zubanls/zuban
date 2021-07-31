@@ -5,7 +5,7 @@ use crate::file::ValuesOrReferences;
 use crate::utils::DefinitionNames;
 use crate::database::{ValueOrReference, PythonValueEnum, Locality, FileIndex};
 
-pub struct IndexerState<'a, 'b> {
+pub struct NameBinder<'a, 'b> {
     definition_names: &'a DefinitionNames,
     scope_definition_names: DefinitionNames,
     values_or_references: &'a ValuesOrReferences,
@@ -13,18 +13,18 @@ pub struct IndexerState<'a, 'b> {
     unresolved_nodes: Vec<PythonNode<'a>>,
     file_index: FileIndex,
     is_global_scope: bool,
-    parent: Option<&'b IndexerState<'a, 'b>>,
+    parent: Option<&'b NameBinder<'a, 'b>>,
 }
 
-impl<'a, 'b> IndexerState<'a, 'b> {
+impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
         definition_names: &'a DefinitionNames,
         values_or_references: &'a ValuesOrReferences,
         file_index: FileIndex,
         is_global_scope: bool,
-        parent: Option<&'b IndexerState<'a, 'b>>,
+        parent: Option<&'b NameBinder<'a, 'b>>,
     ) -> Self {
-        IndexerState {
+        NameBinder {
             definition_names,
             scope_definition_names: Default::default(),
             values_or_references,
@@ -36,8 +36,8 @@ impl<'a, 'b> IndexerState<'a, 'b> {
         }
     }
 
-    fn new_nested(&self) -> IndexerState<'a, '_> {
-        IndexerState::new(
+    fn new_nested(&self) -> NameBinder<'a, '_> {
+        NameBinder::new(
             self.definition_names, self.values_or_references,
             self.file_index, false, Some(self))
     }

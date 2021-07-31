@@ -6,7 +6,7 @@ mod file;
 mod name;
 mod value;
 mod utils;
-mod indexer;
+mod name_binder;
 
 use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};

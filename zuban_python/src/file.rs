@@ -12,7 +12,7 @@ use crate::utils::DefinitionNames;
 use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
                       ValueLink, ValueOrReferenceType, ComplexValue};
-use crate::indexer::IndexerState;
+use crate::name_binder::NameBinder;
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -315,14 +315,14 @@ impl PythonFile {
             // It was already done.
             return
         }
-        let mut indexer_state = IndexerState::new(
+        let mut name_binder = NameBinder::new(
             &self.definition_names,
             &self.values_or_references,
             self.file_index.get().unwrap(),
             true, // is_global_scope
             None,
         );
-        indexer_state.index_block(self.tree.get_root_node(), true);
+        name_binder.index_block(self.tree.get_root_node(), true);
 
         self.values_or_references[0].set(ValueOrReference::new_node_analysis(
             Locality::File
