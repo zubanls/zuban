@@ -489,7 +489,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn lookup_name(&self, name: PythonNode<'a>) -> Option<NodeIndex> {
         self.symbol_table
             .lookup_symbol(name.get_code())
-            // TODO Why parent?
+            // If the symbol is not defined in the symbol table, it can also be in a parent scope.
             .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
     }
 
