@@ -46,41 +46,35 @@ impl<T: ?Sized> InsertOnlyVec<T> {
     }
 }
 
-pub struct InsertOnlyHashMapVec<K, T> {
-    map: UnsafeCell<HashMap<K, Vec<T>>>,
+pub struct InsertOnlyHashMap<K, V> {
+    map: UnsafeCell<HashMap<K, V>>,
 }
 
-impl<K, T: fmt::Debug> InsertOnlyHashMapVec<K, T> {
+impl<K, V: fmt::Debug> InsertOnlyHashMap<K, V> {
     pub fn len(&self) -> usize {
         unsafe {&*self.map.get()}.len()
     }
 }
 
-impl<K: Eq + Hash, T: fmt::Debug> InsertOnlyHashMapVec<K, T> {
+impl<K: Eq + Hash, V: fmt::Debug+Clone> InsertOnlyHashMap<K, V> {
     // unsafe, because the vec might be changed during its use.
-    pub unsafe fn get_iterator<'a, 'b>(&'a self, key: &'b K) -> std::slice::Iter<T> {
-        match {&*self.map.get()}.get(key) {
-            Some(v) => v.iter(),
-            None => [].iter(),
-        }
+    pub fn get(&self, key: &K) -> Option<V> {
+        unsafe {&*self.map.get()}.get(key).cloned()
     }
 
-    pub fn push_to_vec(&self, key: K, value: T) {
+    pub fn insert(&self, key: K, value: V) -> Option<V> {
         let map = unsafe {&mut *self.map.get()};
-        match map.get_mut(&key) {
-            Some(entry) => entry.push(value),
-            None => {map.insert(key, vec![value]);},
-        };
+        map.insert(key, value)
     }
 }
 
-impl<K, T> Default for InsertOnlyHashMapVec<K, T> {
+impl<K, V> Default for InsertOnlyHashMap<K, V> {
     fn default() -> Self {
         Self {map: UnsafeCell::new(HashMap::new())}
     }
 }
 
-impl<K: fmt::Debug, T: fmt::Debug> fmt::Debug for InsertOnlyHashMapVec<K, T> {
+impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for InsertOnlyHashMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe {&*self.map.get()}.fmt(f)
     }
@@ -128,19 +122,17 @@ pub struct SymbolTable {
     // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
     // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,
     // which acts as one.
-    symbols: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
+    symbols: InsertOnlyHashMap<HashableRawStr, NodeIndex>,
 }
 
 impl SymbolTable {
-    pub fn add_definition(&self, name: PythonNode) {
-        self.symbols.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
+    pub fn add_symbol(&self, name: PythonNode) {
+        debug_assert!(
+            self.symbols.insert(HashableRawStr::new(name.get_code()), name.index as u32).is_none()
+        );
     }
 
-    pub fn lookup_definition(&self, name: &str) -> Option<NodeIndex> {
-        self.reversed(name).next().cloned()
-    }
-
-    fn reversed(&self, name: &str) -> std::iter::Rev<std::slice::Iter<NodeIndex>> {
-        unsafe {self.symbols.get_iterator(&HashableRawStr::new(name))}.rev()
+    pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
+        self.symbols.get(&HashableRawStr::new(name))
     }
 }

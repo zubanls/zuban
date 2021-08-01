@@ -45,7 +45,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
-        self.symbol_table.add_definition(name);
+        self.symbol_table.add_symbol(name);
         self.values_or_references[name.index].set(value);
     }
 
@@ -488,7 +488,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn lookup_name(&self, name: PythonNode<'a>) -> Option<NodeIndex> {
         self.symbol_table
-            .lookup_definition(name.get_code())
+            .lookup_symbol(name.get_code())
             // TODO Why parent?
             .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
     }
