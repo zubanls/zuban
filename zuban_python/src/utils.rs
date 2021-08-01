@@ -125,12 +125,15 @@ impl fmt::Debug for HashableRawStr {
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
-    definitions: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
+    // The name symbol table comes from compiler theory, it's basically a mapping of a name to a
+    // pointer. To avoid wasting space, we don't use a pointer here, instead we use the node index,
+    // which acts as one.
+    symbols: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
 }
 
 impl SymbolTable {
     pub fn add_definition(&self, name: PythonNode) {
-        self.definitions.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
+        self.symbols.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
     }
 
     pub fn lookup_definition(&self, name: &str) -> Option<NodeIndex> {
@@ -138,6 +141,6 @@ impl SymbolTable {
     }
 
     fn reversed(&self, name: &str) -> std::iter::Rev<std::slice::Iter<NodeIndex>> {
-        unsafe {self.definitions.get_iterator(&HashableRawStr::new(name))}.rev()
+        unsafe {self.symbols.get_iterator(&HashableRawStr::new(name))}.rev()
     }
 }
