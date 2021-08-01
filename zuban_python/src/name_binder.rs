@@ -1,14 +1,15 @@
+use std::cell::Cell;
+
 use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
-use crate::file::ValuesOrReferences;
 use crate::utils::SymbolTable;
 use crate::database::{ValueOrReference, PythonValueEnum, Locality, FileIndex};
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'a SymbolTable,
     scope_definition_names: SymbolTable,
-    values_or_references: &'a ValuesOrReferences,
+    values_or_references: &'a [Cell<ValueOrReference>],
     unordered_references: Vec<PythonNode<'a>>,
     unresolved_nodes: Vec<PythonNode<'a>>,
     file_index: FileIndex,
@@ -19,7 +20,7 @@ pub struct NameBinder<'a, 'b> {
 impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
         symbol_table: &'a SymbolTable,
-        values_or_references: &'a ValuesOrReferences,
+        values_or_references: &'a [Cell<ValueOrReference>],
         file_index: FileIndex,
         is_global_scope: bool,
         parent: Option<&'b NameBinder<'a, 'b>>,

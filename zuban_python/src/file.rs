@@ -21,7 +21,6 @@ lazy_static::lazy_static! {
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
-pub type ValuesOrReferences = Vec<Cell<ValueOrReference>>;
 
 pub trait VirtualFileSystemReader {
     fn read_file(&self, path: &str) -> String;
@@ -264,7 +263,7 @@ pub struct PythonFile {
     tree: PythonTree,
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    values_or_references: ValuesOrReferences,
+    values_or_references: Vec<Cell<ValueOrReference>>,
     complex_values: Vec<ComplexValue>,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
