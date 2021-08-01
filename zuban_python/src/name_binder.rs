@@ -2,12 +2,12 @@ use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerm
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::file::ValuesOrReferences;
-use crate::utils::DefinitionNames;
+use crate::utils::SymbolTable;
 use crate::database::{ValueOrReference, PythonValueEnum, Locality, FileIndex};
 
 pub struct NameBinder<'a, 'b> {
-    definition_names: &'a DefinitionNames,
-    scope_definition_names: DefinitionNames,
+    symbol_table: &'a SymbolTable,
+    scope_definition_names: SymbolTable,
     values_or_references: &'a ValuesOrReferences,
     unordered_references: Vec<PythonNode<'a>>,
     unresolved_nodes: Vec<PythonNode<'a>>,
@@ -18,14 +18,14 @@ pub struct NameBinder<'a, 'b> {
 
 impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
-        definition_names: &'a DefinitionNames,
+        symbol_table: &'a SymbolTable,
         values_or_references: &'a ValuesOrReferences,
         file_index: FileIndex,
         is_global_scope: bool,
         parent: Option<&'b NameBinder<'a, 'b>>,
     ) -> Self {
         NameBinder {
-            definition_names,
+            symbol_table,
             scope_definition_names: Default::default(),
             values_or_references,
             unordered_references: vec![],
@@ -38,14 +38,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn new_nested(&self) -> NameBinder<'a, '_> {
         NameBinder::new(
-            self.definition_names, self.values_or_references,
+            self.symbol_table, self.values_or_references,
             self.file_index, false, Some(self))
     }
 
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
-        self.definition_names.add_definition(name);
+        self.symbol_table.add_definition(name);
         self.values_or_references[name.index].set(value);
     }
 
@@ -487,16 +487,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn lookup_name(&self, name: PythonNode<'a>) -> Option<NodeIndex> {
-        if self.is_global_scope {
-            self.definition_names.lookup_global_definition(
-                self.values_or_references,
-                name.get_code(),
-            )
-        } else {
-            self.definition_names
-                .lookup_definition(name.get_code())
-                .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
-        }
+        self.symbol_table
+            .lookup_definition(name.get_code())
+            // TODO Why parent?
+            .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
     }
 
     fn index_unordered_references(&mut self) {

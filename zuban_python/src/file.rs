@@ -8,7 +8,7 @@ use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
                    SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
-use crate::utils::DefinitionNames;
+use crate::utils::SymbolTable;
 use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
                       ValueLink, ValueOrReferenceType, ComplexValue};
@@ -262,7 +262,7 @@ impl File for PythonFile {
 
 pub struct PythonFile {
     tree: PythonTree,
-    definition_names: DefinitionNames,
+    symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: ValuesOrReferences,
     complex_values: Vec<ComplexValue>,
@@ -288,7 +288,7 @@ impl PythonFile {
         Self {
             tree,
             file_index: Cell::new(None),
-            definition_names: Default::default(),
+            symbol_table: Default::default(),
             values_or_references: vec![Default::default(); length],
             complex_values: vec![],
             dependencies: vec![],
@@ -316,7 +316,7 @@ impl PythonFile {
             return
         }
         let mut name_binder = NameBinder::new(
-            &self.definition_names,
+            &self.symbol_table,
             &self.values_or_references,
             self.file_index.get().unwrap(),
             true, // is_global_scope
@@ -659,7 +659,7 @@ impl PythonFile {
     /*
     fn lookup_global(&self, name: &str) -> Option<Box<dyn ValueName>> {
         self.calculate_global_definitions_and_references();
-        self.definition_names.get(name).map(
+        self.symbol_table.get(name).map(
             |index| self.values_or_references[index])
     }
     */

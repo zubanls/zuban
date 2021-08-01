@@ -4,7 +4,6 @@ use std::pin::Pin;
 use std::hash::{Hash, Hasher};
 use std::fmt;
 
-use crate::file::ValuesOrReferences;
 use parsa_python::PythonNode;
 use parsa::{Node, NodeIndex};
 
@@ -25,7 +24,7 @@ pub struct InsertOnlyVec<T: ?Sized> {
 
 impl<T: ?Sized> Default for InsertOnlyVec<T> {
     fn default() -> Self {
-        Self {vec: UnsafeCell::new(vec!())}
+        Self {vec: UnsafeCell::new(vec![])}
     }
 }
 
@@ -125,22 +124,13 @@ impl fmt::Debug for HashableRawStr {
 }
 
 #[derive(Debug, Default)]
-pub struct DefinitionNames {
+pub struct SymbolTable {
     definitions: InsertOnlyHashMapVec<HashableRawStr, NodeIndex>,
 }
 
-impl DefinitionNames {
+impl SymbolTable {
     pub fn add_definition(&self, name: PythonNode) {
         self.definitions.push_to_vec(HashableRawStr::new(name.get_code()), name.index as u32);
-    }
-
-    pub fn lookup_global_definition(
-        &self, values_or_references: &ValuesOrReferences, name: &str
-    ) -> Option<NodeIndex> {
-        self.reversed(name)
-            .filter(|&n| values_or_references[*n as usize].get().in_module_scope())
-            .next()
-            .cloned()
     }
 
     pub fn lookup_definition(&self, name: &str) -> Option<NodeIndex> {
