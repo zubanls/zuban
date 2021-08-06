@@ -1,3 +1,5 @@
+mod class;
+
 use crate::file::File;
 
 enum ArrayType {
@@ -43,7 +45,7 @@ pub enum ValueKind {
 pub trait Value<'a>: std::fmt::Debug {
     fn get_kind(&self) -> ValueKind;
 
-    fn get_file(&self) -> &'a dyn File;
+    //fn get_file(&self) -> &'a dyn File;
 
     fn get_name(&self) -> &'a str;
 }
