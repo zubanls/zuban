@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use parsa::NodeIndex;
 
-use crate::file::{PythonFile, FileState, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
+use crate::file::{PythonFile, FileState, File, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,7 +86,7 @@ impl ValueOrReference {
         in_module_scope: bool
     ) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::LanguageSpecific, 0, locality, is_nullable, in_module_scope);
+            ValueOrReferenceType::LanguageSpecific, type_ as u32, locality, is_nullable, in_module_scope);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -247,6 +247,12 @@ pub struct ValueLink {
     pub node_index: NodeIndex,
 }
 
+pub struct LocalityLink {
+    pub file: FileIndex,
+    pub node_index: NodeIndex,
+    pub locality: Locality,
+}
+
 #[derive(Debug)]
 pub enum ComplexValue {
     Union(Box<[ValueLink]>),
@@ -313,6 +319,10 @@ impl Database {
         self.path_to_file.get(path).copied()
     }
 
+    pub fn get_loaded_file(&self, index: FileIndex) -> &(dyn File+'static) {
+        self.get_file_state(index).get_file(self).unwrap()
+    }
+
     fn get_loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
         for loader in self.file_state_loaders.iter() {
             let extension = Path::new(path).extension().and_then(|e| e.to_str());
@@ -346,8 +356,8 @@ impl Database {
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
         let file_index = self.load_unparsed(p.to_owned()).unwrap();
-        let file = self.get_file_state(file_index).get_file(self).unwrap();
-        let x = file.as_any();
+        let x = self.get_loaded_file(file_index).as_any();
+        //let x = self.get_file_state(file_index).get_file(self).unwrap().as_any();
         x.downcast_ref().unwrap()
     }
 

@@ -11,7 +11,7 @@ use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
 use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
-                      ValueLink, ValueOrReferenceType, ComplexValue};
+                      ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
 use crate::debug;
 
@@ -604,7 +604,7 @@ impl PythonFile {
                     }
                 }
                 LanguageSpecific => {
-                    self.resolve_type(database, value.get_language_specific());
+                    self.resolve_python_value(database, value.get_language_specific());
                     todo!()
                 }
                 MultiDefinition => {
@@ -648,7 +648,7 @@ impl PythonFile {
         }
     }
 
-    fn resolve_type(&self, database: &Database, value: PythonValueEnum) {
+    fn resolve_python_value(&self, database: &Database, value: PythonValueEnum) {
         match value {
             PythonValueEnum::String => todo!(),
             actual => todo!("{:?}", actual)
@@ -656,10 +656,9 @@ impl PythonFile {
     }
 
     /*
-    fn lookup_global(&self, name: &str) -> Option<Box<dyn ValueName>> {
+    fn lookup_global(&self, name: &str) -> LocalityLink {
         self.calculate_global_definitions_and_references();
-        self.symbol_table.get(name).map(
-            |index| self.values_or_references[index])
+        self.symbol_table.lookup_symbol(name)
     }
     */
 }
