@@ -356,9 +356,7 @@ impl Database {
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
         let file_index = self.load_unparsed(p.to_owned()).unwrap();
-        let x = self.get_loaded_file(file_index).as_any();
-        //let x = self.get_file_state(file_index).get_file(self).unwrap().as_any();
-        x.downcast_ref().unwrap()
+        self.get_loaded_file(file_index).as_any().downcast_ref().unwrap()
     }
 
     fn initial_python_load(&mut self) {
