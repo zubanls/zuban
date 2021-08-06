@@ -1,3 +1,4 @@
+// TODO work on this
 enum OperatorType {
     // See also https://docs.python.org/3/reference/datamodel.html
     // Type conversions like __int__, __float__ are handled with protocols
