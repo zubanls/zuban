@@ -116,6 +116,7 @@ impl<F: File> FileState for LanguageFileState<F> {
     }
 
     fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
+        self.state.get();  // TODO somehow this is necessary because of UnsafeCell
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
