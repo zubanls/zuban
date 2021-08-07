@@ -384,4 +384,9 @@ impl PythonState {
     fn new() -> Self {
         Self {builtins: null(), typing: null()}
     }
+
+    #[inline]
+    pub fn get_builtins(&self) -> &PythonFile {
+        unsafe {&*self.builtins}
+    }
 }

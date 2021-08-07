@@ -13,6 +13,7 @@ use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
                       ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
+use crate::value::Class;
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -655,12 +656,23 @@ impl PythonFile {
         }
     }
 
-    /*
-    fn lookup_global(&self, name: &str) -> LocalityLink {
+    fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.calculate_global_definitions_and_references();
-        self.symbol_table.lookup_symbol(name)
+        self.symbol_table.lookup_symbol(name).map(|node_index| LocalityLink {
+            file: self.get_file_index(),
+            node_index,
+            locality: Locality::DirectExtern,
+        })
     }
-    */
+
+    fn create_class(&self, node: NodeIndex) -> Class<'_> {
+        Class::new(self)
+    }
+}
+
+fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class<'a> {
+    let builtins = database.python_state.get_builtins();
+    builtins.create_class(builtins.lookup_global(name).unwrap().node_index)
 }
 
 struct Inferred {
