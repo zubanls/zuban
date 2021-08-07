@@ -75,6 +75,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
+    pub fn index_file(&mut self, file_node: PythonNode<'a>) {
+        let first = file_node.get_nth_child(0);
+        if first.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+            self.index_stmts(first, true);
+        }
+    }
+
     pub fn index_block(&mut self, block_node: PythonNode<'a>, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
@@ -82,7 +89,16 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
+        if block_node.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+            self.index_non_block_node(block_node, ordered);
+        } else {
+            self.index_stmts(block_node.get_nth_child(2), ordered);
+        }
+    }
+
+    fn index_stmts(&mut self, block_node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
+        debug_assert_eq!(block_node.get_type(), Nonterminal(stmts));
         for child in block_node.iter_children() {
             if child.is_type(Terminal(PythonTerminalType::Endmarker))
                 || child.is_type(Terminal(PythonTerminalType::Newline))
@@ -146,7 +162,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     self.index_with_stmt(child, ordered);
                 }
             } else {
-                assert_eq!(child.get_type(), Terminal(PythonTerminalType::Newline));
+                unreachable!("But found {:?}", child.get_type());
             }
         }
         self.close_scope();

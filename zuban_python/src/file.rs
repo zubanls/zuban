@@ -323,7 +323,7 @@ impl PythonFile {
             true, // is_global_scope
             None,
         );
-        name_binder.index_block(self.tree.get_root_node(), true);
+        name_binder.index_file(self.tree.get_root_node());
 
         self.values_or_references[0].set(ValueOrReference::new_node_analysis(
             Locality::File
