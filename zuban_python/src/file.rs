@@ -13,7 +13,7 @@ use crate::name::{Name, Names, TreeName, ValueNames};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
                       ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
-use crate::value::Class;
+use crate::value::{Class, Value};
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -650,9 +650,10 @@ impl PythonFile {
         }
     }
 
-    fn resolve_python_value(&self, database: &Database, value: PythonValueEnum) {
+    fn resolve_python_value<'a>(&self, database: &'a Database, value: PythonValueEnum) -> Box<dyn Value<'a> + 'a> {
         match value {
             PythonValueEnum::String => todo!(),
+            PythonValueEnum::Integer => Box::new(load_builtin_class_from_str(database, "int")),
             actual => todo!("{:?}", actual)
         }
     }

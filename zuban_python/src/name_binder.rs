@@ -84,7 +84,9 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // - function_def, class_def: ignore
         use PythonNonterminalType::*;
         for child in block_node.iter_children() {
-            if child.is_type(Terminal(PythonTerminalType::Endmarker)) {
+            if child.is_type(Terminal(PythonTerminalType::Endmarker))
+                || child.is_type(Terminal(PythonTerminalType::Newline))
+            {
                 continue
             }
             let child = child.get_nth_child(0);

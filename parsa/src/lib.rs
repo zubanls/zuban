@@ -262,7 +262,7 @@ macro_rules! __create_node {
             }
 
             pub fn get_nth_child(&self, index: usize) -> $Node<'a> {
-                debug_assert!(!self.is_leaf());
+                debug_assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.get_type());
                 self.iter_children().skip(index).next().expect("There is no child")
             }
 
@@ -304,7 +304,7 @@ macro_rules! __create_node {
             }
 
             pub fn search(&self, types: &'static [$NodeType]) -> SearchIterator<'a> {
-                assert!(!self.is_leaf());
+                assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.get_type());
                 SearchIterator {
                     internal_tree: self.internal_tree,
                     next_index: self.index,
