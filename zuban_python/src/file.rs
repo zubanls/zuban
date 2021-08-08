@@ -262,7 +262,7 @@ impl File for PythonFile {
 }
 
 pub struct PythonFile {
-    pub tree: PythonTree,
+    pub tree: PythonTree,  // TODO should probably not be public
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<ValueOrReference>>,
