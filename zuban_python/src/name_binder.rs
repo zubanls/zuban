@@ -46,7 +46,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
-        self.symbol_table.add_symbol(name);
+        let replaced = self.symbol_table.add_or_replace_symbol(name);
+        if let Some(replaced) = replaced {
+            //dbg!("TODO multi reference {:?}", replaced);
+        }
         self.values_or_references[name.index].set(value);
     }
 
@@ -186,7 +189,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             } else if n.is_type(Nonterminal(function_def)) {
                 self.new_nested().index_function(n);
             } else {
-                unreachable!();
+                unreachable!("closing scope {:?}", n);
             }
         }
     }
@@ -397,7 +400,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     // expressions are resolved immediately while annotations are inferred at the
                     // end of a module.
                     if n.is_type(Nonterminal(annotation)) {
-                        self.unresolved_nodes.push(n);
+                        self.unresolved_nodes.push(n.get_nth_child(1));
                     } else {
                         self.index_non_block_node(n, ordered);
                     }

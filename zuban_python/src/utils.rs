@@ -126,10 +126,8 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn add_symbol(&self, name: PythonNode) {
-        debug_assert!(
-            self.symbols.insert(HashableRawStr::new(name.get_code()), name.index as u32).is_none()
-        );
+    pub fn add_or_replace_symbol(&self, name: PythonNode) -> Option<NodeIndex> {
+        self.symbols.insert(HashableRawStr::new(name.get_code()), name.index as u32)
     }
 
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
