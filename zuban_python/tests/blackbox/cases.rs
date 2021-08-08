@@ -33,7 +33,7 @@ impl TestFile {
                     let actual: HashSet<_> = script
                         .infer_definition(Position::LineColumn(case.line, case.column))
                         .iter()
-                        .map(|name| name.get_name().to_owned())
+                        .map(|name| name.get_name().to_owned() + "()")
                         .collect();
                     assert_eq!(actual, expected);
                 }

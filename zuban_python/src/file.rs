@@ -262,7 +262,7 @@ impl File for PythonFile {
 }
 
 pub struct PythonFile {
-    tree: PythonTree,
+    pub tree: PythonTree,
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<ValueOrReference>>,
@@ -669,7 +669,7 @@ impl PythonFile {
     }
 
     fn create_class(&self, node: NodeIndex) -> Class<'_> {
-        Class::new(self)
+        Class::new(self, node)
     }
 }
 
