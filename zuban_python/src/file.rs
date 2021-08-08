@@ -639,7 +639,7 @@ impl PythonFile {
                 }
                 //self.calculate_node_scope_definitions(node);
                 if is_name_reference(node) {
-                    todo!("is extern");
+                    todo!("is extern {:?}", node);
                 } else {
                     // Is a reference and should have been calculated.
                     self.cache_stmt_name(stmt, node);

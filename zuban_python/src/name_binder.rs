@@ -77,7 +77,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn index_file(&mut self, file_node: PythonNode<'a>) {
         let first = file_node.get_nth_child(0);
-        if first.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+        if first.is_type(Nonterminal(PythonNonterminalType::stmts)) {
             self.index_stmts(first, true);
         }
     }
@@ -89,17 +89,18 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-        if block_node.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+        debug_assert_eq!(block_node.get_type(), Nonterminal(PythonNonterminalType::block));
+        if block_node.get_nth_child(0).is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
             self.index_non_block_node(block_node, ordered);
         } else {
             self.index_stmts(block_node.get_nth_child(2), ordered);
         }
     }
 
-    fn index_stmts(&mut self, block_node: PythonNode<'a>, ordered: bool) {
+    fn index_stmts(&mut self, stmts_node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
-        debug_assert_eq!(block_node.get_type(), Nonterminal(stmts));
-        for child in block_node.iter_children() {
+        debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
+        for child in stmts_node.iter_children() {
             if child.is_type(Terminal(PythonTerminalType::Endmarker))
                 || child.is_type(Terminal(PythonTerminalType::Newline))
             {
