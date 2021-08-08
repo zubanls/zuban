@@ -7,7 +7,7 @@ use parsa_python::{PythonNode, PythonNodeType, PythonTerminalType};
 
 type Signatures = Vec<()>;
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
-pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a>>>;
+pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a> + 'a>>;
 
 
 pub struct TreePosition<'a> {
@@ -152,12 +152,18 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
     }
 }
 
-struct WithValueName<'a, V> {
+pub struct WithValueName<'a, V: Value<'a> + ?Sized> {
     database: &'a Database,
     value: Box<V>,
 }
 
-impl<'a, V: fmt::Debug> fmt::Debug for WithValueName<'a, V> {
+impl<'a, V: Value<'a> + ?Sized> WithValueName<'a, V> {
+    pub fn new(database: &'a Database, value: Box<V>) -> Self {
+        Self {database, value}
+    }
+}
+
+impl<'a, V: Value<'a>+fmt::Debug+?Sized> fmt::Debug for WithValueName<'a, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
          .field("value", &self.value)
@@ -165,7 +171,7 @@ impl<'a, V: fmt::Debug> fmt::Debug for WithValueName<'a, V> {
     }
 }
 
-impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
+impl<'a, V: Value<'a>+?Sized> Name<'a> for WithValueName<'a, V> {
     fn get_name(&self) -> &'a str {
         self.value.get_name()
     }
@@ -211,7 +217,7 @@ impl<'a, V: Value<'a>> Name<'a> for WithValueName<'a, V> {
     */
 }
 
-impl<'a, V: Value<'a>> ValueName<'a> for WithValueName<'a, V> {
+impl<'a, V: Value<'a> + ?Sized> ValueName<'a> for WithValueName<'a, V> {
     fn get_kind(&self) -> ValueKind {
         self.value.get_kind()
     }

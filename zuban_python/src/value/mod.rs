@@ -1,7 +1,6 @@
 mod class;
 
 pub use class::Class;
-use crate::file::File;
 
 enum ArrayType {
     None,

@@ -9,7 +9,7 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
                    SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
-use crate::name::{Name, Names, TreeName, ValueNames};
+use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
                       ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
@@ -562,7 +562,7 @@ impl PythonFile {
         todo!("name reference {:?}", node)
     }
 
-    pub fn infer_name(&self, database: &Database, name: PythonNode) -> ValueNames {
+    pub fn infer_name<'a>(&self, database: &'a Database, name: PythonNode) -> ValueNames<'a> {
         self.calculate_global_definitions_and_references();
         self.infer_node(database, name)
     }
@@ -591,7 +591,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_node(&self, database: &Database, node: PythonNode) -> ValueNames {
+    fn infer_node<'a>(&self, database: &'a Database, node: PythonNode) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
@@ -606,8 +606,9 @@ impl PythonFile {
                     }
                 }
                 LanguageSpecific => {
-                    self.resolve_python_value(database, value.get_language_specific());
-                    todo!()
+                    vec![Box::new(WithValueName::new(
+                        database, self.resolve_python_value(database, value.get_language_specific())
+                    ))]
                 }
                 MultiDefinition => {
                     todo!();
