@@ -31,7 +31,7 @@ pub enum ValueKind {
 	Number = 16,
 	Boolean = 17,
 	Array = 18,
-	Dictionary = 19,  // Called "Object" in LSP
+	Object = 19,  // From JavaScript objects -> Basically an instance
 	//Key = 20,
 	Null = 21,
 	//EnumMember = 22,
