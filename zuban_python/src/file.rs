@@ -10,7 +10,7 @@ use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
-use crate::database::{Database, FileIndex, Locality, ValueOrReference, PythonValueEnum,
+use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
                       ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
 use crate::value::{Class, Value};
@@ -482,11 +482,11 @@ impl PythonFile {
             Terminal(PythonTerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains('j') {
-                    PythonValueEnum::Complex
+                    ValueEnum::Complex
                 } else if code.contains('.') {
-                    PythonValueEnum::Float
+                    ValueEnum::Float
                 } else {
-                    PythonValueEnum::Integer
+                    ValueEnum::Integer
                 }
             }
             Nonterminal(strings) => {
@@ -501,30 +501,30 @@ impl PythonFile {
                     }
                 }
                 if is_byte {
-                    PythonValueEnum::Bytes
+                    ValueEnum::Bytes
                 } else {
-                    PythonValueEnum::String
+                    ValueEnum::String
                 }
             }
             PythonNodeType::Keyword => {
                 match first.get_code() {
-                    "None" => PythonValueEnum::None,
-                    "True" | "False" => PythonValueEnum::Boolean,
-                    "..." => PythonValueEnum::Ellipsis,
+                    "None" => ValueEnum::None,
+                    "True" | "False" => ValueEnum::Boolean,
+                    "..." => ValueEnum::Ellipsis,
                     "(" => {
                         let next_node = iter.next().unwrap();
                         match next_node.get_type() {
-                            Nonterminal(tuple_content) => PythonValueEnum::Tuple,
+                            Nonterminal(tuple_content) => ValueEnum::Tuple,
                             Nonterminal(yield_expr) => {
                                 todo!("yield_expr");
                             }
                             Nonterminal(named_expression) => {
                                 todo!("named_expression");
                             }
-                            Nonterminal(comprehension) => PythonValueEnum::ComprehensionGenerator,
+                            Nonterminal(comprehension) => ValueEnum::ComprehensionGenerator,
                             PythonNodeType::Keyword => {
                                 debug_assert_eq!(next_node.get_code(), ")");
-                                PythonValueEnum::Tuple
+                                ValueEnum::Tuple
                             }
                             _ => unreachable!()
                         }
@@ -652,17 +652,17 @@ impl PythonFile {
     }
 
     fn resolve_python_value<'a>(
-        &'a self, database: &'a Database, node: PythonNode, value: PythonValueEnum
+        &'a self, database: &'a Database, node: PythonNode, value: ValueEnum
     ) -> Box<dyn Value<'a> + 'a> {
         Box::new(load_builtin_class_from_str(database, match value {
-            PythonValueEnum::String => "str",
-            PythonValueEnum::Integer => "int",
-            PythonValueEnum::Float => "float",
-            PythonValueEnum::Boolean => "bool",
-            PythonValueEnum::Bytes => "bytes",
-            PythonValueEnum::Complex => "complex",
-            PythonValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
-            PythonValueEnum::Class => return Box::new(self.create_class(node.index as NodeIndex)),
+            ValueEnum::String => "str",
+            ValueEnum::Integer => "int",
+            ValueEnum::Float => "float",
+            ValueEnum::Boolean => "bool",
+            ValueEnum::Bytes => "bytes",
+            ValueEnum::Complex => "complex",
+            ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
+            ValueEnum::Class => return Box::new(self.create_class(node.index as NodeIndex)),
             actual => todo!("{:?}", actual)
         }))
     }

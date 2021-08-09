@@ -4,7 +4,7 @@ use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerm
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
-use crate::database::{ValueOrReference, PythonValueEnum, Locality, FileIndex};
+use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex};
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'a SymbolTable,
@@ -53,7 +53,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.values_or_references[name.index].set(value);
     }
 
-    fn add_value_definition(&mut self, name_def: PythonNode<'a>, type_: PythonValueEnum) {
+    fn add_value_definition(&mut self, name_def: PythonNode<'a>, type_: ValueEnum) {
         self.add_new_definition(
             name_def,
             ValueOrReference::new_simple_language_specific(
@@ -125,18 +125,18 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 if not_decorated.is_type(Nonterminal(function_def)) {
                     self.add_value_definition(
                         not_decorated.get_nth_child(1),
-                        PythonValueEnum::LazyInferredFunction,
+                        ValueEnum::LazyInferredFunction,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
                     self.add_value_definition(
                         not_decorated.get_nth_child(1),
-                        PythonValueEnum::LazyInferredClass,
+                        ValueEnum::LazyInferredClass,
                     );
                 } else {
                     debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
                     self.add_value_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
-                        PythonValueEnum::LazyInferredClass,
+                        ValueEnum::LazyInferredClass,
                     );
                 }
             } else if child.is_type(Nonterminal(if_stmt)){
@@ -158,7 +158,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 if inner.is_type(Nonterminal(function_def)) {
                     self.add_value_definition(
                         inner.get_nth_child(1),
-                        PythonValueEnum::LazyInferredFunction,
+                        ValueEnum::LazyInferredFunction,
                     );
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered);
@@ -300,7 +300,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // the class name.
         self.add_value_definition(
             class.get_nth_child(1),
-            PythonValueEnum::LazyInferredClass,
+            ValueEnum::LazyInferredClass,
         );
         self.close_scope();
     }
@@ -412,7 +412,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         self.add_value_definition(
             node.get_nth_child(1),
-            PythonValueEnum::LazyInferredFunction,
+            ValueEnum::LazyInferredFunction,
         );
     }
 
@@ -426,7 +426,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             if child.is_type(Nonterminal(parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_value_definition(n, PythonValueEnum::Param);
+                        self.add_value_definition(n, ValueEnum::Param);
                     } // defaults and annotations are already indexed
                 }
             }
@@ -454,7 +454,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_value_definition(n, PythonValueEnum::Param);
+                        self.add_value_definition(n, ValueEnum::Param);
                     } // defaults are already indexed
                 }
             }

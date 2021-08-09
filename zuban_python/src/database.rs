@@ -82,7 +82,7 @@ impl ValueOrReference {
     }
 
     pub fn new_simple_language_specific(
-        type_: PythonValueEnum, locality: Locality, is_nullable: bool,
+        type_: ValueEnum, locality: Locality, is_nullable: bool,
         in_module_scope: bool
     ) -> Self {
         let flags = Self::calculate_flags(
@@ -91,7 +91,7 @@ impl ValueOrReference {
     }
 
     pub fn new_language_specific(
-        type_: PythonValueEnum,
+        type_: ValueEnum,
         node_index: NodeIndex, locality: Locality, is_nullable: bool) -> Self {
         todo!()
     }
@@ -159,7 +159,7 @@ impl ValueOrReference {
         self.node_or_complex_index as usize
     }
 
-    pub fn get_language_specific(self) -> PythonValueEnum {
+    pub fn get_language_specific(self) -> ValueEnum {
         debug_assert!(self.get_type() == ValueOrReferenceType::LanguageSpecific);
         unsafe { mem::transmute(self.flags & REST_MASK) }
     }
@@ -199,7 +199,7 @@ pub enum ValueOrReferenceType {
 
 #[derive(Debug)]
 #[repr(u32)]
-pub enum PythonValueEnum {
+pub enum ValueEnum {
     String,
     Bytes,
     Float,
