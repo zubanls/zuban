@@ -5,7 +5,7 @@ use std::fmt;
 use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, PythonTerminalType, PythonNonterminalType,
+use parsa_python::{PythonTree, TerminalType, PythonNonterminalType,
                    SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
@@ -212,10 +212,10 @@ impl File for PythonFile {
             match node.get_type() {
                 Terminal(t) | ErrorTerminal(t) => {
                     match t {
-                        PythonTerminalType::Name => Leaf::Name(Box::new(
+                        TerminalType::Name => Leaf::Name(Box::new(
                             TreeName::new(database, file, node)
                         )),
-                        PythonTerminalType::Newline => {
+                        TerminalType::Newline => {
                             if node.start() == position {
                                 if let Some(prev) = node.get_previous_leaf() {
                                     if prev.end() == position {
@@ -476,10 +476,10 @@ impl PythonFile {
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
         let value_enum = match first.get_type() {
-            Terminal(PythonTerminalType::Name) => {
+            Terminal(TerminalType::Name) => {
                 return self.infer_name_reference(first)
             }
-            Terminal(PythonTerminalType::Number) => {
+            Terminal(TerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains('j') {
                     ValueEnum::Complex
@@ -709,7 +709,7 @@ impl Inferred {
 }
 
 fn is_name_reference(name: PythonNode) -> bool {
-    debug_assert!(name.is_type(Terminal(PythonTerminalType::Name)));
+    debug_assert!(name.is_type(Terminal(TerminalType::Name)));
     !name.get_parent().unwrap().is_type(
         Nonterminal(PythonNonterminalType::name_definition)
     )

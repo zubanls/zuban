@@ -73,7 +73,7 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
     "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
 }
 
-create_terminals!(struct PythonTerminal, enum PythonTerminalType,
+create_terminals!(struct PythonTerminal, enum TerminalType,
                   [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
                    Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
@@ -169,7 +169,7 @@ impl PythonTokenizer<'_> {
         &self,
         start: usize,
         can_contain_syntax: bool,
-        type_: PythonTerminalType,
+        type_: TerminalType,
     ) -> Option<PythonTerminal> {
         Some(PythonTerminal {
             start_index: start as CodeIndex,
@@ -184,10 +184,10 @@ impl PythonTokenizer<'_> {
         if indentation_count < *self.indent_stack.last().unwrap() {
             if indentation_count > self.indent_stack[self.indent_stack.len() - 2] {
                 *self.indent_stack.last_mut().unwrap() = indentation_count;
-                return self.new_tok(self.index, false, PythonTerminalType::ErrorDedent);
+                return self.new_tok(self.index, false, TerminalType::ErrorDedent);
             }
             self.indent_stack.pop();
-            return self.new_tok(self.index, false, PythonTerminalType::Dedent);
+            return self.new_tok(self.index, false, TerminalType::Dedent);
         }
         None
     }
@@ -264,7 +264,7 @@ impl PythonTokenizer<'_> {
                     self.index += i + 1;
                     // We cannot just return None here, because otherwise := would be tokenized
                     // the wrong way.
-                    return self.new_tok(self.index - 1, true, PythonTerminalType::Operator);
+                    return self.new_tok(self.index - 1, true, TerminalType::Operator);
                 }
                 // By returning here, we are making sure that the normal
                 // tokenizer returns the as an operator.
@@ -287,7 +287,7 @@ impl PythonTokenizer<'_> {
                             return self.new_tok(
                                 self.index - 2,
                                 false,
-                                PythonTerminalType::ErrorToken,
+                                TerminalType::ErrorToken,
                             );
                         }
                     }
@@ -323,7 +323,7 @@ impl PythonTokenizer<'_> {
                     .map_or(c.len(), |index| index + 1);
                 let start = self.index;
                 self.index += length;
-                return self.new_tok(start, false, PythonTerminalType::ErrorToken);
+                return self.new_tok(start, false, TerminalType::ErrorToken);
             } else if character != ' ' && character != '\t' && character != FORM_FEED && in_expr {
                 return None;
             }
@@ -357,7 +357,7 @@ impl PythonTokenizer<'_> {
                 QuoteType::Single | QuoteType::Double => 1,
                 QuoteType::SingleTriple | QuoteType::DoubleTriple => 3,
             };
-            node.new_tok(start, false, PythonTerminalType::FStringEnd)
+            node.new_tok(start, false, TerminalType::FStringEnd)
         };
         if self.get_f_string_tos().in_expr() {
             self.index += string_length;
@@ -382,7 +382,7 @@ impl PythonTokenizer<'_> {
         if length > 0 {
             let start = self.index;
             self.index += length;
-            return self.new_tok(start, false, PythonTerminalType::FStringString);
+            return self.new_tok(start, false, TerminalType::FStringString);
         }
         None
     }
@@ -481,7 +481,7 @@ impl Iterator for PythonTokenizer<'_> {
                     if indentation > *self.indent_stack.last().unwrap() {
                         self.indent_stack.push(indentation);
                         self.previous_token_was_newline = false;
-                        return self.new_tok(start, false, PythonTerminalType::Indent);
+                        return self.new_tok(start, false, TerminalType::Indent);
                     } else if let Some(token) = self.dedent_if_necessary(indentation) {
                         self.index -= indentation;
                         return Some(token);
@@ -493,7 +493,7 @@ impl Iterator for PythonTokenizer<'_> {
 
         if let Some(match_) = NUMBER.find(c) {
             self.index += match_.end();
-            return self.new_tok(start, false, PythonTerminalType::Number);
+            return self.new_tok(start, false, TerminalType::Number);
         }
         if let Some(match_) = OPERATOR.find(c) {
             let character = c.as_bytes()[0];
@@ -517,11 +517,11 @@ impl Iterator for PythonTokenizer<'_> {
                     Some(node) => node.close_parentheses(),
                 }
             }
-            return self.new_tok(start, true, PythonTerminalType::Operator);
+            return self.new_tok(start, true, TerminalType::Operator);
         }
         let regexes = [
-            (&*STRING, PythonTerminalType::String),
-            (&*BYTES, PythonTerminalType::Bytes),
+            (&*STRING, TerminalType::String),
+            (&*BYTES, TerminalType::Bytes),
         ];
         for &(r, token_type) in &regexes {
             if let Some(match_) = r.find(c) {
@@ -531,7 +531,7 @@ impl Iterator for PythonTokenizer<'_> {
                     if length <= 5
                         && (match_.as_str().contains("'''") || match_.as_str().contains("\"\"\""))
                     {
-                        return self.new_tok(start, false, PythonTerminalType::ErrorToken);
+                        return self.new_tok(start, false, TerminalType::ErrorToken);
                     }
                     return self.new_tok(start, false, token_type);
                 }
@@ -556,7 +556,7 @@ impl Iterator for PythonTokenizer<'_> {
                     parentheses_level: 0,
                     format_spec_count: 0,
                 });
-                return self.new_tok(start, false, PythonTerminalType::FStringStart);
+                return self.new_tok(start, false, TerminalType::FStringStart);
             }
         }
 
@@ -566,14 +566,14 @@ impl Iterator for PythonTokenizer<'_> {
                 self.encountered_break_token();
             }
             self.index += name_length;
-            return self.new_tok(start, true, PythonTerminalType::Name);
+            return self.new_tok(start, true, TerminalType::Name);
         }
 
         if let Some(match_) = NEWLINE.find(c) {
             self.index += match_.end();
             if self.parentheses_level == 0 && self.f_string_stack.is_empty() {
                 self.previous_token_was_newline = true;
-                return self.new_tok(start, false, PythonTerminalType::Newline);
+                return self.new_tok(start, false, TerminalType::Newline);
             } else {
                 return self.next();
             }
@@ -583,15 +583,15 @@ impl Iterator for PythonTokenizer<'_> {
             None => {
                 if self.indent_stack.len() != 1 {
                     self.indent_stack.pop();
-                    self.new_tok(start, false, PythonTerminalType::Dedent)
+                    self.new_tok(start, false, TerminalType::Dedent)
                 } else {
                     self.ended = true;
-                    self.new_tok(start, false, PythonTerminalType::Endmarker)
+                    self.new_tok(start, false, TerminalType::Endmarker)
                 }
             }
             Some(character) => {
                 self.index += character.len_utf8();
-                self.new_tok(start, false, PythonTerminalType::ErrorToken)
+                self.new_tok(start, false, TerminalType::ErrorToken)
             }
         }
     }
@@ -608,9 +608,9 @@ fn code_from_start(code: &str, index: usize) -> &str {
 mod tests {
     use super::*;
     use parsa::Tokenizer;
-    use PythonTerminalType::*;
+    use TerminalType::*;
     #[allow(non_upper_case_globals)]
-    const Op: PythonTerminalType = Operator;
+    const Op: TerminalType = Operator;
 
     macro_rules! parametrize {
         ($($name:ident $input:expr => $expected:tt;)*) => {$(

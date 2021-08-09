@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, PythonTerminalType};
+use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, TerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
@@ -104,8 +104,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         use PythonNonterminalType::*;
         debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         for child in stmts_node.iter_children() {
-            if child.is_type(Terminal(PythonTerminalType::Endmarker))
-                || child.is_type(Terminal(PythonTerminalType::Newline))
+            if child.is_type(Terminal(TerminalType::Endmarker))
+                || child.is_type(Terminal(TerminalType::Newline))
             {
                 continue
             }
@@ -314,13 +314,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
         const SEARCH_NAMES: &[PythonNodeType] = &[
-            Terminal(PythonTerminalType::Name),
+            Terminal(TerminalType::Name),
             Nonterminal(lambda),
             Nonterminal(comprehension),
             Nonterminal(dict_comprehension),
         ];
         for n in node.search(SEARCH_NAMES) {
-            if n.is_type(Terminal(PythonTerminalType::Name)) {
+            if n.is_type(Terminal(TerminalType::Name)) {
                 let parent = n.get_parent().unwrap();
                 if parent.is_type(Nonterminal(name_definition)) {
                     // The types are inferred later.
@@ -467,7 +467,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
         use PythonNonterminalType::*;
-        debug_assert_eq!(name.get_type(), Terminal(PythonTerminalType::Name));
+        debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
