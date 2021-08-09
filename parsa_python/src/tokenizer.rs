@@ -73,7 +73,7 @@ fn all_string_regexes(prefixes: &[&'static str]) -> String {
     "^".to_owned() + &or(prefixes) + &or(&[&single3, &double3, &single, &double])
 }
 
-create_terminals!(struct PythonTerminal, enum TerminalType,
+create_terminals!(struct PyTerminal, enum TerminalType,
                   [Name, Operator, String, Bytes, Number, Endmarker, Newline, ErrorToken,
                    Indent, Dedent, ErrorDedent, FStringStart, FStringString, FStringEnd]);
 
@@ -152,7 +152,7 @@ impl FStringNode {
     }
 }
 
-impl<'a> parsa::Tokenizer<'a, PythonTerminal> for PythonTokenizer<'a> {
+impl<'a> parsa::Tokenizer<'a, PyTerminal> for PythonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         Self {
             code,
@@ -170,8 +170,8 @@ impl PythonTokenizer<'_> {
         start: usize,
         can_contain_syntax: bool,
         type_: TerminalType,
-    ) -> Option<PythonTerminal> {
-        Some(PythonTerminal {
+    ) -> Option<PyTerminal> {
+        Some(PyTerminal {
             start_index: start as CodeIndex,
             length: (self.index - start) as CodeIndex,
             type_,
@@ -180,7 +180,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn dedent_if_necessary(&mut self, indentation_count: usize) -> Option<PythonTerminal> {
+    fn dedent_if_necessary(&mut self, indentation_count: usize) -> Option<PyTerminal> {
         if indentation_count < *self.indent_stack.last().unwrap() {
             if indentation_count > self.indent_stack[self.indent_stack.len() - 2] {
                 *self.indent_stack.last_mut().unwrap() = indentation_count;
@@ -193,7 +193,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn encountered_break_token(&mut self) -> Option<PythonTerminal> {
+    fn encountered_break_token(&mut self) -> Option<PyTerminal> {
         if self.parentheses_level != 0 || !self.f_string_stack.is_empty() {
             self.parentheses_level = 0;
             self.f_string_stack.clear();
@@ -214,7 +214,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn handle_fstring_stack(&mut self) -> Option<PythonTerminal> {
+    fn handle_fstring_stack(&mut self) -> Option<PyTerminal> {
         let in_expr = self.get_f_string_tos().in_expr();
         let mut iterator = code_from_start(self.code, self.index)
             .char_indices()
@@ -345,7 +345,7 @@ impl PythonTokenizer<'_> {
         string_length: usize,
         drain_from: usize,
         quote: QuoteType,
-    ) -> Option<PythonTerminal> {
+    ) -> Option<PyTerminal> {
         // This is the same if we are in_expr or not. The string ends no matter
         // what. It's a bit strange that in the expr case it returns an
         // fstring_string first, but this should be fine, since if there's a
@@ -378,7 +378,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn maybe_fstring_string(&mut self, length: usize) -> Option<PythonTerminal> {
+    fn maybe_fstring_string(&mut self, length: usize) -> Option<PyTerminal> {
         if length > 0 {
             let start = self.index;
             self.index += length;
@@ -456,7 +456,7 @@ impl PythonTokenizer<'_> {
 }
 
 impl Iterator for PythonTokenizer<'_> {
-    type Item = PythonTerminal;
+    type Item = PyTerminal;
     fn next(&mut self) -> Option<Self::Item> {
         if self.ended {
             return None;

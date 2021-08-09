@@ -3,12 +3,12 @@
 mod tokenizer;
 
 pub use crate::tokenizer::TerminalType;
-use crate::tokenizer::{PythonTerminal, PythonTokenizer};
+use crate::tokenizer::{PyTerminal, PythonTokenizer};
 use parsa::{create_grammar, Grammar};
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PythonNode,
-    enum PythonNodeType, enum PythonNonterminalType, PythonTokenizer, PythonTerminal, TerminalType,
+    enum PythonNodeType, enum PythonNonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[
         Name: "match" | "case" | "_"
