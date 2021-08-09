@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
-use parsa_python::{PyNode, PythonNodeType, NonterminalType, TerminalType};
-use parsa_python::PythonNodeType::{Nonterminal, Terminal};
+use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
+use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
 use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex};
@@ -313,7 +313,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_non_block_node(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
-        const SEARCH_NAMES: &[PythonNodeType] = &[
+        const SEARCH_NAMES: &[PyNodeType] = &[
             Terminal(TerminalType::Name),
             Nonterminal(lambda),
             Nonterminal(comprehension),

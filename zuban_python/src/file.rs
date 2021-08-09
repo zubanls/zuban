@@ -6,8 +6,8 @@ use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, TerminalType, NonterminalType,
-                   SiblingIterator, PyNode, PythonNodeType, PYTHON_GRAMMAR};
-use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
+                   SiblingIterator, PyNode, PyNodeType, PYTHON_GRAMMAR};
+use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
@@ -228,7 +228,7 @@ impl File for PythonFile {
                         _ => Leaf::None,
                     }
                 }
-                PythonNodeType::ErrorKeyword | PythonNodeType::Keyword => {
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                     Leaf::Keyword(node.get_code().to_owned())
                 }
                 Nonterminal(n) | ErrorNonterminal(n) => {
@@ -506,7 +506,7 @@ impl PythonFile {
                     ValueEnum::String
                 }
             }
-            PythonNodeType::Keyword => {
+            PyNodeType::Keyword => {
                 match first.get_code() {
                     "None" => ValueEnum::None,
                     "True" | "False" => ValueEnum::Boolean,
@@ -522,7 +522,7 @@ impl PythonFile {
                                 todo!("named_expression");
                             }
                             Nonterminal(comprehension) => ValueEnum::ComprehensionGenerator,
-                            PythonNodeType::Keyword => {
+                            PyNodeType::Keyword => {
                                 debug_assert_eq!(next_node.get_code(), ")");
                                 ValueEnum::Tuple
                             }

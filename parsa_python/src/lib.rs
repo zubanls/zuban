@@ -8,7 +8,7 @@ use parsa::{create_grammar, Grammar};
 
 create_grammar!(
     static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PyNode,
-    enum PythonNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
+    enum PyNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[
         Name: "match" | "case" | "_"
@@ -324,7 +324,7 @@ mod tests {
         let root_node = tree.get_root_node();
         assert_eq!(
             root_node.get_type(),
-            PythonNodeType::Nonterminal(NonterminalType::file)
+            PyNodeType::Nonterminal(NonterminalType::file)
         );
     }
 }

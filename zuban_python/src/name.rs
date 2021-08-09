@@ -3,7 +3,7 @@ use crate::value::{Value, ValueKind};
 use crate::database::{Database};
 use crate::file::{File, PythonFile};
 use parsa::{CodeIndex, Node};
-use parsa_python::{PyNode, PythonNodeType, TerminalType};
+use parsa_python::{PyNode, PyNodeType, TerminalType};
 
 type Signatures = Vec<()>;
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
@@ -96,7 +96,7 @@ pub trait LanguageTreeName<'a> {
 
 impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
     fn tree_infer(&self) -> ValueNames<'a> {
-        if let PythonNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
+        if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
             self.file.infer_name(self.database, self.tree_node)
         } else {
             vec![]
