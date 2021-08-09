@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use parsa_python::{PythonNode, PythonNodeType, NonterminalType, TerminalType};
+use parsa_python::{PyNode, PythonNodeType, NonterminalType, TerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
@@ -10,8 +10,8 @@ pub struct NameBinder<'a, 'b> {
     symbol_table: &'a SymbolTable,
     scope_definition_names: SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
-    unordered_references: Vec<PythonNode<'a>>,
-    unresolved_nodes: Vec<PythonNode<'a>>,
+    unordered_references: Vec<PyNode<'a>>,
+    unresolved_nodes: Vec<PyNode<'a>>,
     file_index: FileIndex,
     is_global_scope: bool,
     parent: Option<&'b NameBinder<'a, 'b>>,
@@ -43,7 +43,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             self.file_index, false, Some(self))
     }
 
-    fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
+    fn add_new_definition(&self, name_def: PyNode<'a>, value: ValueOrReference) {
         debug_assert!(name_def.is_type(Nonterminal(NonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
@@ -53,7 +53,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.values_or_references[name.index].set(value);
     }
 
-    fn add_value_definition(&mut self, name_def: PythonNode<'a>, type_: ValueEnum) {
+    fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
         self.add_new_definition(
             name_def,
             ValueOrReference::new_simple_language_specific(
@@ -65,7 +65,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    fn add_redirect_definition(&mut self, name_def: PythonNode<'a>, node_index: NodeIndex) {
+    fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
             ValueOrReference::new_redirect(
@@ -78,14 +78,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    pub fn index_file(&mut self, file_node: PythonNode<'a>) {
+    pub fn index_file(&mut self, file_node: PyNode<'a>) {
         let first = file_node.get_nth_child(0);
         if first.is_type(Nonterminal(NonterminalType::stmts)) {
             self.index_stmts(first, true);
         }
     }
 
-    pub fn index_block(&mut self, block_node: PythonNode<'a>, ordered: bool) {
+    pub fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -100,7 +100,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_stmts(&mut self, stmts_node: PythonNode<'a>, ordered: bool) {
+    fn index_stmts(&mut self, stmts_node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
         debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         for child in stmts_node.iter_children() {
@@ -194,7 +194,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_for_stmt(&mut self, for_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_for_stmt(&mut self, for_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(for_stmt.get_type(), Nonterminal(NonterminalType::for_stmt));
         // "for" star_targets "in" star_expressions ":" block else_block?
         let iterator = for_stmt.iter_children();
@@ -216,7 +216,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_while_stmt(&mut self, while_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_while_stmt(&mut self, while_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(while_stmt.get_type(), Nonterminal(NonterminalType::while_stmt));
         // "while" named_expression ":" block else_block?
         let iterator = while_stmt.iter_children();
@@ -234,7 +234,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_with_stmt(&mut self, with_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_with_stmt(&mut self, with_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(with_stmt.get_type(), Nonterminal(NonterminalType::with_stmt));
         // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
         for child in with_stmt.iter_children() {
@@ -250,12 +250,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_if_stmt(&mut self, if_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_if_stmt(&mut self, if_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     }
 
-    fn index_try_stmt(&mut self, try_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_try_stmt(&mut self, try_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(NonterminalType::try_stmt));
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
         for child in try_stmt.iter_children() {
@@ -286,7 +286,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_class(&mut self, class: PythonNode<'a>) {
+    fn index_class(&mut self, class: PyNode<'a>) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         for child in class.iter_children() {
@@ -305,13 +305,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.close_scope();
     }
 
-    fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
+    fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(match_stmt.get_type(), Nonterminal(NonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!("match_stmt")
     }
 
-    fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
+    fn index_non_block_node(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
         const SEARCH_NAMES: &[PythonNodeType] = &[
             Terminal(TerminalType::Name),
@@ -348,7 +348,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_comprehension(&mut self, comp: PythonNode<'a>, ordered: bool) {
+    fn index_comprehension(&mut self, comp: PyNode<'a>, ordered: bool) {
         // comprehension: named_expression for_if_clauses
         // dict_comprehension: dict_key_value for_if_clauses
         let clauses = comp.get_nth_child(1);
@@ -362,10 +362,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_comprehension_clause(
         &mut self,
-        mut clauses: impl Iterator<Item=PythonNode<'a>>,
-        mut clause: PythonNode<'a>,
+        mut clauses: impl Iterator<Item=PyNode<'a>>,
+        mut clause: PyNode<'a>,
         // Either a named_expression or a dict_key_value
-        result_node: PythonNode<'a>,
+        result_node: PyNode<'a>,
     ) {
         use NonterminalType::*;
         if clause.is_type(Nonterminal(async_for_if_clause)) {
@@ -391,7 +391,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         nested.close_scope();
     }
 
-    fn index_function_name_and_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
+    fn index_function_name_and_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
         // function_def: "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         for child in node.iter_children() {
@@ -416,7 +416,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    pub fn index_function(&mut self, func: PythonNode<'a>) {
+    pub fn index_function(&mut self, func: PyNode<'a>) {
         // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));
@@ -436,7 +436,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_lambda_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
+    fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
@@ -447,7 +447,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_lambda(&mut self, node: PythonNode<'a>) {
+    fn index_lambda(&mut self, node: PyNode<'a>) {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(lambda));
         for child in node.iter_children() {
@@ -465,7 +465,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.close_scope();
     }
 
-    fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
+    fn index_reference(&mut self, name: PyNode<'a>, parent: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
         if parent.is_type(Nonterminal(atom)) {
@@ -480,7 +480,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     #[inline]
-    fn maybe_add_reference(&mut self, name: PythonNode<'a>, ordered: bool) {
+    fn maybe_add_reference(&mut self, name: PyNode<'a>, ordered: bool) {
         if ordered {
             self.add_reference(name);
         } else {
@@ -489,7 +489,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     #[inline]
-    fn add_reference(&self, name: PythonNode<'a>) {
+    fn add_reference(&self, name: PyNode<'a>) {
         let value = {
             if let Some(definition) = self.lookup_name(name) {
                 ValueOrReference::new_redirect(
@@ -509,7 +509,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.values_or_references[name.index].set(value);
     }
 
-    fn lookup_name(&self, name: PythonNode<'a>) -> Option<NodeIndex> {
+    fn lookup_name(&self, name: PyNode<'a>) -> Option<NodeIndex> {
         self.symbol_table
             .lookup_symbol(name.get_code())
             // If the symbol is not defined in the symbol table, it can also be in a parent scope.

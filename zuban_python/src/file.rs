@@ -6,7 +6,7 @@ use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PythonTree, TerminalType, NonterminalType,
-                   SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
+                   SiblingIterator, PyNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
@@ -208,7 +208,7 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        fn calculate<'b>(file: &'b PythonFile, database: &'b Database, node: PythonNode<'b>, position: CodeIndex) -> Leaf<'b> {
+        fn calculate<'b>(file: &'b PythonFile, database: &'b Database, node: PyNode<'b>, position: CodeIndex) -> Leaf<'b> {
             match node.get_type() {
                 Terminal(t) | ErrorTerminal(t) => {
                     match t {
@@ -330,12 +330,12 @@ impl PythonFile {
         ));
     }
 
-    fn calculate_node_scope_definitions(&self, node: PythonNode) {
+    fn calculate_node_scope_definitions(&self, node: PyNode) {
         self.calculate_global_definitions_and_references();
         todo!();
     }
 
-    fn cache_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
+    fn cache_stmt_name(&self, stmt: PyNode, name: PyNode) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
@@ -353,7 +353,7 @@ impl PythonFile {
         }
     }
 
-    fn cache_assignment_nodes(&self, assignment_node: PythonNode) {
+    fn cache_assignment_nodes(&self, assignment_node: PyNode) {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
@@ -414,7 +414,7 @@ impl PythonFile {
         }
     }
 
-    fn cache_star_expressions(&self, node: PythonNode) -> Inferred {
+    fn cache_star_expressions(&self, node: PyNode) -> Inferred {
         debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expressions)));
 
         let mut iter = node.iter_children();
@@ -431,7 +431,7 @@ impl PythonFile {
         }
     }
 
-    fn cache_expression(&self, node: PythonNode) -> Inferred {
+    fn cache_expression(&self, node: PyNode) -> Inferred {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
@@ -457,7 +457,7 @@ impl PythonFile {
         inferred
     }
 
-    fn infer_expression_part(&self, node: PythonNode) -> Inferred {
+    fn infer_expression_part(&self, node: PyNode) -> Inferred {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
@@ -466,7 +466,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_atom(&self, node: PythonNode) -> Inferred {
+    fn infer_atom(&self, node: PyNode) -> Inferred {
         use NonterminalType::*;
         debug_assert!(node.is_type(Nonterminal(atom)));
         if let Some(result) = self.check_node_cache(node) {
@@ -558,17 +558,17 @@ impl PythonFile {
         Inferred::new(val, self.get_file_index(), node.index as u32)
     }
 
-    fn infer_name_reference(&self, node: PythonNode) -> Inferred {
+    fn infer_name_reference(&self, node: PyNode) -> Inferred {
         todo!("name reference {:?}", node)
     }
 
-    pub fn infer_name<'a>(&'a self, database: &'a Database, name: PythonNode) -> ValueNames<'a> {
+    pub fn infer_name<'a>(&'a self, database: &'a Database, name: PyNode) -> ValueNames<'a> {
         self.calculate_global_definitions_and_references();
         self.infer_node(database, name)
     }
 
     #[inline]
-    fn check_node_cache(&self, node: PythonNode) -> Option<Inferred> {
+    fn check_node_cache(&self, node: PyNode) -> Option<Inferred> {
         let value = self.values_or_references[node.index].get();
         if value.is_calculated() {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
@@ -591,7 +591,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_node<'a>(&'a self, database: &'a Database, node: PythonNode) -> ValueNames<'a> {
+    fn infer_node<'a>(&'a self, database: &'a Database, node: PyNode) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
@@ -652,7 +652,7 @@ impl PythonFile {
     }
 
     fn resolve_python_value<'a>(
-        &'a self, database: &'a Database, node: PythonNode, value: ValueEnum
+        &'a self, database: &'a Database, node: PyNode, value: ValueEnum
     ) -> Box<dyn Value<'a> + 'a> {
         Box::new(load_builtin_class_from_str(database, match value {
             ValueEnum::String => "str",
@@ -708,7 +708,7 @@ impl Inferred {
     }
 }
 
-fn is_name_reference(name: PythonNode) -> bool {
+fn is_name_reference(name: PyNode) -> bool {
     debug_assert!(name.is_type(Terminal(TerminalType::Name)));
     !name.get_parent().unwrap().is_type(
         Nonterminal(NonterminalType::name_definition)
@@ -717,13 +717,13 @@ fn is_name_reference(name: PythonNode) -> bool {
 
 enum Target<'a> {
     Tuple(TargetIterator<'a>),
-    Name(PythonNode<'a>),
-    Expression(PythonNode<'a>),
-    Starred(PythonNode<'a>),
+    Name(PyNode<'a>),
+    Expression(PyNode<'a>),
+    Starred(PyNode<'a>),
 }
 
 impl<'a> Target<'a> {
-    fn new(node: PythonNode<'a>) -> Self {
+    fn new(node: PyNode<'a>) -> Self {
         // star_targets: ",".star_target+ [","]
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();

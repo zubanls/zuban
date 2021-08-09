@@ -28,7 +28,7 @@ fn dedent(s: &'static str) -> String {
 }
 
 fn tree_to_string(tree: PythonTree) -> String {
-    fn recurse(code: &mut String, node: &PythonNode, depth: usize) {
+    fn recurse(code: &mut String, node: &PyNode, depth: usize) {
         *code += &" ".repeat(depth);
         *code += &format!(
             "{}: {}-{}{}\n",
