@@ -5,7 +5,7 @@ use std::fmt;
 use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, TerminalType, NonterminalType,
+use parsa_python::{PyTree, TerminalType, NonterminalType,
                    SiblingIterator, PyNode, PyNodeType, PYTHON_GRAMMAR};
 use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
@@ -262,7 +262,7 @@ impl File for PythonFile {
 }
 
 pub struct PythonFile {
-    pub tree: PythonTree,  // TODO should probably not be public
+    pub tree: PyTree,  // TODO should probably not be public
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<ValueOrReference>>,

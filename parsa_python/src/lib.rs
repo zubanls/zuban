@@ -7,7 +7,7 @@ use crate::tokenizer::{PyTerminal, PythonTokenizer};
 use parsa::{create_grammar, Grammar};
 
 create_grammar!(
-    static PYTHON_GRAMMAR, struct PythonGrammar, struct PythonTree, struct PyNode,
+    static PYTHON_GRAMMAR, struct PythonGrammar, struct PyTree, struct PyNode,
     enum PyNodeType, enum NonterminalType, PythonTokenizer, PyTerminal, TerminalType,
 
     soft_keywords=[

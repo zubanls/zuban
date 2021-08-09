@@ -27,7 +27,7 @@ fn dedent(s: &'static str) -> String {
     new_lines.join("\n")
 }
 
-fn tree_to_string(tree: PythonTree) -> String {
+fn tree_to_string(tree: PyTree) -> String {
     fn recurse(code: &mut String, node: &PyNode, depth: usize) {
         *code += &" ".repeat(depth);
         *code += &format!(
