@@ -205,7 +205,7 @@ pub enum PythonValueEnum {
     Float,
     Integer,
     Complex,
-    Bool,
+    Boolean,
     None,
 
     Ellipsis,

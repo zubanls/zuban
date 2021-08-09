@@ -509,7 +509,7 @@ impl PythonFile {
             PythonNodeType::Keyword => {
                 match first.get_code() {
                     "None" => PythonValueEnum::None,
-                    "True" | "False" => PythonValueEnum::Bool,
+                    "True" | "False" => PythonValueEnum::Boolean,
                     "..." => PythonValueEnum::Ellipsis,
                     "(" => {
                         let next_node = iter.next().unwrap();
@@ -562,7 +562,7 @@ impl PythonFile {
         todo!("name reference {:?}", node)
     }
 
-    pub fn infer_name<'a>(&self, database: &'a Database, name: PythonNode) -> ValueNames<'a> {
+    pub fn infer_name<'a>(&'a self, database: &'a Database, name: PythonNode) -> ValueNames<'a> {
         self.calculate_global_definitions_and_references();
         self.infer_node(database, name)
     }
@@ -591,7 +591,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_node<'a>(&self, database: &'a Database, node: PythonNode) -> ValueNames<'a> {
+    fn infer_node<'a>(&'a self, database: &'a Database, node: PythonNode) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
@@ -607,7 +607,7 @@ impl PythonFile {
                 }
                 LanguageSpecific => {
                     vec![Box::new(WithValueName::new(
-                        database, self.resolve_python_value(database, value.get_language_specific())
+                        database, self.resolve_python_value(database, node, value.get_language_specific())
                     ))]
                 }
                 MultiDefinition => {
@@ -651,12 +651,20 @@ impl PythonFile {
         }
     }
 
-    fn resolve_python_value<'a>(&self, database: &'a Database, value: PythonValueEnum) -> Box<dyn Value<'a> + 'a> {
-        match value {
-            PythonValueEnum::String => todo!(),
-            PythonValueEnum::Integer => Box::new(load_builtin_class_from_str(database, "int")),
+    fn resolve_python_value<'a>(
+        &'a self, database: &'a Database, node: PythonNode, value: PythonValueEnum
+    ) -> Box<dyn Value<'a> + 'a> {
+        Box::new(load_builtin_class_from_str(database, match value {
+            PythonValueEnum::String => "str",
+            PythonValueEnum::Integer => "int",
+            PythonValueEnum::Float => "float",
+            PythonValueEnum::Boolean => "bool",
+            PythonValueEnum::Bytes => "bytes",
+            PythonValueEnum::Complex => "complex",
+            PythonValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
+            PythonValueEnum::Class => return Box::new(self.create_class(node.index as NodeIndex)),
             actual => todo!("{:?}", actual)
-        }
+        }))
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -668,7 +676,7 @@ impl PythonFile {
         })
     }
 
-    fn create_class(&self, node: NodeIndex) -> Class<'_> {
+    fn create_class(&self, node: NodeIndex) -> Class {
         Class::new(self, node)
     }
 }
