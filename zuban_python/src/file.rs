@@ -5,7 +5,7 @@ use std::fmt;
 use std::any::Any;
 use regex::Regex;
 use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PythonTree, TerminalType, PythonNonterminalType,
+use parsa_python::{PythonTree, TerminalType, NonterminalType,
                    SiblingIterator, PythonNode, PythonNodeType, PYTHON_GRAMMAR};
 use PythonNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::SymbolTable;
@@ -337,11 +337,11 @@ impl PythonFile {
 
     fn cache_stmt_name(&self, stmt: PythonNode, name: PythonNode) {
         let child = stmt.get_nth_child(0);
-        if child.is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+        if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
-                if node.is_type(Nonterminal(PythonNonterminalType::simple_stmt)) {
+                if node.is_type(Nonterminal(NonterminalType::simple_stmt)) {
                     let simple_child = node.get_nth_child(0);
-                    if simple_child.is_type(Nonterminal(PythonNonterminalType::assignment)) {
+                    if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
                         self.cache_assignment_nodes(simple_child);
                     } else {
                         unreachable!("Found type {:?}", simple_child.get_type());
@@ -357,7 +357,7 @@ impl PythonFile {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         let mut expression_node = None;
         let mut annotation_node = None;
         for child in assignment_node.iter_children() {
@@ -415,15 +415,15 @@ impl PythonFile {
     }
 
     fn cache_star_expressions(&self, node: PythonNode) -> Inferred {
-        debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expressions)));
+        debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expressions)));
 
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
         if iter.next().is_none() {
-            if expression.is_type(Nonterminal(PythonNonterminalType::expression)) {
+            if expression.is_type(Nonterminal(NonterminalType::expression)) {
                 self.cache_expression(expression)
             } else {
-                debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::star_expression)));
+                debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expression)));
                 todo!("Add error: can't use starred expression here");
             }
         } else {
@@ -433,14 +433,14 @@ impl PythonFile {
 
     fn cache_expression(&self, node: PythonNode) -> Inferred {
         // disjunction ["if" disjunction "else" expression] | lambda
-        debug_assert!(node.is_type(Nonterminal(PythonNonterminalType::expression)));
+        debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
             return result.as_local_redirect(self.get_file_index(), node.index as NodeIndex)
         }
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
-        let inferred = match first.is_type(Nonterminal(PythonNonterminalType::lambda)) {
+        let inferred = match first.is_type(Nonterminal(NonterminalType::lambda)) {
             true => {
                 todo!("lambda")
             }
@@ -459,7 +459,7 @@ impl PythonFile {
 
     fn infer_expression_part(&self, node: PythonNode) -> Inferred {
         // Responsible for all
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         match node.get_type() {
             Nonterminal(atom) => self.infer_atom(node),
             _ => todo!("Did not handle {:?}", node),
@@ -467,7 +467,7 @@ impl PythonFile {
     }
 
     fn infer_atom(&self, node: PythonNode) -> Inferred {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         debug_assert!(node.is_type(Nonterminal(atom)));
         if let Some(result) = self.check_node_cache(node) {
             return result
@@ -628,14 +628,14 @@ impl PythonFile {
             }
         } else {
             let stmt = node.get_parent_until(&[
-                Nonterminal(PythonNonterminalType::lambda),
-                Nonterminal(PythonNonterminalType::comprehension),
-                Nonterminal(PythonNonterminalType::dict_comprehension),
-                Nonterminal(PythonNonterminalType::stmt),
+                Nonterminal(NonterminalType::lambda),
+                Nonterminal(NonterminalType::comprehension),
+                Nonterminal(NonterminalType::dict_comprehension),
+                Nonterminal(NonterminalType::stmt),
             ]).expect("There should always be a stmt");
 
             if !self.values_or_references[stmt.index as usize].get().is_calculated() {
-                if !stmt.is_type(Nonterminal(PythonNonterminalType::stmt)) {
+                if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
                     todo!()
                 }
                 //self.calculate_node_scope_definitions(node);
@@ -711,7 +711,7 @@ impl Inferred {
 fn is_name_reference(name: PythonNode) -> bool {
     debug_assert!(name.is_type(Terminal(TerminalType::Name)));
     !name.get_parent().unwrap().is_type(
-        Nonterminal(PythonNonterminalType::name_definition)
+        Nonterminal(NonterminalType::name_definition)
     )
 }
 
@@ -728,13 +728,13 @@ impl<'a> Target<'a> {
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
-            if first.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
+            if first.is_type(Nonterminal(NonterminalType::name_definition)) {
                 Self::Name(first.get_nth_child(0))
-            } else if first.is_type(Nonterminal(PythonNonterminalType::t_primary)) {
+            } else if first.is_type(Nonterminal(NonterminalType::t_primary)) {
                 Self::Expression(first)
-            } else if first.is_type(Nonterminal(PythonNonterminalType::star_target_brackets)) {
+            } else if first.is_type(Nonterminal(NonterminalType::star_target_brackets)) {
                 todo!("star_target_brackets")
-            } else if first.is_type(Nonterminal(PythonNonterminalType::star_target)) {
+            } else if first.is_type(Nonterminal(NonterminalType::star_target)) {
                 Self::Starred(first.get_nth_child(1))
             } else {
                 unreachable!();

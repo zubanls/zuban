@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use parsa_python::{PythonNode, PythonNodeType, PythonNonterminalType, TerminalType};
+use parsa_python::{PythonNode, PythonNodeType, NonterminalType, TerminalType};
 use parsa_python::PythonNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
@@ -44,7 +44,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn add_new_definition(&self, name_def: PythonNode<'a>, value: ValueOrReference) {
-        debug_assert!(name_def.is_type(Nonterminal(PythonNonterminalType::name_definition)));
+        debug_assert!(name_def.is_type(Nonterminal(NonterminalType::name_definition)));
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
         if let Some(replaced) = replaced {
@@ -80,7 +80,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn index_file(&mut self, file_node: PythonNode<'a>) {
         let first = file_node.get_nth_child(0);
-        if first.is_type(Nonterminal(PythonNonterminalType::stmts)) {
+        if first.is_type(Nonterminal(NonterminalType::stmts)) {
             self.index_stmts(first, true);
         }
     }
@@ -92,8 +92,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-        debug_assert_eq!(block_node.get_type(), Nonterminal(PythonNonterminalType::block));
-        if block_node.get_nth_child(0).is_type(Nonterminal(PythonNonterminalType::simple_stmts)) {
+        debug_assert_eq!(block_node.get_type(), Nonterminal(NonterminalType::block));
+        if block_node.get_nth_child(0).is_type(Nonterminal(NonterminalType::simple_stmts)) {
             self.index_non_block_node(block_node, ordered);
         } else {
             self.index_stmts(block_node.get_nth_child(2), ordered);
@@ -101,7 +101,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_stmts(&mut self, stmts_node: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         for child in stmts_node.iter_children() {
             if child.is_type(Terminal(TerminalType::Endmarker))
@@ -173,7 +173,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn close_scope(&mut self) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         self.index_unordered_references();
 
         while let Some(n) = self.unresolved_nodes.pop() {
@@ -195,7 +195,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_for_stmt(&mut self, for_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(for_stmt.get_type(), Nonterminal(PythonNonterminalType::for_stmt));
+        debug_assert_eq!(for_stmt.get_type(), Nonterminal(NonterminalType::for_stmt));
         // "for" star_targets "in" star_expressions ":" block else_block?
         let iterator = for_stmt.iter_children();
         let mut iterator = iterator.skip(1);
@@ -217,7 +217,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_while_stmt(&mut self, while_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(while_stmt.get_type(), Nonterminal(PythonNonterminalType::while_stmt));
+        debug_assert_eq!(while_stmt.get_type(), Nonterminal(NonterminalType::while_stmt));
         // "while" named_expression ":" block else_block?
         let iterator = while_stmt.iter_children();
         let mut iterator = iterator.skip(1);
@@ -235,48 +235,48 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_with_stmt(&mut self, with_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(with_stmt.get_type(), Nonterminal(PythonNonterminalType::with_stmt));
+        debug_assert_eq!(with_stmt.get_type(), Nonterminal(NonterminalType::with_stmt));
         // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
         for child in with_stmt.iter_children() {
             match child.get_type() {
-                Nonterminal(PythonNonterminalType::with_item) => {
+                Nonterminal(NonterminalType::with_item) => {
                     // expression ["as" star_target]
                     self.index_non_block_node(child.get_nth_child(0), ordered);
                     self.index_non_block_node(child.get_nth_child(2), ordered);
                 }
-                Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
                 _ => (),
             }
         }
     }
 
     fn index_if_stmt(&mut self, if_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(if_stmt.get_type(), Nonterminal(PythonNonterminalType::if_stmt));
+        debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     }
 
     fn index_try_stmt(&mut self, try_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(try_stmt.get_type(), Nonterminal(PythonNonterminalType::try_stmt));
+        debug_assert_eq!(try_stmt.get_type(), Nonterminal(NonterminalType::try_stmt));
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
         for child in try_stmt.iter_children() {
             match child.get_type() {
-                Nonterminal(PythonNonterminalType::block) => self.index_block(child, ordered),
-                Nonterminal(PythonNonterminalType::except_block) => {
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::except_block) => {
                     // except_clause ":" block
                     let except_clause = child.get_nth_child(0);
                     // except_clause: "except" [expression ["as" name_definition]]
                     for child in except_clause.iter_children() {
-                        if child.is_type(Nonterminal(PythonNonterminalType::expression)) {
+                        if child.is_type(Nonterminal(NonterminalType::expression)) {
                             self.index_non_block_node(child, ordered);
-                        } else if child.is_type(Nonterminal(PythonNonterminalType::name_definition)) {
+                        } else if child.is_type(Nonterminal(NonterminalType::name_definition)) {
                             self.add_redirect_definition(child, except_clause.index as u32);
                         }
                     }
                     // block
                     self.index_block(child.get_nth_child(2), ordered)
                 }
-                Nonterminal(PythonNonterminalType::finally_block)
-                | Nonterminal(PythonNonterminalType::else_block) => {
+                Nonterminal(NonterminalType::finally_block)
+                | Nonterminal(NonterminalType::else_block) => {
                     // "finally" ":" block
                     // "else" ":" block
                     self.index_block(child.get_nth_child(2), ordered)
@@ -288,11 +288,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_class(&mut self, class: PythonNode<'a>) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
-        debug_assert_eq!(class.get_type(), Nonterminal(PythonNonterminalType::class_def));
+        debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         for child in class.iter_children() {
-            if child.is_type(Nonterminal(PythonNonterminalType::arguments)) {
+            if child.is_type(Nonterminal(NonterminalType::arguments)) {
                 self.index_non_block_node(child, true);
-            } else if child.is_type(Nonterminal(PythonNonterminalType::block)) {
+            } else if child.is_type(Nonterminal(NonterminalType::block)) {
                 self.new_nested().index_block(child, true);
             }
         }
@@ -306,13 +306,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_match_stmt(&mut self, match_stmt: PythonNode<'a>, ordered: bool) {
-        debug_assert_eq!(match_stmt.get_type(), Nonterminal(PythonNonterminalType::match_stmt));
+        debug_assert_eq!(match_stmt.get_type(), Nonterminal(NonterminalType::match_stmt));
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!("match_stmt")
     }
 
     fn index_non_block_node(&mut self, node: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         const SEARCH_NAMES: &[PythonNodeType] = &[
             Terminal(TerminalType::Name),
             Nonterminal(lambda),
@@ -352,7 +352,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // comprehension: named_expression for_if_clauses
         // dict_comprehension: dict_key_value for_if_clauses
         let clauses = comp.get_nth_child(1);
-        debug_assert_eq!(clauses.get_type(), Nonterminal(PythonNonterminalType::for_if_clauses));
+        debug_assert_eq!(clauses.get_type(), Nonterminal(NonterminalType::for_if_clauses));
         let mut iterator = clauses.iter_children();
 
         let first_clause = iterator.next().unwrap();
@@ -367,7 +367,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // Either a named_expression or a dict_key_value
         result_node: PythonNode<'a>,
     ) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         if clause.is_type(Nonterminal(async_for_if_clause)) {
             // async_for_if_clause:? ["async"] sync_for_if_clause
             clause = clause.get_nth_child(1);
@@ -392,7 +392,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_function_name_and_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         // function_def: "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         for child in node.iter_children() {
             if child.is_type(Nonterminal(parameters)) {
@@ -418,7 +418,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn index_function(&mut self, func: PythonNode<'a>) {
         // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));
 
         // Function name was indexed already.
@@ -437,7 +437,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_lambda_param_defaults(&mut self, node: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
         if params.is_type(Nonterminal(lambda_parameters)) {
@@ -448,7 +448,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_lambda(&mut self, node: PythonNode<'a>) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(lambda));
         for child in node.iter_children() {
             if child.is_type(Nonterminal(lambda_parameters)) {
@@ -466,7 +466,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_reference(&mut self, name: PythonNode<'a>, parent: PythonNode<'a>, ordered: bool) {
-        use PythonNonterminalType::*;
+        use NonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
