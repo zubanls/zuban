@@ -8,7 +8,6 @@ use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex};
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'a SymbolTable,
-    scope_definition_names: SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
@@ -27,7 +26,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     ) -> Self {
         NameBinder {
             symbol_table,
-            scope_definition_names: Default::default(),
             values_or_references,
             unordered_references: vec![],
             unresolved_nodes: vec![],
