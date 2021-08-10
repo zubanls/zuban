@@ -684,7 +684,7 @@ impl PythonFile {
     }
 }
 
-fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class {
+fn load_builtin_class_from_str(database: &Database, name: &str) -> Class {
     let builtins = database.python_state.get_builtins();
     builtins.create_class(builtins.lookup_global(name).unwrap().node_index)
 }

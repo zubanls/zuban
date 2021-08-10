@@ -71,13 +71,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    fn add_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
+    fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
-        self.add_new_definition(
-            node,
-            ValueOrReference::new_complex_value(complex_index, Locality::Stmt)
-        );
+        self.values_or_references[node.index].set(
+            ValueOrReference::new_complex_value(complex_index, Locality::Stmt));
     }
 
     fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
@@ -312,12 +310,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 class_binder.index_block(child, true);
             }
         }
-        self.add_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index as NodeIndex)));
+        self.set_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index as NodeIndex)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_value_definition(
+        self.add_redirect_definition(
             class.get_nth_child(1),
-            ValueEnum::LazyInferredClass,
+            class.index as u32,
         );
         self.close_scope();
     }
