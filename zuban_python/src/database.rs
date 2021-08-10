@@ -8,6 +8,7 @@ use parsa::NodeIndex;
 
 use crate::file::{PythonFile, FileState, File, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::InsertOnlyVec;
+use crate::value::Class;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -71,8 +72,10 @@ impl ValueOrReference {
         todo!()
     }
 
-    pub fn new_complex_value() -> Self {
-        todo!()
+    pub fn new_complex_value(complex_index: u32, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(
+            ValueOrReferenceType::Complex, complex_index, locality, false, false);
+        Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
@@ -255,6 +258,7 @@ pub struct LocalityLink {
 
 #[derive(Debug)]
 pub enum ComplexValue {
+    Class(Class),
     Union(Box<[ValueLink]>),
     Instance(Execution),
     Closure(ValueLink, Execution),

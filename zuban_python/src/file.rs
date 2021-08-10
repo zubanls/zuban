@@ -318,6 +318,7 @@ impl PythonFile {
             return
         }
         let mut name_binder = NameBinder::new(
+            self,
             &self.symbol_table,
             &self.values_or_references,
             &self.complex_values,
@@ -683,7 +684,7 @@ impl PythonFile {
     }
 }
 
-fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class<'a> {
+fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class {
     let builtins = database.python_state.get_builtins();
     builtins.create_class(builtins.lookup_global(name).unwrap().node_index)
 }

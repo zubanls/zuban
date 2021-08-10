@@ -4,10 +4,12 @@ use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
-use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex};
-use crate::file::ComplexValues;
+use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex, ComplexValue};
+use crate::file::{ComplexValues, PythonFile};
+use crate::value::Class;
 
 pub struct NameBinder<'a, 'b> {
+    file: *const PythonFile,
     symbol_table: &'a SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
     complex_values: &'a ComplexValues,
@@ -20,6 +22,7 @@ pub struct NameBinder<'a, 'b> {
 
 impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
+        file: *const PythonFile,
         symbol_table: &'a SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
@@ -28,6 +31,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b NameBinder<'a, 'b>>,
     ) -> Self {
         NameBinder {
+            file,
             symbol_table,
             values_or_references,
             complex_values,
@@ -41,7 +45,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn new_nested(&self) -> NameBinder<'a, '_> {
         NameBinder::new(
-            self.symbol_table, self.values_or_references, self.complex_values,
+            self.file, self.symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self))
     }
 
@@ -64,6 +68,15 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 false,
                 self.is_global_scope,
             )
+        );
+    }
+
+    fn add_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
+        let complex_index = self.complex_values.len() as u32;
+        self.complex_values.push(Box::pin(complex));
+        self.add_new_definition(
+            node,
+            ValueOrReference::new_complex_value(complex_index, Locality::Stmt)
         );
     }
 
@@ -299,6 +312,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 class_binder.index_block(child, true);
             }
         }
+        self.add_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index as NodeIndex)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_value_definition(
