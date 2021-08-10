@@ -287,11 +287,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn index_class(&mut self, class: PyNode<'a>) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
+        let mut class_binder = self.new_nested();
         for child in class.iter_children() {
             if child.is_type(Nonterminal(NonterminalType::arguments)) {
-                self.index_non_block_node(child, true);
+                class_binder.index_non_block_node(child, true);
             } else if child.is_type(Nonterminal(NonterminalType::block)) {
-                self.new_nested().index_block(child, true);
+                class_binder.index_block(child, true);
             }
         }
         // Need to first index the class, because the class body does not have access to
