@@ -8,7 +8,7 @@ use parsa::{CodeIndex, NodeIndex, Node};
 use parsa_python::{PyTree, TerminalType, NonterminalType,
                    SiblingIterator, PyNode, PyNodeType, PYTHON_GRAMMAR};
 use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
-use crate::utils::SymbolTable;
+use crate::utils::{SymbolTable, InsertOnlyVec};
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
                       ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
@@ -22,6 +22,7 @@ lazy_static::lazy_static! {
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
+pub type ComplexValues = InsertOnlyVec<ComplexValue>;
 
 pub trait VirtualFileSystemReader {
     fn read_file(&self, path: &str) -> String;
@@ -266,7 +267,7 @@ pub struct PythonFile {
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<ValueOrReference>>,
-    complex_values: Vec<ComplexValue>,
+    complex_values: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
@@ -291,7 +292,7 @@ impl PythonFile {
             file_index: Cell::new(None),
             symbol_table: Default::default(),
             values_or_references: vec![Default::default(); length],
-            complex_values: vec![],
+            complex_values: InsertOnlyVec::default(),
             dependencies: vec![],
             issues: vec![],
             new_line_indices: UnsafeCell::new(None),
@@ -319,6 +320,7 @@ impl PythonFile {
         let mut name_binder = NameBinder::new(
             &self.symbol_table,
             &self.values_or_references,
+            &self.complex_values,
             self.file_index.get().unwrap(),
             true, // is_global_scope
             None,

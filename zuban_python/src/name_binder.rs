@@ -5,10 +5,12 @@ use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
 use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex};
+use crate::file::ComplexValues;
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'a SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
+    complex_values: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
     file_index: FileIndex,
@@ -20,6 +22,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
         symbol_table: &'a SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
+        complex_values: &'a ComplexValues,
         file_index: FileIndex,
         is_global_scope: bool,
         parent: Option<&'b NameBinder<'a, 'b>>,
@@ -27,6 +30,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         NameBinder {
             symbol_table,
             values_or_references,
+            complex_values,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             file_index,
@@ -37,7 +41,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn new_nested(&self) -> NameBinder<'a, '_> {
         NameBinder::new(
-            self.symbol_table, self.values_or_references,
+            self.symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self))
     }
 
