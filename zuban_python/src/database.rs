@@ -158,6 +158,11 @@ impl ValueOrReference {
         FileIndex(self.flags & REST_MASK)
     }
 
+    pub fn get_complex_index(self) -> ComplexIndex {
+        debug_assert!(self.get_type() == ValueOrReferenceType::Complex);
+        self.flags & REST_MASK
+    }
+
     pub fn get_node_index(self) -> usize {
         debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
         self.node_or_complex_index as usize

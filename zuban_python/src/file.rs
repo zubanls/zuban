@@ -621,9 +621,8 @@ impl PythonFile {
                     }
                 }
                 LanguageSpecific => {
-                    vec![Box::new(WithValueName::new(
-                        database, self.resolve_python_value(database, node, value.get_language_specific())
-                    ))]
+                    let class = self.resolve_python_value(database, node, value.get_language_specific());
+                    vec![Box::new(WithValueName::new(database, class as &dyn Value))]
                 }
                 MultiDefinition => {
                     todo!();
@@ -668,8 +667,8 @@ impl PythonFile {
 
     fn resolve_python_value<'a>(
         &'a self, database: &'a Database, node: PyNode, value: ValueEnum
-    ) -> Box<dyn Value<'a> + 'a> {
-        Box::new(load_builtin_class_from_str(database, match value {
+    ) -> &'a Class {
+        load_builtin_class_from_str(database, match value {
             ValueEnum::String => "str",
             ValueEnum::Integer => "int",
             ValueEnum::Float => "float",
@@ -678,7 +677,7 @@ impl PythonFile {
             ValueEnum::Complex => "complex",
             ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
             actual => todo!("{:?}", actual)
-        }))
+        })
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -690,18 +689,24 @@ impl PythonFile {
         })
     }
 
-    fn create_class(&self, node: NodeIndex) -> Class {
-        Class::new(self, node)
+    fn use_class(&self, node_index: NodeIndex) -> &Class {
+        let v = self.values_or_references[node_index as usize].get();
+        debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
+        let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
+        match complex {
+            ComplexValue::Class(c) => c,
+            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
+        }
     }
 }
 
-fn load_builtin_class_from_str(database: &Database, name: &str) -> Class {
+fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> &'a Class {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.values_or_references[node_index as usize].get();
     debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    builtins.create_class(v.get_node_index() as NodeIndex)
+    builtins.use_class(v.get_node_index() as NodeIndex)
 }
 
 struct Inferred {

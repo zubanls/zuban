@@ -1,4 +1,5 @@
 use std::fmt;
+use std::borrow::Borrow;
 use crate::value::{Value, ValueKind};
 use crate::database::{Database};
 use crate::file::{File, PythonFile};
@@ -152,18 +153,18 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
     }
 }
 
-pub struct WithValueName<'a, V: Value<'a> + ?Sized> {
+pub struct WithValueName<'a, T> {
     database: &'a Database,
-    value: Box<V>,
+    value: T,
 }
 
-impl<'a, V: Value<'a> + ?Sized> WithValueName<'a, V> {
-    pub fn new(database: &'a Database, value: Box<V>) -> Self {
+impl<'a, T> WithValueName<'a, T> {
+    pub fn new(database: &'a Database, value: T) -> Self {
         Self {database, value}
     }
 }
 
-impl<'a, V: Value<'a>+fmt::Debug+?Sized> fmt::Debug for WithValueName<'a, V> {
+impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
          .field("value", &self.value)
@@ -171,9 +172,9 @@ impl<'a, V: Value<'a>+fmt::Debug+?Sized> fmt::Debug for WithValueName<'a, V> {
     }
 }
 
-impl<'a, V: Value<'a>+?Sized> Name<'a> for WithValueName<'a, V> {
+impl<'a, T: Borrow<dyn Value<'a>> + fmt::Debug> Name<'a> for WithValueName<'a, T> {
     fn get_name(&self) -> &'a str {
-        self.value.get_name()
+        self.value.borrow().get_name()
     }
 
     fn get_file_path(&self) -> &str {
@@ -217,8 +218,8 @@ impl<'a, V: Value<'a>+?Sized> Name<'a> for WithValueName<'a, V> {
     */
 }
 
-impl<'a, V: Value<'a> + ?Sized> ValueName<'a> for WithValueName<'a, V> {
+impl<'a, T: Borrow<dyn Value<'a>>+fmt::Debug> ValueName<'a> for WithValueName<'a, T> {
     fn get_kind(&self) -> ValueKind {
-        self.value.get_kind()
+        self.value.borrow().get_kind()
     }
 }
