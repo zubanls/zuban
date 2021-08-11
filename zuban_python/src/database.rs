@@ -53,6 +53,7 @@ impl ValueOrReference {
     #[inline]
     fn calculate_flags(type_: ValueOrReferenceType, rest: u32, locality: Locality,
                        is_nullable: bool, in_module_scope: bool) -> u32 {
+        debug_assert!(rest & !REST_MASK == 0);
         rest
         | IS_ANALIZED_MASK
         | (locality as u32) << LOCALITY_BIT_INDEX
@@ -221,7 +222,6 @@ pub enum ValueEnum {
     ParamWithDefault, // TODO Redirect to default maybe?
     LazyInferredClass, // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
-    Class, // The node points to the index of __init__ name or 0
     Function,  // The node point so the index of the result
     NoReturnFunction,
 
@@ -391,6 +391,7 @@ impl PythonState {
 
     #[inline]
     pub fn get_builtins(&self) -> &PythonFile {
+        debug_assert!(!self.builtins.is_null());
         unsafe {&*self.builtins}
     }
 }

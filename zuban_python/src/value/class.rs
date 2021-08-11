@@ -22,6 +22,7 @@ impl<'a> Value<'a> for Class {
     }
 
     fn get_name(&self) -> &'a str {
-        unsafe {&*self.file}.tree.get_node_by_index(self.node_index as usize).get_code()
+        let class_node = unsafe {&*self.file}.tree.get_node_by_index(self.node_index as usize);
+        class_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 }

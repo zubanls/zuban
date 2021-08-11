@@ -105,7 +105,7 @@ pub trait File: std::fmt::Debug+AsAny {
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 }
 
-pub trait FileState {
+pub trait FileState: fmt::Debug {
     fn get_path(&self) -> &str;
     fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
@@ -117,18 +117,21 @@ impl<F: File> FileState for LanguageFileState<F> {
     }
 
     fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
-        self.state.get();  // TODO somehow this is necessary because of UnsafeCell
         match unsafe {&*self.state.get()} {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
+                // It is extremely important to deal with the data given here before overwriting it
+                // in `slot`. Otherwise we access memory that has different data structures.
+                let file_index = file_index_cell.get().unwrap();
                 unsafe {
                     *self.state.get() = InternalFileExistence::Parsed(
                         loader(database.file_system_reader.read_file(&self.path))
                     )
                 };
+
                 let file = self.get_file(database);
-                file.unwrap().set_file_index(file_index_cell.get().unwrap());
+                file.unwrap().set_file_index(file_index);
                 file
             }
         }
@@ -144,12 +147,21 @@ impl<F: File> FileState for LanguageFileState<F> {
     }
 }
 
-#[derive(Debug)]
 pub struct LanguageFileState<F: 'static> {
     path: String,
     // Unsafe, because the file is parsed lazily
     state: UnsafeCell<InternalFileExistence<F>>,
     invalidates: Vec<FileIndex>,
+}
+
+impl<F> fmt::Debug for LanguageFileState<F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("LanguageFileState")
+         .field("path", &self.path)
+         .field("state", unsafe{&*self.state.get()})
+         .field("invalidates", &self.invalidates)
+         .finish()
+    }
 }
 
 impl<F: File> LanguageFileState<F> {
@@ -665,7 +677,6 @@ impl PythonFile {
             ValueEnum::Bytes => "bytes",
             ValueEnum::Complex => "complex",
             ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
-            ValueEnum::Class => return Box::new(self.create_class(node.index as NodeIndex)),
             actual => todo!("{:?}", actual)
         }))
     }
@@ -686,7 +697,11 @@ impl PythonFile {
 
 fn load_builtin_class_from_str(database: &Database, name: &str) -> Class {
     let builtins = database.python_state.get_builtins();
-    builtins.create_class(builtins.lookup_global(name).unwrap().node_index)
+    let node_index = builtins.lookup_global(name).unwrap().node_index;
+    let v = builtins.values_or_references[node_index as usize].get();
+    debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
+    debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
+    builtins.create_class(v.get_node_index() as NodeIndex)
 }
 
 struct Inferred {
