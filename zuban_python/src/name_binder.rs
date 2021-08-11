@@ -56,7 +56,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         if let Some(replaced) = replaced {
             //dbg!("TODO multi reference {:?}", replaced);
         }
-        self.values_or_references[name.index].set(value);
+        self.values_or_references[name.index as usize].set(value);
     }
 
     fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
@@ -74,7 +74,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
-        self.values_or_references[node.index].set(
+        self.values_or_references[node.index as usize].set(
             ValueOrReference::new_complex_value(complex_index, Locality::Stmt));
     }
 
@@ -310,7 +310,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 class_binder.index_block(child, true);
             }
         }
-        self.set_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index as NodeIndex)));
+        self.set_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(
@@ -521,7 +521,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 )
             }
         };
-        self.values_or_references[name.index].set(value);
+        self.values_or_references[name.index as usize].set(value);
     }
 
     fn lookup_name(&self, name: PyNode<'a>) -> Option<NodeIndex> {

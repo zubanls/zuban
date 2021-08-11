@@ -407,7 +407,7 @@ impl PythonFile {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            let val = &self.values_or_references[n.index];
+                            let val = &self.values_or_references[n.index as usize];
                             if val.get().is_calculated() {
                                 todo!("{:?}", val.get().get_type());
                             }
@@ -450,7 +450,7 @@ impl PythonFile {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
-            return result.as_local_redirect(self.get_file_index(), node.index as NodeIndex)
+            return result.as_local_redirect(self.get_file_index(), node.index)
         }
 
         let mut iter = node.iter_children();
@@ -468,7 +468,7 @@ impl PythonFile {
                 }
             }
         };
-        self.values_or_references[node.index].set(inferred.value_or_ref);
+        self.values_or_references[node.index as usize].set(inferred.value_or_ref);
         inferred
     }
 
@@ -569,7 +569,7 @@ impl PythonFile {
             false, // is_nullable
             false,
         );
-        self.values_or_references[node.index].set(val);
+        self.values_or_references[node.index as usize].set(val);
         Inferred::new(val, self.get_file_index(), node.index as u32)
     }
 
@@ -584,7 +584,7 @@ impl PythonFile {
 
     #[inline]
     fn check_node_cache(&self, node: PyNode) -> Option<Inferred> {
-        let value = self.values_or_references[node.index].get();
+        let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
@@ -706,7 +706,7 @@ fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -
     let v = builtins.values_or_references[node_index as usize].get();
     debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    builtins.use_class(v.get_node_index() as NodeIndex)
+    builtins.use_class(v.get_node_index())
 }
 
 struct Inferred {

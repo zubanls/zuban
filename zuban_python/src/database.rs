@@ -163,9 +163,9 @@ impl ValueOrReference {
         self.flags & REST_MASK
     }
 
-    pub fn get_node_index(self) -> usize {
+    pub fn get_node_index(self) -> NodeIndex {
         debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
-        self.node_or_complex_index as usize
+        self.node_or_complex_index
     }
 
     pub fn get_language_specific(self) -> ValueEnum {

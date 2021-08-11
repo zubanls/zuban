@@ -177,7 +177,7 @@ macro_rules! __create_node {
         #[derive(Clone, Copy)]
         pub struct $Node<'a> {
             internal_tree: &'a $crate::InternalTree,
-            pub index: usize,
+            pub index: $crate::NodeIndex,
             internal_node: &'a $crate::InternalNode,
         }
 
@@ -191,7 +191,7 @@ macro_rules! __create_node {
                 if self.index == 0 {
                     start = 0;
                 } else {
-                    start = self.internal_tree.nodes[self.index - 1].start_index;
+                    start = self.internal_tree.nodes[self.index as usize - 1].start_index;
                 }
                 let string = self.get_code_slice(start, self.internal_node.start_index);
                 string
@@ -202,7 +202,7 @@ macro_rules! __create_node {
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
                 } else {
-                    end = self.internal_tree.nodes[self.index + 1].start_index
+                    end = self.internal_tree.nodes[self.index as usize + 1].start_index
                 }
                 let string = self.get_code_slice(
                     self.internal_node.start_index + self.internal_node.length,
@@ -231,7 +231,7 @@ macro_rules! __create_node {
         impl<'a> $Node<'a> {
             fn new(
                 internal_tree: &'a $crate::InternalTree,
-                index: usize,
+                index: $crate::NodeIndex,
                 internal_node: &'a $crate::InternalNode
             ) -> Self {
                 Self {internal_tree, index, internal_node}
@@ -272,9 +272,9 @@ macro_rules! __create_node {
 
             pub fn get_parent(&self) -> Option<$Node<'a>> {
                 let mut sibling_i = 0;  // Note that i and sibling_i are reversed.
-                for (i, n) in self.internal_tree.nodes[..self.index].iter().rev().enumerate() {
-                    let i = i + 1;
-                    let offset = n.next_node_offset as usize;
+                for (i, n) in self.internal_tree.nodes[..self.index as usize].iter().rev().enumerate() {
+                    let i = i as $crate::NodeIndex + 1;
+                    let offset = n.next_node_offset;
                     if (offset > i || offset == 0 && i == sibling_i + 1) && !n.type_.is_leaf() {
                         return Some(Self {
                             internal_tree: self.internal_tree,
@@ -314,12 +314,12 @@ macro_rules! __create_node {
             }
 
             pub fn get_previous_leaf(&self) -> Option<$Node<'a>> {
-                for (index, node) in self.internal_tree.nodes[..self.index].iter().enumerate().rev() {
+                for (index, node) in self.internal_tree.nodes[..self.index as usize].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
                         return Some($Node {
                             internal_tree: &self.internal_tree,
                             internal_node: node,
-                            index,
+                            index: index as $crate::NodeIndex,
                         });
                     }
                 }
@@ -389,7 +389,7 @@ macro_rules! __create_node {
 
         pub struct SiblingIterator<'a> {
             internal_tree: &'a $crate::InternalTree,
-            next_index: usize,
+            next_index: $crate::NodeIndex,
             ended: bool,
         }
 
@@ -400,7 +400,7 @@ macro_rules! __create_node {
                 if self.ended {
                     return None;
                 }
-                let current_node = &self.internal_tree.nodes[self.next_index];
+                let current_node = &self.internal_tree.nodes[self.next_index as usize];
                 if current_node.next_node_offset == 0 {
                     self.ended = true;
                 }
@@ -409,14 +409,14 @@ macro_rules! __create_node {
                     index: self.next_index,
                     internal_node: current_node,
                 };
-                self.next_index += current_node.next_node_offset as usize;
+                self.next_index += current_node.next_node_offset;
                 Some(current)
             }
         }
 
         pub struct SearchIterator<'a> {
             internal_tree: &'a $crate::InternalTree,
-            next_index: usize,
+            next_index: $crate::NodeIndex,
             end_code_index: $crate::CodeIndex,
             search_types: &'static [$NodeType],
         }
@@ -425,7 +425,8 @@ macro_rules! __create_node {
             type Item = $Node<'a>;
 
             fn next(&mut self) -> Option<Self::Item> {
-                for (i, n) in self.internal_tree.nodes[self.next_index..].iter().enumerate() {
+                for (i, n) in self.internal_tree.nodes[self.next_index as usize..].iter().enumerate() {
+                    let i = i as $crate::NodeIndex;
                     if n.start_index >= self.end_code_index {
                         // TODO this might be an issue with zero length nodes
                         return None;
@@ -672,7 +673,7 @@ macro_rules! create_grammar {
             }
 
             #[inline]
-            fn get_node<'a>(&'a self, index: usize, internal_node: &'a $crate::InternalNode) -> $Node {
+            fn get_node<'a>(&'a self, index: $crate::NodeIndex, internal_node: &'a $crate::InternalNode) -> $Node {
                 $Node {
                     internal_tree: &self.internal_tree,
                     internal_node: internal_node,
@@ -686,12 +687,12 @@ macro_rules! create_grammar {
 
             pub fn get_nodes(&self) -> Vec<$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
-                    |(index, internal_node)| self.get_node(index, internal_node)
+                    |(index, internal_node)| self.get_node(index as $crate::NodeIndex, internal_node)
                 ).collect()
             }
 
-            pub fn get_node_by_index(&self, index: usize) -> $Node {
-                self.get_node(index, &self.internal_tree.nodes[index])
+            pub fn get_node_by_index(&self, index: $crate::NodeIndex) -> $Node {
+                self.get_node(index, &self.internal_tree.nodes[index as usize])
             }
 
             pub fn get_leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
@@ -702,7 +703,7 @@ macro_rules! create_grammar {
                 );
                 for (i, node) in self.internal_tree.nodes[index..].iter().enumerate() {
                     if node.type_.is_leaf() {
-                        return self.get_node(index + i, node)
+                        return self.get_node((index + i) as $crate::NodeIndex, node)
                     }
                 }
                 unreachable!();
