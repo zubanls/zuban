@@ -574,7 +574,10 @@ impl PythonFile {
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred {
-        todo!("name reference {:?}", node)
+        if let Some(result) = self.check_node_cache(node) {
+            return result
+        }
+        todo!("star import? {:?}", node)
     }
 
     pub fn infer_name<'a>(&'a self, database: &'a Database, name: PyNode) -> ValueNames<'a> {
@@ -589,7 +592,11 @@ impl PythonFile {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
                 ValueOrReferenceType::Redirect => {
-                    todo!("FOOO");
+                    if value.get_file_index() == self.get_file_index() {
+                        todo!("same file")
+                    } else {
+                        todo!("different file")
+                    }
                 }
                 ValueOrReferenceType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
