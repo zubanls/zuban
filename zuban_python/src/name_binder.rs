@@ -10,7 +10,7 @@ use crate::value::Class;
 
 pub struct NameBinder<'a, 'b> {
     file: *const PythonFile,
-    symbol_table: &'a SymbolTable,
+    symbol_table: &'b SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
     complex_values: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
@@ -23,7 +23,7 @@ pub struct NameBinder<'a, 'b> {
 impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn new(
         file: *const PythonFile,
-        symbol_table: &'a SymbolTable,
+        symbol_table: &'b SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
@@ -43,9 +43,9 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn new_nested(&self) -> NameBinder<'a, '_> {
+    fn new_nested(&self, symbol_table: &'b SymbolTable) -> NameBinder<'a, '_> {
         NameBinder::new(
-            self.file, self.symbol_table, self.values_or_references, self.complex_values,
+            self.file, symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self))
     }
 
@@ -132,7 +132,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
                 self.index_function_name_and_param_defaults(child, ordered);
             } else if child.is_type(Nonterminal(class_def)) {
-                self.new_nested().index_class(child);
+                self.index_class(child);
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
@@ -195,12 +195,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 // have been done at the point where the generator was created.
                 self.index_comprehension(n, true);
             } else if n.is_type(Nonterminal(lambda)) {
-                self.new_nested().index_lambda(n);
+                let symbol_table = SymbolTable::default();
+                self.new_nested(&symbol_table).index_lambda(n);
             } else if n.is_type(Nonterminal(expression)) {
                 // Typically annotations
                 self.index_non_block_node(n, true);
             } else if n.is_type(Nonterminal(function_def)) {
-                self.new_nested().index_function(n);
+                let symbol_table = SymbolTable::default();
+                self.new_nested(&symbol_table).index_function_body(n);
             } else {
                 unreachable!("closing scope {:?}", n);
             }
@@ -302,7 +304,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn index_class(&mut self, class: PyNode<'a>) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
-        let mut class_binder = self.new_nested();
+        let symbol_table = SymbolTable::default();
+        let mut class_binder = self.new_nested(&symbol_table);
         for child in class.iter_children() {
             if child.is_type(Nonterminal(NonterminalType::arguments)) {
                 class_binder.index_non_block_node(child, true);
@@ -310,7 +313,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 class_binder.index_block(child, true);
             }
         }
-        self.set_complex_value(class, ComplexValue::Class(Class::new(self.file, class.index)));
+        let cls = Class::new(self.file, class.index, symbol_table);
+        self.set_complex_value(class, ComplexValue::Class(cls));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(
@@ -396,7 +400,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             }
         }
         // TODO this is not exactly correct for named expressions and their scopes.
-        let mut nested = self.new_nested();
+        let symbol_table = SymbolTable::default();
+        let mut nested = self.new_nested(&symbol_table);
         nested.index_non_block_node(clause.get_nth_child(1), true);
         if let Some(clause) = clauses.next() {
             nested.index_comprehension_clause(clauses, clause, result_node);
@@ -431,7 +436,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    pub fn index_function(&mut self, func: PyNode<'a>) {
+    pub fn index_function_body(&mut self, func: PyNode<'a>) {
         // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));

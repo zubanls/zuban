@@ -3,16 +3,18 @@ use parsa::Node;
 
 use super::{Value, ValueKind};
 use crate::file::{PythonFile};
+use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Class {
     file: *const PythonFile,
+    symbol_table: SymbolTable,
     node_index: NodeIndex,
 }
 
 impl Class {
-    pub fn new(file: *const PythonFile, node_index: NodeIndex) -> Self {
-        Self {file, node_index}
+    pub fn new(file: *const PythonFile, node_index: NodeIndex, symbol_table: SymbolTable) -> Self {
+        Self {file, node_index, symbol_table}
     }
 }
 
