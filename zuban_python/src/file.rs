@@ -295,7 +295,7 @@ impl fmt::Debug for PythonFile {
     }
 }
 
-impl PythonFile {
+impl<'db> PythonFile {
     fn new(code: String) -> Self {
         let tree = PYTHON_GRAMMAR.parse(code);
         let length = tree.get_length();
@@ -580,7 +580,7 @@ impl PythonFile {
         todo!("star import? {:?}", node)
     }
 
-    pub fn infer_name<'a>(&'a self, database: &'a Database, name: PyNode) -> ValueNames<'a> {
+    pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
         self.infer_node(database, name)
     }
@@ -613,7 +613,7 @@ impl PythonFile {
         }
     }
 
-    fn infer_node<'a>(&'a self, database: &'a Database, node: PyNode) -> ValueNames<'a> {
+    fn infer_node(&'db self, database: &'db Database, node: PyNode) -> ValueNames<'db> {
         use ValueOrReferenceType::*;
         let value = self.values_or_references[node.index as usize].get();
         if value.is_calculated() {
@@ -672,9 +672,9 @@ impl PythonFile {
         }
     }
 
-    fn resolve_python_value<'a>(
-        &'a self, database: &'a Database, node: PyNode, value: ValueEnum
-    ) -> &'a Class {
+    fn resolve_python_value(
+        &'db self, database: &'db Database, node: PyNode, value: ValueEnum
+    ) -> &'db Class {
         load_builtin_class_from_str(database, match value {
             ValueEnum::String => "str",
             ValueEnum::Integer => "int",
