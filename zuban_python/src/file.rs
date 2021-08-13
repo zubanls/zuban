@@ -629,7 +629,9 @@ impl<'a> PythonInference<'a> {
             match value.get_type() {
                 ValueOrReferenceType::Redirect => {
                     if value.get_file_index() == self.file_index {
-                        todo!("same file")
+                        Some(
+                            self.infer_arbitrary_node(
+                                self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
                         todo!("different file")
                     }
