@@ -2,7 +2,7 @@ use parsa::NodeIndex;
 use parsa::Node;
 
 use super::{Value, ValueKind};
-use crate::file::{PythonFile};
+use crate::file::{PythonFile, Inferred};
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
@@ -26,5 +26,9 @@ impl<'a> Value<'a> for Class {
     fn get_name(&self) -> &'a str {
         let class_node = unsafe {&*self.file}.tree.get_node_by_index(self.node_index);
         class_node.get_nth_child(1).get_nth_child(0).get_code()
+    }
+
+    fn lookup(&self, name: &str) -> Inferred<'a> {
+        todo!()
     }
 }

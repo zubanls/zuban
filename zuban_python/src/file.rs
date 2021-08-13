@@ -470,7 +470,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn cache_star_expressions(&self, node: PyNode) -> Inferred {
+    fn cache_star_expressions(&self, node: PyNode) -> Inferred<'a> {
         debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expressions)));
 
         let mut iter = node.iter_children();
@@ -487,7 +487,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn cache_expression(&self, node: PyNode) -> Inferred {
+    fn cache_expression(&self, node: PyNode) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
@@ -513,7 +513,7 @@ impl<'a> PythonInference<'a> {
         inferred
     }
 
-    fn infer_expression_part(&self, node: PyNode) -> Inferred {
+    fn infer_expression_part(&self, node: PyNode) -> Inferred<'a> {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
@@ -523,7 +523,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_primary(&self, node: PyNode) -> Inferred {
+    fn infer_primary(&self, node: PyNode) -> Inferred<'a> {
         //   primary "." Name
         // | primary "(" [arguments | comprehension] ")"
         // | primary "[" slices "]"
@@ -537,9 +537,10 @@ impl<'a> PythonInference<'a> {
             _ => unreachable!(),
         };
         let op = iter.next().unwrap();
+        let second = iter.next().unwrap();
         match op.get_code() {
             "." => {
-                todo!()
+                base.run_function(|value| value.lookup(second.get_code()))
             }
             "(" => {
                 todo!()
@@ -551,7 +552,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_atom(&self, node: PyNode) -> Inferred {
+    fn infer_atom(&self, node: PyNode) -> Inferred<'a> {
         use NonterminalType::*;
         debug_assert!(node.is_type(Nonterminal(atom)));
         if let Some(result) = self.check_node_cache(node) {
@@ -643,7 +644,7 @@ impl<'a> PythonInference<'a> {
         Inferred::new(self.file, node.index, val)
     }
 
-    fn infer_name_reference(&self, node: PyNode) -> Inferred {
+    fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
@@ -717,7 +718,7 @@ fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -
     builtins.use_class(v.get_node_index())
 }
 
-struct Inferred<'a> {
+pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
     value_or_ref: ValueOrReference,
@@ -754,6 +755,10 @@ impl<'a> Inferred<'a> {
                 unreachable!();
             }
         }
+    }
+
+    fn run_function(&self, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
+        todo!()
     }
 
     fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> &'a Class {

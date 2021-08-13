@@ -1,6 +1,7 @@
 mod class;
 
 pub use class::Class;
+use crate::file::Inferred;
 
 enum ArrayType {
     None,
@@ -48,4 +49,6 @@ pub trait Value<'a>: std::fmt::Debug {
     //fn get_file(&self) -> &'a dyn File;
 
     fn get_name(&self) -> &'a str;
+
+    fn lookup(&self, name: &str) -> Inferred<'a>;
 }
