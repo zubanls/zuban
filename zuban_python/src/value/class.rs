@@ -4,6 +4,7 @@ use parsa::Node;
 use super::{Value, ValueKind};
 use crate::file::{PythonFile, Inferred};
 use crate::utils::SymbolTable;
+use crate::database::Database;
 
 #[derive(Debug)]
 pub struct Class {
@@ -28,7 +29,11 @@ impl<'a> Value<'a> for Class {
         class_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 
-    fn lookup(&self, name: &str) -> Inferred<'a> {
-        todo!()
+    fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
+        if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
+            unsafe {&*self.file}.infer_arbitrary_node(database, node_index)
+        } else {
+            todo!()
+        }
     }
 }

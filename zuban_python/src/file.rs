@@ -350,10 +350,18 @@ impl<'db> PythonFile {
         todo!();
     }
 
+    fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
+        PythonInference {file: self, file_index: self.get_file_index(), database}
+    }
+
     pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
-        PythonInference {file: self, file_index: self.get_file_index(), database}
-            .infer_arbitrary_node(name).to_value_names(database)
+        self.get_inference(database).infer_arbitrary_node(name).to_value_names(database)
+    }
+
+    pub fn infer_arbitrary_node(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+        let node = self.tree.get_node_by_index(node_index);
+        self.get_inference(database).infer_arbitrary_node(node)
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -540,10 +548,10 @@ impl<'a> PythonInference<'a> {
         let second = iter.next().unwrap();
         match op.get_code() {
             "." => {
-                base.run_on_value(self.database, |value| value.lookup(second.get_code()))
+                base.run_on_value(self.database, |value| value.lookup(self.database, second.get_code()))
             }
             "(" => {
-                todo!()
+                todo!("{:?}", base)
             }
             "[" => {
                 todo!()
@@ -718,7 +726,7 @@ fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -
     builtins.use_class(v.get_node_index())
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
