@@ -806,38 +806,3 @@ impl<'a> Iterator for TargetIterator<'a> {
         }
     }
 }
-                    /*
-                    let parent_parent = parent.get_parent().unwrap();
-                    match parent_parent.get_type() {
-                        Nonterminal(dotted_as_name) => {
-                            // import foo.bar.baz
-                        }
-                        Nonterminal(import_from_as_name) => {
-                            // Name "as" name_definition | name_definition
-                            first_child = parent_parent.get_nth_child(0)
-                            if first_child.is_type(Nonterminal()) {
-                                first_child = 
-                            }
-                        }
-                        Nonterminal(pattern_capture_target) => {
-                            // Pattern matching
-                            todo!()
-                        }
-                        Nonterminal(named_expression) => {
-                            todo!()
-                        }
-                        Nonterminal(t_atom) => {
-                            todo!()
-                        }
-                        Nonterminal(single_target) => {
-                            todo!()
-                        }
-                        Nonterminal(star_atom) => {
-                            todo!()
-                        }
-                        Nonterminal(t_primary) => {
-                            todo!()
-                        }
-                        _ => panic!("Should probably not happen: {:?}", parent_parent)
-                    }
-                    */
