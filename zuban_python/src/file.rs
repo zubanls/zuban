@@ -352,7 +352,8 @@ impl<'db> PythonFile {
 
     pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
-        PythonInference {file: self, file_index: self.get_file_index(), database}.infer_node(name).to_value_names(database)
+        PythonInference {file: self, file_index: self.get_file_index(), database}
+            .infer_arbitrary_node(name).to_value_names(database)
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -648,7 +649,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_node(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_arbitrary_node(&self, node: PyNode) -> Inferred<'a> {
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
@@ -672,7 +673,7 @@ impl<'a> PythonInference<'a> {
             }
         }
         debug_assert!(self.get_value(node.index).is_calculated());
-        self.infer_node(node)
+        self.infer_arbitrary_node(node)
     }
 }
 
