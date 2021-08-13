@@ -13,7 +13,6 @@ use crate::value::Class;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 
-type ComplexIndex = u32;
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
@@ -158,9 +157,9 @@ impl ValueOrReference {
         FileIndex(self.flags & REST_MASK)
     }
 
-    pub fn get_complex_index(self) -> ComplexIndex {
+    pub fn get_complex_index(self) -> usize {
         debug_assert!(self.get_type() == ValueOrReferenceType::Complex);
-        self.flags & REST_MASK
+        (self.flags & REST_MASK) as usize
     }
 
     pub fn get_node_index(self) -> NodeIndex {

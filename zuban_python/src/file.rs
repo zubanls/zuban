@@ -540,7 +540,7 @@ impl<'a> PythonInference<'a> {
         let second = iter.next().unwrap();
         match op.get_code() {
             "." => {
-                base.run_function(|value| value.lookup(second.get_code()))
+                base.run_on_value(self.database, |value| value.lookup(second.get_code()))
             }
             "(" => {
                 todo!()
@@ -718,6 +718,7 @@ fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -
     builtins.use_class(v.get_node_index())
 }
 
+#[derive(Clone, Copy)]
 pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
@@ -729,36 +730,61 @@ impl<'a> Inferred<'a> {
         Self {file, node_index, value_or_ref}
     }
 
+    #[allow(clippy::wrong_self_convention)]
     fn to_value_names(&self, database: &'a Database) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
-            Redirect => {
-                unreachable!()
-            }
             LanguageSpecific => {
                 let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
                 vec![Box::new(WithValueName::new(database, class as &dyn Value))]
             }
-            MultiDefinition => {
+            Complex => {
                 todo!();
             }
             MissingOrUnknown => {
                 vec![]
             }
-            Complex => {
+            FileReference => {
                 todo!();
+            }
+            _ => unreachable!()
+        }
+    }
+
+    fn run_on_value(&self, database: &'a Database, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
+        use ValueOrReferenceType::*;
+        match self.value_or_ref.get_type() {
+            LanguageSpecific => {
+                let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
+                callable(class)
+            }
+            Complex => {
+                match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
+                    ComplexValue::Union(lst) => {
+                        todo!()
+                    }
+                    ComplexValue::Class(cls) => {
+                        callable(cls)
+                    }
+                    ComplexValue::Instance(bla) => {
+                        todo!()
+                    }
+                    ComplexValue::Closure(bla, bar) => {
+                        todo!()
+                    }
+                    ComplexValue::Generic(bla) => {
+                        todo!()
+                    }
+                }
+            }
+            MissingOrUnknown => {
+                *self
             }
             FileReference => {
                 todo!();
             }
-            NodeAnalysis => {
-                unreachable!();
-            }
+            _ => unreachable!()
         }
-    }
-
-    fn run_function(&self, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
-        todo!()
     }
 
     fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> &'a Class {
