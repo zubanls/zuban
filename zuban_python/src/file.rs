@@ -701,14 +701,6 @@ impl<'a> Inferred<'a> {
         match self.value_or_ref.get_type() {
             Redirect => {
                 unreachable!()
-                /*
-                if self.file_index == self.file.get_file_index(){
-                    let next = self.file.tree.get_node_by_index(value.get_node_index());
-                    self.infer_node(next)
-                } else {
-                    todo!("External Module Redirect")
-                }
-                */
             }
             LanguageSpecific => {
                 let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
