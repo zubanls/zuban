@@ -518,7 +518,36 @@ impl<'a> PythonInference<'a> {
         use NonterminalType::*;
         match node.get_type() {
             Nonterminal(atom) => self.infer_atom(node),
+            Nonterminal(primary) => self.infer_primary(node),
             _ => todo!("Did not handle {:?}", node),
+        }
+    }
+
+    fn infer_primary(&self, node: PyNode) -> Inferred {
+        //   primary "." Name
+        // | primary "(" [arguments | comprehension] ")"
+        // | primary "[" slices "]"
+        // | atom
+        use NonterminalType::*;
+        let mut iter = node.iter_children();
+        let first = iter.next().unwrap();
+        let base = match first.get_type() {
+            Nonterminal(atom) => self.infer_atom(first),
+            Nonterminal(primary) => self.infer_primary(first),
+            _ => unreachable!(),
+        };
+        let op = iter.next().unwrap();
+        match op.get_code() {
+            "." => {
+                todo!()
+            }
+            "(" => {
+                todo!()
+            }
+            "[" => {
+                todo!()
+            }
+            _ => unreachable!()
         }
     }
 
