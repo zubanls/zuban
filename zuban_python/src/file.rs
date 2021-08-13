@@ -490,7 +490,7 @@ impl<'a> PythonInference<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
-            return result.as_local_redirect(self.file.get_file_index(), node.index)
+            return result
         }
 
         let mut iter = node.iter_children();
@@ -610,7 +610,7 @@ impl<'a> PythonInference<'a> {
             false,
         );
         self.set_value(node.index, val);
-        Inferred::new(val, self.file_index, node.index as u32)
+        Inferred::new(self.file, node.index, val)
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred {
@@ -637,7 +637,7 @@ impl<'a> PythonInference<'a> {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    Some(Inferred::new(value, self.file_index, node.index as u32))
+                    Some(Inferred::new(self.file, node.index, value))
                 }
             }
         } else {
@@ -730,25 +730,15 @@ fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -
     builtins.use_class(v.get_node_index())
 }
 
-struct Inferred {
+struct Inferred<'a> {
+    file: &'a PythonFile,
+    node_index: NodeIndex,
     value_or_ref: ValueOrReference,
-    definition: ValueLink,
 }
 
-impl Inferred {
-    fn new(value_or_ref: ValueOrReference, file: FileIndex, node_index: NodeIndex) -> Self {
-        Self {value_or_ref, definition: ValueLink {file, node_index}}
-    }
-
-    fn as_local_redirect(&self, file: FileIndex, node_index: NodeIndex) -> Self {
-        let value_or_ref = ValueOrReference::new_redirect(
-            file,
-            node_index,
-            Locality::Stmt,
-            false,
-            false,
-        );
-        Self {value_or_ref, definition: self.definition}
+impl<'a> Inferred<'a> {
+    fn new(file: &'a PythonFile, node_index: NodeIndex, value_or_ref: ValueOrReference) -> Self {
+        Self {file, node_index, value_or_ref}
     }
 }
 
