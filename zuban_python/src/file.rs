@@ -11,7 +11,7 @@ use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::{SymbolTable, InsertOnlyVec};
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
-                      ValueLink, LocalityLink, ValueOrReferenceType, ComplexValue};
+                      LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
 use crate::value::{Class, Value};
 use crate::debug;
@@ -352,7 +352,7 @@ impl<'db> PythonFile {
 
     pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
-        PythonInference {file: self, file_index: self.get_file_index(), database}.infer_node(name)
+        PythonInference {file: self, file_index: self.get_file_index(), database}.infer_node(name).to_value_names(database)
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -621,7 +621,7 @@ impl<'a> PythonInference<'a> {
     }
 
     #[inline]
-    fn check_node_cache(&self, node: PyNode) -> Option<Inferred> {
+    fn check_node_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
         let value = self.get_value(node.index);
         if value.is_calculated() {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
@@ -648,76 +648,31 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_node(&self, node: PyNode) -> ValueNames<'a> {
-        use ValueOrReferenceType::*;
-        let value = self.get_value(node.index);
-        if value.is_calculated() {
-            match value.get_type() {
-                Redirect => {
-                    let file_index = value.get_file_index();
-                    if self.file_index == file_index {
-                        let next = self.file.tree.get_node_by_index(value.get_node_index());
-                        self.infer_node(next)
-                    } else {
-                        todo!("External Module Redirect")
-                    }
-                }
-                LanguageSpecific => {
-                    let class = self.resolve_python_value(node, value.get_language_specific());
-                    vec![Box::new(WithValueName::new(self.database, class as &dyn Value))]
-                }
-                MultiDefinition => {
-                    todo!();
-                }
-                MissingOrUnknown => {
-                    vec![]
-                }
-                Complex => {
-                    todo!();
-                }
-                FileReference => {
-                    todo!();
-                }
-                NodeAnalysis => {
-                    todo!();
-                }
-            }
-        } else {
-            let stmt = node.get_parent_until(&[
-                Nonterminal(NonterminalType::lambda),
-                Nonterminal(NonterminalType::comprehension),
-                Nonterminal(NonterminalType::dict_comprehension),
-                Nonterminal(NonterminalType::stmt),
-            ]).expect("There should always be a stmt");
-
-            if !self.get_value(stmt.index).is_calculated() {
-                if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
-                    todo!()
-                }
-                //self.calculate_node_scope_definitions(node);
-                if is_name_reference(node) {
-                    todo!("is extern {:?}", node);
-                } else {
-                    // Is a reference and should have been calculated.
-                    self.cache_stmt_name(stmt, node);
-                }
-            }
-            debug_assert!(self.get_value(node.index).is_calculated());
-            self.infer_node(node)
+    fn infer_node(&self, node: PyNode) -> Inferred<'a> {
+        if let Some(result) = self.check_node_cache(node) {
+            return result
         }
-    }
+        let stmt = node.get_parent_until(&[
+            Nonterminal(NonterminalType::lambda),
+            Nonterminal(NonterminalType::comprehension),
+            Nonterminal(NonterminalType::dict_comprehension),
+            Nonterminal(NonterminalType::stmt),
+        ]).expect("There should always be a stmt");
 
-    fn resolve_python_value(&self, node: PyNode, value: ValueEnum) -> &'a Class {
-        load_builtin_class_from_str(self.database, match value {
-            ValueEnum::String => "str",
-            ValueEnum::Integer => "int",
-            ValueEnum::Float => "float",
-            ValueEnum::Boolean => "bool",
-            ValueEnum::Bytes => "bytes",
-            ValueEnum::Complex => "complex",
-            ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
-            actual => todo!("{:?}", actual)
-        })
+        if !self.get_value(stmt.index).is_calculated() {
+            if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
+                todo!()
+            }
+            //self.calculate_node_scope_definitions(node);
+            if is_name_reference(node) {
+                todo!("is extern {:?}", node);
+            } else {
+                // Is a reference and should have been calculated.
+                self.cache_stmt_name(stmt, node);
+            }
+        }
+        debug_assert!(self.get_value(node.index).is_calculated());
+        self.infer_node(node)
     }
 }
 
@@ -739,6 +694,55 @@ struct Inferred<'a> {
 impl<'a> Inferred<'a> {
     fn new(file: &'a PythonFile, node_index: NodeIndex, value_or_ref: ValueOrReference) -> Self {
         Self {file, node_index, value_or_ref}
+    }
+
+    fn to_value_names(&self, database: &'a Database) -> ValueNames<'a> {
+        use ValueOrReferenceType::*;
+        match self.value_or_ref.get_type() {
+            Redirect => {
+                unreachable!()
+                /*
+                if self.file_index == self.file.get_file_index(){
+                    let next = self.file.tree.get_node_by_index(value.get_node_index());
+                    self.infer_node(next)
+                } else {
+                    todo!("External Module Redirect")
+                }
+                */
+            }
+            LanguageSpecific => {
+                let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
+                vec![Box::new(WithValueName::new(database, class as &dyn Value))]
+            }
+            MultiDefinition => {
+                todo!();
+            }
+            MissingOrUnknown => {
+                vec![]
+            }
+            Complex => {
+                todo!();
+            }
+            FileReference => {
+                todo!();
+            }
+            NodeAnalysis => {
+                unreachable!();
+            }
+        }
+    }
+
+    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> &'a Class {
+        load_builtin_class_from_str(database, match value {
+            ValueEnum::String => "str",
+            ValueEnum::Integer => "int",
+            ValueEnum::Float => "float",
+            ValueEnum::Boolean => "bool",
+            ValueEnum::Bytes => "bytes",
+            ValueEnum::Complex => "complex",
+            ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
+            actual => todo!("{:?}", actual)
+        })
     }
 }
 
