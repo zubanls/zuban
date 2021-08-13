@@ -350,6 +350,46 @@ impl<'db> PythonFile {
         todo!();
     }
 
+    pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
+        self.calculate_global_definitions_and_references();
+        PythonInference {file: self, file_index: self.get_file_index(), database}.infer_node(name)
+    }
+
+    fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
+        self.calculate_global_definitions_and_references();
+        self.symbol_table.lookup_symbol(name).map(|node_index| LocalityLink {
+            file: self.get_file_index(),
+            node_index,
+            locality: Locality::DirectExtern,
+        })
+    }
+
+    fn use_class(&self, node_index: NodeIndex) -> &Class {
+        let v = self.values_or_references[node_index as usize].get();
+        debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
+        let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
+        match complex {
+            ComplexValue::Class(c) => c,
+            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
+        }
+    }
+}
+
+struct PythonInference<'a> {
+    file: &'a PythonFile,
+    file_index: FileIndex,
+    database: &'a Database,
+}
+
+impl<'a> PythonInference<'a> {
+    fn get_value(&self, index: NodeIndex) -> ValueOrReference {
+        self.file.values_or_references[index as usize].get()
+    }
+
+    fn set_value(&self, index: NodeIndex, val: ValueOrReference) {
+        self.file.values_or_references[index as usize].set(val);
+    }
+
     fn cache_stmt_name(&self, stmt: PyNode, name: PyNode) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
@@ -407,11 +447,11 @@ impl<'db> PythonFile {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            let val = &self.values_or_references[n.index as usize];
-                            if val.get().is_calculated() {
-                                todo!("{:?}", val.get().get_type());
+                            let val = self.get_value(n.index);
+                            if val.is_calculated() {
+                                todo!("{:?}", val.get_type());
                             }
-                            val.set(inferred.value_or_ref);
+                            self.set_value(n.index, inferred.value_or_ref);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -450,7 +490,7 @@ impl<'db> PythonFile {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
-            return result.as_local_redirect(self.get_file_index(), node.index)
+            return result.as_local_redirect(self.file.get_file_index(), node.index)
         }
 
         let mut iter = node.iter_children();
@@ -468,7 +508,7 @@ impl<'db> PythonFile {
                 }
             }
         };
-        self.values_or_references[node.index as usize].set(inferred.value_or_ref);
+        self.set_value(node.index, inferred.value_or_ref);
         inferred
     }
 
@@ -569,8 +609,8 @@ impl<'db> PythonFile {
             false, // is_nullable
             false,
         );
-        self.values_or_references[node.index as usize].set(val);
-        Inferred::new(val, self.get_file_index(), node.index as u32)
+        self.set_value(node.index, val);
+        Inferred::new(val, self.file_index, node.index as u32)
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred {
@@ -580,19 +620,14 @@ impl<'db> PythonFile {
         todo!("star import? {:?}", node)
     }
 
-    pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
-        self.calculate_global_definitions_and_references();
-        self.infer_node(database, name)
-    }
-
     #[inline]
     fn check_node_cache(&self, node: PyNode) -> Option<Inferred> {
-        let value = self.values_or_references[node.index as usize].get();
+        let value = self.get_value(node.index);
         if value.is_calculated() {
             debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
             match value.get_type() {
                 ValueOrReferenceType::Redirect => {
-                    if value.get_file_index() == self.get_file_index() {
+                    if value.get_file_index() == self.file_index {
                         todo!("same file")
                     } else {
                         todo!("different file")
@@ -602,7 +637,7 @@ impl<'db> PythonFile {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    Some(Inferred::new(value, self.get_file_index(), node.index as u32))
+                    Some(Inferred::new(value, self.file_index, node.index as u32))
                 }
             }
         } else {
@@ -613,23 +648,23 @@ impl<'db> PythonFile {
         }
     }
 
-    fn infer_node(&'db self, database: &'db Database, node: PyNode) -> ValueNames<'db> {
+    fn infer_node(&self, node: PyNode) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
-        let value = self.values_or_references[node.index as usize].get();
+        let value = self.get_value(node.index);
         if value.is_calculated() {
             match value.get_type() {
                 Redirect => {
                     let file_index = value.get_file_index();
-                    if self.file_index.get().unwrap() == file_index {
-                        let next = self.tree.get_node_by_index(value.get_node_index());
-                        self.infer_node(database, next)
+                    if self.file_index == file_index {
+                        let next = self.file.tree.get_node_by_index(value.get_node_index());
+                        self.infer_node(next)
                     } else {
                         todo!("External Module Redirect")
                     }
                 }
                 LanguageSpecific => {
-                    let class = self.resolve_python_value(database, node, value.get_language_specific());
-                    vec![Box::new(WithValueName::new(database, class as &dyn Value))]
+                    let class = self.resolve_python_value(node, value.get_language_specific());
+                    vec![Box::new(WithValueName::new(self.database, class as &dyn Value))]
                 }
                 MultiDefinition => {
                     todo!();
@@ -655,7 +690,7 @@ impl<'db> PythonFile {
                 Nonterminal(NonterminalType::stmt),
             ]).expect("There should always be a stmt");
 
-            if !self.values_or_references[stmt.index as usize].get().is_calculated() {
+            if !self.get_value(stmt.index).is_calculated() {
                 if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
                     todo!()
                 }
@@ -667,15 +702,13 @@ impl<'db> PythonFile {
                     self.cache_stmt_name(stmt, node);
                 }
             }
-            debug_assert!(self.values_or_references[node.index as usize].get().is_calculated());
-            self.infer_node(database, node)
+            debug_assert!(self.get_value(node.index).is_calculated());
+            self.infer_node(node)
         }
     }
 
-    fn resolve_python_value(
-        &'db self, database: &'db Database, node: PyNode, value: ValueEnum
-    ) -> &'db Class {
-        load_builtin_class_from_str(database, match value {
+    fn resolve_python_value(&self, node: PyNode, value: ValueEnum) -> &'a Class {
+        load_builtin_class_from_str(self.database, match value {
             ValueEnum::String => "str",
             ValueEnum::Integer => "int",
             ValueEnum::Float => "float",
@@ -685,25 +718,6 @@ impl<'db> PythonFile {
             ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
             actual => todo!("{:?}", actual)
         })
-    }
-
-    fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
-        self.calculate_global_definitions_and_references();
-        self.symbol_table.lookup_symbol(name).map(|node_index| LocalityLink {
-            file: self.get_file_index(),
-            node_index,
-            locality: Locality::DirectExtern,
-        })
-    }
-
-    fn use_class(&self, node_index: NodeIndex) -> &Class {
-        let v = self.values_or_references[node_index as usize].get();
-        debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
-        let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
-        match complex {
-            ComplexValue::Class(c) => c,
-            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
-        }
     }
 }
 
