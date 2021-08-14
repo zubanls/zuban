@@ -759,6 +759,7 @@ impl<'a> Inferred<'a> {
         }
     }
 
+    #[inline]
     fn run_on_value(&self, database: &'a Database, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
