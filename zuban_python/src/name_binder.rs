@@ -62,12 +62,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
         self.add_new_definition(
             name_def,
-            ValueOrReference::new_simple_language_specific(
-                type_,
-                Locality::Stmt,
-                false,
-                self.is_global_scope,
-            )
+            ValueOrReference::new_simple_language_specific(type_, Locality::Stmt)
         );
     }
 
@@ -85,8 +80,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.file_index,
                 node_index,
                 Locality::Stmt,
-                false,
-                self.is_global_scope,
             )
         );
     }
@@ -345,7 +338,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     // The types are inferred later.
                     self.add_new_definition(
                         parent,
-                        ValueOrReference::new_uncalculated(self.is_global_scope),
+                        ValueOrReference::new_uncalculated(),
                     )
                 } else {
                     self.index_reference(n, parent, ordered);
@@ -455,7 +448,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             }
         }
         self.values_or_references[func.index as usize].set(
-            ValueOrReference::new_simple_language_specific(ValueEnum::Function, Locality::Stmt, false, false));
+            ValueOrReference::new_simple_language_specific(ValueEnum::Function, Locality::Stmt));
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -518,8 +511,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     self.file_index,
                     definition,
                     Locality::File,
-                    false,
-                    self.is_global_scope,
                 )
             } else {
                 ValueOrReference::new_missing_or_unknown(

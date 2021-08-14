@@ -651,12 +651,7 @@ impl<'a> PythonInference<'a> {
             }
             _ => unreachable!()
         };
-        let val = ValueOrReference::new_simple_language_specific(
-            value_enum,
-            Locality::Stmt,
-            false, // is_nullable
-            false,
-        );
+        let val = ValueOrReference::new_simple_language_specific(value_enum, Locality::Stmt);
         self.set_value(node.index, val);
         Inferred::new(self.file, node.index, val)
     }

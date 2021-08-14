@@ -20,8 +20,8 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // oxxxx is_analyzed
 // xoxxx is_invalidated
 // xxooo Locality (xXxx is_external)
-// xxxxxo in_module_scope
-// xxxxxxo is_nullable
+// xxxxxo in_module_scope  TODO remove
+// xxxxxxo is_nullable  TODO remove
 // xxxxxxxooo ValueOrReferenceType
 // if true rest 22 bits reserved for ValueOrReference details
 
@@ -50,21 +50,17 @@ pub struct ValueOrReference {
 
 impl ValueOrReference {
     #[inline]
-    fn calculate_flags(type_: ValueOrReferenceType, rest: u32, locality: Locality,
-                       is_nullable: bool, in_module_scope: bool) -> u32 {
+    fn calculate_flags(type_: ValueOrReferenceType, rest: u32, locality: Locality) -> u32 {
         debug_assert!(rest & !REST_MASK == 0);
         rest
         | IS_ANALIZED_MASK
         | (locality as u32) << LOCALITY_BIT_INDEX
-        | (is_nullable as u32) << IS_NULLABLE_BIT_INDEX
-        | (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX
         | (type_ as u32) << TYPE_BIT_INDEX
     }
 
-    pub fn new_redirect(module: FileIndex, node_index: NodeIndex,
-                        locality: Locality, is_nullable: bool, in_module_scope: bool) -> Self {
+    pub fn new_redirect(module: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::Redirect, module.0, locality, is_nullable, in_module_scope);
+            ValueOrReferenceType::Redirect, module.0, locality);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -74,28 +70,23 @@ impl ValueOrReference {
 
     pub fn new_complex_value(complex_index: u32, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::Complex, complex_index, locality, false, false);
+            ValueOrReferenceType::Complex, complex_index, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::MissingOrUnknown, module.0, locality, false, false);
+            ValueOrReferenceType::MissingOrUnknown, module.0, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
-    pub fn new_simple_language_specific(
-        type_: ValueEnum, locality: Locality, is_nullable: bool,
-        in_module_scope: bool
-    ) -> Self {
+    pub fn new_simple_language_specific(type_: ValueEnum, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::LanguageSpecific, type_ as u32, locality, is_nullable, in_module_scope);
+            ValueOrReferenceType::LanguageSpecific, type_ as u32, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
-    pub fn new_language_specific(
-        type_: ValueEnum,
-        node_index: NodeIndex, locality: Locality, is_nullable: bool) -> Self {
+    pub fn new_language_specific(type_: ValueEnum, node_index: NodeIndex, locality: Locality) -> Self {
         todo!()
     }
 
@@ -111,14 +102,14 @@ impl ValueOrReference {
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
             flags: Self::calculate_flags(
-                ValueOrReferenceType::NodeAnalysis, 0, locality, false, false),
+                ValueOrReferenceType::NodeAnalysis, 0, locality),
             node_or_complex_index: 0
         }
     }
 
-    pub fn new_uncalculated(in_module_scope: bool) -> Self {
+    pub fn new_uncalculated() -> Self {
         Self {
-            flags: (in_module_scope as u32) << IN_MODULE_SCOPE_BIT_INDEX,
+            flags: 0,
             node_or_complex_index: 0,
         }
     }
@@ -129,14 +120,6 @@ impl ValueOrReference {
 
     pub fn get_locality(self) -> Locality {
         unsafe { mem::transmute((self.flags & LOCALITY_MASK) >> LOCALITY_BIT_INDEX) }
-    }
-
-    pub fn in_module_scope(self) -> bool {
-        (self.flags & IN_MODULE_SCOPE_MASK) != 0
-    }
-
-    pub fn is_nullable(self) -> bool {
-        (self.flags & IS_NULLABLE_MASK) != 0
     }
 
     pub fn is_calculated(self) -> bool {
@@ -183,13 +166,12 @@ impl fmt::Debug for ValueOrReference {
         } else {
             s
              .field("type", &self.get_type())
-             .field("locality", &self.get_locality())
-             .field("is_nullable", &self.is_nullable());
+             .field("locality", &self.get_locality());
             if self.get_type() == ValueOrReferenceType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
             }
         }
-        s.field("in_module_scope", &self.in_module_scope()).finish()
+        s.finish()
     }
 }
 
