@@ -329,7 +329,15 @@ impl<'db> PythonFile {
             // It was already done.
             return
         }
-        let mut name_binder = NameBinder::new(
+        self.create_binder().index_file(self.tree.get_root_node());
+
+        self.values_or_references[0].set(ValueOrReference::new_node_analysis(
+            Locality::File
+        ));
+    }
+
+    fn create_binder(&self) -> NameBinder {
+        NameBinder::new(
             self,
             &self.symbol_table,
             &self.values_or_references,
@@ -337,17 +345,13 @@ impl<'db> PythonFile {
             self.file_index.get().unwrap(),
             true, // is_global_scope
             None,
-        );
-        name_binder.index_file(self.tree.get_root_node());
-
-        self.values_or_references[0].set(ValueOrReference::new_node_analysis(
-            Locality::File
-        ));
+        )
     }
 
     fn calculate_node_scope_definitions(&self, node: PyNode) {
         self.calculate_global_definitions_and_references();
-        todo!();
+        let symbol_table = SymbolTable::default();
+        self.create_binder().new_nested(&symbol_table).index_function_body(node);
     }
 
     fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
@@ -682,17 +686,16 @@ impl<'a> PythonInference<'a> {
                 ValueOrReferenceType::LanguageSpecific => {
                     match value.get_language_specific() {
                         ValueEnum::LazyInferredFunction => {
+                            let func = node.get_parent().unwrap().get_parent().unwrap();
+                            debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
+                            self.file.calculate_node_scope_definitions(func);
+                            dbg!(self.get_value(node.index));
                             todo!()
                         }
                         _ => {
                             Some(Inferred::new(self.file, node.index, value))
                         }
                     }
-                    /*
-                        let func = self.get_node().get_parent().unwrap().get_parent().unwrap();
-                        debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
-                        self.file.calculate_node_scope_definitions(func);
-                    */
                 }
                 ValueOrReferenceType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);

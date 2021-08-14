@@ -43,7 +43,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn new_nested(&self, symbol_table: &'b SymbolTable) -> NameBinder<'a, '_> {
+    pub fn new_nested(&self, symbol_table: &'b SymbolTable) -> NameBinder<'a, '_> {
         NameBinder::new(
             self.file, symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self))
@@ -454,6 +454,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                self.index_block(child, true);
             }
         }
+        self.values_or_references[func.index as usize].set(
+            ValueOrReference::new_simple_language_specific(ValueEnum::Function, Locality::Stmt, false, false));
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
