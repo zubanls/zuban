@@ -14,9 +14,8 @@ create_grammar!(
         Name: "match" | "case" | "_"
     ]
 
-    file: stmts? Endmarker
+    file: stmt+ Endmarker
 
-    stmts: stmt+
     stmt: @error_recovery
           simple_stmts | Newline
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
@@ -126,7 +125,7 @@ create_grammar!(
 
     class_def: "class" name_definition ["(" [arguments] ")"] ":" block
 
-    block: simple_stmts | Newline Indent stmts Dedent
+    block: simple_stmts | Newline Indent stmt+ Dedent
 
     star_expressions: ",".(expression|star_expression)+ [","]
     star_expression: "*" bitwise_or
