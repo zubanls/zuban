@@ -24,25 +24,26 @@ file: 0-117
       Keyword: 24-27 "def"
       name_definition: 28-36
        Name: 28-36 "__init__"
-      Keyword: 36-37 "("
-      parameters: 37-53
-       param_no_default: 37-41
-        name_definition: 37-41
-         Name: 37-41 "self"
-       Keyword: 41-42 ","
-       Keyword: 43-44 "/"
-       Keyword: 44-45 ","
-       param_no_default: 46-47
-        name_definition: 46-47
-         Name: 46-47 "f"
-       Keyword: 47-48 ","
-       star_etc: 49-53
-        Keyword: 49-50 "*"
-        Keyword: 50-51 ","
-        param_maybe_default: 52-53
-         name_definition: 52-53
-          Name: 52-53 "g"
-      Keyword: 53-54 ")"
+      function_def_parameters: 36-54
+       Keyword: 36-37 "("
+       parameters: 37-53
+        param_no_default: 37-41
+         name_definition: 37-41
+          Name: 37-41 "self"
+        Keyword: 41-42 ","
+        Keyword: 43-44 "/"
+        Keyword: 44-45 ","
+        param_no_default: 46-47
+         name_definition: 46-47
+          Name: 46-47 "f"
+        Keyword: 47-48 ","
+        star_etc: 49-53
+         Keyword: 49-50 "*"
+         Keyword: 50-51 ","
+         param_maybe_default: 52-53
+          name_definition: 52-53
+           Name: 52-53 "g"
+       Keyword: 53-54 ")"
       Keyword: 54-55 ":"
       block: 55-74
        Newline: 55-56 "\n"
@@ -68,12 +69,13 @@ file: 0-117
        Keyword: 88-91 "def"
        name_definition: 92-96
         Name: 92-96 "prop"
-       Keyword: 96-97 "("
-       parameters: 97-101
-        param_no_default: 97-101
-         name_definition: 97-101
-          Name: 97-101 "self"
-       Keyword: 101-102 ")"
+       function_def_parameters: 96-102
+        Keyword: 96-97 "("
+        parameters: 97-101
+         param_no_default: 97-101
+          name_definition: 97-101
+           Name: 97-101 "self"
+        Keyword: 101-102 ")"
        Keyword: 102-103 ":"
        block: 103-117
         Newline: 103-104 "\n"
