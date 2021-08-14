@@ -4,7 +4,8 @@ use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
-use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex, ComplexValue};
+use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex,
+                      ValueOrReferenceType::MultiDefinition, ComplexValue};
 use crate::file::{ComplexValues, PythonFile};
 use crate::value::Class;
 
@@ -447,8 +448,21 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                self.index_block(child, true);
             }
         }
-        self.values_or_references[func.index as usize].set(
+        let parent = func.get_parent().unwrap();
+        if !parent.is_type(Nonterminal(stmt)) {
+            todo!("{:?}", stmt);
+        }
+        let func_index = func.index as usize;
+        self.values_or_references[func_index].set(
             ValueOrReference::new_simple_language_specific(ValueEnum::Function, Locality::Stmt));
+
+        // Avoid overwriting multi definitions
+        let mut name_index = func.index as usize + 3;
+        if self.values_or_references[name_index].get().get_type() == MultiDefinition {
+            name_index -= 1;
+        }
+        self.values_or_references[name_index].set(
+            ValueOrReference::new_redirect(self.file_index, func.index, Locality::Stmt))
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
