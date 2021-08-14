@@ -52,4 +52,5 @@ pub trait Value<'a>: std::fmt::Debug {
     fn get_name(&self) -> &'a str;
 
     fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a>;
+    fn execute(&self, database: &'a Database) -> Inferred<'a>;
 }

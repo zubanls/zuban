@@ -551,7 +551,12 @@ impl<'a> PythonInference<'a> {
                 base.run_on_value(self.database, |value| value.lookup(self.database, second.get_code()))
             }
             "(" => {
-                todo!("{:?}", base)
+                if second.is_type(Nonterminal(arguments)) || second.is_type(Nonterminal(comprehension)) {
+                    todo!("add arguments {:?}", second)
+                } else {
+                    // No arguments
+                }
+                base.run_on_value(self.database, |value| value.execute(self.database))
             }
             "[" => {
                 todo!()
@@ -764,8 +769,16 @@ impl<'a> Inferred<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
             LanguageSpecific => {
-                let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
-                callable(class)
+                let specific = self.value_or_ref.get_language_specific();
+                match specific {
+                    ValueEnum::LazyInferredFunction => {
+                        todo!()
+                    }
+                    _ =>  {
+                        let class = self.resolve_python_value(database, specific);
+                        callable(class)
+                    }
+                }
             }
             Complex => {
                 match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {

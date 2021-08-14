@@ -36,4 +36,8 @@ impl<'a> Value<'a> for Class {
             todo!()
         }
     }
+
+    fn execute(&self, database: &'a Database) -> Inferred<'a> {
+        todo!()
+    }
 }
