@@ -181,11 +181,13 @@ impl fmt::Debug for ValueOrReference {
         } else if !self.is_calculated() {
             s.field("is_calculated", &self.is_calculated());
         } else {
-            self.get_type();
             s
              .field("type", &self.get_type())
              .field("locality", &self.get_locality())
              .field("is_nullable", &self.is_nullable());
+            if self.get_type() == ValueOrReferenceType::LanguageSpecific {
+                s.field("specific", &self.get_language_specific());
+            }
         }
         s.field("in_module_scope", &self.in_module_scope()).finish()
     }

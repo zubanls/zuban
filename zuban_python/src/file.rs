@@ -679,11 +679,26 @@ impl<'a> PythonInference<'a> {
                         todo!("different file")
                     }
                 }
+                ValueOrReferenceType::LanguageSpecific => {
+                    match value.get_language_specific() {
+                        ValueEnum::LazyInferredFunction => {
+                            todo!()
+                        }
+                        _ => {
+                            Some(Inferred::new(self.file, node.index, value))
+                        }
+                    }
+                    /*
+                        let func = self.get_node().get_parent().unwrap().get_parent().unwrap();
+                        debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
+                        self.file.calculate_node_scope_definitions(func);
+                    */
+                }
                 ValueOrReferenceType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    Some(Inferred::new(self.file, node.index, value))
+                    todo!()
                 }
             }
         } else {
@@ -772,7 +787,7 @@ impl<'a> Inferred<'a> {
                 let specific = self.value_or_ref.get_language_specific();
                 match specific {
                     ValueEnum::LazyInferredFunction => {
-                        todo!()
+                        unreachable!()
                     }
                     _ =>  {
                         let class = self.resolve_python_value(database, specific);
