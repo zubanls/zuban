@@ -13,7 +13,7 @@ use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
                       LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
-use crate::value::{Class, Value};
+use crate::value::{Class, Function, Value};
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -784,8 +784,8 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.value_or_ref.get_language_specific();
                 match specific {
-                    ValueEnum::LazyInferredFunction => {
-                        unreachable!()
+                    ValueEnum::Function => {
+                        callable(&Function::new(self.file, self.node_index))
                     }
                     _ =>  {
                         let class = self.resolve_python_value(database, specific);
