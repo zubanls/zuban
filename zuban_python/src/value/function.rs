@@ -41,7 +41,7 @@ impl<'a> Value<'a> for Function<'a> {
         let expression = self.get_node().get_nth_child(4);
         // Is an annotation
         if expression.is_type(Nonterminal(NonterminalType::expression)) {
-            self.file.infer_arbitrary_node(database, expression.index)
+            self.file.infer_name_by_index(database, expression.index)
         } else {
             todo!()
         }

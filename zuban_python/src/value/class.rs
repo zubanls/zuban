@@ -31,7 +31,7 @@ impl<'a> Value<'a> for Class {
 
     fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            unsafe {&*self.file}.infer_arbitrary_node(database, node_index)
+            unsafe {&*self.file}.infer_name_by_index(database, node_index)
         } else {
             todo!()
         }

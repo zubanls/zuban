@@ -360,12 +360,12 @@ impl<'db> PythonFile {
 
     pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
-        self.get_inference(database).infer_arbitrary_node(name).to_value_names(database)
+        self.get_inference(database).infer_name(name).to_value_names(database)
     }
 
-    pub fn infer_arbitrary_node(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_name_by_index(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
         let node = self.tree.get_node_by_index(node_index);
-        self.get_inference(database).infer_arbitrary_node(node)
+        self.get_inference(database).infer_name(node)
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -672,7 +672,7 @@ impl<'a> PythonInference<'a> {
                 ValueOrReferenceType::Redirect => {
                     if value.get_file_index() == self.file_index {
                         Some(
-                            self.infer_arbitrary_node(
+                            self.infer_name(
                                 self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
                         todo!("different file")
@@ -707,7 +707,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_arbitrary_node(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_name(&self, node: PyNode) -> Inferred<'a> {
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
@@ -731,7 +731,7 @@ impl<'a> PythonInference<'a> {
             }
         }
         debug_assert!(self.get_value(node.index).is_calculated());
-        self.infer_arbitrary_node(node)
+        self.infer_name(node)
     }
 }
 
