@@ -368,6 +368,10 @@ impl<'db> PythonFile {
         self.get_inference(database).infer_name(node)
     }
 
+    pub fn infer_expression(&'db self, database: &'db Database, node: PyNode) -> Inferred<'db> {
+        self.get_inference(database).infer_expression(node)
+    }
+
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.calculate_global_definitions_and_references();
         self.symbol_table.lookup_symbol(name).map(|node_index| LocalityLink {
