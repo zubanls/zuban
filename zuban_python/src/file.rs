@@ -352,8 +352,8 @@ impl<'db> PythonFile {
         self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
         let mut binder = self.create_binder();
-        binder.new_nested(&symbol_table).index_function_body(node);
-        binder.close_scope();
+        binder.with_nested(&symbol_table, |b| b.index_function_body(node));
+        binder.close();
     }
 
     fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {

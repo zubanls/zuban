@@ -48,10 +48,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    pub fn new_nested(&self, symbol_table: &'b SymbolTable) -> NameBinder<'a, '_> {
-        NameBinder::new(
+    pub fn with_nested(&self, symbol_table: &'b SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
+        let mut name_binder = NameBinder::new(
             self.file, symbol_table, self.values_or_references, self.complex_values,
-            self.file_index, false, Some(self))
+            self.file_index, false, Some(self));
+        func(&mut name_binder);
+        name_binder.close()
     }
 
     fn add_new_definition(&self, name_def: PyNode<'a>, value: ValueOrReference) {
@@ -91,7 +93,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn index_file(&mut self, file_node: PyNode<'a>) {
         self.index_stmts(file_node.iter_children(), true);
-        self.close_scope();
     }
 
     fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
@@ -181,7 +182,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    pub fn close_scope(&mut self) {
+    pub fn close(&mut self) {
         use NonterminalType::*;
         self.index_unordered_references();
 
@@ -193,13 +194,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.index_comprehension(n, true);
             } else if n.is_type(Nonterminal(lambda)) {
                 let symbol_table = SymbolTable::default();
-                self.new_nested(&symbol_table).index_lambda(n);
+                self.with_nested(&symbol_table, |binder| binder.index_lambda(n));
             } else if n.is_type(Nonterminal(expression)) {
                 // Typically annotations
                 self.index_non_block_node(n, true);
             } else if n.is_type(Nonterminal(function_def)) {
                 let symbol_table = SymbolTable::default();
-                self.new_nested(&symbol_table).index_function_body(n);
+                self.with_nested(&symbol_table, |binder| binder.index_function_body(n));
             } else {
                 unreachable!("closing scope {:?}", n);
             }
@@ -316,14 +317,15 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
-        let mut class_binder = self.new_nested(&symbol_table);
-        for child in class.iter_children() {
-            if child.is_type(Nonterminal(NonterminalType::arguments)) {
-                class_binder.index_non_block_node(child, true);
-            } else if child.is_type(Nonterminal(NonterminalType::block)) {
-                class_binder.index_block(child, true);
+        let mut class_binder = self.with_nested(&symbol_table, |binder| {
+            for child in class.iter_children() {
+                if child.is_type(Nonterminal(NonterminalType::arguments)) {
+                    binder.index_non_block_node(child, true);
+                } else if child.is_type(Nonterminal(NonterminalType::block)) {
+                    binder.index_block(child, true);
+                }
             }
-        }
+        });
         let cls = Class::new(self.file, class.index, symbol_table);
         self.set_complex_value(class, ComplexValue::Class(cls));
         // Need to first index the class, because the class body does not have access to
@@ -332,7 +334,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             class.get_nth_child(1),
             class.index as u32,
         );
-        self.close_scope();
     }
 
     fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) {
@@ -387,12 +388,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
         let first_clause = iterator.next().unwrap();
         // TODO the ordered argument is not used here currently and it should probably be used.
-        self.index_comprehension_clause(iterator, first_clause, comp.get_nth_child(0));
+        self.index_comprehension_clause(&mut iterator, first_clause, comp.get_nth_child(0));
     }
 
     fn index_comprehension_clause(
         &mut self,
-        mut clauses: impl Iterator<Item=PyNode<'a>>,
+        clauses: &mut impl Iterator<Item=PyNode<'a>>,
         mut clause: PyNode<'a>,
         // Either a named_expression or a dict_key_value
         result_node: PyNode<'a>,
@@ -412,14 +413,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
-        let mut nested = self.new_nested(&symbol_table);
-        nested.index_non_block_node(clause.get_nth_child(1), true);
-        if let Some(clause) = clauses.next() {
-            nested.index_comprehension_clause(clauses, clause, result_node);
-        } else {
-            nested.index_non_block_node(result_node, true);
-        }
-        nested.close_scope();
+        self.with_nested(&symbol_table, |binder| {
+            binder.index_non_block_node(clause.get_nth_child(1), true);
+            if let Some(clause) = clauses.next() {
+                binder.index_comprehension_clause(clauses, clause, result_node);
+            } else {
+                binder.index_non_block_node(result_node, true);
+            }
+        });
     }
 
     fn index_function_name_and_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -480,7 +481,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         self.values_or_references[name_index].set(
             ValueOrReference::new_redirect(self.file_index, func.index, Locality::Stmt));
-        self.close_scope();
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -509,7 +509,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                self.index_non_block_node(child, true);
             }
         }
-        self.close_scope();
     }
 
     fn index_reference(&mut self, name: PyNode<'a>, parent: PyNode<'a>, ordered: bool) {
