@@ -317,7 +317,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
-        let mut class_binder = self.with_nested(&symbol_table, |binder| {
+        self.with_nested(&symbol_table, |binder| {
             for child in class.iter_children() {
                 if child.is_type(Nonterminal(NonterminalType::arguments)) {
                     binder.index_non_block_node(child, true);
@@ -518,7 +518,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
             //self.maybe_add_reference(name, ordered);
-            // TODO global
+            dbg!("TODO unhandled global");
         } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
             // TODO nonlocal
         }
