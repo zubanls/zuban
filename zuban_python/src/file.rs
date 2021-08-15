@@ -448,7 +448,7 @@ impl<'a> PythonInference<'a> {
                 if expression_node.is_type(Nonterminal(yield_expr)) {
                     todo!("cache yield expr");
                 } else {
-                    self.cache_star_expressions(expression_node)
+                    self.infer_star_expressions(expression_node)
                 }
             }
         };
@@ -482,14 +482,14 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn cache_star_expressions(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_star_expressions(&self, node: PyNode) -> Inferred<'a> {
         debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expressions)));
 
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
         if iter.next().is_none() {
             if expression.is_type(Nonterminal(NonterminalType::expression)) {
-                self.cache_expression(expression)
+                self.infer_expression(expression)
             } else {
                 debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expression)));
                 todo!("Add error: can't use starred expression here");
@@ -499,7 +499,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn cache_expression(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_expression(&self, node: PyNode) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
         if let Some(result) = self.check_node_cache(node) {
