@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
-use parsa_python::PyNodeType::{Nonterminal, Terminal};
+use parsa_python::PyNodeType::{Nonterminal, Terminal, Keyword};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
 use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex,
@@ -87,6 +87,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn index_file(&mut self, file_node: PyNode<'a>) {
         self.index_stmts(file_node.iter_children(), true);
+        self.close_scope();
     }
 
     pub fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
@@ -102,6 +103,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         } else {
             self.index_stmts(block_node.iter_children().skip(2), ordered);
         }
+        self.close_scope();
     }
 
     fn index_stmts(&mut self, stmts: impl Iterator<Item=PyNode<'a>>, ordered: bool) {
@@ -174,7 +176,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 unreachable!("But found {:?}", child.get_type());
             }
         }
-        self.close_scope();
     }
 
     fn close_scope(&mut self) {
@@ -260,6 +261,19 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn index_if_stmt(&mut self, if_stmt: PyNode<'a>, ordered: bool) {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
+
+        for child in if_stmt.iter_children().skip(1) {
+            match child.get_type() {
+                Nonterminal(NonterminalType::named_expression) =>
+                    self.index_non_block_node(child, ordered),
+                Nonterminal(NonterminalType::block) =>
+                    self.index_block(child, ordered),
+                Nonterminal(NonterminalType::else_block) =>
+                    self.index_block(child.get_nth_child(2), ordered),
+                Keyword => (),
+                _ => (unreachable!()),
+            }
+        }
     }
 
     fn index_try_stmt(&mut self, try_stmt: PyNode<'a>, ordered: bool) {
