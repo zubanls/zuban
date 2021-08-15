@@ -351,7 +351,9 @@ impl<'db> PythonFile {
     fn calculate_node_scope_definitions(&self, node: PyNode) {
         self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
-        self.create_binder().new_nested(&symbol_table).index_function_body(node);
+        let mut binder = self.create_binder();
+        binder.new_nested(&symbol_table).index_function_body(node);
+        binder.close_scope();
     }
 
     fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {

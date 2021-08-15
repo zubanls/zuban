@@ -16,8 +16,10 @@ pub struct NameBinder<'a, 'b> {
     complex_values: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
+    unresolved_names: Vec<PyNode<'a>>,
     file_index: FileIndex,
     is_global_scope: bool,
+    parent_lookup_not_finished: bool,
     parent: Option<&'b NameBinder<'a, 'b>>,
 }
 
@@ -38,8 +40,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             complex_values,
             unordered_references: vec![],
             unresolved_nodes: vec![],
+            unresolved_names: vec![],
             file_index,
             is_global_scope,
+            parent_lookup_not_finished: false,
             parent,
         }
     }
@@ -90,7 +94,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.close_scope();
     }
 
-    pub fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
+    fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -103,7 +107,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         } else {
             self.index_stmts(block_node.iter_children().skip(2), ordered);
         }
-        self.close_scope();
     }
 
     fn index_stmts(&mut self, stmts: impl Iterator<Item=PyNode<'a>>, ordered: bool) {
@@ -178,10 +181,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn close_scope(&mut self) {
+    pub fn close_scope(&mut self) {
         use NonterminalType::*;
         self.index_unordered_references();
 
+        self.parent_lookup_not_finished = true;
         while let Some(n) = self.unresolved_nodes.pop() {
             if n.is_type(Nonterminal(comprehension)) {
                 // TODO It is not correct to index the last part of the expression here. It should
@@ -200,6 +204,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 unreachable!("closing scope {:?}", n);
             }
         }
+        debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
     fn index_for_stmt(&mut self, for_stmt: PyNode<'a>, ordered: bool) {
@@ -474,7 +479,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             name_index -= 1;
         }
         self.values_or_references[name_index].set(
-            ValueOrReference::new_redirect(self.file_index, func.index, Locality::Stmt))
+            ValueOrReference::new_redirect(self.file_index, func.index, Locality::Stmt));
+        self.close_scope();
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -523,16 +529,31 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     #[inline]
     fn maybe_add_reference(&mut self, name: PyNode<'a>, ordered: bool) {
         if ordered {
-            self.add_reference(name);
+            let mut n = None;
+            self.add_reference(name, |name| n = Some(name));
+            if let Some(n) = n {
+                self.unresolved_names.push(n);
+            }
         } else {
             self.unordered_references.push(name);
         }
     }
 
     #[inline]
-    fn add_reference(&self, name: PyNode<'a>) {
+    fn add_reference(&self, name: PyNode<'a>, mut unresolved_name_callback: impl FnMut(PyNode<'a>)) {
         let value = {
-            if let Some(definition) = self.lookup_name(name) {
+            if self.parent_lookup_not_finished {
+                if let Some(definition) = self.symbol_table.lookup_symbol(name.get_code()) {
+                    ValueOrReference::new_redirect(
+                        self.file_index,
+                        definition,
+                        Locality::File,
+                    )
+                } else {
+                    unresolved_name_callback(name);
+                    return
+                }
+            } else if let Some(definition) = self.lookup_name(name) {
                 ValueOrReference::new_redirect(
                     self.file_index,
                     definition,
@@ -557,7 +578,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_unordered_references(&mut self) {
         for &name in &self.unordered_references {
-            self.add_reference(name);
+            let mut n = None;
+            self.add_reference(name, |name| n = Some(name));
+            if let Some(n) = n {
+                self.unresolved_names.push(n);
+            }
         }
         self.unordered_references.truncate(0);
     }
