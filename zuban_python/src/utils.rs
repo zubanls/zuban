@@ -17,7 +17,6 @@ macro_rules! debug {
     }
 }
 
-#[derive(Debug)]
 pub struct InsertOnlyVec<T: ?Sized> {
     vec: UnsafeCell<Vec<Pin<Box<T>>>>,
 }
@@ -43,6 +42,12 @@ impl<T: ?Sized> InsertOnlyVec<T> {
 
     pub fn last(&self) -> Option<&T> {
         unsafe {&*self.vec.get()}.last().map(|x| x as &T)
+    }
+}
+
+impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        unsafe {&*self.vec.get()}.fmt(f)
     }
 }
 
