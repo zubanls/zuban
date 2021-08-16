@@ -408,6 +408,18 @@ impl<'a> PythonInference<'a> {
         self.file.values_or_references[index as usize].set(val);
     }
 
+    fn set_redirect_value(&self, index: NodeIndex, inferred: Inferred) {
+        // TODO this locality should be calculated in a more correct way
+        self.set_value(
+            index,
+            ValueOrReference::new_redirect(
+                inferred.file.get_file_index(),
+                inferred.node_index,
+                Locality::Stmt,
+            )
+        );
+    }
+
     fn cache_stmt_name(&self, stmt: PyNode, name: PyNode) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
@@ -469,7 +481,7 @@ impl<'a> PythonInference<'a> {
                             if val.is_calculated() {
                                 todo!("{:?}", val.get_type());
                             }
-                            self.set_value(n.index, inferred.value_or_ref);
+                            self.set_redirect_value(n.index, inferred);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -526,7 +538,7 @@ impl<'a> PythonInference<'a> {
                 }
             }
         };
-        self.set_value(node.index, inferred.value_or_ref);
+        self.set_redirect_value(node.index, inferred);
         inferred
     }
 
@@ -672,15 +684,21 @@ impl<'a> PythonInference<'a> {
     fn check_node_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
         let value = self.get_value(node.index);
         if value.is_calculated() {
-            debug!("Infer {:?} from cache: {:?}", node.get_code(), value.get_type());
+            debug!(
+                "Infer {:?} from cache: {:?}",
+                node.get_code().get(..20).unwrap_or_else(|| node.get_code()),
+                value.get_type());
             match value.get_type() {
                 ValueOrReferenceType::Redirect => {
-                    if value.get_file_index() == self.file_index {
+                    let file_index = value.get_file_index();
+                    if file_index == self.file_index {
                         Some(
                             self.infer_name(
                                 self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
-                        todo!("different file")
+                        let file = self.database.get_loaded_file(file_index);
+                        let py_file: &PythonFile = file.as_any().downcast_ref().unwrap();
+                        Some(py_file.infer_name_by_index(self.database, value.get_node_index()))
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -697,11 +715,14 @@ impl<'a> PythonInference<'a> {
                         }
                     }
                 }
+                ValueOrReferenceType::Complex => {
+                    Some(Inferred::new(self.file, node.index, value))
+                }
                 ValueOrReferenceType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    todo!()
+                    todo!("{:?} {:?}", value.get_type(), node)
                 }
             }
         } else {
@@ -713,9 +734,11 @@ impl<'a> PythonInference<'a> {
     }
 
     fn infer_name(&self, node: PyNode) -> Inferred<'a> {
+        // TODO move this after debug_assert_eq???
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
+        debug_assert_eq!(node.get_type(), Terminal(TerminalType::Name));
         let stmt = node.get_parent_until(&[
             Nonterminal(NonterminalType::lambda),
             Nonterminal(NonterminalType::comprehension),
@@ -770,7 +793,14 @@ impl<'a> Inferred<'a> {
                 vec![Box::new(WithValueName::new(database, class as &dyn Value))]
             }
             Complex => {
-                todo!();
+                match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
+                    ComplexValue::Class(c) => {
+                        vec![Box::new(WithValueName::new(database, c as &dyn Value))]
+                    }
+                    _ => {
+                        todo!();
+                    }
+                }
             }
             MissingOrUnknown => {
                 vec![]
