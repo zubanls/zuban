@@ -24,16 +24,16 @@ pub struct NameBinder<'a, 'b> {
 }
 
 impl<'a, 'b> NameBinder<'a, 'b> {
-    pub fn new(
+    fn new(
         file: *const PythonFile,
         symbol_table: &'b SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
         is_global_scope: bool,
-        parent: Option<&'b NameBinder<'a, 'b>>,
+        parent: Option<&'b Self>,
     ) -> Self {
-        NameBinder {
+        Self {
             file,
             symbol_table,
             values_or_references,
@@ -46,6 +46,20 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             parent_lookup_not_finished: false,
             parent,
         }
+    }
+
+    pub fn with_global_binder(
+        file: *const PythonFile,
+        symbol_table: &'b SymbolTable,
+        values_or_references: &'a [Cell<ValueOrReference>],
+        complex_values: &'a ComplexValues,
+        file_index: FileIndex,
+        parent: Option<&'b Self>,
+        func: impl FnOnce(&mut Self),
+    ) {
+        let mut binder = Self::new(file, symbol_table, values_or_references, complex_values, file_index, true, None);
+        func(&mut binder);
+        binder.close();
     }
 
     pub fn with_nested(&self, symbol_table: &'b SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
@@ -182,7 +196,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    pub fn close(&mut self) {
+    fn close(&mut self) {
         use NonterminalType::*;
         self.index_unordered_references();
 

@@ -329,31 +329,30 @@ impl<'db> PythonFile {
             // It was already done.
             return
         }
-        self.create_binder().index_file(self.tree.get_root_node());
+        self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
 
         self.values_or_references[0].set(ValueOrReference::new_node_analysis(
             Locality::File
         ));
     }
 
-    fn create_binder(&self) -> NameBinder {
-        NameBinder::new(
+    fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
+        NameBinder::with_global_binder(
             self,
             &self.symbol_table,
             &self.values_or_references,
             &self.complex_values,
             self.file_index.get().unwrap(),
-            true, // is_global_scope
             None,
+            func
         )
     }
 
     fn calculate_node_scope_definitions(&self, node: PyNode) {
         self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
-        let mut binder = self.create_binder();
-        binder.with_nested(&symbol_table, |b| b.index_function_body(node));
-        binder.close();
+        self.with_global_binder(
+            |binder| binder.with_nested(&symbol_table, |b| b.index_function_body(node)));
     }
 
     fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
