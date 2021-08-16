@@ -62,12 +62,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         binder.close();
     }
 
-    pub fn with_nested(&self, symbol_table: &'b SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
+    pub fn with_nested(&mut self, symbol_table: &'_ SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
         let mut name_binder = NameBinder::new(
             self.file, symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self));
         func(&mut name_binder);
-        name_binder.close()
+        name_binder.close();
+        let unresolved_names = name_binder.unresolved_names;
+        self.unresolved_nodes.extend(unresolved_names);
     }
 
     fn add_new_definition(&self, name_def: PyNode<'a>, value: ValueOrReference) {
@@ -202,7 +204,9 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
         self.parent_lookup_not_finished = true;
         while let Some(n) = self.unresolved_nodes.pop() {
-            if n.is_type(Nonterminal(comprehension)) {
+            if n.is_type(Terminal(TerminalType::Name)) {
+                self.maybe_add_reference(n, true);
+            } else if n.is_type(Nonterminal(comprehension)) {
                 // TODO It is not correct to index the last part of the expression here. It should
                 // have been done at the point where the generator was created.
                 self.index_comprehension(n, true);
