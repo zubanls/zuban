@@ -16,7 +16,6 @@ pub struct NameBinder<'a, 'b> {
     unresolved_nodes: Vec<PyNode<'a>>,
     unresolved_names: Vec<PyNode<'a>>,
     file_index: FileIndex,
-    is_global_scope: bool,
     parent_lookup_not_finished: bool,
     parent: Option<&'b NameBinder<'a, 'b>>,
 }
@@ -27,7 +26,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
-        is_global_scope: bool,
         parent: Option<&'b Self>,
     ) -> Self {
         Self {
@@ -38,7 +36,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             unresolved_nodes: vec![],
             unresolved_names: vec![],
             file_index,
-            is_global_scope,
             parent_lookup_not_finished: false,
             parent,
         }
@@ -52,7 +49,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(symbol_table, values_or_references, complex_values, file_index, true, None);
+        let mut binder = Self::new(symbol_table, values_or_references, complex_values, file_index, None);
         func(&mut binder);
         binder.close();
     }
@@ -60,7 +57,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn with_nested(&mut self, symbol_table: &'_ SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
         let mut name_binder = NameBinder::new(
             symbol_table, self.values_or_references, self.complex_values,
-            self.file_index, false, Some(self));
+            self.file_index, Some(self));
         func(&mut name_binder);
         name_binder.close();
         let unresolved_names = name_binder.unresolved_names;
@@ -135,7 +132,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             if child.is_type(Nonterminal(simple_stmts)) {
                 self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
-                if !self.is_global_scope {
+                if self.parent.is_some() {
                     // Has to be resolved, because we otherwise have no knowledge about the symbol
                     // tables in parents.
                     self.unresolved_nodes.push(child);
