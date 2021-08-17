@@ -6,7 +6,9 @@ use std::path::PathBuf;
 
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
-    assert!(cli_args.len() > 1);
+    if cli_args.len() > 1 {
+        // TODO filtering
+    }
 
     for python_file in get_python_files() {
         let code = read_to_string(&python_file).unwrap();
