@@ -7,21 +7,21 @@ use crate::database::Database;
 use crate::tree_utils::get_class_name;
 
 #[derive(Debug)]
-pub struct Class<'a> {
+pub struct Instance<'a> {
     file: &'a PythonFile,
     symbol_table: &'a SymbolTable,
     node_index: NodeIndex,
 }
 
-impl<'a> Class<'a> {
+impl<'a> Instance<'a> {
     pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
         Self {file, node_index, symbol_table}
     }
 }
 
-impl<'a> Value<'a> for Class<'a> {
+impl<'a> Value<'a> for Instance<'a> {
     fn get_kind(&self) -> ValueKind {
-        ValueKind::Class
+        ValueKind::Object
     }
 
     fn get_name(&self) -> &'a str {

@@ -1,8 +1,10 @@
 mod class;
 mod function;
+mod instance;
 
 pub use class::Class;
 pub use function::Function;
+pub use instance::Instance;
 use crate::file::Inferred;
 use crate::database::Database;
 
