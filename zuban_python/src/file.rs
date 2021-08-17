@@ -338,7 +338,6 @@ impl<'db> PythonFile {
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
-            self,
             &self.symbol_table,
             &self.values_or_references,
             &self.complex_values,
@@ -382,12 +381,12 @@ impl<'db> PythonFile {
         })
     }
 
-    fn use_class(&self, node_index: NodeIndex) -> &Class {
+    fn use_class(&self, node_index: NodeIndex) -> Class {
         let v = self.values_or_references[node_index as usize].get();
         debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
         let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
         match complex {
-            ComplexValue::Class(c) => c,
+            ComplexValue::Class(c) => Class::new(self, node_index, &c.symbol_table),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -763,7 +762,7 @@ impl<'a> PythonInference<'a> {
     }
 }
 
-fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> &'a Class {
+fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class<'a> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.values_or_references[node_index as usize].get();
@@ -789,13 +788,14 @@ impl<'a> Inferred<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
             LanguageSpecific => {
-                let class = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
-                vec![Box::new(WithValueName::new(database, class as &dyn Value))]
+                let class: Class<'a> = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
+                vec![Box::new(WithValueName::new(database, class))]
             }
             Complex => {
                 match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
-                    ComplexValue::Class(c) => {
-                        vec![Box::new(WithValueName::new(database, c as &dyn Value))]
+                    ComplexValue::Class(cls_storage) => {
+                        let cls = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
+                        vec![Box::new(WithValueName::new(database, cls))]
                     }
                     _ => {
                         todo!();
@@ -824,7 +824,7 @@ impl<'a> Inferred<'a> {
                     }
                     _ =>  {
                         let class = self.resolve_python_value(database, specific);
-                        callable(class)
+                        callable(&class)
                     }
                 }
             }
@@ -833,8 +833,9 @@ impl<'a> Inferred<'a> {
                     ComplexValue::Union(lst) => {
                         todo!()
                     }
-                    ComplexValue::Class(cls) => {
-                        callable(cls)
+                    ComplexValue::Class(cls_storage) => {
+                        let class = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
+                        callable(&class)
                     }
                     ComplexValue::Instance(bla) => {
                         todo!()
@@ -857,7 +858,7 @@ impl<'a> Inferred<'a> {
         }
     }
 
-    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> &'a Class {
+    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Class<'a> {
         load_builtin_class_from_str(database, match value {
             ValueEnum::String => "str",
             ValueEnum::Integer => "int",

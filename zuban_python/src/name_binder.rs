@@ -4,13 +4,11 @@ use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
 use parsa_python::PyNodeType::{Nonterminal, Terminal, Keyword};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
-use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex,
+use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex, ClassStorage,
                       ValueOrReferenceType::MultiDefinition, ComplexValue};
-use crate::file::{ComplexValues, PythonFile};
-use crate::value::Class;
+use crate::file::ComplexValues;
 
 pub struct NameBinder<'a, 'b> {
-    file: *const PythonFile,
     symbol_table: &'b SymbolTable,
     values_or_references: &'a [Cell<ValueOrReference>],
     complex_values: &'a ComplexValues,
@@ -25,7 +23,6 @@ pub struct NameBinder<'a, 'b> {
 
 impl<'a, 'b> NameBinder<'a, 'b> {
     fn new(
-        file: *const PythonFile,
         symbol_table: &'b SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
@@ -34,7 +31,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
     ) -> Self {
         Self {
-            file,
             symbol_table,
             values_or_references,
             complex_values,
@@ -49,7 +45,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     pub fn with_global_binder(
-        file: *const PythonFile,
         symbol_table: &'b SymbolTable,
         values_or_references: &'a [Cell<ValueOrReference>],
         complex_values: &'a ComplexValues,
@@ -57,14 +52,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(file, symbol_table, values_or_references, complex_values, file_index, true, None);
+        let mut binder = Self::new(symbol_table, values_or_references, complex_values, file_index, true, None);
         func(&mut binder);
         binder.close();
     }
 
     pub fn with_nested(&mut self, symbol_table: &'_ SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
         let mut name_binder = NameBinder::new(
-            self.file, symbol_table, self.values_or_references, self.complex_values,
+            symbol_table, self.values_or_references, self.complex_values,
             self.file_index, false, Some(self));
         func(&mut name_binder);
         name_binder.close();
@@ -344,8 +339,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
         });
-        let cls = Class::new(self.file, class.index, symbol_table);
-        self.set_complex_value(class, ComplexValue::Class(cls));
+        self.set_complex_value(class, ComplexValue::Class(ClassStorage::new(symbol_table)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(

@@ -172,7 +172,7 @@ impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
     }
 }
 
-impl<'a, T: Borrow<dyn Value<'a>> + fmt::Debug> Name<'a> for WithValueName<'a, T> {
+impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
     fn get_name(&self) -> &'a str {
         self.value.borrow().get_name()
     }
@@ -218,7 +218,7 @@ impl<'a, T: Borrow<dyn Value<'a>> + fmt::Debug> Name<'a> for WithValueName<'a, T
     */
 }
 
-impl<'a, T: Borrow<dyn Value<'a>>+fmt::Debug> ValueName<'a> for WithValueName<'a, T> {
+impl<'a, T: Value<'a>> ValueName<'a> for WithValueName<'a, T> {
     fn get_kind(&self) -> ValueKind {
         self.value.borrow().get_kind()
     }

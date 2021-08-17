@@ -7,8 +7,7 @@ use std::pin::Pin;
 use parsa::NodeIndex;
 
 use crate::file::{PythonFile, FileState, File, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
-use crate::utils::InsertOnlyVec;
-use crate::value::Class;
+use crate::utils::{InsertOnlyVec, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -246,7 +245,7 @@ pub struct LocalityLink {
 
 #[derive(Debug)]
 pub enum ComplexValue {
-    Class(Class),
+    Class(ClassStorage),
     Union(Box<[ValueLink]>),
     Instance(Execution),
     Closure(ValueLink, Execution),
@@ -381,5 +380,16 @@ impl PythonState {
     pub fn get_builtins(&self) -> &PythonFile {
         debug_assert!(!self.builtins.is_null());
         unsafe {&*self.builtins}
+    }
+}
+
+#[derive(Debug)]
+pub struct ClassStorage {
+    pub symbol_table: SymbolTable,
+}
+
+impl ClassStorage {
+    pub fn new(symbol_table: SymbolTable) -> Self {
+        Self {symbol_table}
     }
 }
