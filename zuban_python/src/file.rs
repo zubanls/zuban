@@ -325,13 +325,13 @@ impl<'db> PythonFile {
     }
 
     fn calculate_global_definitions_and_references(&self) {
-        if self.values_or_references[0].get().is_calculated() {
+        if self.get_value(0).is_calculated() {
             // It was already done.
             return
         }
         self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
 
-        self.values_or_references[0].set(ValueOrReference::new_node_analysis(
+        self.set_value(0, ValueOrReference::new_node_analysis(
             Locality::File
         ));
     }
@@ -368,8 +368,17 @@ impl<'db> PythonFile {
         self.get_inference(database).infer_name(node)
     }
 
-    pub fn infer_expression(&'db self, database: &'db Database, node: PyNode) -> Inferred<'db> {
+    pub fn infer_expression(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+        let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_expression(node)
+    }
+
+    fn get_value(&self, index: NodeIndex) -> ValueOrReference {
+        self.values_or_references[index as usize].get()
+    }
+
+    pub fn set_value(&self, index: NodeIndex, val: ValueOrReference) {
+        self.values_or_references[index as usize].set(val);
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
@@ -381,12 +390,12 @@ impl<'db> PythonFile {
         })
     }
 
-    fn use_instance(&self, node_index: NodeIndex) -> Instance {
-        let v = self.values_or_references[node_index as usize].get();
+    fn use_instance(&self, node_index: NodeIndex) -> Option<Instance> {
+        let v = self.get_value(node_index);
         debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
         let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
         match complex {
-            ComplexValue::Class(c) => Instance::new(self, node_index, &c.symbol_table),
+            ComplexValue::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -399,17 +408,9 @@ struct PythonInference<'a> {
 }
 
 impl<'a> PythonInference<'a> {
-    fn get_value(&self, index: NodeIndex) -> ValueOrReference {
-        self.file.values_or_references[index as usize].get()
-    }
-
-    fn set_value(&self, index: NodeIndex, val: ValueOrReference) {
-        self.file.values_or_references[index as usize].set(val);
-    }
-
     fn set_redirect_value(&self, index: NodeIndex, inferred: Inferred) {
         // TODO this locality should be calculated in a more correct way
-        self.set_value(
+        self.file.set_value(
             index,
             ValueOrReference::new_redirect(
                 inferred.file.get_file_index(),
@@ -476,7 +477,7 @@ impl<'a> PythonInference<'a> {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            let val = self.get_value(n.index);
+                            let val = self.file.get_value(n.index);
                             if val.is_calculated() {
                                 todo!("{:?}", val.get_type());
                             }
@@ -668,7 +669,7 @@ impl<'a> PythonInference<'a> {
             _ => unreachable!()
         };
         let val = ValueOrReference::new_simple_language_specific(value_enum, Locality::Stmt);
-        self.set_value(node.index, val);
+        self.file.set_value(node.index, val);
         Inferred::new(self.file, node.index, val)
     }
 
@@ -681,7 +682,7 @@ impl<'a> PythonInference<'a> {
 
     #[inline]
     fn check_node_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
-        let value = self.get_value(node.index);
+        let value = self.file.get_value(node.index);
         if value.is_calculated() {
             debug!(
                 "Infer {:?} from cache: {:?}",
@@ -706,7 +707,7 @@ impl<'a> PythonInference<'a> {
                             let func = node.get_parent().unwrap().get_parent().unwrap();
                             debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
                             self.file.calculate_node_scope_definitions(func);
-                            dbg!(self.get_value(node.index));
+                            dbg!(self.file.get_value(node.index));
                             todo!()
                         }
                         _ => {
@@ -745,7 +746,7 @@ impl<'a> PythonInference<'a> {
             Nonterminal(NonterminalType::stmt),
         ]).expect("There should always be a stmt");
 
-        if !self.get_value(stmt.index).is_calculated() {
+        if !self.file.get_value(stmt.index).is_calculated() {
             if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
                 todo!()
             }
@@ -757,7 +758,7 @@ impl<'a> PythonInference<'a> {
                 self.cache_stmt_name(stmt, node);
             }
         }
-        debug_assert!(self.get_value(node.index).is_calculated());
+        debug_assert!(self.file.get_value(node.index).is_calculated());
         self.infer_name(node)
     }
 }
@@ -765,10 +766,10 @@ impl<'a> PythonInference<'a> {
 fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str) -> Instance<'a> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
-    let v = builtins.values_or_references[node_index as usize].get();
+    let v = builtins.get_value(node_index);
     debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    builtins.use_instance(v.get_node_index())
+    builtins.use_instance(v.get_node_index()).unwrap()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -779,7 +780,7 @@ pub struct Inferred<'a> {
 }
 
 impl<'a> Inferred<'a> {
-    fn new(file: &'a PythonFile, node_index: NodeIndex, value_or_ref: ValueOrReference) -> Self {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, value_or_ref: ValueOrReference) -> Self {
         Self {file, node_index, value_or_ref}
     }
 
@@ -788,8 +789,24 @@ impl<'a> Inferred<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
             LanguageSpecific => {
-                let instance = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
-                vec![Box::new(WithValueName::new(database, instance))]
+                let specific = self.value_or_ref.get_language_specific();
+                vec![match specific {
+                    ValueEnum::Function => {
+                        Box::new(WithValueName::new(database, Function::new(self.file, self.node_index)))
+                    }
+                    ValueEnum::AnnotationInstance => {
+                        let inferred = self.file.infer_expression(database, self.node_index + 2);
+                        if let Some(instance) = inferred.file.use_instance(inferred.node_index) {
+                            Box::new(WithValueName::new(database, instance))
+                        }  else {
+                            debug!("Inferred annotation {:?}, which is not a class: {:?}", self, inferred);
+                            return vec![]
+                        }
+                    }
+                    _ => {
+                        Box::new(WithValueName::new(database, self.resolve_python_value(database, self.value_or_ref.get_language_specific())))
+                    }
+                }]
             }
             Complex => {
                 match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
@@ -821,6 +838,10 @@ impl<'a> Inferred<'a> {
                 match specific {
                     ValueEnum::Function => {
                         callable(&Function::new(self.file, self.node_index))
+                    }
+                    ValueEnum::AnnotationInstance => {
+                        let inferred = self.file.infer_expression(database, self.node_index + 2);
+                        todo!()
                     }
                     _ =>  {
                         let instance = self.resolve_python_value(database, specific);

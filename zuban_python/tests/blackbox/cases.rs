@@ -35,7 +35,7 @@ impl TestFile {
                         .iter()
                         .map(|name| {
                             name.get_name().to_owned()
-                            + (if name.get_kind() == ValueKind::Object {"("} else {""})
+                            + (if name.get_kind() == ValueKind::Object {"()"} else {""})
                         })
                         .collect();
                     assert_eq!(actual, expected);

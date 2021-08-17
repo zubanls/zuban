@@ -212,6 +212,8 @@ pub enum ValueEnum {
     Function,  // The node point so the index of the result
     NoReturnFunction,
 
+    AnnotationInstance,
+
     TypeVar,
     Any,
 }

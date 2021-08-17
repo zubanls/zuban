@@ -98,7 +98,6 @@ pub trait LanguageTreeName<'a> {
 impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
     fn tree_infer(&self) -> ValueNames<'a> {
         if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
-            dbg!(self.file.infer_name(self.database, self.tree_node));
             self.file.infer_name(self.database, self.tree_node)
         } else {
             vec![]
