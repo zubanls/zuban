@@ -99,7 +99,7 @@ impl<'a> Script<'a> {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
-            Leaf::Other | Leaf::None | Leaf::String => vec![],
+            Leaf::None | Leaf::String => vec![],
         }
     }
 
@@ -114,7 +114,7 @@ impl<'a> Script<'a> {
             Leaf::Name(name) => name.goto(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),
-            Leaf::Other | Leaf::None | Leaf::String => vec![],
+            Leaf::None | Leaf::String => vec![],
         }
     }
 

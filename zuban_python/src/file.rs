@@ -46,7 +46,6 @@ pub enum Leaf<'a> {
     String,
     Number,
     Keyword(String),
-    Other,
     None
 }
 
