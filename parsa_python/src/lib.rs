@@ -117,8 +117,9 @@ create_grammar!(
     keyword_pattern: Name "=" pattern
 
     async_function_def: "async" function_def
-    function_def: "def" name_definition function_def_parameters ["->" expression] ":" block
+    function_def: "def" name_definition function_def_parameters return_annotation? ":" block
     function_def_parameters: "(" [parameters] ")"
+    return_annotation: "->" expression
 
     decorator: "@" named_expression Newline
     decorators: decorator+

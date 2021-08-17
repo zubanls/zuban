@@ -136,7 +136,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.index_non_block_node(child, ordered);
             } else if child.is_type(Nonterminal(function_def)) {
                 if !self.is_global_scope {
-                    // Has to be resolved, because we otherwise have no knowledge about globals
+                    // Has to be resolved, because we otherwise have no knowledge about the symbol
+                    // tables in parents.
                     self.unresolved_nodes.push(child);
                 }
                 self.index_function_name_and_param_defaults(child, ordered);
@@ -437,7 +438,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_function_name_and_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
-        // function_def: "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
+        // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
         for child in node.iter_children() {
             if child.is_type(Nonterminal(parameters)) {
                 for n in child.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
@@ -449,9 +450,9 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                         self.index_non_block_node(n, ordered);
                     }
                 }
-            } else if child.is_type(Nonterminal(expression)) {
+            } else if child.is_type(Nonterminal(return_annotation)) {
                 // This is the -> annotation that needs to be resolved at the end of a module.
-                self.unresolved_nodes.push(child);
+                self.unresolved_nodes.push(child.get_nth_child(1));
             }
         }
         self.add_value_definition(

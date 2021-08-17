@@ -38,7 +38,7 @@ impl<'a> Value<'a> for Function<'a> {
     }
 
     fn execute(&self, database: &'a Database) -> Inferred<'a> {
-        let expression = self.get_node().get_nth_child(4);
+        let expression = self.get_node().get_nth_child(3).get_nth_child(1);
         // Is an annotation
         if expression.is_type(Nonterminal(NonterminalType::expression)) {
             self.file.infer_expression(database, expression)

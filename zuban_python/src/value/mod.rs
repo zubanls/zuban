@@ -16,6 +16,7 @@ enum ArrayType {
     Set,
 }
 
+#[derive(Eq, PartialEq)]
 pub enum ValueKind {
     Unknown = 0,
     // Taken from LSP, unused kinds are commented

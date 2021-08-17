@@ -13,7 +13,7 @@ use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
                       LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
-use crate::value::{Class, Function, Value};
+use crate::value::{Class, Instance, Function, Value};
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -381,12 +381,12 @@ impl<'db> PythonFile {
         })
     }
 
-    fn use_class(&self, node_index: NodeIndex) -> Class {
+    fn use_instance(&self, node_index: NodeIndex) -> Instance {
         let v = self.values_or_references[node_index as usize].get();
         debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
         let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
         match complex {
-            ComplexValue::Class(c) => Class::new(self, node_index, &c.symbol_table),
+            ComplexValue::Class(c) => Instance::new(self, node_index, &c.symbol_table),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -762,13 +762,13 @@ impl<'a> PythonInference<'a> {
     }
 }
 
-fn load_builtin_class_from_str<'a>(database: &'a Database, name: &'static str) -> Class<'a> {
+fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str) -> Instance<'a> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.values_or_references[node_index as usize].get();
     debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    builtins.use_class(v.get_node_index())
+    builtins.use_instance(v.get_node_index())
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -788,8 +788,8 @@ impl<'a> Inferred<'a> {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
             LanguageSpecific => {
-                let class: Class<'a> = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
-                vec![Box::new(WithValueName::new(database, class))]
+                let instance = self.resolve_python_value(database, self.value_or_ref.get_language_specific());
+                vec![Box::new(WithValueName::new(database, instance))]
             }
             Complex => {
                 match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
@@ -823,8 +823,8 @@ impl<'a> Inferred<'a> {
                         callable(&Function::new(self.file, self.node_index))
                     }
                     _ =>  {
-                        let class = self.resolve_python_value(database, specific);
-                        callable(&class)
+                        let instance = self.resolve_python_value(database, specific);
+                        callable(&instance)
                     }
                 }
             }
@@ -858,8 +858,8 @@ impl<'a> Inferred<'a> {
         }
     }
 
-    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Class<'a> {
-        load_builtin_class_from_str(database, match value {
+    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Instance<'a> {
+        load_builtin_instance_from_str(database, match value {
             ValueEnum::String => "str",
             ValueEnum::Integer => "int",
             ValueEnum::Float => "float",

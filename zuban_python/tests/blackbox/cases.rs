@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::collections::HashSet;
-use zuban_python::{Script, Position};
+use zuban_python::{Script, Position, ValueKind};
 
 pub struct TestFile {
     pub path: PathBuf,
@@ -33,7 +33,10 @@ impl TestFile {
                     let actual: HashSet<_> = script
                         .infer_definition(Position::LineColumn(case.line, case.column))
                         .iter()
-                        .map(|name| name.get_name().to_owned() + "()")
+                        .map(|name| {
+                            name.get_name().to_owned()
+                            + (if name.get_kind() == ValueKind::Object {"("} else {""})
+                        })
                         .collect();
                     assert_eq!(actual, expected);
                 }

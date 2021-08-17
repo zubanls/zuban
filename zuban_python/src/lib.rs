@@ -13,6 +13,7 @@ use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
 use database::{FileIndex, Database};
+pub use value::ValueKind;
 
 pub enum ProjectType {
     PythonProject(PythonProject),
