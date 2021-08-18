@@ -98,7 +98,7 @@ impl<'a> Script<'a> {
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
-            Leaf::Keyword(keyword) => todo!(),
+            Leaf::Keyword(node) => self.get_file().infer_operator_leaf(&self.project.database, node),
             Leaf::None | Leaf::String => vec![],
         }
     }

@@ -45,7 +45,7 @@ pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
     String,
     Number,
-    Keyword(String),
+    Keyword(PyNode<'a>),
     None
 }
 
@@ -97,6 +97,7 @@ pub trait File: std::fmt::Debug+AsAny {
         vec![]
     }
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
+    fn infer_operator_leaf<'a>(&'a self, database: &'a Database, node: PyNode<'a>) -> ValueNames<'a>;
     fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
@@ -229,6 +230,7 @@ impl File for PythonFile {
                         )),
                         TerminalType::Newline => {
                             if node.start() == position {
+                                // TODO remove this if, it's not necessary anymore
                                 if let Some(prev) = node.get_previous_leaf() {
                                     if prev.end() == position {
                                         return calculate(file, database, prev, position);
@@ -241,7 +243,7 @@ impl File for PythonFile {
                     }
                 }
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    Leaf::Keyword(node.get_code().to_owned())
+                    Leaf::Keyword(node)
                 }
                 Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str())
             }
@@ -298,6 +300,15 @@ impl File for PythonFile {
             }
         }
         calculate(self, database, left, position)
+    }
+    fn infer_operator_leaf<'a>(&'a self, database: &'a Database, leaf: PyNode<'a>) -> ValueNames<'a> {
+        if ["(", "[", "{", ")", "]", "}"].iter().any(|&x| x == leaf.get_code()) {
+            let parent = leaf.get_parent().unwrap();
+            if parent.is_type(Nonterminal(NonterminalType::primary)) {
+                return self.get_inference(database).infer_expression_part(parent).to_value_names(database)
+            }
+        }
+        vec![]
     }
 
     fn get_file_index(&self) -> FileIndex {
@@ -566,7 +577,7 @@ impl<'a> PythonInference<'a> {
 
     fn infer_expression(&self, node: PyNode) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
-        debug_assert!(node.is_type(Nonterminal(NonterminalType::expression)));
+        debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
