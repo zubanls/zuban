@@ -228,17 +228,6 @@ impl File for PythonFile {
                         TerminalType::Name => Leaf::Name(Box::new(
                             TreeName::new(database, file, node)
                         )),
-                        TerminalType::Newline => {
-                            if node.start() == position {
-                                // TODO remove this if, it's not necessary anymore
-                                if let Some(prev) = node.get_previous_leaf() {
-                                    if prev.end() == position {
-                                        return calculate(file, database, prev, position);
-                                    }
-                                }
-                            }
-                            Leaf::None
-                        }
                         _ => Leaf::None,
                     }
                 }
@@ -254,7 +243,7 @@ impl File for PythonFile {
         if left.start() == position {
             if let Some(n) = left.get_previous_leaf() {
                 if n.end() == position {
-                    right = n;
+                    left = n;
                 }
             }
         } else if left.end() == position {
@@ -266,6 +255,8 @@ impl File for PythonFile {
         }
         // From now on left is the node we're passing.
         if left.index != right.index {
+            use TerminalType::*;
+            let order = [Name, Number, String, Bytes, FStringString, FStringStart, FStringEnd];
             match left.get_type() {
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                     match right.get_type() {
@@ -276,19 +267,22 @@ impl File for PythonFile {
                                 left = right;
                             }
                         }
-                        _ => {left = right}
+                        Terminal(t) | ErrorTerminal(t) => {
+                            // If it is any of the wanted types, just use that instead.
+                            if order.contains(&t) {
+                                left = right;
+                            }
+                        }
+                        _ => unreachable!()
                     }
                 }
                 Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
                     match right.get_type() {
                         Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            // Both are terminals
-                            use TerminalType::*;
-                            let order = [Name, Number, String, Bytes,
-                                         FStringString, FStringStart, FStringEnd];
-                            let order_func = |typ| order.iter().position(|&t| t == typ);
+                            let order_func = |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
                             let left_index = order_func(left_terminal);
                             let right_index = order_func(right_terminal);
+                            // Both are terminals, prefer the one that is higher in the order
                             if right_index < left_index {
                                 left = right;
                             }
