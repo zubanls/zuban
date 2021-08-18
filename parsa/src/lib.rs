@@ -326,6 +326,21 @@ macro_rules! __create_node {
                 return None
             }
 
+            pub fn get_next_leaf(&self) -> Option<$Node<'a>> {
+                if let Some(slice) = self.internal_tree.nodes.get(self.index as usize + 1..) {
+                    for (index, node) in slice.iter().enumerate() {
+                        if node.type_.is_leaf() {
+                            return Some($Node {
+                                internal_tree: &self.internal_tree,
+                                internal_node: node,
+                                index: index as $crate::NodeIndex,
+                            });
+                        }
+                    }
+                }
+                return None
+            }
+
             pub fn get_type(&self) -> $NodeType {
                 let f = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 let g = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};

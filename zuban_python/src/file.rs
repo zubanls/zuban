@@ -243,12 +243,61 @@ impl File for PythonFile {
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                     Leaf::Keyword(node.get_code().to_owned())
                 }
-                Nonterminal(n) | ErrorNonterminal(n) => {
-                    panic!("{}", node.type_str())
+                Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str())
+            }
+        }
+        // First check the token left and right of the cursor
+        let mut left = self.tree.get_leaf_by_position(position);
+        let mut right = left;
+        if left.start() == position {
+            if let Some(n) = left.get_previous_leaf() {
+                if n.end() == position {
+                    right = n;
+                }
+            }
+        } else if left.end() == position {
+            if let Some(n) = left.get_next_leaf() {
+                if n.start() == position {
+                    right = n;
                 }
             }
         }
-        calculate(self, database, self.tree.get_leaf_by_position(position), position)
+        // From now on left is the node we're passing.
+        if left.index != right.index {
+            match left.get_type() {
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                    match right.get_type() {
+                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
+                            let is_alpha = |n: PyNode| n.get_code().chars().all(|x| x.is_alphanumeric());
+                            if is_alpha(right) && !is_alpha(left) {
+                                // Prefer keywords to operators
+                                left = right;
+                            }
+                        }
+                        _ => {left = right}
+                    }
+                }
+                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
+                    match right.get_type() {
+                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
+                            // Both are terminals
+                            use TerminalType::*;
+                            let order = [Name, Number, String, Bytes,
+                                         FStringString, FStringStart, FStringEnd];
+                            let order_func = |typ| order.iter().position(|&t| t == typ);
+                            let left_index = order_func(left_terminal);
+                            let right_index = order_func(right_terminal);
+                            if right_index < left_index {
+                                left = right;
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+                Nonterminal(n) | ErrorNonterminal(n) => unreachable!()
+            }
+        }
+        calculate(self, database, left, position)
     }
 
     fn get_file_index(&self) -> FileIndex {
