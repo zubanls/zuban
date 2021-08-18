@@ -7,6 +7,7 @@ pub use function::Function;
 pub use instance::Instance;
 use crate::file::Inferred;
 use crate::database::Database;
+use crate::arguments::Arguments;
 
 enum ArrayType {
     None,
@@ -57,5 +58,5 @@ pub trait Value<'a>: std::fmt::Debug {
     fn get_name(&self) -> &'a str;
 
     fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a>;
-    fn execute(&self, database: &'a Database) -> Inferred<'a>;
+    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a>;
 }

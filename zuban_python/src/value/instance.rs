@@ -5,6 +5,7 @@ use crate::file::{PythonFile, Inferred};
 use crate::utils::SymbolTable;
 use crate::database::Database;
 use crate::tree_utils::get_class_name;
+use crate::arguments::Arguments;
 
 #[derive(Debug)]
 pub struct Instance<'a> {
@@ -36,7 +37,7 @@ impl<'a> Value<'a> for Instance<'a> {
         }
     }
 
-    fn execute(&self, database: &'a Database) -> Inferred<'a> {
+    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
         todo!()
     }
 }

@@ -8,6 +8,7 @@ mod value;
 mod utils;
 mod name_binder;
 mod tree_utils;
+mod arguments;
 
 use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};

@@ -14,6 +14,7 @@ use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum
                       LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
 use crate::value::{Class, Instance, Function, Value};
+use crate::arguments::Arguments;
 use crate::debug;
 
 lazy_static::lazy_static! {
@@ -299,6 +300,7 @@ impl File for PythonFile {
         if ["(", "[", "{", ")", "]", "}"].iter().any(|&x| x == leaf.get_code()) {
             let parent = leaf.get_parent().unwrap();
             if parent.is_type(Nonterminal(NonterminalType::primary)) {
+                self.calculate_global_definitions_and_references();
                 return self.get_inference(database).infer_expression_part(parent).to_value_names(database)
             }
         }
@@ -473,7 +475,7 @@ impl<'a> PythonInference<'a> {
         );
     }
 
-    fn cache_stmt_name(&self, stmt: PyNode, name: PyNode) {
+    fn cache_stmt_name(&self, stmt: PyNode, name: PyNode<'a>) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
@@ -491,7 +493,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn cache_assignment_nodes(&self, assignment_node: PyNode) {
+    fn cache_assignment_nodes(&self, assignment_node: PyNode<'a>) {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
@@ -552,7 +554,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_star_expressions(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_star_expressions(&self, node: PyNode<'a>) -> Inferred<'a> {
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::star_expressions));
 
         let mut iter = node.iter_children();
@@ -569,7 +571,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_expression(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
         if let Some(result) = self.check_node_cache(node) {
@@ -595,7 +597,7 @@ impl<'a> PythonInference<'a> {
         inferred
     }
 
-    fn infer_expression_part(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_expression_part(&self, node: PyNode<'a>) -> Inferred<'a> {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
@@ -605,7 +607,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_primary(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_primary(&self, node: PyNode<'a>) -> Inferred<'a> {
         //   primary "." Name
         // | primary "(" [arguments | comprehension] ")"
         // | primary "[" slices "]"
@@ -625,12 +627,16 @@ impl<'a> PythonInference<'a> {
                 base.run_on_value(self.database, |value| value.lookup(self.database, second.get_code()))
             }
             "(" => {
-                if second.is_type(Nonterminal(arguments)) || second.is_type(Nonterminal(comprehension)) {
-                    todo!("add arguments {:?}", second)
-                } else {
-                    // No arguments
-                }
-                base.run_on_value(self.database, |value| value.execute(self.database))
+                let args = {
+                    if second.is_type(Nonterminal(arguments)) {
+                        Arguments::Node(second)
+                    } else if second.is_type(Nonterminal(comprehension)) {
+                        Arguments::Comprehension(second)
+                    } else {
+                        Arguments::None
+                    }
+                };
+                base.run_on_value(self.database, |value| value.execute(self.database, &args))
             }
             "[" => {
                 todo!()
@@ -760,8 +766,8 @@ impl<'a> PythonInference<'a> {
                             let func = node.get_parent().unwrap().get_parent().unwrap();
                             debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
                             self.file.calculate_node_scope_definitions(func);
-                            dbg!(self.file.get_value(node.index));
-                            todo!()
+                            debug_assert!(self.file.get_value(node.index).is_calculated());
+                            self.check_node_cache(node)
                         }
                         _ => {
                             Some(Inferred::new(self.file, node.index, value))

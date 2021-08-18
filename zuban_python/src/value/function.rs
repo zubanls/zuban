@@ -6,6 +6,7 @@ use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
 use super::{Value, ValueKind};
 use crate::file::{PythonFile, Inferred};
 use crate::database::{Database, ValueEnum, Locality, ValueOrReference};
+use crate::arguments::Arguments;
 
 #[derive(Debug)]
 pub struct Function<'a> {
@@ -37,7 +38,7 @@ impl<'a> Value<'a> for Function<'a> {
         todo!()
     }
 
-    fn execute(&self, database: &'a Database) -> Inferred<'a> {
+    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
