@@ -65,7 +65,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn add_new_definition(&self, name_def: PyNode<'a>, value: ValueOrReference) {
-        debug_assert!(name_def.is_type(Nonterminal(NonterminalType::name_definition)));
+        debug_assert_eq!(name_def.get_type(), Nonterminal(NonterminalType::name_definition));
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
         if let Some(replaced) = replaced {
@@ -153,7 +153,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                         ValueEnum::LazyInferredClass,
                     );
                 } else {
-                    debug_assert!(not_decorated.is_type(Nonterminal(async_function_def)));
+                    debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
                     self.add_value_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
                         ValueEnum::LazyInferredClass,

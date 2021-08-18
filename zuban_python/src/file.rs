@@ -553,7 +553,7 @@ impl<'a> PythonInference<'a> {
     }
 
     fn infer_star_expressions(&self, node: PyNode) -> Inferred<'a> {
-        debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expressions)));
+        debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::star_expressions));
 
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
@@ -561,7 +561,7 @@ impl<'a> PythonInference<'a> {
             if expression.is_type(Nonterminal(NonterminalType::expression)) {
                 self.infer_expression(expression)
             } else {
-                debug_assert!(node.is_type(Nonterminal(NonterminalType::star_expression)));
+                debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::star_expression));
                 todo!("Add error: can't use starred expression here");
             }
         } else {
@@ -641,7 +641,7 @@ impl<'a> PythonInference<'a> {
 
     fn infer_atom(&self, node: PyNode) -> Inferred<'a> {
         use NonterminalType::*;
-        debug_assert!(node.is_type(Nonterminal(atom)));
+        debug_assert_eq!(node.get_type(), Nonterminal(atom));
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
@@ -947,7 +947,7 @@ impl<'a> Inferred<'a> {
 }
 
 fn is_name_reference(name: PyNode) -> bool {
-    debug_assert!(name.is_type(Terminal(TerminalType::Name)));
+    debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
     !name.get_parent().unwrap().is_type(
         Nonterminal(NonterminalType::name_definition)
     )
