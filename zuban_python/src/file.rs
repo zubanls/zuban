@@ -16,6 +16,7 @@ use crate::name_binder::NameBinder;
 use crate::value::{Class, Instance, Function, Value};
 use crate::arguments::Arguments;
 use crate::debug;
+use crate::imports::{global_import};
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -483,6 +484,10 @@ impl<'a> PythonInference<'a> {
                     let simple_child = node.get_nth_child(0);
                     if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
                         self.cache_assignment_nodes(simple_child);
+                    } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
+                        global_import(self.database, "foo");
+                    } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
+                        todo!();
                     } else {
                         unreachable!("Found type {:?}", simple_child.get_type());
                     }

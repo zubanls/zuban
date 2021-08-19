@@ -9,11 +9,12 @@ mod utils;
 mod name_binder;
 mod tree_utils;
 mod arguments;
+mod imports;
 
 use parsa::CodeIndex;
 use file::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
-use database::{FileIndex, Database};
+use database::{FileIndex, Database, Workspace};
 pub use value::ValueKind;
 
 pub enum ProjectType {
@@ -28,13 +29,19 @@ pub struct Project {
 impl Project {
     pub fn new(path: String) -> Self {
         let loaders = vec![Box::new(PythonFileLoader::default()) as Box<_>];
+        // TODO use a real sys path
+        let sys_path = vec![
+            "/usr/lib/python3/dist-packages".to_owned(),
+            "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".to_owned(),
+            "/usr/lib/python3.8".to_owned(),
+            "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
+            "/usr/local/lib/python3.8/dist-packages".to_owned(),
+        ];
+        let workspaces = sys_path.iter().map(|s| Workspace::new(s.to_owned())).collect();
+        let database = Database::new(loaders.into_boxed_slice(), workspaces);
         Self {
-            type_: ProjectType::PythonProject(PythonProject {
-                path,
-                sys_path: vec![],
-                is_django: false,
-            }),
-            database: Database::new(loaders.into_boxed_slice()),
+            type_: ProjectType::PythonProject(PythonProject {path, sys_path, is_django: false}),
+            database,
         }
     }
 

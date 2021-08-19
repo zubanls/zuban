@@ -266,14 +266,14 @@ pub struct Database {
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
-    workspaces: Vec<Workspace>,
+    pub workspaces: Vec<Workspace>,
     files_managed_by_client: HashMap<PathBuf, FileIndex>,
 
     pub python_state: PythonState,
 }
 
 impl Database {
-    pub fn new(file_state_loaders: FileStateLoaders) -> Self {
+    pub fn new(file_state_loaders: FileStateLoaders, workspaces: Vec<Workspace>) -> Self {
         let mut this = Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
@@ -358,14 +358,34 @@ impl Database {
     }
 }
 
-struct Workspace {
+pub struct Workspace {
     root: DirectoryOrFile,
     //watcher: dyn notify::Watcher,
 }
 
-enum DirectoryOrFile {
-    File(Box<str>, Option<FileIndex>),
-    Directory(Box<str>, Vec<DirectoryOrFile>),
+
+impl Workspace {
+    pub fn new(root: String) -> Self {
+        Self {root: DirectoryOrFile::Directory(root, vec![])}
+    }
+
+    pub fn get_root(&self) -> &DirectoryOrFile {
+        &self.root
+    }
+}
+
+pub enum DirectoryOrFile {
+    File(String, Option<FileIndex>),
+    Directory(String, Vec<DirectoryOrFile>),
+}
+
+impl DirectoryOrFile {
+    pub fn get_name(&self) -> &str {
+        match self {
+            Self::Directory(name, _) => name,
+            Self::File(name, _) => name,
+        }
+    }
 }
 
 pub struct PythonState {
