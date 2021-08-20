@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::pin::Pin;
 use parsa::NodeIndex;
+use walkdir::WalkDir;
 
 use crate::file::{PythonFile, FileState, File, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
 use crate::utils::{InsertOnlyVec, SymbolTable};
@@ -274,13 +275,14 @@ pub struct Database {
 
 impl Database {
     pub fn new(file_state_loaders: FileStateLoaders, workspaces: Vec<Workspace>) -> Self {
+        dbg!(&workspaces);
         let mut this = Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),
-            workspaces: Default::default(),
+            workspaces,
             files_managed_by_client: Default::default(),
 
             python_state: PythonState::new()
@@ -358,6 +360,7 @@ impl Database {
     }
 }
 
+#[derive(Debug)]
 pub struct Workspace {
     root: DirectoryOrFile,
     //watcher: dyn notify::Watcher,
@@ -366,7 +369,55 @@ pub struct Workspace {
 
 impl Workspace {
     pub fn new(root: String) -> Self {
-        Self {root: DirectoryOrFile::Directory(root, vec![])}
+        let mut stack = vec![(PathBuf::from(&root), DirectoryOrFile::Directory(root, vec![]))];
+        for entry in WalkDir::new(&stack[0].1.get_name())
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .skip(1)
+        {
+            while !entry.path().starts_with(&stack.last().unwrap().0) {
+                let n = stack.pop().unwrap().1;
+                stack
+                    .last_mut()
+                    .unwrap()
+                    .1
+                    .get_directory_entries()
+                    .unwrap()
+                    .push(n);
+            }
+            let name = entry.file_name();
+
+            if let Some(name) = name.to_str() {
+                match entry.metadata() {
+                    Ok(m) => {
+                        if m.is_dir() {
+                            stack.push((entry.path().to_owned(), DirectoryOrFile::Directory(name.to_owned(), vec![])));
+                        } else {
+                            stack
+                                .last_mut()
+                                .unwrap()
+                                .1
+                                .get_directory_entries()
+                                .unwrap()
+                                .push(DirectoryOrFile::File(name.to_owned(), None));
+                        }
+                    }
+                    Err(e) => {
+                        // Just ignore it for now
+                        panic!("Need to investigate")
+                    }
+                }
+            }
+        }
+        while let Some(current) = stack.pop() {
+            if let Some(parent) = stack.last_mut() {
+                parent.1.get_directory_entries().unwrap().push(current.1)
+            } else {
+                return Self {root: current.1}
+            }
+        }
+        unreachable!()
     }
 
     pub fn get_root(&self) -> &DirectoryOrFile {
@@ -374,6 +425,7 @@ impl Workspace {
     }
 }
 
+#[derive(Debug)]
 pub enum DirectoryOrFile {
     File(String, Option<FileIndex>),
     Directory(String, Vec<DirectoryOrFile>),
@@ -384,6 +436,13 @@ impl DirectoryOrFile {
         match self {
             Self::Directory(name, _) => name,
             Self::File(name, _) => name,
+        }
+    }
+
+    pub fn get_directory_entries(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
+        match self {
+            DirectoryOrFile::Directory(_, entries) => Some(entries),
+            _ => None,
         }
     }
 }
