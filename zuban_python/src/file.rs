@@ -495,7 +495,18 @@ impl<'a> PythonInference<'a> {
                     if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
                         self.cache_assignment_nodes(simple_child);
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
-                        global_import(self.database, "foo");
+                        if self.file.get_value(name.index).is_calculated() {
+                            todo!("Multi name");
+                        }
+                        let file_index = global_import(self.database, name.get_code());
+                        self.file.set_value(
+                            name.index,
+                            if let Some(file_index) = file_index {
+                                ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
+                            } else {
+                                ValueOrReference::new_missing_file()
+                            }
+                        );
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
                         todo!();
                     } else {

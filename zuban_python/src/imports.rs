@@ -1,8 +1,10 @@
 use crate::database::FileIndex;
 use crate::database::{Database, DirectoryOrFile};
+use crate::debug;
 use DirectoryOrFile::{Directory, File};
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
+    debug!("Global import {}", name);
     python_import(
         database,
         database.workspaces.iter().map(|x| x.get_root()),
@@ -10,7 +12,7 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     )
 }
 
-pub fn python_import<'a>(
+fn python_import<'a>(
     database: &Database,
     directories: impl Iterator<Item = &'a DirectoryOrFile>,
     name: &str,
@@ -24,7 +26,10 @@ pub fn python_import<'a>(
                         File(file_name, file_index) => {
                             if file_name == "__init__.py" || file_name == "__init__.pyi" {
                                 if file_index.get().is_none() {
-                                    database.load_file_from_workspace("".to_owned(), file_index.clone());
+                                    database.load_file_from_workspace(
+                                        "".to_owned(),
+                                        file_index.clone(),
+                                    );
                                 }
                                 return file_index.get();
                             }

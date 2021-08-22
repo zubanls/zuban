@@ -59,9 +59,9 @@ impl ValueOrReference {
         | (type_ as u32) << TYPE_BIT_INDEX
     }
 
-    pub fn new_redirect(module: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
+    pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::Redirect, module.0, locality);
+            ValueOrReferenceType::Redirect, file.0, locality);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -75,9 +75,9 @@ impl ValueOrReference {
         Self {flags, node_or_complex_index: 0}
     }
 
-    pub fn new_missing_or_unknown(module: FileIndex, locality: Locality) -> Self {
+    pub fn new_missing_or_unknown(file: FileIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::MissingOrUnknown, module.0, locality);
+            ValueOrReferenceType::MissingOrUnknown, file.0, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -91,8 +91,10 @@ impl ValueOrReference {
         todo!()
     }
 
-    pub fn new_file_reference() -> Self {
-        todo!()
+    pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(
+            ValueOrReferenceType::FileReference, file.0 as u32, locality);
+        Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_missing_file() -> Self {
