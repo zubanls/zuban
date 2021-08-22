@@ -27,7 +27,7 @@ type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
 pub type ComplexValues = InsertOnlyVec<ComplexValue>;
 
 pub trait VirtualFileSystemReader {
-    fn read_file(&self, path: &str) -> String;
+    fn read_file(&self, path: &str) -> Option<String>;
 }
 
 #[derive(Default)]
@@ -35,9 +35,9 @@ pub struct FileSystemReader {
 }
 
 impl VirtualFileSystemReader for FileSystemReader {
-    fn read_file(&self, path: &str) -> String {
+    fn read_file(&self, path: &str) -> Option<String> {
         // TODO can error
-        fs::read_to_string(path).unwrap()
+        Some(fs::read_to_string(path).unwrap())
     }
 }
 
@@ -57,6 +57,8 @@ pub trait FileStateLoader {
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
+
+    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>>;
 }
 
 #[derive(Default)]
@@ -77,6 +79,10 @@ impl FileStateLoader for PythonFileLoader {
         Box::pin(
             LanguageFileState::new_unparsed(path, &PythonFile::new)
         )
+    }
+
+    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
+        Box::pin(LanguageFileState::<PythonFile>::new_does_not_exist(path))
     }
 }
 
@@ -126,11 +132,15 @@ impl<F: File> FileState for LanguageFileState<F> {
                 // It is extremely important to deal with the data given here before overwriting it
                 // in `slot`. Otherwise we access memory that has different data structures.
                 let file_index = file_index_cell.get().unwrap();
-                unsafe {
-                    *self.state.get() = InternalFileExistence::Parsed(
-                        loader(database.file_system_reader.read_file(&self.path))
-                    )
-                };
+                if let Some(file) = database.file_system_reader.read_file(&self.path) {
+                    unsafe {
+                        *self.state.get() = InternalFileExistence::Parsed(
+                            loader(file)
+                        )
+                    };
+                } else {
+                    unsafe {*self.state.get() = InternalFileExistence::Missing};
+                }
 
                 let file = self.get_file(database);
                 file.unwrap().set_file_index(file_index);

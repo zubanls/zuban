@@ -4,6 +4,7 @@ use std::ptr::null;
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::pin::Pin;
+use std::cell::Cell;
 use parsa::NodeIndex;
 use walkdir::WalkDir;
 
@@ -342,6 +343,19 @@ impl Database {
         self.add_file_state(loader.load_parsed(path, code))
     }
 
+    pub fn load_file_from_workspace(&self, path: String, index: WorkspaceFileIndex) {
+        // A loader should be available for all files in the workspace.
+        let loader = self.get_loader(&path).unwrap();
+        let file_index = self.add_file_state(
+            if let Some(code) = self.file_system_reader.read_file(&path) {
+                loader.load_parsed(path, code)
+            } else {
+                loader.get_inexistent_file_state(path)
+            }
+        );
+        index.set(file_index);
+    }
+
     pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
         self.get_loader(&path).map(|loader| {
             self.add_file_state(loader.load_unparsed(path))
@@ -399,7 +413,7 @@ impl Workspace {
                                 .1
                                 .get_directory_entries()
                                 .unwrap()
-                                .push(DirectoryOrFile::File(name.to_owned(), None));
+                                .push(DirectoryOrFile::File(name.to_owned(), WorkspaceFileIndex::none()));
                         }
                     }
                     Err(e) => {
@@ -424,9 +438,26 @@ impl Workspace {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkspaceFileIndex(Cell<Option<FileIndex>>);
+
+impl WorkspaceFileIndex {
+    fn none() -> Self {
+        Self(Cell::new(None))
+    }
+
+    fn set(&self, index: FileIndex) {
+        self.0.set(Some(index));
+    }
+
+    pub fn get(&self) -> Option<FileIndex> {
+        self.0.get()
+    }
+}
+
 #[derive(Debug)]
 pub enum DirectoryOrFile {
-    File(String, Option<FileIndex>),
+    File(String, WorkspaceFileIndex),
     Directory(String, Vec<DirectoryOrFile>),
 }
 

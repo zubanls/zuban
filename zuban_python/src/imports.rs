@@ -23,10 +23,10 @@ pub fn python_import<'a>(
                     match child {
                         File(file_name, file_index) => {
                             if file_name == "__init__.py" || file_name == "__init__.pyi" {
-                                if file_index.is_none() {
-                                    //file_index = Some(file_index)
+                                if file_index.get().is_none() {
+                                    database.load_file_from_workspace("".to_owned(), file_index.clone());
                                 }
-                                return *file_index;
+                                return file_index.get();
                             }
                         }
                         Directory(_, _) => {}
@@ -35,7 +35,7 @@ pub fn python_import<'a>(
             }
             File(file_name, file_index) => {
                 if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name) {
-                    return *file_index;
+                    return file_index.get();
                 }
                 unreachable!()
             }
