@@ -28,7 +28,7 @@ pub struct Project {
 
 impl Project {
     pub fn new(path: String) -> Self {
-        let loaders = vec![Box::new(PythonFileLoader::default()) as Box<_>];
+        let loaders = Box::new([Box::new(PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
             "/usr/lib/python3/dist-packages".to_owned(),
@@ -37,8 +37,8 @@ impl Project {
             "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages".to_owned(),
         ];
-        let workspaces = sys_path.iter().map(|s| Workspace::new(s.to_owned())).collect();
-        let database = Database::new(loaders.into_boxed_slice(), workspaces);
+        let workspaces = sys_path.iter().map(|s| Workspace::new(loaders.as_ref(), s.to_owned())).collect();
+        let database = Database::new(loaders, workspaces);
         Self {
             type_: ProjectType::PythonProject(PythonProject {path, sys_path, is_django: false}),
             database,

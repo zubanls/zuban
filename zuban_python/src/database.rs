@@ -275,7 +275,6 @@ pub struct Database {
 
 impl Database {
     pub fn new(file_state_loaders: FileStateLoaders, workspaces: Vec<Workspace>) -> Self {
-        dbg!(&workspaces);
         let mut this = Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
@@ -368,7 +367,7 @@ pub struct Workspace {
 
 
 impl Workspace {
-    pub fn new(root: String) -> Self {
+    pub fn new(loaders: &[Box<dyn FileStateLoader>], root: String) -> Self {
         let mut stack = vec![(PathBuf::from(&root), DirectoryOrFile::Directory(root, vec![]))];
         for entry in WalkDir::new(&stack[0].1.get_name())
             .follow_links(true)
