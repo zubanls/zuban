@@ -486,7 +486,7 @@ impl<'a> PythonInference<'a> {
         );
     }
 
-    fn cache_stmt_name(&self, stmt: PyNode, name: PyNode<'a>) {
+    fn cache_stmt_name(&self, stmt: PyNode<'a>, name: PyNode<'a>) {
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
@@ -498,15 +498,7 @@ impl<'a> PythonInference<'a> {
                         if self.file.get_value(name.index).is_calculated() {
                             todo!("Multi name");
                         }
-                        let file_index = global_import(self.database, name.get_code());
-                        self.file.set_value(
-                            name.index,
-                            if let Some(file_index) = file_index {
-                                ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
-                            } else {
-                                ValueOrReference::new_missing_file()
-                            }
-                        );
+                        self.cache_import_from(simple_child);
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
                         todo!();
                     } else {
@@ -516,6 +508,52 @@ impl<'a> PythonInference<'a> {
             }
         } else {
             unreachable!("Found type {:?}", child.get_type());
+        }
+    }
+
+    fn cache_import_from(&self, imp: PyNode<'a>) {
+        // | "from" ("." | "...")* dotted_name "import" import_from_targets
+        // | "from" ("." | "...")+ "import" import_from_targets
+        let mut level = 0;
+        let inferred: Option<Inferred<'a>> = None;
+        for node in imp.iter_children() {
+            if node.is_type(Nonterminal(NonterminalType::dotted_name)) {
+                if level > 0 {
+                    todo!()
+                }
+                let inferred = Some(self.infer_import_dotted_name(node));
+            } else if node.is_type(Nonterminal(NonterminalType::import_from_targets)) {
+                if level > 0 {
+                    todo!()
+                }
+                todo!()
+            } else if node.get_code() == "." {
+                    level += 1;
+            } else if node.get_code() == "..." {
+                level += 3;
+            }
+        }
+    }
+
+    fn infer_import_dotted_name(&self, dotted: PyNode<'a>) -> Inferred<'a>{
+        debug_assert_eq!(dotted.get_type(), Nonterminal(NonterminalType::dotted_name));
+        // dotted_name: [dotted_name "."] Name
+        let first = dotted.get_nth_child(0);
+        if first.is_type(Terminal(TerminalType::Name)) {
+            let file_index = global_import(self.database, first.get_code());
+            self.file.set_value(
+                first.index,
+                if let Some(file_index) = file_index {
+                    ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
+                } else {
+                    ValueOrReference::new_missing_file()
+                }
+            );
+            todo!()
+        } else {
+            let base = self.infer_import_dotted_name(first);
+            let name = dotted.get_nth_child(2);
+            todo!()
         }
     }
 
