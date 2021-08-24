@@ -514,19 +514,33 @@ impl<'a> PythonInference<'a> {
     fn cache_import_from(&self, imp: PyNode<'a>) {
         // | "from" ("." | "...")* dotted_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
+        use NonterminalType::*;
         let mut level = 0;
-        let inferred: Option<Inferred<'a>> = None;
+        let mut inferred = None;
         for node in imp.iter_children() {
-            if node.is_type(Nonterminal(NonterminalType::dotted_name)) {
+            if node.is_type(Nonterminal(dotted_name)) {
                 if level > 0 {
                     todo!()
                 }
-                let inferred = Some(self.infer_import_dotted_name(node));
-            } else if node.is_type(Nonterminal(NonterminalType::import_from_targets)) {
+                inferred = Some(self.infer_import_dotted_name(node));
+            } else if node.is_type(Nonterminal(import_from_targets)) {
                 if level > 0 {
                     todo!()
                 }
-                todo!()
+                // import_from_targets:
+                //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+                for child in node.iter_children() {
+                    if child.is_type(Nonterminal(import_from_as_name)) {
+                        // import_from_as_name: Name "as" name_definition | name_definition
+                        let from_as_name = child.get_nth_child(0);
+                        if from_as_name.is_type(Nonterminal(name_definition)) {
+                            inferred.unwrap().run_on_value(
+                                self.database, |value| value.lookup(self.database, from_as_name.get_code()));
+                        } else {
+                            todo!("from import as")
+                        }
+                    }
+                }
             } else if node.get_code() == "." {
                     level += 1;
             } else if node.get_code() == "..." {
