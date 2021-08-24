@@ -345,7 +345,7 @@ impl Database {
         self.add_file_state(loader.load_parsed(path, code))
     }
 
-    pub fn load_file_from_workspace(&self, path: String, index: WorkspaceFileIndex) {
+    pub fn load_file_from_workspace(&self, path: String, index: &WorkspaceFileIndex) {
         // A loader should be available for all files in the workspace.
         let loader = self.get_loader(&path).unwrap();
         let file_index = self.add_file_state(
@@ -397,7 +397,7 @@ impl Workspace {
                     .last_mut()
                     .unwrap()
                     .1
-                    .get_directory_entries()
+                    .get_directory_entries_mut()
                     .unwrap()
                     .push(n);
             }
@@ -413,7 +413,7 @@ impl Workspace {
                                 .last_mut()
                                 .unwrap()
                                 .1
-                                .get_directory_entries()
+                                .get_directory_entries_mut()
                                 .unwrap()
                                 .push(DirectoryOrFile::File(name.to_owned(), WorkspaceFileIndex::none()));
                         }
@@ -427,7 +427,7 @@ impl Workspace {
         }
         while let Some(current) = stack.pop() {
             if let Some(parent) = stack.last_mut() {
-                parent.1.get_directory_entries().unwrap().push(current.1)
+                parent.1.get_directory_entries_mut().unwrap().push(current.1)
             } else {
                 return Self {root: current.1}
             }
@@ -471,7 +471,14 @@ impl DirectoryOrFile {
         }
     }
 
-    pub fn get_directory_entries(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
+    pub fn get_directory_entries(&self) -> Option<&[DirectoryOrFile]> {
+        match self {
+            DirectoryOrFile::Directory(_, entries) => Some(entries),
+            _ => None,
+        }
+    }
+
+    pub fn get_directory_entries_mut(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,

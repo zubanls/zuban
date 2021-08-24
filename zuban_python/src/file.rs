@@ -541,15 +541,13 @@ impl<'a> PythonInference<'a> {
         let first = dotted.get_nth_child(0);
         if first.is_type(Terminal(TerminalType::Name)) {
             let file_index = global_import(self.database, first.get_code());
-            self.file.set_value(
-                first.index,
-                if let Some(file_index) = file_index {
-                    ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
-                } else {
-                    ValueOrReference::new_missing_file()
-                }
-            );
-            todo!()
+            let value = if let Some(file_index) = file_index {
+                ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
+            } else {
+                ValueOrReference::new_missing_file()
+            };
+            self.file.set_value(first.index, value);
+            Inferred::new(self.file, first.index, value)
         } else {
             let base = self.infer_import_dotted_name(first);
             let name = dotted.get_nth_child(2);
