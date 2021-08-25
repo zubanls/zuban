@@ -139,7 +139,9 @@ impl ValueOrReference {
     }
 
     pub fn get_file_index(self) -> FileIndex {
-        debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
+        debug_assert!(
+            self.get_type() == ValueOrReferenceType::Redirect
+            || self.get_type() == ValueOrReferenceType::FileReference);
         FileIndex(self.flags & REST_MASK)
     }
 
@@ -366,7 +368,11 @@ impl Database {
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
         let file_index = self.load_unparsed(p.to_owned()).unwrap();
-        self.get_loaded_file(file_index).as_any().downcast_ref().unwrap()
+        self.get_loaded_python_file(file_index)
+    }
+
+    pub fn get_loaded_python_file(&self, index: FileIndex) -> &PythonFile {
+        self.get_loaded_file(index).as_any().downcast_ref().unwrap()
     }
 
     fn initial_python_load(&mut self) {

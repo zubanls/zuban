@@ -13,7 +13,7 @@ use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
 use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
                       LocalityLink, ValueOrReferenceType, ComplexValue};
 use crate::name_binder::NameBinder;
-use crate::value::{Class, Instance, Function, Value};
+use crate::value::{Class, Instance, Function, Value, Module};
 use crate::arguments::Arguments;
 use crate::debug;
 use crate::imports::{global_import};
@@ -111,6 +111,10 @@ pub trait File: std::fmt::Debug+AsAny {
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
+
+    fn get_file_path<'a>(&self, database: &'a Database) -> &'a str {
+        database.get_file_path(self.get_file_index())
+    }
 }
 
 pub trait FileState: fmt::Debug {
@@ -831,9 +835,8 @@ impl<'a> PythonInference<'a> {
                             self.infer_name(
                                 self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
-                        let file = self.database.get_loaded_file(file_index);
-                        let py_file: &PythonFile = file.as_any().downcast_ref().unwrap();
-                        Some(py_file.infer_name_by_index(self.database, value.get_node_index()))
+                        let file = self.database.get_loaded_python_file(file_index);
+                        Some(file.infer_name_by_index(self.database, value.get_node_index()))
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -1008,7 +1011,8 @@ impl<'a> Inferred<'a> {
                 *self
             }
             FileReference => {
-                todo!();
+                let f = database.get_loaded_python_file(self.value_or_ref.get_file_index());
+                callable(&Module::new(f, &f.symbol_table))
             }
             _ => unreachable!()
         }
