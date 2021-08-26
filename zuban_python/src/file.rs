@@ -394,7 +394,7 @@ impl<'db> PythonFile {
         ptr.as_ref().unwrap()
     }
 
-    fn calculate_global_definitions_and_references(&self) {
+    pub fn calculate_global_definitions_and_references(&self) {
         if self.get_value(0).is_calculated() {
             // It was already done.
             return
@@ -443,10 +443,12 @@ impl<'db> PythonFile {
         self.get_inference(database).infer_expression(node)
     }
 
+    #[inline]
     fn get_value(&self, index: NodeIndex) -> ValueOrReference {
         self.values_or_references[index as usize].get()
     }
 
+    #[inline]
     pub fn set_value(&self, index: NodeIndex, val: ValueOrReference) {
         self.values_or_references[index as usize].set(val);
     }
@@ -538,8 +540,12 @@ impl<'a> PythonInference<'a> {
                         // import_from_as_name: Name "as" name_definition | name_definition
                         let from_as_name = child.get_nth_child(0);
                         if from_as_name.is_type(Nonterminal(name_definition)) {
-                            inferred.unwrap().run_on_value(
+                            if self.file.get_value(from_as_name.index + 1).is_calculated() {
+                                todo!()
+                            }
+                            let i = inferred.unwrap().run_on_value(
                                 self.database, |value| value.lookup(self.database, from_as_name.get_code()));
+                            self.set_redirect_value(from_as_name.index + 1, i);
                         } else {
                             todo!("from import as")
                         }
