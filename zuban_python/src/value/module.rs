@@ -1,5 +1,5 @@
 use super::{Value, ValueKind};
-use crate::file::{PythonFile, File, Inferred};
+use crate::file::{PythonFile, Inferred};
 use crate::utils::SymbolTable;
 use crate::database::Database;
 use crate::arguments::Arguments;
@@ -30,7 +30,6 @@ impl<'a> Value<'a> for Module<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file.infer_name_by_index(database, node_index)
         } else {
-            dbg!(self.file.get_file_path(database), self.symbol_table);
             todo!()
         }
     }

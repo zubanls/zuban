@@ -3,7 +3,7 @@ use parsa::NodeIndex;
 use super::{Value, ValueKind};
 use crate::file::{PythonFile, Inferred};
 use crate::utils::SymbolTable;
-use crate::database::Database;
+use crate::database::{Database, ValueOrReference, ValueEnum, Locality};
 use crate::tree_utils::get_class_name;
 use crate::arguments::Arguments;
 
@@ -38,6 +38,10 @@ impl<'a> Value<'a> for Class<'a> {
     }
 
     fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
-        todo!()
+        Inferred::new(
+            self.file,
+            args.primary_node_index,
+            ValueOrReference::new_simple_language_specific(ValueEnum::InstanceWithArguments, Locality::Stmt)
+        )
     }
 }

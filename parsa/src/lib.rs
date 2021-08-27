@@ -395,6 +395,7 @@ macro_rules! __create_node {
                     code = &x;
                 }
                 f.debug_struct(stringify!($Node))
+                 .field("node_index", &self.index)
                  .field("type", &self.type_str())
                  .field("content", &code)
                  .field("internal_node", &self.internal_node)

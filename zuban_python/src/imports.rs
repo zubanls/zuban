@@ -23,7 +23,6 @@ fn python_import<'a>(
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator
-    dbg!(name);
     for (dir_path, dir_children) in directories {
         for directory in dir_children {
             match directory {

@@ -715,11 +715,11 @@ impl<'a> PythonInference<'a> {
             "(" => {
                 let args = {
                     if second.is_type(Nonterminal(arguments)) {
-                        Arguments::Node(second)
+                        Arguments::new_with_arguments(node.index, second)
                     } else if second.is_type(Nonterminal(comprehension)) {
-                        Arguments::Comprehension(second)
+                        Arguments::new_comprehension(node.index, second)
                     } else {
-                        Arguments::None
+                        Arguments::new_empty_arguments(node.index)
                     }
                 };
                 base.run_on_value(self.database, |value| value.execute(self.database, &args))
@@ -842,7 +842,13 @@ impl<'a> PythonInference<'a> {
                                 self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
                         let file = self.database.get_loaded_python_file(file_index);
-                        Some(file.infer_name_by_index(self.database, value.get_node_index()))
+                        let value_node = file.tree.get_node_by_index(value.get_node_index());
+                        let f = file.get_inference(self.database);
+                        if value_node.is_type(Terminal(TerminalType::Name)) {
+                            Some(f.infer_name(value_node))
+                        } else {
+                            Some(f.infer_expression_part(value_node))
+                        }
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -882,7 +888,7 @@ impl<'a> PythonInference<'a> {
         if let Some(result) = self.check_node_cache(node) {
             return result
         }
-        debug_assert_eq!(node.get_type(), Terminal(TerminalType::Name));
+        debug_assert_eq!(node.get_type(), Terminal(TerminalType::Name), "Node Id: {}", node.index);
         let stmt = node.get_parent_until(&[
             Nonterminal(NonterminalType::lambda),
             Nonterminal(NonterminalType::comprehension),

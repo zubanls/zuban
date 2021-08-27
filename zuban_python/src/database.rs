@@ -171,7 +171,8 @@ impl fmt::Debug for ValueOrReference {
         } else {
             s
              .field("type", &self.get_type())
-             .field("locality", &self.get_locality());
+             .field("locality", &self.get_locality())
+             .field("node_index", &self.node_or_complex_index);
             if self.get_type() == ValueOrReferenceType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
             }
@@ -218,6 +219,7 @@ pub enum ValueEnum {
     Function,  // The node point so the index of the result
     NoReturnFunction,
 
+    InstanceWithArguments,
     AnnotationInstance,
 
     TypeVar,
