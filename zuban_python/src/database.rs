@@ -14,6 +14,12 @@ use crate::utils::{InsertOnlyVec, SymbolTable};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 
+impl fmt::Display for FileIndex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
@@ -175,6 +181,10 @@ impl fmt::Debug for ValueOrReference {
              .field("node_index", &self.node_or_complex_index);
             if self.get_type() == ValueOrReferenceType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
+            }
+            if self.get_type() == ValueOrReferenceType::Redirect
+                    || self.get_type() == ValueOrReferenceType::FileReference {
+                s.field("file_index", &self.get_file_index().0);
             }
         }
         s.finish()

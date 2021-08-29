@@ -39,7 +39,7 @@ impl<'a> Value<'a> for Class<'a> {
 
     fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
         Inferred::new(
-            self.file,
+            args.file,
             args.primary_node_index,
             ValueOrReference::new_simple_language_specific(ValueEnum::InstanceWithArguments, Locality::Stmt)
         )

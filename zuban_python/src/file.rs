@@ -493,6 +493,7 @@ impl<'a> PythonInference<'a> {
     }
 
     fn cache_stmt_name(&self, stmt: PyNode<'a>, name: PyNode<'a>) {
+        debug!("Infer stmt ({}, {})", self.file.get_file_index(), stmt.index);
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
@@ -620,7 +621,7 @@ impl<'a> PythonInference<'a> {
                         Target::Name(n) => {
                             let val = self.file.get_value(n.index);
                             if val.is_calculated() {
-                                todo!("{:?}", val.get_type());
+                                todo!("{:?} {:?} {:?}", self.file, val, n);
                             }
                             self.set_redirect_value(n.index, inferred);
                         }
@@ -715,11 +716,11 @@ impl<'a> PythonInference<'a> {
             "(" => {
                 let args = {
                     if second.is_type(Nonterminal(arguments)) {
-                        Arguments::new_with_arguments(node.index, second)
+                        Arguments::new_with_arguments(self.file, node.index, second)
                     } else if second.is_type(Nonterminal(comprehension)) {
-                        Arguments::new_comprehension(node.index, second)
+                        Arguments::new_comprehension(self.file, node.index, second)
                     } else {
-                        Arguments::new_empty_arguments(node.index)
+                        Arguments::new_empty_arguments(self.file, node.index)
                     }
                 };
                 base.run_on_value(self.database, |value| value.execute(self.database, &args))
@@ -830,8 +831,10 @@ impl<'a> PythonInference<'a> {
         let value = self.file.get_value(node.index);
         if value.is_calculated() {
             debug!(
-                "Infer {:?} from cache: {:?}",
-                node.get_code().get(..20).unwrap_or_else(|| node.get_code()),
+                "Infer {:?} ({}, {}) from cache: {:?}",
+                get_node_debug_output(node),
+                self.file.get_file_index(),
+                node.index,
                 value.get_type());
             match value.get_type() {
                 ValueOrReferenceType::Redirect => {
@@ -842,13 +845,15 @@ impl<'a> PythonInference<'a> {
                                 self.file.tree.get_node_by_index(value.get_node_index())))
                     } else {
                         let file = self.database.get_loaded_python_file(file_index);
-                        let value_node = file.tree.get_node_by_index(value.get_node_index());
                         let f = file.get_inference(self.database);
-                        if value_node.is_type(Terminal(TerminalType::Name)) {
-                            Some(f.infer_name(value_node))
-                        } else {
-                            Some(f.infer_expression_part(value_node))
-                        }
+                        let value_node = file.tree.get_node_by_index(value.get_node_index());
+                        f.check_node_cache(value_node).or_else(
+                            || if value_node.is_type(Terminal(TerminalType::Name)) {
+                                Some(f.infer_name(value_node))
+                            } else {
+                                todo!("{:?}", value_node)
+                            }
+                        )
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -1097,4 +1102,8 @@ impl<'a> Iterator for TargetIterator<'a> {
             None
         }
     }
+}
+
+fn get_node_debug_output(node: PyNode) -> &str {
+    node.get_code().get(..20).unwrap_or_else(|| node.get_code())
 }
