@@ -886,7 +886,7 @@ impl<'a> PythonInference<'a> {
             || if node.is_type(Terminal(TerminalType::Name)) {
                 Some(self.infer_name(node))
             } else {
-                todo!("{:?}", node)
+                todo!("{:?}, {:?}", self.file.get_file_index().0, node_index)
             }
         )
     }
