@@ -840,20 +840,12 @@ impl<'a> PythonInference<'a> {
                 ValueOrReferenceType::Redirect => {
                     let file_index = value.get_file_index();
                     if file_index == self.file_index {
-                        Some(
-                            self.infer_name(
-                                self.file.tree.get_node_by_index(value.get_node_index())))
+                        self.follow_redirects_in_node_cache(value.get_node_index())
                     } else {
-                        let file = self.database.get_loaded_python_file(file_index);
-                        let f = file.get_inference(self.database);
-                        let value_node = file.tree.get_node_by_index(value.get_node_index());
-                        f.check_node_cache(value_node).or_else(
-                            || if value_node.is_type(Terminal(TerminalType::Name)) {
-                                Some(f.infer_name(value_node))
-                            } else {
-                                todo!("{:?}", value_node)
-                            }
-                        )
+                        self.database
+                            .get_loaded_python_file(file_index)
+                            .get_inference(self.database)
+                            .follow_redirects_in_node_cache(value.get_node_index())
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -886,6 +878,17 @@ impl<'a> PythonInference<'a> {
             }
             None
         }
+    }
+
+    fn follow_redirects_in_node_cache(&self, node_index: NodeIndex) -> Option<Inferred<'a>> {
+        let node = self.file.tree.get_node_by_index(node_index);
+        self.check_node_cache(node).or_else(
+            || if node.is_type(Terminal(TerminalType::Name)) {
+                Some(self.infer_name(node))
+            } else {
+                todo!("{:?}", node)
+            }
+        )
     }
 
     fn infer_name(&self, node: PyNode) -> Inferred<'a> {
