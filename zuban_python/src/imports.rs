@@ -1,9 +1,11 @@
-use crate::database::FileIndex;
-use crate::database::{Database, DirectoryOrFile};
+use crate::database::{FileIndex, Database, DirectoryOrFile};
+use crate::file::File;
 use crate::debug;
-use DirectoryOrFile::{Directory, File};
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
+    if name == "typing" {
+        return Some(database.python_state.get_typing().get_file_index())
+    }
     let result = python_import(
         database,
         database.workspaces.iter().map(|x| (x.get_root().get_name(), x.get_root().get_directory_entries().unwrap())),
@@ -26,11 +28,11 @@ fn python_import<'a>(
     for (dir_path, dir_children) in directories {
         for directory in dir_children {
             match directory {
-                Directory(dir_name, children) => {
+                DirectoryOrFile::Directory(dir_name, children) => {
                     if dir_name == name {
                         for child in children {
                             match child {
-                                File(file_name, file_index) => {
+                                DirectoryOrFile::File(file_name, file_index) => {
                                     if file_name == "__init__.py" || file_name == "__init__.pyi" {
                                         if file_index.get().is_none() {
                                             database.load_file_from_workspace(
@@ -41,12 +43,12 @@ fn python_import<'a>(
                                         return file_index.get();
                                     }
                                 }
-                                Directory(_, _) => {}
+                                DirectoryOrFile::Directory(_, _) => {}
                             }
                         }
                     }
                 }
-                File(file_name, file_index) => {
+                DirectoryOrFile::File(file_name, file_index) => {
                     if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name) {
                         if file_index.get().is_none() {
                             database.load_file_from_workspace(

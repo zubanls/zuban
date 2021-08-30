@@ -966,6 +966,9 @@ impl<'a> Inferred<'a> {
                             return vec![]
                         }
                     }
+                    ValueEnum::TypeVar => {
+                        todo!()
+                    }
                     _ => {
                         Box::new(WithValueName::new(database, self.resolve_python_value(database, self.point.get_language_specific())))
                     }
