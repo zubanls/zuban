@@ -40,4 +40,8 @@ impl<'a> Value<'a> for Instance<'a> {
     fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
         todo!()
     }
+
+    fn is_type_var(&self, database: &'a Database) -> bool {
+        todo!()
+    }
 }

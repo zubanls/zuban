@@ -443,6 +443,11 @@ impl<'db> PythonFile {
         self.get_inference(database).infer_expression(node)
     }
 
+    pub fn infer_expression_part(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+        let node = self.tree.get_node_by_index(node_index);
+        self.get_inference(database).infer_expression_part(node)
+    }
+
     #[inline]
     fn get_value(&self, index: NodeIndex) -> ValueOrReference {
         self.values_or_references[index as usize].get()
@@ -934,7 +939,7 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
 pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
-    value_or_ref: ValueOrReference,
+    pub value_or_ref: ValueOrReference,
 }
 
 impl<'a> Inferred<'a> {
@@ -988,7 +993,12 @@ impl<'a> Inferred<'a> {
     }
 
     #[inline]
-    fn run_on_value(&self, database: &'a Database, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
+    pub fn run<T>(
+        &self,
+        database: &'a Database,
+        callable: impl Fn(&dyn Value<'a>) -> T,
+        on_missing: impl Fn(Inferred<'a>) -> T,
+    ) -> T {
         use ValueOrReferenceType::*;
         match self.value_or_ref.get_type() {
             LanguageSpecific => {
@@ -1000,6 +1010,10 @@ impl<'a> Inferred<'a> {
                     ValueEnum::AnnotationInstance => {
                         let inferred = self.file.infer_expression(database, self.node_index + 2);
                         todo!()
+                    }
+                    ValueEnum::InstanceWithArguments => {
+                        let cls = self.file.infer_expression_part(database, self.node_index + 1);
+                        callable(&cls.file.use_instance(cls.node_index).unwrap())
                     }
                     _ =>  {
                         let instance = self.resolve_python_value(database, specific);
@@ -1028,7 +1042,7 @@ impl<'a> Inferred<'a> {
                 }
             }
             MissingOrUnknown => {
-                *self
+                on_missing(*self)
             }
             FileReference => {
                 let f = database.get_loaded_python_file(self.value_or_ref.get_file_index());
@@ -1036,6 +1050,11 @@ impl<'a> Inferred<'a> {
             }
             _ => unreachable!()
         }
+    }
+
+    #[inline]
+    pub fn run_on_value(&self, database: &'a Database, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
+        self.run(database, callable, |inferred| inferred)
     }
 
     fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Instance<'a> {
