@@ -3,7 +3,6 @@ use crate::file::{File, PythonFile};
 use crate::value::{Value, ValueKind};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PyNode, PyNodeType, TerminalType};
-use std::borrow::Borrow;
 use std::fmt;
 
 type Signatures = Vec<()>;
@@ -188,7 +187,7 @@ impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
 
 impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
     fn get_name(&self) -> &'a str {
-        self.value.borrow().get_name()
+        self.value.get_name()
     }
 
     fn get_file_path(&self) -> &str {
@@ -234,6 +233,6 @@ impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
 
 impl<'a, T: Value<'a>> ValueName<'a> for WithValueName<'a, T> {
     fn get_kind(&self) -> ValueKind {
-        self.value.borrow().get_kind()
+        self.value.get_kind()
     }
 }
