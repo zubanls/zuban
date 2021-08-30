@@ -1,7 +1,7 @@
 use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
-use crate::file::{PythonFile, Inferred};
+use crate::file::{File, PythonFile, Inferred};
 use crate::utils::SymbolTable;
 use crate::database::Database;
 use crate::tree_utils::get_class_name;
@@ -42,6 +42,7 @@ impl<'a> Value<'a> for Instance<'a> {
     }
 
     fn is_type_var(&self, database: &'a Database) -> bool {
-        todo!()
+        self.file.get_file_index() == database.python_state.get_typing().get_file_index()
+            && self.get_name() == "TypeVar"
     }
 }

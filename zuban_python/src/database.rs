@@ -519,6 +519,12 @@ impl PythonState {
         debug_assert!(!self.builtins.is_null());
         unsafe {&*self.builtins}
     }
+
+    #[inline]
+    pub fn get_typing(&self) -> &PythonFile {
+        debug_assert!(!self.typing.is_null());
+        unsafe {&*self.typing}
+    }
 }
 
 #[derive(Debug)]

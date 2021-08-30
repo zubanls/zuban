@@ -1,7 +1,6 @@
 use parsa::NodeIndex;
 use parsa::Node;
-use parsa_python::PyNode;
-use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
+use parsa_python::{NonterminalType, PyNodeType::Nonterminal, PyNode};
 
 use super::{Value, ValueKind};
 use crate::file::{File, PythonFile, Inferred};
