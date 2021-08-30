@@ -5,7 +5,7 @@ use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
 
 use super::{Value, ValueKind};
 use crate::file::{File, PythonFile, Inferred};
-use crate::database::{Database, ValueEnum, Locality, ValueOrReference};
+use crate::database::{Database, ValueEnum, Locality, Point};
 use crate::arguments::Arguments;
 
 #[derive(Debug)]
@@ -46,17 +46,17 @@ impl<'a> Value<'a> for Function<'a> {
             inferred.run(database, |v| {
                 // TODO locality is wrong!!!!!1
                 let val = if v.get_kind() == ValueKind::Class {
-                    ValueOrReference::new_simple_language_specific(
+                    Point::new_simple_language_specific(
                         ValueEnum::AnnotationInstance,
                         Locality::Stmt
                     )
                 } else if v.get_kind() == ValueKind::Object && v.is_type_var(database) {
-                    ValueOrReference::new_simple_language_specific(
+                    Point::new_simple_language_specific(
                         ValueEnum::TypeVar,
                         Locality::Stmt
                     )
                 } else {
-                    ValueOrReference::new_missing_or_unknown(
+                    Point::new_missing_or_unknown(
                         self.file.get_file_index(),
                         Locality::Stmt
                     );

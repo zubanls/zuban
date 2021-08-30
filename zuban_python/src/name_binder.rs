@@ -4,13 +4,13 @@ use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
 use parsa_python::PyNodeType::{Nonterminal, Terminal, Keyword};
 use parsa::{Node, NodeIndex};
 use crate::utils::SymbolTable;
-use crate::database::{ValueOrReference, ValueEnum, Locality, FileIndex, ClassStorage,
-                      ValueOrReferenceType::MultiDefinition, ComplexValue};
+use crate::database::{Point, ValueEnum, Locality, FileIndex, ClassStorage,
+                      PointType::MultiDefinition, ComplexValue};
 use crate::file::ComplexValues;
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'b SymbolTable,
-    values_or_references: &'a [Cell<ValueOrReference>],
+    values_or_references: &'a [Cell<Point>],
     complex_values: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
@@ -23,7 +23,7 @@ pub struct NameBinder<'a, 'b> {
 impl<'a, 'b> NameBinder<'a, 'b> {
     fn new(
         symbol_table: &'b SymbolTable,
-        values_or_references: &'a [Cell<ValueOrReference>],
+        values_or_references: &'a [Cell<Point>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
@@ -43,7 +43,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn with_global_binder(
         symbol_table: &'b SymbolTable,
-        values_or_references: &'a [Cell<ValueOrReference>],
+        values_or_references: &'a [Cell<Point>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
@@ -64,7 +64,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.unresolved_nodes.extend(unresolved_names);
     }
 
-    fn add_new_definition(&self, name_def: PyNode<'a>, value: ValueOrReference) {
+    fn add_new_definition(&self, name_def: PyNode<'a>, value: Point) {
         debug_assert_eq!(name_def.get_type(), Nonterminal(NonterminalType::name_definition));
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
@@ -77,7 +77,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
         self.add_new_definition(
             name_def,
-            ValueOrReference::new_simple_language_specific(type_, Locality::Stmt)
+            Point::new_simple_language_specific(type_, Locality::Stmt)
         );
     }
 
@@ -85,13 +85,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
         self.values_or_references[node.index as usize].set(
-            ValueOrReference::new_complex_value(complex_index, Locality::Stmt));
+            Point::new_complex_value(complex_index, Locality::Stmt));
     }
 
     fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
-            ValueOrReference::new_redirect(
+            Point::new_redirect(
                 self.file_index,
                 node_index,
                 Locality::Stmt,
@@ -367,7 +367,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     // The types are inferred later.
                     self.add_new_definition(
                         parent,
-                        ValueOrReference::new_uncalculated(),
+                        Point::new_uncalculated(),
                     )
                 } else {
                     self.index_reference(n, parent, ordered);
@@ -482,7 +482,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         let func_index = func.index as usize;
         self.values_or_references[func_index].set(
-            ValueOrReference::new_simple_language_specific(ValueEnum::Function, Locality::Stmt));
+            Point::new_simple_language_specific(ValueEnum::Function, Locality::Stmt));
 
         // Avoid overwriting multi definitions
         let mut name_index = func.index as usize + 3;
@@ -490,7 +490,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             name_index -= 1;
         }
         self.values_or_references[name_index].set(
-            ValueOrReference::new_redirect(self.file_index, func.index, Locality::Stmt));
+            Point::new_redirect(self.file_index, func.index, Locality::Stmt));
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -553,7 +553,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         let value = {
             if self.parent_lookup_not_finished {
                 if let Some(definition) = self.symbol_table.lookup_symbol(name.get_code()) {
-                    ValueOrReference::new_redirect(
+                    Point::new_redirect(
                         self.file_index,
                         definition,
                         Locality::File,
@@ -563,13 +563,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     return
                 }
             } else if let Some(definition) = self.lookup_name(name) {
-                ValueOrReference::new_redirect(
+                Point::new_redirect(
                     self.file_index,
                     definition,
                     Locality::File,
                 )
             } else {
-                ValueOrReference::new_missing_or_unknown(
+                Point::new_missing_or_unknown(
                     self.file_index,
                     Locality::File,
                 )

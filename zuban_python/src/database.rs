@@ -29,8 +29,8 @@ type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 // xxooo Locality (xXxx is_external)
 // xxxxxo in_module_scope  TODO remove
 // xxxxxxo is_nullable  TODO remove
-// xxxxxxxooo ValueOrReferenceType
-// if true rest 22 bits reserved for ValueOrReference details
+// xxxxxxxooo PointType
+// if true rest 22 bits reserved for Point details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
 const IS_INVALIDATED_BIT_INDEX: usize = 30;
@@ -50,14 +50,14 @@ const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
 const IS_EXTERN_MASK: u32 = 1 << 30;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
-pub struct ValueOrReference {
+pub struct Point {
     flags: u32,
     node_or_complex_index: u32,
 }
 
-impl ValueOrReference {
+impl Point {
     #[inline]
-    fn calculate_flags(type_: ValueOrReferenceType, rest: u32, locality: Locality) -> u32 {
+    fn calculate_flags(type_: PointType, rest: u32, locality: Locality) -> u32 {
         debug_assert!(rest & !REST_MASK == 0);
         rest
         | IS_ANALIZED_MASK
@@ -67,7 +67,7 @@ impl ValueOrReference {
 
     pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::Redirect, file.0, locality);
+            PointType::Redirect, file.0, locality);
         Self {flags, node_or_complex_index: node_index}
     }
 
@@ -77,19 +77,19 @@ impl ValueOrReference {
 
     pub fn new_complex_value(complex_index: u32, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::Complex, complex_index, locality);
+            PointType::Complex, complex_index, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_missing_or_unknown(file: FileIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::MissingOrUnknown, file.0, locality);
+            PointType::MissingOrUnknown, file.0, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
     pub fn new_simple_language_specific(type_: ValueEnum, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::LanguageSpecific, type_ as u32, locality);
+            PointType::LanguageSpecific, type_ as u32, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -99,7 +99,7 @@ impl ValueOrReference {
 
     pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
-            ValueOrReferenceType::FileReference, file.0 as u32, locality);
+            PointType::FileReference, file.0 as u32, locality);
         Self {flags, node_or_complex_index: 0}
     }
 
@@ -111,7 +111,7 @@ impl ValueOrReference {
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
             flags: Self::calculate_flags(
-                ValueOrReferenceType::NodeAnalysis, 0, locality),
+                PointType::NodeAnalysis, 0, locality),
             node_or_complex_index: 0
         }
     }
@@ -123,7 +123,7 @@ impl ValueOrReference {
         }
     }
 
-    pub fn get_type(self) -> ValueOrReferenceType {
+    pub fn get_type(self) -> PointType {
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
 
@@ -146,30 +146,30 @@ impl ValueOrReference {
 
     pub fn get_file_index(self) -> FileIndex {
         debug_assert!(
-            self.get_type() == ValueOrReferenceType::Redirect
-            || self.get_type() == ValueOrReferenceType::FileReference);
+            self.get_type() == PointType::Redirect
+            || self.get_type() == PointType::FileReference);
         FileIndex(self.flags & REST_MASK)
     }
 
     pub fn get_complex_index(self) -> usize {
-        debug_assert!(self.get_type() == ValueOrReferenceType::Complex);
+        debug_assert!(self.get_type() == PointType::Complex);
         (self.flags & REST_MASK) as usize
     }
 
     pub fn get_node_index(self) -> NodeIndex {
-        debug_assert!(self.get_type() == ValueOrReferenceType::Redirect);
+        debug_assert!(self.get_type() == PointType::Redirect);
         self.node_or_complex_index
     }
 
     pub fn get_language_specific(self) -> ValueEnum {
-        debug_assert!(self.get_type() == ValueOrReferenceType::LanguageSpecific);
+        debug_assert!(self.get_type() == PointType::LanguageSpecific);
         unsafe { mem::transmute(self.flags & REST_MASK) }
     }
 }
 
-impl fmt::Debug for ValueOrReference {
+impl fmt::Debug for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = f.debug_struct("ValueOrReference");
+        let mut s = f.debug_struct("Point");
         if self.is_calculating() {
             s.field("is_calculating", &self.is_calculating());
         } else if !self.is_calculated() {
@@ -179,11 +179,11 @@ impl fmt::Debug for ValueOrReference {
              .field("type", &self.get_type())
              .field("locality", &self.get_locality())
              .field("node_index", &self.node_or_complex_index);
-            if self.get_type() == ValueOrReferenceType::LanguageSpecific {
+            if self.get_type() == PointType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
             }
-            if self.get_type() == ValueOrReferenceType::Redirect
-                    || self.get_type() == ValueOrReferenceType::FileReference {
+            if self.get_type() == PointType::Redirect
+                    || self.get_type() == PointType::FileReference {
                 s.field("file_index", &self.get_file_index().0);
             }
         }
@@ -193,7 +193,7 @@ impl fmt::Debug for ValueOrReference {
 
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub enum ValueOrReferenceType {
+pub enum PointType {
     Redirect,
     MultiDefinition,
     Complex,

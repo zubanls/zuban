@@ -10,8 +10,8 @@ use parsa_python::{PyTree, TerminalType, NonterminalType,
 use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
 use crate::utils::{SymbolTable, InsertOnlyVec};
 use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
-use crate::database::{Database, FileIndex, Locality, ValueOrReference, ValueEnum,
-                      LocalityLink, ValueOrReferenceType, ComplexValue};
+use crate::database::{Database, FileIndex, Locality, Point, ValueEnum,
+                      LocalityLink, PointType, ComplexValue};
 use crate::name_binder::NameBinder;
 use crate::value::{Class, Instance, Function, Value, Module};
 use crate::arguments::Arguments;
@@ -348,7 +348,7 @@ pub struct PythonFile {
     pub tree: PyTree,  // TODO should probably not be public
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    values_or_references: Vec<Cell<ValueOrReference>>,
+    values_or_references: Vec<Cell<Point>>,
     complex_values: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
@@ -401,7 +401,7 @@ impl<'db> PythonFile {
         }
         self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
 
-        self.set_value(0, ValueOrReference::new_node_analysis(
+        self.set_value(0, Point::new_node_analysis(
             Locality::File
         ));
     }
@@ -449,12 +449,12 @@ impl<'db> PythonFile {
     }
 
     #[inline]
-    fn get_value(&self, index: NodeIndex) -> ValueOrReference {
+    fn get_value(&self, index: NodeIndex) -> Point {
         self.values_or_references[index as usize].get()
     }
 
     #[inline]
-    pub fn set_value(&self, index: NodeIndex, val: ValueOrReference) {
+    pub fn set_value(&self, index: NodeIndex, val: Point) {
         self.values_or_references[index as usize].set(val);
     }
 
@@ -469,7 +469,7 @@ impl<'db> PythonFile {
 
     fn use_instance(&self, node_index: NodeIndex) -> Option<Instance> {
         let v = self.get_value(node_index);
-        debug_assert_eq!(v.get_type(), ValueOrReferenceType::Complex);
+        debug_assert_eq!(v.get_type(), PointType::Complex);
         let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
         match complex {
             ComplexValue::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
@@ -489,7 +489,7 @@ impl<'a> PythonInference<'a> {
         // TODO this locality should be calculated in a more correct way
         self.file.set_value(
             index,
-            ValueOrReference::new_redirect(
+            Point::new_redirect(
                 inferred.file.get_file_index(),
                 inferred.node_index,
                 Locality::Stmt,
@@ -572,9 +572,9 @@ impl<'a> PythonInference<'a> {
         if first.is_type(Terminal(TerminalType::Name)) {
             let file_index = global_import(self.database, first.get_code());
             let value = if let Some(file_index) = file_index {
-                ValueOrReference::new_file_reference(file_index, Locality::DirectExtern)
+                Point::new_file_reference(file_index, Locality::DirectExtern)
             } else {
-                ValueOrReference::new_missing_file()
+                Point::new_missing_file()
             };
             self.file.set_value(first.index, value);
             Inferred::new(self.file, first.index, value)
@@ -819,7 +819,7 @@ impl<'a> PythonInference<'a> {
             }
             _ => unreachable!()
         };
-        let val = ValueOrReference::new_simple_language_specific(value_enum, Locality::Stmt);
+        let val = Point::new_simple_language_specific(value_enum, Locality::Stmt);
         self.file.set_value(node.index, val);
         Inferred::new(self.file, node.index, val)
     }
@@ -842,7 +842,7 @@ impl<'a> PythonInference<'a> {
                 node.index,
                 value.get_type());
             match value.get_type() {
-                ValueOrReferenceType::Redirect => {
+                PointType::Redirect => {
                     let file_index = value.get_file_index();
                     if file_index == self.file_index {
                         self.follow_redirects_in_point_cache(value.get_node_index())
@@ -853,7 +853,7 @@ impl<'a> PythonInference<'a> {
                             .follow_redirects_in_point_cache(value.get_node_index())
                     }
                 }
-                ValueOrReferenceType::LanguageSpecific => {
+                PointType::LanguageSpecific => {
                     match value.get_language_specific() {
                         ValueEnum::LazyInferredFunction => {
                             let func = node.get_parent().unwrap().get_parent().unwrap();
@@ -867,10 +867,10 @@ impl<'a> PythonInference<'a> {
                         }
                     }
                 }
-                ValueOrReferenceType::Complex => {
+                PointType::Complex => {
                     Some(Inferred::new(self.file, node.index, value))
                 }
-                ValueOrReferenceType::NodeAnalysis => {
+                PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
@@ -930,7 +930,7 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.get_value(node_index);
-    debug_assert_eq!(v.get_type(), ValueOrReferenceType::Redirect);
+    debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
     builtins.use_instance(v.get_node_index()).unwrap()
 }
@@ -939,17 +939,17 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
 pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
-    point: ValueOrReference,
+    point: Point,
 }
 
 impl<'a> Inferred<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, point: ValueOrReference) -> Self {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, point: Point) -> Self {
         Self {file, node_index, point}
     }
 
     #[allow(clippy::wrong_self_convention)]
     fn to_value_names(&self, database: &'a Database) -> ValueNames<'a> {
-        use ValueOrReferenceType::*;
+        use PointType::*;
         match self.point.get_type() {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
@@ -999,7 +999,7 @@ impl<'a> Inferred<'a> {
         callable: impl Fn(&dyn Value<'a>) -> T,
         on_missing: impl Fn(Inferred<'a>) -> T,
     ) -> T {
-        use ValueOrReferenceType::*;
+        use PointType::*;
         match self.point.get_type() {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
