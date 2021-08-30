@@ -1,22 +1,24 @@
-use std::fs;
-use std::cell::{Cell, UnsafeCell};
-use std::pin::Pin;
-use std::fmt;
-use std::any::Any;
-use regex::Regex;
-use parsa::{CodeIndex, NodeIndex, Node};
-use parsa_python::{PyTree, TerminalType, NonterminalType,
-                   SiblingIterator, PyNode, PyNodeType, PYTHON_GRAMMAR};
-use PyNodeType::{Nonterminal, Terminal, ErrorNonterminal, ErrorTerminal};
-use crate::utils::{SymbolTable, InsertOnlyVec};
-use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
-use crate::database::{Database, FileIndex, Locality, Point, ValueEnum,
-                      LocalityLink, PointType, ComplexValue};
-use crate::name_binder::NameBinder;
-use crate::value::{Class, Instance, Function, Value, Module};
 use crate::arguments::Arguments;
+use crate::database::{
+    ComplexValue, Database, FileIndex, Locality, LocalityLink, Point, PointType, ValueEnum,
+};
 use crate::debug;
-use crate::imports::{global_import};
+use crate::imports::global_import;
+use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
+use crate::name_binder::NameBinder;
+use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::value::{Class, Function, Instance, Module, Value};
+use parsa::{CodeIndex, Node, NodeIndex};
+use parsa_python::{
+    NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
+};
+use regex::Regex;
+use std::any::Any;
+use std::cell::{Cell, UnsafeCell};
+use std::fmt;
+use std::fs;
+use std::pin::Pin;
+use PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal};
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -31,8 +33,7 @@ pub trait VirtualFileSystemReader {
 }
 
 #[derive(Default)]
-pub struct FileSystemReader {
-}
+pub struct FileSystemReader {}
 
 impl VirtualFileSystemReader for FileSystemReader {
     fn read_file(&self, path: &str) -> Option<String> {
@@ -41,14 +42,13 @@ impl VirtualFileSystemReader for FileSystemReader {
     }
 }
 
-
 #[derive(Debug)]
 pub enum Leaf<'a> {
     Name(Box<dyn Name<'a> + 'a>),
     String,
     Number,
     Keyword(PyNode<'a>),
-    None
+    None,
 }
 
 pub trait FileStateLoader {
@@ -70,15 +70,11 @@ impl FileStateLoader for PythonFileLoader {
     }
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(
-            LanguageFileState::new_parsed(path, PythonFile::new(code))
-        )
+        Box::pin(LanguageFileState::new_parsed(path, PythonFile::new(code)))
     }
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(
-            LanguageFileState::new_unparsed(path, &PythonFile::new)
-        )
+        Box::pin(LanguageFileState::new_unparsed(path, &PythonFile::new))
     }
 
     fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
@@ -91,21 +87,30 @@ pub trait FileLoader<F> {
 }
 
 pub trait AsAny {
-    fn as_any(&self) -> &dyn Any where Self : 'static;
+    fn as_any(&self) -> &dyn Any
+    where
+        Self: 'static;
 }
 
 impl<T> AsAny for T {
-    fn as_any(&self) -> &dyn Any where Self : 'static {
+    fn as_any(&self) -> &dyn Any
+    where
+        Self: 'static,
+    {
         self
     }
 }
 
-pub trait File: std::fmt::Debug+AsAny {
+pub trait File: std::fmt::Debug + AsAny {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
         vec![]
     }
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
-    fn infer_operator_leaf<'a>(&'a self, database: &'a Database, node: PyNode<'a>) -> ValueNames<'a>;
+    fn infer_operator_leaf<'a>(
+        &'a self,
+        database: &'a Database,
+        node: PyNode<'a>,
+    ) -> ValueNames<'a>;
     fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
@@ -129,7 +134,7 @@ impl<F: File> FileState for LanguageFileState<F> {
     }
 
     fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
-        match unsafe {&*self.state.get()} {
+        match unsafe { &*self.state.get() } {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
@@ -137,13 +142,9 @@ impl<F: File> FileState for LanguageFileState<F> {
                 // in `slot`. Otherwise we access memory that has different data structures.
                 let file_index = file_index_cell.get().unwrap();
                 if let Some(file) = database.file_system_reader.read_file(&self.path) {
-                    unsafe {
-                        *self.state.get() = InternalFileExistence::Parsed(
-                            loader(file)
-                        )
-                    };
+                    unsafe { *self.state.get() = InternalFileExistence::Parsed(loader(file)) };
                 } else {
-                    unsafe {*self.state.get() = InternalFileExistence::Missing};
+                    unsafe { *self.state.get() = InternalFileExistence::Missing };
                 }
 
                 let file = self.get_file(database);
@@ -154,11 +155,12 @@ impl<F: File> FileState for LanguageFileState<F> {
     }
 
     fn set_file_index(&self, index: FileIndex) {
-        match unsafe {&*self.state.get()} {
-            InternalFileExistence::Missing => {},
+        match unsafe { &*self.state.get() } {
+            InternalFileExistence::Missing => {}
             InternalFileExistence::Parsed(f) => f.set_file_index(index),
-            InternalFileExistence::Unparsed(loader, file_index_cell) =>
-                file_index_cell.set(Some(index)),
+            InternalFileExistence::Unparsed(loader, file_index_cell) => {
+                file_index_cell.set(Some(index))
+            }
         }
     }
 }
@@ -173,10 +175,10 @@ pub struct LanguageFileState<F: 'static> {
 impl<F> fmt::Debug for LanguageFileState<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("LanguageFileState")
-         .field("path", &self.path)
-         .field("state", unsafe{&*self.state.get()})
-         .field("invalidates", &self.invalidates)
-         .finish()
+            .field("path", &self.path)
+            .field("state", unsafe { &*self.state.get() })
+            .field("invalidates", &self.invalidates)
+            .finish()
     }
 }
 
@@ -184,25 +186,25 @@ impl<F: File> LanguageFileState<F> {
     fn new_parsed(path: String, file: F) -> Self {
         Self {
             path,
-            state: UnsafeCell::new(
-                InternalFileExistence::Parsed(file)),
-            invalidates: vec![]}
+            state: UnsafeCell::new(InternalFileExistence::Parsed(file)),
+            invalidates: vec![],
+        }
     }
 
     fn new_unparsed(path: String, loader: LoadFileFunction<F>) -> Self {
         Self {
             path,
-            state: UnsafeCell::new(
-                InternalFileExistence::Unparsed(loader, Cell::new(None))),
-            invalidates: vec![]}
+            state: UnsafeCell::new(InternalFileExistence::Unparsed(loader, Cell::new(None))),
+            invalidates: vec![],
+        }
     }
 
     fn new_does_not_exist(path: String) -> Self {
         Self {
             path,
-            state: UnsafeCell::new(
-                InternalFileExistence::Missing),
-            invalidates: vec![]}
+            state: UnsafeCell::new(InternalFileExistence::Missing),
+            invalidates: vec![],
+        }
     }
 }
 
@@ -237,20 +239,19 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
-        fn calculate<'b>(file: &'b PythonFile, database: &'b Database, node: PyNode<'b>, position: CodeIndex) -> Leaf<'b> {
+        fn calculate<'b>(
+            file: &'b PythonFile,
+            database: &'b Database,
+            node: PyNode<'b>,
+            position: CodeIndex,
+        ) -> Leaf<'b> {
             match node.get_type() {
-                Terminal(t) | ErrorTerminal(t) => {
-                    match t {
-                        TerminalType::Name => Leaf::Name(Box::new(
-                            TreeName::new(database, file, node)
-                        )),
-                        _ => Leaf::None,
-                    }
-                }
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    Leaf::Keyword(node)
-                }
-                Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str())
+                Terminal(t) | ErrorTerminal(t) => match t {
+                    TerminalType::Name => Leaf::Name(Box::new(TreeName::new(database, file, node))),
+                    _ => Leaf::None,
+                },
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => Leaf::Keyword(node),
+                Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str()),
             }
         }
         // First check the token left and right of the cursor
@@ -272,12 +273,21 @@ impl File for PythonFile {
         // From now on left is the node we're passing.
         if left.index != right.index {
             use TerminalType::*;
-            let order = [Name, Number, String, Bytes, FStringString, FStringStart, FStringEnd];
+            let order = [
+                Name,
+                Number,
+                String,
+                Bytes,
+                FStringString,
+                FStringStart,
+                FStringEnd,
+            ];
             match left.get_type() {
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                     match right.get_type() {
                         PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                            let is_alpha = |n: PyNode| n.get_code().chars().all(|x| x.is_alphanumeric());
+                            let is_alpha =
+                                |n: PyNode| n.get_code().chars().all(|x| x.is_alphanumeric());
                             if is_alpha(right) && !is_alpha(left) {
                                 // Prefer keywords to operators
                                 left = right;
@@ -289,13 +299,14 @@ impl File for PythonFile {
                                 left = right;
                             }
                         }
-                        _ => unreachable!()
+                        _ => unreachable!(),
                     }
                 }
                 Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
                     match right.get_type() {
                         Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            let order_func = |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
+                            let order_func =
+                                |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
                             let left_index = order_func(left_terminal);
                             let right_index = order_func(right_terminal);
                             // Both are terminals, prefer the one that is higher in the order
@@ -303,20 +314,30 @@ impl File for PythonFile {
                                 left = right;
                             }
                         }
-                        _ => ()
+                        _ => (),
                     }
                 }
-                Nonterminal(n) | ErrorNonterminal(n) => unreachable!()
+                Nonterminal(n) | ErrorNonterminal(n) => unreachable!(),
             }
         }
         calculate(self, database, left, position)
     }
-    fn infer_operator_leaf<'a>(&'a self, database: &'a Database, leaf: PyNode<'a>) -> ValueNames<'a> {
-        if ["(", "[", "{", ")", "]", "}"].iter().any(|&x| x == leaf.get_code()) {
+    fn infer_operator_leaf<'a>(
+        &'a self,
+        database: &'a Database,
+        leaf: PyNode<'a>,
+    ) -> ValueNames<'a> {
+        if ["(", "[", "{", ")", "]", "}"]
+            .iter()
+            .any(|&x| x == leaf.get_code())
+        {
             let parent = leaf.get_parent().unwrap();
             if parent.is_type(Nonterminal(NonterminalType::primary)) {
                 self.calculate_global_definitions_and_references();
-                return self.get_inference(database).infer_expression_part(parent).to_value_names(database)
+                return self
+                    .get_inference(database)
+                    .infer_expression_part(parent)
+                    .to_value_names(database);
             }
         }
         vec![]
@@ -341,11 +362,10 @@ impl File for PythonFile {
         let line = self.get_lines().partition_point(|&l| l < byte as CodeIndex);
         (line, byte as usize - line)
     }
-
 }
 
 pub struct PythonFile {
-    pub tree: PyTree,  // TODO should probably not be public
+    pub tree: PyTree, // TODO should probably not be public
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     values_or_references: Vec<Cell<Point>>,
@@ -360,8 +380,8 @@ pub struct PythonFile {
 impl fmt::Debug for PythonFile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("PythonFile")
-         .field("file_index", &self.file_index.get())
-         .finish()
+            .field("file_index", &self.file_index.get())
+            .finish()
     }
 }
 
@@ -382,7 +402,7 @@ impl<'db> PythonFile {
     }
 
     fn get_lines(&self) -> &[u32] {
-        let ptr = unsafe {&mut *self.new_line_indices.get()};
+        let ptr = unsafe { &mut *self.new_line_indices.get() };
         if ptr.is_none() {
             // TODO probably use a OnceCell or something
             let mut v = vec![0];
@@ -397,13 +417,11 @@ impl<'db> PythonFile {
     pub fn calculate_global_definitions_and_references(&self) {
         if self.get_value(0).is_calculated() {
             // It was already done.
-            return
+            return;
         }
         self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
 
-        self.set_value(0, Point::new_node_analysis(
-            Locality::File
-        ));
+        self.set_value(0, Point::new_node_analysis(Locality::File));
     }
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
@@ -413,37 +431,56 @@ impl<'db> PythonFile {
             &self.complex_values,
             self.file_index.get().unwrap(),
             None,
-            func
+            func,
         )
     }
 
     fn calculate_node_scope_definitions(&self, node: PyNode) {
         self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
-        self.with_global_binder(
-            |binder| binder.with_nested(&symbol_table, |b| b.index_function_body(node)));
+        self.with_global_binder(|binder| {
+            binder.with_nested(&symbol_table, |b| b.index_function_body(node))
+        });
     }
 
     fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
-        PythonInference {file: self, file_index: self.get_file_index(), database}
+        PythonInference {
+            file: self,
+            file_index: self.get_file_index(),
+            database,
+        }
     }
 
     pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
-        self.get_inference(database).infer_name(name).to_value_names(database)
+        self.get_inference(database)
+            .infer_name(name)
+            .to_value_names(database)
     }
 
-    pub fn infer_name_by_index(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_name_by_index(
+        &'db self,
+        database: &'db Database,
+        node_index: NodeIndex,
+    ) -> Inferred<'db> {
         let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_name(node)
     }
 
-    pub fn infer_expression(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_expression(
+        &'db self,
+        database: &'db Database,
+        node_index: NodeIndex,
+    ) -> Inferred<'db> {
         let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_expression(node)
     }
 
-    pub fn infer_expression_part(&'db self, database: &'db Database, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_expression_part(
+        &'db self,
+        database: &'db Database,
+        node_index: NodeIndex,
+    ) -> Inferred<'db> {
         let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_expression_part(node)
     }
@@ -460,17 +497,22 @@ impl<'db> PythonFile {
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.calculate_global_definitions_and_references();
-        self.symbol_table.lookup_symbol(name).map(|node_index| LocalityLink {
-            file: self.get_file_index(),
-            node_index,
-            locality: Locality::DirectExtern,
-        })
+        self.symbol_table
+            .lookup_symbol(name)
+            .map(|node_index| LocalityLink {
+                file: self.get_file_index(),
+                node_index,
+                locality: Locality::DirectExtern,
+            })
     }
 
     fn use_instance(&self, node_index: NodeIndex) -> Option<Instance> {
         let v = self.get_value(node_index);
         debug_assert_eq!(v.get_type(), PointType::Complex);
-        let complex = self.complex_values.get(v.get_complex_index() as usize).unwrap();
+        let complex = self
+            .complex_values
+            .get(v.get_complex_index() as usize)
+            .unwrap();
         match complex {
             ComplexValue::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
@@ -493,12 +535,16 @@ impl<'a> PythonInference<'a> {
                 inferred.file.get_file_index(),
                 inferred.node_index,
                 Locality::Stmt,
-            )
+            ),
         );
     }
 
     fn cache_stmt_name(&self, stmt: PyNode<'a>, name: PyNode<'a>) {
-        debug!("Infer stmt ({}, {})", self.file.get_file_index(), stmt.index);
+        debug!(
+            "Infer stmt ({}, {})",
+            self.file.get_file_index(),
+            stmt.index
+        );
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
@@ -549,8 +595,9 @@ impl<'a> PythonInference<'a> {
                             if self.file.get_value(from_as_name.index + 1).is_calculated() {
                                 todo!()
                             }
-                            let i = inferred.unwrap().run_on_value(
-                                self.database, |value| value.lookup(self.database, from_as_name.get_code()));
+                            let i = inferred.unwrap().run_on_value(self.database, |value| {
+                                value.lookup(self.database, from_as_name.get_code())
+                            });
                             self.set_redirect_value(from_as_name.index + 1, i);
                         } else {
                             todo!("from import as")
@@ -558,14 +605,14 @@ impl<'a> PythonInference<'a> {
                     }
                 }
             } else if node.get_code() == "." {
-                    level += 1;
+                level += 1;
             } else if node.get_code() == "..." {
                 level += 3;
             }
         }
     }
 
-    fn infer_import_dotted_name(&self, dotted: PyNode<'a>) -> Inferred<'a>{
+    fn infer_import_dotted_name(&self, dotted: PyNode<'a>) -> Inferred<'a> {
         debug_assert_eq!(dotted.get_type(), Nonterminal(NonterminalType::dotted_name));
         // dotted_name: [dotted_name "."] Name
         let first = dotted.get_nth_child(0);
@@ -647,7 +694,10 @@ impl<'a> PythonInference<'a> {
     }
 
     fn infer_star_expressions(&self, node: PyNode<'a>) -> Inferred<'a> {
-        debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::star_expressions));
+        debug_assert_eq!(
+            node.get_type(),
+            Nonterminal(NonterminalType::star_expressions)
+        );
 
         let mut iter = node.iter_children();
         let expression = iter.next().unwrap();
@@ -655,7 +705,10 @@ impl<'a> PythonInference<'a> {
             if expression.is_type(Nonterminal(NonterminalType::expression)) {
                 self.infer_expression(expression)
             } else {
-                debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::star_expression));
+                debug_assert_eq!(
+                    node.get_type(),
+                    Nonterminal(NonterminalType::star_expression)
+                );
                 todo!("Add error: can't use starred expression here");
             }
         } else {
@@ -667,7 +720,7 @@ impl<'a> PythonInference<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
         if let Some(result) = self.check_point_cache(node) {
-            return result
+            return result;
         }
 
         let mut iter = node.iter_children();
@@ -715,9 +768,9 @@ impl<'a> PythonInference<'a> {
         let op = iter.next().unwrap();
         let second = iter.next().unwrap();
         match op.get_code() {
-            "." => {
-                base.run_on_value(self.database, |value| value.lookup(self.database, second.get_code()))
-            }
+            "." => base.run_on_value(self.database, |value| {
+                value.lookup(self.database, second.get_code())
+            }),
             "(" => {
                 let args = {
                     if second.is_type(Nonterminal(arguments)) {
@@ -733,7 +786,7 @@ impl<'a> PythonInference<'a> {
             "[" => {
                 todo!()
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -741,15 +794,13 @@ impl<'a> PythonInference<'a> {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(atom));
         if let Some(result) = self.check_point_cache(node) {
-            return result
+            return result;
         }
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
         let value_enum = match first.get_type() {
-            Terminal(TerminalType::Name) => {
-                return self.infer_name_reference(first)
-            }
+            Terminal(TerminalType::Name) => return self.infer_name_reference(first),
             Terminal(TerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains('j') {
@@ -765,10 +816,10 @@ impl<'a> PythonInference<'a> {
                 let mut is_byte = false;
                 for byte in code.bytes() {
                     if byte == b'"' || byte == b'\'' {
-                        break
+                        break;
                     } else if byte == b'b' || byte == b'B' {
                         is_byte = true;
-                        break
+                        break;
                     }
                 }
                 if is_byte {
@@ -777,47 +828,43 @@ impl<'a> PythonInference<'a> {
                     ValueEnum::String
                 }
             }
-            PyNodeType::Keyword => {
-                match first.get_code() {
-                    "None" => ValueEnum::None,
-                    "True" | "False" => ValueEnum::Boolean,
-                    "..." => ValueEnum::Ellipsis,
-                    "(" => {
-                        let next_node = iter.next().unwrap();
-                        match next_node.get_type() {
-                            Nonterminal(tuple_content) => ValueEnum::Tuple,
-                            Nonterminal(yield_expr) => {
-                                todo!("yield_expr");
-                            }
-                            Nonterminal(named_expression) => {
-                                todo!("named_expression");
-                            }
-                            Nonterminal(comprehension) => ValueEnum::ComprehensionGenerator,
-                            PyNodeType::Keyword => {
-                                debug_assert_eq!(next_node.get_code(), ")");
-                                ValueEnum::Tuple
-                            }
-                            _ => unreachable!()
+            PyNodeType::Keyword => match first.get_code() {
+                "None" => ValueEnum::None,
+                "True" | "False" => ValueEnum::Boolean,
+                "..." => ValueEnum::Ellipsis,
+                "(" => {
+                    let next_node = iter.next().unwrap();
+                    match next_node.get_type() {
+                        Nonterminal(tuple_content) => ValueEnum::Tuple,
+                        Nonterminal(yield_expr) => {
+                            todo!("yield_expr");
                         }
-                    }
-                    "[" => {
-                        todo!("List literal")
-                    }
-                    "{" => {
-                        match iter.next().unwrap().get_type() {
-                            Nonterminal(dict_content) | Nonterminal(dict_comprehension) => {
-                                todo!("dict literal")
-                            }
-                            Nonterminal(star_named_expression) | Nonterminal(comprehension) => {
-                                todo!("set literal")
-                            }
-                            _ => unreachable!()
+                        Nonterminal(named_expression) => {
+                            todo!("named_expression");
                         }
+                        Nonterminal(comprehension) => ValueEnum::ComprehensionGenerator,
+                        PyNodeType::Keyword => {
+                            debug_assert_eq!(next_node.get_code(), ")");
+                            ValueEnum::Tuple
+                        }
+                        _ => unreachable!(),
                     }
-                    _ => unreachable!()
                 }
-            }
-            _ => unreachable!()
+                "[" => {
+                    todo!("List literal")
+                }
+                "{" => match iter.next().unwrap().get_type() {
+                    Nonterminal(dict_content) | Nonterminal(dict_comprehension) => {
+                        todo!("dict literal")
+                    }
+                    Nonterminal(star_named_expression) | Nonterminal(comprehension) => {
+                        todo!("set literal")
+                    }
+                    _ => unreachable!(),
+                },
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
         };
         let val = Point::new_simple_language_specific(value_enum, Locality::Stmt);
         self.file.set_value(node.index, val);
@@ -826,7 +873,7 @@ impl<'a> PythonInference<'a> {
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
         if let Some(result) = self.check_point_cache(node) {
-            return result
+            return result;
         }
         todo!("star import? {:?}", node)
     }
@@ -840,7 +887,8 @@ impl<'a> PythonInference<'a> {
                 get_node_debug_output(node),
                 self.file.get_file_index(),
                 node.index,
-                value.get_type());
+                value.get_type()
+            );
             match value.get_type() {
                 PointType::Redirect => {
                     let file_index = value.get_file_index();
@@ -853,23 +901,20 @@ impl<'a> PythonInference<'a> {
                             .follow_redirects_in_point_cache(value.get_node_index())
                     }
                 }
-                PointType::LanguageSpecific => {
-                    match value.get_language_specific() {
-                        ValueEnum::LazyInferredFunction => {
-                            let func = node.get_parent().unwrap().get_parent().unwrap();
-                            debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
-                            self.file.calculate_node_scope_definitions(func);
-                            debug_assert!(self.file.get_value(node.index).is_calculated());
-                            self.check_point_cache(node)
-                        }
-                        _ => {
-                            Some(Inferred::new(self.file, node.index, value))
-                        }
+                PointType::LanguageSpecific => match value.get_language_specific() {
+                    ValueEnum::LazyInferredFunction => {
+                        let func = node.get_parent().unwrap().get_parent().unwrap();
+                        debug_assert_eq!(
+                            func.get_type(),
+                            Nonterminal(NonterminalType::function_def)
+                        );
+                        self.file.calculate_node_scope_definitions(func);
+                        debug_assert!(self.file.get_value(node.index).is_calculated());
+                        self.check_point_cache(node)
                     }
-                }
-                PointType::Complex => {
-                    Some(Inferred::new(self.file, node.index, value))
-                }
+                    _ => Some(Inferred::new(self.file, node.index, value)),
+                },
+                PointType::Complex => Some(Inferred::new(self.file, node.index, value)),
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
@@ -887,27 +932,34 @@ impl<'a> PythonInference<'a> {
 
     fn follow_redirects_in_point_cache(&self, node_index: NodeIndex) -> Option<Inferred<'a>> {
         let node = self.file.tree.get_node_by_index(node_index);
-        self.check_point_cache(node).or_else(
-            || if node.is_type(Terminal(TerminalType::Name)) {
+        self.check_point_cache(node).or_else(|| {
+            if node.is_type(Terminal(TerminalType::Name)) {
                 Some(self.infer_name(node))
             } else {
                 todo!("{:?}, {:?}", self.file.get_file_index().0, node_index)
             }
-        )
+        })
     }
 
     fn infer_name(&self, node: PyNode) -> Inferred<'a> {
         // TODO move this after debug_assert_eq???
         if let Some(result) = self.check_point_cache(node) {
-            return result
+            return result;
         }
-        debug_assert_eq!(node.get_type(), Terminal(TerminalType::Name), "Node Id: {}", node.index);
-        let stmt = node.get_parent_until(&[
-            Nonterminal(NonterminalType::lambda),
-            Nonterminal(NonterminalType::comprehension),
-            Nonterminal(NonterminalType::dict_comprehension),
-            Nonterminal(NonterminalType::stmt),
-        ]).expect("There should always be a stmt");
+        debug_assert_eq!(
+            node.get_type(),
+            Terminal(TerminalType::Name),
+            "Node Id: {}",
+            node.index
+        );
+        let stmt = node
+            .get_parent_until(&[
+                Nonterminal(NonterminalType::lambda),
+                Nonterminal(NonterminalType::comprehension),
+                Nonterminal(NonterminalType::dict_comprehension),
+                Nonterminal(NonterminalType::stmt),
+            ])
+            .expect("There should always be a stmt");
 
         if !self.file.get_value(stmt.index).is_calculated() {
             if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
@@ -944,7 +996,11 @@ pub struct Inferred<'a> {
 
 impl<'a> Inferred<'a> {
     pub fn new(file: &'a PythonFile, node_index: NodeIndex, point: Point) -> Self {
-        Self {file, node_index, point}
+        Self {
+            file,
+            node_index,
+            point,
+        }
     }
 
     #[allow(clippy::wrong_self_convention)]
@@ -954,28 +1010,38 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
                 vec![match specific {
-                    ValueEnum::Function => {
-                        Box::new(WithValueName::new(database, Function::new(self.file, self.node_index)))
-                    }
+                    ValueEnum::Function => Box::new(WithValueName::new(
+                        database,
+                        Function::new(self.file, self.node_index),
+                    )),
                     ValueEnum::AnnotationInstance => {
                         let inferred = self.file.infer_expression(database, self.node_index + 2);
                         if let Some(instance) = inferred.file.use_instance(inferred.node_index) {
                             Box::new(WithValueName::new(database, instance))
-                        }  else {
-                            debug!("Inferred annotation {:?}, which is not a class: {:?}", self, inferred);
-                            return vec![]
+                        } else {
+                            debug!(
+                                "Inferred annotation {:?}, which is not a class: {:?}",
+                                self, inferred
+                            );
+                            return vec![];
                         }
                     }
                     ValueEnum::TypeVar => {
                         todo!()
                     }
-                    _ => {
-                        Box::new(WithValueName::new(database, self.resolve_python_value(database, self.point.get_language_specific())))
-                    }
+                    _ => Box::new(WithValueName::new(
+                        database,
+                        self.resolve_python_value(database, self.point.get_language_specific()),
+                    )),
                 }]
             }
             Complex => {
-                match self.file.complex_values.get(self.point.get_complex_index()).unwrap() {
+                match self
+                    .file
+                    .complex_values
+                    .get(self.point.get_complex_index())
+                    .unwrap()
+                {
                     ComplexValue::Class(cls_storage) => {
                         let cls = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
                         vec![Box::new(WithValueName::new(database, cls))]
@@ -991,7 +1057,7 @@ impl<'a> Inferred<'a> {
             FileReference => {
                 todo!();
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -1007,30 +1073,36 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
                 match specific {
-                    ValueEnum::Function => {
-                        callable(&Function::new(self.file, self.node_index))
-                    }
+                    ValueEnum::Function => callable(&Function::new(self.file, self.node_index)),
                     ValueEnum::AnnotationInstance => {
                         let inferred = self.file.infer_expression(database, self.node_index + 2);
                         todo!()
                     }
                     ValueEnum::InstanceWithArguments => {
-                        let cls = self.file.infer_expression_part(database, self.node_index + 1);
+                        let cls = self
+                            .file
+                            .infer_expression_part(database, self.node_index + 1);
                         callable(&cls.file.use_instance(cls.node_index).unwrap())
                     }
-                    _ =>  {
+                    _ => {
                         let instance = self.resolve_python_value(database, specific);
                         callable(&instance)
                     }
                 }
             }
             Complex => {
-                match self.file.complex_values.get(self.point.get_complex_index()).unwrap() {
+                match self
+                    .file
+                    .complex_values
+                    .get(self.point.get_complex_index())
+                    .unwrap()
+                {
                     ComplexValue::Union(lst) => {
                         todo!()
                     }
                     ComplexValue::Class(cls_storage) => {
-                        let class = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
+                        let class =
+                            Class::new(self.file, self.node_index, &cls_storage.symbol_table);
                         callable(&class)
                     }
                     ComplexValue::Instance(bla) => {
@@ -1044,41 +1116,47 @@ impl<'a> Inferred<'a> {
                     }
                 }
             }
-            MissingOrUnknown => {
-                on_missing(*self)
-            }
+            MissingOrUnknown => on_missing(*self),
             FileReference => {
                 let f = database.get_loaded_python_file(self.point.get_file_index());
                 callable(&Module::new(f, &f.symbol_table))
             }
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
     #[inline]
-    pub fn run_on_value(&self, database: &'a Database, callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>) -> Inferred<'a> {
+    pub fn run_on_value(
+        &self,
+        database: &'a Database,
+        callable: impl Fn(&dyn Value<'a>) -> Inferred<'a>,
+    ) -> Inferred<'a> {
         self.run(database, callable, |inferred| inferred)
     }
 
     fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Instance<'a> {
-        load_builtin_instance_from_str(database, match value {
-            ValueEnum::String => "str",
-            ValueEnum::Integer => "int",
-            ValueEnum::Float => "float",
-            ValueEnum::Boolean => "bool",
-            ValueEnum::Bytes => "bytes",
-            ValueEnum::Complex => "complex",
-            ValueEnum::Ellipsis => "ellipsis",  // TODO this should not even be public
-            actual => todo!("{:?}", actual)
-        })
+        load_builtin_instance_from_str(
+            database,
+            match value {
+                ValueEnum::String => "str",
+                ValueEnum::Integer => "int",
+                ValueEnum::Float => "float",
+                ValueEnum::Boolean => "bool",
+                ValueEnum::Bytes => "bytes",
+                ValueEnum::Complex => "complex",
+                ValueEnum::Ellipsis => "ellipsis", // TODO this should not even be public
+                actual => todo!("{:?}", actual),
+            },
+        )
     }
 }
 
 fn is_name_reference(name: PyNode) -> bool {
     debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
-    !name.get_parent().unwrap().is_type(
-        Nonterminal(NonterminalType::name_definition)
-    )
+    !name
+        .get_parent()
+        .unwrap()
+        .is_type(Nonterminal(NonterminalType::name_definition))
 }
 
 enum Target<'a> {
@@ -1106,13 +1184,15 @@ impl<'a> Target<'a> {
                 unreachable!();
             }
         } else {
-            Self::Tuple(TargetIterator{siblings: node.iter_children()})
+            Self::Tuple(TargetIterator {
+                siblings: node.iter_children(),
+            })
         }
     }
 }
 
 struct TargetIterator<'a> {
-    siblings: SiblingIterator<'a>
+    siblings: SiblingIterator<'a>,
 }
 
 impl<'a> Iterator for TargetIterator<'a> {

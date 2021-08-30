@@ -1,8 +1,8 @@
 use super::{Value, ValueKind};
-use crate::file::{PythonFile, Inferred};
-use crate::utils::SymbolTable;
-use crate::database::Database;
 use crate::arguments::Arguments;
+use crate::database::Database;
+use crate::file::{Inferred, PythonFile};
+use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Module<'a> {
@@ -12,7 +12,7 @@ pub struct Module<'a> {
 
 impl<'a> Module<'a> {
     pub fn new(file: &'a PythonFile, symbol_table: &'a SymbolTable) -> Self {
-        Self {file, symbol_table}
+        Self { file, symbol_table }
     }
 }
 

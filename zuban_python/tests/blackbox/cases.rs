@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use std::collections::HashSet;
-use zuban_python::{Script, Position, ValueKind};
+use std::path::PathBuf;
+use zuban_python::{Position, Script, ValueKind};
 
 pub struct TestFile {
     pub path: PathBuf,
@@ -35,7 +35,11 @@ impl TestFile {
                         .iter()
                         .map(|name| {
                             name.get_name().to_owned()
-                            + (if name.get_kind() == ValueKind::Object {"()"} else {""})
+                                + (if name.get_kind() == ValueKind::Object {
+                                    "()"
+                                } else {
+                                    ""
+                                })
                         })
                         .collect();
                     assert_eq!(actual, expected);
@@ -73,6 +77,8 @@ impl TestFile {
 
 impl std::fmt::Debug for TestFile {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("TestFile").field("path", &self.path).finish()
+        f.debug_struct("TestFile")
+            .field("path", &self.path)
+            .finish()
     }
 }

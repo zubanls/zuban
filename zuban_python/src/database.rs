@@ -1,14 +1,16 @@
-use std::mem;
-use std::fmt;
-use std::ptr::null;
-use std::path::{Path, PathBuf};
-use std::collections::HashMap;
-use std::pin::Pin;
-use std::cell::Cell;
 use parsa::NodeIndex;
+use std::cell::Cell;
+use std::collections::HashMap;
+use std::fmt;
+use std::mem;
+use std::path::{Path, PathBuf};
+use std::pin::Pin;
+use std::ptr::null;
 use walkdir::WalkDir;
 
-use crate::file::{PythonFile, FileState, File, FileStateLoader, VirtualFileSystemReader, FileSystemReader};
+use crate::file::{
+    File, FileState, FileStateLoader, FileSystemReader, PythonFile, VirtualFileSystemReader,
+};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,16 +61,17 @@ impl Point {
     #[inline]
     fn calculate_flags(type_: PointType, rest: u32, locality: Locality) -> u32 {
         debug_assert!(rest & !REST_MASK == 0);
-        rest
-        | IS_ANALIZED_MASK
-        | (locality as u32) << LOCALITY_BIT_INDEX
-        | (type_ as u32) << TYPE_BIT_INDEX
+        rest | IS_ANALIZED_MASK
+            | (locality as u32) << LOCALITY_BIT_INDEX
+            | (type_ as u32) << TYPE_BIT_INDEX
     }
 
     pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(
-            PointType::Redirect, file.0, locality);
-        Self {flags, node_or_complex_index: node_index}
+        let flags = Self::calculate_flags(PointType::Redirect, file.0, locality);
+        Self {
+            flags,
+            node_or_complex_index: node_index,
+        }
     }
 
     pub fn new_multi_definition() -> Self {
@@ -76,31 +79,43 @@ impl Point {
     }
 
     pub fn new_complex_value(complex_index: u32, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(
-            PointType::Complex, complex_index, locality);
-        Self {flags, node_or_complex_index: 0}
+        let flags = Self::calculate_flags(PointType::Complex, complex_index, locality);
+        Self {
+            flags,
+            node_or_complex_index: 0,
+        }
     }
 
     pub fn new_missing_or_unknown(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(
-            PointType::MissingOrUnknown, file.0, locality);
-        Self {flags, node_or_complex_index: 0}
+        let flags = Self::calculate_flags(PointType::MissingOrUnknown, file.0, locality);
+        Self {
+            flags,
+            node_or_complex_index: 0,
+        }
     }
 
     pub fn new_simple_language_specific(type_: ValueEnum, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(
-            PointType::LanguageSpecific, type_ as u32, locality);
-        Self {flags, node_or_complex_index: 0}
+        let flags = Self::calculate_flags(PointType::LanguageSpecific, type_ as u32, locality);
+        Self {
+            flags,
+            node_or_complex_index: 0,
+        }
     }
 
-    pub fn new_language_specific(type_: ValueEnum, node_index: NodeIndex, locality: Locality) -> Self {
+    pub fn new_language_specific(
+        type_: ValueEnum,
+        node_index: NodeIndex,
+        locality: Locality,
+    ) -> Self {
         todo!()
     }
 
     pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(
-            PointType::FileReference, file.0 as u32, locality);
-        Self {flags, node_or_complex_index: 0}
+        let flags = Self::calculate_flags(PointType::FileReference, file.0 as u32, locality);
+        Self {
+            flags,
+            node_or_complex_index: 0,
+        }
     }
 
     pub fn new_missing_file() -> Self {
@@ -110,9 +125,8 @@ impl Point {
 
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
-            flags: Self::calculate_flags(
-                PointType::NodeAnalysis, 0, locality),
-            node_or_complex_index: 0
+            flags: Self::calculate_flags(PointType::NodeAnalysis, 0, locality),
+            node_or_complex_index: 0,
         }
     }
 
@@ -146,8 +160,8 @@ impl Point {
 
     pub fn get_file_index(self) -> FileIndex {
         debug_assert!(
-            self.get_type() == PointType::Redirect
-            || self.get_type() == PointType::FileReference);
+            self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
+        );
         FileIndex(self.flags & REST_MASK)
     }
 
@@ -175,15 +189,14 @@ impl fmt::Debug for Point {
         } else if !self.is_calculated() {
             s.field("is_calculated", &self.is_calculated());
         } else {
-            s
-             .field("type", &self.get_type())
-             .field("locality", &self.get_locality())
-             .field("node_index", &self.node_or_complex_index);
+            s.field("type", &self.get_type())
+                .field("locality", &self.get_locality())
+                .field("node_index", &self.node_or_complex_index);
             if self.get_type() == PointType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
             }
-            if self.get_type() == PointType::Redirect
-                    || self.get_type() == PointType::FileReference {
+            if self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
+            {
                 s.field("file_index", &self.get_file_index().0);
             }
         }
@@ -222,11 +235,11 @@ pub enum ValueEnum {
 
     SelfParam,
     Param,
-    SimpleGeneric, // primary: primary '[' slices ']'
-    ParamWithDefault, // TODO Redirect to default maybe?
-    LazyInferredClass, // A class that will be inferred later.
+    SimpleGeneric,        // primary: primary '[' slices ']'
+    ParamWithDefault,     // TODO Redirect to default maybe?
+    LazyInferredClass,    // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
-    Function,  // The node point so the index of the result
+    Function,             // The node point so the index of the result
     NoReturnFunction,
 
     InstanceWithArguments, // A primary node
@@ -246,9 +259,9 @@ pub enum Locality {
     File,
 
     // Extern: 1xx
-    DirectExtern,  // Contains a direct link that can be checked
+    DirectExtern,   // Contains a direct link that can be checked
     ComplexExtern,  // Means we have to recalculate the value all the links
-    ImplicitExtern,  // Contains star imports for now (always recheck on invalidation of the module)
+    ImplicitExtern, // Contains star imports for now (always recheck on invalidation of the module)
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -301,7 +314,7 @@ impl Database {
             workspaces,
             files_managed_by_client: Default::default(),
 
-            python_state: PythonState::new()
+            python_state: PythonState::new(),
         };
         this.initial_python_load();
         this
@@ -318,7 +331,7 @@ impl Database {
         // todo handle watcher events here
     }
 
-    pub fn get_file_state(&self, index: FileIndex) -> &(dyn FileState+'static) {
+    pub fn get_file_state(&self, index: FileIndex) -> &(dyn FileState + 'static) {
         self.files.get(index.0 as usize).unwrap()
     }
 
@@ -330,7 +343,7 @@ impl Database {
         self.path_to_file.get(path).copied()
     }
 
-    pub fn get_loaded_file(&self, index: FileIndex) -> &(dyn File+'static) {
+    pub fn get_loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
         self.get_file_state(index).get_file(self).unwrap()
     }
 
@@ -339,7 +352,7 @@ impl Database {
             let extension = Path::new(path).extension().and_then(|e| e.to_str());
             if let Some(e) = extension {
                 if loader.responsible_for_file_endings().contains(&e) {
-                    return Some(loader.as_ref())
+                    return Some(loader.as_ref());
                 }
             }
         }
@@ -367,15 +380,14 @@ impl Database {
                 loader.load_parsed(path, code)
             } else {
                 loader.get_inexistent_file_state(path)
-            }
+            },
         );
         index.set(file_index);
     }
 
     pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
-        self.get_loader(&path).map(|loader| {
-            self.add_file_state(loader.load_unparsed(path))
-        })
+        self.get_loader(&path)
+            .map(|loader| self.add_file_state(loader.load_unparsed(path)))
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
@@ -399,10 +411,12 @@ pub struct Workspace {
     //watcher: dyn notify::Watcher,
 }
 
-
 impl Workspace {
     pub fn new(loaders: &[Box<dyn FileStateLoader>], root: String) -> Self {
-        let mut stack = vec![(PathBuf::from(&root), DirectoryOrFile::Directory(root, vec![]))];
+        let mut stack = vec![(
+            PathBuf::from(&root),
+            DirectoryOrFile::Directory(root, vec![]),
+        )];
         for entry in WalkDir::new(&stack[0].1.get_name())
             .follow_links(true)
             .into_iter()
@@ -425,7 +439,10 @@ impl Workspace {
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {
-                            stack.push((entry.path().to_owned(), DirectoryOrFile::Directory(name.to_owned(), vec![])));
+                            stack.push((
+                                entry.path().to_owned(),
+                                DirectoryOrFile::Directory(name.to_owned(), vec![]),
+                            ));
                         } else {
                             stack
                                 .last_mut()
@@ -433,7 +450,10 @@ impl Workspace {
                                 .1
                                 .get_directory_entries_mut()
                                 .unwrap()
-                                .push(DirectoryOrFile::File(name.to_owned(), WorkspaceFileIndex::none()));
+                                .push(DirectoryOrFile::File(
+                                    name.to_owned(),
+                                    WorkspaceFileIndex::none(),
+                                ));
                         }
                     }
                     Err(e) => {
@@ -445,9 +465,13 @@ impl Workspace {
         }
         while let Some(current) = stack.pop() {
             if let Some(parent) = stack.last_mut() {
-                parent.1.get_directory_entries_mut().unwrap().push(current.1)
+                parent
+                    .1
+                    .get_directory_entries_mut()
+                    .unwrap()
+                    .push(current.1)
             } else {
-                return Self {root: current.1}
+                return Self { root: current.1 };
             }
         }
         unreachable!()
@@ -511,19 +535,22 @@ pub struct PythonState {
 
 impl PythonState {
     fn new() -> Self {
-        Self {builtins: null(), typing: null()}
+        Self {
+            builtins: null(),
+            typing: null(),
+        }
     }
 
     #[inline]
     pub fn get_builtins(&self) -> &PythonFile {
         debug_assert!(!self.builtins.is_null());
-        unsafe {&*self.builtins}
+        unsafe { &*self.builtins }
     }
 
     #[inline]
     pub fn get_typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
-        unsafe {&*self.typing}
+        unsafe { &*self.typing }
     }
 }
 
@@ -534,6 +561,6 @@ pub struct ClassStorage {
 
 impl ClassStorage {
     pub fn new(symbol_table: SymbolTable) -> Self {
-        Self {symbol_table}
+        Self { symbol_table }
     }
 }

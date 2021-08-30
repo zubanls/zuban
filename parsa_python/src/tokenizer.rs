@@ -284,11 +284,7 @@ impl PythonTokenizer<'_> {
 
                         if in_expr {
                             self.index += i + 2;
-                            return self.new_tok(
-                                self.index - 2,
-                                false,
-                                TerminalType::ErrorToken,
-                            );
+                            return self.new_tok(self.index - 2, false, TerminalType::ErrorToken);
                         }
                     }
                 }

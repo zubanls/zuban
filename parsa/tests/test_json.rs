@@ -181,7 +181,6 @@ fn unreachable_alternatives1() {
     GRAMMAR.parse("".to_owned());
 }
 
-
 #[test]
 #[should_panic(expected = "Found an unreachable alternative in the rule \"content\"")]
 fn unreachable_alternatives2() {

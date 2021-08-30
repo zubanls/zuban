@@ -1,12 +1,13 @@
 use std::cell::Cell;
 
-use parsa_python::{PyNode, PyNodeType, NonterminalType, TerminalType};
-use parsa_python::PyNodeType::{Nonterminal, Terminal, Keyword};
-use parsa::{Node, NodeIndex};
-use crate::utils::SymbolTable;
-use crate::database::{Point, ValueEnum, Locality, FileIndex, ClassStorage,
-                      PointType::MultiDefinition, ComplexValue};
+use crate::database::{
+    ClassStorage, ComplexValue, FileIndex, Locality, Point, PointType::MultiDefinition, ValueEnum,
+};
 use crate::file::ComplexValues;
+use crate::utils::SymbolTable;
+use parsa::{Node, NodeIndex};
+use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
+use parsa_python::{NonterminalType, PyNode, PyNodeType, TerminalType};
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'b SymbolTable,
@@ -49,15 +50,29 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(symbol_table, values_or_references, complex_values, file_index, None);
+        let mut binder = Self::new(
+            symbol_table,
+            values_or_references,
+            complex_values,
+            file_index,
+            None,
+        );
         func(&mut binder);
         binder.close();
     }
 
-    pub fn with_nested(&mut self, symbol_table: &'_ SymbolTable, mut func: impl FnMut(&mut NameBinder<'a, '_>)) {
+    pub fn with_nested(
+        &mut self,
+        symbol_table: &'_ SymbolTable,
+        mut func: impl FnMut(&mut NameBinder<'a, '_>),
+    ) {
         let mut name_binder = NameBinder::new(
-            symbol_table, self.values_or_references, self.complex_values,
-            self.file_index, Some(self));
+            symbol_table,
+            self.values_or_references,
+            self.complex_values,
+            self.file_index,
+            Some(self),
+        );
         func(&mut name_binder);
         name_binder.close();
         let unresolved_names = name_binder.unresolved_names;
@@ -65,7 +80,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn add_new_definition(&self, name_def: PyNode<'a>, value: Point) {
-        debug_assert_eq!(name_def.get_type(), Nonterminal(NonterminalType::name_definition));
+        debug_assert_eq!(
+            name_def.get_type(),
+            Nonterminal(NonterminalType::name_definition)
+        );
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
         if let Some(replaced) = replaced {
@@ -77,25 +95,21 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
         self.add_new_definition(
             name_def,
-            Point::new_simple_language_specific(type_, Locality::Stmt)
+            Point::new_simple_language_specific(type_, Locality::Stmt),
         );
     }
 
     fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
-        self.values_or_references[node.index as usize].set(
-            Point::new_complex_value(complex_index, Locality::Stmt));
+        self.values_or_references[node.index as usize]
+            .set(Point::new_complex_value(complex_index, Locality::Stmt));
     }
 
     fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
-            Point::new_redirect(
-                self.file_index,
-                node_index,
-                Locality::Stmt,
-            )
+            Point::new_redirect(self.file_index, node_index, Locality::Stmt),
         );
     }
 
@@ -111,14 +125,17 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // - lambda: only in scope
         // - function_def, class_def: ignore
         debug_assert_eq!(block_node.get_type(), Nonterminal(NonterminalType::block));
-        if block_node.get_nth_child(0).is_type(Nonterminal(NonterminalType::simple_stmts)) {
+        if block_node
+            .get_nth_child(0)
+            .is_type(Nonterminal(NonterminalType::simple_stmts))
+        {
             self.index_non_block_node(block_node, ordered);
         } else {
             self.index_stmts(block_node.iter_children().skip(2), ordered);
         }
     }
 
-    fn index_stmts(&mut self, stmts: impl Iterator<Item=PyNode<'a>>, ordered: bool) {
+    fn index_stmts(&mut self, stmts: impl Iterator<Item = PyNode<'a>>, ordered: bool) {
         use NonterminalType::*;
         //debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         for child in stmts {
@@ -126,7 +143,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 || child.is_type(Terminal(TerminalType::Newline))
                 || child.is_type(Terminal(TerminalType::Dedent))
             {
-                continue
+                continue;
             }
             let child = child.get_nth_child(0);
             if child.is_type(Nonterminal(simple_stmts)) {
@@ -159,17 +176,17 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                         ValueEnum::LazyInferredClass,
                     );
                 }
-            } else if child.is_type(Nonterminal(if_stmt)){
+            } else if child.is_type(Nonterminal(if_stmt)) {
                 self.index_if_stmt(child, ordered);
-            } else if child.is_type(Nonterminal(try_stmt)){
+            } else if child.is_type(Nonterminal(try_stmt)) {
                 self.index_try_stmt(child, ordered);
-            } else if child.is_type(Nonterminal(for_stmt)){
+            } else if child.is_type(Nonterminal(for_stmt)) {
                 self.index_for_stmt(child, ordered);
             } else if child.is_type(Nonterminal(while_stmt)) {
                 self.index_while_stmt(child, ordered);
             } else if child.is_type(Nonterminal(match_stmt)) {
                 self.index_match_stmt(child, ordered);
-            } else if child.is_type(Nonterminal(with_stmt)){
+            } else if child.is_type(Nonterminal(with_stmt)) {
                 self.index_with_stmt(child, ordered);
             } else if child.is_type(Nonterminal(async_stmt)) {
                 let iterator = child.iter_children();
@@ -242,7 +259,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_while_stmt(&mut self, while_stmt: PyNode<'a>, ordered: bool) {
-        debug_assert_eq!(while_stmt.get_type(), Nonterminal(NonterminalType::while_stmt));
+        debug_assert_eq!(
+            while_stmt.get_type(),
+            Nonterminal(NonterminalType::while_stmt)
+        );
         // "while" named_expression ":" block else_block?
         let iterator = while_stmt.iter_children();
         let mut iterator = iterator.skip(1);
@@ -260,7 +280,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     fn index_with_stmt(&mut self, with_stmt: PyNode<'a>, ordered: bool) {
-        debug_assert_eq!(with_stmt.get_type(), Nonterminal(NonterminalType::with_stmt));
+        debug_assert_eq!(
+            with_stmt.get_type(),
+            Nonterminal(NonterminalType::with_stmt)
+        );
         // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
         for child in with_stmt.iter_children() {
             match child.get_type() {
@@ -281,12 +304,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
         for child in if_stmt.iter_children().skip(1) {
             match child.get_type() {
-                Nonterminal(NonterminalType::named_expression) =>
-                    self.index_non_block_node(child, ordered),
-                Nonterminal(NonterminalType::block) =>
-                    self.index_block(child, ordered),
-                Nonterminal(NonterminalType::else_block) =>
-                    self.index_block(child.get_nth_child(2), ordered),
+                Nonterminal(NonterminalType::named_expression) => {
+                    self.index_non_block_node(child, ordered)
+                }
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::else_block) => {
+                    self.index_block(child.get_nth_child(2), ordered)
+                }
                 Keyword => (),
                 _ => (unreachable!()),
             }
@@ -340,14 +364,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.set_complex_value(class, ComplexValue::Class(ClassStorage::new(symbol_table)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_redirect_definition(
-            class.get_nth_child(1),
-            class.index as u32,
-        );
+        self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
     }
 
     fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) {
-        debug_assert_eq!(match_stmt.get_type(), Nonterminal(NonterminalType::match_stmt));
+        debug_assert_eq!(
+            match_stmt.get_type(),
+            Nonterminal(NonterminalType::match_stmt)
+        );
         // "match" subject_expr ":" Newline Indent case_block+ Dedent
         todo!("match_stmt")
     }
@@ -365,10 +389,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 let parent = n.get_parent().unwrap();
                 if parent.is_type(Nonterminal(name_definition)) {
                     // The types are inferred later.
-                    self.add_new_definition(
-                        parent,
-                        Point::new_uncalculated(),
-                    )
+                    self.add_new_definition(parent, Point::new_uncalculated())
                 } else {
                     self.index_reference(n, parent, ordered);
                 }
@@ -393,7 +414,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // comprehension: named_expression for_if_clauses
         // dict_comprehension: dict_key_value for_if_clauses
         let clauses = comp.get_nth_child(1);
-        debug_assert_eq!(clauses.get_type(), Nonterminal(NonterminalType::for_if_clauses));
+        debug_assert_eq!(
+            clauses.get_type(),
+            Nonterminal(NonterminalType::for_if_clauses)
+        );
         let mut iterator = clauses.iter_children();
 
         let first_clause = iterator.next().unwrap();
@@ -403,7 +427,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_comprehension_clause(
         &mut self,
-        clauses: &mut impl Iterator<Item=PyNode<'a>>,
+        clauses: &mut impl Iterator<Item = PyNode<'a>>,
         mut clause: PyNode<'a>,
         // Either a named_expression or a dict_key_value
         result_node: PyNode<'a>,
@@ -452,10 +476,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.unresolved_nodes.push(child.get_nth_child(1));
             }
         }
-        self.add_value_definition(
-            node.get_nth_child(1),
-            ValueEnum::LazyInferredFunction,
-        );
+        self.add_value_definition(node.get_nth_child(1), ValueEnum::LazyInferredFunction);
     }
 
     pub fn index_function_body(&mut self, func: PyNode<'a>) {
@@ -473,7 +494,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
             if child.is_type(Nonterminal(block)) {
-               self.index_block(child, true);
+                self.index_block(child, true);
             }
         }
         let parent = func.get_parent().unwrap();
@@ -481,16 +502,21 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             todo!("{:?}", stmt);
         }
         let func_index = func.index as usize;
-        self.values_or_references[func_index].set(
-            Point::new_simple_language_specific(ValueEnum::Function, Locality::Stmt));
+        self.values_or_references[func_index].set(Point::new_simple_language_specific(
+            ValueEnum::Function,
+            Locality::Stmt,
+        ));
 
         // Avoid overwriting multi definitions
         let mut name_index = func.index as usize + 3;
         if self.values_or_references[name_index].get().get_type() == MultiDefinition {
             name_index -= 1;
         }
-        self.values_or_references[name_index].set(
-            Point::new_redirect(self.file_index, func.index, Locality::Stmt));
+        self.values_or_references[name_index].set(Point::new_redirect(
+            self.file_index,
+            func.index,
+            Locality::Stmt,
+        ));
     }
 
     fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
@@ -516,7 +542,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
             if child.is_type(Nonterminal(expression)) {
-               self.index_non_block_node(child, true);
+                self.index_non_block_node(child, true);
             }
         }
     }
@@ -549,30 +575,23 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     #[inline]
-    fn add_reference(&self, name: PyNode<'a>, mut unresolved_name_callback: impl FnMut(PyNode<'a>)) {
+    fn add_reference(
+        &self,
+        name: PyNode<'a>,
+        mut unresolved_name_callback: impl FnMut(PyNode<'a>),
+    ) {
         let value = {
             if self.parent_lookup_not_finished {
                 if let Some(definition) = self.symbol_table.lookup_symbol(name.get_code()) {
-                    Point::new_redirect(
-                        self.file_index,
-                        definition,
-                        Locality::File,
-                    )
+                    Point::new_redirect(self.file_index, definition, Locality::File)
                 } else {
                     unresolved_name_callback(name);
-                    return
+                    return;
                 }
             } else if let Some(definition) = self.lookup_name(name) {
-                Point::new_redirect(
-                    self.file_index,
-                    definition,
-                    Locality::File,
-                )
+                Point::new_redirect(self.file_index, definition, Locality::File)
             } else {
-                Point::new_missing_or_unknown(
-                    self.file_index,
-                    Locality::File,
-                )
+                Point::new_missing_or_unknown(self.file_index, Locality::File)
             }
         };
         self.values_or_references[name.index as usize].set(value);

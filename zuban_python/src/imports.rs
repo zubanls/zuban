@@ -1,14 +1,19 @@
-use crate::database::{FileIndex, Database, DirectoryOrFile};
-use crate::file::File;
+use crate::database::{Database, DirectoryOrFile, FileIndex};
 use crate::debug;
+use crate::file::File;
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     if name == "typing" {
-        return Some(database.python_state.get_typing().get_file_index())
+        return Some(database.python_state.get_typing().get_file_index());
     }
     let result = python_import(
         database,
-        database.workspaces.iter().map(|x| (x.get_root().get_name(), x.get_root().get_directory_entries().unwrap())),
+        database.workspaces.iter().map(|x| {
+            (
+                x.get_root().get_name(),
+                x.get_root().get_directory_entries().unwrap(),
+            )
+        }),
         name,
     );
     debug!("Global import {}: {:?}", name, result);
@@ -36,7 +41,14 @@ fn python_import<'a>(
                                     if file_name == "__init__.py" || file_name == "__init__.pyi" {
                                         if file_index.get().is_none() {
                                             database.load_file_from_workspace(
-                                                format!("{}{}{}{}{}", dir_path, separator, dir_name, separator, file_name),
+                                                format!(
+                                                    "{}{}{}{}{}",
+                                                    dir_path,
+                                                    separator,
+                                                    dir_name,
+                                                    separator,
+                                                    file_name
+                                                ),
                                                 file_index,
                                             );
                                         }
@@ -49,7 +61,8 @@ fn python_import<'a>(
                     }
                 }
                 DirectoryOrFile::File(file_name, file_index) => {
-                    if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name) {
+                    if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name)
+                    {
                         if file_index.get().is_none() {
                             database.load_file_from_workspace(
                                 format!("{}{}{}", dir_path, separator, file_name),

@@ -1,10 +1,10 @@
-use std::marker::PhantomData;
 use std::cell::UnsafeCell;
+use std::marker::PhantomData;
 
 use crate::automaton::{
     generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
-    InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, Rule,
-    RuleAutomaton, RuleMap, SoftKeywords, StackMode, PlanMode
+    InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode, Rule,
+    RuleAutomaton, RuleMap, SoftKeywords, StackMode,
 };
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
@@ -70,7 +70,7 @@ mod tests {
 
 impl InternalTree {
     pub fn new(code: String, nodes: Vec<InternalNode>) -> Self {
-        Self {code, nodes}
+        Self { code, nodes }
     }
 }
 

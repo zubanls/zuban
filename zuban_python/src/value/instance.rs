@@ -1,11 +1,11 @@
 use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
-use crate::file::{File, PythonFile, Inferred};
-use crate::utils::SymbolTable;
-use crate::database::Database;
-use crate::tree_utils::get_class_name;
 use crate::arguments::Arguments;
+use crate::database::Database;
+use crate::file::{File, Inferred, PythonFile};
+use crate::tree_utils::get_class_name;
+use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Instance<'a> {
@@ -16,7 +16,11 @@ pub struct Instance<'a> {
 
 impl<'a> Instance<'a> {
     pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
-        Self {file, node_index, symbol_table}
+        Self {
+            file,
+            node_index,
+            symbol_table,
+        }
     }
 }
 

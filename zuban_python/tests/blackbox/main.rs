@@ -12,7 +12,11 @@ fn main() {
 
     for python_file in get_python_files() {
         let code = read_to_string(&python_file).unwrap();
-        cases::TestFile {path: python_file, code}.test();
+        cases::TestFile {
+            path: python_file,
+            code,
+        }
+        .test();
     }
 }
 

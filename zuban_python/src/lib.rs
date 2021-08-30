@@ -1,20 +1,20 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+mod arguments;
 mod database;
 mod file;
+mod imports;
 mod name;
-mod value;
-mod utils;
 mod name_binder;
 mod tree_utils;
-mod arguments;
-mod imports;
+mod utils;
+mod value;
 
-use parsa::CodeIndex;
+use database::{Database, FileIndex, Workspace};
 use file::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
-use database::{FileIndex, Database, Workspace};
+use parsa::CodeIndex;
 pub use value::ValueKind;
 
 pub enum ProjectType {
@@ -37,19 +37,24 @@ impl Project {
             "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages".to_owned(),
         ];
-        let workspaces = sys_path.iter().map(|s| Workspace::new(loaders.as_ref(), s.to_owned())).collect();
+        let workspaces = sys_path
+            .iter()
+            .map(|s| Workspace::new(loaders.as_ref(), s.to_owned()))
+            .collect();
         let database = Database::new(loaders, workspaces);
         Self {
-            type_: ProjectType::PythonProject(PythonProject {path, sys_path, is_django: false}),
+            type_: ProjectType::PythonProject(PythonProject {
+                path,
+                sys_path,
+                is_django: false,
+            }),
             database,
         }
     }
 
-    pub fn search(&self, string: &str, all_scopes: bool) {
-    }
+    pub fn search(&self, string: &str, all_scopes: bool) {}
 
-    pub fn complete_search(&self, string: &str, all_scopes: bool) {
-    }
+    pub fn complete_search(&self, string: &str, all_scopes: bool) {}
 }
 
 pub struct PythonProject {
@@ -76,7 +81,10 @@ impl<'a> Script<'a> {
         let path = path.unwrap();
         let file_index = database.get_file_state_index_by_path(&path);
         let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
-        Self {project, file_index}
+        Self {
+            project,
+            file_index,
+        }
     }
 
     fn to_byte_position(&self, position: Position) -> CodeIndex {
@@ -87,9 +95,11 @@ impl<'a> Script<'a> {
     }
 
     fn get_file(&self) -> &dyn file::File {
-        self.project.database.get_file_state(self.file_index).get_file(
-            &self.project.database
-        ).unwrap()
+        self.project
+            .database
+            .get_file_state(self.file_index)
+            .get_file(&self.project.database)
+            .unwrap()
     }
 
     fn get_leaf(&self, position: Position) -> Leaf {
@@ -99,14 +109,15 @@ impl<'a> Script<'a> {
         leaf
     }
 
-    pub fn complete(&self, position: Position) {
-    }
+    pub fn complete(&self, position: Position) {}
 
     pub fn infer_definition(&self, position: Position) -> ValueNames {
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
-            Leaf::Keyword(node) => self.get_file().infer_operator_leaf(&self.project.database, node),
+            Leaf::Keyword(node) => self
+                .get_file()
+                .infer_operator_leaf(&self.project.database, node),
             Leaf::None | Leaf::String => vec![],
         }
     }
@@ -131,46 +142,45 @@ impl<'a> Script<'a> {
         self.get_file().get_implementation(names)
     }
 
-    pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {
+    pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
+
+    pub fn complete_search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
+
+    pub fn help(&self, position: Position) {}
+
+    pub fn get_references(&self, position: Position /*, scope='project'*/) {}
+
+    pub fn get_signatures(&self, position: Position) {}
+
+    pub fn get_context(&self, position: Position) {}
+
+    pub fn get_names(&self /*all_scopes=False, definitions=True, references=False*/) {}
+
+    pub fn get_syntax_errors(&self) {}
+
+    pub fn get_errors(&self) {}
+
+    pub fn rename(&self, position: Position, new_name: &str) {}
+
+    pub fn extract_variable(
+        &self,
+        position: Position,
+        new_name: &str,
+        until_line: Option<usize>,
+        until_column: Option<usize>,
+    ) {
     }
 
-    pub fn complete_search(&self, text: String, all_scopes: bool, fuzzy: bool) {
+    pub fn extract_function(
+        &self,
+        position: Position,
+        new_name: &str,
+        until_line: Option<usize>,
+        until_column: Option<usize>,
+    ) {
     }
 
-    pub fn help(&self, position: Position) {
-    }
-
-    pub fn get_references(&self, position: Position/*, scope='project'*/) {
-    }
-
-    pub fn get_signatures(&self, position: Position) {
-    }
-
-    pub fn get_context(&self, position: Position) {
-    }
-
-    pub fn get_names(&self, /*all_scopes=False, definitions=True, references=False*/) {
-    }
-
-    pub fn get_syntax_errors(&self) {
-    }
-
-    pub fn get_errors(&self) {
-    }
-
-    pub fn rename(&self, position: Position, new_name: &str) {
-    }
-
-    pub fn extract_variable(&self, position: Position, new_name: &str,
-                        until_line: Option<usize>, until_column: Option<usize>) {
-    }
-
-    pub fn extract_function(&self, position: Position, new_name: &str,
-                        until_line: Option<usize>, until_column: Option<usize>) {
-    }
-
-    pub fn inline(&self, position: Position) {
-    }
+    pub fn inline(&self, position: Position) {}
 
     /*
     pub fn get_selection_ranges() {

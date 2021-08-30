@@ -1,12 +1,11 @@
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
-use std::pin::Pin;
-use std::hash::{Hash, Hasher};
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::pin::Pin;
 
-use parsa_python::PyNode;
 use parsa::{Node, NodeIndex};
-
+use parsa_python::PyNode;
 
 #[macro_export]
 macro_rules! debug {
@@ -23,31 +22,33 @@ pub struct InsertOnlyVec<T: ?Sized> {
 
 impl<T: ?Sized> Default for InsertOnlyVec<T> {
     fn default() -> Self {
-        Self {vec: UnsafeCell::new(vec![])}
+        Self {
+            vec: UnsafeCell::new(vec![]),
+        }
     }
 }
 
 impl<T: ?Sized> InsertOnlyVec<T> {
     pub fn get(&self, index: usize) -> Option<&T> {
-        unsafe {&*self.vec.get()}.get(index).map(|x| x as &T)
+        unsafe { &*self.vec.get() }.get(index).map(|x| x as &T)
     }
 
     pub fn push(&self, element: Pin<Box<T>>) {
-        unsafe {&mut *self.vec.get()}.push(element);
+        unsafe { &mut *self.vec.get() }.push(element);
     }
 
     pub fn len(&self) -> usize {
-        unsafe {&*self.vec.get()}.len()
+        unsafe { &*self.vec.get() }.len()
     }
 
     pub fn last(&self) -> Option<&T> {
-        unsafe {&*self.vec.get()}.last().map(|x| x as &T)
+        unsafe { &*self.vec.get() }.last().map(|x| x as &T)
     }
 }
 
 impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {&*self.vec.get()}.fmt(f)
+        unsafe { &*self.vec.get() }.fmt(f)
     }
 }
 
@@ -57,47 +58,49 @@ pub struct InsertOnlyHashMap<K, V> {
 
 impl<K, V: fmt::Debug> InsertOnlyHashMap<K, V> {
     pub fn len(&self) -> usize {
-        unsafe {&*self.map.get()}.len()
+        unsafe { &*self.map.get() }.len()
     }
 }
 
-impl<K: Eq + Hash, V: fmt::Debug+Clone> InsertOnlyHashMap<K, V> {
+impl<K: Eq + Hash, V: fmt::Debug + Clone> InsertOnlyHashMap<K, V> {
     // unsafe, because the vec might be changed during its use.
     pub fn get(&self, key: &K) -> Option<V> {
-        unsafe {&*self.map.get()}.get(key).cloned()
+        unsafe { &*self.map.get() }.get(key).cloned()
     }
 
     pub fn insert(&self, key: K, value: V) -> Option<V> {
-        let map = unsafe {&mut *self.map.get()};
+        let map = unsafe { &mut *self.map.get() };
         map.insert(key, value)
     }
 }
 
 impl<K, V> Default for InsertOnlyHashMap<K, V> {
     fn default() -> Self {
-        Self {map: UnsafeCell::new(HashMap::new())}
+        Self {
+            map: UnsafeCell::new(HashMap::new()),
+        }
     }
 }
 
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for InsertOnlyHashMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe {&*self.map.get()}.fmt(f)
+        unsafe { &*self.map.get() }.fmt(f)
     }
 }
 
 pub struct HashableRawStr {
-    ptr: *const str
+    ptr: *const str,
 }
 
 impl HashableRawStr {
     pub fn new(string: &str) -> Self {
-        Self {ptr: string}
+        Self { ptr: string }
     }
 
     fn get_str(&self) -> &str {
         // This is REALLY unsafe. The user of HashableRawStr is responsible for
         // ensuring that the code part lives longer than this piece.
-        unsafe {&*self.ptr}
+        unsafe { &*self.ptr }
     }
 }
 
@@ -106,7 +109,6 @@ impl Hash for HashableRawStr {
         self.get_str().hash(state);
     }
 }
-
 
 impl PartialEq for HashableRawStr {
     fn eq(&self, other: &Self) -> bool {
@@ -132,7 +134,8 @@ pub struct SymbolTable {
 
 impl SymbolTable {
     pub fn add_or_replace_symbol(&self, name: PyNode) -> Option<NodeIndex> {
-        self.symbols.insert(HashableRawStr::new(name.get_code()), name.index as u32)
+        self.symbols
+            .insert(HashableRawStr::new(name.get_code()), name.index as u32)
     }
 
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {

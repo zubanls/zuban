@@ -141,7 +141,7 @@ create_grammar!(
 
     lambda: "lambda" [lambda_parameters] ":" expression
 
-    parameters: 
+    parameters:
         // no-default
         | ",".param_no_default+ ["," [star_etc]]
         // no-default slash no-default default

@@ -1,11 +1,11 @@
 use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
-use crate::file::{PythonFile, Inferred};
-use crate::utils::SymbolTable;
-use crate::database::{Database, Point, ValueEnum, Locality};
-use crate::tree_utils::get_class_name;
 use crate::arguments::Arguments;
+use crate::database::{Database, Locality, Point, ValueEnum};
+use crate::file::{Inferred, PythonFile};
+use crate::tree_utils::get_class_name;
+use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Class<'a> {
@@ -16,7 +16,11 @@ pub struct Class<'a> {
 
 impl<'a> Class<'a> {
     pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
-        Self {file, node_index, symbol_table}
+        Self {
+            file,
+            node_index,
+            symbol_table,
+        }
     }
 }
 
@@ -38,7 +42,8 @@ impl<'a> Value<'a> for Class<'a> {
     }
 
     fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
-        let value = Point::new_simple_language_specific(ValueEnum::InstanceWithArguments, Locality::Stmt);
+        let value =
+            Point::new_simple_language_specific(ValueEnum::InstanceWithArguments, Locality::Stmt);
         args.file.set_value(args.primary_node_index, value);
         Inferred::new(args.file, args.primary_node_index, value)
     }

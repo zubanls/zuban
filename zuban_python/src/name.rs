@@ -1,15 +1,14 @@
-use std::fmt;
-use std::borrow::Borrow;
-use crate::value::{Value, ValueKind};
-use crate::database::{Database};
+use crate::database::Database;
 use crate::file::{File, PythonFile};
+use crate::value::{Value, ValueKind};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PyNode, PyNodeType, TerminalType};
+use std::borrow::Borrow;
+use std::fmt;
 
 type Signatures = Vec<()>;
 pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
 pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a> + 'a>>;
-
 
 pub struct TreePosition<'a> {
     file: &'a dyn File,
@@ -75,18 +74,25 @@ pub struct TreeName<'a, F: File, N: Node<'a>> {
     tree_node: N,
 }
 
-impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N> where Self: LanguageTreeName<'a> {
+impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N>
+where
+    Self: LanguageTreeName<'a>,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
-         .field("file", &self.get_file_path())
-         .field("name", &self.get_name())
-         .finish()
+            .field("file", &self.get_file_path())
+            .field("name", &self.get_name())
+            .finish()
     }
 }
 
 impl<'a, F: File, N: Node<'a>> TreeName<'a, F, N> {
     pub fn new(database: &'a Database, file: &'a F, tree_node: N) -> Self {
-        Self {database, tree_node, file}
+        Self {
+            database,
+            tree_node,
+            file,
+        }
     }
 }
 
@@ -110,7 +116,9 @@ impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
 }
 
 impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
-        where TreeName<'a, F, N>: LanguageTreeName<'a> {
+where
+    TreeName<'a, F, N>: LanguageTreeName<'a>,
+{
     fn get_name(&self) -> &'a str {
         self.tree_node.get_code()
     }
@@ -120,11 +128,17 @@ impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
     }
 
     fn get_start_position(&self) -> TreePosition<'a> {
-        TreePosition {file: self.file, position: self.tree_node.start()}
+        TreePosition {
+            file: self.file,
+            position: self.tree_node.start(),
+        }
     }
 
     fn get_end_position(&self) -> TreePosition<'a> {
-        TreePosition {file: self.file, position: self.tree_node.end()}
+        TreePosition {
+            file: self.file,
+            position: self.tree_node.end(),
+        }
     }
 
     fn get_documentation(&self) -> String {
@@ -160,15 +174,15 @@ pub struct WithValueName<'a, T> {
 
 impl<'a, T> WithValueName<'a, T> {
     pub fn new(database: &'a Database, value: T) -> Self {
-        Self {database, value}
+        Self { database, value }
     }
 }
 
 impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
-         .field("value", &self.value)
-         .finish()
+            .field("value", &self.value)
+            .finish()
     }
 }
 
