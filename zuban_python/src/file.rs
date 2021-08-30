@@ -666,7 +666,7 @@ impl<'a> PythonInference<'a> {
     fn infer_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
-        if let Some(result) = self.check_node_cache(node) {
+        if let Some(result) = self.check_point_cache(node) {
             return result
         }
 
@@ -740,7 +740,7 @@ impl<'a> PythonInference<'a> {
     fn infer_atom(&self, node: PyNode) -> Inferred<'a> {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(atom));
-        if let Some(result) = self.check_node_cache(node) {
+        if let Some(result) = self.check_point_cache(node) {
             return result
         }
 
@@ -825,14 +825,14 @@ impl<'a> PythonInference<'a> {
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
-        if let Some(result) = self.check_node_cache(node) {
+        if let Some(result) = self.check_point_cache(node) {
             return result
         }
         todo!("star import? {:?}", node)
     }
 
     #[inline]
-    fn check_node_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
+    fn check_point_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
         let value = self.file.get_value(node.index);
         if value.is_calculated() {
             debug!(
@@ -845,12 +845,12 @@ impl<'a> PythonInference<'a> {
                 ValueOrReferenceType::Redirect => {
                     let file_index = value.get_file_index();
                     if file_index == self.file_index {
-                        self.follow_redirects_in_node_cache(value.get_node_index())
+                        self.follow_redirects_in_point_cache(value.get_node_index())
                     } else {
                         self.database
                             .get_loaded_python_file(file_index)
                             .get_inference(self.database)
-                            .follow_redirects_in_node_cache(value.get_node_index())
+                            .follow_redirects_in_point_cache(value.get_node_index())
                     }
                 }
                 ValueOrReferenceType::LanguageSpecific => {
@@ -860,7 +860,7 @@ impl<'a> PythonInference<'a> {
                             debug_assert_eq!(func.get_type(), Nonterminal(NonterminalType::function_def));
                             self.file.calculate_node_scope_definitions(func);
                             debug_assert!(self.file.get_value(node.index).is_calculated());
-                            self.check_node_cache(node)
+                            self.check_point_cache(node)
                         }
                         _ => {
                             Some(Inferred::new(self.file, node.index, value))
@@ -885,9 +885,9 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn follow_redirects_in_node_cache(&self, node_index: NodeIndex) -> Option<Inferred<'a>> {
+    fn follow_redirects_in_point_cache(&self, node_index: NodeIndex) -> Option<Inferred<'a>> {
         let node = self.file.tree.get_node_by_index(node_index);
-        self.check_node_cache(node).or_else(
+        self.check_point_cache(node).or_else(
             || if node.is_type(Terminal(TerminalType::Name)) {
                 Some(self.infer_name(node))
             } else {
@@ -898,7 +898,7 @@ impl<'a> PythonInference<'a> {
 
     fn infer_name(&self, node: PyNode) -> Inferred<'a> {
         // TODO move this after debug_assert_eq???
-        if let Some(result) = self.check_node_cache(node) {
+        if let Some(result) = self.check_point_cache(node) {
             return result
         }
         debug_assert_eq!(node.get_type(), Terminal(TerminalType::Name), "Node Id: {}", node.index);
