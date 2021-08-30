@@ -939,20 +939,20 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
 pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
-    pub value_or_ref: ValueOrReference,
+    point: ValueOrReference,
 }
 
 impl<'a> Inferred<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, value_or_ref: ValueOrReference) -> Self {
-        Self {file, node_index, value_or_ref}
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, point: ValueOrReference) -> Self {
+        Self {file, node_index, point}
     }
 
     #[allow(clippy::wrong_self_convention)]
     fn to_value_names(&self, database: &'a Database) -> ValueNames<'a> {
         use ValueOrReferenceType::*;
-        match self.value_or_ref.get_type() {
+        match self.point.get_type() {
             LanguageSpecific => {
-                let specific = self.value_or_ref.get_language_specific();
+                let specific = self.point.get_language_specific();
                 vec![match specific {
                     ValueEnum::Function => {
                         Box::new(WithValueName::new(database, Function::new(self.file, self.node_index)))
@@ -967,12 +967,12 @@ impl<'a> Inferred<'a> {
                         }
                     }
                     _ => {
-                        Box::new(WithValueName::new(database, self.resolve_python_value(database, self.value_or_ref.get_language_specific())))
+                        Box::new(WithValueName::new(database, self.resolve_python_value(database, self.point.get_language_specific())))
                     }
                 }]
             }
             Complex => {
-                match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
+                match self.file.complex_values.get(self.point.get_complex_index()).unwrap() {
                     ComplexValue::Class(cls_storage) => {
                         let cls = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
                         vec![Box::new(WithValueName::new(database, cls))]
@@ -1000,9 +1000,9 @@ impl<'a> Inferred<'a> {
         on_missing: impl Fn(Inferred<'a>) -> T,
     ) -> T {
         use ValueOrReferenceType::*;
-        match self.value_or_ref.get_type() {
+        match self.point.get_type() {
             LanguageSpecific => {
-                let specific = self.value_or_ref.get_language_specific();
+                let specific = self.point.get_language_specific();
                 match specific {
                     ValueEnum::Function => {
                         callable(&Function::new(self.file, self.node_index))
@@ -1022,7 +1022,7 @@ impl<'a> Inferred<'a> {
                 }
             }
             Complex => {
-                match self.file.complex_values.get(self.value_or_ref.get_complex_index()).unwrap() {
+                match self.file.complex_values.get(self.point.get_complex_index()).unwrap() {
                     ComplexValue::Union(lst) => {
                         todo!()
                     }
@@ -1045,7 +1045,7 @@ impl<'a> Inferred<'a> {
                 on_missing(*self)
             }
             FileReference => {
-                let f = database.get_loaded_python_file(self.value_or_ref.get_file_index());
+                let f = database.get_loaded_python_file(self.point.get_file_index());
                 callable(&Module::new(f, &f.symbol_table))
             }
             _ => unreachable!()
