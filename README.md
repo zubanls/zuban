@@ -12,3 +12,7 @@ I usually use this to test:
 or:
 
     CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo test -- --nocapture
+
+with debug enabled:
+
+    RUST_BACKTRACE=1 CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo     test --features zuban_debug
