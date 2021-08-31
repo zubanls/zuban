@@ -205,13 +205,13 @@ impl<'db> PythonFile {
     }
 
     pub fn calculate_global_definitions_and_references(&self) {
-        if self.get_value(0).is_calculated() {
+        if self.get_point(0).is_calculated() {
             // It was already done.
             return;
         }
         self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
 
-        self.set_value(0, Point::new_node_analysis(Locality::File));
+        self.set_point(0, Point::new_node_analysis(Locality::File));
     }
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
@@ -276,12 +276,12 @@ impl<'db> PythonFile {
     }
 
     #[inline]
-    fn get_value(&self, index: NodeIndex) -> Point {
+    fn get_point(&self, index: NodeIndex) -> Point {
         self.values_or_references[index as usize].get()
     }
 
     #[inline]
-    pub fn set_value(&self, index: NodeIndex, val: Point) {
+    pub fn set_point(&self, index: NodeIndex, val: Point) {
         self.values_or_references[index as usize].set(val);
     }
 
@@ -297,7 +297,7 @@ impl<'db> PythonFile {
     }
 
     fn use_instance(&self, node_index: NodeIndex) -> Option<Instance> {
-        let v = self.get_value(node_index);
+        let v = self.get_point(node_index);
         debug_assert_eq!(v.get_type(), PointType::Complex);
         let complex = self
             .complex_values
@@ -319,7 +319,7 @@ struct PythonInference<'a> {
 impl<'a> PythonInference<'a> {
     fn set_redirect_value(&self, index: NodeIndex, inferred: Inferred) {
         // TODO this locality should be calculated in a more correct way
-        self.file.set_value(
+        self.file.set_point(
             index,
             Point::new_redirect(
                 inferred.file.get_file_index(),
@@ -343,7 +343,7 @@ impl<'a> PythonInference<'a> {
                     if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
                         self.cache_assignment_nodes(simple_child);
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
-                        if self.file.get_value(name.index).is_calculated() {
+                        if self.file.get_point(name.index).is_calculated() {
                             todo!("Multi name");
                         }
                         self.cache_import_from(simple_child);
@@ -382,7 +382,7 @@ impl<'a> PythonInference<'a> {
                         // import_from_as_name: Name "as" name_definition | name_definition
                         let from_as_name = child.get_nth_child(0);
                         if from_as_name.is_type(Nonterminal(name_definition)) {
-                            if self.file.get_value(from_as_name.index + 1).is_calculated() {
+                            if self.file.get_point(from_as_name.index + 1).is_calculated() {
                                 todo!()
                             }
                             let i = inferred.unwrap().run_on_value(self.database, |value| {
@@ -413,7 +413,7 @@ impl<'a> PythonInference<'a> {
             } else {
                 Point::new_missing_file()
             };
-            self.file.set_value(first.index, value);
+            self.file.set_point(first.index, value);
             Inferred::new(self.file, first.index, value)
         } else {
             let base = self.infer_import_dotted_name(first);
@@ -461,7 +461,7 @@ impl<'a> PythonInference<'a> {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            let val = self.file.get_value(n.index);
+                            let val = self.file.get_point(n.index);
                             if val.is_calculated() {
                                 todo!("{:?} {:?} {:?}", self.file, val, n);
                             }
@@ -657,7 +657,7 @@ impl<'a> PythonInference<'a> {
             _ => unreachable!(),
         };
         let val = Point::new_simple_language_specific(value_enum, Locality::Stmt);
-        self.file.set_value(node.index, val);
+        self.file.set_point(node.index, val);
         Inferred::new(self.file, node.index, val)
     }
 
@@ -670,7 +670,7 @@ impl<'a> PythonInference<'a> {
 
     #[inline]
     fn check_point_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
-        let value = self.file.get_value(node.index);
+        let value = self.file.get_point(node.index);
         if value.is_calculated() {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {:?}",
@@ -699,7 +699,7 @@ impl<'a> PythonInference<'a> {
                             Nonterminal(NonterminalType::function_def)
                         );
                         self.file.calculate_node_scope_definitions(func);
-                        debug_assert!(self.file.get_value(node.index).is_calculated());
+                        debug_assert!(self.file.get_point(node.index).is_calculated());
                         self.check_point_cache(node)
                     }
                     _ => Some(Inferred::new(self.file, node.index, value)),
@@ -751,7 +751,7 @@ impl<'a> PythonInference<'a> {
             ])
             .expect("There should always be a stmt");
 
-        if !self.file.get_value(stmt.index).is_calculated() {
+        if !self.file.get_point(stmt.index).is_calculated() {
             if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
                 todo!()
             }
@@ -763,7 +763,7 @@ impl<'a> PythonInference<'a> {
                 self.cache_stmt_name(stmt, node);
             }
         }
-        debug_assert!(self.file.get_value(node.index).is_calculated());
+        debug_assert!(self.file.get_point(node.index).is_calculated());
         self.infer_name(node)
     }
 }
@@ -771,7 +771,7 @@ impl<'a> PythonInference<'a> {
 fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str) -> Instance<'a> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
-    let v = builtins.get_value(node_index);
+    let v = builtins.get_point(node_index);
     debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
     builtins.use_instance(v.get_node_index()).unwrap()
