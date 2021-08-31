@@ -413,8 +413,7 @@ impl<'a> PythonInference<'a> {
             } else {
                 Point::new_missing_file()
             };
-            self.file.set_point(first.index, point);
-            Inferred::new(self.file, first.index, point)
+            Inferred::new_and_save(self.file, first.index, point)
         } else {
             let base = self.infer_import_dotted_name(first);
             let name = dotted.get_nth_child(2);
@@ -657,8 +656,7 @@ impl<'a> PythonInference<'a> {
             _ => unreachable!(),
         };
         let point = Point::new_simple_language_specific(specific_enum, Locality::Stmt);
-        self.file.set_point(node.index, point);
-        Inferred::new(self.file, node.index, point)
+        Inferred::new_and_save(self.file, node.index, point)
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
@@ -702,9 +700,9 @@ impl<'a> PythonInference<'a> {
                         debug_assert!(self.file.get_point(node.index).is_calculated());
                         self.check_point_cache(node)
                     }
-                    _ => Some(Inferred::new(self.file, node.index, point)),
+                    _ => Some(Inferred::new(self.file, node.index, point, true)),
                 },
-                PointType::Complex => Some(Inferred::new(self.file, node.index, point)),
+                PointType::Complex => Some(Inferred::new(self.file, node.index, point, true)),
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
@@ -782,14 +780,21 @@ pub struct Inferred<'a> {
     file: &'a PythonFile,
     node_index: NodeIndex,
     point: Point,
+    is_saved: bool,
 }
 
 impl<'a> Inferred<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, point: Point) -> Self {
+    pub fn new_and_save(file: &'a PythonFile, node_index: NodeIndex, point: Point) -> Self {
+        file.set_point(node_index, point);
+        Self::new(file, node_index, point, true)
+    }
+
+    fn new(file: &'a PythonFile, node_index: NodeIndex, point: Point, is_saved: bool) -> Self {
         Self {
             file,
             node_index,
             point,
+            is_saved,
         }
     }
 

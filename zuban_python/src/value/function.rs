@@ -60,8 +60,7 @@ impl<'a> Value<'a> for Function<'a> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    self.file.set_point(return_annotation.index, point);
-                    Inferred::new(self.file, return_annotation.index, point)
+                    Inferred::new_and_save(self.file, return_annotation.index, point)
                 },
                 |v| v,
             )
