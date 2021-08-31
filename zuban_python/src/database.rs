@@ -79,7 +79,7 @@ impl Point {
         todo!()
     }
 
-    pub fn new_complex_value(complex_index: u32, locality: Locality) -> Self {
+    pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointType::Complex, complex_index, locality);
         Self {
             flags,
@@ -266,7 +266,7 @@ pub enum Locality {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct ValueLink {
+pub struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
 }
@@ -280,15 +280,15 @@ pub struct LocalityLink {
 #[derive(Debug)]
 pub enum ComplexPoint {
     Class(ClassStorage),
-    Union(Box<[ValueLink]>),
+    Union(Box<[PointLink]>),
     Instance(Execution),
-    Closure(ValueLink, Execution),
+    Closure(PointLink, Execution),
     Generic(Execution),
 }
 
 #[derive(Debug)]
 pub struct Execution {
-    function: ValueLink,
+    function: PointLink,
     //args: Box<[Value]>,
 }
 

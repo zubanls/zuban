@@ -12,7 +12,7 @@ use parsa_python::{NonterminalType, PyNode, PyNodeType, TerminalType};
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'b SymbolTable,
     points: &'a [Cell<Point>],
-    complex_values: &'a ComplexValues,
+    complex_points: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
     unresolved_names: Vec<PyNode<'a>>,
@@ -25,14 +25,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn new(
         symbol_table: &'b SymbolTable,
         points: &'a [Cell<Point>],
-        complex_values: &'a ComplexValues,
+        complex_points: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
     ) -> Self {
         Self {
             symbol_table,
             points,
-            complex_values,
+            complex_points,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             unresolved_names: vec![],
@@ -45,12 +45,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     pub fn with_global_binder(
         symbol_table: &'b SymbolTable,
         points: &'a [Cell<Point>],
-        complex_values: &'a ComplexValues,
+        complex_points: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(symbol_table, points, complex_values, file_index, None);
+        let mut binder = Self::new(symbol_table, points, complex_points, file_index, None);
         func(&mut binder);
         binder.close();
     }
@@ -63,7 +63,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         let mut name_binder = NameBinder::new(
             symbol_table,
             self.points,
-            self.complex_values,
+            self.complex_points,
             self.file_index,
             Some(self),
         );
@@ -93,11 +93,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexPoint) {
-        let complex_index = self.complex_values.len() as u32;
-        self.complex_values.push(Box::pin(complex));
+    fn set_complex_point(&mut self, node: PyNode<'a>, complex: ComplexPoint) {
+        let complex_index = self.complex_points.len() as u32;
+        self.complex_points.push(Box::pin(complex));
         self.points[node.index as usize]
-            .set(Point::new_complex_value(complex_index, Locality::Stmt));
+            .set(Point::new_complex_point(complex_index, Locality::Stmt));
     }
 
     fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
@@ -355,7 +355,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
         });
-        self.set_complex_value(class, ComplexPoint::Class(ClassStorage::new(symbol_table)));
+        self.set_complex_point(class, ComplexPoint::Class(ClassStorage::new(symbol_table)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);

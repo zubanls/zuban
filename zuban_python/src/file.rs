@@ -159,7 +159,7 @@ pub struct PythonFile {
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     points: Vec<Cell<Point>>,
-    complex_values: ComplexValues,
+    complex_points: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
@@ -184,7 +184,7 @@ impl<'db> PythonFile {
             file_index: Cell::new(None),
             symbol_table: Default::default(),
             points: vec![Default::default(); length],
-            complex_values: InsertOnlyVec::default(),
+            complex_points: InsertOnlyVec::default(),
             dependencies: vec![],
             issues: vec![],
             new_line_indices: UnsafeCell::new(None),
@@ -218,7 +218,7 @@ impl<'db> PythonFile {
         NameBinder::with_global_binder(
             &self.symbol_table,
             &self.points,
-            &self.complex_values,
+            &self.complex_points,
             self.file_index.get().unwrap(),
             None,
             func,
@@ -300,7 +300,7 @@ impl<'db> PythonFile {
         let v = self.get_point(node_index);
         debug_assert_eq!(v.get_type(), PointType::Complex);
         let complex = self
-            .complex_values
+            .complex_points
             .get(v.get_complex_index() as usize)
             .unwrap();
         match complex {
@@ -828,7 +828,7 @@ impl<'a> Inferred<'a> {
             Complex => {
                 match self
                     .file
-                    .complex_values
+                    .complex_points
                     .get(self.point.get_complex_index())
                     .unwrap()
                 {
@@ -883,7 +883,7 @@ impl<'a> Inferred<'a> {
             Complex => {
                 match self
                     .file
-                    .complex_values
+                    .complex_points
                     .get(self.point.get_complex_index())
                     .unwrap()
                 {
