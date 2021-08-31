@@ -44,7 +44,7 @@ impl<'a> Value<'a> for Function<'a> {
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
             let inferred = self
                 .file
-                .infer_expression(database, return_annotation.get_nth_child(1).index);
+                .infer_expression(database, return_annotation.get_nth_child(1));
             inferred.run(
                 database,
                 |v| {

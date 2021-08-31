@@ -260,18 +260,16 @@ impl<'db> PythonFile {
     pub fn infer_expression(
         &'db self,
         database: &'db Database,
-        node_index: NodeIndex,
+        node: PyNode<'db>,
     ) -> Inferred<'db> {
-        let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_expression(node)
     }
 
     pub fn infer_expression_part(
         &'db self,
         database: &'db Database,
-        node_index: NodeIndex,
+        node: PyNode<'db>,
     ) -> Inferred<'db> {
-        let node = self.tree.get_node_by_index(node_index);
         self.get_inference(database).infer_expression_part(node)
     }
 
@@ -819,7 +817,7 @@ impl<'a> Inferred<'a> {
                         let inferred = self
                             .definition
                             .file
-                            .infer_expression(database, self.definition.node.index + 2);
+                            .infer_expression(database, self.definition.node.get_nth_child(1));
                         if let Some(instance) = inferred
                             .definition
                             .file
@@ -894,14 +892,14 @@ impl<'a> Inferred<'a> {
                         let inferred = self
                             .definition
                             .file
-                            .infer_expression(database, self.definition.node.index + 2);
+                            .infer_expression(database, self.definition.node.get_nth_child(1));
                         todo!()
                     }
                     Specific::InstanceWithArguments => {
                         let cls = self
                             .definition
                             .file
-                            .infer_expression_part(database, self.definition.node.index + 1);
+                            .infer_expression_part(database, self.definition.node.get_nth_child(0));
                         callable(
                             &cls.definition
                                 .file
