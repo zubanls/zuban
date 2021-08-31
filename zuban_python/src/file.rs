@@ -317,7 +317,7 @@ struct PythonInference<'a> {
 }
 
 impl<'a> PythonInference<'a> {
-    fn set_redirect_value(&self, index: NodeIndex, inferred: Inferred) {
+    fn set_redirect_point(&self, index: NodeIndex, inferred: Inferred) {
         // TODO this locality should be calculated in a more correct way
         self.file.set_point(
             index,
@@ -388,7 +388,7 @@ impl<'a> PythonInference<'a> {
                             let i = inferred.unwrap().run_on_value(self.database, |value| {
                                 value.lookup(self.database, from_as_name.get_code())
                             });
-                            self.set_redirect_value(from_as_name.index + 1, i);
+                            self.set_redirect_point(from_as_name.index + 1, i);
                         } else {
                             todo!("from import as")
                         }
@@ -465,7 +465,7 @@ impl<'a> PythonInference<'a> {
                             if val.is_calculated() {
                                 todo!("{:?} {:?} {:?}", self.file, val, n);
                             }
-                            self.set_redirect_value(n.index, inferred);
+                            self.set_redirect_point(n.index, inferred);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -528,7 +528,7 @@ impl<'a> PythonInference<'a> {
                 }
             }
         };
-        self.set_redirect_value(node.index, inferred);
+        self.set_redirect_point(node.index, inferred);
         inferred
     }
 
