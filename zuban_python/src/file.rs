@@ -1,6 +1,6 @@
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexValue, Database, FileIndex, Locality, LocalityLink, Point, PointType, ValueEnum,
+    ComplexValue, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -594,11 +594,11 @@ impl<'a> PythonInference<'a> {
             Terminal(TerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains('j') {
-                    ValueEnum::Complex
+                    Specific::Complex
                 } else if code.contains('.') {
-                    ValueEnum::Float
+                    Specific::Float
                 } else {
-                    ValueEnum::Integer
+                    Specific::Integer
                 }
             }
             Nonterminal(strings) => {
@@ -613,29 +613,29 @@ impl<'a> PythonInference<'a> {
                     }
                 }
                 if is_byte {
-                    ValueEnum::Bytes
+                    Specific::Bytes
                 } else {
-                    ValueEnum::String
+                    Specific::String
                 }
             }
             PyNodeType::Keyword => match first.get_code() {
-                "None" => ValueEnum::None,
-                "True" | "False" => ValueEnum::Boolean,
-                "..." => ValueEnum::Ellipsis,
+                "None" => Specific::None,
+                "True" | "False" => Specific::Boolean,
+                "..." => Specific::Ellipsis,
                 "(" => {
                     let next_node = iter.next().unwrap();
                     match next_node.get_type() {
-                        Nonterminal(tuple_content) => ValueEnum::Tuple,
+                        Nonterminal(tuple_content) => Specific::Tuple,
                         Nonterminal(yield_expr) => {
                             todo!("yield_expr");
                         }
                         Nonterminal(named_expression) => {
                             todo!("named_expression");
                         }
-                        Nonterminal(comprehension) => ValueEnum::ComprehensionGenerator,
+                        Nonterminal(comprehension) => Specific::ComprehensionGenerator,
                         PyNodeType::Keyword => {
                             debug_assert_eq!(next_node.get_code(), ")");
-                            ValueEnum::Tuple
+                            Specific::Tuple
                         }
                         _ => unreachable!(),
                     }
@@ -692,7 +692,7 @@ impl<'a> PythonInference<'a> {
                     }
                 }
                 PointType::LanguageSpecific => match value.get_language_specific() {
-                    ValueEnum::LazyInferredFunction => {
+                    Specific::LazyInferredFunction => {
                         let func = node.get_parent().unwrap().get_parent().unwrap();
                         debug_assert_eq!(
                             func.get_type(),
@@ -800,11 +800,11 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
                 vec![match specific {
-                    ValueEnum::Function => Box::new(WithValueName::new(
+                    Specific::Function => Box::new(WithValueName::new(
                         database,
                         Function::new(self.file, self.node_index),
                     )),
-                    ValueEnum::AnnotationInstance => {
+                    Specific::AnnotationInstance => {
                         let inferred = self.file.infer_expression(database, self.node_index + 2);
                         if let Some(instance) = inferred.file.use_instance(inferred.node_index) {
                             Box::new(WithValueName::new(database, instance))
@@ -816,7 +816,7 @@ impl<'a> Inferred<'a> {
                             return vec![];
                         }
                     }
-                    ValueEnum::TypeVar => {
+                    Specific::TypeVar => {
                         todo!()
                     }
                     _ => Box::new(WithValueName::new(
@@ -863,12 +863,12 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
                 match specific {
-                    ValueEnum::Function => callable(&Function::new(self.file, self.node_index)),
-                    ValueEnum::AnnotationInstance => {
+                    Specific::Function => callable(&Function::new(self.file, self.node_index)),
+                    Specific::AnnotationInstance => {
                         let inferred = self.file.infer_expression(database, self.node_index + 2);
                         todo!()
                     }
-                    ValueEnum::InstanceWithArguments => {
+                    Specific::InstanceWithArguments => {
                         let cls = self
                             .file
                             .infer_expression_part(database, self.node_index + 1);
@@ -924,17 +924,17 @@ impl<'a> Inferred<'a> {
         self.run(database, callable, |inferred| inferred)
     }
 
-    fn resolve_python_value(&self, database: &'a Database, value: ValueEnum) -> Instance<'a> {
+    fn resolve_python_value(&self, database: &'a Database, value: Specific) -> Instance<'a> {
         load_builtin_instance_from_str(
             database,
             match value {
-                ValueEnum::String => "str",
-                ValueEnum::Integer => "int",
-                ValueEnum::Float => "float",
-                ValueEnum::Boolean => "bool",
-                ValueEnum::Bytes => "bytes",
-                ValueEnum::Complex => "complex",
-                ValueEnum::Ellipsis => "ellipsis", // TODO this should not even be public
+                Specific::String => "str",
+                Specific::Integer => "int",
+                Specific::Float => "float",
+                Specific::Boolean => "bool",
+                Specific::Bytes => "bytes",
+                Specific::Complex => "complex",
+                Specific::Ellipsis => "ellipsis", // TODO this should not even be public
                 actual => todo!("{:?}", actual),
             },
         )

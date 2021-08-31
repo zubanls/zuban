@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::database::{
-    ClassStorage, ComplexValue, FileIndex, Locality, Point, PointType::MultiDefinition, ValueEnum,
+    ClassStorage, ComplexValue, FileIndex, Locality, Point, PointType::MultiDefinition, Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
@@ -92,7 +92,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.values_or_references[name.index as usize].set(value);
     }
 
-    fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: ValueEnum) {
+    fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: Specific) {
         self.add_new_definition(
             name_def,
             Point::new_simple_language_specific(type_, Locality::Stmt),
@@ -162,18 +162,18 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 if not_decorated.is_type(Nonterminal(function_def)) {
                     self.add_value_definition(
                         not_decorated.get_nth_child(1),
-                        ValueEnum::LazyInferredFunction,
+                        Specific::LazyInferredFunction,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
                     self.add_value_definition(
                         not_decorated.get_nth_child(1),
-                        ValueEnum::LazyInferredClass,
+                        Specific::LazyInferredClass,
                     );
                 } else {
                     debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
                     self.add_value_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
-                        ValueEnum::LazyInferredClass,
+                        Specific::LazyInferredClass,
                     );
                 }
             } else if child.is_type(Nonterminal(if_stmt)) {
@@ -195,7 +195,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 if inner.is_type(Nonterminal(function_def)) {
                     self.add_value_definition(
                         inner.get_nth_child(1),
-                        ValueEnum::LazyInferredFunction,
+                        Specific::LazyInferredFunction,
                     );
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered);
@@ -476,7 +476,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.unresolved_nodes.push(child.get_nth_child(1));
             }
         }
-        self.add_value_definition(node.get_nth_child(1), ValueEnum::LazyInferredFunction);
+        self.add_value_definition(node.get_nth_child(1), Specific::LazyInferredFunction);
     }
 
     pub fn index_function_body(&mut self, func: PyNode<'a>) {
@@ -489,7 +489,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             if child.is_type(Nonterminal(parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_value_definition(n, ValueEnum::Param);
+                        self.add_value_definition(n, Specific::Param);
                     } // defaults and annotations are already indexed
                 }
             }
@@ -503,7 +503,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         let func_index = func.index as usize;
         self.values_or_references[func_index].set(Point::new_simple_language_specific(
-            ValueEnum::Function,
+            Specific::Function,
             Locality::Stmt,
         ));
 
@@ -537,7 +537,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_value_definition(n, ValueEnum::Param);
+                        self.add_value_definition(n, Specific::Param);
                     } // defaults are already indexed
                 }
             }

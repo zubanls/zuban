@@ -4,7 +4,7 @@ use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{Database, Locality, Point, ValueEnum};
+use crate::database::{Database, Locality, Point, Specific};
 use crate::file::{Inferred, PythonFile};
 use crate::file_state::File;
 
@@ -51,11 +51,11 @@ impl<'a> Value<'a> for Function<'a> {
                     // TODO locality is wrong!!!!!1
                     let val = if v.get_kind() == ValueKind::Class {
                         Point::new_simple_language_specific(
-                            ValueEnum::AnnotationInstance,
+                            Specific::AnnotationInstance,
                             Locality::Stmt,
                         )
                     } else if v.get_kind() == ValueKind::Object && v.is_type_var(database) {
-                        Point::new_simple_language_specific(ValueEnum::TypeVar, Locality::Stmt)
+                        Point::new_simple_language_specific(Specific::TypeVar, Locality::Stmt)
                     } else {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();

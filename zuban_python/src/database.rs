@@ -95,7 +95,7 @@ impl Point {
         }
     }
 
-    pub fn new_simple_language_specific(type_: ValueEnum, locality: Locality) -> Self {
+    pub fn new_simple_language_specific(type_: Specific, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointType::LanguageSpecific, type_ as u32, locality);
         Self {
             flags,
@@ -104,7 +104,7 @@ impl Point {
     }
 
     pub fn new_language_specific(
-        type_: ValueEnum,
+        type_: Specific,
         node_index: NodeIndex,
         locality: Locality,
     ) -> Self {
@@ -176,7 +176,7 @@ impl Point {
         self.node_or_complex_index
     }
 
-    pub fn get_language_specific(self) -> ValueEnum {
+    pub fn get_language_specific(self) -> Specific {
         debug_assert!(self.get_type() == PointType::LanguageSpecific);
         unsafe { mem::transmute(self.flags & REST_MASK) }
     }
@@ -221,7 +221,7 @@ pub enum PointType {
 
 #[derive(Debug)]
 #[repr(u32)]
-pub enum ValueEnum {
+pub enum Specific {
     String,
     Bytes,
     Float,
