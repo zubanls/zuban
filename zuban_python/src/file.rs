@@ -281,8 +281,8 @@ impl<'db> PythonFile {
     }
 
     #[inline]
-    pub fn set_point(&self, index: NodeIndex, val: Point) {
-        self.points[index as usize].set(val);
+    pub fn set_point(&self, index: NodeIndex, point: Point) {
+        self.points[index as usize].set(point);
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
