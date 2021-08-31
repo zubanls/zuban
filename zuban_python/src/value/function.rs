@@ -5,7 +5,8 @@ use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Database, Locality, Point, ValueEnum};
-use crate::file::{File, Inferred, PythonFile};
+use crate::file::{Inferred, PythonFile};
+use crate::file_state::File;
 
 #[derive(Debug)]
 pub struct Function<'a> {

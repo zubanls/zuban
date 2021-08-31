@@ -8,8 +8,9 @@ use std::pin::Pin;
 use std::ptr::null;
 use walkdir::WalkDir;
 
-use crate::file::{
-    File, FileState, FileStateLoader, FileSystemReader, PythonFile, VirtualFileSystemReader,
+use crate::file::PythonFile;
+use crate::file_state::{
+    File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
 use crate::utils::{InsertOnlyVec, SymbolTable};
 

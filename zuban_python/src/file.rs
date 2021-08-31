@@ -3,8 +3,9 @@ use crate::database::{
     ComplexValue, Database, FileIndex, Locality, LocalityLink, Point, PointType, ValueEnum,
 };
 use crate::debug;
+use crate::file_state::{File, Issue, Leaf};
 use crate::imports::global_import;
-use crate::name::{Name, Names, TreeName, ValueNames, WithValueName};
+use crate::name::{Names, TreeName, ValueNames, WithValueName};
 use crate::name_binder::NameBinder;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::value::{Class, Function, Instance, Module, Value};
@@ -13,225 +14,14 @@ use parsa_python::{
     NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
 use regex::Regex;
-use std::any::Any;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
-use std::fs;
-use std::pin::Pin;
 use PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal};
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
-
-type InvalidatedDependencies = Vec<FileIndex>;
-type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
 pub type ComplexValues = InsertOnlyVec<ComplexValue>;
-
-pub trait VirtualFileSystemReader {
-    fn read_file(&self, path: &str) -> Option<String>;
-}
-
-#[derive(Default)]
-pub struct FileSystemReader {}
-
-impl VirtualFileSystemReader for FileSystemReader {
-    fn read_file(&self, path: &str) -> Option<String> {
-        // TODO can error
-        Some(fs::read_to_string(path).unwrap())
-    }
-}
-
-#[derive(Debug)]
-pub enum Leaf<'a> {
-    Name(Box<dyn Name<'a> + 'a>),
-    String,
-    Number,
-    Keyword(PyNode<'a>),
-    None,
-}
-
-pub trait FileStateLoader {
-    fn responsible_for_file_endings(&self) -> Vec<&str>;
-
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
-
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
-
-    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>>;
-}
-
-#[derive(Default)]
-pub struct PythonFileLoader {}
-
-impl FileStateLoader for PythonFileLoader {
-    fn responsible_for_file_endings(&self) -> Vec<&str> {
-        vec!["py", "pyi"]
-    }
-
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::new_parsed(path, PythonFile::new(code)))
-    }
-
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::new_unparsed(path, &PythonFile::new))
-    }
-
-    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::<PythonFile>::new_does_not_exist(path))
-    }
-}
-
-pub trait FileLoader<F> {
-    fn load_file(&self, path: String, code: String) -> F;
-}
-
-pub trait AsAny {
-    fn as_any(&self) -> &dyn Any
-    where
-        Self: 'static;
-}
-
-impl<T> AsAny for T {
-    fn as_any(&self) -> &dyn Any
-    where
-        Self: 'static,
-    {
-        self
-    }
-}
-
-pub trait File: std::fmt::Debug + AsAny {
-    fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
-        vec![]
-    }
-    fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
-    fn infer_operator_leaf<'a>(
-        &'a self,
-        database: &'a Database,
-        node: PyNode<'a>,
-    ) -> ValueNames<'a>;
-    fn get_file_index(&self) -> FileIndex;
-    fn set_file_index(&self, index: FileIndex);
-
-    fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
-    fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
-
-    fn get_file_path<'a>(&self, database: &'a Database) -> &'a str {
-        database.get_file_path(self.get_file_index())
-    }
-}
-
-pub trait FileState: fmt::Debug {
-    fn get_path(&self) -> &str;
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
-    fn set_file_index(&self, index: FileIndex);
-}
-
-impl<F: File> FileState for LanguageFileState<F> {
-    fn get_path(&self) -> &str {
-        &self.path
-    }
-
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
-        match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing => None,
-            InternalFileExistence::Parsed(f) => Some(f),
-            InternalFileExistence::Unparsed(loader, file_index_cell) => {
-                // It is extremely important to deal with the data given here before overwriting it
-                // in `slot`. Otherwise we access memory that has different data structures.
-                let file_index = file_index_cell.get().unwrap();
-                if let Some(file) = database.file_system_reader.read_file(&self.path) {
-                    unsafe { *self.state.get() = InternalFileExistence::Parsed(loader(file)) };
-                } else {
-                    unsafe { *self.state.get() = InternalFileExistence::Missing };
-                }
-
-                let file = self.get_file(database);
-                file.unwrap().set_file_index(file_index);
-                file
-            }
-        }
-    }
-
-    fn set_file_index(&self, index: FileIndex) {
-        match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing => {}
-            InternalFileExistence::Parsed(f) => f.set_file_index(index),
-            InternalFileExistence::Unparsed(loader, file_index_cell) => {
-                file_index_cell.set(Some(index))
-            }
-        }
-    }
-}
-
-pub struct LanguageFileState<F: 'static> {
-    path: String,
-    // Unsafe, because the file is parsed lazily
-    state: UnsafeCell<InternalFileExistence<F>>,
-    invalidates: Vec<FileIndex>,
-}
-
-impl<F> fmt::Debug for LanguageFileState<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("LanguageFileState")
-            .field("path", &self.path)
-            .field("state", unsafe { &*self.state.get() })
-            .field("invalidates", &self.invalidates)
-            .finish()
-    }
-}
-
-impl<F: File> LanguageFileState<F> {
-    fn new_parsed(path: String, file: F) -> Self {
-        Self {
-            path,
-            state: UnsafeCell::new(InternalFileExistence::Parsed(file)),
-            invalidates: vec![],
-        }
-    }
-
-    fn new_unparsed(path: String, loader: LoadFileFunction<F>) -> Self {
-        Self {
-            path,
-            state: UnsafeCell::new(InternalFileExistence::Unparsed(loader, Cell::new(None))),
-            invalidates: vec![],
-        }
-    }
-
-    fn new_does_not_exist(path: String) -> Self {
-        Self {
-            path,
-            state: UnsafeCell::new(InternalFileExistence::Missing),
-            invalidates: vec![],
-        }
-    }
-}
-
-enum InternalFileExistence<F: 'static> {
-    Missing,
-    Unparsed(LoadFileFunction<F>, Cell<Option<FileIndex>>),
-    Parsed(F),
-}
-
-impl<F> fmt::Debug for InternalFileExistence<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        // Intentionally remove the T here, because it's usually huge and we are usually not
-        // interested in that while debugging.
-        match *self {
-            Self::Missing => write!(f, "DoesNotExist"),
-            Self::Unparsed(_, _) => write!(f, "Unparsed"),
-            Self::Parsed(_) => write!(f, "Parsed(_)"),
-        }
-    }
-}
-
-#[derive(Debug)]
-struct Issue {
-    issue_id: u32,
-    tree_node: NodeIndex,
-    locality: Locality,
-}
 
 impl File for PythonFile {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
@@ -386,7 +176,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    fn new(code: String) -> Self {
+    pub fn new(code: String) -> Self {
         let tree = PYTHON_GRAMMAR.parse(code);
         let length = tree.get_length();
         Self {

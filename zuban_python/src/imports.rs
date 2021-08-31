@@ -1,6 +1,6 @@
 use crate::database::{Database, DirectoryOrFile, FileIndex};
 use crate::debug;
-use crate::file::File;
+use crate::file_state::File;
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     if name == "typing" {

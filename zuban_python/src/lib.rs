@@ -4,6 +4,7 @@
 mod arguments;
 mod database;
 mod file;
+mod file_state;
 mod imports;
 mod name;
 mod name_binder;
@@ -12,7 +13,7 @@ mod utils;
 mod value;
 
 use database::{Database, FileIndex, Workspace};
-use file::{Leaf, PythonFileLoader};
+use file_state::{Leaf, PythonFileLoader};
 use name::{Names, ValueNames};
 use parsa::CodeIndex;
 pub use value::ValueKind;
@@ -94,7 +95,7 @@ impl<'a> Script<'a> {
         }
     }
 
-    fn get_file(&self) -> &dyn file::File {
+    fn get_file(&self) -> &dyn file_state::File {
         self.project
             .database
             .get_file_state(self.file_index)

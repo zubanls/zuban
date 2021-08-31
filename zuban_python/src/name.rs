@@ -1,5 +1,6 @@
 use crate::database::Database;
-use crate::file::{File, PythonFile};
+use crate::file::PythonFile;
+use crate::file_state::File;
 use crate::value::{Value, ValueKind};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PyNode, PyNodeType, TerminalType};
