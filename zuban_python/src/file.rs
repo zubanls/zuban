@@ -158,7 +158,7 @@ pub struct PythonFile {
     pub tree: PyTree, // TODO should probably not be public
     symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    values_or_references: Vec<Cell<Point>>,
+    points: Vec<Cell<Point>>,
     complex_values: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
@@ -183,7 +183,7 @@ impl<'db> PythonFile {
             tree,
             file_index: Cell::new(None),
             symbol_table: Default::default(),
-            values_or_references: vec![Default::default(); length],
+            points: vec![Default::default(); length],
             complex_values: InsertOnlyVec::default(),
             dependencies: vec![],
             issues: vec![],
@@ -217,7 +217,7 @@ impl<'db> PythonFile {
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
             &self.symbol_table,
-            &self.values_or_references,
+            &self.points,
             &self.complex_values,
             self.file_index.get().unwrap(),
             None,
@@ -277,12 +277,12 @@ impl<'db> PythonFile {
 
     #[inline]
     fn get_point(&self, index: NodeIndex) -> Point {
-        self.values_or_references[index as usize].get()
+        self.points[index as usize].get()
     }
 
     #[inline]
     pub fn set_point(&self, index: NodeIndex, val: Point) {
-        self.values_or_references[index as usize].set(val);
+        self.points[index as usize].set(val);
     }
 
     fn lookup_global(&self, name: &str) -> Option<LocalityLink> {

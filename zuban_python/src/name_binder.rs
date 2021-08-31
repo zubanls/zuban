@@ -11,7 +11,7 @@ use parsa_python::{NonterminalType, PyNode, PyNodeType, TerminalType};
 
 pub struct NameBinder<'a, 'b> {
     symbol_table: &'b SymbolTable,
-    values_or_references: &'a [Cell<Point>],
+    points: &'a [Cell<Point>],
     complex_values: &'a ComplexValues,
     unordered_references: Vec<PyNode<'a>>,
     unresolved_nodes: Vec<PyNode<'a>>,
@@ -24,14 +24,14 @@ pub struct NameBinder<'a, 'b> {
 impl<'a, 'b> NameBinder<'a, 'b> {
     fn new(
         symbol_table: &'b SymbolTable,
-        values_or_references: &'a [Cell<Point>],
+        points: &'a [Cell<Point>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
     ) -> Self {
         Self {
             symbol_table,
-            values_or_references,
+            points,
             complex_values,
             unordered_references: vec![],
             unresolved_nodes: vec![],
@@ -44,19 +44,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn with_global_binder(
         symbol_table: &'b SymbolTable,
-        values_or_references: &'a [Cell<Point>],
+        points: &'a [Cell<Point>],
         complex_values: &'a ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(
-            symbol_table,
-            values_or_references,
-            complex_values,
-            file_index,
-            None,
-        );
+        let mut binder = Self::new(symbol_table, points, complex_values, file_index, None);
         func(&mut binder);
         binder.close();
     }
@@ -68,7 +62,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     ) {
         let mut name_binder = NameBinder::new(
             symbol_table,
-            self.values_or_references,
+            self.points,
             self.complex_values,
             self.file_index,
             Some(self),
@@ -89,7 +83,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         if let Some(replaced) = replaced {
             //dbg!("TODO multi reference {:?}", replaced);
         }
-        self.values_or_references[name.index as usize].set(value);
+        self.points[name.index as usize].set(value);
     }
 
     fn add_value_definition(&mut self, name_def: PyNode<'a>, type_: Specific) {
@@ -102,7 +96,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
-        self.values_or_references[node.index as usize]
+        self.points[node.index as usize]
             .set(Point::new_complex_value(complex_index, Locality::Stmt));
     }
 
@@ -502,17 +496,17 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             todo!("{:?}", stmt);
         }
         let func_index = func.index as usize;
-        self.values_or_references[func_index].set(Point::new_simple_language_specific(
+        self.points[func_index].set(Point::new_simple_language_specific(
             Specific::Function,
             Locality::Stmt,
         ));
 
         // Avoid overwriting multi definitions
         let mut name_index = func.index as usize + 3;
-        if self.values_or_references[name_index].get().get_type() == MultiDefinition {
+        if self.points[name_index].get().get_type() == MultiDefinition {
             name_index -= 1;
         }
-        self.values_or_references[name_index].set(Point::new_redirect(
+        self.points[name_index].set(Point::new_redirect(
             self.file_index,
             func.index,
             Locality::Stmt,
@@ -594,7 +588,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 Point::new_missing_or_unknown(self.file_index, Locality::File)
             }
         };
-        self.values_or_references[name.index as usize].set(value);
+        self.points[name.index as usize].set(value);
     }
 
     fn lookup_name(&self, name: PyNode<'a>) -> Option<NodeIndex> {
