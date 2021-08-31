@@ -241,7 +241,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn infer_name(&'db self, database: &'db Database, name: PyNode) -> ValueNames<'db> {
+    pub fn infer_name(&'db self, database: &'db Database, name: PyNode<'db>) -> ValueNames<'db> {
         self.calculate_global_definitions_and_references();
         self.get_inference(database)
             .infer_name(name)
@@ -322,8 +322,8 @@ impl<'a> PythonInference<'a> {
         self.file.set_point(
             index,
             Point::new_redirect(
-                inferred.file.get_file_index(),
-                inferred.node_index,
+                inferred.latest_reference.file.get_file_index(),
+                inferred.latest_reference.node.index,
                 Locality::Stmt,
             ),
         );
@@ -413,7 +413,7 @@ impl<'a> PythonInference<'a> {
             } else {
                 Point::new_missing_file()
             };
-            Inferred::new_and_save(self.file, first.index, point)
+            Inferred::new_and_save(self.file, first, point)
         } else {
             let base = self.infer_import_dotted_name(first);
             let name = dotted.get_nth_child(2);
@@ -563,11 +563,11 @@ impl<'a> PythonInference<'a> {
             "(" => {
                 let args = {
                     if second.is_type(Nonterminal(arguments)) {
-                        Arguments::new_with_arguments(self.file, node.index, second)
+                        Arguments::new_with_arguments(self.file, node, second)
                     } else if second.is_type(Nonterminal(comprehension)) {
-                        Arguments::new_comprehension(self.file, node.index, second)
+                        Arguments::new_comprehension(self.file, node, second)
                     } else {
-                        Arguments::new_empty_arguments(self.file, node.index)
+                        Arguments::new_empty_arguments(self.file, node)
                     }
                 };
                 base.run_on_value(self.database, |value| value.execute(self.database, &args))
@@ -579,7 +579,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_atom(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_atom(&self, node: PyNode<'a>) -> Inferred<'a> {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(atom));
         if let Some(result) = self.check_point_cache(node) {
@@ -656,10 +656,10 @@ impl<'a> PythonInference<'a> {
             _ => unreachable!(),
         };
         let point = Point::new_simple_language_specific(specific_enum, Locality::Stmt);
-        Inferred::new_and_save(self.file, node.index, point)
+        Inferred::new_and_save(self.file, node, point)
     }
 
-    fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_name_reference(&self, node: PyNode<'a>) -> Inferred<'a> {
         if let Some(result) = self.check_point_cache(node) {
             return result;
         }
@@ -667,7 +667,7 @@ impl<'a> PythonInference<'a> {
     }
 
     #[inline]
-    fn check_point_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
+    fn check_point_cache(&self, node: PyNode<'a>) -> Option<Inferred<'a>> {
         let point = self.file.get_point(node.index);
         if point.is_calculated() {
             debug!(
@@ -700,9 +700,9 @@ impl<'a> PythonInference<'a> {
                         debug_assert!(self.file.get_point(node.index).is_calculated());
                         self.check_point_cache(node)
                     }
-                    _ => Some(Inferred::new(self.file, node.index, point, true)),
+                    _ => Some(Inferred::new(self.file, node, point, true)),
                 },
-                PointType::Complex => Some(Inferred::new(self.file, node.index, point, true)),
+                PointType::Complex => Some(Inferred::new(self.file, node, point, true)),
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
@@ -729,7 +729,7 @@ impl<'a> PythonInference<'a> {
         })
     }
 
-    fn infer_name(&self, node: PyNode) -> Inferred<'a> {
+    fn infer_name(&self, node: PyNode<'a>) -> Inferred<'a> {
         // TODO move this after debug_assert_eq???
         if let Some(result) = self.check_point_cache(node) {
             return result;
@@ -776,23 +776,29 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Inferred<'a> {
+struct NodeReference<'a> {
     file: &'a PythonFile,
-    node_index: NodeIndex,
+    node: PyNode<'a>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Inferred<'a> {
+    definition: NodeReference<'a>,
+    latest_reference: NodeReference<'a>,
     point: Point,
     is_saved: bool,
 }
 
 impl<'a> Inferred<'a> {
-    pub fn new_and_save(file: &'a PythonFile, node_index: NodeIndex, point: Point) -> Self {
-        file.set_point(node_index, point);
-        Self::new(file, node_index, point, true)
+    pub fn new_and_save(file: &'a PythonFile, node: PyNode<'a>, point: Point) -> Self {
+        file.set_point(node.index, point);
+        Self::new(file, node, point, true)
     }
 
-    fn new(file: &'a PythonFile, node_index: NodeIndex, point: Point, is_saved: bool) -> Self {
+    fn new(file: &'a PythonFile, node: PyNode<'a>, point: Point, is_saved: bool) -> Self {
         Self {
-            file,
-            node_index,
+            definition: NodeReference { file, node },
+            latest_reference: NodeReference { file, node },
             point,
             is_saved,
         }
@@ -807,11 +813,18 @@ impl<'a> Inferred<'a> {
                 vec![match specific {
                     Specific::Function => Box::new(WithValueName::new(
                         database,
-                        Function::new(self.file, self.node_index),
+                        Function::new(self.definition.file, self.definition.node.index),
                     )),
                     Specific::AnnotationInstance => {
-                        let inferred = self.file.infer_expression(database, self.node_index + 2);
-                        if let Some(instance) = inferred.file.use_instance(inferred.node_index) {
+                        let inferred = self
+                            .definition
+                            .file
+                            .infer_expression(database, self.definition.node.index + 2);
+                        if let Some(instance) = inferred
+                            .definition
+                            .file
+                            .use_instance(inferred.definition.node.index)
+                        {
                             Box::new(WithValueName::new(database, instance))
                         } else {
                             debug!(
@@ -832,13 +845,18 @@ impl<'a> Inferred<'a> {
             }
             Complex => {
                 match self
+                    .definition
                     .file
                     .complex_points
                     .get(self.point.get_complex_index())
                     .unwrap()
                 {
                     ComplexPoint::Class(cls_storage) => {
-                        let cls = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
+                        let cls = Class::new(
+                            self.definition.file,
+                            self.definition.node.index,
+                            &cls_storage.symbol_table,
+                        );
                         vec![Box::new(WithValueName::new(database, cls))]
                     }
                     _ => {
@@ -868,16 +886,28 @@ impl<'a> Inferred<'a> {
             LanguageSpecific => {
                 let specific = self.point.get_language_specific();
                 match specific {
-                    Specific::Function => callable(&Function::new(self.file, self.node_index)),
+                    Specific::Function => callable(&Function::new(
+                        self.definition.file,
+                        self.definition.node.index,
+                    )),
                     Specific::AnnotationInstance => {
-                        let inferred = self.file.infer_expression(database, self.node_index + 2);
+                        let inferred = self
+                            .definition
+                            .file
+                            .infer_expression(database, self.definition.node.index + 2);
                         todo!()
                     }
                     Specific::InstanceWithArguments => {
                         let cls = self
+                            .definition
                             .file
-                            .infer_expression_part(database, self.node_index + 1);
-                        callable(&cls.file.use_instance(cls.node_index).unwrap())
+                            .infer_expression_part(database, self.definition.node.index + 1);
+                        callable(
+                            &cls.definition
+                                .file
+                                .use_instance(cls.definition.node.index)
+                                .unwrap(),
+                        )
                     }
                     _ => {
                         let instance = self.resolve_specific(database, specific);
@@ -887,6 +917,7 @@ impl<'a> Inferred<'a> {
             }
             Complex => {
                 match self
+                    .definition
                     .file
                     .complex_points
                     .get(self.point.get_complex_index())
@@ -896,8 +927,11 @@ impl<'a> Inferred<'a> {
                         todo!()
                     }
                     ComplexPoint::Class(cls_storage) => {
-                        let class =
-                            Class::new(self.file, self.node_index, &cls_storage.symbol_table);
+                        let class = Class::new(
+                            self.definition.file,
+                            self.definition.node.index,
+                            &cls_storage.symbol_table,
+                        );
                         callable(&class)
                     }
                     ComplexPoint::Instance(bla) => {

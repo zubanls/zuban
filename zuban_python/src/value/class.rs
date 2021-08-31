@@ -45,6 +45,6 @@ impl<'a> Value<'a> for Class<'a> {
         // TODO locality!!!
         let point =
             Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);
-        Inferred::new_and_save(args.file, args.primary_node_index, point)
+        Inferred::new_and_save(args.file, args.primary_node, point)
     }
 }

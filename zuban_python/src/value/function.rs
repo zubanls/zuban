@@ -19,7 +19,7 @@ impl<'a> Function<'a> {
         Self { file, node_index }
     }
 
-    fn get_node(&self) -> PyNode {
+    fn get_node(&self) -> PyNode<'a> {
         self.file.tree.get_node_by_index(self.node_index)
     }
 }
@@ -60,7 +60,7 @@ impl<'a> Value<'a> for Function<'a> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    Inferred::new_and_save(self.file, return_annotation.index, point)
+                    Inferred::new_and_save(self.file, return_annotation, point)
                 },
                 |v| v,
             )
