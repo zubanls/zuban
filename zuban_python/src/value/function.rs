@@ -49,7 +49,7 @@ impl<'a> Value<'a> for Function<'a> {
                 database,
                 |v| {
                     // TODO locality is wrong!!!!!1
-                    let val = if v.get_kind() == ValueKind::Class {
+                    let point = if v.get_kind() == ValueKind::Class {
                         Point::new_simple_language_specific(
                             Specific::AnnotationInstance,
                             Locality::Stmt,
@@ -60,8 +60,8 @@ impl<'a> Value<'a> for Function<'a> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    self.file.set_point(return_annotation.index, val);
-                    Inferred::new(self.file, return_annotation.index, val)
+                    self.file.set_point(return_annotation.index, point);
+                    Inferred::new(self.file, return_annotation.index, point)
                 },
                 |v| v,
             )

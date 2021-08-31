@@ -42,9 +42,9 @@ impl<'a> Value<'a> for Class<'a> {
     }
 
     fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
-        let value =
+        let point =
             Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);
-        args.file.set_point(args.primary_node_index, value);
-        Inferred::new(args.file, args.primary_node_index, value)
+        args.file.set_point(args.primary_node_index, point);
+        Inferred::new(args.file, args.primary_node_index, point)
     }
 }
