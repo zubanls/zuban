@@ -574,7 +574,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         name: PyNode<'a>,
         mut unresolved_name_callback: impl FnMut(PyNode<'a>),
     ) {
-        let value = {
+        let point = {
             if self.parent_lookup_not_finished {
                 if let Some(definition) = self.symbol_table.lookup_symbol(name.get_code()) {
                     Point::new_redirect(self.file_index, definition, Locality::File)
@@ -588,7 +588,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 Point::new_missing_or_unknown(self.file_index, Locality::File)
             }
         };
-        self.points[name.index as usize].set(value);
+        self.points[name.index as usize].set(point);
     }
 
     fn lookup_name(&self, name: PyNode<'a>) -> Option<NodeIndex> {

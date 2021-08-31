@@ -408,13 +408,13 @@ impl<'a> PythonInference<'a> {
         let first = dotted.get_nth_child(0);
         if first.is_type(Terminal(TerminalType::Name)) {
             let file_index = global_import(self.database, first.get_code());
-            let value = if let Some(file_index) = file_index {
+            let point = if let Some(file_index) = file_index {
                 Point::new_file_reference(file_index, Locality::DirectExtern)
             } else {
                 Point::new_missing_file()
             };
-            self.file.set_point(first.index, value);
-            Inferred::new(self.file, first.index, value)
+            self.file.set_point(first.index, point);
+            Inferred::new(self.file, first.index, point)
         } else {
             let base = self.infer_import_dotted_name(first);
             let name = dotted.get_nth_child(2);
@@ -461,9 +461,9 @@ impl<'a> PythonInference<'a> {
                             todo!("Tuple unpack");
                         }
                         Target::Name(n) => {
-                            let val = self.file.get_point(n.index);
-                            if val.is_calculated() {
-                                todo!("{:?} {:?} {:?}", self.file, val, n);
+                            let point = self.file.get_point(n.index);
+                            if point.is_calculated() {
+                                todo!("{:?} {:?} {:?}", self.file, point, n);
                             }
                             self.set_redirect_point(n.index, inferred);
                         }
@@ -589,7 +589,7 @@ impl<'a> PythonInference<'a> {
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
-        let value_enum = match first.get_type() {
+        let specific_enum = match first.get_type() {
             Terminal(TerminalType::Name) => return self.infer_name_reference(first),
             Terminal(TerminalType::Number) => {
                 let code = first.get_code();
@@ -656,9 +656,9 @@ impl<'a> PythonInference<'a> {
             },
             _ => unreachable!(),
         };
-        let val = Point::new_simple_language_specific(value_enum, Locality::Stmt);
-        self.file.set_point(node.index, val);
-        Inferred::new(self.file, node.index, val)
+        let point = Point::new_simple_language_specific(specific_enum, Locality::Stmt);
+        self.file.set_point(node.index, point);
+        Inferred::new(self.file, node.index, point)
     }
 
     fn infer_name_reference(&self, node: PyNode) -> Inferred<'a> {
@@ -670,28 +670,28 @@ impl<'a> PythonInference<'a> {
 
     #[inline]
     fn check_point_cache(&self, node: PyNode) -> Option<Inferred<'a>> {
-        let value = self.file.get_point(node.index);
-        if value.is_calculated() {
+        let point = self.file.get_point(node.index);
+        if point.is_calculated() {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {:?}",
                 get_node_debug_output(node),
                 self.file.get_file_index(),
                 node.index,
-                value.get_type()
+                point.get_type()
             );
-            match value.get_type() {
+            match point.get_type() {
                 PointType::Redirect => {
-                    let file_index = value.get_file_index();
+                    let file_index = point.get_file_index();
                     if file_index == self.file_index {
-                        self.follow_redirects_in_point_cache(value.get_node_index())
+                        self.follow_redirects_in_point_cache(point.get_node_index())
                     } else {
                         self.database
                             .get_loaded_python_file(file_index)
                             .get_inference(self.database)
-                            .follow_redirects_in_point_cache(value.get_node_index())
+                            .follow_redirects_in_point_cache(point.get_node_index())
                     }
                 }
-                PointType::LanguageSpecific => match value.get_language_specific() {
+                PointType::LanguageSpecific => match point.get_language_specific() {
                     Specific::LazyInferredFunction => {
                         let func = node.get_parent().unwrap().get_parent().unwrap();
                         debug_assert_eq!(
@@ -702,18 +702,18 @@ impl<'a> PythonInference<'a> {
                         debug_assert!(self.file.get_point(node.index).is_calculated());
                         self.check_point_cache(node)
                     }
-                    _ => Some(Inferred::new(self.file, node.index, value)),
+                    _ => Some(Inferred::new(self.file, node.index, point)),
                 },
-                PointType::Complex => Some(Inferred::new(self.file, node.index, value)),
+                PointType::Complex => Some(Inferred::new(self.file, node.index, point)),
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
                 }
                 _ => {
-                    todo!("{:?} {:?}", value.get_type(), node)
+                    todo!("{:?} {:?}", point.get_type(), node)
                 }
             }
         } else {
-            if value.is_calculating() {
+            if point.is_calculating() {
                 todo!("Set recursion error and return that");
             }
             None
@@ -821,7 +821,7 @@ impl<'a> Inferred<'a> {
                     }
                     _ => Box::new(WithValueName::new(
                         database,
-                        self.resolve_python_value(database, self.point.get_language_specific()),
+                        self.resolve_specific(database, self.point.get_language_specific()),
                     )),
                 }]
             }
@@ -875,7 +875,7 @@ impl<'a> Inferred<'a> {
                         callable(&cls.file.use_instance(cls.node_index).unwrap())
                     }
                     _ => {
-                        let instance = self.resolve_python_value(database, specific);
+                        let instance = self.resolve_specific(database, specific);
                         callable(&instance)
                     }
                 }
@@ -924,10 +924,10 @@ impl<'a> Inferred<'a> {
         self.run(database, callable, |inferred| inferred)
     }
 
-    fn resolve_python_value(&self, database: &'a Database, value: Specific) -> Instance<'a> {
+    fn resolve_specific(&self, database: &'a Database, specific: Specific) -> Instance<'a> {
         load_builtin_instance_from_str(
             database,
-            match value {
+            match specific {
                 Specific::String => "str",
                 Specific::Integer => "int",
                 Specific::Float => "float",
