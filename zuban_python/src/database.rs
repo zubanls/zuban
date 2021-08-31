@@ -278,7 +278,7 @@ pub struct LocalityLink {
 }
 
 #[derive(Debug)]
-pub enum ComplexValue {
+pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[ValueLink]>),
     Instance(Execution),

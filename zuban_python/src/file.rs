@@ -1,6 +1,6 @@
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexValue, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
+    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -21,7 +21,7 @@ use PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal};
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
-pub type ComplexValues = InsertOnlyVec<ComplexValue>;
+pub type ComplexValues = InsertOnlyVec<ComplexPoint>;
 
 impl File for PythonFile {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
@@ -304,7 +304,7 @@ impl<'db> PythonFile {
             .get(v.get_complex_index() as usize)
             .unwrap();
         match complex {
-            ComplexValue::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
+            ComplexPoint::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -832,7 +832,7 @@ impl<'a> Inferred<'a> {
                     .get(self.point.get_complex_index())
                     .unwrap()
                 {
-                    ComplexValue::Class(cls_storage) => {
+                    ComplexPoint::Class(cls_storage) => {
                         let cls = Class::new(self.file, self.node_index, &cls_storage.symbol_table);
                         vec![Box::new(WithValueName::new(database, cls))]
                     }
@@ -887,21 +887,21 @@ impl<'a> Inferred<'a> {
                     .get(self.point.get_complex_index())
                     .unwrap()
                 {
-                    ComplexValue::Union(lst) => {
+                    ComplexPoint::Union(lst) => {
                         todo!()
                     }
-                    ComplexValue::Class(cls_storage) => {
+                    ComplexPoint::Class(cls_storage) => {
                         let class =
                             Class::new(self.file, self.node_index, &cls_storage.symbol_table);
                         callable(&class)
                     }
-                    ComplexValue::Instance(bla) => {
+                    ComplexPoint::Instance(bla) => {
                         todo!()
                     }
-                    ComplexValue::Closure(bla, bar) => {
+                    ComplexPoint::Closure(bla, bar) => {
                         todo!()
                     }
-                    ComplexValue::Generic(bla) => {
+                    ComplexPoint::Generic(bla) => {
                         todo!()
                     }
                 }

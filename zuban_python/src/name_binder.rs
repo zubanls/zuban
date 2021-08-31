@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::database::{
-    ClassStorage, ComplexValue, FileIndex, Locality, Point, PointType::MultiDefinition, Specific,
+    ClassStorage, ComplexPoint, FileIndex, Locality, Point, PointType::MultiDefinition, Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
@@ -93,7 +93,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexValue) {
+    fn set_complex_value(&mut self, node: PyNode<'a>, complex: ComplexPoint) {
         let complex_index = self.complex_values.len() as u32;
         self.complex_values.push(Box::pin(complex));
         self.points[node.index as usize]
@@ -355,7 +355,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
         });
-        self.set_complex_value(class, ComplexValue::Class(ClassStorage::new(symbol_table)));
+        self.set_complex_value(class, ComplexPoint::Class(ClassStorage::new(symbol_table)));
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
