@@ -320,8 +320,8 @@ impl<'a> PythonInference<'a> {
         self.file.set_point(
             index,
             Point::new_redirect(
-                inferred.latest_reference.file.get_file_index(),
-                inferred.latest_reference.node.index,
+                inferred.definition.file.get_file_index(),
+                inferred.definition.node.index,
                 Locality::Stmt,
             ),
         );
@@ -782,7 +782,6 @@ struct NodeReference<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Inferred<'a> {
     definition: NodeReference<'a>,
-    latest_reference: NodeReference<'a>,
     point: Point,
     is_saved: bool,
 }
@@ -796,7 +795,6 @@ impl<'a> Inferred<'a> {
     fn new(file: &'a PythonFile, node: PyNode<'a>, point: Point, is_saved: bool) -> Self {
         Self {
             definition: NodeReference { file, node },
-            latest_reference: NodeReference { file, node },
             point,
             is_saved,
         }
