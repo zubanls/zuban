@@ -45,25 +45,21 @@ impl<'a> Value<'a> for Function<'a> {
             let inferred = self
                 .file
                 .infer_expression(database, return_annotation.get_nth_child(1));
-            inferred.run(
-                database,
-                |v| {
-                    // TODO locality is wrong!!!!!1
-                    let point = if v.get_kind() == ValueKind::Class {
-                        Point::new_simple_language_specific(
-                            Specific::AnnotationInstance,
-                            Locality::Stmt,
-                        )
-                    } else if v.get_kind() == ValueKind::Object && v.is_type_var(database) {
-                        Point::new_simple_language_specific(Specific::TypeVar, Locality::Stmt)
-                    } else {
-                        Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
-                        todo!();
-                    };
-                    Inferred::new_and_save(self.file, return_annotation, point)
-                },
-                |v| v,
-            )
+            inferred.run_on_value(database, |v| {
+                // TODO locality is wrong!!!!!1
+                let point = if v.get_kind() == ValueKind::Class {
+                    Point::new_simple_language_specific(
+                        Specific::AnnotationInstance,
+                        Locality::Stmt,
+                    )
+                } else if v.get_kind() == ValueKind::Object && v.is_type_var(database) {
+                    Point::new_simple_language_specific(Specific::TypeVar, Locality::Stmt)
+                } else {
+                    Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
+                    todo!();
+                };
+                Inferred::new_and_save(self.file, return_annotation, point)
+            })
         } else {
             todo!()
         }
