@@ -81,7 +81,7 @@ fn resolve_type_vars<'a>(
 ) -> Option<Inferred<'a>> {
     //let type_var = Ty
     let inferred = file.infer_expression(database, annotation);
-    if inferred.is_type_var(database) {
+    if inferred.is_type_var() {
         Some(inferred)
     } else {
         if !annotation.is_leaf() {
