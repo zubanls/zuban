@@ -45,6 +45,7 @@ impl<'a> Value<'a> for Function<'a> {
             let inferred = self
                 .file
                 .infer_expression(database, return_annotation.get_nth_child(1));
+            dbg!(resolve_type_vars(database, inferred));
             inferred.run_on_value(database, |v| {
                 // TODO locality is wrong!!!!!1
                 let point = if v.get_kind() == ValueKind::Class {
@@ -63,5 +64,15 @@ impl<'a> Value<'a> for Function<'a> {
         } else {
             todo!()
         }
+    }
+}
+
+fn resolve_type_vars<'a>(database: &'a Database, return_annotation: Inferred<'a>) -> Inferred<'a> {
+    //let type_var = Ty
+    dbg!(return_annotation);
+    if return_annotation.is_type_var(database) {
+        todo!()
+    } else {
+        todo!();
     }
 }

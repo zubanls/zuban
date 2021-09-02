@@ -894,10 +894,7 @@ impl<'a> Inferred<'a> {
                         todo!()
                     }
                     Specific::InstanceWithArguments => {
-                        let cls = self
-                            .definition
-                            .file
-                            .infer_expression_part(database, self.definition.node.get_nth_child(0));
+                        let cls = self.infer_instance_with_arguments_cls(database);
                         callable(
                             &cls.definition
                                 .file
@@ -973,6 +970,26 @@ impl<'a> Inferred<'a> {
                 actual => todo!("{:?}", actual),
             },
         )
+    }
+
+    pub fn is_type_var(&self, database: &'a Database) -> bool {
+        if self.point.get_type() == PointType::LanguageSpecific
+            && self.point.get_language_specific() == Specific::InstanceWithArguments
+        {
+            // TODO this check can/should be optimized by comparing node pointers that are cached
+            // in python_state
+            let cls = self.infer_instance_with_arguments_cls(database);
+            return cls.definition.file.get_file_index()
+                == database.python_state.get_typing().get_file_index()
+                && cls.definition.node.get_code().starts_with("class TypeVar");
+        }
+        false
+    }
+
+    fn infer_instance_with_arguments_cls(&self, database: &'a Database) -> Self {
+        self.definition
+            .file
+            .infer_expression_part(database, self.definition.node.get_nth_child(0))
     }
 }
 
