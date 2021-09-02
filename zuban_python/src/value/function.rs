@@ -45,9 +45,12 @@ impl<'a> Value<'a> for Function<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
-            if let Some(inferred) =
-                resolve_type_vars(database, self.file, return_annotation.get_nth_child(1))
-            {
+            if let Some(inferred) = resolve_type_vars(
+                database,
+                self.file,
+                return_annotation.get_nth_child(1),
+                &FunctionTypeVarFinder::new(database, self.file, self),
+            ) {
                 inferred
             } else {
                 todo!()
@@ -77,22 +80,67 @@ impl<'a> Value<'a> for Function<'a> {
 fn resolve_type_vars<'a>(
     database: &'a Database,
     file: &'a PythonFile,
-    annotation: PyNode<'a>,
+    node: PyNode<'a>,
+    type_var_finder: &impl TypeVarFinder<'a>,
 ) -> Option<Inferred<'a>> {
     //let type_var = Ty
-    let inferred = file.infer_expression(database, annotation);
+    let inferred = file.infer_expression(database, node);
     if inferred.is_type_var() {
-        Some(inferred)
+        type_var_finder.lookup(node.get_code()).or_else(|| todo!())
     } else {
-        if !annotation.is_leaf() {
-            for node in annotation.iter_children() {
+        if !node.is_leaf() {
+            for node in node.iter_children() {
                 if node.is_type(Terminal(TerminalType::Name)) {
-                    if let Some(resolved_type_var) = resolve_type_vars(database, file, node) {
+                    if let Some(resolved_type_var) =
+                        resolve_type_vars(database, file, node, type_var_finder)
+                    {
                         todo!()
                     }
                 }
             }
         }
         None
+    }
+}
+
+trait TypeVarFinder<'a> {
+    fn lookup(&self, name: &str) -> Option<Inferred<'a>>;
+}
+
+struct FunctionTypeVarFinder<'a, 'b> {
+    database: &'a Database,
+    file: &'a PythonFile,
+    function: &'b Function<'a>,
+    calculated_type_vars: Option<Vec<(&'a str, Inferred<'a>)>>,
+}
+
+impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
+    fn lookup(&self, name: &str) -> Option<Inferred<'a>> {
+        if let Some(type_vars) = &self.calculated_type_vars {
+            for (type_var, result) in type_vars {
+                if *type_var == name {
+                    return Some(*result);
+                }
+            }
+            None
+        } else {
+            self.calculate_type_vars();
+            self.lookup(name)
+        }
+    }
+}
+
+impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
+    fn new(database: &'a Database, file: &'a PythonFile, function: &'b Function<'a>) -> Self {
+        Self {
+            database,
+            file,
+            function,
+            calculated_type_vars: None,
+        }
+    }
+
+    fn calculate_type_vars(&self) {
+        todo!()
     }
 }
