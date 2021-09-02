@@ -1,12 +1,15 @@
 use parsa::Node;
 use parsa::NodeIndex;
-use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
+use parsa_python::{
+    NonterminalType, PyNode,
+    PyNodeType::{Nonterminal, Terminal},
+    TerminalType,
+};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{Database, Locality, Point, Specific};
+use crate::database::Database;
 use crate::file::{Inferred, PythonFile};
-use crate::file_state::File;
 
 #[derive(Debug)]
 pub struct Function<'a> {
@@ -42,37 +45,54 @@ impl<'a> Value<'a> for Function<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
-            let inferred = self
-                .file
-                .infer_expression(database, return_annotation.get_nth_child(1));
-            dbg!(resolve_type_vars(database, inferred));
-            inferred.run_on_value(database, |v| {
-                // TODO locality is wrong!!!!!1
-                let point = if v.get_kind() == ValueKind::Class {
-                    Point::new_simple_language_specific(
-                        Specific::AnnotationInstance,
-                        Locality::Stmt,
-                    )
-                } else if v.get_kind() == ValueKind::Object && v.is_type_var(database) {
-                    Point::new_simple_language_specific(Specific::TypeVar, Locality::Stmt)
-                } else {
-                    Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
-                    todo!();
-                };
-                Inferred::new_and_save(self.file, return_annotation, point)
-            })
+            if let Some(inferred) =
+                resolve_type_vars(database, self.file, return_annotation.get_nth_child(1))
+            {
+                inferred
+            } else {
+                todo!()
+                /*
+                inferred.run_on_value(database, |v| {
+                    // TODO locality is wrong!!!!!1
+                    let point = if v.get_kind() == ValueKind::Class {
+                        Point::new_simple_language_specific(
+                            Specific::AnnotationInstance,
+                            Locality::Stmt,
+                        )
+                    } else {
+                        Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
+                        todo!();
+                    };
+                    Inferred::new_and_save(self.file, return_annotation, point)
+                })
+                }
+                */
+            }
         } else {
             todo!()
         }
     }
 }
 
-fn resolve_type_vars<'a>(database: &'a Database, return_annotation: Inferred<'a>) -> Inferred<'a> {
+fn resolve_type_vars<'a>(
+    database: &'a Database,
+    file: &'a PythonFile,
+    annotation: PyNode<'a>,
+) -> Option<Inferred<'a>> {
     //let type_var = Ty
-    dbg!(return_annotation);
-    if return_annotation.is_type_var(database) {
-        todo!()
+    let inferred = file.infer_expression(database, annotation);
+    if inferred.is_type_var(database) {
+        Some(inferred)
     } else {
-        todo!();
+        if !annotation.is_leaf() {
+            for node in annotation.iter_children() {
+                if node.is_type(Terminal(TerminalType::Name)) {
+                    if let Some(resolved_type_var) = resolve_type_vars(database, file, node) {
+                        todo!()
+                    }
+                }
+            }
+        }
+        None
     }
 }
