@@ -25,6 +25,17 @@ impl<'a> Function<'a> {
     fn get_node(&self) -> PyNode<'a> {
         self.file.tree.get_node_by_index(self.node_index)
     }
+
+    fn iter_params(&self) -> impl Iterator<Item = Param> {
+        // function_def: "def" name_definition function_def_parameters ...
+        // function_def_parameters: "(" [parameters] ")"
+        let params = self.get_node().get_nth_child(2).get_nth_child(1);
+        if params.is_type(Nonterminal(NonterminalType::function_def_parameters)) {
+            ParamIterator { node: params }
+        } else {
+            todo!()
+        }
+    }
 }
 
 impl<'a> Value<'a> for Function<'a> {
@@ -49,7 +60,7 @@ impl<'a> Value<'a> for Function<'a> {
                 database,
                 self.file,
                 return_annotation.get_nth_child(1),
-                &FunctionTypeVarFinder::new(database, self.file, self),
+                &mut FunctionTypeVarFinder::new(database, self.file, self, args),
             ) {
                 inferred
             } else {
@@ -77,11 +88,37 @@ impl<'a> Value<'a> for Function<'a> {
     }
 }
 
+struct ParamIterator<'a> {
+    node: PyNode<'a>,
+}
+
+impl<'a> Iterator for ParamIterator<'a> {
+    type Item = Param<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+struct Param<'a> {
+    typ: ParamType,
+    name_node: PyNode<'a>,
+    annotation_node: Option<PyNode<'a>>,
+    default_node: Option<PyNode<'a>>,
+}
+
+enum ParamType {
+    PositionalOnly,
+    PositionalOrKeyword,
+    MultiArgs,
+    MultiKwArgs,
+    KeywordOnly,
+}
+
 fn resolve_type_vars<'a>(
     database: &'a Database,
     file: &'a PythonFile,
     node: PyNode<'a>,
-    type_var_finder: &impl TypeVarFinder<'a>,
+    type_var_finder: &mut impl TypeVarFinder<'a>,
 ) -> Option<Inferred<'a>> {
     //let type_var = Ty
     let inferred = file.infer_expression(database, node);
@@ -104,18 +141,19 @@ fn resolve_type_vars<'a>(
 }
 
 trait TypeVarFinder<'a> {
-    fn lookup(&self, name: &str) -> Option<Inferred<'a>>;
+    fn lookup(&mut self, name: &str) -> Option<Inferred<'a>>;
 }
 
 struct FunctionTypeVarFinder<'a, 'b> {
     database: &'a Database,
     file: &'a PythonFile,
     function: &'b Function<'a>,
+    args: &'b Arguments<'a>,
     calculated_type_vars: Option<Vec<(&'a str, Inferred<'a>)>>,
 }
 
 impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
-    fn lookup(&self, name: &str) -> Option<Inferred<'a>> {
+    fn lookup(&mut self, name: &str) -> Option<Inferred<'a>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
                 if *type_var == name {
@@ -131,16 +169,26 @@ impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
 }
 
 impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
-    fn new(database: &'a Database, file: &'a PythonFile, function: &'b Function<'a>) -> Self {
+    fn new(
+        database: &'a Database,
+        file: &'a PythonFile,
+        function: &'b Function<'a>,
+        args: &'b Arguments<'a>,
+    ) -> Self {
         Self {
             database,
             file,
             function,
+            args,
             calculated_type_vars: None,
         }
     }
 
-    fn calculate_type_vars(&self) {
-        todo!()
+    fn calculate_type_vars(&mut self) {
+        let calculated_type_vars = vec![];
+        for param in self.function.iter_params() {
+            if let Some(annotation) = param.annotation_node {}
+        }
+        self.calculated_type_vars = Some(calculated_type_vars);
     }
 }
