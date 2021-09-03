@@ -118,7 +118,7 @@ impl<'a> Iterator for ParamIterator<'a> {
                         || node.is_type(Nonterminal(param_with_default))
                     {
                         return Some(Self::Item::new(
-                            node,
+                            &mut node.iter_children(),
                             if *positional_only {
                                 PositionalOnly
                             } else {
@@ -130,12 +130,17 @@ impl<'a> Iterator for ParamIterator<'a> {
                         return self.next();
                     } else if node.is_type(Nonterminal(param_maybe_default)) {
                         debug_assert!(!*positional_only);
-                        return Some(Self::Item::new(node, KeywordOnly));
+                        return Some(Self::Item::new(&mut node.iter_children(), KeywordOnly));
                     } else if node.is_type(Nonterminal(starred_param)) {
-                        // TODO node
-                        return Some(Self::Item::new(node.get_nth_child(1), MultiArgs));
+                        return Some(Self::Item::new(
+                            &mut node.iter_children().skip(1),
+                            MultiArgs,
+                        ));
                     } else if node.is_type(Nonterminal(double_starred_param)) {
-                        return Some(Self::Item::new(node.get_nth_child(1), MultiKwargs));
+                        return Some(Self::Item::new(
+                            &mut node.iter_children().skip(1),
+                            MultiKwargs,
+                        ));
                     }
                 }
                 None
@@ -153,16 +158,17 @@ struct Param<'a> {
 }
 
 impl<'a> Param<'a> {
-    fn new(param_node: PyNode<'a>, typ: ParamType) -> Self {
-        let mut children = param_node.iter_children();
-        let name_node = children.next().unwrap();
+    fn new(param_children: &mut impl Iterator<Item = PyNode<'a>>, typ: ParamType) -> Self {
+        let name_node = param_children.next().unwrap();
         debug_assert_eq!(
             name_node.get_type(),
             Nonterminal(NonterminalType::name_definition)
         );
-        let annotation_node = children.next().map(|n: PyNode<'a>| n.get_nth_child(1));
-        children.next();
-        let default_node = children.next();
+        let annotation_node = param_children
+            .next()
+            .map(|n: PyNode<'a>| n.get_nth_child(1));
+        param_children.next();
+        let default_node = param_children.next();
         Self {
             typ,
             name_node,
