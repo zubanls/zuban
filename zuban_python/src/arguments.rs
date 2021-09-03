@@ -49,7 +49,7 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    pub fn iter_arguments(&self) -> impl Iterator<Item = Argument<'a>> {
+    pub fn iter_arguments(&self) -> ArgumentIterator<'a> {
         match self.details {
             ArgumentsDetailed::Node(node) => ArgumentIterator::Iterator(node.iter_children()),
             ArgumentsDetailed::Comprehension(node) => ArgumentIterator::Comprehension(node),
@@ -81,7 +81,7 @@ impl<'a> Argument<'a> {
     }
 }
 
-enum ArgumentIterator<'a> {
+pub enum ArgumentIterator<'a> {
     Iterator(SiblingIterator<'a>),
     Comprehension(PyNode<'a>),
     Finished,

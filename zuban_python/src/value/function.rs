@@ -3,11 +3,11 @@ use parsa::NodeIndex;
 use parsa_python::{
     NonterminalType, PyNode,
     PyNodeType::{Nonterminal, Terminal},
-    TerminalType,
+    SiblingIterator, TerminalType,
 };
 
 use super::{Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::arguments::{ArgumentIterator, Arguments};
 use crate::database::Database;
 use crate::file::{Inferred, PythonFile};
 
@@ -26,22 +26,29 @@ impl<'a> Function<'a> {
         self.file.tree.get_node_by_index(self.node_index)
     }
 
-    fn iter_params(&self) -> impl Iterator<Item = Param> {
+    fn iter_params(&self) -> ParamIterator<'a> {
         // function_def: "def" name_definition function_def_parameters ...
         // function_def_parameters: "(" [parameters] ")"
         let params = self.get_node().get_nth_child(2).get_nth_child(1);
-        if params.is_type(Nonterminal(NonterminalType::function_def_parameters)) {
-            ParamIterator { node: params }
+        if params.is_type(Nonterminal(NonterminalType::parameters)) {
+            let positional_only = params
+                .iter_children()
+                .any(|n| n.is_leaf() && n.get_code() == "/");
+            ParamIterator::Iterator(params.iter_children(), positional_only)
         } else {
-            todo!()
+            ParamIterator::Finished
         }
     }
 
-    /*
-    fn iter_inferred_params(&self) -> impl Iterator<Item = (Param, Inferred<'a>)> {
-        ParamFooIterator { params: self.iter_params() }
+    fn iter_inferrable_params(
+        &self,
+        args: &Arguments<'a>,
+    ) -> impl Iterator<Item = InferrableParam<'a>> {
+        InferrableParamIterator {
+            arguments: args.iter_arguments(),
+            params: self.iter_params(),
+        }
     }
-    */
 }
 
 impl<'a> Value<'a> for Function<'a> {
@@ -94,14 +101,47 @@ impl<'a> Value<'a> for Function<'a> {
     }
 }
 
-struct ParamIterator<'a> {
-    node: PyNode<'a>,
+enum ParamIterator<'a> {
+    Iterator(SiblingIterator<'a>, bool),
+    Finished,
 }
 
 impl<'a> Iterator for ParamIterator<'a> {
     type Item = Param<'a>;
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        match self {
+            Self::Iterator(iterator, positional_only) => {
+                for node in iterator {
+                    use NonterminalType::*;
+                    use ParamType::*;
+                    if node.is_type(Nonterminal(param_no_default))
+                        || node.is_type(Nonterminal(param_with_default))
+                    {
+                        return Some(Self::Item::new(
+                            node,
+                            if *positional_only {
+                                PositionalOnly
+                            } else {
+                                PositionalOrKeyword
+                            },
+                        ));
+                    } else if node.is_type(Nonterminal(star_etc)) {
+                        *self = Self::Iterator(node.iter_children(), false);
+                        return self.next();
+                    } else if node.is_type(Nonterminal(param_maybe_default)) {
+                        debug_assert!(!*positional_only);
+                        return Some(Self::Item::new(node, KeywordOnly));
+                    } else if node.is_type(Nonterminal(starred_param)) {
+                        // TODO node
+                        return Some(Self::Item::new(node.get_nth_child(1), MultiArgs));
+                    } else if node.is_type(Nonterminal(double_starred_param)) {
+                        return Some(Self::Item::new(node.get_nth_child(1), MultiKwargs));
+                    }
+                }
+                None
+            }
+            Self::Finished => None,
+        }
     }
 }
 
@@ -112,11 +152,31 @@ struct Param<'a> {
     default_node: Option<PyNode<'a>>,
 }
 
+impl<'a> Param<'a> {
+    fn new(param_node: PyNode<'a>, typ: ParamType) -> Self {
+        let mut children = param_node.iter_children();
+        let name_node = children.next().unwrap();
+        debug_assert_eq!(
+            name_node.get_type(),
+            Nonterminal(NonterminalType::name_definition)
+        );
+        let annotation_node = children.next().map(|n: PyNode<'a>| n.get_nth_child(1));
+        children.next();
+        let default_node = children.next();
+        Self {
+            typ,
+            name_node,
+            annotation_node,
+            default_node,
+        }
+    }
+}
+
 enum ParamType {
     PositionalOnly,
     PositionalOrKeyword,
     MultiArgs,
-    MultiKwArgs,
+    MultiKwargs,
     KeywordOnly,
 }
 
@@ -196,5 +256,28 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
             if let Some(annotation) = param.annotation_node {}
         }
         self.calculated_type_vars = Some(calculated_type_vars);
+    }
+}
+
+struct InferrableParamIterator<'a> {
+    arguments: ArgumentIterator<'a>,
+    params: ParamIterator<'a>,
+}
+
+impl<'a> Iterator for InferrableParamIterator<'a> {
+    type Item = InferrableParam<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
+
+struct InferrableParam<'a> {
+    node: PyNode<'a>,
+}
+
+impl<'a> InferrableParam<'a> {
+    fn infer(&self) -> Inferred<'a> {
+        todo!()
     }
 }
