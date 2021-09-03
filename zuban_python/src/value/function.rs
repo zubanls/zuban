@@ -36,6 +36,12 @@ impl<'a> Function<'a> {
             todo!()
         }
     }
+
+    /*
+    fn iter_inferred_params(&self) -> impl Iterator<Item = (Param, Inferred<'a>)> {
+        ParamFooIterator { params: self.iter_params() }
+    }
+    */
 }
 
 impl<'a> Value<'a> for Function<'a> {
