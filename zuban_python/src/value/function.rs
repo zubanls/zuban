@@ -8,8 +8,9 @@ use parsa_python::{
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
-use crate::database::Database;
+use crate::database::{Database, Locality, Point, Specific};
 use crate::file::{Inferred, PythonFile};
+use crate::file_state::File;
 
 #[derive(Debug)]
 pub struct Function<'a> {
@@ -66,17 +67,17 @@ impl<'a> Value<'a> for Function<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
+            let expr = return_annotation.get_nth_child(1);
             if let Some(inferred) = resolve_type_vars(
                 database,
                 self.file,
-                return_annotation.get_nth_child(1),
+                expr,
                 &mut FunctionTypeVarFinder::new(database, self.file, self, args),
             ) {
                 inferred
             } else {
-                todo!("{:?}", self.get_node());
-                /*
-                inferred.run_on_value(database, |v| {
+                let inferred = self.file.infer_expression(database, expr);
+                inferred.run_on_value(|v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
                         Point::new_simple_language_specific(
@@ -87,10 +88,8 @@ impl<'a> Value<'a> for Function<'a> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    Inferred::new_and_save(self.file, return_annotation, point)
+                    Inferred::new_and_save(database, self.file, return_annotation, point)
                 })
-                }
-                */
             }
         } else {
             todo!()
