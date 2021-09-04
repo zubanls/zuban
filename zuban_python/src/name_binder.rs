@@ -455,14 +455,19 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         use NonterminalType::*;
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
         for child in node.iter_children() {
-            if child.is_type(Nonterminal(parameters)) {
-                for n in child.search(&[Nonterminal(annotation), Nonterminal(expression)]) {
-                    // expressions are resolved immediately while annotations are inferred at the
-                    // end of a module.
-                    if n.is_type(Nonterminal(annotation)) {
-                        self.unresolved_nodes.push(n.get_nth_child(1));
-                    } else {
-                        self.index_non_block_node(n, ordered);
+            if child.is_type(Nonterminal(function_def_parameters)) {
+                let parameters_node = child.get_nth_child(1);
+                if parameters_node.is_type(Nonterminal(parameters)) {
+                    for n in
+                        parameters_node.search(&[Nonterminal(annotation), Nonterminal(expression)])
+                    {
+                        // expressions are resolved immediately while annotations are inferred at the
+                        // end of a module.
+                        if n.is_type(Nonterminal(annotation)) {
+                            self.unresolved_nodes.push(n.get_nth_child(1));
+                        } else {
+                            self.index_non_block_node(n, ordered);
+                        }
                     }
                 }
             } else if child.is_type(Nonterminal(return_annotation)) {
