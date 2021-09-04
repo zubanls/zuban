@@ -1,5 +1,5 @@
-use crate::file::Inferred;
-use crate::file::PythonFile;
+use crate::database::Database;
+use crate::file::{Inferred, PythonFile};
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
@@ -52,8 +52,12 @@ impl<'a> Arguments<'a> {
 
     pub fn iter_arguments(&self) -> ArgumentIterator<'a> {
         match self.details {
-            ArgumentsDetailed::Node(node) => ArgumentIterator::Iterator(node.iter_children()),
-            ArgumentsDetailed::Comprehension(node) => ArgumentIterator::Comprehension(node),
+            ArgumentsDetailed::Node(node) => {
+                ArgumentIterator::Iterator(self.file, node.iter_children())
+            }
+            ArgumentsDetailed::Comprehension(node) => {
+                ArgumentIterator::Comprehension(self.file, node)
+            }
             ArgumentsDetailed::None => ArgumentIterator::Finished,
         }
     }
@@ -65,30 +69,38 @@ pub enum ArgumentType<'a> {
 }
 
 pub struct Argument<'a> {
+    file: &'a PythonFile,
+    node: PyNode<'a>,
     pub typ: ArgumentType<'a>,
 }
 
 impl<'a> Argument<'a> {
-    fn new_argument() -> Self {
+    fn new_argument(file: &'a PythonFile, node: PyNode<'a>) -> Self {
         Self {
             typ: ArgumentType::Argument,
+            file,
+            node,
         }
     }
 
-    fn new_keyword_argument(name: &'a str) -> Self {
+    fn new_keyword_argument(file: &'a PythonFile, node: PyNode<'a>, name: &'a str) -> Self {
         Self {
             typ: ArgumentType::KeywordArgument(name),
+            file,
+            node,
         }
     }
 
-    pub fn infer(&self) -> Inferred<'a> {
-        todo!()
+    pub fn infer(&self, database: &'a Database) -> Inferred<'a> {
+        self.file
+            .get_inference(database)
+            .infer_named_expression(self.node)
     }
 }
 
 pub enum ArgumentIterator<'a> {
-    Iterator(SiblingIterator<'a>),
-    Comprehension(PyNode<'a>),
+    Iterator(&'a PythonFile, SiblingIterator<'a>),
+    Comprehension(&'a PythonFile, PyNode<'a>),
     Finished,
 }
 
@@ -97,13 +109,13 @@ impl<'a> Iterator for ArgumentIterator<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Self::Iterator(iterator) => {
+            Self::Iterator(python_file, iterator) => {
                 for node in iterator {
                     use NonterminalType::*;
                     if node.is_type(Nonterminal(named_expression)) {
-                        return Some(Self::Item::new_argument());
+                        return Some(Self::Item::new_argument(python_file, node));
                     } else if node.is_type(Nonterminal(kwargs)) {
-                        *self = Self::Iterator(node.iter_children());
+                        *self = Self::Iterator(python_file, node.iter_children());
                         return self.next();
                     } else if node.is_type(Nonterminal(kwarg)) {
                         // kwarg: Name "=" expression
@@ -111,7 +123,7 @@ impl<'a> Iterator for ArgumentIterator<'a> {
                         let name = kwarg_iterator.next().unwrap().get_code();
                         kwarg_iterator.next();
                         let arg = kwarg_iterator.next().unwrap();
-                        return Some(Self::Item::new_keyword_argument(name));
+                        return Some(Self::Item::new_keyword_argument(python_file, node, name));
                     } else if node.is_type(Nonterminal(starred_expression)) {
                         todo!("*args");
                     } else if node.is_type(Nonterminal(double_starred_expression)) {
@@ -120,7 +132,7 @@ impl<'a> Iterator for ArgumentIterator<'a> {
                 }
                 None
             }
-            Self::Comprehension(node) => Some(Argument::new_argument()),
+            Self::Comprehension(file, node) => Some(Argument::new_argument(file, *node)),
             Self::Finished => None,
         }
     }

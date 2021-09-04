@@ -74,7 +74,7 @@ impl<'a> Value<'a> for Function<'a> {
             ) {
                 inferred
             } else {
-                todo!()
+                todo!("{:?}", self.get_node());
                 /*
                 inferred.run_on_value(database, |v| {
                     // TODO locality is wrong!!!!!1
@@ -258,14 +258,21 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
     }
 
     fn calculate_type_vars(&mut self) {
-        let calculated_type_vars = vec![];
+        let mut calculated_type_vars = vec![];
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation_node {
-                let inferred = self.file.infer_expression(self.database, annotation);
-                if inferred.is_type_var() {
-                    todo!("fuu")
-                } else {
-                    todo!()
+                // TODO we should only check names, not expressions
+                let name = annotation;
+                if !calculated_type_vars
+                    .iter()
+                    .any(|(n, _)| *n == name.get_code())
+                {
+                    let inferred = self.file.infer_expression(self.database, name);
+                    if inferred.is_type_var() {
+                        calculated_type_vars.push((name.get_code(), p.infer(self.database)));
+                    } else {
+                        todo!()
+                    }
                 }
             }
         }
@@ -329,7 +336,9 @@ struct InferrableParam<'a> {
 }
 
 impl<'a> InferrableParam<'a> {
-    fn infer(self) -> Inferred<'a> {
-        self.argument.map(|a| a.infer()).unwrap_or_else(|| todo!())
+    fn infer(self, database: &'a Database) -> Inferred<'a> {
+        self.argument
+            .map(|a| a.infer(database))
+            .unwrap_or_else(|| todo!())
     }
 }

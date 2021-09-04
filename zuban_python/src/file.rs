@@ -233,7 +233,7 @@ impl<'db> PythonFile {
         });
     }
 
-    fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
+    pub fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
         PythonInference {
             file: self,
             file_index: self.get_file_index(),
@@ -308,7 +308,7 @@ impl<'db> PythonFile {
     }
 }
 
-struct PythonInference<'a> {
+pub struct PythonInference<'a> {
     file: &'a PythonFile,
     file_index: FileIndex,
     database: &'a Database,
@@ -501,6 +501,19 @@ impl<'a> PythonInference<'a> {
         } else {
             todo!("it's a tuple, cache that!")
         }
+    }
+
+    pub fn infer_named_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
+        // named_expression: name_definition ":=" expression | expression
+        debug_assert_eq!(
+            node.get_type(),
+            Nonterminal(NonterminalType::named_expression)
+        );
+        let mut expr = node.get_nth_child(0);
+        if !expr.is_type(Nonterminal(NonterminalType::expression)) {
+            expr = node.get_nth_child(2);
+        }
+        self.infer_expression(expr)
     }
 
     fn infer_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
