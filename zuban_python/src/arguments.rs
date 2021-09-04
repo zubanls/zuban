@@ -1,3 +1,4 @@
+use crate::file::Inferred;
 use crate::file::PythonFile;
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
@@ -58,13 +59,13 @@ impl<'a> Arguments<'a> {
     }
 }
 
-enum ArgumentType<'a> {
+pub enum ArgumentType<'a> {
     KeywordArgument(&'a str),
     Argument,
 }
 
 pub struct Argument<'a> {
-    typ: ArgumentType<'a>,
+    pub typ: ArgumentType<'a>,
 }
 
 impl<'a> Argument<'a> {
@@ -78,6 +79,10 @@ impl<'a> Argument<'a> {
         Self {
             typ: ArgumentType::KeywordArgument(name),
         }
+    }
+
+    pub fn infer(&self) -> Inferred<'a> {
+        todo!()
     }
 }
 

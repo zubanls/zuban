@@ -7,7 +7,7 @@ use parsa_python::{
 };
 
 use super::{Value, ValueKind};
-use crate::arguments::{ArgumentIterator, Arguments};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
 use crate::database::Database;
 use crate::file::{Inferred, PythonFile};
 
@@ -44,10 +44,7 @@ impl<'a> Function<'a> {
         &self,
         args: &Arguments<'a>,
     ) -> impl Iterator<Item = InferrableParam<'a>> {
-        InferrableParamIterator {
-            arguments: args.iter_arguments(),
-            params: self.iter_params(),
-        }
+        InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
     }
 }
 
@@ -176,6 +173,10 @@ impl<'a> Param<'a> {
             default_node,
         }
     }
+
+    fn get_name(&self) -> &'a str {
+        self.name_node.get_code()
+    }
 }
 
 enum ParamType {
@@ -258,8 +259,15 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
 
     fn calculate_type_vars(&mut self) {
         let calculated_type_vars = vec![];
-        for param in self.function.iter_params() {
-            if let Some(annotation) = param.annotation_node {}
+        for p in self.function.iter_inferrable_params(self.args) {
+            if let Some(annotation) = p.param.annotation_node {
+                let inferred = self.file.infer_expression(self.database, annotation);
+                if inferred.is_type_var() {
+                    todo!("fuu")
+                } else {
+                    todo!()
+                }
+            }
         }
         self.calculated_type_vars = Some(calculated_type_vars);
     }
@@ -268,22 +276,60 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
 struct InferrableParamIterator<'a> {
     arguments: ArgumentIterator<'a>,
     params: ParamIterator<'a>,
+    unused_keyword_arguments: Vec<Argument<'a>>,
+}
+
+impl<'a> InferrableParamIterator<'a> {
+    fn new(params: ParamIterator<'a>, arguments: ArgumentIterator<'a>) -> Self {
+        InferrableParamIterator {
+            arguments,
+            params,
+            unused_keyword_arguments: vec![],
+        }
+    }
+
+    fn get_next_argument(&mut self, param: &Param<'a>) -> Option<Argument<'a>> {
+        for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+            match unused.typ {
+                ArgumentType::KeywordArgument(name) => {
+                    if name == param.get_name() {
+                        return Some(self.unused_keyword_arguments.remove(i));
+                    }
+                }
+                ArgumentType::Argument => unreachable!(),
+            }
+        }
+        for argument in &mut self.arguments {
+            // TODO check param type here and make sure that it makes sense.
+            match argument.typ {
+                ArgumentType::KeywordArgument(name) => {
+                    todo!()
+                }
+                ArgumentType::Argument => return Some(argument),
+            }
+        }
+        None
+    }
 }
 
 impl<'a> Iterator for InferrableParamIterator<'a> {
     type Item = InferrableParam<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        todo!()
+        self.params.next().map(|param| {
+            let argument = self.get_next_argument(&param);
+            InferrableParam { param, argument }
+        })
     }
 }
 
 struct InferrableParam<'a> {
-    node: PyNode<'a>,
+    param: Param<'a>,
+    argument: Option<Argument<'a>>,
 }
 
 impl<'a> InferrableParam<'a> {
-    fn infer(&self) -> Inferred<'a> {
-        todo!()
+    fn infer(self) -> Inferred<'a> {
+        self.argument.map(|a| a.infer()).unwrap_or_else(|| todo!())
     }
 }
