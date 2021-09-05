@@ -47,6 +47,14 @@ impl<'a> Function<'a> {
     ) -> impl Iterator<Item = InferrableParam<'a>> {
         InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
     }
+
+    fn execute_without_annotation(
+        &self,
+        database: &'a Database,
+        args: &Arguments<'a>,
+    ) -> Inferred<'a> {
+        todo!()
+    }
 }
 
 impl<'a> Value<'a> for Function<'a> {
@@ -92,7 +100,7 @@ impl<'a> Value<'a> for Function<'a> {
                 })
             }
         } else {
-            todo!()
+            self.execute_without_annotation(database, args)
         }
     }
 }

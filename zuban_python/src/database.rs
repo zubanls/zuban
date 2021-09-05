@@ -131,6 +131,13 @@ impl Point {
         }
     }
 
+    pub fn new_node_analysis_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
+        Self {
+            flags: Self::calculate_flags(PointType::NodeAnalysis, node_index, locality),
+            node_or_complex_index: 0,
+        }
+    }
+
     pub fn new_uncalculated() -> Self {
         Self {
             flags: 0,
@@ -172,7 +179,9 @@ impl Point {
     }
 
     pub fn get_node_index(self) -> NodeIndex {
-        debug_assert!(self.get_type() == PointType::Redirect);
+        debug_assert!(
+            self.get_type() == PointType::Redirect || self.get_type() == PointType::NodeAnalysis
+        );
         self.node_or_complex_index
     }
 

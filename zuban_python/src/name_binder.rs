@@ -111,7 +111,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.index_stmts(file_node.iter_children(), true);
     }
 
-    fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) {
+    fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) -> NodeIndex {
+        // Returns the latest return/yield index
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
         // - match_stmt, if_stmt, try_stmt (only in coresponding blocks and after)
@@ -123,15 +124,16 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             .get_nth_child(0)
             .is_type(Nonterminal(NonterminalType::simple_stmts))
         {
-            self.index_non_block_node(block_node, ordered);
+            self.index_non_block_node(block_node, ordered)
         } else {
-            self.index_stmts(block_node.iter_children().skip(2), ordered);
+            self.index_stmts(block_node.iter_children().skip(2), ordered)
         }
     }
 
-    fn index_stmts(&mut self, stmts: impl Iterator<Item = PyNode<'a>>, ordered: bool) {
+    fn index_stmts(&mut self, stmts: impl Iterator<Item = PyNode<'a>>, ordered: bool) -> NodeIndex {
         use NonterminalType::*;
         //debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
+        let mut latest_return_or_yield = 0;
         for child in stmts {
             if child.is_type(Terminal(TerminalType::Endmarker))
                 || child.is_type(Terminal(TerminalType::Newline))
@@ -140,8 +142,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 continue;
             }
             let child = child.get_nth_child(0);
-            if child.is_type(Nonterminal(simple_stmts)) {
-                self.index_non_block_node(child, ordered);
+            let return_or_yield = if child.is_type(Nonterminal(simple_stmts)) {
+                self.index_non_block_node(child, ordered)
             } else if child.is_type(Nonterminal(function_def)) {
                 if self.parent.is_some() {
                     // Has to be resolved, because we otherwise have no knowledge about the symbol
@@ -149,8 +151,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     self.unresolved_nodes.push(child);
                 }
                 self.index_function_name_and_param_defaults(child, ordered);
+                0
             } else if child.is_type(Nonterminal(class_def)) {
                 self.index_class(child);
+                0
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
@@ -170,18 +174,19 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                         Specific::LazyInferredClass,
                     );
                 }
+                0
             } else if child.is_type(Nonterminal(if_stmt)) {
-                self.index_if_stmt(child, ordered);
+                self.index_if_stmt(child, ordered)
             } else if child.is_type(Nonterminal(try_stmt)) {
-                self.index_try_stmt(child, ordered);
+                self.index_try_stmt(child, ordered)
             } else if child.is_type(Nonterminal(for_stmt)) {
-                self.index_for_stmt(child, ordered);
+                self.index_for_stmt(child, ordered)
             } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(child, ordered);
+                self.index_while_stmt(child, ordered)
             } else if child.is_type(Nonterminal(match_stmt)) {
-                self.index_match_stmt(child, ordered);
+                self.index_match_stmt(child, ordered)
             } else if child.is_type(Nonterminal(with_stmt)) {
-                self.index_with_stmt(child, ordered);
+                self.index_with_stmt(child, ordered)
             } else if child.is_type(Nonterminal(async_stmt)) {
                 let iterator = child.iter_children();
                 let mut iterator = iterator.skip(1);
@@ -191,14 +196,46 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                         inner.get_nth_child(1),
                         Specific::LazyInferredFunction,
                     );
+                    0
                 } else if inner.is_type(Nonterminal(for_stmt)) {
-                    self.index_for_stmt(inner, ordered);
+                    self.index_for_stmt(inner, ordered)
                 } else if inner.is_type(Nonterminal(with_stmt)) {
-                    self.index_with_stmt(child, ordered);
+                    self.index_with_stmt(child, ordered)
+                } else {
+                    unreachable!()
                 }
             } else {
                 unreachable!("But found {:?}", child.get_type());
+            };
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);
+        }
+        latest_return_or_yield
+    }
+
+    fn merge_latest_return_or_yield(&self, first: NodeIndex, mut second: NodeIndex) -> NodeIndex {
+        if first != 0 && second != 0 {
+            loop {
+                let point = self.points[second as usize].get();
+                let node_index = point.get_node_index();
+                if node_index == 0 {
+                    // Now that we have the first node in the chain of the second nodes, link that
+                    // to the first one (like a linked list)
+                    self.points[second as usize].set(Point::new_node_analysis_with_node_index(
+                        Locality::File,
+                        first,
+                    ));
+                    break;
+                } else {
+                    assert!(node_index < second);
+                    second = node_index;
+                }
             }
+        }
+        if second == 0 {
+            first
+        } else {
+            second
         }
     }
 
@@ -230,74 +267,94 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
-    fn index_for_stmt(&mut self, for_stmt: PyNode<'a>, ordered: bool) {
+    fn index_for_stmt(&mut self, for_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(for_stmt.get_type(), Nonterminal(NonterminalType::for_stmt));
+        let mut latest_return_or_yield = 0;
         // "for" star_targets "in" star_expressions ":" block else_block?
         let iterator = for_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
-        self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         let mut iterator = iterator.skip(1);
-        self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         let mut iterator = iterator.skip(1);
-        self.index_block(iterator.next().unwrap(), false);
+        let latest = self.index_block(iterator.next().unwrap(), false);
+        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
-            self.index_block(else_.get_nth_child(2), ordered);
+            let latest = self.index_block(else_.get_nth_child(2), ordered);
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
+        latest_return_or_yield
     }
 
-    fn index_while_stmt(&mut self, while_stmt: PyNode<'a>, ordered: bool) {
+    fn index_while_stmt(&mut self, while_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             while_stmt.get_type(),
             Nonterminal(NonterminalType::while_stmt)
         );
+        let mut latest_return_or_yield = 0;
         // "while" named_expression ":" block else_block?
         let iterator = while_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
-        self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         let mut iterator = iterator.skip(1);
-        self.index_non_block_node(iterator.next().unwrap(), false);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), false);
+        latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
-            self.index_block(else_.get_nth_child(2), ordered);
+            let latest = self.index_block(else_.get_nth_child(2), ordered);
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
+        latest_return_or_yield
     }
 
-    fn index_with_stmt(&mut self, with_stmt: PyNode<'a>, ordered: bool) {
+    fn index_with_stmt(&mut self, with_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             with_stmt.get_type(),
             Nonterminal(NonterminalType::with_stmt)
         );
+        let mut latest_return_or_yield = 0;
         // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
         for child in with_stmt.iter_children() {
-            match child.get_type() {
+            let latest = match child.get_type() {
                 Nonterminal(NonterminalType::with_item) => {
                     // expression ["as" star_target]
-                    self.index_non_block_node(child.get_nth_child(0), ordered);
-                    self.index_non_block_node(child.get_nth_child(2), ordered);
+                    let latest = self.index_non_block_node(child.get_nth_child(0), ordered);
+                    latest_return_or_yield =
+                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    self.index_non_block_node(child.get_nth_child(2), ordered)
                 }
                 Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
-                _ => (),
-            }
+                _ => 0,
+            };
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
+        latest_return_or_yield
     }
 
-    fn index_if_stmt(&mut self, if_stmt: PyNode<'a>, ordered: bool) {
+    fn index_if_stmt(&mut self, if_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
 
+        let mut latest_return_or_yield = 0;
         for child in if_stmt.iter_children().skip(1) {
-            match child.get_type() {
+            let latest = match child.get_type() {
                 Nonterminal(NonterminalType::named_expression) => {
                     self.index_non_block_node(child, ordered)
                 }
@@ -305,17 +362,21 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 Nonterminal(NonterminalType::else_block) => {
                     self.index_block(child.get_nth_child(2), ordered)
                 }
-                Keyword => (),
+                Keyword => 0,
                 _ => (unreachable!()),
-            }
+            };
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
+        latest_return_or_yield
     }
 
-    fn index_try_stmt(&mut self, try_stmt: PyNode<'a>, ordered: bool) {
+    fn index_try_stmt(&mut self, try_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(NonterminalType::try_stmt));
+        let mut latest_return_or_yield = 0;
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
         for child in try_stmt.iter_children() {
-            match child.get_type() {
+            let latest = match child.get_type() {
                 Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
                 Nonterminal(NonterminalType::except_block) => {
                     // except_clause ":" block
@@ -337,9 +398,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                     // "else" ":" block
                     self.index_block(child.get_nth_child(2), ordered)
                 }
-                _ => (),
-            }
+                _ => 0,
+            };
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
+        latest_return_or_yield
     }
 
     fn index_class(&mut self, class: PyNode<'a>) {
@@ -361,7 +425,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
     }
 
-    fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) {
+    fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             match_stmt.get_type(),
             Nonterminal(NonterminalType::match_stmt)
@@ -370,14 +434,18 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         todo!("match_stmt")
     }
 
-    fn index_non_block_node(&mut self, node: PyNode<'a>, ordered: bool) {
+    fn index_non_block_node(&mut self, node: PyNode<'a>, ordered: bool) -> NodeIndex {
         use NonterminalType::*;
         const SEARCH_NAMES: &[PyNodeType] = &[
             Terminal(TerminalType::Name),
             Nonterminal(lambda),
             Nonterminal(comprehension),
             Nonterminal(dict_comprehension),
+            Nonterminal(yield_expr),
+            Nonterminal(return_stmt),
+            Nonterminal(dict_comprehension),
         ];
+        let mut latest_return_or_yield = 0;
         for n in node.search(SEARCH_NAMES) {
             if n.is_type(Terminal(TerminalType::Name)) {
                 let parent = n.get_parent().unwrap();
@@ -390,6 +458,13 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             } else if n.is_type(Nonterminal(lambda)) {
                 self.index_lambda_param_defaults(n, ordered);
                 self.unresolved_nodes.push(n);
+            } else if n.is_type(Nonterminal(return_stmt)) || n.is_type(Nonterminal(yield_expr)) {
+                let keyword_index = n.index + 1;
+                self.points[keyword_index as usize].set(Point::new_node_analysis_with_node_index(
+                    Locality::File,
+                    latest_return_or_yield,
+                ));
+                latest_return_or_yield = keyword_index
             } else {
                 // Index the first expression of a comprehension, which is always executed
                 // in the current scope.
@@ -402,6 +477,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
         }
+        latest_return_or_yield
     }
 
     fn index_comprehension(&mut self, comp: PyNode<'a>, ordered: bool) {
@@ -483,6 +559,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));
 
+        let mut latest_return_index = 0;
         // Function name was indexed already.
         for child in func.iter_children() {
             if child.is_type(Nonterminal(parameters)) {
@@ -493,7 +570,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
             if child.is_type(Nonterminal(block)) {
-                self.index_block(child, true);
+                latest_return_index = self.index_block(child, true);
             }
         }
         let parent = func.get_parent().unwrap();
@@ -515,6 +592,12 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             self.file_index,
             func.index,
             Locality::Stmt,
+        ));
+
+        // It's kind of hard to know where to store the latest reference statement.
+        self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
+            Locality::ClassOrFunction,
+            latest_return_index,
         ));
     }
 
