@@ -53,7 +53,15 @@ impl<'a> Function<'a> {
         database: &'a Database,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
-        todo!()
+        let def_point = self.file.get_point(self.node_index + 1);
+        dbg!(def_point, self.node_index + 1);
+        let first_return_or_yield = def_point.get_node_index();
+        if first_return_or_yield == 0 {
+            todo!("Should just return None or maybe NoReturn?");
+        } else {
+            dbg!(first_return_or_yield);
+            todo!()
+        }
     }
 }
 

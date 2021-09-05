@@ -274,7 +274,7 @@ impl<'db> PythonFile {
     }
 
     #[inline]
-    fn get_point(&self, index: NodeIndex) -> Point {
+    pub fn get_point(&self, index: NodeIndex) -> Point {
         self.points[index as usize].get()
     }
 

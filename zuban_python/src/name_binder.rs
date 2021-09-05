@@ -559,7 +559,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));
 
-        let mut latest_return_index = 0;
+        let func_index = func.index as usize;
         // Function name was indexed already.
         for child in func.iter_children() {
             if child.is_type(Nonterminal(parameters)) {
@@ -570,14 +570,18 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
             if child.is_type(Nonterminal(block)) {
-                latest_return_index = self.index_block(child, true);
+                let latest_return_index = self.index_block(child, true);
+                // It's kind of hard to know where to store the latest reference statement.
+                self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
+                    Locality::ClassOrFunction,
+                    latest_return_index,
+                ));
             }
         }
         let parent = func.get_parent().unwrap();
         if !parent.is_type(Nonterminal(stmt)) {
             todo!("{:?}", stmt);
         }
-        let func_index = func.index as usize;
         self.points[func_index].set(Point::new_simple_language_specific(
             Specific::Function,
             Locality::Stmt,
@@ -592,12 +596,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             self.file_index,
             func.index,
             Locality::Stmt,
-        ));
-
-        // It's kind of hard to know where to store the latest reference statement.
-        self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
-            Locality::ClassOrFunction,
-            latest_return_index,
         ));
     }
 

@@ -134,7 +134,7 @@ impl Point {
     pub fn new_node_analysis_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
         Self {
             flags: Self::calculate_flags(PointType::NodeAnalysis, node_index, locality),
-            node_or_complex_index: 0,
+            node_or_complex_index: node_index,
         }
     }
 
