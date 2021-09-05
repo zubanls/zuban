@@ -55,7 +55,7 @@ const IS_EXTERN_MASK: u32 = 1 << 30;
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub struct Point {
     flags: u32,
-    node_or_complex_index: u32,
+    node_index: u32,
 }
 
 impl Point {
@@ -69,10 +69,7 @@ impl Point {
 
     pub fn new_redirect(file: FileIndex, node_index: NodeIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointType::Redirect, file.0, locality);
-        Self {
-            flags,
-            node_or_complex_index: node_index,
-        }
+        Self { flags, node_index }
     }
 
     pub fn new_multi_definition() -> Self {
@@ -83,7 +80,7 @@ impl Point {
         let flags = Self::calculate_flags(PointType::Complex, complex_index, locality);
         Self {
             flags,
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
@@ -91,7 +88,7 @@ impl Point {
         let flags = Self::calculate_flags(PointType::MissingOrUnknown, file.0, locality);
         Self {
             flags,
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
@@ -99,7 +96,7 @@ impl Point {
         let flags = Self::calculate_flags(PointType::LanguageSpecific, type_ as u32, locality);
         Self {
             flags,
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
@@ -115,7 +112,7 @@ impl Point {
         let flags = Self::calculate_flags(PointType::FileReference, file.0 as u32, locality);
         Self {
             flags,
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
@@ -127,21 +124,21 @@ impl Point {
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
             flags: Self::calculate_flags(PointType::NodeAnalysis, 0, locality),
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
     pub fn new_node_analysis_with_node_index(locality: Locality, node_index: NodeIndex) -> Self {
         Self {
             flags: Self::calculate_flags(PointType::NodeAnalysis, node_index, locality),
-            node_or_complex_index: node_index,
+            node_index,
         }
     }
 
     pub fn new_uncalculated() -> Self {
         Self {
             flags: 0,
-            node_or_complex_index: 0,
+            node_index: 0,
         }
     }
 
@@ -182,7 +179,7 @@ impl Point {
         debug_assert!(
             self.get_type() == PointType::Redirect || self.get_type() == PointType::NodeAnalysis
         );
-        self.node_or_complex_index
+        self.node_index
     }
 
     pub fn get_language_specific(self) -> Specific {
@@ -201,7 +198,7 @@ impl fmt::Debug for Point {
         } else {
             s.field("type", &self.get_type())
                 .field("locality", &self.get_locality())
-                .field("node_index", &self.node_or_complex_index);
+                .field("node_index", &self.node_index);
             if self.get_type() == PointType::LanguageSpecific {
                 s.field("specific", &self.get_language_specific());
             }
