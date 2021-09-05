@@ -562,14 +562,17 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         let func_index = func.index as usize;
         // Function name was indexed already.
         for child in func.iter_children() {
-            if child.is_type(Nonterminal(parameters)) {
-                for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
-                    if n.is_type(Nonterminal(name_definition)) {
-                        self.add_point_definition(n, Specific::Param);
-                    } // defaults and annotations are already indexed
+            if child.is_type(Nonterminal(function_def_parameters)) {
+                let parameters_node = child.get_nth_child(1);
+                if parameters_node.is_type(Nonterminal(parameters)) {
+                    for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)])
+                    {
+                        if n.is_type(Nonterminal(name_definition)) {
+                            self.add_point_definition(n, Specific::Param);
+                        } // defaults and annotations are already indexed
+                    }
                 }
-            }
-            if child.is_type(Nonterminal(block)) {
+            } else if child.is_type(Nonterminal(block)) {
                 let latest_return_index = self.index_block(child, true);
                 // It's kind of hard to know where to store the latest reference statement.
                 self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
