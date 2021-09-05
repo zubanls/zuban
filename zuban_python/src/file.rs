@@ -480,7 +480,7 @@ impl<'a> PythonInference<'a> {
         }
     }
 
-    fn infer_star_expressions(&self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_star_expressions(&self, node: PyNode<'a>) -> Inferred<'a> {
         debug_assert_eq!(
             node.get_type(),
             Nonterminal(NonterminalType::star_expressions)

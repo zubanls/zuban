@@ -53,15 +53,36 @@ impl<'a> Function<'a> {
         database: &'a Database,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
-        let def_point = self.file.get_point(self.node_index + 1);
-        dbg!(def_point, self.node_index + 1);
-        let first_return_or_yield = def_point.get_node_index();
-        if first_return_or_yield == 0 {
-            todo!("Should just return None or maybe NoReturn?");
-        } else {
-            dbg!(first_return_or_yield);
-            todo!()
+        if self.is_generator() {
+            todo!("Maybe not check here, because this could be precalculated and cached");
         }
+        for node in self.iter_return_or_yield() {
+            debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::return_stmt));
+            // TODO multiple returns, this is an early exit
+            return self
+                .file
+                .get_inference(database)
+                .infer_star_expressions(node.get_nth_child(1));
+        }
+        todo!("Should just return None or maybe NoReturn?");
+    }
+
+    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
+        let def_point = self.file.get_point(self.node_index + 1);
+        let first_return_or_yield = def_point.get_node_index();
+        ReturnOrYieldIterator {
+            file: self.file,
+            next_node_index: first_return_or_yield,
+        }
+    }
+
+    fn is_generator(&self) -> bool {
+        for node in self.iter_return_or_yield() {
+            if node.is_type(Nonterminal(NonterminalType::yield_expr)) {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -109,6 +130,25 @@ impl<'a> Value<'a> for Function<'a> {
             }
         } else {
             self.execute_without_annotation(database, args)
+        }
+    }
+}
+
+struct ReturnOrYieldIterator<'a> {
+    file: &'a PythonFile,
+    next_node_index: NodeIndex,
+}
+
+impl<'a> Iterator for ReturnOrYieldIterator<'a> {
+    type Item = PyNode<'a>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_node_index == 0 {
+            None
+        } else {
+            let result = self.file.tree.get_node_by_index(self.next_node_index - 1);
+            let point = self.file.get_point(self.next_node_index);
+            self.next_node_index = point.get_node_index();
+            Some(result)
         }
     }
 }
