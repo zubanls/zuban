@@ -145,11 +145,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             let return_or_yield = if child.is_type(Nonterminal(simple_stmts)) {
                 self.index_non_block_node(child, ordered)
             } else if child.is_type(Nonterminal(function_def)) {
-                if self.parent.is_some() {
-                    // Has to be resolved, because we otherwise have no knowledge about the symbol
-                    // tables in parents.
-                    self.unresolved_nodes.push(child);
-                }
                 self.index_function_name_and_param_defaults(child, ordered);
                 0
             } else if child.is_type(Nonterminal(class_def)) {
@@ -158,10 +153,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
-                    self.add_point_definition(
-                        not_decorated.get_nth_child(1),
-                        Specific::LazyInferredFunction,
-                    );
+                    self.index_function_name_and_param_defaults(not_decorated, ordered);
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
                     self.add_point_definition(
                         not_decorated.get_nth_child(1),
@@ -192,10 +184,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 let mut iterator = iterator.skip(1);
                 let inner = iterator.next().unwrap();
                 if inner.is_type(Nonterminal(function_def)) {
-                    self.add_point_definition(
-                        inner.get_nth_child(1),
-                        Specific::LazyInferredFunction,
-                    );
+                    self.index_function_name_and_param_defaults(inner, ordered);
                     0
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered)
@@ -529,7 +518,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_function_name_and_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
         use NonterminalType::*;
+        debug_assert_eq!(node.get_type(), Nonterminal(function_def));
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
+        if self.parent.is_some() {
+            // Has to be resolved, because we otherwise have no knowledge about the symbol
+            // tables in parents.
+            self.unresolved_nodes.push(node);
+        }
+
         for child in node.iter_children() {
             if child.is_type(Nonterminal(function_def_parameters)) {
                 let parameters_node = child.get_nth_child(1);
@@ -582,8 +578,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             }
         }
         let parent = func.get_parent().unwrap();
-        if !parent.is_type(Nonterminal(stmt)) {
-            todo!("{:?}", stmt);
+        if !parent.is_type(Nonterminal(stmt)) && !parent.is_type(Nonterminal(decorated)) {
+            todo!("{:?}", parent);
         }
         self.points[func_index].set(Point::new_simple_language_specific(
             Specific::Function,
