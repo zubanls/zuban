@@ -955,6 +955,9 @@ impl<'a> Inferred<'a> {
                     ComplexPoint::Instance(bla) => {
                         todo!()
                     }
+                    ComplexPoint::Method(bla, bar) => {
+                        todo!()
+                    }
                     ComplexPoint::Closure(bla, bar) => {
                         todo!()
                     }

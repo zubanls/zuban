@@ -288,6 +288,7 @@ pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
     Instance(Execution),
+    Method(PointLink, Execution),
     Closure(PointLink, Execution),
     Generic(Execution),
 }
