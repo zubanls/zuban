@@ -9,8 +9,9 @@ use parsa_python::{
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
 use crate::database::{Database, Locality, Point, Specific};
-use crate::file::{Inferred, PythonFile};
+use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct Function<'a> {

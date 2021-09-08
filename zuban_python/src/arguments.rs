@@ -1,5 +1,6 @@
 use crate::database::Database;
-use crate::file::{Inferred, PythonFile};
+use crate::file::PythonFile;
+use crate::inferred::Inferred;
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 

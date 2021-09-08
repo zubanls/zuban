@@ -3,8 +3,9 @@ use parsa::NodeIndex;
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::Database;
-use crate::file::{Inferred, PythonFile};
+use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inferred::Inferred;
 use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 

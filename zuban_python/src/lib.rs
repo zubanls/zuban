@@ -6,6 +6,7 @@ mod database;
 mod file;
 mod file_state;
 mod imports;
+mod inferred;
 mod name;
 mod name_binder;
 mod tree_utils;

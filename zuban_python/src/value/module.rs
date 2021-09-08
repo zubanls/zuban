@@ -1,7 +1,8 @@
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::Database;
-use crate::file::{Inferred, PythonFile};
+use crate::file::PythonFile;
+use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]

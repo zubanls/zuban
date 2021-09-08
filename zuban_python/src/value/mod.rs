@@ -5,7 +5,7 @@ mod module;
 
 use crate::arguments::Arguments;
 use crate::database::Database;
-use crate::file::Inferred;
+use crate::inferred::Inferred;
 pub use class::Class;
 pub use function::Function;
 pub use instance::Instance;
