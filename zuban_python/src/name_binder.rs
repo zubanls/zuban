@@ -613,7 +613,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
             todo!("{:?}", parent);
         }
         self.points[func_index].set(Point::new_simple_language_specific(
-            Specific::Function,
+            if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
+                Specific::Closure
+            } else {
+                Specific::Function
+            },
             Locality::Stmt,
         ));
 

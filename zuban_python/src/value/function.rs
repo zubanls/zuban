@@ -63,7 +63,8 @@ impl<'a> Function<'a> {
             return self
                 .file
                 .get_inference(database)
-                .infer_star_expressions(node.get_nth_child(1));
+                .infer_star_expressions(node.get_nth_child(1))
+                .resolve_closure();
         }
         todo!("Should just return None or maybe NoReturn?");
     }

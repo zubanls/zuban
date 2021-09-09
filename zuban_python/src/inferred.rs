@@ -234,6 +234,16 @@ impl<'a> Inferred<'a> {
         false
     }
 
+    pub fn resolve_closure(self) -> Inferred<'a> {
+        if self.point.get_type() == PointType::LanguageSpecific
+            && self.point.get_language_specific() == Specific::Closure
+        {
+            todo!()
+        } else {
+            self
+        }
+    }
+
     fn infer_instance_with_arguments_cls(&self) -> Self {
         self.definition
             .file

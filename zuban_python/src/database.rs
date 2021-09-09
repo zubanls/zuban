@@ -249,6 +249,7 @@ pub enum Specific {
     LazyInferredFunction,     // A function that will be inferred later.
     LazyInferredClosure,      // A closure that will be inferred later.
     Function,                 // The node point so the index of the result
+    Closure,
     NoReturnFunction,
 
     InstanceWithArguments, // A primary node

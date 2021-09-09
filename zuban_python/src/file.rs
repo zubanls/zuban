@@ -582,7 +582,10 @@ impl<'a> PythonInference<'a> {
                         Arguments::new_empty_arguments(self.file, node)
                     }
                 };
-                base.run_on_value(|value| value.execute(self.database, &args))
+                base.run_on_value(|value| {
+                    debug!("Execute {}", value.get_name(),);
+                    value.execute(self.database, &args)
+                })
             }
             "[" => {
                 todo!()
@@ -687,7 +690,7 @@ impl<'a> PythonInference<'a> {
                 get_node_debug_output(node),
                 self.file.get_file_index(),
                 node.index,
-                point.get_type()
+                point.get_type(),
             );
             match point.get_type() {
                 PointType::Redirect => {
