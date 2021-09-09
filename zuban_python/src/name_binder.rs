@@ -9,7 +9,16 @@ use parsa::{Node, NodeIndex};
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NonterminalType, PyNode, PyNodeType, TerminalType};
 
+pub enum NameBinderType {
+    Global,
+    Function,
+    Class,
+    Lambda,
+    Comprehension,
+}
+
 pub struct NameBinder<'a, 'b> {
+    typ: NameBinderType,
     symbol_table: &'b SymbolTable,
     points: &'a [Cell<Point>],
     complex_points: &'a ComplexValues,
@@ -23,6 +32,7 @@ pub struct NameBinder<'a, 'b> {
 
 impl<'a, 'b> NameBinder<'a, 'b> {
     fn new(
+        typ: NameBinderType,
         symbol_table: &'b SymbolTable,
         points: &'a [Cell<Point>],
         complex_points: &'a ComplexValues,
@@ -30,6 +40,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
     ) -> Self {
         Self {
+            typ,
             symbol_table,
             points,
             complex_points,
@@ -50,17 +61,26 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
     ) {
-        let mut binder = Self::new(symbol_table, points, complex_points, file_index, None);
+        let mut binder = Self::new(
+            NameBinderType::Global,
+            symbol_table,
+            points,
+            complex_points,
+            file_index,
+            None,
+        );
         func(&mut binder);
         binder.close();
     }
 
     pub fn with_nested(
         &mut self,
+        typ: NameBinderType,
         symbol_table: &'_ SymbolTable,
         mut func: impl FnMut(&mut NameBinder<'a, '_>),
     ) {
         let mut name_binder = NameBinder::new(
+            typ,
             symbol_table,
             self.points,
             self.complex_points,
@@ -242,13 +262,17 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.index_comprehension(n, true);
             } else if n.is_type(Nonterminal(lambda)) {
                 let symbol_table = SymbolTable::default();
-                self.with_nested(&symbol_table, |binder| binder.index_lambda(n));
+                self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
+                    binder.index_lambda(n)
+                });
             } else if n.is_type(Nonterminal(expression)) {
                 // Typically annotations
                 self.index_non_block_node(n, true);
             } else if n.is_type(Nonterminal(function_def)) {
                 let symbol_table = SymbolTable::default();
-                self.with_nested(&symbol_table, |binder| binder.index_function_body(n));
+                self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
+                    binder.index_function_body(n)
+                });
             } else {
                 unreachable!("closing scope {:?}", n);
             }
@@ -399,7 +423,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
-        self.with_nested(&symbol_table, |binder| {
+        self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
             for child in class.iter_children() {
                 if child.is_type(Nonterminal(NonterminalType::arguments)) {
                     binder.index_non_block_node(child, true);
@@ -506,7 +530,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
-        self.with_nested(&symbol_table, |binder| {
+        self.with_nested(NameBinderType::Comprehension, &symbol_table, |binder| {
             binder.index_non_block_node(clause.get_nth_child(1), true);
             if let Some(clause) = clauses.next() {
                 binder.index_comprehension_clause(clauses, clause, result_node);
@@ -547,7 +571,14 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 self.unresolved_nodes.push(child.get_nth_child(1));
             }
         }
-        self.add_point_definition(node.get_nth_child(1), Specific::LazyInferredFunction);
+        self.add_point_definition(
+            node.get_nth_child(1),
+            if matches!(self.typ, NameBinderType::Function) {
+                Specific::LazyInferredClosure
+            } else {
+                Specific::LazyInferredFunction
+            },
+        );
     }
 
     pub fn index_function_body(&mut self, func: PyNode<'a>) {

@@ -7,7 +7,7 @@ use crate::file_state::{File, Issue, Leaf};
 use crate::imports::global_import;
 use crate::inferred::Inferred;
 use crate::name::{Names, TreeName, ValueNames};
-use crate::name_binder::NameBinder;
+use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::value::Instance;
 use parsa::{CodeIndex, Node, NodeIndex};
@@ -230,7 +230,9 @@ impl<'db> PythonFile {
         self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
         self.with_global_binder(|binder| {
-            binder.with_nested(&symbol_table, |b| b.index_function_body(node))
+            binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
+                b.index_function_body(node)
+            })
         });
     }
 

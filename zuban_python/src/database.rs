@@ -242,11 +242,13 @@ pub enum Specific {
 
     SelfParam,
     Param,
-    SimpleGeneric,        // primary: primary '[' slices ']'
-    ParamWithDefault,     // TODO Redirect to default maybe?
-    LazyInferredClass,    // A class that will be inferred later.
-    LazyInferredFunction, // A function that will be inferred later.
-    Function,             // The node point so the index of the result
+    SimpleGeneric,            // primary: primary '[' slices ']'
+    ParamWithDefault,         // TODO Redirect to default maybe?
+    LazyInferredClass,        // A class that will be inferred later.
+    LazyInferredDynamicClass, // A class defined in a function that will be inferred later.
+    LazyInferredFunction,     // A function that will be inferred later.
+    LazyInferredClosure,      // A closure that will be inferred later.
+    Function,                 // The node point so the index of the result
     NoReturnFunction,
 
     InstanceWithArguments, // A primary node
