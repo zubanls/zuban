@@ -151,7 +151,7 @@ impl<'a> Inferred<'a> {
                             todo!()
                         }
                         Specific::InstanceWithArguments => {
-                            let cls = self.infer_instance_with_arguments_cls(&definition);
+                            let cls = self.infer_instance_with_arguments_cls(definition);
                             callable(&cls.instantiate().unwrap())
                         }
                         _ => {
@@ -183,8 +183,9 @@ impl<'a> Inferred<'a> {
                         ComplexPoint::Method(bla, bar) => {
                             todo!()
                         }
-                        ComplexPoint::Closure(bla, bar) => {
-                            todo!()
+                        ComplexPoint::Closure(function, execution) => {
+                            let f = self.database.get_loaded_python_file(function.file);
+                            callable(&Function::new(f, function.node_index))
                         }
                         ComplexPoint::Generic(bla) => {
                             todo!()
@@ -246,24 +247,23 @@ impl<'a> Inferred<'a> {
         false
     }
 
-    pub fn resolve_closure(self, function: &Function, args: &Arguments) -> Inferred<'a> {
+    pub fn resolve_closure_and_params(self, function: &Function, args: &Arguments) -> Inferred<'a> {
         if let InferredState::Saved(definition, point) = self.state {
-            if point.get_type() == PointType::LanguageSpecific
-                && point.get_language_specific() == Specific::Closure
-            {
-                Inferred::new_unsaved_complex(
-                    self.database,
-                    ComplexPoint::Closure(
-                        PointLink::new(definition.file.get_file_index(), definition.node.index),
-                        args.as_execution(function),
-                    ),
-                )
-            } else {
-                self
+            if point.get_type() == PointType::LanguageSpecific {
+                if point.get_language_specific() == Specific::Closure {
+                    return Inferred::new_unsaved_complex(
+                        self.database,
+                        ComplexPoint::Closure(
+                            PointLink::new(definition.file.get_file_index(), definition.node.index),
+                            args.as_execution(function),
+                        ),
+                    );
+                } else if point.get_language_specific() == Specific::Param {
+                    todo!()
+                }
             }
-        } else {
-            self
         }
+        self
     }
 
     fn infer_instance_with_arguments_cls(&self, definition: &NodeReference<'a>) -> Self {
