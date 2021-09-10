@@ -98,7 +98,6 @@ impl<'a> Inferred<'a> {
                         .file
                         .complex_points
                         .get(point.get_complex_index())
-                        .unwrap()
                     {
                         ComplexPoint::Class(cls_storage) => {
                             let cls = Class::new(
@@ -166,7 +165,6 @@ impl<'a> Inferred<'a> {
                         .file
                         .complex_points
                         .get(point.get_complex_index())
-                        .unwrap()
                     {
                         ComplexPoint::Union(lst) => {
                             todo!()
@@ -288,25 +286,34 @@ impl<'a> Inferred<'a> {
         }
     }
 
-    pub fn save_redirect(&self, file: &'a PythonFile, index: NodeIndex) {
+    pub fn save_redirect(self, file: &'a PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
-        let point = match &self.state {
-            InferredState::Saved(definition, point) => Point::new_redirect(
-                definition.file.get_file_index(),
-                definition.node.index,
-                Locality::Stmt,
-            ),
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                file.set_point(
+                    index,
+                    Point::new_redirect(
+                        definition.file.get_file_index(),
+                        definition.node.index,
+                        Locality::Stmt,
+                    ),
+                );
+                self
+            }
             InferredState::UnsavedComplex(complex) => {
-                let index = file.complex_points.len();
-                //file.complex_points.push(complex.clone());
-                //Point::new_complex_point(index);
-                todo!()
+                file.complex_points
+                    .insert(&file.points, index, complex.clone());
+                Self::new_saved(
+                    self.database,
+                    file,
+                    file.tree.get_node_by_index(index),
+                    file.get_point(index),
+                )
             }
             InferredState::UnsavedSpecific(specific) => {
                 todo!()
             }
-        };
-        file.set_point(index, point);
+        }
     }
 }
 
@@ -327,10 +334,7 @@ impl fmt::Debug for Inferred<'_> {
 fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
     let v = file.get_point(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex);
-    let complex = file
-        .complex_points
-        .get(v.get_complex_index() as usize)
-        .unwrap();
+    let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
         ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table)),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),

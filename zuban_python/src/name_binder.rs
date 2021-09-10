@@ -113,13 +113,6 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    fn set_complex_point(&mut self, node: PyNode<'a>, complex: ComplexPoint) {
-        let complex_index = self.complex_points.len() as u32;
-        self.complex_points.push(Box::pin(complex));
-        self.points[node.index as usize]
-            .set(Point::new_complex_point(complex_index, Locality::Stmt));
-    }
-
     fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
@@ -432,7 +425,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
                 }
             }
         });
-        self.set_complex_point(class, ComplexPoint::Class(ClassStorage::new(symbol_table)));
+        self.complex_points.insert(
+            self.points,
+            class.index,
+            ComplexPoint::Class(ClassStorage::new(symbol_table)),
+        );
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);

@@ -21,7 +21,21 @@ use PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal};
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
 }
-pub type ComplexValues = InsertOnlyVec<ComplexPoint>;
+
+#[derive(Default)]
+pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
+
+impl ComplexValues {
+    pub fn get(&self, index: usize) -> &ComplexPoint {
+        self.0.get(index).unwrap()
+    }
+
+    pub fn insert(&self, points: &[Cell<Point>], node_index: NodeIndex, complex: ComplexPoint) {
+        let complex_index = self.0.len() as u32;
+        self.0.push(Box::pin(complex));
+        points[node_index as usize].set(Point::new_complex_point(complex_index, Locality::Stmt));
+    }
+}
 
 impl File for PythonFile {
     fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
@@ -158,7 +172,7 @@ pub struct PythonFile {
     pub tree: PyTree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    points: Vec<Cell<Point>>,
+    pub points: Vec<Cell<Point>>,
     pub complex_points: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
@@ -184,7 +198,7 @@ impl<'db> PythonFile {
             file_index: Cell::new(None),
             symbol_table: Default::default(),
             points: vec![Default::default(); length],
-            complex_points: InsertOnlyVec::default(),
+            complex_points: Default::default(),
             dependencies: vec![],
             issues: vec![],
             new_line_indices: UnsafeCell::new(None),
@@ -439,7 +453,7 @@ impl<'a> PythonInference<'a> {
                             if point.is_calculated() {
                                 todo!("{:?} {:?} {:?}", self.file, point, n);
                             }
-                            inferred.save_redirect(self.file, n.index);
+                            inferred.clone().save_redirect(self.file, n.index);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -515,8 +529,7 @@ impl<'a> PythonInference<'a> {
                 }
             }
         };
-        inferred.save_redirect(self.file, node.index);
-        inferred
+        inferred.save_redirect(self.file, node.index)
     }
 
     fn infer_expression_part(&self, node: PyNode<'a>) -> Inferred<'a> {
