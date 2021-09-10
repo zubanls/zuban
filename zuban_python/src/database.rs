@@ -225,7 +225,7 @@ pub enum PointType {
     NodeAnalysis,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 #[repr(u32)]
 pub enum Specific {
     String,
@@ -286,7 +286,7 @@ pub struct LocalityLink {
     pub locality: Locality,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
@@ -296,7 +296,7 @@ pub enum ComplexPoint {
     Generic(Execution),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Execution {
     function: PointLink,
     in_: Option<Box<Execution>>,
@@ -574,5 +574,11 @@ pub struct ClassStorage {
 impl ClassStorage {
     pub fn new(symbol_table: SymbolTable) -> Self {
         Self { symbol_table }
+    }
+}
+
+impl std::clone::Clone for ClassStorage {
+    fn clone(&self) -> Self {
+        unreachable!("This should never happen, because should never be cloned");
     }
 }

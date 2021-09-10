@@ -9,7 +9,6 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName, ValueNames};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::value::Instance;
 use parsa::{CodeIndex, Node, NodeIndex};
 use parsa_python::{
     NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
@@ -296,19 +295,6 @@ impl<'db> PythonFile {
                 locality: Locality::DirectExtern,
             })
     }
-
-    pub fn use_instance(&self, node_index: NodeIndex) -> Option<Instance> {
-        let v = self.get_point(node_index);
-        debug_assert_eq!(v.get_type(), PointType::Complex);
-        let complex = self
-            .complex_points
-            .get(v.get_complex_index() as usize)
-            .unwrap();
-        match complex {
-            ComplexPoint::Class(c) => Some(Instance::new(self, node_index, &c.symbol_table)),
-            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
-        }
-    }
 }
 
 pub struct PythonInference<'a> {
@@ -318,18 +304,6 @@ pub struct PythonInference<'a> {
 }
 
 impl<'a> PythonInference<'a> {
-    fn set_redirect_point(&self, index: NodeIndex, inferred: Inferred) {
-        // TODO this locality should be calculated in a more correct way
-        self.file.set_point(
-            index,
-            Point::new_redirect(
-                inferred.definition.file.get_file_index(),
-                inferred.definition.node.index,
-                Locality::Stmt,
-            ),
-        );
-    }
-
     fn cache_stmt_name(&self, stmt: PyNode<'a>, name: PyNode<'a>) {
         debug!(
             "Infer stmt ({}, {})",
@@ -386,10 +360,10 @@ impl<'a> PythonInference<'a> {
                             if self.file.get_point(from_as_name.index + 1).is_calculated() {
                                 todo!()
                             }
-                            let i = inferred.unwrap().run_on_value(|value| {
+                            let i = inferred.as_ref().unwrap().run_on_value(|value| {
                                 value.lookup(self.database, from_as_name.get_code())
                             });
-                            self.set_redirect_point(from_as_name.index + 1, i);
+                            i.save_redirect(self.file, from_as_name.index + 1);
                         } else {
                             todo!("from import as")
                         }
@@ -465,7 +439,7 @@ impl<'a> PythonInference<'a> {
                             if point.is_calculated() {
                                 todo!("{:?} {:?} {:?}", self.file, point, n);
                             }
-                            self.set_redirect_point(n.index, inferred);
+                            inferred.save_redirect(self.file, n.index);
                         }
                         Target::Expression(n) => {
                             todo!("{:?}", n);
@@ -541,7 +515,7 @@ impl<'a> PythonInference<'a> {
                 }
             }
         };
-        self.set_redirect_point(node.index, inferred);
+        inferred.save_redirect(self.file, node.index);
         inferred
     }
 
@@ -715,10 +689,10 @@ impl<'a> PythonInference<'a> {
                         debug_assert!(self.file.get_point(node.index).is_calculated());
                         self.check_point_cache(node)
                     }
-                    _ => Some(Inferred::new(self.database, self.file, node, point, true)),
+                    _ => Some(Inferred::new_saved(self.database, self.file, node, point)),
                 },
                 PointType::Complex => {
-                    Some(Inferred::new(self.database, self.file, node, point, true))
+                    Some(Inferred::new_saved(self.database, self.file, node, point))
                 }
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);

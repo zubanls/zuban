@@ -287,7 +287,7 @@ impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
                 if *type_var == name {
-                    return Some(*result);
+                    return Some(result.clone());
                 }
             }
             None

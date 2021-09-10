@@ -1,25 +1,30 @@
-use crate::database::{ComplexPoint, Database, Point, PointType, Specific};
+use crate::database::{ComplexPoint, Database, Locality, Point, PointType, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::name::{ValueNames, WithValueName};
 use crate::value::{Class, Function, Instance, Module, Value};
-use parsa::Node;
+use parsa::{Node, NodeIndex};
 use parsa_python::PyNode;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
-pub struct NodeReference<'a> {
+struct NodeReference<'a> {
     pub file: &'a PythonFile,
     pub node: PyNode<'a>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone)]
+enum InferredState<'a> {
+    Saved(NodeReference<'a>, Point),
+    UnsavedComplex(ComplexPoint),
+    UnsavedSpecific(Specific),
+}
+
+#[derive(Clone)]
 pub struct Inferred<'a> {
     database: &'a Database,
-    pub definition: NodeReference<'a>,
-    point: Point,
-    is_saved: bool,
+    state: InferredState<'a>,
 }
 
 impl<'a> Inferred<'a> {
@@ -30,91 +35,90 @@ impl<'a> Inferred<'a> {
         point: Point,
     ) -> Self {
         file.set_point(node.index, point);
-        Self::new(database, file, node, point, true)
+        Self::new_saved(database, file, node, point)
     }
 
-    pub fn new(
+    pub fn new_saved(
         database: &'a Database,
         file: &'a PythonFile,
         node: PyNode<'a>,
         point: Point,
-        is_saved: bool,
     ) -> Self {
         Self {
             database,
-            definition: NodeReference { file, node },
-            point,
-            is_saved,
+            state: InferredState::Saved(NodeReference { file, node }, point),
         }
     }
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_value_names(&self) -> ValueNames<'a> {
         use PointType::*;
-        match self.point.get_type() {
-            LanguageSpecific => {
-                let specific = self.point.get_language_specific();
-                vec![match specific {
-                    Specific::Function => Box::new(WithValueName::new(
-                        self.database,
-                        Function::new(self.definition.file, self.definition.node.index),
-                    )),
-                    Specific::AnnotationInstance => {
-                        let inferred = self
-                            .definition
-                            .file
-                            .infer_expression(self.database, self.definition.node.get_nth_child(1));
-                        if let Some(instance) = inferred
-                            .definition
-                            .file
-                            .use_instance(inferred.definition.node.index)
-                        {
-                            Box::new(WithValueName::new(self.database, instance))
-                        } else {
-                            debug!(
-                                "Inferred annotation {:?}, which is not a class: {:?}",
-                                self, inferred
+        match &self.state {
+            InferredState::Saved(definition, point) => match point.get_type() {
+                LanguageSpecific => {
+                    let specific = point.get_language_specific();
+                    vec![match specific {
+                        Specific::Function => Box::new(WithValueName::new(
+                            self.database,
+                            Function::new(definition.file, definition.node.index),
+                        )),
+                        Specific::AnnotationInstance => {
+                            let inferred = definition
+                                .file
+                                .infer_expression(self.database, definition.node.get_nth_child(1));
+                            if let Some(instance) = inferred.instantiate() {
+                                Box::new(WithValueName::new(self.database, instance))
+                            } else {
+                                debug!(
+                                    "Inferred annotation {:?}, which is not a class: {:?}",
+                                    self, inferred
+                                );
+                                return vec![];
+                            }
+                        }
+                        Specific::TypeVar => {
+                            todo!()
+                        }
+                        _ => Box::new(WithValueName::new(
+                            self.database,
+                            self.resolve_specific(point.get_language_specific()),
+                        )),
+                    }]
+                }
+                Complex => {
+                    match definition
+                        .file
+                        .complex_points
+                        .get(point.get_complex_index())
+                        .unwrap()
+                    {
+                        ComplexPoint::Class(cls_storage) => {
+                            let cls = Class::new(
+                                definition.file,
+                                definition.node.index,
+                                &cls_storage.symbol_table,
                             );
-                            return vec![];
+                            vec![Box::new(WithValueName::new(self.database, cls))]
+                        }
+                        _ => {
+                            todo!();
                         }
                     }
-                    Specific::TypeVar => {
-                        todo!()
-                    }
-                    _ => Box::new(WithValueName::new(
-                        self.database,
-                        self.resolve_specific(self.point.get_language_specific()),
-                    )),
-                }]
-            }
-            Complex => {
-                match self
-                    .definition
-                    .file
-                    .complex_points
-                    .get(self.point.get_complex_index())
-                    .unwrap()
-                {
-                    ComplexPoint::Class(cls_storage) => {
-                        let cls = Class::new(
-                            self.definition.file,
-                            self.definition.node.index,
-                            &cls_storage.symbol_table,
-                        );
-                        vec![Box::new(WithValueName::new(self.database, cls))]
-                    }
-                    _ => {
-                        todo!();
-                    }
                 }
+                MissingOrUnknown => {
+                    vec![]
+                }
+                FileReference => {
+                    todo!();
+                }
+                _ => unreachable!(),
+            },
+            InferredState::UnsavedComplex(complex) => {
+                todo!()
             }
-            MissingOrUnknown => {
-                vec![]
+            InferredState::UnsavedSpecific(specific) => {
+                todo!()
             }
-            FileReference => {
-                todo!();
-            }
-            _ => unreachable!(),
         }
     }
 
@@ -125,77 +129,75 @@ impl<'a> Inferred<'a> {
         on_missing: impl Fn(Inferred<'a>) -> T,
     ) -> T {
         use PointType::*;
-        match self.point.get_type() {
-            LanguageSpecific => {
-                let specific = self.point.get_language_specific();
-                match specific {
-                    Specific::Function => callable(&Function::new(
-                        self.definition.file,
-                        self.definition.node.index,
-                    )),
-                    Specific::AnnotationInstance => {
-                        let inferred = self
-                            .definition
-                            .file
-                            .infer_expression(self.database, self.definition.node.get_nth_child(1));
-                        todo!()
-                    }
-                    Specific::InstanceWithArguments => {
-                        let cls = self.infer_instance_with_arguments_cls();
-                        callable(
-                            &cls.definition
+        match &self.state {
+            InferredState::Saved(definition, point) => match point.get_type() {
+                LanguageSpecific => {
+                    let specific = point.get_language_specific();
+                    match specific {
+                        Specific::Function => {
+                            callable(&Function::new(definition.file, definition.node.index))
+                        }
+                        Specific::AnnotationInstance => {
+                            let inferred = definition
                                 .file
-                                .use_instance(cls.definition.node.index)
-                                .unwrap(),
-                        )
-                    }
-                    _ => {
-                        let instance = self.resolve_specific(specific);
-                        callable(&instance)
-                    }
-                }
-            }
-            Complex => {
-                match self
-                    .definition
-                    .file
-                    .complex_points
-                    .get(self.point.get_complex_index())
-                    .unwrap()
-                {
-                    ComplexPoint::Union(lst) => {
-                        todo!()
-                    }
-                    ComplexPoint::Class(cls_storage) => {
-                        let class = Class::new(
-                            self.definition.file,
-                            self.definition.node.index,
-                            &cls_storage.symbol_table,
-                        );
-                        callable(&class)
-                    }
-                    ComplexPoint::Instance(bla) => {
-                        todo!()
-                    }
-                    ComplexPoint::Method(bla, bar) => {
-                        todo!()
-                    }
-                    ComplexPoint::Closure(bla, bar) => {
-                        todo!()
-                    }
-                    ComplexPoint::Generic(bla) => {
-                        todo!()
+                                .infer_expression(self.database, definition.node.get_nth_child(1));
+                            todo!()
+                        }
+                        Specific::InstanceWithArguments => {
+                            let cls = self.infer_instance_with_arguments_cls(&definition);
+                            callable(&cls.instantiate().unwrap())
+                        }
+                        _ => {
+                            let instance = self.resolve_specific(specific);
+                            callable(&instance)
+                        }
                     }
                 }
+                Complex => {
+                    match definition
+                        .file
+                        .complex_points
+                        .get(point.get_complex_index())
+                        .unwrap()
+                    {
+                        ComplexPoint::Union(lst) => {
+                            todo!()
+                        }
+                        ComplexPoint::Class(cls_storage) => {
+                            let class = Class::new(
+                                definition.file,
+                                definition.node.index,
+                                &cls_storage.symbol_table,
+                            );
+                            callable(&class)
+                        }
+                        ComplexPoint::Instance(bla) => {
+                            todo!()
+                        }
+                        ComplexPoint::Method(bla, bar) => {
+                            todo!()
+                        }
+                        ComplexPoint::Closure(bla, bar) => {
+                            todo!()
+                        }
+                        ComplexPoint::Generic(bla) => {
+                            todo!()
+                        }
+                    }
+                }
+                MissingOrUnknown => on_missing(self.clone()),
+                FileReference => {
+                    let f = self.database.get_loaded_python_file(point.get_file_index());
+                    callable(&Module::new(f, &f.symbol_table))
+                }
+                _ => unreachable!(),
+            },
+            InferredState::UnsavedComplex(complex) => {
+                todo!()
             }
-            MissingOrUnknown => on_missing(*self),
-            FileReference => {
-                let f = self
-                    .database
-                    .get_loaded_python_file(self.point.get_file_index());
-                callable(&Module::new(f, &f.symbol_table))
+            InferredState::UnsavedSpecific(specific) => {
+                todo!()
             }
-            _ => unreachable!(),
         }
     }
 
@@ -221,43 +223,100 @@ impl<'a> Inferred<'a> {
     }
 
     pub fn is_type_var(&self) -> bool {
-        if self.point.get_type() == PointType::LanguageSpecific
-            && self.point.get_language_specific() == Specific::InstanceWithArguments
-        {
-            // TODO this check can/should be optimized by comparing node pointers that are cached
-            // in python_state
-            let cls = self.infer_instance_with_arguments_cls();
-            return cls.definition.file.get_file_index()
-                == self.database.python_state.get_typing().get_file_index()
-                && cls.definition.node.get_code().starts_with("class TypeVar");
+        if let InferredState::Saved(definition, point) = self.state {
+            if point.get_type() == PointType::LanguageSpecific
+                && point.get_language_specific() == Specific::InstanceWithArguments
+            {
+                // TODO this check can/should be optimized by comparing node pointers that are cached
+                // in python_state
+                let cls = self.infer_instance_with_arguments_cls(&definition);
+                if let InferredState::Saved(cls_definition, _) = cls.state {
+                    return cls_definition.file.get_file_index()
+                        == self.database.python_state.get_typing().get_file_index()
+                        && cls_definition.node.get_code().starts_with("class TypeVar");
+                }
+            }
         }
         false
     }
 
     pub fn resolve_closure(self) -> Inferred<'a> {
-        if self.point.get_type() == PointType::LanguageSpecific
-            && self.point.get_language_specific() == Specific::Closure
-        {
-            todo!()
+        if let InferredState::Saved(_, point) = self.state {
+            if point.get_type() == PointType::LanguageSpecific
+                && point.get_language_specific() == Specific::Closure
+            {
+                todo!()
+            } else {
+                self
+            }
         } else {
             self
         }
     }
 
-    fn infer_instance_with_arguments_cls(&self) -> Self {
-        self.definition
+    fn infer_instance_with_arguments_cls(&self, definition: &NodeReference<'a>) -> Self {
+        definition
             .file
-            .infer_expression_part(self.database, self.definition.node.get_nth_child(0))
+            .infer_expression_part(self.database, definition.node.get_nth_child(0))
+    }
+
+    fn instantiate(&self) -> Option<Instance<'a>> {
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                use_instance(definition.file, definition.node.index)
+            }
+            InferredState::UnsavedComplex(complex) => {
+                todo!("{:?}", complex)
+            }
+            InferredState::UnsavedSpecific(specific) => {
+                todo!("{:?}", specific)
+            }
+        }
+    }
+
+    pub fn save_redirect(&self, file: &'a PythonFile, index: NodeIndex) {
+        // TODO this locality should be calculated in a more correct way
+        let point = match &self.state {
+            InferredState::Saved(definition, point) => Point::new_redirect(
+                definition.file.get_file_index(),
+                definition.node.index,
+                Locality::Stmt,
+            ),
+            InferredState::UnsavedComplex(complex) => {
+                todo!()
+            }
+            InferredState::UnsavedSpecific(specific) => {
+                todo!()
+            }
+        };
+        file.set_point(index, point);
     }
 }
 
 impl fmt::Debug for Inferred<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Inferred")
-            .field("definition", &self.definition)
-            .field("point", &self.point)
-            .field("is_saved", &self.is_saved)
-            .finish()
+        let mut s = f.debug_struct("Inferred");
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                s.field("definition", &definition).field("point", &point)
+            }
+            InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
+            InferredState::UnsavedSpecific(specific) => s.field("specific", &specific),
+        }
+        .finish()
+    }
+}
+
+fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
+    let v = file.get_point(node_index);
+    debug_assert_eq!(v.get_type(), PointType::Complex);
+    let complex = file
+        .complex_points
+        .get(v.get_complex_index() as usize)
+        .unwrap();
+    match complex {
+        ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table)),
+        _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }
 
@@ -267,5 +326,5 @@ fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str
     let v = builtins.get_point(node_index);
     debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    builtins.use_instance(v.get_node_index()).unwrap()
+    use_instance(builtins, v.get_node_index()).unwrap()
 }
