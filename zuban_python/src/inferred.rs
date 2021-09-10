@@ -1,4 +1,5 @@
-use crate::database::{ComplexPoint, Database, Locality, Point, PointType, Specific};
+use crate::arguments::Arguments;
+use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -47,6 +48,13 @@ impl<'a> Inferred<'a> {
         Self {
             database,
             state: InferredState::Saved(NodeReference { file, node }, point),
+        }
+    }
+
+    pub fn new_unsaved_complex(database: &'a Database, complex: ComplexPoint) -> Self {
+        Self {
+            database,
+            state: InferredState::UnsavedComplex(complex),
         }
     }
 
@@ -240,12 +248,18 @@ impl<'a> Inferred<'a> {
         false
     }
 
-    pub fn resolve_closure(self) -> Inferred<'a> {
-        if let InferredState::Saved(_, point) = self.state {
+    pub fn resolve_closure(self, function: &Function, args: &Arguments) -> Inferred<'a> {
+        if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::Closure
             {
-                todo!()
+                Inferred::new_unsaved_complex(
+                    self.database,
+                    ComplexPoint::Closure(
+                        PointLink::new(definition.file.get_file_index(), definition.node.index),
+                        args.as_execution(function),
+                    ),
+                )
             } else {
                 self
             }
@@ -283,6 +297,9 @@ impl<'a> Inferred<'a> {
                 Locality::Stmt,
             ),
             InferredState::UnsavedComplex(complex) => {
+                let index = file.complex_points.len();
+                //file.complex_points.push(complex.clone());
+                //Point::new_complex_point(index);
                 todo!()
             }
             InferredState::UnsavedSpecific(specific) => {

@@ -1,6 +1,8 @@
-use crate::database::Database;
+use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
+use crate::file_state::File;
 use crate::inferred::Inferred;
+use crate::value::Function;
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
@@ -61,6 +63,13 @@ impl<'a> Arguments<'a> {
             }
             ArgumentsDetailed::None => ArgumentIterator::Finished,
         }
+    }
+
+    pub fn as_execution(&self, function: &Function) -> Execution {
+        Execution::new(
+            function.to_point_link(),
+            PointLink::new(self.file.get_file_index(), self.primary_node.index),
+        )
     }
 }
 

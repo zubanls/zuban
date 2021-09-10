@@ -8,7 +8,7 @@ use parsa_python::{
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
-use crate::database::{Database, Locality, Point, Specific};
+use crate::database::{Database, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inferred::Inferred;
@@ -64,7 +64,7 @@ impl<'a> Function<'a> {
                 .file
                 .get_inference(database)
                 .infer_star_expressions(node.get_nth_child(1))
-                .resolve_closure();
+                .resolve_closure(self, args);
         }
         todo!("Should just return None or maybe NoReturn?");
     }
@@ -85,6 +85,10 @@ impl<'a> Function<'a> {
             }
         }
         false
+    }
+
+    pub fn to_point_link(&self) -> PointLink {
+        PointLink::new(self.file.get_file_index(), self.node_index)
     }
 }
 

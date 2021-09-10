@@ -280,6 +280,12 @@ pub struct PointLink {
     pub node_index: NodeIndex,
 }
 
+impl PointLink {
+    pub fn new(file: FileIndex, node_index: NodeIndex) -> Self {
+        Self { file, node_index }
+    }
+}
+
 pub struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
@@ -301,6 +307,16 @@ pub struct Execution {
     function: PointLink,
     in_: Option<Box<Execution>>,
     argument_node: PointLink,
+}
+
+impl Execution {
+    pub fn new(function: PointLink, argument_node: PointLink) -> Self {
+        Self {
+            function,
+            in_: None,
+            argument_node,
+        }
+    }
 }
 
 pub struct Database {
