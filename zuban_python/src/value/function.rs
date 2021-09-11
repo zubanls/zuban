@@ -9,6 +9,7 @@ use parsa_python::{
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
 use crate::database::{Database, Locality, Point, PointLink, Specific};
+use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inferred::Inferred;
@@ -47,6 +48,20 @@ impl<'a> Function<'a> {
         args: &Arguments<'a>,
     ) -> impl Iterator<Item = InferrableParam<'a>> {
         InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
+    }
+
+    pub fn infer_param(
+        &self,
+        database: &'a Database,
+        param_name_index: NodeIndex,
+        args: &Arguments<'a>,
+    ) -> Inferred<'a> {
+        for param in self.iter_inferrable_params(args) {
+            if param.is_at(param_name_index) {
+                return param.infer(database);
+            }
+        }
+        unreachable!("{:?}", param_name_index)
     }
 
     fn execute_without_annotation(
@@ -229,7 +244,7 @@ impl<'a> Param<'a> {
         let default_node = param_children.next();
         Self {
             typ,
-            name_node,
+            name_node: name_node.get_nth_child(0),
             annotation_node,
             default_node,
         }
@@ -398,8 +413,13 @@ struct InferrableParam<'a> {
 
 impl<'a> InferrableParam<'a> {
     fn infer(self, database: &'a Database) -> Inferred<'a> {
+        debug!("Infer param {}", self.param.get_name());
         self.argument
             .map(|a| a.infer(database))
             .unwrap_or_else(|| todo!())
+    }
+
+    fn is_at(&self, index: NodeIndex) -> bool {
+        self.param.name_node.index == index
     }
 }

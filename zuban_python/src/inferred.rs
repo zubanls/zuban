@@ -247,7 +247,11 @@ impl<'a> Inferred<'a> {
         false
     }
 
-    pub fn resolve_closure_and_params(self, function: &Function, args: &Arguments) -> Inferred<'a> {
+    pub fn resolve_closure_and_params(
+        self,
+        function: &Function<'a>,
+        args: &Arguments<'a>,
+    ) -> Inferred<'a> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific {
                 if point.get_language_specific() == Specific::Closure {
@@ -259,7 +263,7 @@ impl<'a> Inferred<'a> {
                         ),
                     );
                 } else if point.get_language_specific() == Specific::Param {
-                    todo!()
+                    return function.infer_param(self.database, definition.node.index, args);
                 }
             }
         }
