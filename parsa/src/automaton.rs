@@ -62,20 +62,24 @@ impl InternalSquashedType {
     }
 }
 
+pub trait Squashable {
+    fn to_squashed(&self) -> InternalSquashedType;
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalNonterminalType(pub u16);
-impl InternalNonterminalType {
+impl Squashable for InternalNonterminalType {
     #[inline]
-    pub fn to_squashed(&self) -> InternalSquashedType {
+    fn to_squashed(&self) -> InternalSquashedType {
         InternalSquashedType(self.0)
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct InternalTerminalType(pub u16);
-impl InternalTerminalType {
+impl Squashable for InternalTerminalType {
     #[inline]
-    pub fn to_squashed(&self) -> InternalSquashedType {
+    fn to_squashed(&self) -> InternalSquashedType {
         InternalSquashedType(self.0)
     }
 }

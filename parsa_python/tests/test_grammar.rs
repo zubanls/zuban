@@ -172,6 +172,9 @@ parametrize_snapshots!(
         foo(bar_baz:=2)
         foo(**kwargs)
         ");
+    nested_call: dedent("
+        foo(1)()
+        ");
     complex_calls: dedent("
         foo(bar, 3)
         foo(bar, *foo)

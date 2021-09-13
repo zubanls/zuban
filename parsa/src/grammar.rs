@@ -2,9 +2,9 @@ use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 
 use crate::automaton::{
-    generate_automatons, Automatons, DFAState, InternalNonterminalType, InternalSquashedType,
-    InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords, Plan, PlanMode, Rule,
-    RuleAutomaton, RuleMap, SoftKeywords, StackMode,
+    generate_automatons, Automatons, DFAState, FastHashMap, InternalNonterminalType,
+    InternalSquashedType, InternalStrToNode, InternalStrToToken, InternalTerminalType, Keywords,
+    Plan, PlanMode, Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable, StackMode,
 };
 use crate::backtracking::BacktrackingTokenizer;
 use std::fmt::Debug;
@@ -379,26 +379,36 @@ impl<'a, T: Token> Grammar<T> {
             if matches!(push.stack_mode, StackMode::Alternative(_)) {
                 enabled_token_recording = true;
             }
-            stack.push(
-                push.node_type,
-                push.get_next_dfa(),
-                start_index,
-                match push.stack_mode {
-                    StackMode::LL => ModeData::LL,
-                    StackMode::Alternative(alternative_plan) => {
+            match push.stack_mode {
+                StackMode::LL => {
+                    stack.push(
+                        push.node_type,
+                        stack.tree_nodes.len(),
+                        push.get_next_dfa(),
+                        start_index,
+                        ModeData::LL,
+                        enabled_token_recording,
+                    );
+                }
+                StackMode::Alternative(alternative_plan) => {
+                    stack.push(
+                        push.node_type,
+                        stack.get_tos().tree_node_index,
+                        push.get_next_dfa(),
+                        start_index,
                         ModeData::Alternative(BacktrackingPoint {
                             tree_node_count: stack.tree_nodes.len(),
                             token_index: backtracking_tokenizer.start(token),
                             fallback_plan: unsafe { &*alternative_plan },
                             children_count,
-                        })
-                    }
-                    StackMode::PositivePeek => {
-                        panic!("Pushing peeks is currently not supported")
-                    }
-                },
-                enabled_token_recording,
-            );
+                        }),
+                        enabled_token_recording,
+                    );
+                }
+                StackMode::PositivePeek => {
+                    panic!("Pushing peeks is currently not supported")
+                }
+            };
             let tos_mut = stack.stack_nodes.last_mut().unwrap();
             tos_mut.latest_child_node_index = stack.tree_nodes.len();
         }
@@ -423,7 +433,7 @@ impl<'a> Stack<'a> {
         stack.stack_nodes.reserve(128);
         // TODO need some research in how much we should reserve.
         stack.tree_nodes.reserve(string_len / 4);
-        stack.push(node_id, dfa_state, 0, ModeData::LL, false);
+        stack.push(node_id, 0, dfa_state, 0, ModeData::LL, false);
         stack
     }
 
@@ -454,6 +464,7 @@ impl<'a> Stack<'a> {
     fn push(
         &mut self,
         node_id: InternalNonterminalType,
+        tree_node_index: usize,
         dfa_state: &'a DFAState,
         start: CodeIndex,
         mode: ModeData<'a>,
@@ -461,7 +472,7 @@ impl<'a> Stack<'a> {
     ) {
         self.stack_nodes.push(StackNode {
             node_id,
-            tree_node_index: self.tree_nodes.len(),
+            tree_node_index,
             latest_child_node_index: 0,
             dfa_state,
             children_count: 0,
@@ -494,6 +505,82 @@ impl<'a> Stack<'a> {
             }
         }
         tos.latest_child_node_index = next;
+    }
+
+    fn debug_tree(
+        &self,
+        nonterminal_map: &'static InternalStrToNode,
+        terminal_map: &'static InternalStrToToken,
+    ) -> String {
+        fn recurse(
+            nonterminal_map: &'static InternalStrToNode,
+            terminal_map: &'static InternalStrToToken,
+            tree_nodes: &[InternalNode],
+            code: &mut String,
+            index: usize,
+            depth: usize,
+        ) {
+            fn find_key_for_value<K, V: Squashable + std::cmp::Eq>(
+                map: &FastHashMap<K, V>,
+                value: InternalSquashedType,
+            ) -> Option<&K> {
+                map.iter().find_map(|(key, val)| {
+                    if val.to_squashed() == value {
+                        Some(key)
+                    } else {
+                        None
+                    }
+                })
+            }
+
+            *code += &" ".repeat(depth);
+            let node = tree_nodes[index];
+            let t = node.type_.remove_error_recovery_bit();
+            *code += &format!(
+                "{}{}: {}-{}\n",
+                if node.type_.is_error_recovery() {
+                    "ERROR"
+                } else {
+                    ""
+                },
+                find_key_for_value(nonterminal_map, t)
+                    .or_else(|| find_key_for_value(terminal_map, t))
+                    .unwrap_or(&"Keyword"),
+                node.start_index,
+                node.start_index + node.length,
+            );
+            if !node.type_.is_leaf() {
+                recurse(
+                    nonterminal_map,
+                    terminal_map,
+                    tree_nodes,
+                    code,
+                    index + 1,
+                    depth + 1,
+                );
+            }
+            if node.next_node_offset != 0 {
+                recurse(
+                    nonterminal_map,
+                    terminal_map,
+                    tree_nodes,
+                    code,
+                    index + node.next_node_offset as usize,
+                    depth,
+                );
+            }
+        }
+
+        let mut code = String::new();
+        recurse(
+            nonterminal_map,
+            terminal_map,
+            &self.tree_nodes,
+            &mut code,
+            0,
+            0,
+        );
+        code
     }
 }
 
