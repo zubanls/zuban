@@ -547,6 +547,7 @@ impl<'a> PythonInference<'a> {
         // | primary "(" [arguments | comprehension] ")"
         // | primary "[" slices "]"
         // | atom
+        debug_assert_eq!(node.get_type(), Nonterminal(primary));
         use NonterminalType::*;
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
@@ -559,21 +560,10 @@ impl<'a> PythonInference<'a> {
         let second = iter.next().unwrap();
         match op.get_code() {
             "." => base.run_on_value(|value| value.lookup(self.database, second.get_code())),
-            "(" => {
-                let args = {
-                    if second.is_type(Nonterminal(arguments)) {
-                        Arguments::new_with_arguments(self.file, node, second)
-                    } else if second.is_type(Nonterminal(comprehension)) {
-                        Arguments::new_comprehension(self.file, node, second)
-                    } else {
-                        Arguments::new_empty_arguments(self.file, node)
-                    }
-                };
-                base.run_on_value(|value| {
-                    debug!("Execute {}", value.get_name(),);
-                    value.execute(self.database, &args)
-                })
-            }
+            "(" => base.run_on_value(|value| {
+                debug!("Execute {}", value.get_name(),);
+                value.execute(self.database, &Arguments::new(self.file, node, second))
+            }),
             "[" => {
                 todo!()
             }

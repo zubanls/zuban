@@ -68,7 +68,7 @@ impl<'a> Inferred<'a> {
                     vec![match specific {
                         Specific::Function => Box::new(WithValueName::new(
                             self.database,
-                            Function::new(definition.file, definition.node.index),
+                            Function::new(definition.file, definition.node.index, None),
                         )),
                         Specific::AnnotationInstance => {
                             let inferred = definition
@@ -107,8 +107,8 @@ impl<'a> Inferred<'a> {
                             );
                             vec![Box::new(WithValueName::new(self.database, cls))]
                         }
-                        _ => {
-                            todo!();
+                        x => {
+                            todo!("{:?}", x);
                         }
                     }
                 }
@@ -142,7 +142,7 @@ impl<'a> Inferred<'a> {
                     let specific = point.get_language_specific();
                     match specific {
                         Specific::Function => {
-                            callable(&Function::new(definition.file, definition.node.index))
+                            callable(&Function::new(definition.file, definition.node.index, None))
                         }
                         Specific::AnnotationInstance => {
                             let inferred = definition
@@ -160,38 +160,14 @@ impl<'a> Inferred<'a> {
                         }
                     }
                 }
-                Complex => {
-                    match definition
+                Complex => self.run_on_complex(
+                    definition
                         .file
                         .complex_points
-                        .get(point.get_complex_index())
-                    {
-                        ComplexPoint::Union(lst) => {
-                            todo!()
-                        }
-                        ComplexPoint::Class(cls_storage) => {
-                            let class = Class::new(
-                                definition.file,
-                                definition.node.index,
-                                &cls_storage.symbol_table,
-                            );
-                            callable(&class)
-                        }
-                        ComplexPoint::Instance(bla) => {
-                            todo!()
-                        }
-                        ComplexPoint::Method(bla, bar) => {
-                            todo!()
-                        }
-                        ComplexPoint::Closure(function, execution) => {
-                            let f = self.database.get_loaded_python_file(function.file);
-                            callable(&Function::new(f, function.node_index))
-                        }
-                        ComplexPoint::Generic(bla) => {
-                            todo!()
-                        }
-                    }
-                }
+                        .get(point.get_complex_index()),
+                    Some(definition),
+                    callable,
+                ),
                 MissingOrUnknown => on_missing(self.clone()),
                 FileReference => {
                     let f = self.database.get_loaded_python_file(point.get_file_index());
@@ -199,10 +175,44 @@ impl<'a> Inferred<'a> {
                 }
                 _ => unreachable!(),
             },
-            InferredState::UnsavedComplex(complex) => {
+            InferredState::UnsavedComplex(complex) => self.run_on_complex(complex, None, callable),
+            InferredState::UnsavedSpecific(specific) => {
                 todo!()
             }
-            InferredState::UnsavedSpecific(specific) => {
+        }
+    }
+
+    #[inline]
+    fn run_on_complex<T>(
+        &self,
+        complex: &ComplexPoint,
+        definition: Option<&NodeReference<'a>>,
+        callable: impl Fn(&dyn Value<'a>) -> T,
+    ) -> T {
+        match complex {
+            ComplexPoint::Union(lst) => {
+                todo!()
+            }
+            ComplexPoint::Class(cls_storage) => {
+                let definition = definition.unwrap();
+                let class = Class::new(
+                    definition.file,
+                    definition.node.index,
+                    &cls_storage.symbol_table,
+                );
+                callable(&class)
+            }
+            ComplexPoint::Instance(bla) => {
+                todo!()
+            }
+            ComplexPoint::Method(bla, bar) => {
+                todo!()
+            }
+            ComplexPoint::Closure(function, execution) => {
+                let f = self.database.get_loaded_python_file(function.file);
+                callable(&Function::new(f, function.node_index, Some(execution)))
+            }
+            ComplexPoint::Generic(bla) => {
                 todo!()
             }
         }
@@ -249,7 +259,7 @@ impl<'a> Inferred<'a> {
 
     pub fn resolve_closure_and_params(
         self,
-        function: &Function<'a>,
+        function: &Function<'a, '_>,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
         if let InferredState::Saved(definition, point) = self.state {

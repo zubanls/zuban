@@ -9,14 +9,14 @@ use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Class<'a> {
+pub struct Class<'a, 'b> {
     file: &'a PythonFile,
-    symbol_table: &'a SymbolTable,
+    symbol_table: &'b SymbolTable,
     node_index: NodeIndex,
 }
 
-impl<'a> Class<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
+impl<'a, 'b> Class<'a, 'b> {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'b SymbolTable) -> Self {
         Self {
             file,
             node_index,
@@ -25,7 +25,7 @@ impl<'a> Class<'a> {
     }
 }
 
-impl<'a> Value<'a> for Class<'a> {
+impl<'a, 'b> Value<'a> for Class<'a, 'b> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Class
     }

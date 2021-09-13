@@ -304,9 +304,9 @@ pub enum ComplexPoint {
 
 #[derive(Debug, Clone)]
 pub struct Execution {
-    function: PointLink,
-    in_: Option<Box<Execution>>,
-    argument_node: PointLink,
+    pub function: PointLink,
+    pub in_: Option<Box<Execution>>,
+    pub argument_node: PointLink,
 }
 
 impl Execution {

@@ -8,21 +8,26 @@ use parsa_python::{
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
-use crate::database::{Database, Locality, Point, PointLink, Specific};
+use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inferred::Inferred;
 
 #[derive(Debug)]
-pub struct Function<'a> {
+pub struct Function<'a, 'b> {
     file: &'a PythonFile,
     node_index: NodeIndex,
+    in_: Option<&'b Execution>,
 }
 
-impl<'a> Function<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex) -> Self {
-        Self { file, node_index }
+impl<'a, 'b> Function<'a, 'b> {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, in_: Option<&'b Execution>) -> Self {
+        Self {
+            file,
+            node_index,
+            in_,
+        }
     }
 
     fn get_node(&self) -> PyNode<'a> {
@@ -56,12 +61,39 @@ impl<'a> Function<'a> {
         param_name_index: NodeIndex,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
-        for param in self.iter_inferrable_params(args) {
+        let func_node = self
+            .file
+            .tree
+            .get_node_by_index(param_name_index)
+            .get_parent_until(&[Nonterminal(NonterminalType::function_def)])
+            .unwrap();
+        let temporary_args;
+        let temporary_func;
+        let (check_args, func) = if func_node.index == self.node_index {
+            (args, self)
+        } else {
+            let mut execution = self.in_;
+            loop {
+                let exec = execution.unwrap();
+                if func_node.index == exec.function.node_index {
+                    let f = database.get_loaded_python_file(exec.argument_node.file);
+                    let primary_node = f.tree.get_node_by_index(exec.argument_node.node_index);
+                    temporary_args = Arguments::new(f, primary_node, primary_node.get_nth_child(2));
+
+                    let f_func = database.get_loaded_python_file(exec.function.file);
+                    temporary_func =
+                        Function::new(f_func, exec.function.node_index, exec.in_.as_deref());
+                    break (&temporary_args, &temporary_func);
+                }
+                execution = exec.in_.as_deref();
+            }
+        };
+        for param in func.iter_inferrable_params(check_args) {
             if param.is_at(param_name_index) {
                 return param.infer(database);
             }
         }
-        unreachable!("{:?}", param_name_index)
+        unreachable!("{:?}", param_name_index);
     }
 
     fn execute_without_annotation(
@@ -107,7 +139,7 @@ impl<'a> Function<'a> {
     }
 }
 
-impl<'a> Value<'a> for Function<'a> {
+impl<'a, 'b> Value<'a> for Function<'a, 'b> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -296,7 +328,7 @@ trait TypeVarFinder<'a> {
 struct FunctionTypeVarFinder<'a, 'b> {
     database: &'a Database,
     file: &'a PythonFile,
-    function: &'b Function<'a>,
+    function: &'b Function<'a, 'b>,
     args: &'b Arguments<'a>,
     calculated_type_vars: Option<Vec<(&'a str, Inferred<'a>)>>,
 }
@@ -321,7 +353,7 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
     fn new(
         database: &'a Database,
         file: &'a PythonFile,
-        function: &'b Function<'a>,
+        function: &'b Function<'a, 'b>,
         args: &'b Arguments<'a>,
     ) -> Self {
         Self {

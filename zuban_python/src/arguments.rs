@@ -21,7 +21,23 @@ pub struct Arguments<'a> {
 }
 
 impl<'a> Arguments<'a> {
-    pub fn new_empty_arguments(file: &'a PythonFile, primary_node: PyNode<'a>) -> Self {
+    pub fn new(
+        f: &'a PythonFile,
+        primary_node: PyNode<'a>,
+        arguments_node: PyNode<'a>,
+    ) -> Arguments<'a> {
+        use NonterminalType::*;
+        debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
+        if arguments_node.is_type(Nonterminal(arguments)) {
+            Arguments::new_with_arguments(f, primary_node, arguments_node)
+        } else if arguments_node.is_type(Nonterminal(comprehension)) {
+            Arguments::new_comprehension(f, primary_node, arguments_node)
+        } else {
+            Arguments::new_empty_arguments(f, primary_node)
+        }
+    }
+
+    fn new_empty_arguments(file: &'a PythonFile, primary_node: PyNode<'a>) -> Self {
         Self {
             file,
             primary_node,
@@ -29,7 +45,7 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    pub fn new_comprehension(
+    fn new_comprehension(
         file: &'a PythonFile,
         primary_node: PyNode<'a>,
         comprehension: PyNode<'a>,
@@ -41,7 +57,7 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    pub fn new_with_arguments(
+    fn new_with_arguments(
         file: &'a PythonFile,
         primary_node: PyNode<'a>,
         arguments: PyNode<'a>,
