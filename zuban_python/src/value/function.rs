@@ -18,7 +18,7 @@ use crate::inferred::Inferred;
 pub struct Function<'a, 'b> {
     file: &'a PythonFile,
     node_index: NodeIndex,
-    in_: Option<&'b Execution>,
+    pub in_: Option<&'b Execution>,
 }
 
 impl<'a, 'b> Function<'a, 'b> {
@@ -134,8 +134,12 @@ impl<'a, 'b> Function<'a, 'b> {
         false
     }
 
-    pub fn to_point_link(&self) -> PointLink {
-        PointLink::new(self.file.get_file_index(), self.node_index)
+    pub fn as_execution(&self, argument_link: PointLink) -> Execution {
+        Execution::new(
+            PointLink::new(self.file.get_file_index(), self.node_index),
+            argument_link,
+            self.in_,
+        )
     }
 }
 

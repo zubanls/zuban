@@ -310,10 +310,10 @@ pub struct Execution {
 }
 
 impl Execution {
-    pub fn new(function: PointLink, argument_node: PointLink) -> Self {
+    pub fn new(function: PointLink, argument_node: PointLink, in_: Option<&Execution>) -> Self {
         Self {
             function,
-            in_: None,
+            in_: in_.map(|x| Box::new(x.clone())),
             argument_node,
         }
     }

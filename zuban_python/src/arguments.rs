@@ -82,10 +82,10 @@ impl<'a> Arguments<'a> {
     }
 
     pub fn as_execution(&self, function: &Function) -> Execution {
-        Execution::new(
-            function.to_point_link(),
-            PointLink::new(self.file.get_file_index(), self.primary_node.index),
-        )
+        function.as_execution(PointLink::new(
+            self.file.get_file_index(),
+            self.primary_node.index,
+        ))
     }
 }
 
