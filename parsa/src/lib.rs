@@ -673,7 +673,6 @@ macro_rules! create_grammar {
             }
         }
 
-        #[derive(Debug)]
         pub struct $Tree {
             internal_tree: $crate::InternalTree
         }
@@ -722,6 +721,12 @@ macro_rules! create_grammar {
                     }
                 }
                 unreachable!();
+            }
+        }
+
+        impl std::fmt::Debug for $Tree {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.debug_struct("Tree").field("nodes", &self.get_nodes()).finish()
             }
         }
 
