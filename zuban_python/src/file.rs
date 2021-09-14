@@ -663,11 +663,15 @@ impl<'a> PythonInference<'a> {
         let point = self.file.get_point(node.index);
         if point.is_calculated() {
             debug!(
-                "Infer {:?} ({}, {}) from cache: {:?}",
+                "Infer {:?} ({}, {}) from cache: {}",
                 get_node_debug_output(node),
                 self.file.get_file_index(),
                 node.index,
-                point.get_type(),
+                if matches!(point.get_type(), PointType::LanguageSpecific) {
+                    format!("{:?}", point.get_language_specific())
+                } else {
+                    format!("{:?}", point.get_type())
+                },
             );
             match point.get_type() {
                 PointType::Redirect => {
