@@ -1,6 +1,7 @@
-use crate::database::{Database, Execution, PointLink};
+use crate::database::{Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::value::Function;
 use parsa::Node;
@@ -117,10 +118,10 @@ impl<'a> Argument<'a> {
         }
     }
 
-    pub fn infer(&self, database: &'a Database) -> Inferred<'a> {
+    pub fn infer(&self, i_s: &mut InferenceState<'a>) -> Inferred<'a> {
         self.file
             // TODO this execution is wrong
-            .get_inference(database, None)
+            .get_inference(i_s, None)
             .infer_named_expression(self.node)
     }
 }

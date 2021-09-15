@@ -1,7 +1,7 @@
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::Database;
 use crate::file::PythonFile;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
@@ -26,18 +26,18 @@ impl<'a> Value<'a> for Module<'a> {
         todo!()
     }
 
-    fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
         self.file.calculate_global_definitions_and_references();
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
-                .get_inference(database, None)
+                .get_inference(i_s, None)
                 .infer_name_by_index(node_index)
         } else {
             todo!()
         }
     }
 
-    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
         todo!()
     }
 }

@@ -1,6 +1,7 @@
 use crate::database::Database;
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inference_state::InferenceState;
 use crate::value::{Value, ValueKind};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PyNode, PyNodeType, TerminalType};
@@ -104,10 +105,11 @@ pub trait LanguageTreeName<'a> {
 impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
     fn tree_infer(&self) -> ValueNames<'a> {
         if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
+            let mut i_s = InferenceState::new(self.database);
             self.file
-                .get_inference(self.database, None)
+                .get_inference(&mut i_s, None)
                 .infer_name(self.tree_node)
-                .to_value_names()
+                .to_value_names(&mut i_s)
         } else {
             vec![]
         }

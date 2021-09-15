@@ -8,10 +8,11 @@ use parsa_python::{
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
-use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
+use crate::database::{Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 #[derive(Debug)]
@@ -57,7 +58,7 @@ impl<'a, 'b> Function<'a, 'b> {
 
     pub fn infer_param(
         &self,
-        database: &'a Database,
+        i_s: &mut InferenceState<'a>,
         param_name_index: NodeIndex,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
@@ -76,11 +77,11 @@ impl<'a, 'b> Function<'a, 'b> {
             loop {
                 let exec = execution.unwrap();
                 if func_node.index == exec.function.node_index {
-                    let f = database.get_loaded_python_file(exec.argument_node.file);
+                    let f = i_s.database.get_loaded_python_file(exec.argument_node.file);
                     let primary_node = f.tree.get_node_by_index(exec.argument_node.node_index);
                     temporary_args = Arguments::new(f, primary_node, primary_node.get_nth_child(2));
 
-                    let f_func = database.get_loaded_python_file(exec.function.file);
+                    let f_func = i_s.database.get_loaded_python_file(exec.function.file);
                     temporary_func =
                         Function::new(f_func, exec.function.node_index, exec.in_.as_deref());
                     break (&temporary_args, &temporary_func);
@@ -90,7 +91,7 @@ impl<'a, 'b> Function<'a, 'b> {
         };
         for param in func.iter_inferrable_params(check_args) {
             if param.is_at(param_name_index) {
-                return param.infer(database);
+                return param.infer(i_s);
             }
         }
         unreachable!("{:?}", param_name_index);
@@ -98,7 +99,7 @@ impl<'a, 'b> Function<'a, 'b> {
 
     fn execute_without_annotation(
         &self,
-        database: &'a Database,
+        i_s: &mut InferenceState<'a>,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
         if self.is_generator() {
@@ -109,9 +110,9 @@ impl<'a, 'b> Function<'a, 'b> {
             // TODO multiple returns, this is an early exit
             return self
                 .file
-                .get_inference(database, self.in_)
+                .get_inference(i_s, self.in_)
                 .infer_star_expressions(node.get_nth_child(1))
-                .resolve_closure_and_params(self, args);
+                .resolve_closure_and_params(i_s, self, args);
         }
         todo!("Should just return None or maybe NoReturn?");
     }
@@ -153,28 +154,25 @@ impl<'a, 'b> Value<'a> for Function<'a, 'b> {
         func_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 
-    fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
         todo!()
     }
 
-    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
             let expr = return_annotation.get_nth_child(1);
             if let Some(inferred) = resolve_type_vars(
-                database,
+                i_s,
                 self.file,
                 expr,
-                &mut FunctionTypeVarFinder::new(database, self.file, self, args),
+                &mut FunctionTypeVarFinder::new(self.file, self, args),
             ) {
                 inferred
             } else {
-                let inferred = self
-                    .file
-                    .get_inference(database, None)
-                    .infer_expression(expr);
-                inferred.run_on_value(|v| {
+                let inferred = self.file.get_inference(i_s, None).infer_expression(expr);
+                inferred.run_on_value(i_s, |i_s, v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
                         Point::new_simple_language_specific(
@@ -185,11 +183,11 @@ impl<'a, 'b> Value<'a> for Function<'a, 'b> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    Inferred::new_and_save(database, self.file, return_annotation, point)
+                    Inferred::new_and_save(self.file, return_annotation, point)
                 })
             }
         } else {
-            self.execute_without_annotation(database, args)
+            self.execute_without_annotation(i_s, args)
         }
     }
 }
@@ -303,21 +301,23 @@ enum ParamType {
 }
 
 fn resolve_type_vars<'a>(
-    database: &'a Database,
+    i_s: &mut InferenceState<'a>,
     file: &'a PythonFile,
     node: PyNode<'a>,
     type_var_finder: &mut impl TypeVarFinder<'a>,
 ) -> Option<Inferred<'a>> {
     //let type_var = Ty
-    let inferred = file.get_inference(database, None).infer_expression(node);
-    if inferred.is_type_var() {
-        type_var_finder.lookup(node.get_code()).or_else(|| todo!())
+    let inferred = file.get_inference(i_s, None).infer_expression(node);
+    if inferred.is_type_var(i_s) {
+        type_var_finder
+            .lookup(i_s, node.get_code())
+            .or_else(|| todo!())
     } else {
         if !node.is_leaf() {
             for node in node.iter_children() {
                 if node.is_type(Terminal(TerminalType::Name)) {
                     if let Some(resolved_type_var) =
-                        resolve_type_vars(database, file, node, type_var_finder)
+                        resolve_type_vars(i_s, file, node, type_var_finder)
                     {
                         todo!()
                     }
@@ -329,11 +329,10 @@ fn resolve_type_vars<'a>(
 }
 
 trait TypeVarFinder<'a> {
-    fn lookup(&mut self, name: &str) -> Option<Inferred<'a>>;
+    fn lookup(&mut self, i_s: &mut InferenceState<'a>, name: &str) -> Option<Inferred<'a>>;
 }
 
 struct FunctionTypeVarFinder<'a, 'b> {
-    database: &'a Database,
     file: &'a PythonFile,
     function: &'b Function<'a, 'b>,
     args: &'b Arguments<'a>,
@@ -341,7 +340,7 @@ struct FunctionTypeVarFinder<'a, 'b> {
 }
 
 impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
-    fn lookup(&mut self, name: &str) -> Option<Inferred<'a>> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'a>, name: &str) -> Option<Inferred<'a>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
                 if *type_var == name {
@@ -350,21 +349,15 @@ impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
             }
             None
         } else {
-            self.calculate_type_vars();
-            self.lookup(name)
+            self.calculate_type_vars(i_s);
+            self.lookup(i_s, name)
         }
     }
 }
 
 impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
-    fn new(
-        database: &'a Database,
-        file: &'a PythonFile,
-        function: &'b Function<'a, 'b>,
-        args: &'b Arguments<'a>,
-    ) -> Self {
+    fn new(file: &'a PythonFile, function: &'b Function<'a, 'b>, args: &'b Arguments<'a>) -> Self {
         Self {
-            database,
             file,
             function,
             args,
@@ -372,7 +365,7 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
         }
     }
 
-    fn calculate_type_vars(&mut self) {
+    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'a>) {
         let mut calculated_type_vars = vec![];
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation_node {
@@ -382,12 +375,9 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
                 {
-                    let inferred = self
-                        .file
-                        .get_inference(self.database, None)
-                        .infer_expression(name);
-                    if inferred.is_type_var() {
-                        calculated_type_vars.push((name.get_code(), p.infer(self.database)));
+                    let inferred = self.file.get_inference(i_s, None).infer_expression(name);
+                    if inferred.is_type_var(i_s) {
+                        calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {
                         todo!()
                     }
@@ -454,10 +444,10 @@ struct InferrableParam<'a> {
 }
 
 impl<'a> InferrableParam<'a> {
-    fn infer(self, database: &'a Database) -> Inferred<'a> {
+    fn infer(self, i_s: &mut InferenceState<'a>) -> Inferred<'a> {
         debug!("Infer param {}", self.param.get_name());
         self.argument
-            .map(|a| a.infer(database))
+            .map(|a| a.infer(i_s))
             .unwrap_or_else(|| todo!())
     }
 

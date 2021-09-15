@@ -5,6 +5,7 @@ mod module;
 
 use crate::arguments::Arguments;
 use crate::database::Database;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use class::Class;
 pub use function::Function;
@@ -58,8 +59,8 @@ pub trait Value<'a>: std::fmt::Debug {
 
     fn get_name(&self) -> &'a str;
 
-    fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a>;
-    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a>;
+    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a>;
+    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a>;
 
     fn is_type_var(&self, database: &'a Database) -> bool {
         false

@@ -2,8 +2,9 @@ use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{Database, Locality, Point, Specific};
+use crate::database::{Locality, Point, Specific};
 use crate::file::PythonFile;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
@@ -34,20 +35,20 @@ impl<'a, 'b> Value<'a> for Class<'a, 'b> {
         get_class_name(self.file.tree.get_node_by_index(self.node_index))
     }
 
-    fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
-                .get_inference(database, None)
+                .get_inference(i_s, None)
                 .infer_name_by_index(node_index)
         } else {
             todo!()
         }
     }
 
-    fn execute(&self, database: &'a Database, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, database: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
         // TODO locality!!!
         let point =
             Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);
-        Inferred::new_and_save(database, args.file, args.primary_node, point)
+        Inferred::new_and_save(args.file, args.primary_node, point)
     }
 }
