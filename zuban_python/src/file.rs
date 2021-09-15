@@ -140,7 +140,6 @@ impl File for PythonFile {
             let parent = leaf.get_parent().unwrap();
             if parent.is_type(Nonterminal(NonterminalType::primary)) {
                 let mut i_s = InferenceState::new(database);
-                self.calculate_global_definitions_and_references();
                 return self
                     .get_inference(&mut i_s, None)
                     .infer_expression_part(parent)
@@ -243,7 +242,6 @@ impl<'db> PythonFile {
     }
 
     fn calculate_node_scope_definitions(&self, node: PyNode) {
-        self.calculate_global_definitions_and_references();
         let symbol_table = SymbolTable::default();
         self.with_global_binder(|binder| {
             binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
@@ -257,6 +255,7 @@ impl<'db> PythonFile {
         i_s: &'b mut InferenceState<'db>,
         execution: Option<&'b Execution>,
     ) -> PythonInference<'db, 'b> {
+        self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
             file_index: self.get_file_index(),
