@@ -119,7 +119,8 @@ impl<'a> Argument<'a> {
 
     pub fn infer(&self, database: &'a Database) -> Inferred<'a> {
         self.file
-            .get_inference(database)
+            // TODO this execution is wrong
+            .get_inference(database, None)
             .infer_named_expression(self.node)
     }
 }

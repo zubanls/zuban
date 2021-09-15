@@ -73,7 +73,8 @@ impl<'a> Inferred<'a> {
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
-                                .infer_expression(self.database, definition.node.get_nth_child(1));
+                                .get_inference(self.database, None)
+                                .infer_expression(definition.node.get_nth_child(1));
                             if let Some(instance) = inferred.instantiate() {
                                 Box::new(WithValueName::new(self.database, instance))
                             } else {
@@ -147,12 +148,16 @@ impl<'a> Inferred<'a> {
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
-                                .infer_expression(self.database, definition.node.get_nth_child(1));
+                                .get_inference(self.database, None)
+                                .infer_expression(definition.node.get_nth_child(1));
                             todo!()
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(definition);
                             callable(&cls.instantiate().unwrap())
+                        }
+                        Specific::Param => {
+                            todo!()
                         }
                         _ => {
                             let instance = self.resolve_specific(specific);
@@ -283,7 +288,8 @@ impl<'a> Inferred<'a> {
     fn infer_instance_with_arguments_cls(&self, definition: &NodeReference<'a>) -> Self {
         definition
             .file
-            .infer_expression_part(self.database, definition.node.get_nth_child(0))
+            .get_inference(self.database, None)
+            .infer_expression_part(definition.node.get_nth_child(0))
     }
 
     fn instantiate(&self) -> Option<Instance<'a>> {

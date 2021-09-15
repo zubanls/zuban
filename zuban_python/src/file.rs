@@ -1,6 +1,7 @@
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
+    ComplexPoint, Database, Execution, FileIndex, Locality, LocalityLink, Point, PointType,
+    Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -139,7 +140,7 @@ impl File for PythonFile {
             if parent.is_type(Nonterminal(NonterminalType::primary)) {
                 self.calculate_global_definitions_and_references();
                 return self
-                    .get_inference(database)
+                    .get_inference(database, None)
                     .infer_expression_part(parent)
                     .to_value_names();
             }
@@ -249,19 +250,17 @@ impl<'db> PythonFile {
         });
     }
 
-    pub fn get_inference(&'db self, database: &'db Database) -> PythonInference<'db> {
+    pub fn get_inference<'b>(
+        &'db self,
+        database: &'db Database,
+        execution: Option<&'b Execution>,
+    ) -> PythonInference<'db, 'b> {
         PythonInference {
             file: self,
             file_index: self.get_file_index(),
             database,
+            execution,
         }
-    }
-
-    pub fn infer_name(&'db self, database: &'db Database, name: PyNode<'db>) -> ValueNames<'db> {
-        self.calculate_global_definitions_and_references();
-        self.get_inference(database)
-            .infer_name(name)
-            .to_value_names()
     }
 
     pub fn infer_name_by_index(
@@ -270,23 +269,7 @@ impl<'db> PythonFile {
         node_index: NodeIndex,
     ) -> Inferred<'db> {
         let node = self.tree.get_node_by_index(node_index);
-        self.get_inference(database).infer_name(node)
-    }
-
-    pub fn infer_expression(
-        &'db self,
-        database: &'db Database,
-        node: PyNode<'db>,
-    ) -> Inferred<'db> {
-        self.get_inference(database).infer_expression(node)
-    }
-
-    pub fn infer_expression_part(
-        &'db self,
-        database: &'db Database,
-        node: PyNode<'db>,
-    ) -> Inferred<'db> {
-        self.get_inference(database).infer_expression_part(node)
+        self.get_inference(database, None).infer_name(node)
     }
 
     #[inline]
@@ -311,13 +294,14 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'a> {
+pub struct PythonInference<'a, 'b> {
     file: &'a PythonFile,
     file_index: FileIndex,
     database: &'a Database,
+    execution: Option<&'b Execution>,
 }
 
-impl<'a> PythonInference<'a> {
+impl<'a, 'b> PythonInference<'a, 'b> {
     fn cache_stmt_name(&self, stmt: PyNode<'a>, name: PyNode<'a>) {
         debug!(
             "Infer stmt ({}, {})",
@@ -507,7 +491,7 @@ impl<'a> PythonInference<'a> {
         self.infer_expression(expr)
     }
 
-    fn infer_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_expression(&self, node: PyNode<'a>) -> Inferred<'a> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
         if let Some(result) = self.check_point_cache(node) {
@@ -532,7 +516,7 @@ impl<'a> PythonInference<'a> {
         inferred.save_redirect(self.file, node.index)
     }
 
-    fn infer_expression_part(&self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_expression_part(&self, node: PyNode<'a>) -> Inferred<'a> {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
@@ -681,7 +665,7 @@ impl<'a> PythonInference<'a> {
                     } else {
                         self.database
                             .get_loaded_python_file(file_index)
-                            .get_inference(self.database)
+                            .get_inference(self.database, None)
                             .follow_redirects_in_point_cache(point.get_node_index())
                     }
                 }
@@ -727,7 +711,7 @@ impl<'a> PythonInference<'a> {
         })
     }
 
-    fn infer_name(&self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_name(&self, node: PyNode<'a>) -> Inferred<'a> {
         // TODO move this after debug_assert_eq???
         if let Some(result) = self.check_point_cache(node) {
             return result;
