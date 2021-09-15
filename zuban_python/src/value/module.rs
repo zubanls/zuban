@@ -29,7 +29,9 @@ impl<'a> Value<'a> for Module<'a> {
     fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
         self.file.calculate_global_definitions_and_references();
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.file.infer_name_by_index(database, node_index)
+            self.file
+                .get_inference(database, None)
+                .infer_name_by_index(node_index)
         } else {
             todo!()
         }

@@ -263,15 +263,6 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn infer_name_by_index(
-        &'db self,
-        database: &'db Database,
-        node_index: NodeIndex,
-    ) -> Inferred<'db> {
-        let node = self.tree.get_node_by_index(node_index);
-        self.get_inference(database, None).infer_name(node)
-    }
-
     #[inline]
     pub fn get_point(&self, index: NodeIndex) -> Point {
         self.points[index as usize].get()
@@ -709,6 +700,11 @@ impl<'a, 'b> PythonInference<'a, 'b> {
                 todo!("{:?}, {:?}", self.file.get_file_index().0, node_index)
             }
         })
+    }
+
+    pub fn infer_name_by_index(&self, node_index: NodeIndex) -> Inferred<'a> {
+        let node = self.file.tree.get_node_by_index(node_index);
+        self.infer_name(node)
     }
 
     pub fn infer_name(&self, node: PyNode<'a>) -> Inferred<'a> {

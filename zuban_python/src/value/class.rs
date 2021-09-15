@@ -36,7 +36,9 @@ impl<'a, 'b> Value<'a> for Class<'a, 'b> {
 
     fn lookup(&self, database: &'a Database, name: &str) -> Inferred<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.file.infer_name_by_index(database, node_index)
+            self.file
+                .get_inference(database, None)
+                .infer_name_by_index(node_index)
         } else {
             todo!()
         }
