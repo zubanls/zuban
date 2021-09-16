@@ -118,7 +118,7 @@ impl<'a> Argument<'a> {
         }
     }
 
-    pub fn infer(&self, i_s: &mut InferenceState<'a>) -> Inferred<'a> {
+    pub fn infer(&self, i_s: &mut InferenceState<'a, '_>) -> Inferred<'a> {
         self.file
             // TODO this execution is wrong
             .get_inference(i_s, None)

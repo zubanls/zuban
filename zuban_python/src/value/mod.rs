@@ -59,8 +59,8 @@ pub trait Value<'a>: std::fmt::Debug {
 
     fn get_name(&self) -> &'a str;
 
-    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a>;
-    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a>;
+    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a>;
+    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a>;
 
     fn is_type_var(&self, database: &'a Database) -> bool {
         false

@@ -250,11 +250,11 @@ impl<'db> PythonFile {
         });
     }
 
-    pub fn get_inference<'b>(
+    pub fn get_inference<'b, 'c>(
         &'db self,
-        i_s: &'b mut InferenceState<'db>,
+        i_s: &'c mut InferenceState<'db, 'b>,
         execution: Option<&'b Execution>,
-    ) -> PythonInference<'db, 'b> {
+    ) -> PythonInference<'db, 'b, 'c> {
         self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
@@ -286,14 +286,14 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'a, 'b> {
+pub struct PythonInference<'a, 'b, 'c> {
     file: &'a PythonFile,
     file_index: FileIndex,
-    i_s: &'b mut InferenceState<'a>,
+    i_s: &'c mut InferenceState<'a, 'b>,
     execution: Option<&'b Execution>,
 }
 
-impl<'a, 'b> PythonInference<'a, 'b> {
+impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
     fn cache_stmt_name(&mut self, stmt: PyNode<'a>, name: PyNode<'a>) {
         debug!(
             "Infer stmt ({}, {})",

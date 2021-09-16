@@ -36,7 +36,7 @@ impl<'a> Value<'a> for Instance<'a> {
         get_class_name(self.file.tree.get_node_by_index(self.node_index))
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
                 .get_inference(i_s, None)
@@ -46,7 +46,7 @@ impl<'a> Value<'a> for Instance<'a> {
         }
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
         todo!()
     }
 

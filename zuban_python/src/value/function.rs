@@ -58,7 +58,7 @@ impl<'a, 'b> Function<'a, 'b> {
 
     pub fn infer_param(
         &self,
-        i_s: &mut InferenceState<'a>,
+        i_s: &mut InferenceState<'a, '_>,
         param_name_index: NodeIndex,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
@@ -99,7 +99,7 @@ impl<'a, 'b> Function<'a, 'b> {
 
     fn execute_without_annotation(
         &self,
-        i_s: &mut InferenceState<'a>,
+        i_s: &mut InferenceState<'a, '_>,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
         if self.is_generator() {
@@ -110,7 +110,7 @@ impl<'a, 'b> Function<'a, 'b> {
             // TODO multiple returns, this is an early exit
             return self
                 .file
-                .get_inference(i_s, self.in_)
+                .get_inference(&mut i_s.with_execution(self, args), self.in_)
                 .infer_star_expressions(node.get_nth_child(1))
                 .resolve_closure_and_params(i_s, self, args);
         }
@@ -154,11 +154,11 @@ impl<'a, 'b> Value<'a> for Function<'a, 'b> {
         func_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
         todo!()
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
@@ -300,11 +300,11 @@ enum ParamType {
     KeywordOnly,
 }
 
-fn resolve_type_vars<'a>(
-    i_s: &mut InferenceState<'a>,
+fn resolve_type_vars<'a, 'b, 'c>(
+    i_s: &mut InferenceState<'a, '_>,
     file: &'a PythonFile,
     node: PyNode<'a>,
-    type_var_finder: &mut impl TypeVarFinder<'a>,
+    type_var_finder: &mut impl TypeVarFinder<'a, 'b>,
 ) -> Option<Inferred<'a>> {
     //let type_var = Ty
     let inferred = file.get_inference(i_s, None).infer_expression(node);
@@ -328,8 +328,8 @@ fn resolve_type_vars<'a>(
     }
 }
 
-trait TypeVarFinder<'a> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'a>, name: &str) -> Option<Inferred<'a>>;
+trait TypeVarFinder<'a, 'b> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Option<Inferred<'a>>;
 }
 
 struct FunctionTypeVarFinder<'a, 'b> {
@@ -339,8 +339,8 @@ struct FunctionTypeVarFinder<'a, 'b> {
     calculated_type_vars: Option<Vec<(&'a str, Inferred<'a>)>>,
 }
 
-impl<'a, 'b> TypeVarFinder<'a> for FunctionTypeVarFinder<'a, 'b> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'a>, name: &str) -> Option<Inferred<'a>> {
+impl<'a, 'b> TypeVarFinder<'a, 'b> for FunctionTypeVarFinder<'a, 'b> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Option<Inferred<'a>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
                 if *type_var == name {
@@ -365,7 +365,7 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
         }
     }
 
-    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'a>) {
+    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'a, '_>) {
         let mut calculated_type_vars = vec![];
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation_node {
@@ -444,7 +444,7 @@ struct InferrableParam<'a> {
 }
 
 impl<'a> InferrableParam<'a> {
-    fn infer(self, i_s: &mut InferenceState<'a>) -> Inferred<'a> {
+    fn infer(self, i_s: &mut InferenceState<'a, '_>) -> Inferred<'a> {
         debug!("Infer param {}", self.param.get_name());
         self.argument
             .map(|a| a.infer(i_s))

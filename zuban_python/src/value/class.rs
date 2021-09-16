@@ -10,14 +10,14 @@ use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Class<'a, 'b> {
+pub struct Class<'a> {
     file: &'a PythonFile,
-    symbol_table: &'b SymbolTable,
+    symbol_table: &'a SymbolTable,
     node_index: NodeIndex,
 }
 
-impl<'a, 'b> Class<'a, 'b> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'b SymbolTable) -> Self {
+impl<'a> Class<'a> {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
         Self {
             file,
             node_index,
@@ -26,7 +26,7 @@ impl<'a, 'b> Class<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Value<'a> for Class<'a, 'b> {
+impl<'a> Value<'a> for Class<'a> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -35,7 +35,7 @@ impl<'a, 'b> Value<'a> for Class<'a, 'b> {
         get_class_name(self.file.tree.get_node_by_index(self.node_index))
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
                 .get_inference(i_s, None)
@@ -45,7 +45,7 @@ impl<'a, 'b> Value<'a> for Class<'a, 'b> {
         }
     }
 
-    fn execute(&self, database: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, database: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
         // TODO locality!!!
         let point =
             Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);

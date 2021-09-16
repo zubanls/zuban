@@ -28,7 +28,7 @@ pub struct Inferred<'a> {
     state: InferredState<'a>,
 }
 
-impl<'a> Inferred<'a> {
+impl<'a, 'b> Inferred<'a> {
     pub fn new_and_save(file: &'a PythonFile, node: PyNode<'a>, point: Point) -> Self {
         file.set_point(node.index, point);
         Self::new_saved(file, node, point)
@@ -47,7 +47,7 @@ impl<'a> Inferred<'a> {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_value_names(&self, i_s: &mut InferenceState<'a>) -> ValueNames<'a> {
+    pub fn to_value_names(&self, i_s: &mut InferenceState<'a, '_>) -> ValueNames<'a> {
         use PointType::*;
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
@@ -121,8 +121,8 @@ impl<'a> Inferred<'a> {
     #[inline]
     pub fn run<T>(
         &self,
-        i_s: &mut InferenceState<'a>,
-        callable: impl Fn(&mut InferenceState<'a>, &dyn Value<'a>) -> T,
+        i_s: &mut InferenceState<'a, '_>,
+        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> T,
         on_missing: impl Fn(Inferred<'a>) -> T,
     ) -> T {
         use PointType::*;
@@ -147,7 +147,13 @@ impl<'a> Inferred<'a> {
                             callable(i_s, &cls.instantiate().unwrap())
                         }
                         Specific::Param => {
-                            todo!()
+                            if let Some((function, args)) = i_s.current_execution {
+                                function
+                                    .infer_param(i_s, definition.node.index, args)
+                                    .run(i_s, callable, on_missing)
+                            } else {
+                                todo!()
+                            }
                         }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
@@ -155,15 +161,22 @@ impl<'a> Inferred<'a> {
                         }
                     }
                 }
-                Complex => self.run_on_complex(
-                    i_s,
-                    definition
+                Complex => {
+                    let complex = definition
                         .file
                         .complex_points
-                        .get(point.get_complex_index()),
-                    Some(definition),
-                    callable,
-                ),
+                        .get(point.get_complex_index());
+                    if let ComplexPoint::Class(cls_storage) = complex {
+                        let class = Class::new(
+                            definition.file,
+                            definition.node.index,
+                            &cls_storage.symbol_table,
+                        );
+                        callable(i_s, &class)
+                    } else {
+                        self.run_on_complex(i_s, complex, Some(definition), callable)
+                    }
+                }
                 MissingOrUnknown => on_missing(self.clone()),
                 FileReference => {
                     let f = i_s.database.get_loaded_python_file(point.get_file_index());
@@ -183,23 +196,17 @@ impl<'a> Inferred<'a> {
     #[inline]
     fn run_on_complex<T>(
         &self,
-        i_s: &mut InferenceState<'a>,
+        i_s: &mut InferenceState<'a, '_>,
         complex: &ComplexPoint,
         definition: Option<&NodeReference<'a>>,
-        callable: impl Fn(&mut InferenceState<'a>, &dyn Value<'a>) -> T,
+        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> T,
     ) -> T {
         match complex {
             ComplexPoint::Union(lst) => {
                 todo!()
             }
             ComplexPoint::Class(cls_storage) => {
-                let definition = definition.unwrap();
-                let class = Class::new(
-                    definition.file,
-                    definition.node.index,
-                    &cls_storage.symbol_table,
-                );
-                callable(i_s, &class)
+                unreachable!("Class is handled earlier")
             }
             ComplexPoint::Instance(bla) => {
                 todo!()
@@ -220,8 +227,8 @@ impl<'a> Inferred<'a> {
     #[inline]
     pub fn run_on_value(
         &self,
-        i_s: &mut InferenceState<'a>,
-        callable: impl Fn(&mut InferenceState<'a>, &dyn Value<'a>) -> Inferred<'a>,
+        i_s: &mut InferenceState<'a, '_>,
+        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> Inferred<'a>,
     ) -> Inferred<'a> {
         self.run(i_s, callable, |inferred| inferred)
     }
@@ -242,7 +249,7 @@ impl<'a> Inferred<'a> {
         )
     }
 
-    pub fn is_type_var(&self, i_s: &mut InferenceState<'a>) -> bool {
+    pub fn is_type_var(&self, i_s: &mut InferenceState<'a, '_>) -> bool {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::InstanceWithArguments
@@ -262,7 +269,7 @@ impl<'a> Inferred<'a> {
 
     pub fn resolve_closure_and_params(
         self,
-        i_s: &mut InferenceState<'a>,
+        i_s: &mut InferenceState<'a, '_>,
         function: &Function<'a, '_>,
         args: &Arguments<'a>,
     ) -> Inferred<'a> {
@@ -286,7 +293,7 @@ impl<'a> Inferred<'a> {
 
     fn infer_instance_with_arguments_cls(
         &self,
-        i_s: &mut InferenceState<'a>,
+        i_s: &mut InferenceState<'a, '_>,
         definition: &NodeReference<'a>,
     ) -> Self {
         definition

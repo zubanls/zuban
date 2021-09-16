@@ -26,7 +26,7 @@ impl<'a> Value<'a> for Module<'a> {
         todo!()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
         self.file.calculate_global_definitions_and_references();
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
@@ -37,7 +37,7 @@ impl<'a> Value<'a> for Module<'a> {
         }
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
         todo!()
     }
 }
