@@ -17,9 +17,9 @@ pub enum NameBinderType {
     Comprehension,
 }
 
-pub struct NameBinder<'db, 'b> {
+pub struct NameBinder<'db, 'a> {
     typ: NameBinderType,
-    symbol_table: &'b SymbolTable,
+    symbol_table: &'a SymbolTable,
     points: &'db [Cell<Point>],
     complex_points: &'db ComplexValues,
     unordered_references: Vec<PyNode<'db>>,
@@ -27,17 +27,17 @@ pub struct NameBinder<'db, 'b> {
     unresolved_names: Vec<PyNode<'db>>,
     file_index: FileIndex,
     parent_lookup_not_finished: bool,
-    parent: Option<&'b NameBinder<'db, 'b>>,
+    parent: Option<&'a NameBinder<'db, 'a>>,
 }
 
-impl<'db, 'b> NameBinder<'db, 'b> {
+impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
         typ: NameBinderType,
-        symbol_table: &'b SymbolTable,
+        symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
         complex_points: &'db ComplexValues,
         file_index: FileIndex,
-        parent: Option<&'b Self>,
+        parent: Option<&'a Self>,
     ) -> Self {
         Self {
             typ,
@@ -54,11 +54,11 @@ impl<'db, 'b> NameBinder<'db, 'b> {
     }
 
     pub fn with_global_binder(
-        symbol_table: &'b SymbolTable,
+        symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
         complex_points: &'db ComplexValues,
         file_index: FileIndex,
-        parent: Option<&'b Self>,
+        parent: Option<&'a Self>,
         func: impl FnOnce(&mut Self),
     ) {
         let mut binder = Self::new(

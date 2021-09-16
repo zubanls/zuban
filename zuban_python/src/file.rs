@@ -45,12 +45,12 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
-        fn calculate<'b>(
-            file: &'b PythonFile,
-            database: &'b Database,
-            node: PyNode<'b>,
+        fn calculate<'a>(
+            file: &'a PythonFile,
+            database: &'a Database,
+            node: PyNode<'a>,
             position: CodeIndex,
-        ) -> Leaf<'b> {
+        ) -> Leaf<'a> {
             match node.get_type() {
                 Terminal(t) | ErrorTerminal(t) => match t {
                     TerminalType::Name => Leaf::Name(Box::new(TreeName::new(database, file, node))),
@@ -250,11 +250,11 @@ impl<'db> PythonFile {
         });
     }
 
-    pub fn get_inference<'b, 'c>(
+    pub fn get_inference<'a, 'b>(
         &'db self,
-        i_s: &'c mut InferenceState<'db, 'b>,
-        execution: Option<&'b Execution>,
-    ) -> PythonInference<'db, 'b, 'c> {
+        i_s: &'b mut InferenceState<'db, 'a>,
+        execution: Option<&'a Execution>,
+    ) -> PythonInference<'db, 'a, 'b> {
         self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
@@ -286,14 +286,14 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'db, 'b, 'c> {
+pub struct PythonInference<'db, 'a, 'b> {
     file: &'db PythonFile,
     file_index: FileIndex,
-    i_s: &'c mut InferenceState<'db, 'b>,
-    execution: Option<&'b Execution>,
+    i_s: &'b mut InferenceState<'db, 'a>,
+    execution: Option<&'a Execution>,
 }
 
-impl<'db, 'b, 'c> PythonInference<'db, 'b, 'c> {
+impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_stmt_name(&mut self, stmt: PyNode<'db>, name: PyNode<'db>) {
         debug!(
             "Infer stmt ({}, {})",

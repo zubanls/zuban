@@ -28,7 +28,7 @@ pub struct Inferred<'db> {
     state: InferredState<'db>,
 }
 
-impl<'db, 'b> Inferred<'db> {
+impl<'db> Inferred<'db> {
     pub fn new_and_save(file: &'db PythonFile, node: PyNode<'db>, point: Point) -> Self {
         file.set_point(node.index, point);
         Self::new_saved(file, node, point)

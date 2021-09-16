@@ -16,14 +16,14 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 #[derive(Debug)]
-pub struct Function<'db, 'b> {
+pub struct Function<'db, 'a> {
     file: &'db PythonFile,
     node_index: NodeIndex,
-    pub in_: Option<&'b Execution>,
+    pub in_: Option<&'a Execution>,
 }
 
-impl<'db, 'b> Function<'db, 'b> {
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex, in_: Option<&'b Execution>) -> Self {
+impl<'db, 'a> Function<'db, 'a> {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex, in_: Option<&'a Execution>) -> Self {
         Self {
             file,
             node_index,
@@ -144,7 +144,7 @@ impl<'db, 'b> Function<'db, 'b> {
     }
 }
 
-impl<'db, 'b> Value<'db> for Function<'db, 'b> {
+impl<'db, 'a> Value<'db> for Function<'db, 'a> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -300,11 +300,11 @@ enum ParamType {
     KeywordOnly,
 }
 
-fn resolve_type_vars<'db, 'b>(
+fn resolve_type_vars<'db, 'a>(
     i_s: &mut InferenceState<'db, '_>,
     file: &'db PythonFile,
     node: PyNode<'db>,
-    type_var_finder: &mut impl TypeVarFinder<'db, 'b>,
+    type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
 ) -> Option<Inferred<'db>> {
     //let type_var = Ty
     let inferred = file.get_inference(i_s, None).infer_expression(node);
@@ -328,18 +328,18 @@ fn resolve_type_vars<'db, 'b>(
     }
 }
 
-trait TypeVarFinder<'db, 'b> {
+trait TypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
 }
 
-struct FunctionTypeVarFinder<'db, 'b> {
+struct FunctionTypeVarFinder<'db, 'a> {
     file: &'db PythonFile,
-    function: &'b Function<'db, 'b>,
-    args: &'b Arguments<'db>,
+    function: &'a Function<'db, 'a>,
+    args: &'a Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
 }
 
-impl<'db, 'b> TypeVarFinder<'db, 'b> for FunctionTypeVarFinder<'db, 'b> {
+impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
@@ -355,11 +355,11 @@ impl<'db, 'b> TypeVarFinder<'db, 'b> for FunctionTypeVarFinder<'db, 'b> {
     }
 }
 
-impl<'db, 'b> FunctionTypeVarFinder<'db, 'b> {
+impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     fn new(
         file: &'db PythonFile,
-        function: &'b Function<'db, 'b>,
-        args: &'b Arguments<'db>,
+        function: &'a Function<'db, 'a>,
+        args: &'a Arguments<'db>,
     ) -> Self {
         Self {
             file,

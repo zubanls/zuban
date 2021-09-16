@@ -2,12 +2,12 @@ use crate::arguments::Arguments;
 use crate::database::Database;
 use crate::value::Function;
 
-pub struct InferenceState<'db, 'b> {
+pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
-    pub current_execution: Option<(&'b Function<'db, 'b>, &'b Arguments<'db>)>,
+    pub current_execution: Option<(&'a Function<'db, 'a>, &'a Arguments<'db>)>,
 }
 
-impl<'db, 'b> InferenceState<'db, 'b> {
+impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn new(database: &'db Database) -> Self {
         Self {
             database,
@@ -15,7 +15,7 @@ impl<'db, 'b> InferenceState<'db, 'b> {
         }
     }
 
-    pub fn with_execution(&self, func: &'b Function<'db, 'b>, args: &'b Arguments<'db>) -> Self {
+    pub fn with_execution(&self, func: &'a Function<'db, 'a>, args: &'a Arguments<'db>) -> Self {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
