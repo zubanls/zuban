@@ -17,25 +17,25 @@ pub enum NameBinderType {
     Comprehension,
 }
 
-pub struct NameBinder<'a, 'b> {
+pub struct NameBinder<'db, 'b> {
     typ: NameBinderType,
     symbol_table: &'b SymbolTable,
-    points: &'a [Cell<Point>],
-    complex_points: &'a ComplexValues,
-    unordered_references: Vec<PyNode<'a>>,
-    unresolved_nodes: Vec<PyNode<'a>>,
-    unresolved_names: Vec<PyNode<'a>>,
+    points: &'db [Cell<Point>],
+    complex_points: &'db ComplexValues,
+    unordered_references: Vec<PyNode<'db>>,
+    unresolved_nodes: Vec<PyNode<'db>>,
+    unresolved_names: Vec<PyNode<'db>>,
     file_index: FileIndex,
     parent_lookup_not_finished: bool,
-    parent: Option<&'b NameBinder<'a, 'b>>,
+    parent: Option<&'b NameBinder<'db, 'b>>,
 }
 
-impl<'a, 'b> NameBinder<'a, 'b> {
+impl<'db, 'b> NameBinder<'db, 'b> {
     fn new(
         typ: NameBinderType,
         symbol_table: &'b SymbolTable,
-        points: &'a [Cell<Point>],
-        complex_points: &'a ComplexValues,
+        points: &'db [Cell<Point>],
+        complex_points: &'db ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
     ) -> Self {
@@ -55,8 +55,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     pub fn with_global_binder(
         symbol_table: &'b SymbolTable,
-        points: &'a [Cell<Point>],
-        complex_points: &'a ComplexValues,
+        points: &'db [Cell<Point>],
+        complex_points: &'db ComplexValues,
         file_index: FileIndex,
         parent: Option<&'b Self>,
         func: impl FnOnce(&mut Self),
@@ -77,7 +77,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         &mut self,
         typ: NameBinderType,
         symbol_table: &'_ SymbolTable,
-        mut func: impl FnMut(&mut NameBinder<'a, '_>),
+        mut func: impl FnMut(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
             typ,
@@ -93,7 +93,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.unresolved_nodes.extend(unresolved_names);
     }
 
-    fn add_new_definition(&self, name_def: PyNode<'a>, point: Point) {
+    fn add_new_definition(&self, name_def: PyNode<'db>, point: Point) {
         debug_assert_eq!(
             name_def.get_type(),
             Nonterminal(NonterminalType::name_definition)
@@ -106,25 +106,25 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.points[name.index as usize].set(point);
     }
 
-    fn add_point_definition(&mut self, name_def: PyNode<'a>, type_: Specific) {
+    fn add_point_definition(&mut self, name_def: PyNode<'db>, type_: Specific) {
         self.add_new_definition(
             name_def,
             Point::new_simple_language_specific(type_, Locality::Stmt),
         );
     }
 
-    fn add_redirect_definition(&mut self, name_def: PyNode<'a>, node_index: NodeIndex) {
+    fn add_redirect_definition(&mut self, name_def: PyNode<'db>, node_index: NodeIndex) {
         self.add_new_definition(
             name_def,
             Point::new_redirect(self.file_index, node_index, Locality::Stmt),
         );
     }
 
-    pub fn index_file(&mut self, file_node: PyNode<'a>) {
+    pub fn index_file(&mut self, file_node: PyNode<'db>) {
         self.index_stmts(file_node.iter_children(), true);
     }
 
-    fn index_block(&mut self, block_node: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_block(&mut self, block_node: PyNode<'db>, ordered: bool) -> NodeIndex {
         // Returns the latest return/yield index
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
@@ -143,7 +143,11 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_stmts(&mut self, stmts: impl Iterator<Item = PyNode<'a>>, ordered: bool) -> NodeIndex {
+    fn index_stmts(
+        &mut self,
+        stmts: impl Iterator<Item = PyNode<'db>>,
+        ordered: bool,
+    ) -> NodeIndex {
         use NonterminalType::*;
         //debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         let mut latest_return_or_yield = 0;
@@ -273,7 +277,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
-    fn index_for_stmt(&mut self, for_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_for_stmt(&mut self, for_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(for_stmt.get_type(), Nonterminal(NonterminalType::for_stmt));
         let mut latest_return_or_yield = 0;
         // "for" star_targets "in" star_expressions ":" block else_block?
@@ -302,7 +306,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_while_stmt(&mut self, while_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_while_stmt(&mut self, while_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             while_stmt.get_type(),
             Nonterminal(NonterminalType::while_stmt)
@@ -329,7 +333,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_with_stmt(&mut self, with_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_with_stmt(&mut self, with_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             with_stmt.get_type(),
             Nonterminal(NonterminalType::with_stmt)
@@ -354,7 +358,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_if_stmt(&mut self, if_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_if_stmt(&mut self, if_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
         // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
 
@@ -377,7 +381,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_try_stmt(&mut self, try_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_try_stmt(&mut self, try_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(try_stmt.get_type(), Nonterminal(NonterminalType::try_stmt));
         let mut latest_return_or_yield = 0;
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
@@ -412,7 +416,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_class(&mut self, class: PyNode<'a>) {
+    fn index_class(&mut self, class: PyNode<'db>) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
@@ -435,7 +439,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
     }
 
-    fn index_match_stmt(&mut self, match_stmt: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_match_stmt(&mut self, match_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
         debug_assert_eq!(
             match_stmt.get_type(),
             Nonterminal(NonterminalType::match_stmt)
@@ -444,7 +448,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         todo!("match_stmt")
     }
 
-    fn index_non_block_node(&mut self, node: PyNode<'a>, ordered: bool) -> NodeIndex {
+    fn index_non_block_node(&mut self, node: PyNode<'db>, ordered: bool) -> NodeIndex {
         use NonterminalType::*;
         const SEARCH_NAMES: &[PyNodeType] = &[
             Terminal(TerminalType::Name),
@@ -490,7 +494,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         latest_return_or_yield
     }
 
-    fn index_comprehension(&mut self, comp: PyNode<'a>, ordered: bool) {
+    fn index_comprehension(&mut self, comp: PyNode<'db>, ordered: bool) {
         // comprehension: named_expression for_if_clauses
         // dict_comprehension: dict_key_value for_if_clauses
         let clauses = comp.get_nth_child(1);
@@ -507,10 +511,10 @@ impl<'a, 'b> NameBinder<'a, 'b> {
 
     fn index_comprehension_clause(
         &mut self,
-        clauses: &mut impl Iterator<Item = PyNode<'a>>,
-        mut clause: PyNode<'a>,
+        clauses: &mut impl Iterator<Item = PyNode<'db>>,
+        mut clause: PyNode<'db>,
         // Either a named_expression or a dict_key_value
-        result_node: PyNode<'a>,
+        result_node: PyNode<'db>,
     ) {
         use NonterminalType::*;
         if clause.is_type(Nonterminal(async_for_if_clause)) {
@@ -537,7 +541,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         });
     }
 
-    fn index_function_name_and_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
+    fn index_function_name_and_param_defaults(&mut self, node: PyNode<'db>, ordered: bool) {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(function_def));
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
@@ -578,7 +582,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         );
     }
 
-    pub fn index_function_body(&mut self, func: PyNode<'a>) {
+    pub fn index_function_body(&mut self, func: PyNode<'db>) {
         // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         use NonterminalType::*;
         debug_assert_eq!(func.get_type(), Nonterminal(function_def));
@@ -630,7 +634,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         ));
     }
 
-    fn index_lambda_param_defaults(&mut self, node: PyNode<'a>, ordered: bool) {
+    fn index_lambda_param_defaults(&mut self, node: PyNode<'db>, ordered: bool) {
         use NonterminalType::*;
         // lambda: "lambda" [lambda_parameters] ":" expression
         let params = node.get_nth_child(1);
@@ -641,7 +645,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_lambda(&mut self, node: PyNode<'a>) {
+    fn index_lambda(&mut self, node: PyNode<'db>) {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(lambda));
         for child in node.iter_children() {
@@ -658,7 +662,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         }
     }
 
-    fn index_reference(&mut self, name: PyNode<'a>, parent: PyNode<'a>, ordered: bool) {
+    fn index_reference(&mut self, name: PyNode<'db>, parent: PyNode<'db>, ordered: bool) {
         use NonterminalType::*;
         debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
         if parent.is_type(Nonterminal(atom)) {
@@ -673,7 +677,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     }
 
     #[inline]
-    fn maybe_add_reference(&mut self, name: PyNode<'a>, ordered: bool) {
+    fn maybe_add_reference(&mut self, name: PyNode<'db>, ordered: bool) {
         if ordered {
             let mut n = None;
             self.add_reference(name, |name| n = Some(name));
@@ -688,8 +692,8 @@ impl<'a, 'b> NameBinder<'a, 'b> {
     #[inline]
     fn add_reference(
         &self,
-        name: PyNode<'a>,
-        mut unresolved_name_callback: impl FnMut(PyNode<'a>),
+        name: PyNode<'db>,
+        mut unresolved_name_callback: impl FnMut(PyNode<'db>),
     ) {
         let point = {
             if self.parent_lookup_not_finished {
@@ -708,7 +712,7 @@ impl<'a, 'b> NameBinder<'a, 'b> {
         self.points[name.index as usize].set(point);
     }
 
-    fn lookup_name(&self, name: PyNode<'a>) -> Option<NodeIndex> {
+    fn lookup_name(&self, name: PyNode<'db>) -> Option<NodeIndex> {
         self.symbol_table
             .lookup_symbol(name.get_code())
             // If the symbol is not defined in the symbol table, it can also be in a parent scope.

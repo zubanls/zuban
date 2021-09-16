@@ -7,26 +7,26 @@ use crate::value::Function;
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
-enum ArgumentsDetailed<'a> {
+enum ArgumentsDetailed<'db> {
     None,
-    Comprehension(PyNode<'a>),
-    Node(PyNode<'a>),
+    Comprehension(PyNode<'db>),
+    Node(PyNode<'db>),
 }
 
-pub struct Arguments<'a> {
+pub struct Arguments<'db> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    pub file: &'a PythonFile,
-    pub primary_node: PyNode<'a>,
-    details: ArgumentsDetailed<'a>,
+    pub file: &'db PythonFile,
+    pub primary_node: PyNode<'db>,
+    details: ArgumentsDetailed<'db>,
 }
 
-impl<'a> Arguments<'a> {
+impl<'db> Arguments<'db> {
     pub fn new(
-        f: &'a PythonFile,
-        primary_node: PyNode<'a>,
-        arguments_node: PyNode<'a>,
-    ) -> Arguments<'a> {
+        f: &'db PythonFile,
+        primary_node: PyNode<'db>,
+        arguments_node: PyNode<'db>,
+    ) -> Arguments<'db> {
         use NonterminalType::*;
         debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
         if arguments_node.is_type(Nonterminal(arguments)) {
@@ -38,7 +38,7 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    fn new_empty_arguments(file: &'a PythonFile, primary_node: PyNode<'a>) -> Self {
+    fn new_empty_arguments(file: &'db PythonFile, primary_node: PyNode<'db>) -> Self {
         Self {
             file,
             primary_node,
@@ -47,9 +47,9 @@ impl<'a> Arguments<'a> {
     }
 
     fn new_comprehension(
-        file: &'a PythonFile,
-        primary_node: PyNode<'a>,
-        comprehension: PyNode<'a>,
+        file: &'db PythonFile,
+        primary_node: PyNode<'db>,
+        comprehension: PyNode<'db>,
     ) -> Self {
         Self {
             file,
@@ -59,9 +59,9 @@ impl<'a> Arguments<'a> {
     }
 
     fn new_with_arguments(
-        file: &'a PythonFile,
-        primary_node: PyNode<'a>,
-        arguments: PyNode<'a>,
+        file: &'db PythonFile,
+        primary_node: PyNode<'db>,
+        arguments: PyNode<'db>,
     ) -> Self {
         Self {
             file,
@@ -70,7 +70,7 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    pub fn iter_arguments(&self) -> ArgumentIterator<'a> {
+    pub fn iter_arguments(&self) -> ArgumentIterator<'db> {
         match self.details {
             ArgumentsDetailed::Node(node) => {
                 ArgumentIterator::Iterator(self.file, node.iter_children())
@@ -90,19 +90,19 @@ impl<'a> Arguments<'a> {
     }
 }
 
-pub enum ArgumentType<'a> {
-    KeywordArgument(&'a str),
+pub enum ArgumentType<'db> {
+    KeywordArgument(&'db str),
     Argument,
 }
 
-pub struct Argument<'a> {
-    file: &'a PythonFile,
-    node: PyNode<'a>,
-    pub typ: ArgumentType<'a>,
+pub struct Argument<'db> {
+    file: &'db PythonFile,
+    node: PyNode<'db>,
+    pub typ: ArgumentType<'db>,
 }
 
-impl<'a> Argument<'a> {
-    fn new_argument(file: &'a PythonFile, node: PyNode<'a>) -> Self {
+impl<'db> Argument<'db> {
+    fn new_argument(file: &'db PythonFile, node: PyNode<'db>) -> Self {
         Self {
             typ: ArgumentType::Argument,
             file,
@@ -110,7 +110,7 @@ impl<'a> Argument<'a> {
         }
     }
 
-    fn new_keyword_argument(file: &'a PythonFile, node: PyNode<'a>, name: &'a str) -> Self {
+    fn new_keyword_argument(file: &'db PythonFile, node: PyNode<'db>, name: &'db str) -> Self {
         Self {
             typ: ArgumentType::KeywordArgument(name),
             file,
@@ -118,7 +118,7 @@ impl<'a> Argument<'a> {
         }
     }
 
-    pub fn infer(&self, i_s: &mut InferenceState<'a, '_>) -> Inferred<'a> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         self.file
             // TODO this execution is wrong
             .get_inference(i_s, None)
@@ -126,14 +126,14 @@ impl<'a> Argument<'a> {
     }
 }
 
-pub enum ArgumentIterator<'a> {
-    Iterator(&'a PythonFile, SiblingIterator<'a>),
-    Comprehension(&'a PythonFile, PyNode<'a>),
+pub enum ArgumentIterator<'db> {
+    Iterator(&'db PythonFile, SiblingIterator<'db>),
+    Comprehension(&'db PythonFile, PyNode<'db>),
     Finished,
 }
 
-impl<'a> Iterator for ArgumentIterator<'a> {
-    type Item = Argument<'a>;
+impl<'db> Iterator for ArgumentIterator<'db> {
+    type Item = Argument<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

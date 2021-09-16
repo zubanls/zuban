@@ -8,11 +8,11 @@ use parsa_python::{PyNode, PyNodeType, TerminalType};
 use std::fmt;
 
 type Signatures = Vec<()>;
-pub type Names<'a> = Vec<Box<dyn Name<'a>>>;
-pub type ValueNames<'a> = Vec<Box<dyn ValueName<'a> + 'a>>;
+pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
+pub type ValueNames<'db> = Vec<Box<dyn ValueName<'db> + 'db>>;
 
-pub struct TreePosition<'a> {
-    file: &'a dyn File,
+pub struct TreePosition<'db> {
+    file: &'db dyn File,
     position: CodeIndex,
 }
 
@@ -26,14 +26,14 @@ impl TreePosition<'_> {
     }
 }
 
-pub trait Name<'a>: fmt::Debug {
-    fn get_name(&self) -> &'a str;
+pub trait Name<'db>: fmt::Debug {
+    fn get_name(&self) -> &'db str;
 
     fn get_file_path(&self) -> &str;
 
-    fn get_start_position(&self) -> TreePosition<'a>;
+    fn get_start_position(&self) -> TreePosition<'db>;
 
-    fn get_end_position(&self) -> TreePosition<'a>;
+    fn get_end_position(&self) -> TreePosition<'db>;
 
     // TODO
     //fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
@@ -56,28 +56,28 @@ pub trait Name<'a>: fmt::Debug {
         vec![]
     }
 
-    fn infer(&self) -> ValueNames<'a>;
+    fn infer(&self) -> ValueNames<'db>;
 
-    fn goto(&self) -> Names<'a>;
+    fn goto(&self) -> Names<'db>;
 
     fn is_definition(&self) -> bool {
         false
     }
 }
 
-pub trait ValueName<'a>: Name<'a> {
+pub trait ValueName<'db>: Name<'db> {
     fn get_kind(&self) -> ValueKind;
 }
 
-pub struct TreeName<'a, F: File, N: Node<'a>> {
-    database: &'a Database,
-    file: &'a F,
+pub struct TreeName<'db, F: File, N: Node<'db>> {
+    database: &'db Database,
+    file: &'db F,
     tree_node: N,
 }
 
-impl<'a, F: File, N: Node<'a>> fmt::Debug for TreeName<'a, F, N>
+impl<'db, F: File, N: Node<'db>> fmt::Debug for TreeName<'db, F, N>
 where
-    Self: LanguageTreeName<'a>,
+    Self: LanguageTreeName<'db>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
@@ -87,8 +87,8 @@ where
     }
 }
 
-impl<'a, F: File, N: Node<'a>> TreeName<'a, F, N> {
-    pub fn new(database: &'a Database, file: &'a F, tree_node: N) -> Self {
+impl<'db, F: File, N: Node<'db>> TreeName<'db, F, N> {
+    pub fn new(database: &'db Database, file: &'db F, tree_node: N) -> Self {
         Self {
             database,
             tree_node,
@@ -97,13 +97,13 @@ impl<'a, F: File, N: Node<'a>> TreeName<'a, F, N> {
     }
 }
 
-pub trait LanguageTreeName<'a> {
-    fn tree_infer(&self) -> ValueNames<'a>;
-    fn tree_goto(&self) -> Names<'a>;
+pub trait LanguageTreeName<'db> {
+    fn tree_infer(&self) -> ValueNames<'db>;
+    fn tree_goto(&self) -> Names<'db>;
 }
 
-impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
-    fn tree_infer(&self) -> ValueNames<'a> {
+impl<'db> LanguageTreeName<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
+    fn tree_infer(&self) -> ValueNames<'db> {
         if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
             let mut i_s = InferenceState::new(self.database);
             self.file
@@ -115,16 +115,16 @@ impl<'a> LanguageTreeName<'a> for TreeName<'a, PythonFile, PyNode<'a>> {
         }
     }
 
-    fn tree_goto(&self) -> Names<'a> {
+    fn tree_goto(&self) -> Names<'db> {
         todo!()
     }
 }
 
-impl<'a, F: File, N: Node<'a>> Name<'a> for TreeName<'a, F, N>
+impl<'db, F: File, N: Node<'db>> Name<'db> for TreeName<'db, F, N>
 where
-    TreeName<'a, F, N>: LanguageTreeName<'a>,
+    TreeName<'db, F, N>: LanguageTreeName<'db>,
 {
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> &'db str {
         self.tree_node.get_code()
     }
 
@@ -132,14 +132,14 @@ where
         self.database.get_file_path(self.file.get_file_index())
     }
 
-    fn get_start_position(&self) -> TreePosition<'a> {
+    fn get_start_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
             position: self.tree_node.start(),
         }
     }
 
-    fn get_end_position(&self) -> TreePosition<'a> {
+    fn get_end_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
             position: self.tree_node.end(),
@@ -163,27 +163,27 @@ where
     }
     */
 
-    fn infer(&self) -> ValueNames<'a> {
+    fn infer(&self) -> ValueNames<'db> {
         self.tree_infer()
     }
 
-    fn goto(&self) -> Names<'a> {
+    fn goto(&self) -> Names<'db> {
         self.tree_goto()
     }
 }
 
-pub struct WithValueName<'a, T> {
-    database: &'a Database,
+pub struct WithValueName<'db, T> {
+    database: &'db Database,
     value: T,
 }
 
-impl<'a, T> WithValueName<'a, T> {
-    pub fn new(database: &'a Database, value: T) -> Self {
+impl<'db, T> WithValueName<'db, T> {
+    pub fn new(database: &'db Database, value: T) -> Self {
         Self { database, value }
     }
 }
 
-impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
+impl<'db, T: fmt::Debug> fmt::Debug for WithValueName<'db, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
             .field("value", &self.value)
@@ -191,8 +191,8 @@ impl<'a, T: fmt::Debug> fmt::Debug for WithValueName<'a, T> {
     }
 }
 
-impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
-    fn get_name(&self) -> &'a str {
+impl<'db, T: Value<'db>> Name<'db> for WithValueName<'db, T> {
+    fn get_name(&self) -> &'db str {
         self.value.get_name()
     }
 
@@ -201,12 +201,12 @@ impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
         //self.value.get_file().get_path()
     }
 
-    fn get_start_position(&self) -> TreePosition<'a> {
+    fn get_start_position(&self) -> TreePosition<'db> {
         todo!()
         //TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
-    fn get_end_position(&self) -> TreePosition<'a> {
+    fn get_end_position(&self) -> TreePosition<'db> {
         todo!()
         //TreePosition {file: self.value.get_file(), position: todo!()}
     }
@@ -223,11 +223,11 @@ impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
         todo!()
     }
 
-    fn infer(&self) -> ValueNames<'a> {
+    fn infer(&self) -> ValueNames<'db> {
         todo!()
     }
 
-    fn goto(&self) -> Names<'a> {
+    fn goto(&self) -> Names<'db> {
         todo!()
     }
 
@@ -237,7 +237,7 @@ impl<'a, T: Value<'a>> Name<'a> for WithValueName<'a, T> {
     */
 }
 
-impl<'a, T: Value<'a>> ValueName<'a> for WithValueName<'a, T> {
+impl<'db, T: Value<'db>> ValueName<'db> for WithValueName<'db, T> {
     fn get_kind(&self) -> ValueKind {
         self.value.get_kind()
     }

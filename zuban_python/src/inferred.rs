@@ -11,43 +11,43 @@ use parsa_python::PyNode;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
-struct NodeReference<'a> {
-    pub file: &'a PythonFile,
-    pub node: PyNode<'a>,
+struct NodeReference<'db> {
+    pub file: &'db PythonFile,
+    pub node: PyNode<'db>,
 }
 
 #[derive(Debug, Clone)]
-enum InferredState<'a> {
-    Saved(NodeReference<'a>, Point),
+enum InferredState<'db> {
+    Saved(NodeReference<'db>, Point),
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
 }
 
 #[derive(Clone)]
-pub struct Inferred<'a> {
-    state: InferredState<'a>,
+pub struct Inferred<'db> {
+    state: InferredState<'db>,
 }
 
-impl<'a, 'b> Inferred<'a> {
-    pub fn new_and_save(file: &'a PythonFile, node: PyNode<'a>, point: Point) -> Self {
+impl<'db, 'b> Inferred<'db> {
+    pub fn new_and_save(file: &'db PythonFile, node: PyNode<'db>, point: Point) -> Self {
         file.set_point(node.index, point);
         Self::new_saved(file, node, point)
     }
 
-    pub fn new_saved(file: &'a PythonFile, node: PyNode<'a>, point: Point) -> Self {
+    pub fn new_saved(file: &'db PythonFile, node: PyNode<'db>, point: Point) -> Self {
         Self {
             state: InferredState::Saved(NodeReference { file, node }, point),
         }
     }
 
-    pub fn new_unsaved_complex(database: &'a Database, complex: ComplexPoint) -> Self {
+    pub fn new_unsaved_complex(database: &'db Database, complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
         }
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_value_names(&self, i_s: &mut InferenceState<'a, '_>) -> ValueNames<'a> {
+    pub fn to_value_names(&self, i_s: &mut InferenceState<'db, '_>) -> ValueNames<'db> {
         use PointType::*;
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
@@ -121,9 +121,9 @@ impl<'a, 'b> Inferred<'a> {
     #[inline]
     pub fn run<T>(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
-        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> T,
-        on_missing: impl Fn(Inferred<'a>) -> T,
+        i_s: &mut InferenceState<'db, '_>,
+        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        on_missing: impl Fn(Inferred<'db>) -> T,
     ) -> T {
         use PointType::*;
         match &self.state {
@@ -196,10 +196,10 @@ impl<'a, 'b> Inferred<'a> {
     #[inline]
     fn run_on_complex<T>(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
+        i_s: &mut InferenceState<'db, '_>,
         complex: &ComplexPoint,
-        definition: Option<&NodeReference<'a>>,
-        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> T,
+        definition: Option<&NodeReference<'db>>,
+        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
     ) -> T {
         match complex {
             ComplexPoint::Union(lst) => {
@@ -227,13 +227,13 @@ impl<'a, 'b> Inferred<'a> {
     #[inline]
     pub fn run_on_value(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
-        callable: impl Fn(&mut InferenceState<'a, '_>, &dyn Value<'a>) -> Inferred<'a>,
-    ) -> Inferred<'a> {
+        i_s: &mut InferenceState<'db, '_>,
+        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
+    ) -> Inferred<'db> {
         self.run(i_s, callable, |inferred| inferred)
     }
 
-    fn resolve_specific(&self, database: &'a Database, specific: Specific) -> Instance<'a> {
+    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db> {
         load_builtin_instance_from_str(
             database,
             match specific {
@@ -249,7 +249,7 @@ impl<'a, 'b> Inferred<'a> {
         )
     }
 
-    pub fn is_type_var(&self, i_s: &mut InferenceState<'a, '_>) -> bool {
+    pub fn is_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::InstanceWithArguments
@@ -269,10 +269,10 @@ impl<'a, 'b> Inferred<'a> {
 
     pub fn resolve_closure_and_params(
         self,
-        i_s: &mut InferenceState<'a, '_>,
-        function: &Function<'a, '_>,
-        args: &Arguments<'a>,
-    ) -> Inferred<'a> {
+        i_s: &mut InferenceState<'db, '_>,
+        function: &Function<'db, '_>,
+        args: &Arguments<'db>,
+    ) -> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific {
                 if point.get_language_specific() == Specific::Closure {
@@ -293,8 +293,8 @@ impl<'a, 'b> Inferred<'a> {
 
     fn infer_instance_with_arguments_cls(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
-        definition: &NodeReference<'a>,
+        i_s: &mut InferenceState<'db, '_>,
+        definition: &NodeReference<'db>,
     ) -> Self {
         definition
             .file
@@ -302,7 +302,7 @@ impl<'a, 'b> Inferred<'a> {
             .infer_expression_part(definition.node.get_nth_child(0))
     }
 
-    fn instantiate(&self) -> Option<Instance<'a>> {
+    fn instantiate(&self) -> Option<Instance<'db>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 use_instance(definition.file, definition.node.index)
@@ -316,7 +316,7 @@ impl<'a, 'b> Inferred<'a> {
         }
     }
 
-    pub fn save_redirect(self, file: &'a PythonFile, index: NodeIndex) -> Self {
+    pub fn save_redirect(self, file: &'db PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
             InferredState::Saved(definition, point) => {
@@ -370,7 +370,10 @@ fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
     }
 }
 
-fn load_builtin_instance_from_str<'a>(database: &'a Database, name: &'static str) -> Instance<'a> {
+fn load_builtin_instance_from_str<'db>(
+    database: &'db Database,
+    name: &'static str,
+) -> Instance<'db> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.get_point(node_index);

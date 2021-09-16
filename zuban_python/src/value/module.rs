@@ -6,27 +6,27 @@ use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Module<'a> {
-    file: &'a PythonFile,
-    symbol_table: &'a SymbolTable,
+pub struct Module<'db> {
+    file: &'db PythonFile,
+    symbol_table: &'db SymbolTable,
 }
 
-impl<'a> Module<'a> {
-    pub fn new(file: &'a PythonFile, symbol_table: &'a SymbolTable) -> Self {
+impl<'db> Module<'db> {
+    pub fn new(file: &'db PythonFile, symbol_table: &'db SymbolTable) -> Self {
         Self { file, symbol_table }
     }
 }
 
-impl<'a> Value<'a> for Module<'a> {
+impl<'db> Value<'db> for Module<'db> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> &'db str {
         todo!()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         self.file.calculate_global_definitions_and_references();
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
@@ -37,7 +37,7 @@ impl<'a> Value<'a> for Module<'a> {
         }
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db> {
         todo!()
     }
 }

@@ -27,11 +27,11 @@ impl VirtualFileSystemReader for FileSystemReader {
 }
 
 #[derive(Debug)]
-pub enum Leaf<'a> {
-    Name(Box<dyn Name<'a> + 'a>),
+pub enum Leaf<'db> {
+    Name(Box<dyn Name<'db> + 'db>),
     String,
     Number,
-    Keyword(PyNode<'a>),
+    Keyword(PyNode<'db>),
     None,
 }
 
@@ -86,22 +86,22 @@ impl<T> AsAny for T {
 }
 
 pub trait File: std::fmt::Debug + AsAny {
-    fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
+    fn get_implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }
-    fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a>;
-    fn infer_operator_leaf<'a>(
-        &'a self,
-        database: &'a Database,
-        node: PyNode<'a>,
-    ) -> ValueNames<'a>;
+    fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db>;
+    fn infer_operator_leaf<'db>(
+        &'db self,
+        database: &'db Database,
+        node: PyNode<'db>,
+    ) -> ValueNames<'db>;
     fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 
-    fn get_file_path<'a>(&self, database: &'a Database) -> &'a str {
+    fn get_file_path<'db>(&self, database: &'db Database) -> &'db str {
         database.get_file_path(self.get_file_index())
     }
 }

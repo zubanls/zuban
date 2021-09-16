@@ -16,14 +16,14 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 #[derive(Debug)]
-pub struct Function<'a, 'b> {
-    file: &'a PythonFile,
+pub struct Function<'db, 'b> {
+    file: &'db PythonFile,
     node_index: NodeIndex,
     pub in_: Option<&'b Execution>,
 }
 
-impl<'a, 'b> Function<'a, 'b> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, in_: Option<&'b Execution>) -> Self {
+impl<'db, 'b> Function<'db, 'b> {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex, in_: Option<&'b Execution>) -> Self {
         Self {
             file,
             node_index,
@@ -31,11 +31,11 @@ impl<'a, 'b> Function<'a, 'b> {
         }
     }
 
-    fn get_node(&self) -> PyNode<'a> {
+    fn get_node(&self) -> PyNode<'db> {
         self.file.tree.get_node_by_index(self.node_index)
     }
 
-    fn iter_params(&self) -> ParamIterator<'a> {
+    fn iter_params(&self) -> ParamIterator<'db> {
         // function_def: "def" name_definition function_def_parameters ...
         // function_def_parameters: "(" [parameters] ")"
         let params = self.get_node().get_nth_child(2).get_nth_child(1);
@@ -51,17 +51,17 @@ impl<'a, 'b> Function<'a, 'b> {
 
     fn iter_inferrable_params(
         &self,
-        args: &Arguments<'a>,
-    ) -> impl Iterator<Item = InferrableParam<'a>> {
+        args: &Arguments<'db>,
+    ) -> impl Iterator<Item = InferrableParam<'db>> {
         InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
     }
 
     pub fn infer_param(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
+        i_s: &mut InferenceState<'db, '_>,
         param_name_index: NodeIndex,
-        args: &Arguments<'a>,
-    ) -> Inferred<'a> {
+        args: &Arguments<'db>,
+    ) -> Inferred<'db> {
         let func_node = self
             .file
             .tree
@@ -99,9 +99,9 @@ impl<'a, 'b> Function<'a, 'b> {
 
     fn execute_without_annotation(
         &self,
-        i_s: &mut InferenceState<'a, '_>,
-        args: &Arguments<'a>,
-    ) -> Inferred<'a> {
+        i_s: &mut InferenceState<'db, '_>,
+        args: &Arguments<'db>,
+    ) -> Inferred<'db> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
@@ -117,7 +117,7 @@ impl<'a, 'b> Function<'a, 'b> {
         todo!("Should just return None or maybe NoReturn?");
     }
 
-    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
+    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
         let def_point = self.file.get_point(self.node_index + 1);
         let first_return_or_yield = def_point.get_node_index();
         ReturnOrYieldIterator {
@@ -144,21 +144,21 @@ impl<'a, 'b> Function<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Value<'a> for Function<'a, 'b> {
+impl<'db, 'b> Value<'db> for Function<'db, 'b> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Function
     }
 
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> &'db str {
         let func_node = self.file.tree.get_node_by_index(self.node_index);
         func_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
@@ -192,13 +192,13 @@ impl<'a, 'b> Value<'a> for Function<'a, 'b> {
     }
 }
 
-struct ReturnOrYieldIterator<'a> {
-    file: &'a PythonFile,
+struct ReturnOrYieldIterator<'db> {
+    file: &'db PythonFile,
     next_node_index: NodeIndex,
 }
 
-impl<'a> Iterator for ReturnOrYieldIterator<'a> {
-    type Item = PyNode<'a>;
+impl<'db> Iterator for ReturnOrYieldIterator<'db> {
+    type Item = PyNode<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_node_index == 0 {
             None
@@ -211,13 +211,13 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
     }
 }
 
-enum ParamIterator<'a> {
-    Iterator(SiblingIterator<'a>, bool),
+enum ParamIterator<'db> {
+    Iterator(SiblingIterator<'db>, bool),
     Finished,
 }
 
-impl<'a> Iterator for ParamIterator<'a> {
-    type Item = Param<'a>;
+impl<'db> Iterator for ParamIterator<'db> {
+    type Item = Param<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Iterator(iterator, positional_only) => {
@@ -260,15 +260,15 @@ impl<'a> Iterator for ParamIterator<'a> {
     }
 }
 
-struct Param<'a> {
+struct Param<'db> {
     typ: ParamType,
-    name_node: PyNode<'a>,
-    annotation_node: Option<PyNode<'a>>,
-    default_node: Option<PyNode<'a>>,
+    name_node: PyNode<'db>,
+    annotation_node: Option<PyNode<'db>>,
+    default_node: Option<PyNode<'db>>,
 }
 
-impl<'a> Param<'a> {
-    fn new(param_children: &mut impl Iterator<Item = PyNode<'a>>, typ: ParamType) -> Self {
+impl<'db> Param<'db> {
+    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, typ: ParamType) -> Self {
         let name_node = param_children.next().unwrap();
         debug_assert_eq!(
             name_node.get_type(),
@@ -276,7 +276,7 @@ impl<'a> Param<'a> {
         );
         let annotation_node = param_children
             .next()
-            .map(|n: PyNode<'a>| n.get_nth_child(1));
+            .map(|n: PyNode<'db>| n.get_nth_child(1));
         param_children.next();
         let default_node = param_children.next();
         Self {
@@ -287,7 +287,7 @@ impl<'a> Param<'a> {
         }
     }
 
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> &'db str {
         self.name_node.get_code()
     }
 }
@@ -300,12 +300,12 @@ enum ParamType {
     KeywordOnly,
 }
 
-fn resolve_type_vars<'a, 'b, 'c>(
-    i_s: &mut InferenceState<'a, '_>,
-    file: &'a PythonFile,
-    node: PyNode<'a>,
-    type_var_finder: &mut impl TypeVarFinder<'a, 'b>,
-) -> Option<Inferred<'a>> {
+fn resolve_type_vars<'db, 'b>(
+    i_s: &mut InferenceState<'db, '_>,
+    file: &'db PythonFile,
+    node: PyNode<'db>,
+    type_var_finder: &mut impl TypeVarFinder<'db, 'b>,
+) -> Option<Inferred<'db>> {
     //let type_var = Ty
     let inferred = file.get_inference(i_s, None).infer_expression(node);
     if inferred.is_type_var(i_s) {
@@ -328,19 +328,19 @@ fn resolve_type_vars<'a, 'b, 'c>(
     }
 }
 
-trait TypeVarFinder<'a, 'b> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Option<Inferred<'a>>;
+trait TypeVarFinder<'db, 'b> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
 }
 
-struct FunctionTypeVarFinder<'a, 'b> {
-    file: &'a PythonFile,
-    function: &'b Function<'a, 'b>,
-    args: &'b Arguments<'a>,
-    calculated_type_vars: Option<Vec<(&'a str, Inferred<'a>)>>,
+struct FunctionTypeVarFinder<'db, 'b> {
+    file: &'db PythonFile,
+    function: &'b Function<'db, 'b>,
+    args: &'b Arguments<'db>,
+    calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
 }
 
-impl<'a, 'b> TypeVarFinder<'a, 'b> for FunctionTypeVarFinder<'a, 'b> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Option<Inferred<'a>> {
+impl<'db, 'b> TypeVarFinder<'db, 'b> for FunctionTypeVarFinder<'db, 'b> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             for (type_var, result) in type_vars {
                 if *type_var == name {
@@ -355,8 +355,12 @@ impl<'a, 'b> TypeVarFinder<'a, 'b> for FunctionTypeVarFinder<'a, 'b> {
     }
 }
 
-impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
-    fn new(file: &'a PythonFile, function: &'b Function<'a, 'b>, args: &'b Arguments<'a>) -> Self {
+impl<'db, 'b> FunctionTypeVarFinder<'db, 'b> {
+    fn new(
+        file: &'db PythonFile,
+        function: &'b Function<'db, 'b>,
+        args: &'b Arguments<'db>,
+    ) -> Self {
         Self {
             file,
             function,
@@ -365,7 +369,7 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
         }
     }
 
-    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'a, '_>) {
+    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
         let mut calculated_type_vars = vec![];
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation_node {
@@ -388,14 +392,14 @@ impl<'a, 'b> FunctionTypeVarFinder<'a, 'b> {
     }
 }
 
-struct InferrableParamIterator<'a> {
-    arguments: ArgumentIterator<'a>,
-    params: ParamIterator<'a>,
-    unused_keyword_arguments: Vec<Argument<'a>>,
+struct InferrableParamIterator<'db> {
+    arguments: ArgumentIterator<'db>,
+    params: ParamIterator<'db>,
+    unused_keyword_arguments: Vec<Argument<'db>>,
 }
 
-impl<'a> InferrableParamIterator<'a> {
-    fn new(params: ParamIterator<'a>, arguments: ArgumentIterator<'a>) -> Self {
+impl<'db> InferrableParamIterator<'db> {
+    fn new(params: ParamIterator<'db>, arguments: ArgumentIterator<'db>) -> Self {
         InferrableParamIterator {
             arguments,
             params,
@@ -403,7 +407,7 @@ impl<'a> InferrableParamIterator<'a> {
         }
     }
 
-    fn get_next_argument(&mut self, param: &Param<'a>) -> Option<Argument<'a>> {
+    fn get_next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db>> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused.typ {
                 ArgumentType::KeywordArgument(name) => {
@@ -427,8 +431,8 @@ impl<'a> InferrableParamIterator<'a> {
     }
 }
 
-impl<'a> Iterator for InferrableParamIterator<'a> {
-    type Item = InferrableParam<'a>;
+impl<'db> Iterator for InferrableParamIterator<'db> {
+    type Item = InferrableParam<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.params.next().map(|param| {
@@ -438,13 +442,13 @@ impl<'a> Iterator for InferrableParamIterator<'a> {
     }
 }
 
-struct InferrableParam<'a> {
-    param: Param<'a>,
-    argument: Option<Argument<'a>>,
+struct InferrableParam<'db> {
+    param: Param<'db>,
+    argument: Option<Argument<'db>>,
 }
 
-impl<'a> InferrableParam<'a> {
-    fn infer(self, i_s: &mut InferenceState<'a, '_>) -> Inferred<'a> {
+impl<'db> InferrableParam<'db> {
+    fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!("Infer param {}", self.param.get_name());
         self.argument
             .map(|a| a.infer(i_s))

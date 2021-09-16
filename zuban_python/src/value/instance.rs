@@ -11,14 +11,18 @@ use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Instance<'a> {
-    file: &'a PythonFile,
-    symbol_table: &'a SymbolTable,
+pub struct Instance<'db> {
+    file: &'db PythonFile,
+    symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
 }
 
-impl<'a> Instance<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, symbol_table: &'a SymbolTable) -> Self {
+impl<'db> Instance<'db> {
+    pub fn new(
+        file: &'db PythonFile,
+        node_index: NodeIndex,
+        symbol_table: &'db SymbolTable,
+    ) -> Self {
         Self {
             file,
             node_index,
@@ -27,16 +31,16 @@ impl<'a> Instance<'a> {
     }
 }
 
-impl<'a> Value<'a> for Instance<'a> {
+impl<'db> Value<'db> for Instance<'db> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> &'db str {
         get_class_name(self.file.tree.get_node_by_index(self.node_index))
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a> {
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file
                 .get_inference(i_s, None)
@@ -46,11 +50,11 @@ impl<'a> Value<'a> for Instance<'a> {
         }
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a> {
+    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db> {
         todo!()
     }
 
-    fn is_type_var(&self, database: &'a Database) -> bool {
+    fn is_type_var(&self, database: &'db Database) -> bool {
         self.file.get_file_index() == database.python_state.get_typing().get_file_index()
             && self.get_name() == "TypeVar"
     }

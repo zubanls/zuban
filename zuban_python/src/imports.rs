@@ -24,9 +24,9 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
     todo!()
 }
 
-fn python_import<'a>(
+fn python_import<'db>(
     database: &Database,
-    directories: impl Iterator<Item = (&'a str, &'a [DirectoryOrFile])>,
+    directories: impl Iterator<Item = (&'db str, &'db [DirectoryOrFile])>,
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator

@@ -40,11 +40,11 @@ impl ComplexValues {
 }
 
 impl File for PythonFile {
-    fn get_implementation<'a>(&self, names: Names<'a>) -> Names<'a> {
+    fn get_implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         todo!()
     }
 
-    fn get_leaf<'a>(&'a self, database: &'a Database, position: CodeIndex) -> Leaf<'a> {
+    fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
         fn calculate<'b>(
             file: &'b PythonFile,
             database: &'b Database,
@@ -128,11 +128,11 @@ impl File for PythonFile {
         }
         calculate(self, database, left, position)
     }
-    fn infer_operator_leaf<'a>(
-        &'a self,
-        database: &'a Database,
-        leaf: PyNode<'a>,
-    ) -> ValueNames<'a> {
+    fn infer_operator_leaf<'db>(
+        &'db self,
+        database: &'db Database,
+        leaf: PyNode<'db>,
+    ) -> ValueNames<'db> {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.get_code())
@@ -286,15 +286,15 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'a, 'b, 'c> {
-    file: &'a PythonFile,
+pub struct PythonInference<'db, 'b, 'c> {
+    file: &'db PythonFile,
     file_index: FileIndex,
-    i_s: &'c mut InferenceState<'a, 'b>,
+    i_s: &'c mut InferenceState<'db, 'b>,
     execution: Option<&'b Execution>,
 }
 
-impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
-    fn cache_stmt_name(&mut self, stmt: PyNode<'a>, name: PyNode<'a>) {
+impl<'db, 'b, 'c> PythonInference<'db, 'b, 'c> {
+    fn cache_stmt_name(&mut self, stmt: PyNode<'db>, name: PyNode<'db>) {
         debug!(
             "Infer stmt ({}, {})",
             self.file.get_file_index(),
@@ -324,7 +324,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn cache_import_from(&mut self, imp: PyNode<'a>) {
+    fn cache_import_from(&mut self, imp: PyNode<'db>) {
         // | "from" ("." | "...")* dotted_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         use NonterminalType::*;
@@ -370,7 +370,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn infer_import_dotted_name(&mut self, dotted: PyNode<'a>) -> Inferred<'a> {
+    fn infer_import_dotted_name(&mut self, dotted: PyNode<'db>) -> Inferred<'db> {
         debug_assert_eq!(dotted.get_type(), Nonterminal(NonterminalType::dotted_name));
         // dotted_name: [dotted_name "."] Name
         let first = dotted.get_nth_child(0);
@@ -389,7 +389,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn cache_assignment_nodes(&mut self, assignment_node: PyNode<'a>) {
+    fn cache_assignment_nodes(&mut self, assignment_node: PyNode<'db>) {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
@@ -450,7 +450,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    pub fn infer_star_expressions(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_star_expressions(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         debug_assert_eq!(
             node.get_type(),
             Nonterminal(NonterminalType::star_expressions)
@@ -473,7 +473,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    pub fn infer_named_expression(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_named_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // named_expression: name_definition ":=" expression | expression
         debug_assert_eq!(
             node.get_type(),
@@ -486,7 +486,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         self.infer_expression(expr)
     }
 
-    pub fn infer_expression(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
         if let Some(result) = self.check_point_cache(node) {
@@ -511,7 +511,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         inferred.save_redirect(self.file, node.index)
     }
 
-    pub fn infer_expression_part(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_expression_part(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
@@ -521,7 +521,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn infer_primary(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    fn infer_primary(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         //   primary "." Name
         // | primary "(" [arguments | comprehension] ")"
         // | primary "[" slices "]"
@@ -553,7 +553,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn infer_atom(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    fn infer_atom(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(atom));
         if let Some(result) = self.check_point_cache(node) {
@@ -633,7 +633,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         Inferred::new_and_save(self.file, node, point)
     }
 
-    fn infer_name_reference(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    fn infer_name_reference(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         if let Some(result) = self.check_point_cache(node) {
             return result;
         }
@@ -641,7 +641,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
     }
 
     #[inline]
-    fn check_point_cache(&mut self, node: PyNode<'a>) -> Option<Inferred<'a>> {
+    fn check_point_cache(&mut self, node: PyNode<'db>) -> Option<Inferred<'db>> {
         let point = self.file.get_point(node.index);
         if point.is_calculated() {
             debug!(
@@ -697,7 +697,7 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         }
     }
 
-    fn follow_redirects_in_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'a>> {
+    fn follow_redirects_in_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
         let node = self.file.tree.get_node_by_index(node_index);
         self.check_point_cache(node).or_else(|| {
             if node.is_type(Terminal(TerminalType::Name)) {
@@ -708,12 +708,12 @@ impl<'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
         })
     }
 
-    pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'a> {
+    pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
         let node = self.file.tree.get_node_by_index(node_index);
         self.infer_name(node)
     }
 
-    pub fn infer_name(&mut self, node: PyNode<'a>) -> Inferred<'a> {
+    pub fn infer_name(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // TODO move this after debug_assert_eq???
         if let Some(result) = self.check_point_cache(node) {
             return result;
@@ -758,15 +758,15 @@ fn is_name_reference(name: PyNode) -> bool {
         .is_type(Nonterminal(NonterminalType::name_definition))
 }
 
-enum Target<'a> {
-    Tuple(TargetIterator<'a>),
-    Name(PyNode<'a>),
-    Expression(PyNode<'a>),
-    Starred(PyNode<'a>),
+enum Target<'db> {
+    Tuple(TargetIterator<'db>),
+    Name(PyNode<'db>),
+    Expression(PyNode<'db>),
+    Starred(PyNode<'db>),
 }
 
-impl<'a> Target<'a> {
-    fn new(node: PyNode<'a>) -> Self {
+impl<'db> Target<'db> {
+    fn new(node: PyNode<'db>) -> Self {
         // star_targets: ",".star_target+ [","]
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
@@ -790,12 +790,12 @@ impl<'a> Target<'a> {
     }
 }
 
-struct TargetIterator<'a> {
-    siblings: SiblingIterator<'a>,
+struct TargetIterator<'db> {
+    siblings: SiblingIterator<'db>,
 }
 
-impl<'a> Iterator for TargetIterator<'a> {
-    type Item = Target<'a>;
+impl<'db> Iterator for TargetIterator<'db> {
+    type Item = Target<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let current = self.siblings.next();

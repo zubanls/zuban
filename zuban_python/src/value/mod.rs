@@ -52,17 +52,17 @@ pub enum ValueKind {
     TypeParameter = 26,
 }
 
-pub trait Value<'a>: std::fmt::Debug {
+pub trait Value<'db>: std::fmt::Debug {
     fn get_kind(&self) -> ValueKind;
 
-    //fn get_file(&self) -> &'a dyn File;
+    //fn get_file(&self) -> &'db dyn File;
 
-    fn get_name(&self) -> &'a str;
+    fn get_name(&self) -> &'db str;
 
-    fn lookup(&self, i_s: &mut InferenceState<'a, '_>, name: &str) -> Inferred<'a>;
-    fn execute(&self, i_s: &mut InferenceState<'a, '_>, args: &Arguments<'a>) -> Inferred<'a>;
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;
+    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db>;
 
-    fn is_type_var(&self, database: &'a Database) -> bool {
+    fn is_type_var(&self, database: &'db Database) -> bool {
         false
     }
 }
