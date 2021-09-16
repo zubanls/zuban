@@ -113,7 +113,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .get_inference(&mut inner_i_s, self.in_)
                 .infer_star_expressions(node.get_nth_child(1))
-                .resolve_function_return(&mut inner_i_s, self, args);
+                .resolve_function_return(&mut inner_i_s);
         }
         todo!("Should just return None or maybe NoReturn?");
     }

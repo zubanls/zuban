@@ -1,4 +1,3 @@
-use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
 use crate::debug;
 use crate::file::PythonFile;
@@ -11,7 +10,7 @@ use parsa_python::PyNode;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
-struct NodeReference<'db> {
+pub struct NodeReference<'db> {
     pub file: &'db PythonFile,
     pub node: PyNode<'db>,
 }
@@ -147,13 +146,7 @@ impl<'db> Inferred<'db> {
                             callable(i_s, &cls.instantiate().unwrap())
                         }
                         Specific::Param => {
-                            if let Some((function, args)) = i_s.current_execution {
-                                function
-                                    .infer_param(i_s, definition.node.index, args)
-                                    .run(i_s, callable, on_missing)
-                            } else {
-                                todo!()
-                            }
+                            i_s.infer_param(definition).run(i_s, callable, on_missing)
                         }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
@@ -267,18 +260,13 @@ impl<'db> Inferred<'db> {
         false
     }
 
-    pub fn resolve_function_return(
-        self,
-        i_s: &mut InferenceState<'db, '_>,
-        function: &Function<'db, '_>,
-        args: &Arguments<'db>,
-    ) -> Inferred<'db> {
+    pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific {
                 match point.get_language_specific() {
                     Specific::InstanceWithArguments => {
                         let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
-                        return cls.resolve_function_return(i_s, function, args);
+                        return cls.resolve_function_return(i_s);
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(
@@ -288,12 +276,12 @@ impl<'db> Inferred<'db> {
                                     definition.file.get_file_index(),
                                     definition.node.index,
                                 ),
-                                args.as_execution(function),
+                                i_s.args_as_execution().unwrap(),
                             ),
                         );
                     }
                     Specific::Param => {
-                        return function.infer_param(i_s, definition.node.index, args);
+                        return i_s.infer_param(&definition);
                     }
                     _ => (),
                 }

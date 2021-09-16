@@ -4,7 +4,6 @@ mod instance;
 mod module;
 
 use crate::arguments::Arguments;
-use crate::database::Database;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use class::Class;

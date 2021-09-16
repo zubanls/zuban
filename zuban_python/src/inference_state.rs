@@ -1,10 +1,11 @@
 use crate::arguments::Arguments;
-use crate::database::Database;
+use crate::database::{Database, Execution};
+use crate::inferred::{Inferred, NodeReference};
 use crate::value::Function;
 
 pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
-    pub current_execution: Option<(&'a Function<'db, 'a>, &'a Arguments<'db>)>,
+    current_execution: Option<(&'a Function<'db, 'a>, &'a Arguments<'db>)>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -20,5 +21,18 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: Some((func, args)),
         }
+    }
+
+    pub fn infer_param(&mut self, definition: &NodeReference<'db>) -> Inferred<'db> {
+        if let Some((function, args)) = self.current_execution {
+            function.infer_param(self, definition.node.index, args)
+        } else {
+            todo!()
+        }
+    }
+
+    pub fn args_as_execution(&self) -> Option<Execution> {
+        self.current_execution
+            .map(|(func, args)| args.as_execution(func))
     }
 }
