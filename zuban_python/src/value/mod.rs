@@ -61,8 +61,4 @@ pub trait Value<'db>: std::fmt::Debug {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;
     fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db>;
-
-    fn is_type_var(&self, database: &'db Database) -> bool {
-        false
-    }
 }
