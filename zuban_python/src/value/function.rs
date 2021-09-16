@@ -105,14 +105,15 @@ impl<'db, 'a> Function<'db, 'a> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
+        let mut inner_i_s = i_s.with_execution(self, args);
         for node in self.iter_return_or_yield() {
             debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::return_stmt));
             // TODO multiple returns, this is an early exit
             return self
                 .file
-                .get_inference(&mut i_s.with_execution(self, args), self.in_)
+                .get_inference(&mut inner_i_s, self.in_)
                 .infer_star_expressions(node.get_nth_child(1))
-                .resolve_closure_and_params(i_s, self, args);
+                .resolve_function_return(&mut inner_i_s, self, args);
         }
         todo!("Should just return None or maybe NoReturn?");
     }

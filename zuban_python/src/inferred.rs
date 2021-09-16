@@ -267,7 +267,7 @@ impl<'db> Inferred<'db> {
         false
     }
 
-    pub fn resolve_closure_and_params(
+    pub fn resolve_function_return(
         self,
         i_s: &mut InferenceState<'db, '_>,
         function: &Function<'db, '_>,
@@ -275,16 +275,27 @@ impl<'db> Inferred<'db> {
     ) -> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific {
-                if point.get_language_specific() == Specific::Closure {
-                    return Inferred::new_unsaved_complex(
-                        i_s.database,
-                        ComplexPoint::Closure(
-                            PointLink::new(definition.file.get_file_index(), definition.node.index),
-                            args.as_execution(function),
-                        ),
-                    );
-                } else if point.get_language_specific() == Specific::Param {
-                    return function.infer_param(i_s, definition.node.index, args);
+                match point.get_language_specific() {
+                    Specific::InstanceWithArguments => {
+                        let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
+                        return cls.resolve_function_return(i_s, function, args);
+                    }
+                    Specific::Closure => {
+                        return Inferred::new_unsaved_complex(
+                            i_s.database,
+                            ComplexPoint::Closure(
+                                PointLink::new(
+                                    definition.file.get_file_index(),
+                                    definition.node.index,
+                                ),
+                                args.as_execution(function),
+                            ),
+                        );
+                    }
+                    Specific::Param => {
+                        return function.infer_param(i_s, definition.node.index, args);
+                    }
+                    _ => (),
                 }
             }
         }
