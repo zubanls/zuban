@@ -1,3 +1,4 @@
+use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
 use crate::debug;
 use crate::file::PythonFile;
@@ -109,10 +110,10 @@ impl<'db> Inferred<'db> {
                 _ => unreachable!(),
             },
             InferredState::UnsavedComplex(complex) => {
-                todo!()
+                todo!("{:?}", complex)
             }
             InferredState::UnsavedSpecific(specific) => {
-                todo!()
+                todo!("{:?}", specific)
             }
         }
     }
@@ -265,8 +266,19 @@ impl<'db> Inferred<'db> {
             if point.get_type() == PointType::LanguageSpecific {
                 match point.get_language_specific() {
                     Specific::InstanceWithArguments => {
-                        let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
-                        return cls.resolve_function_return(i_s);
+                        let cls = self
+                            .infer_instance_with_arguments_cls(i_s, &definition)
+                            .resolve_function_return(i_s);
+                        let args = Arguments::new(
+                            definition.file,
+                            definition.node,
+                            definition.node.get_nth_child(2),
+                        );
+                        let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                        return Inferred::new_unsaved_complex(
+                            i_s.database,
+                            ComplexPoint::Instance(args.as_execution(&init)),
+                        );
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(
@@ -315,6 +327,20 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    fn expect_class(&self) -> Option<Class<'db>> {
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                use_class(definition.file, definition.node.index)
+            }
+            InferredState::UnsavedComplex(complex) => {
+                todo!("{:?}", complex)
+            }
+            InferredState::UnsavedSpecific(specific) => {
+                todo!("{:?}", specific)
+            }
+        }
+    }
+
     pub fn save_redirect(self, file: &'db PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
@@ -343,6 +369,17 @@ impl<'db> Inferred<'db> {
             }
         }
     }
+
+    pub fn find_function_alternative<'a>(&self) -> Function<'db, 'a> {
+        if let InferredState::Saved(definition, point) = &self.state {
+            if let PointType::LanguageSpecific = point.get_type() {
+                if let Specific::Function = point.get_language_specific() {
+                    return Function::new(definition.file, definition.node.index, None);
+                }
+            }
+        }
+        todo!("In general this function should probably not be here")
+    }
 }
 
 impl fmt::Debug for Inferred<'_> {
@@ -365,6 +402,16 @@ fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
         ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table)),
+        _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
+    }
+}
+
+fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
+    let v = file.get_point(node_index);
+    debug_assert_eq!(v.get_type(), PointType::Complex);
+    let complex = file.complex_points.get(v.get_complex_index() as usize);
+    match complex {
+        ComplexPoint::Class(c) => Some(Class::new(file, node_index, &c.symbol_table)),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }

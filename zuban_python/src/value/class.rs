@@ -1,6 +1,6 @@
 use parsa::NodeIndex;
 
-use super::{Value, ValueKind};
+use super::{Function, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Locality, Point, Specific};
 use crate::file::PythonFile;
@@ -27,6 +27,15 @@ impl<'db> Class<'db> {
             node_index,
             symbol_table,
         }
+    }
+
+    pub fn get_init_func<'b>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &Arguments<'db>,
+    ) -> Function<'db, 'b> {
+        let init = self.lookup(i_s, "__init__");
+        init.find_function_alternative()
     }
 }
 
