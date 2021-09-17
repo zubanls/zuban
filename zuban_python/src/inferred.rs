@@ -20,7 +20,6 @@ pub struct NodeReference<'db> {
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
     UnsavedComplex(ComplexPoint),
-    UnsavedSpecific(Specific),
 }
 
 #[derive(Clone)]
@@ -112,9 +111,6 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!("{:?}", specific)
-            }
         }
     }
 
@@ -180,9 +176,6 @@ impl<'db> Inferred<'db> {
             },
             InferredState::UnsavedComplex(complex) => {
                 self.run_on_complex(i_s, complex, None, callable)
-            }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!()
             }
         }
     }
@@ -321,9 +314,6 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!("{:?}", specific)
-            }
         }
     }
 
@@ -334,9 +324,6 @@ impl<'db> Inferred<'db> {
             }
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
-            }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!("{:?}", specific)
             }
         }
     }
@@ -364,9 +351,6 @@ impl<'db> Inferred<'db> {
                     file.get_point(index),
                 )
             }
-            InferredState::UnsavedSpecific(specific) => {
-                todo!()
-            }
         }
     }
 
@@ -390,7 +374,6 @@ impl fmt::Debug for Inferred<'_> {
                 s.field("definition", &definition).field("point", &point)
             }
             InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
-            InferredState::UnsavedSpecific(specific) => s.field("specific", &specific),
         }
         .finish()
     }
