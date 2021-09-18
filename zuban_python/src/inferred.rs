@@ -115,7 +115,7 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn run<T>(
+    fn run<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
