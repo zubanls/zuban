@@ -15,6 +15,34 @@ pub struct NodeReference<'db> {
     pub node: PyNode<'db>,
 }
 
+impl<'db> NodeReference<'db> {
+    fn from_link(database: &'db Database, point: PointLink) -> Self {
+        let file = database.get_loaded_python_file(point.file);
+        Self {
+            file,
+            node: file.tree.get_node_by_index(point.node_index),
+        }
+    }
+
+    fn get_point(&self) -> Point {
+        self.file.get_point(self.node.index)
+    }
+
+    fn get_complex(&self) -> Option<&'db ComplexPoint> {
+        let point = self.get_point();
+        if let PointType::Complex = point.get_type() {
+            Some(self.file.complex_points.get(point.get_complex_index()))
+        } else {
+            None
+        }
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    fn to_link(&self) -> PointLink {
+        PointLink::new(self.file.get_file_index(), self.node.index)
+    }
+}
+
 #[derive(Debug, Clone)]
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
@@ -125,8 +153,17 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Class(cls_storage) => {
                 unreachable!("Class is handled earlier")
             }
-            ComplexPoint::Instance(bla) => {
-                todo!()
+            ComplexPoint::Instance(cls_definition, execution) => {
+                let def = NodeReference::from_link(i_s.database, *cls_definition);
+                let complex = def.get_complex().unwrap();
+                if let ComplexPoint::Class(cls_storage) = complex {
+                    callable(
+                        i_s,
+                        &Instance::new(def.file, def.node.index, &cls_storage.symbol_table),
+                    )
+                } else {
+                    unreachable!()
+                }
             }
             ComplexPoint::Method(bla, bar) => {
                 todo!()
@@ -218,7 +255,10 @@ impl<'db> Inferred<'db> {
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(
                             i_s.database,
-                            ComplexPoint::Instance(args.as_execution(&init)),
+                            ComplexPoint::Instance(
+                                cls.get_saved().unwrap().0.to_link(),
+                                args.as_execution(&init),
+                            ),
                         );
                     }
                     Specific::Closure => {
@@ -311,6 +351,13 @@ impl<'db> Inferred<'db> {
             }
         }
         todo!("In general this function should probably not be here")
+    }
+
+    fn get_saved(&self) -> Option<(NodeReference<'db>, Point)> {
+        match self.state {
+            InferredState::Saved(definition, point) => Some((definition, point)),
+            _ => None,
+        }
     }
 }
 

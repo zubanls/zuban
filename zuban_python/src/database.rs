@@ -296,7 +296,7 @@ pub struct LocalityLink {
 pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
-    Instance(Execution),
+    Instance(PointLink, Execution),
     Method(PointLink, Execution),
     Closure(PointLink, Execution),
     Generic(Execution),
