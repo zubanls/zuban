@@ -713,11 +713,12 @@ macro_rules! create_grammar {
                 // Returns the leaf under the cursor. Start positions are higher prioritized than
                 // end positions. Also if the position is on the prefix, the leaf is returned.
                 let index = self.internal_tree.nodes.partition_point(
-                    |node| node.start_index + node.length <= position
+                    // Means return first start_index > position
+                    |node| node.start_index <= position
                 );
-                for (i, node) in self.internal_tree.nodes[index..].iter().enumerate() {
+                for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
-                        return self.get_node((index + i) as $crate::NodeIndex, node)
+                        return self.get_node(i as $crate::NodeIndex, node)
                     }
                 }
                 unreachable!();
