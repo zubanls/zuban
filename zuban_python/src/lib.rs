@@ -16,7 +16,8 @@ mod value;
 
 use database::{Database, FileIndex, Workspace};
 use file_state::{Leaf, PythonFileLoader};
-use name::{Names, ValueNames};
+use inference_state::InferenceState;
+use name::{Names, ValueName, ValueNameIterator};
 use parsa::CodeIndex;
 pub use value::ValueKind;
 
@@ -114,22 +115,35 @@ impl<'a> Script<'a> {
 
     pub fn complete(&self, position: Position) {}
 
-    pub fn infer_definition(&self, position: Position) -> ValueNames {
+    //pub fn infer_definition<'b, T>(&self, callable: &'b ValueNameCallable<'a, 'b, T>, position: Position) -> impl Iterator<Item = T> {
+    pub fn infer_definition<'b, C, T>(
+        &'a self,
+        callable: &'b C,
+        position: Position,
+    ) -> ValueNameIterator<'b, C, T>
+    // impl Iterator<Item = T>
+    where
+        C: Fn(&dyn ValueName<'a>) -> T,
+    {
+        let mut i_s = InferenceState::new(&self.project.database);
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(node) => self
                 .get_file()
                 .infer_operator_leaf(&self.project.database, node),
-            Leaf::None | Leaf::String => vec![],
+            Leaf::None | Leaf::String => todo!(),
         }
+        .run_on_value_names(&mut i_s, callable)
     }
 
+    /*
     pub fn infer_implementation(&self, position: Position) -> ValueNames {
         let names = self.infer_definition(position);
         //self.file.get_implementation(names);
         todo!()
     }
+    */
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
         match self.get_leaf(position) {

@@ -1,6 +1,7 @@
 use crate::database::{Database, FileIndex, Locality};
 use crate::file::PythonFile;
-use crate::name::{Name, Names, ValueNames};
+use crate::inferred::Inferred;
+use crate::name::{Name, Names};
 use parsa::{CodeIndex, NodeIndex};
 use parsa_python::PyNode;
 use std::any::Any;
@@ -94,7 +95,7 @@ pub trait File: std::fmt::Debug + AsAny {
         &'db self,
         database: &'db Database,
         node: PyNode<'db>,
-    ) -> ValueNames<'db>;
+    ) -> Inferred<'db>;
     fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 

@@ -2,14 +2,15 @@ use crate::database::Database;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
+use crate::inferred::Inferred;
 use crate::value::{Value, ValueKind};
 use parsa::{CodeIndex, Node};
 use parsa_python::{PyNode, PyNodeType, TerminalType};
 use std::fmt;
+use std::mem;
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
-pub type ValueNames<'db> = Vec<Box<dyn ValueName<'db> + 'db>>;
 
 pub struct TreePosition<'db> {
     file: &'db dyn File,
@@ -56,7 +57,7 @@ pub trait Name<'db>: fmt::Debug {
         vec![]
     }
 
-    fn infer(&self) -> ValueNames<'db>;
+    fn infer(&self) -> Inferred<'db>;
 
     fn goto(&self) -> Names<'db>;
 
@@ -98,20 +99,19 @@ impl<'db, F: File, N: Node<'db>> TreeName<'db, F, N> {
 }
 
 pub trait LanguageTreeName<'db> {
-    fn tree_infer(&self) -> ValueNames<'db>;
+    fn tree_infer(&self) -> Inferred<'db>;
     fn tree_goto(&self) -> Names<'db>;
 }
 
 impl<'db> LanguageTreeName<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
-    fn tree_infer(&self) -> ValueNames<'db> {
+    fn tree_infer(&self) -> Inferred<'db> {
         if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
             let mut i_s = InferenceState::new(self.database);
             self.file
                 .get_inference(&mut i_s, None)
                 .infer_name(self.tree_node)
-                .to_value_names(&mut i_s)
         } else {
-            vec![]
+            todo!()
         }
     }
 
@@ -163,7 +163,7 @@ where
     }
     */
 
-    fn infer(&self) -> ValueNames<'db> {
+    fn infer(&self) -> Inferred<'db> {
         self.tree_infer()
     }
 
@@ -172,18 +172,18 @@ where
     }
 }
 
-pub struct WithValueName<'db, T> {
+pub struct WithValueName<'db, 'a> {
     database: &'db Database,
-    value: T,
+    value: &'a dyn Value<'db>,
 }
 
-impl<'db, T> WithValueName<'db, T> {
-    pub fn new(database: &'db Database, value: T) -> Self {
+impl<'db, 'a> WithValueName<'db, 'a> {
+    pub fn new(database: &'db Database, value: &'a dyn Value<'db>) -> Self {
         Self { database, value }
     }
 }
 
-impl<'db, T: fmt::Debug> fmt::Debug for WithValueName<'db, T> {
+impl<'db, 'a> fmt::Debug for WithValueName<'db, 'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
             .field("value", &self.value)
@@ -191,7 +191,7 @@ impl<'db, T: fmt::Debug> fmt::Debug for WithValueName<'db, T> {
     }
 }
 
-impl<'db, T: Value<'db>> Name<'db> for WithValueName<'db, T> {
+impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
     fn get_name(&self) -> &'db str {
         self.value.get_name()
     }
@@ -223,7 +223,7 @@ impl<'db, T: Value<'db>> Name<'db> for WithValueName<'db, T> {
         todo!()
     }
 
-    fn infer(&self) -> ValueNames<'db> {
+    fn infer(&self) -> Inferred<'db> {
         todo!()
     }
 
@@ -237,8 +237,39 @@ impl<'db, T: Value<'db>> Name<'db> for WithValueName<'db, T> {
     */
 }
 
-impl<'db, T: Value<'db>> ValueName<'db> for WithValueName<'db, T> {
+impl<'db, 'a> ValueName<'db> for WithValueName<'db, 'a> {
     fn get_kind(&self) -> ValueKind {
         self.value.get_kind()
+    }
+}
+
+pub enum ValueNameIterator<'a, C, T> {
+    Single(T),
+    Multiple(&'a C),
+    Finished,
+}
+
+impl<'db, 'a, C, T> Iterator for ValueNameIterator<'a, C, T>
+where
+    C: Fn(&dyn ValueName<'db>) -> T,
+{
+    type Item = T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::Single(t) => {
+                let result = mem::replace(self, Self::Finished);
+                // Is this really the best way to do this? Please tell me!!!
+                if let Self::Single(t) = result {
+                    Some(t)
+                } else {
+                    unreachable!()
+                }
+            }
+            Self::Multiple(c) => {
+                todo!()
+            }
+            Self::Finished => None,
+        }
     }
 }

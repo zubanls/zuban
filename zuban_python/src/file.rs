@@ -8,7 +8,7 @@ use crate::file_state::{File, Issue, Leaf};
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::name::{Names, TreeName, ValueNames};
+use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use parsa::{CodeIndex, Node, NodeIndex};
@@ -132,7 +132,7 @@ impl File for PythonFile {
         &'db self,
         database: &'db Database,
         leaf: PyNode<'db>,
-    ) -> ValueNames<'db> {
+    ) -> Inferred<'db> {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.get_code())
@@ -142,11 +142,10 @@ impl File for PythonFile {
                 let mut i_s = InferenceState::new(database);
                 return self
                     .get_inference(&mut i_s, None)
-                    .infer_expression_part(parent)
-                    .to_value_names(&mut i_s);
+                    .infer_expression_part(parent);
             }
         }
-        vec![]
+        todo!()
     }
 
     fn get_file_index(&self) -> FileIndex {

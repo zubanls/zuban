@@ -31,16 +31,17 @@ impl TestFile {
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = script
-                        .infer_definition(Position::LineColumn(case.line, case.column))
-                        .iter()
-                        .map(|name| {
-                            name.get_name().to_owned()
-                                + (if name.get_kind() == ValueKind::Object {
-                                    "()"
-                                } else {
-                                    ""
-                                })
-                        })
+                        .infer_definition(
+                            &|name| {
+                                name.get_name().to_owned()
+                                    + (if name.get_kind() == ValueKind::Object {
+                                        "()"
+                                    } else {
+                                        ""
+                                    })
+                            },
+                            Position::LineColumn(case.line, case.column),
+                        )
                         .collect();
                     assert_eq!(actual, expected);
                 }

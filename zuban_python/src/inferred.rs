@@ -1,10 +1,9 @@
 use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
-use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
-use crate::name::{ValueNames, WithValueName};
+use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, Module, Value};
 use parsa::{Node, NodeIndex};
 use parsa_python::PyNode;
@@ -42,75 +41,6 @@ impl<'db> Inferred<'db> {
     pub fn new_unsaved_complex(database: &'db Database, complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
-        }
-    }
-
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_value_names(&self, i_s: &mut InferenceState<'db, '_>) -> ValueNames<'db> {
-        use PointType::*;
-        match &self.state {
-            InferredState::Saved(definition, point) => match point.get_type() {
-                LanguageSpecific => {
-                    let specific = point.get_language_specific();
-                    vec![match specific {
-                        Specific::Function => Box::new(WithValueName::new(
-                            i_s.database,
-                            Function::new(definition.file, definition.node.index, None),
-                        )),
-                        Specific::AnnotationInstance => {
-                            let inferred = definition
-                                .file
-                                .get_inference(i_s, None)
-                                .infer_expression(definition.node.get_nth_child(1));
-                            if let Some(instance) = inferred.instantiate() {
-                                Box::new(WithValueName::new(i_s.database, instance))
-                            } else {
-                                debug!(
-                                    "Inferred annotation {:?}, which is not a class: {:?}",
-                                    self, inferred
-                                );
-                                return vec![];
-                            }
-                        }
-                        Specific::TypeVar => {
-                            todo!()
-                        }
-                        _ => Box::new(WithValueName::new(
-                            i_s.database,
-                            self.resolve_specific(i_s.database, point.get_language_specific()),
-                        )),
-                    }]
-                }
-                Complex => {
-                    match definition
-                        .file
-                        .complex_points
-                        .get(point.get_complex_index())
-                    {
-                        ComplexPoint::Class(cls_storage) => {
-                            let cls = Class::new(
-                                definition.file,
-                                definition.node.index,
-                                &cls_storage.symbol_table,
-                            );
-                            vec![Box::new(WithValueName::new(i_s.database, cls))]
-                        }
-                        x => {
-                            todo!("{:?}", x);
-                        }
-                    }
-                }
-                MissingOrUnknown => {
-                    vec![]
-                }
-                FileReference => {
-                    todo!();
-                }
-                _ => unreachable!(),
-            },
-            InferredState::UnsavedComplex(complex) => {
-                todo!("{:?}", complex)
-            }
         }
     }
 
@@ -218,6 +148,24 @@ impl<'db> Inferred<'db> {
         callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
     ) -> Inferred<'db> {
         self.run(i_s, callable, |inferred| inferred)
+    }
+
+    #[inline]
+    pub fn run_on_value_names<'a, C, T>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        callable: &'a C,
+    ) -> ValueNameIterator<'a, C, T>
+    where
+        C: Fn(&dyn ValueName<'db>) -> T,
+    {
+        self.run(
+            i_s,
+            |i_s, value| {
+                ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
+            },
+            |inferred| ValueNameIterator::Finished,
+        )
     }
 
     fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db> {
