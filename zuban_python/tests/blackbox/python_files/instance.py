@@ -8,3 +8,7 @@ class Foo:
 Foo.x
 #?
 Foo.a
+#? int()
+Foo().x
+#?
+Foo().a
