@@ -84,11 +84,20 @@ file: 0-82
         Name: 54-55 "b"
       Keyword: 55-56 ","
       t_primary: 57-63
-       t_primary: 57-58
-        atom: 57-58
-         Name: 57-58 "d"
-       Keyword: 58-59 "."
-       Name: 59-59 ""
+       t_primary: 57-60
+        t_primary: 57-58
+         atom: 57-58
+          Name: 57-58 "d"
+        Keyword: 58-59 "."
+        Name: 59-60 "y"
+       Keyword: 60-61 "["
+       slices: 61-62
+        slice: 61-62
+         named_expression: 61-62
+          expression: 61-62
+           atom: 61-62
+            Number: 61-62 "0"
+       Keyword: 62-63 "]"
      Keyword: 63-64 ")"
    Keyword: 65-67 "in"
    star_expressions: 68-76

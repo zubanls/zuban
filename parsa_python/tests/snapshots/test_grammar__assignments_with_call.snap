@@ -30,19 +30,29 @@ file: 0-63
     assignment: 15-33
      star_targets: 15-29
       t_primary: 15-29
-       t_primary: 15-18
-        atom: 15-18
-         Name: 15-18 "foo"
-       Keyword: 18-19 "("
-       arguments: 19-19
-        arguments: 19-22
-         named_expression: 19-20
-          expression: 19-20
-           atom: 19-20
-            Number: 19-20 "1"
-         Keyword: 20-21 ","
+       t_primary: 15-26
+        t_primary: 15-22
+         t_primary: 15-18
+          atom: 15-18
+           Name: 15-18 "foo"
+         Keyword: 18-19 "("
+         arguments: 19-21
+          named_expression: 19-20
+           expression: 19-20
+            atom: 19-20
+             Number: 19-20 "1"
+          Keyword: 20-21 ","
+         Keyword: 21-22 ")"
         Keyword: 22-23 "."
-        Name: 23-23 ""
+        Name: 23-26 "bar"
+       Keyword: 26-27 "["
+       slices: 27-28
+        slice: 27-28
+         named_expression: 27-28
+          expression: 27-28
+           atom: 27-28
+            Number: 27-28 "1"
+       Keyword: 28-29 "]"
      Keyword: 30-31 "="
      star_expressions: 32-33
       expression: 32-33
@@ -55,28 +65,37 @@ file: 0-63
     assignment: 34-62
      star_targets: 34-58
       t_primary: 34-58
-       t_primary: 34-51
-        t_primary: 34-37
-         atom: 34-37
-          Name: 34-37 "foo"
-        Keyword: 37-38 "("
-        comprehension: 38-50
-         named_expression: 38-39
-          expression: 38-39
-           atom: 38-39
-            Name: 38-39 "a"
-         for_if_clauses: 40-50
-          sync_for_if_clause: 40-50
-           Keyword: 40-43 "for"
-           star_targets: 44-45
-            name_definition: 44-45
-             Name: 44-45 "a"
-           Keyword: 46-48 "in"
-           atom: 49-50
-            Name: 49-50 "b"
-        Keyword: 50-51 ")"
-       Keyword: 51-52 "."
-       Name: 52-52 ""
+       t_primary: 34-55
+        t_primary: 34-51
+         t_primary: 34-37
+          atom: 34-37
+           Name: 34-37 "foo"
+         Keyword: 37-38 "("
+         comprehension: 38-50
+          named_expression: 38-39
+           expression: 38-39
+            atom: 38-39
+             Name: 38-39 "a"
+          for_if_clauses: 40-50
+           sync_for_if_clause: 40-50
+            Keyword: 40-43 "for"
+            star_targets: 44-45
+             name_definition: 44-45
+              Name: 44-45 "a"
+            Keyword: 46-48 "in"
+            atom: 49-50
+             Name: 49-50 "b"
+         Keyword: 50-51 ")"
+        Keyword: 51-52 "."
+        Name: 52-55 "bar"
+       Keyword: 55-56 "["
+       slices: 56-57
+        slice: 56-57
+         named_expression: 56-57
+          expression: 56-57
+           atom: 56-57
+            Number: 56-57 "1"
+       Keyword: 57-58 "]"
      Keyword: 59-60 "="
      star_expressions: 61-62
       expression: 61-62
