@@ -94,7 +94,7 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s, None)
                                 .infer_expression(definition.node.get_nth_child(1));
-                            todo!()
+                            callable(i_s, &inferred.instantiate().unwrap())
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
