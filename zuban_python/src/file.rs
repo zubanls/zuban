@@ -738,9 +738,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             //self.calculate_node_scope_definitions(node);
             if is_name_reference(node) {
-                todo!("is extern {:?}", node);
+                // References are not calculated by the name binder for star imports and lookups.
+                let parent = node.get_parent().unwrap();
+                if parent.is_type(Nonterminal(NonterminalType::primary)) {
+                    return self.infer_primary(parent);
+                } else {
+                    dbg!(parent);
+                    todo!("star import {:?}", node);
+                }
             } else {
-                // Is a reference and should have been calculated.
                 self.cache_stmt_name(stmt, node);
             }
         }
