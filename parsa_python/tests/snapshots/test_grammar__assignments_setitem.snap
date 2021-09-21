@@ -9,9 +9,8 @@ file: 0-66
     assignment: 1-12
      single_target: 1-7
       t_primary: 1-7
-       t_primary: 1-4
-        atom: 1-4
-         Name: 1-4 "foo"
+       atom: 1-4
+        Name: 1-4 "foo"
        Keyword: 4-5 "["
        slices: 5-6
         slice: 5-6
@@ -33,9 +32,8 @@ file: 0-66
     assignment: 13-27
      star_targets: 13-19
       t_primary: 13-19
-       t_primary: 13-16
-        atom: 13-16
-         Name: 13-16 "foo"
+       atom: 13-16
+        Name: 13-16 "foo"
        Keyword: 16-17 "["
        slices: 17-18
         slice: 17-18
@@ -60,9 +58,8 @@ file: 0-66
     assignment: 28-41
      star_targets: 28-37
       t_primary: 28-37
-       t_primary: 28-31
-        atom: 28-31
-         Name: 28-31 "foo"
+       atom: 28-31
+        Name: 28-31 "foo"
        Keyword: 31-32 "["
        slices: 32-36
         slice: 32-33
@@ -89,9 +86,8 @@ file: 0-66
     assignment: 42-65
      star_targets: 42-61
       t_primary: 42-61
-       t_primary: 42-45
-        atom: 42-45
-         Name: 42-45 "foo"
+       atom: 42-45
+        Name: 42-45 "foo"
        Keyword: 45-46 "["
        slices: 46-60
         slice: 46-49

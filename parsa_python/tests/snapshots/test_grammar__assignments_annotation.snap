@@ -38,9 +38,8 @@ file: 0-53
     assignment: 23-35
      single_target: 23-30
       t_primary: 23-30
-       t_primary: 23-26
-        atom: 23-26
-         Name: 23-26 "foo"
+       atom: 23-26
+        Name: 23-26 "foo"
        Keyword: 26-27 "."
        name_definition: 27-30
         Name: 27-30 "bar"

@@ -68,9 +68,8 @@ file: 0-82
    Keyword: 43-46 "for"
    star_targets: 47-64
     t_primary: 47-50
-     t_primary: 47-48
-      atom: 47-48
-       Name: 47-48 "c"
+     atom: 47-48
+      Name: 47-48 "c"
      Keyword: 48-49 "."
      name_definition: 49-50
       Name: 49-50 "x"
@@ -85,9 +84,8 @@ file: 0-82
       Keyword: 55-56 ","
       t_primary: 57-63
        t_primary: 57-60
-        t_primary: 57-58
-         atom: 57-58
-          Name: 57-58 "d"
+        atom: 57-58
+         Name: 57-58 "d"
         Keyword: 58-59 "."
         Name: 59-60 "y"
        Keyword: 60-61 "["

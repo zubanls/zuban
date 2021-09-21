@@ -297,8 +297,8 @@ create_grammar!(
 
     targets: ",".target+ [","]
     target: t_primary | t_atom
-    t_primary:
-        | (
+    t_primary:?
+          (
               t_primary "." Name
             | t_primary "(" [arguments|comprehension] ")"
             | atom

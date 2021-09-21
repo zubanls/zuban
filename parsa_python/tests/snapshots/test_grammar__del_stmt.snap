@@ -39,9 +39,8 @@ file: 0-46
       Keyword: 25-26 ","
       target: 27-34
        t_primary: 27-34
-        t_primary: 27-30
-         atom: 27-30
-          Name: 27-30 "bar"
+        atom: 27-30
+         Name: 27-30 "bar"
         Keyword: 30-31 "."
         name_definition: 31-34
          Name: 31-34 "baz"
@@ -54,9 +53,8 @@ file: 0-46
      targets: 39-45
       target: 39-45
        t_primary: 39-45
-        t_primary: 39-42
-         atom: 39-42
-          Name: 39-42 "foo"
+        atom: 39-42
+         Name: 39-42 "foo"
         Keyword: 42-43 "["
         slices: 43-44
          slice: 43-44

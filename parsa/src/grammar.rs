@@ -7,13 +7,13 @@ use crate::automaton::{
     Plan, PlanMode, Rule, RuleAutomaton, RuleMap, SoftKeywords, Squashable, StackMode,
 };
 use crate::backtracking::BacktrackingTokenizer;
-use std::fmt::Debug;
+use std::fmt;
 
 pub type NodeIndex = u32;
 pub type CodeIndex = u32;
 pub type CodeLength = u32;
 
-pub trait Token: Copy + Debug {
+pub trait Token: Copy + fmt::Debug {
     fn get_start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> InternalTerminalType;
@@ -98,7 +98,6 @@ struct BacktrackingPoint<'a> {
     children_count: usize,
 }
 
-#[derive(Debug)]
 struct StackNode<'a> {
     node_id: InternalNonterminalType,
     tree_node_index: usize,
@@ -108,6 +107,27 @@ struct StackNode<'a> {
 
     mode: ModeData<'a>,
     enabled_token_recording: bool,
+}
+
+impl<'a> fmt::Debug for StackNode<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("StackNode")
+            .field("tree_node_index", &self.tree_node_index)
+            .field("latest_child_node_index", &self.latest_child_node_index)
+            .field(
+                "dfa_state",
+                &format!(
+                    "{{name: {}, is_final: {}, node_may_be_omitted: {}}}",
+                    self.dfa_state.from_rule,
+                    self.dfa_state.is_final,
+                    self.dfa_state.node_may_be_omitted,
+                ),
+            )
+            .field("children_count", &self.children_count)
+            .field("mode", &self.mode)
+            .field("enabled_token_recording", &self.enabled_token_recording)
+            .finish()
+    }
 }
 
 struct Stack<'a> {
@@ -387,6 +407,7 @@ impl<'a, T: Token> Grammar<T> {
                         push.get_next_dfa(),
                         start_index,
                         ModeData::LL,
+                        0,
                         enabled_token_recording,
                     );
                 }
@@ -402,6 +423,7 @@ impl<'a, T: Token> Grammar<T> {
                             fallback_plan: unsafe { &*alternative_plan },
                             children_count,
                         }),
+                        children_count,
                         enabled_token_recording,
                     );
                 }
@@ -433,7 +455,7 @@ impl<'a> Stack<'a> {
         stack.stack_nodes.reserve(128);
         // TODO need some research in how much we should reserve.
         stack.tree_nodes.reserve(string_len / 4);
-        stack.push(node_id, 0, dfa_state, 0, ModeData::LL, false);
+        stack.push(node_id, 0, dfa_state, 0, ModeData::LL, 0, false);
         stack
     }
 
@@ -468,6 +490,7 @@ impl<'a> Stack<'a> {
         dfa_state: &'a DFAState,
         start: CodeIndex,
         mode: ModeData<'a>,
+        children_count: usize,
         enabled_token_recording: bool,
     ) {
         self.stack_nodes.push(StackNode {
@@ -475,7 +498,7 @@ impl<'a> Stack<'a> {
             tree_node_index,
             latest_child_node_index: 0,
             dfa_state,
-            children_count: 0,
+            children_count,
             mode,
             enabled_token_recording,
         });
