@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(clippy::collapsible_if)]
 
 mod arguments;
 mod database;

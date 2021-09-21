@@ -231,6 +231,7 @@ impl<'db> PythonFile {
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
+            &self.tree,
             &self.symbol_table,
             &self.points,
             &self.complex_points,

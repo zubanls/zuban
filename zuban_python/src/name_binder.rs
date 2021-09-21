@@ -1,13 +1,15 @@
 use std::cell::Cell;
 
 use crate::database::{
-    ClassStorage, ComplexPoint, FileIndex, Locality, Point, PointType::MultiDefinition, Specific,
+    ClassStorage, ComplexPoint, FileIndex, Locality, Point,
+    PointType::{LanguageSpecific, MultiDefinition, Redirect},
+    Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa::{Node, NodeIndex};
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
-use parsa_python::{NonterminalType, PyNode, PyNodeType, TerminalType};
+use parsa_python::{NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
 
 pub enum NameBinderType {
     Global,
@@ -18,6 +20,7 @@ pub enum NameBinderType {
 }
 
 pub struct NameBinder<'db, 'a> {
+    tree: &'db PyTree,
     typ: NameBinderType,
     symbol_table: &'a SymbolTable,
     points: &'db [Cell<Point>],
@@ -32,6 +35,7 @@ pub struct NameBinder<'db, 'a> {
 
 impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
+        tree: &'db PyTree,
         typ: NameBinderType,
         symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
@@ -40,6 +44,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         parent: Option<&'a Self>,
     ) -> Self {
         Self {
+            tree,
             typ,
             symbol_table,
             points,
@@ -54,6 +59,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn with_global_binder(
+        tree: &'db PyTree,
         symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
         complex_points: &'db ComplexValues,
@@ -62,6 +68,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func: impl FnOnce(&mut Self),
     ) {
         let mut binder = Self::new(
+            tree,
             NameBinderType::Global,
             symbol_table,
             points,
@@ -80,6 +87,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         mut func: impl FnMut(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
+            self.tree,
             typ,
             symbol_table,
             self.points,
@@ -429,6 +437,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             }
         });
+        self.index_self_vars(class, &symbol_table);
         self.complex_points.insert(
             self.points,
             class.index,
@@ -437,6 +446,47 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // Need to first index the class, because the class body does not have access to
         // the class name.
         self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
+    }
+
+    fn index_self_vars(&mut self, class: PyNode<'db>, symbol_table: &SymbolTable) {
+        for node in class.search(&[Nonterminal(NonterminalType::t_primary)]) {
+            let name_def = node.get_nth_child(2);
+            dbg!(name_def, node);
+            if name_def.is_type(Nonterminal(NonterminalType::name_definition)) {
+                let atom = node.get_nth_child(0);
+                if atom.is_type(Nonterminal(NonterminalType::atom)) {
+                    let self_name = atom.get_nth_child(0);
+                    if self_name.is_type(Terminal(TerminalType::Name)) {
+                        if self.is_self_param(self_name.index as usize) {
+                            symbol_table.add_or_replace_symbol(name_def.get_nth_child(0));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn is_self_param(&self, name_index: usize) -> bool {
+        let point = self.points[name_index].get();
+        if let Redirect = point.get_type() {
+            let param_index = point.get_node_index();
+            let param_point = self.points[param_index as usize].get();
+            if let LanguageSpecific = param_point.get_type() {
+                if param_point.get_language_specific() == Specific::Param {
+                    let name_node = self.tree.get_node_by_index(param_index);
+                    // Parents are name_definition/param_no_default/parameters
+                    let param = name_node.get_parent().unwrap().get_parent().unwrap();
+                    let params = param.get_parent().unwrap();
+                    // Could also be a kwarg, which is never a self
+                    if params.is_type(Nonterminal(NonterminalType::parameters)) {
+                        if params.index + 1 == param.index {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        false
     }
 
     fn index_match_stmt(&mut self, match_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
