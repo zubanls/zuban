@@ -44,7 +44,7 @@ impl<'db> Value<'db> for Instance<'db> {
                 .get_inference(i_s, None)
                 .infer_name_by_index(node_index)
         } else {
-            todo!()
+            todo!("{:?}", name)
         }
     }
 

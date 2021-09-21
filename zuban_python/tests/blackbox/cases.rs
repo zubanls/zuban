@@ -54,8 +54,8 @@ impl TestFile {
         let lines: Vec<_> = self.code.split('\n').collect();
         for (line_nr, line) in lines.iter().enumerate() {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("#? ") {
-                let mut names: Vec<_> = trimmed[3..].split(" ").collect();
+            if trimmed.starts_with("#?") {
+                let mut names: Vec<_> = trimmed[2..].trim_start().split(" ").collect();
                 let column = {
                     if let Ok(c) = names[0].parse() {
                         names.remove(0);
