@@ -296,9 +296,10 @@ pub struct PythonInference<'db, 'a, 'b> {
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_stmt_name(&mut self, stmt: PyNode<'db>, name: PyNode<'db>) {
         debug!(
-            "Infer stmt ({}, {})",
+            "Infer stmt ({}, {}): {}",
             self.file.get_file_index(),
-            stmt.index
+            stmt.index,
+            stmt.get_code().chars().take(10).collect::<String>()
         );
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
