@@ -435,7 +435,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }
                             inferred.clone().save_redirect(self.file, n.index);
                         }
-                        Target::Expression(n) => {
+                        Target::NameExpression(_, name_node) => {
+                            inferred.clone().save_redirect(self.file, name_node.index);
+                        }
+                        Target::IndexExpression(n) => {
                             todo!("{:?}", n);
                         }
                         Target::Starred(n) => {
@@ -771,7 +774,8 @@ fn is_name_reference(name: PyNode) -> bool {
 enum Target<'db> {
     Tuple(TargetIterator<'db>),
     Name(PyNode<'db>),
-    Expression(PyNode<'db>),
+    NameExpression(PyNode<'db>, PyNode<'db>),
+    IndexExpression(PyNode<'db>),
     Starred(PyNode<'db>),
 }
 
@@ -784,7 +788,11 @@ impl<'db> Target<'db> {
             if first.is_type(Nonterminal(NonterminalType::name_definition)) {
                 Self::Name(first.get_nth_child(0))
             } else if first.is_type(Nonterminal(NonterminalType::t_primary)) {
-                Self::Expression(first)
+                first
+                    .iter_children()
+                    .find(|x| x.is_type(Nonterminal(NonterminalType::name_definition)))
+                    .map(|name_def| Self::NameExpression(first, name_def.get_nth_child(0)))
+                    .unwrap_or_else(|| Self::IndexExpression(first))
             } else if first.is_type(Nonterminal(NonterminalType::star_target_brackets)) {
                 todo!("star_target_brackets")
             } else if first.is_type(Nonterminal(NonterminalType::star_target)) {

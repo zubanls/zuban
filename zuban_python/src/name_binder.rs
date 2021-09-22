@@ -514,8 +514,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if n.is_type(Terminal(TerminalType::Name)) {
                 let parent = n.get_parent().unwrap();
                 if parent.is_type(Nonterminal(name_definition)) {
-                    // The types are inferred later.
-                    self.add_new_definition(parent, Point::new_uncalculated())
+                    if !parent.get_parent().unwrap().is_type(Nonterminal(t_primary)) {
+                        // The types are inferred later.
+                        self.add_new_definition(parent, Point::new_uncalculated())
+                    }
                 } else {
                     self.index_reference(n, parent, ordered);
                 }

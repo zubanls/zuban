@@ -320,6 +320,9 @@ impl<'db> Inferred<'db> {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
             InferredState::Saved(definition, point) => {
+                if file.get_point(index).is_calculated() {
+                    todo!()
+                }
                 file.set_point(
                     index,
                     Point::new_redirect(
