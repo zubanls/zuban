@@ -451,7 +451,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_self_vars(&mut self, class: PyNode<'db>, symbol_table: &SymbolTable) {
         for node in class.search(&[Nonterminal(NonterminalType::t_primary)]) {
             let name_def = node.get_nth_child(2);
-            dbg!(name_def, node);
             if name_def.is_type(Nonterminal(NonterminalType::name_definition)) {
                 let atom = node.get_nth_child(0);
                 if atom.is_type(Nonterminal(NonterminalType::atom)) {

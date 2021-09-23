@@ -94,11 +94,11 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s, None)
                                 .infer_expression(definition.node.get_nth_child(1));
-                            callable(i_s, &inferred.instantiate().unwrap())
+                            callable(i_s, &inferred.instantiate())
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            callable(i_s, &cls.instantiate().unwrap())
+                            callable(i_s, &cls.instantiate())
                         }
                         Specific::Param => {
                             i_s.infer_param(definition).run(i_s, callable, on_missing)
@@ -299,13 +299,13 @@ impl<'db> Inferred<'db> {
             .infer_expression_part(definition.node.get_nth_child(0))
     }
 
-    fn instantiate(&self) -> Option<Instance<'db, '_>> {
+    fn instantiate(&self) -> Instance<'db, '_> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 use_instance(definition.file, definition.node.index)
             }
             InferredState::UnsavedComplex(complex) => {
-                todo!("{:?}", complex)
+                unreachable!("{:?}", complex)
             }
         }
     }
@@ -382,12 +382,12 @@ impl fmt::Debug for Inferred<'_> {
     }
 }
 
-fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
+fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
     let v = file.get_point(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
-        ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table, None)),
+        ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table, None),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }
@@ -411,5 +411,5 @@ fn load_builtin_instance_from_str<'db>(
     let v = builtins.get_point(node_index);
     debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    use_instance(builtins, v.get_node_index()).unwrap()
+    use_instance(builtins, v.get_node_index())
 }

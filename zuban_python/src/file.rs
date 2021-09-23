@@ -299,7 +299,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             "Infer stmt ({}, {}): {}",
             self.file.get_file_index(),
             stmt.index,
-            stmt.get_code().chars().take(10).collect::<String>()
+            stmt.get_code().chars().take(10).collect::<String>().trim()
         );
         let child = stmt.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
