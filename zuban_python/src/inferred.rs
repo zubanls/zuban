@@ -76,8 +76,8 @@ impl<'db> Inferred<'db> {
     fn run<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
-        on_missing: impl Fn(Inferred<'db>) -> T,
+        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        on_missing: &impl Fn(Inferred<'db>) -> T,
     ) -> T {
         use PointType::*;
         match &self.state {
@@ -144,7 +144,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         complex: &ComplexPoint,
         definition: Option<&NodeReference<'db>>,
-        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
     ) -> T {
         match complex {
             ComplexPoint::Union(lst) => {
@@ -187,9 +187,9 @@ impl<'db> Inferred<'db> {
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
+        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
     ) -> Inferred<'db> {
-        self.run(i_s, callable, |inferred| inferred)
+        self.run(i_s, callable, &|inferred| inferred)
     }
 
     #[inline]
@@ -203,10 +203,10 @@ impl<'db> Inferred<'db> {
     {
         self.run(
             i_s,
-            |i_s, value| {
+            &|i_s, value| {
                 ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
             },
-            |inferred| ValueNameIterator::Finished,
+            &|inferred| ValueNameIterator::Finished,
         )
     }
 

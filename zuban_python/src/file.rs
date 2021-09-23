@@ -354,7 +354,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             let i = inferred
                                 .as_ref()
                                 .unwrap()
-                                .run_on_value(self.i_s, |i_s, value| {
+                                .run_on_value(self.i_s, &|i_s, value| {
                                     value.lookup(i_s, from_as_name.get_code())
                                 });
                             i.save_redirect(self.file, from_as_name.index + 1);
@@ -542,13 +542,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let op = iter.next().unwrap();
         let second = iter.next().unwrap();
         match op.get_code() {
-            "." => base.run_on_value(self.i_s, |i_s, value| {
+            "." => base.run_on_value(self.i_s, &|i_s, value| {
                 debug!("Lookup {}.{}", value.get_name(), second.get_code());
                 value.lookup(i_s, second.get_code())
             }),
             "(" => {
                 let f = self.file;
-                base.run_on_value(self.i_s, |i_s, value| {
+                base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Execute {}", value.get_name());
                     value.execute(i_s, &Arguments::new(f, node))
                 })

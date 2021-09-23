@@ -177,7 +177,7 @@ impl<'db, 'a> Value<'db> for Function<'db, 'a> {
                 inferred
             } else {
                 let inferred = self.file.get_inference(i_s, None).infer_expression(expr);
-                inferred.run_on_value(i_s, |i_s, v| {
+                inferred.run_on_value(i_s, &|i_s, v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
                         Point::new_simple_language_specific(
