@@ -1,4 +1,4 @@
-use crate::database::{Execution, PointLink};
+use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
@@ -7,12 +7,14 @@ use crate::value::Function;
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
+#[derive(Debug)]
 enum ArgumentsDetailed<'db> {
     None,
     Comprehension(PyNode<'db>),
     Node(PyNode<'db>),
 }
 
+#[derive(Debug)]
 pub struct Arguments<'db> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
@@ -22,11 +24,7 @@ pub struct Arguments<'db> {
 }
 
 impl<'db> Arguments<'db> {
-    pub fn new(
-        f: &'db PythonFile,
-        primary_node: PyNode<'db>,
-        arguments_node: PyNode<'db>,
-    ) -> Arguments<'db> {
+    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>, arguments_node: PyNode<'db>) -> Self {
         use NonterminalType::*;
         debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
         if arguments_node.is_type(Nonterminal(arguments)) {
@@ -80,6 +78,12 @@ impl<'db> Arguments<'db> {
             }
             ArgumentsDetailed::None => ArgumentIterator::Finished,
         }
+    }
+
+    pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
+        let f = database.get_loaded_python_file(execution.argument_node.file);
+        let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
+        Self::new(f, primary_node, primary_node.get_nth_child(2))
     }
 
     pub fn as_execution(&self, function: &Function) -> Execution {

@@ -159,7 +159,12 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::Class(cls_storage) = complex {
                     callable(
                         i_s,
-                        &Instance::new(def.file, def.node.index, &cls_storage.symbol_table),
+                        &Instance::new(
+                            def.file,
+                            def.node.index,
+                            &cls_storage.symbol_table,
+                            Some(execution),
+                        ),
                     )
                 } else {
                     unreachable!()
@@ -205,7 +210,7 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db> {
+    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
         load_builtin_instance_from_str(
             database,
             match specific {
@@ -294,7 +299,7 @@ impl<'db> Inferred<'db> {
             .infer_expression_part(definition.node.get_nth_child(0))
     }
 
-    fn instantiate(&self) -> Option<Instance<'db>> {
+    fn instantiate(&self) -> Option<Instance<'db, '_>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 use_instance(definition.file, definition.node.index)
@@ -382,7 +387,7 @@ fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Option<Instance> {
     debug_assert_eq!(v.get_type(), PointType::Complex);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
-        ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table)),
+        ComplexPoint::Class(c) => Some(Instance::new(file, node_index, &c.symbol_table, None)),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }
@@ -400,7 +405,7 @@ fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
 fn load_builtin_instance_from_str<'db>(
     database: &'db Database,
     name: &'static str,
-) -> Instance<'db> {
+) -> Instance<'db, 'db> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
     let v = builtins.get_point(node_index);

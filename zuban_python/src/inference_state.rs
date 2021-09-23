@@ -16,11 +16,25 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_execution(&self, func: &'a Function<'db, 'a>, args: &'a Arguments<'db>) -> Self {
+    pub fn with_func_and_args(
+        &self,
+        func: &'a Function<'db, 'a>,
+        args: &'a Arguments<'db>,
+    ) -> Self {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
         }
+    }
+
+    pub fn run_with_execution<T>(
+        &self,
+        execution: &Execution,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>) -> T,
+    ) -> T {
+        let func = Function::from_execution(self.database, execution);
+        let args = Arguments::from_execution(self.database, execution);
+        callable(&mut InferenceState::with_func_and_args(self, &func, &args))
     }
 
     pub fn infer_param(&mut self, definition: &NodeReference<'db>) -> Inferred<'db> {

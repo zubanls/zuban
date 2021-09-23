@@ -8,7 +8,7 @@ use parsa_python::{
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
-use crate::database::{Execution, Locality, Point, PointLink, Specific};
+use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -29,6 +29,15 @@ impl<'db, 'a> Function<'db, 'a> {
             node_index,
             in_,
         }
+    }
+
+    pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
+        let f_func = database.get_loaded_python_file(execution.function.file);
+        Function::new(
+            f_func,
+            execution.function.node_index,
+            execution.in_.as_deref(),
+        )
     }
 
     fn get_node(&self) -> PyNode<'db> {
@@ -77,13 +86,8 @@ impl<'db, 'a> Function<'db, 'a> {
             loop {
                 let exec = execution.unwrap();
                 if func_node.index == exec.function.node_index {
-                    let f = i_s.database.get_loaded_python_file(exec.argument_node.file);
-                    let primary_node = f.tree.get_node_by_index(exec.argument_node.node_index);
-                    temporary_args = Arguments::new(f, primary_node, primary_node.get_nth_child(2));
-
-                    let f_func = i_s.database.get_loaded_python_file(exec.function.file);
-                    temporary_func =
-                        Function::new(f_func, exec.function.node_index, exec.in_.as_deref());
+                    temporary_args = Arguments::from_execution(i_s.database, exec);
+                    temporary_func = Function::from_execution(i_s.database, exec);
                     break (&temporary_args, &temporary_func);
                 }
                 execution = exec.in_.as_deref();
@@ -105,7 +109,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
-        let mut inner_i_s = i_s.with_execution(self, args);
+        let mut inner_i_s = i_s.with_func_and_args(self, args);
         for node in self.iter_return_or_yield() {
             debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::return_stmt));
             // TODO multiple returns, this is an early exit
