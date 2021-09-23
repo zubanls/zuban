@@ -19,7 +19,7 @@ use crate::inferred::Inferred;
 pub struct Function<'db, 'a> {
     file: &'db PythonFile,
     node_index: NodeIndex,
-    pub in_: Option<&'a Execution>,
+    in_: Option<&'a Execution>,
 }
 
 impl<'db, 'a> Function<'db, 'a> {
