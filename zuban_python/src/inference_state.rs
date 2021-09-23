@@ -34,7 +34,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     ) -> T {
         let func = Function::from_execution(self.database, execution);
         let args = Arguments::from_execution(self.database, execution);
-        callable(&mut InferenceState::with_func_and_args(self, &func, &args))
+        callable(&mut self.with_func_and_args(&func, &args))
     }
 
     pub fn infer_param(&mut self, definition: &NodeReference<'db>) -> Inferred<'db> {

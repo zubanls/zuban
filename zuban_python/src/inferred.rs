@@ -177,12 +177,13 @@ impl<'db> Inferred<'db> {
                 let func = Function::from_execution(i_s.database, execution);
                 let args = Arguments::from_execution(i_s.database, execution);
                 callable(
-                    &mut InferenceState::with_func_and_args(i_s, &func, &args),
+                    &mut i_s.with_func_and_args(&func, &args),
                     &Function::new(f, function.node_index),
                 )
                 /*
-                i_s.run_with_execution(execution, |closure_i_s: &mut InferenceState<'db, '_>| {
-                    let x: &mut InferenceState<'db, '_> = closure_i_s;
+                // TODO WHY IS THIS NOT WORKING???
+                i_s.run_with_execution(execution, |closure_i_s| {
+                    let x: () = closure_i_s;
                     //callable(closure_i_s, &Function::new(f, function.node_index));
                     todo!()
                 })
