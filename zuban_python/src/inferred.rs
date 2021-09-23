@@ -252,11 +252,7 @@ impl<'db> Inferred<'db> {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let args = Arguments::new(
-                            definition.file,
-                            definition.node,
-                            definition.node.get_nth_child(2),
-                        );
+                        let args = Arguments::new(definition.file, definition.node);
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(
                             i_s.database,

@@ -24,15 +24,16 @@ pub struct Arguments<'db> {
 }
 
 impl<'db> Arguments<'db> {
-    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>, arguments_node: PyNode<'db>) -> Self {
+    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>) -> Self {
         use NonterminalType::*;
         debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
+        let arguments_node = primary_node.get_nth_child(2);
         if arguments_node.is_type(Nonterminal(arguments)) {
-            Arguments::new_with_arguments(f, primary_node, arguments_node)
+            Self::new_with_arguments(f, primary_node, arguments_node)
         } else if arguments_node.is_type(Nonterminal(comprehension)) {
-            Arguments::new_comprehension(f, primary_node, arguments_node)
+            Self::new_comprehension(f, primary_node, arguments_node)
         } else {
-            Arguments::new_empty_arguments(f, primary_node)
+            Self::new_empty_arguments(f, primary_node)
         }
     }
 
@@ -83,7 +84,7 @@ impl<'db> Arguments<'db> {
     pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
         let f = database.get_loaded_python_file(execution.argument_node.file);
         let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
-        Self::new(f, primary_node, primary_node.get_nth_child(2))
+        Self::new(f, primary_node)
     }
 
     pub fn as_execution(&self, function: &Function) -> Execution {
