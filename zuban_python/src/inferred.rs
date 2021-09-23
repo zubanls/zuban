@@ -91,7 +91,7 @@ impl<'db> Inferred<'db> {
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
-                                .get_inference(i_s, None)
+                                .get_inference(i_s)
                                 .infer_expression(definition.node.get_nth_child(1));
                             callable(i_s, &inferred.instantiate())
                         }
@@ -303,7 +303,7 @@ impl<'db> Inferred<'db> {
     ) -> Self {
         definition
             .file
-            .get_inference(i_s, None)
+            .get_inference(i_s)
             .infer_expression_part(definition.node.get_nth_child(0))
     }
 

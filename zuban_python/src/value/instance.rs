@@ -47,13 +47,11 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
             if let Some(execution) = self.execution {
                 i_s.run_with_execution(execution, |instance_i_s| {
                     self.file
-                        .get_inference(instance_i_s, None)
+                        .get_inference(instance_i_s)
                         .infer_name_by_index(node_index)
                 })
             } else {
-                self.file
-                    .get_inference(i_s, None)
-                    .infer_name_by_index(node_index)
+                self.file.get_inference(i_s).infer_name_by_index(node_index)
             }
         } else {
             todo!("{:?}", name)

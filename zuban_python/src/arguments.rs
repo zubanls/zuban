@@ -102,7 +102,7 @@ impl<'db> Argument<'db> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         self.file
             // TODO this execution is wrong
-            .get_inference(i_s, None)
+            .get_inference(i_s)
             .infer_named_expression(self.node)
     }
 }

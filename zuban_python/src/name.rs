@@ -107,9 +107,7 @@ impl<'db> LanguageTreeName<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
     fn tree_infer(&self) -> Inferred<'db> {
         if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
             let mut i_s = InferenceState::new(self.database);
-            self.file
-                .get_inference(&mut i_s, None)
-                .infer_name(self.tree_node)
+            self.file.get_inference(&mut i_s).infer_name(self.tree_node)
         } else {
             todo!()
         }

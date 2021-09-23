@@ -50,9 +50,7 @@ impl<'db> Value<'db> for Class<'db> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.file
-                .get_inference(i_s, None)
-                .infer_name_by_index(node_index)
+            self.file.get_inference(i_s).infer_name_by_index(node_index)
         } else {
             todo!()
         }

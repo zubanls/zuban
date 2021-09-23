@@ -106,7 +106,7 @@ impl<'db> Function<'db> {
             // TODO multiple returns, this is an early exit
             return self
                 .file
-                .get_inference(&mut inner_i_s, args.in_)
+                .get_inference(&mut inner_i_s)
                 .infer_star_expressions(node.get_nth_child(1))
                 .resolve_function_return(&mut inner_i_s);
         }
@@ -167,7 +167,7 @@ impl<'db> Value<'db> for Function<'db> {
             ) {
                 inferred
             } else {
-                let inferred = self.file.get_inference(i_s, None).infer_expression(expr);
+                let inferred = self.file.get_inference(i_s).infer_expression(expr);
                 inferred.run_on_value(i_s, &|i_s, v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
@@ -303,7 +303,7 @@ fn resolve_type_vars<'db, 'a>(
     type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
 ) -> Option<Inferred<'db>> {
     //let type_var = Ty
-    let inferred = file.get_inference(i_s, None).infer_expression(node);
+    let inferred = file.get_inference(i_s).infer_expression(node);
     if inferred.is_type_var(i_s) {
         type_var_finder
             .lookup(i_s, node.get_code())
@@ -375,7 +375,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
                 {
-                    let inferred = self.file.get_inference(i_s, None).infer_expression(name);
+                    let inferred = self.file.get_inference(i_s).infer_expression(name);
                     if inferred.is_type_var(i_s) {
                         calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {

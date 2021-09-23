@@ -1,7 +1,6 @@
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexPoint, Database, Execution, FileIndex, Locality, LocalityLink, Point, PointType,
-    Specific,
+    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -140,9 +139,7 @@ impl File for PythonFile {
             let parent = leaf.get_parent().unwrap();
             if parent.is_type(Nonterminal(NonterminalType::primary)) {
                 let mut i_s = InferenceState::new(database);
-                return self
-                    .get_inference(&mut i_s, None)
-                    .infer_expression_part(parent);
+                return self.get_inference(&mut i_s).infer_expression_part(parent);
             }
         }
         todo!()
@@ -253,14 +250,12 @@ impl<'db> PythonFile {
     pub fn get_inference<'a, 'b>(
         &'db self,
         i_s: &'b mut InferenceState<'db, 'a>,
-        execution: Option<&'a Execution>,
     ) -> PythonInference<'db, 'a, 'b> {
         self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
             file_index: self.get_file_index(),
             i_s,
-            execution,
         }
     }
 
@@ -290,7 +285,6 @@ pub struct PythonInference<'db, 'a, 'b> {
     file: &'db PythonFile,
     file_index: FileIndex,
     i_s: &'b mut InferenceState<'db, 'a>,
-    execution: Option<&'a Execution>,
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
@@ -672,7 +666,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.i_s
                             .database
                             .get_loaded_python_file(file_index)
-                            .get_inference(self.i_s, None)
+                            .get_inference(self.i_s)
                             .follow_redirects_in_point_cache(point.get_node_index())
                     }
                 }
