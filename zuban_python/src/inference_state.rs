@@ -5,7 +5,7 @@ use crate::value::Function;
 
 pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
-    current_execution: Option<(&'a Function<'db, 'a>, &'a Arguments<'db>)>,
+    current_execution: Option<(&'a Function<'db>, &'a Arguments<'db, 'a>)>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -18,8 +18,8 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn with_func_and_args(
         &self,
-        func: &'a Function<'db, 'a>,
-        args: &'a Arguments<'db>,
+        func: &'a Function<'db>,
+        args: &'a Arguments<'db, 'a>,
     ) -> Self {
         Self {
             database: self.database,

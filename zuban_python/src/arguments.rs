@@ -15,57 +15,32 @@ enum ArgumentsDetailed<'db> {
 }
 
 #[derive(Debug)]
-pub struct Arguments<'db> {
+pub struct Arguments<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
     pub file: &'db PythonFile,
     pub primary_node: PyNode<'db>,
     details: ArgumentsDetailed<'db>,
+    pub in_: Option<&'a Execution>,
 }
 
-impl<'db> Arguments<'db> {
-    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>) -> Self {
+impl<'db, 'a> Arguments<'db, 'a> {
+    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>, in_: Option<&'a Execution>) -> Self {
         use NonterminalType::*;
         debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
         let arguments_node = primary_node.get_nth_child(2);
-        if arguments_node.is_type(Nonterminal(arguments)) {
-            Self::new_with_arguments(f, primary_node, arguments_node)
+        let details = if arguments_node.is_type(Nonterminal(arguments)) {
+            ArgumentsDetailed::Node(arguments_node)
         } else if arguments_node.is_type(Nonterminal(comprehension)) {
-            Self::new_comprehension(f, primary_node, arguments_node)
+            ArgumentsDetailed::Comprehension(arguments_node)
         } else {
-            Self::new_empty_arguments(f, primary_node)
-        }
-    }
-
-    fn new_empty_arguments(file: &'db PythonFile, primary_node: PyNode<'db>) -> Self {
+            ArgumentsDetailed::None
+        };
         Self {
-            file,
+            file: f,
             primary_node,
-            details: ArgumentsDetailed::None,
-        }
-    }
-
-    fn new_comprehension(
-        file: &'db PythonFile,
-        primary_node: PyNode<'db>,
-        comprehension: PyNode<'db>,
-    ) -> Self {
-        Self {
-            file,
-            primary_node,
-            details: ArgumentsDetailed::Comprehension(comprehension),
-        }
-    }
-
-    fn new_with_arguments(
-        file: &'db PythonFile,
-        primary_node: PyNode<'db>,
-        arguments: PyNode<'db>,
-    ) -> Self {
-        Self {
-            file,
-            primary_node,
-            details: ArgumentsDetailed::Node(arguments),
+            details,
+            in_,
         }
     }
 
@@ -81,17 +56,18 @@ impl<'db> Arguments<'db> {
         }
     }
 
-    pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
+    pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
         let f = database.get_loaded_python_file(execution.argument_node.file);
         let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
-        Self::new(f, primary_node)
+        Self::new(f, primary_node, execution.in_.as_deref())
     }
 
     pub fn as_execution(&self, function: &Function) -> Execution {
-        function.as_execution(PointLink::new(
-            self.file.get_file_index(),
-            self.primary_node.index,
-        ))
+        Execution::new(
+            function.as_point_link(),
+            PointLink::new(self.file.get_file_index(), self.primary_node.index),
+            self.in_,
+        )
     }
 }
 

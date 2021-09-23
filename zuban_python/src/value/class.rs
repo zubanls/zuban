@@ -32,8 +32,8 @@ impl<'db> Class<'db> {
     pub fn get_init_func<'b>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db>,
-    ) -> Function<'db, 'b> {
+        args: &Arguments<'db, '_>,
+    ) -> Function<'db> {
         let init = self.lookup(i_s, "__init__");
         init.find_function_alternative()
     }
@@ -61,7 +61,7 @@ impl<'db> Value<'db> for Class<'db> {
     fn execute(
         &self,
         database: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db>,
+        args: &Arguments<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!
         let point =

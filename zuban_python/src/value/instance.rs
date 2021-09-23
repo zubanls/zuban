@@ -60,7 +60,11 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
         }
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db> {
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &Arguments<'db, '_>,
+    ) -> Inferred<'db> {
         todo!()
     }
 }

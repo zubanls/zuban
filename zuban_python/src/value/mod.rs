@@ -59,5 +59,9 @@ pub trait Value<'db>: std::fmt::Debug {
     fn get_name(&self) -> &'db str;
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;
-    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db>;
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &Arguments<'db, '_>,
+    ) -> Inferred<'db>;
 }

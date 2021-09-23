@@ -85,10 +85,9 @@ impl<'db> Inferred<'db> {
                 LanguageSpecific => {
                     let specific = point.get_language_specific();
                     match specific {
-                        Specific::Function => callable(
-                            i_s,
-                            &Function::new(definition.file, definition.node.index, None),
-                        ),
+                        Specific::Function => {
+                            callable(i_s, &Function::new(definition.file, definition.node.index))
+                        }
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
@@ -175,7 +174,19 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::Closure(function, execution) => {
                 let f = i_s.database.get_loaded_python_file(function.file);
-                callable(i_s, &Function::new(f, function.node_index, Some(execution)))
+                let func = Function::from_execution(i_s.database, execution);
+                let args = Arguments::from_execution(i_s.database, execution);
+                callable(
+                    &mut InferenceState::with_func_and_args(i_s, &func, &args),
+                    &Function::new(f, function.node_index),
+                )
+                /*
+                i_s.run_with_execution(execution, |closure_i_s: &mut InferenceState<'db, '_>| {
+                    let x: &mut InferenceState<'db, '_> = closure_i_s;
+                    //callable(closure_i_s, &Function::new(f, function.node_index));
+                    todo!()
+                })
+                */
             }
             ComplexPoint::Generic(bla) => {
                 todo!()
@@ -252,7 +263,7 @@ impl<'db> Inferred<'db> {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let args = Arguments::new(definition.file, definition.node);
+                        let args = Arguments::new(definition.file, definition.node, None);
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(
                             i_s.database,
@@ -346,11 +357,11 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn find_function_alternative<'a>(&self) -> Function<'db, 'a> {
+    pub fn find_function_alternative(&self) -> Function<'db> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let PointType::LanguageSpecific = point.get_type() {
                 if let Specific::Function = point.get_language_specific() {
-                    return Function::new(definition.file, definition.node.index, None);
+                    return Function::new(definition.file, definition.node.index);
                 }
             }
         }

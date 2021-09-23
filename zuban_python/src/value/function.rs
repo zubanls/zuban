@@ -16,28 +16,19 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 #[derive(Debug)]
-pub struct Function<'db, 'a> {
+pub struct Function<'db> {
     file: &'db PythonFile,
     node_index: NodeIndex,
-    in_: Option<&'a Execution>,
 }
 
-impl<'db, 'a> Function<'db, 'a> {
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex, in_: Option<&'a Execution>) -> Self {
-        Self {
-            file,
-            node_index,
-            in_,
-        }
+impl<'db> Function<'db> {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex) -> Self {
+        Self { file, node_index }
     }
 
-    pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
+    pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
         let f_func = database.get_loaded_python_file(execution.function.file);
-        Function::new(
-            f_func,
-            execution.function.node_index,
-            execution.in_.as_deref(),
-        )
+        Function::new(f_func, execution.function.node_index)
     }
 
     fn get_node(&self) -> PyNode<'db> {
@@ -60,7 +51,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
     fn iter_inferrable_params(
         &self,
-        args: &Arguments<'db>,
+        args: &Arguments<'db, '_>,
     ) -> impl Iterator<Item = InferrableParam<'db>> {
         InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
     }
@@ -69,7 +60,7 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         param_name_index: NodeIndex,
-        args: &Arguments<'db>,
+        args: &Arguments<'db, '_>,
     ) -> Inferred<'db> {
         let func_node = self
             .file
@@ -82,7 +73,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let (check_args, func) = if func_node.index == self.node_index {
             (args, self)
         } else {
-            let mut execution = self.in_;
+            let mut execution = args.in_;
             loop {
                 let exec = execution.unwrap();
                 if func_node.index == exec.function.node_index {
@@ -104,7 +95,7 @@ impl<'db, 'a> Function<'db, 'a> {
     fn execute_without_annotation(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db>,
+        args: &Arguments<'db, '_>,
     ) -> Inferred<'db> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
@@ -115,7 +106,7 @@ impl<'db, 'a> Function<'db, 'a> {
             // TODO multiple returns, this is an early exit
             return self
                 .file
-                .get_inference(&mut inner_i_s, self.in_)
+                .get_inference(&mut inner_i_s, args.in_)
                 .infer_star_expressions(node.get_nth_child(1))
                 .resolve_function_return(&mut inner_i_s);
         }
@@ -140,16 +131,12 @@ impl<'db, 'a> Function<'db, 'a> {
         false
     }
 
-    pub fn as_execution(&self, argument_link: PointLink) -> Execution {
-        Execution::new(
-            PointLink::new(self.file.get_file_index(), self.node_index),
-            argument_link,
-            self.in_,
-        )
+    pub fn as_point_link(&self) -> PointLink {
+        PointLink::new(self.file.get_file_index(), self.node_index)
     }
 }
 
-impl<'db, 'a> Value<'db> for Function<'db, 'a> {
+impl<'db> Value<'db> for Function<'db> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -163,7 +150,11 @@ impl<'db, 'a> Value<'db> for Function<'db, 'a> {
         todo!()
     }
 
-    fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &Arguments<'db>) -> Inferred<'db> {
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &Arguments<'db, '_>,
+    ) -> Inferred<'db> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
         if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
@@ -339,8 +330,8 @@ trait TypeVarFinder<'db, 'a> {
 
 struct FunctionTypeVarFinder<'db, 'a> {
     file: &'db PythonFile,
-    function: &'a Function<'db, 'a>,
-    args: &'a Arguments<'db>,
+    function: &'a Function<'db>,
+    args: &'a Arguments<'db, 'a>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
 }
 
@@ -363,8 +354,8 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
 impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     fn new(
         file: &'db PythonFile,
-        function: &'a Function<'db, 'a>,
-        args: &'a Arguments<'db>,
+        function: &'a Function<'db>,
+        args: &'a Arguments<'db, '_>,
     ) -> Self {
         Self {
             file,

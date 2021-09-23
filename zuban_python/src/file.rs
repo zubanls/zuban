@@ -550,7 +550,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Execute {}", value.get_name());
-                    value.execute(i_s, &Arguments::new(f, node))
+                    value.execute(i_s, &Arguments::new(f, node, None))
                 })
             }
             "[" => {
