@@ -6,6 +6,7 @@ use crate::inferred::Inferred;
 use crate::value::{Function, Instance};
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
+use std::mem;
 
 pub enum ArgumentsType<'db> {
     Normal(&'db PythonFile, PyNode<'db>),
@@ -37,15 +38,7 @@ pub struct SimpleArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db> {
-        match self.details {
-            SimpleArgumentsDetailed::Node(node) => {
-                ArgumentIterator::Iterator(self.file, node.iter_children())
-            }
-            SimpleArgumentsDetailed::Comprehension(node) => {
-                ArgumentIterator::Comprehension(self.file, node)
-            }
-            SimpleArgumentsDetailed::None => ArgumentIterator::Finished,
-        }
+        ArgumentIterator::Normal(self.get_argument_iterator_base())
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {
@@ -90,6 +83,15 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
         Self::new(f, primary_node, execution.in_.as_deref())
     }
+
+    pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
+        use ArgumentIteratorBase::*;
+        match self.details {
+            SimpleArgumentsDetailed::Node(node) => Iterator(self.file, node.iter_children()),
+            SimpleArgumentsDetailed::Comprehension(node) => Comprehension(self.file, node),
+            SimpleArgumentsDetailed::None => Finished,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -102,7 +104,11 @@ pub struct InstanceArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db> {
-        todo!()
+        let args = self.arguments.iter_arguments();
+        ArgumentIterator::Instance(
+            self.instance.as_point_link(),
+            self.arguments.get_argument_iterator_base(),
+        )
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {
@@ -181,24 +187,39 @@ impl<'db> Argument<'db> {
     }
 }
 
-pub enum ArgumentIterator<'db> {
+pub enum ArgumentIteratorBase<'db> {
     Iterator(&'db PythonFile, SiblingIterator<'db>),
     Comprehension(&'db PythonFile, PyNode<'db>),
     Finished,
+}
+
+pub enum ArgumentIterator<'db> {
+    Normal(ArgumentIteratorBase<'db>),
+    Instance(PointLink, ArgumentIteratorBase<'db>),
 }
 
 impl<'db> Iterator for ArgumentIterator<'db> {
     type Item = Argument<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        use ArgumentIteratorBase::*;
         match self {
-            Self::Iterator(python_file, iterator) => {
+            Self::Instance(_, _) => {
+                if let Self::Instance(point_link, base) = mem::replace(self, Self::Normal(Finished))
+                {
+                    *self = Self::Normal(base);
+                    todo!()
+                } else {
+                    unreachable!()
+                }
+            }
+            Self::Normal(Iterator(python_file, iterator)) => {
                 for node in iterator {
                     use NonterminalType::*;
                     if node.is_type(Nonterminal(named_expression)) {
                         return Some(Self::Item::new_argument(python_file, node));
                     } else if node.is_type(Nonterminal(kwargs)) {
-                        *self = Self::Iterator(python_file, node.iter_children());
+                        *self = Self::Normal(Iterator(python_file, node.iter_children()));
                         return self.next();
                     } else if node.is_type(Nonterminal(kwarg)) {
                         // kwarg: Name "=" expression
@@ -215,8 +236,8 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 }
                 None
             }
-            Self::Comprehension(file, node) => Some(Argument::new_argument(file, *node)),
-            Self::Finished => None,
+            Self::Normal(Comprehension(file, node)) => Some(Argument::new_argument(file, *node)),
+            Self::Normal(Finished) => None,
         }
     }
 }

@@ -2,7 +2,9 @@ use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
+use crate::database::PointLink;
 use crate::file::PythonFile;
+use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::tree_utils::get_class_name;
@@ -26,6 +28,10 @@ impl<'db, 'a> Instance<'db> {
             node_index,
             symbol_table,
         }
+    }
+
+    pub fn as_point_link(&self) -> PointLink {
+        PointLink::new(self.file.get_file_index(), self.node_index)
     }
 }
 
