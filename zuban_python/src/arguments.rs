@@ -2,7 +2,7 @@ use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
@@ -150,40 +150,34 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub enum ArgumentType<'db> {
-    KeywordArgument(&'db str),
-    Argument,
-}
-
-#[derive(Debug)]
-pub struct Argument<'db> {
-    file: &'db PythonFile,
-    node: PyNode<'db>,
-    pub typ: ArgumentType<'db>,
+pub enum Argument<'db> {
+    Instance(PointLink),
+    KeywordArgument(&'db str, NodeReference<'db>),
+    Argument(NodeReference<'db>),
 }
 
 impl<'db> Argument<'db> {
     fn new_argument(file: &'db PythonFile, node: PyNode<'db>) -> Self {
-        Self {
-            typ: ArgumentType::Argument,
-            file,
-            node,
-        }
+        Self::Argument(NodeReference { file, node })
     }
 
     fn new_keyword_argument(file: &'db PythonFile, node: PyNode<'db>, name: &'db str) -> Self {
-        Self {
-            typ: ArgumentType::KeywordArgument(name),
-            file,
-            node,
-        }
+        Self::KeywordArgument(name, NodeReference { file, node })
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        self.file
-            // TODO this execution is wrong
-            .get_inference(i_s)
-            .infer_named_expression(self.node)
+        match self {
+            Self::Instance(point_link) => {
+                todo!()
+            }
+            Self::KeywordArgument(_, reference) | Self::Argument(reference) => {
+                reference
+                    .file
+                    // TODO this execution is wrong
+                    .get_inference(i_s)
+                    .infer_named_expression(reference.node)
+            }
+        }
     }
 }
 
@@ -208,7 +202,7 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 if let Self::Instance(point_link, base) = mem::replace(self, Self::Normal(Finished))
                 {
                     *self = Self::Normal(base);
-                    todo!()
+                    Some(Argument::Instance(point_link))
                 } else {
                     unreachable!()
                 }

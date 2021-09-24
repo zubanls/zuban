@@ -7,7 +7,7 @@ use parsa_python::{
 };
 
 use super::{Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
+use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
@@ -406,22 +406,22 @@ impl<'db> InferrableParamIterator<'db> {
 
     fn get_next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db>> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-            match unused.typ {
-                ArgumentType::KeywordArgument(name) => {
-                    if name == param.get_name() {
+            match unused {
+                Argument::KeywordArgument(name, reference) => {
+                    if name == &param.get_name() {
                         return Some(self.unused_keyword_arguments.remove(i));
                     }
                 }
-                ArgumentType::Argument => unreachable!(),
+                _ => unreachable!(),
             }
         }
         for argument in &mut self.arguments {
             // TODO check param type here and make sure that it makes sense.
-            match argument.typ {
-                ArgumentType::KeywordArgument(name) => {
+            match argument {
+                Argument::KeywordArgument(name, reference) => {
                     todo!()
                 }
-                ArgumentType::Argument => return Some(argument),
+                _ => return Some(argument),
             }
         }
         None
