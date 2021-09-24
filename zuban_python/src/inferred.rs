@@ -1,4 +1,4 @@
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -96,7 +96,7 @@ impl<'db> Inferred<'db> {
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            let args = Arguments::new(definition.file, definition.node, None);
+                            let args = SimpleArguments::new(definition.file, definition.node, None);
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                             callable(
                                 &mut i_s.with_func_and_args(&init, &args),
@@ -160,7 +160,7 @@ impl<'db> Inferred<'db> {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
-                    let args = Arguments::from_execution(i_s.database, execution);
+                    let args = SimpleArguments::from_execution(i_s.database, execution);
                     let init = Function::from_execution(i_s.database, execution);
                     callable(
                         &mut i_s.with_func_and_args(&init, &args),
@@ -176,7 +176,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Closure(function, execution) => {
                 let f = i_s.database.get_loaded_python_file(function.file);
                 let func = Function::from_execution(i_s.database, execution);
-                let args = Arguments::from_execution(i_s.database, execution);
+                let args = SimpleArguments::from_execution(i_s.database, execution);
                 callable(
                     &mut i_s.with_func_and_args(&func, &args),
                     &Function::new(f, function.node_index),
@@ -265,7 +265,7 @@ impl<'db> Inferred<'db> {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let args = Arguments::new(definition.file, definition.node, None);
+                        let args = SimpleArguments::new(definition.file, definition.node, None);
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(
                             i_s.database,

@@ -7,7 +7,7 @@ use parsa_python::{
 };
 
 use super::{Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
@@ -51,7 +51,7 @@ impl<'db> Function<'db> {
 
     fn iter_inferrable_params(
         &self,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> impl Iterator<Item = InferrableParam<'db>> {
         InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
     }
@@ -60,7 +60,7 @@ impl<'db> Function<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         param_name_index: NodeIndex,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         let func_node = self
             .file
@@ -73,13 +73,14 @@ impl<'db> Function<'db> {
         let (check_args, func) = if func_node.index == self.node_index {
             (args, self)
         } else {
-            let mut execution = args.in_;
+            let mut execution = args.get_outer_execution();
             loop {
                 let exec = execution.unwrap();
                 if func_node.index == exec.function.node_index {
-                    temporary_args = Arguments::from_execution(i_s.database, exec);
+                    // TODO this could be an instance as well
+                    temporary_args = SimpleArguments::from_execution(i_s.database, exec);
                     temporary_func = Function::from_execution(i_s.database, exec);
-                    break (&temporary_args, &temporary_func);
+                    break (&temporary_args as &dyn Arguments, &temporary_func);
                 }
                 execution = exec.in_.as_deref();
             }
@@ -95,7 +96,7 @@ impl<'db> Function<'db> {
     fn execute_without_annotation(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
@@ -153,7 +154,7 @@ impl<'db> Value<'db> for Function<'db> {
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         let return_annotation = self.get_node().get_nth_child(3);
         // Is an annotation
@@ -331,7 +332,7 @@ trait TypeVarFinder<'db, 'a> {
 struct FunctionTypeVarFinder<'db, 'a> {
     file: &'db PythonFile,
     function: &'a Function<'db>,
-    args: &'a Arguments<'db, 'a>,
+    args: &'a dyn Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
 }
 
@@ -355,7 +356,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     fn new(
         file: &'db PythonFile,
         function: &'a Function<'db>,
-        args: &'a Arguments<'db, '_>,
+        args: &'a dyn Arguments<'db>,
     ) -> Self {
         Self {
             file,

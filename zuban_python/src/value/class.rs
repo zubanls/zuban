@@ -1,7 +1,7 @@
 use parsa::NodeIndex;
 
 use super::{Function, Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{Locality, Point, Specific};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -32,7 +32,7 @@ impl<'db> Class<'db> {
     pub fn get_init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Function<'db> {
         let init = self.lookup(i_s, "__init__");
         init.find_function_alternative()
@@ -59,11 +59,15 @@ impl<'db> Value<'db> for Class<'db> {
     fn execute(
         &self,
         database: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         // TODO locality!!!
         let point =
             Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);
-        Inferred::new_and_save(args.file, args.primary_node, point)
+        match args.get_type() {
+            ArgumentsType::Normal(file, primary_node) => {
+                Inferred::new_and_save(file, primary_node, point)
+            }
+        }
     }
 }

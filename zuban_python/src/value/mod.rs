@@ -62,6 +62,6 @@ pub trait Value<'db>: std::fmt::Debug {
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db>;
 }

@@ -1,11 +1,11 @@
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::Function;
 
 pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
-    pub current_execution: Option<(&'a Function<'db>, &'a Arguments<'db, 'a>)>,
+    pub current_execution: Option<(&'a Function<'db>, &'a dyn Arguments<'db>)>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -19,7 +19,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn with_func_and_args(
         &self,
         func: &'a Function<'db>,
-        args: &'a Arguments<'db, 'a>,
+        args: &'a dyn Arguments<'db>,
     ) -> Self {
         Self {
             database: self.database,
@@ -33,7 +33,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         callable: impl FnOnce(&mut InferenceState<'db, '_>) -> T,
     ) -> T {
         let func = Function::from_execution(self.database, execution);
-        let args = Arguments::from_execution(self.database, execution);
+        let args = SimpleArguments::from_execution(self.database, execution);
         callable(&mut self.with_func_and_args(&func, &args))
     }
 

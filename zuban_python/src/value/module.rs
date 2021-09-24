@@ -38,7 +38,7 @@ impl<'db> Value<'db> for Module<'db> {
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         todo!()
     }

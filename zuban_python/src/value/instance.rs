@@ -2,7 +2,6 @@ use parsa::NodeIndex;
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -53,7 +52,7 @@ impl<'db> Value<'db> for Instance<'db> {
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &Arguments<'db, '_>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         todo!()
     }
