@@ -10,30 +10,27 @@ use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Instance<'db, 'a> {
+pub struct Instance<'db> {
     file: &'db PythonFile,
     symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
-    execution: Option<&'a Execution>,
 }
 
-impl<'db, 'a> Instance<'db, 'a> {
+impl<'db, 'a> Instance<'db> {
     pub fn new(
         file: &'db PythonFile,
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
-        execution: Option<&'a Execution>,
     ) -> Self {
         Self {
             file,
             node_index,
             symbol_table,
-            execution,
         }
     }
 }
 
-impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
+impl<'db> Value<'db> for Instance<'db> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -44,19 +41,10 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            if let Some(execution) = self.execution {
-                todo!("Probably unused");
-                i_s.run_with_execution(execution, |instance_i_s| {
-                    self.file
-                        .get_inference(instance_i_s)
-                        .infer_name_by_index(node_index)
-                })
-            } else {
-                self.file
-                    .get_inference(i_s)
-                    .infer_name_by_index(node_index)
-                    .resolve_function_return(i_s)
-            }
+            self.file
+                .get_inference(i_s)
+                .infer_name_by_index(node_index)
+                .resolve_function_return(i_s)
         } else {
             todo!("{:?}", name)
         }
