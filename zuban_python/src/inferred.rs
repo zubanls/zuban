@@ -160,8 +160,10 @@ impl<'db> Inferred<'db> {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
+                    let args = Arguments::from_execution(i_s.database, execution);
+                    let init = Function::from_execution(i_s.database, execution);
                     callable(
-                        i_s,
+                        &mut i_s.with_func_and_args(&init, &args),
                         &Instance::new(def.file, def.node.index, &cls_storage.symbol_table),
                     )
                 } else {
