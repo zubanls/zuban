@@ -3,7 +3,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::Function;
+use crate::value::{Function, Instance};
 use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 
@@ -89,6 +89,57 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         let f = database.get_loaded_python_file(execution.argument_node.file);
         let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
         Self::new(f, primary_node, execution.in_.as_deref())
+    }
+}
+
+#[derive(Debug)]
+pub struct InstanceArguments<'db, 'a> {
+    // The node id of the grammar node called primary, which is defined like
+    // primary "(" [arguments | comprehension] ")"
+    arguments: SimpleArguments<'db, 'a>,
+    instance: &'a Instance<'db>,
+}
+
+impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db> {
+        todo!()
+    }
+
+    fn get_outer_execution(&self) -> Option<&Execution> {
+        self.arguments.get_outer_execution()
+    }
+
+    fn as_execution(&self, function: &Function) -> Execution {
+        self.arguments.as_execution(function)
+    }
+
+    fn get_type(&self) -> ArgumentsType<'db> {
+        self.arguments.get_type()
+    }
+}
+
+impl<'db, 'a> InstanceArguments<'db, 'a> {
+    pub fn new(
+        instance: &'a Instance<'db>,
+        f: &'db PythonFile,
+        primary_node: PyNode<'db>,
+        in_: Option<&'a Execution>,
+    ) -> Self {
+        Self {
+            arguments: SimpleArguments::new(f, primary_node, in_),
+            instance,
+        }
+    }
+
+    pub fn from_execution(
+        database: &'db Database,
+        instance: &'a Instance<'db>,
+        execution: &'a Execution,
+    ) -> Self {
+        Self {
+            instance,
+            arguments: SimpleArguments::from_execution(database, execution),
+        }
     }
 }
 

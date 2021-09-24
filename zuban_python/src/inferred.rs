@@ -1,4 +1,4 @@
-use crate::arguments::{Arguments, SimpleArguments};
+use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -96,12 +96,15 @@ impl<'db> Inferred<'db> {
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            let args = SimpleArguments::new(definition.file, definition.node, None);
+                            let instance = cls.instantiate();
+                            let args = InstanceArguments::new(
+                                &instance,
+                                definition.file,
+                                definition.node,
+                                None,
+                            );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
-                            callable(
-                                &mut i_s.with_func_and_args(&init, &args),
-                                &cls.instantiate(),
-                            )
+                            callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                         }
                         Specific::Param => {
                             i_s.infer_param(definition).run(i_s, callable, on_missing)
@@ -160,12 +163,12 @@ impl<'db> Inferred<'db> {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
-                    let args = SimpleArguments::from_execution(i_s.database, execution);
+                    let instance =
+                        Instance::new(def.file, def.node.index, &cls_storage.symbol_table);
+                    let args =
+                        InstanceArguments::from_execution(i_s.database, &instance, execution);
                     let init = Function::from_execution(i_s.database, execution);
-                    callable(
-                        &mut i_s.with_func_and_args(&init, &args),
-                        &Instance::new(def.file, def.node.index, &cls_storage.symbol_table),
-                    )
+                    callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()
                 }
