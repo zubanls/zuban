@@ -13,4 +13,4 @@ Foo().x
 ##?
 Foo().a
 #? int()
-Foo(1).a
+Foo(1, 2).a

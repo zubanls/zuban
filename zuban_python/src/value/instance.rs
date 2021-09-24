@@ -45,13 +45,17 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             if let Some(execution) = self.execution {
+                todo!("Probably unused");
                 i_s.run_with_execution(execution, |instance_i_s| {
                     self.file
                         .get_inference(instance_i_s)
                         .infer_name_by_index(node_index)
                 })
             } else {
-                self.file.get_inference(i_s).infer_name_by_index(node_index)
+                self.file
+                    .get_inference(i_s)
+                    .infer_name_by_index(node_index)
+                    .resolve_function_return(i_s)
             }
         } else {
             todo!("{:?}", name)

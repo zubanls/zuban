@@ -29,7 +29,7 @@ impl<'db> Class<'db> {
         }
     }
 
-    pub fn get_init_func<'b>(
+    pub fn get_init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &Arguments<'db, '_>,

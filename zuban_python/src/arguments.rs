@@ -71,11 +71,13 @@ impl<'db, 'a> Arguments<'db, 'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum ArgumentType<'db> {
     KeywordArgument(&'db str),
     Argument,
 }
 
+#[derive(Debug)]
 pub struct Argument<'db> {
     file: &'db PythonFile,
     node: PyNode<'db>,

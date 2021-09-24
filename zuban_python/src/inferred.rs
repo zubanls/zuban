@@ -96,7 +96,12 @@ impl<'db> Inferred<'db> {
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            callable(i_s, &cls.instantiate())
+                            let args = Arguments::new(definition.file, definition.node, None);
+                            let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                            callable(
+                                &mut i_s.with_func_and_args(&init, &args),
+                                &cls.instantiate(),
+                            )
                         }
                         Specific::Param => {
                             i_s.infer_param(definition).run(i_s, callable, on_missing)
