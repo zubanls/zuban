@@ -37,8 +37,7 @@ impl<'db> NodeReference<'db> {
         }
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    fn to_link(&self) -> PointLink {
+    fn as_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node.index)
     }
 }
@@ -269,7 +268,7 @@ impl<'db> Inferred<'db> {
                         return Inferred::new_unsaved_complex(
                             i_s.database,
                             ComplexPoint::Instance(
-                                cls.get_saved().unwrap().0.to_link(),
+                                cls.get_saved().unwrap().0.as_link(),
                                 args.as_execution(&init),
                             ),
                         );
