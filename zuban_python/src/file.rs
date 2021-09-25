@@ -287,6 +287,19 @@ pub struct PythonInference<'db, 'a, 'b> {
     i_s: &'b mut InferenceState<'db, 'a>,
 }
 
+macro_rules! check_point_cache_with {
+    ($vis:vis $name:ident, $func:path) => {
+        $vis fn $name(&mut self, node: PyNode<'db>) -> $crate::inferred::Inferred<'db> {
+            let point = self.file.get_point(node.index);
+            self.check_point_cache(
+                $func as fn (self_: &mut Self, Node: parsa_python::PyNode<'db>) -> Inferred<'db>,
+                point,
+                node
+            )
+        }
+    }
+}
+
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_stmt_name(&mut self, stmt: PyNode<'db>, name: PyNode<'db>) {
         debug!(
@@ -484,12 +497,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_expression(expr)
     }
 
-    pub fn infer_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
+    check_point_cache_with!(pub infer_expression, Self::_infer_expression);
+    fn _infer_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
-        if let Some(result) = self.check_point_cache(node) {
-            return result;
-        }
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
@@ -555,12 +566,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_atom(&mut self, node: PyNode<'db>) -> Inferred<'db> {
+    check_point_cache_with!(infer_atom, Self::_infer_atom);
+    fn _infer_atom(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(atom));
-        if let Some(result) = self.check_point_cache(node) {
-            return result;
-        }
 
         let mut iter = node.iter_children();
         let first = iter.next().unwrap();
@@ -635,15 +644,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, node, point)
     }
 
-    fn infer_name_reference(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        if let Some(result) = self.check_point_cache(node) {
-            return result;
-        }
+    check_point_cache_with!(infer_name_reference, Self::_infer_name_reference);
+    fn _infer_name_reference(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         todo!("star import? {:?}", node)
     }
 
     #[inline]
-    fn check_point_cache(&mut self, node: PyNode<'db>) -> Option<Inferred<'db>> {
+    fn check_point_cache(
+        &mut self,
+        callable: fn(self_: &mut Self, Node: PyNode<'db>) -> Inferred<'db>,
+        point: Point,
+        node: PyNode<'db>,
+    ) -> Inferred<'db> {
         let point = self.file.get_point(node.index);
         if point.is_calculated() {
             debug!(
@@ -660,15 +672,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match point.get_type() {
                 PointType::Redirect => {
                     let file_index = point.get_file_index();
-                    let node = self.file.tree.get_node_by_index(point.get_node_index());
                     if file_index == self.file_index {
-                        self.follow_redirects_in_point_cache(node)
+                        self.follow_redirects_in_point_cache(point.get_node_index())
                     } else {
                         self.i_s
                             .database
                             .get_loaded_python_file(file_index)
                             .get_inference(self.i_s)
-                            .follow_redirects_in_point_cache(node)
+                            .follow_redirects_in_point_cache(point.get_node_index())
                     }
                 }
                 PointType::LanguageSpecific => match point.get_language_specific() {
@@ -679,16 +690,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             Nonterminal(NonterminalType::function_def)
                         );
                         self.file.calculate_node_scope_definitions(func);
-                        debug_assert!(self.file.get_point(node.index).is_calculated());
-                        self.check_point_cache(node)
+                        let point = self.file.get_point(node.index);
+                        debug_assert!(point.is_calculated());
+                        self.check_point_cache(callable, point, node)
                     }
-                    _ => Some(Inferred::new_saved(self.file, node, point)),
+                    _ => Inferred::new_saved(self.file, node, point),
                 },
                 PointType::MultiDefinition => {
                     todo!("{:?} {:?}", point.get_type(), node);
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
-                    Some(Inferred::new_saved(self.file, node, point))
+                    Inferred::new_saved(self.file, node, point)
                 }
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
@@ -698,18 +710,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             if point.is_calculating() {
                 todo!("Set recursion error and return that");
             }
-            None
+            callable(self, node)
         }
     }
 
-    fn follow_redirects_in_point_cache(&mut self, node: PyNode<'db>) -> Option<Inferred<'db>> {
-        self.check_point_cache(node).or_else(|| {
-            if node.is_type(Terminal(TerminalType::Name)) {
-                Some(self.infer_name(node))
-            } else {
-                todo!("{:?}, {:?}", self.file.get_file_index().0, node)
+    fn follow_redirects_in_point_cache(&mut self, node_index: NodeIndex) -> Inferred<'db> {
+        let point = self.file.get_point(node_index);
+        if point.is_calculated() {
+            if let PointType::Redirect = point.get_type() {
+                return self.follow_redirects_in_point_cache(point.get_node_index());
             }
-        })
+        }
+        let node = self.file.tree.get_node_by_index(node_index);
+        self.check_point_cache(Self::infer_arbitrary_node, point, node)
+    }
+
+    fn infer_arbitrary_node(&mut self, node: PyNode<'db>) -> Inferred<'db> {
+        if node.is_type(Terminal(TerminalType::Name)) {
+            self.infer_name(node)
+        } else {
+            todo!("{:?}, {:?}", self.file.get_file_index().0, node)
+        }
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
@@ -717,11 +738,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_name(node)
     }
 
-    pub fn infer_name(&mut self, node: PyNode<'db>) -> Inferred<'db> {
+    check_point_cache_with!(pub infer_name, Self::_infer_name);
+    fn _infer_name(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // TODO move this after debug_assert_eq???
-        if let Some(result) = self.check_point_cache(node) {
-            return result;
-        }
         debug_assert_eq!(
             node.get_type(),
             Terminal(TerminalType::Name),
