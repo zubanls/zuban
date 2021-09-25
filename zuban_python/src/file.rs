@@ -683,12 +683,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                     _ => Some(Inferred::new_saved(self.file, node, point)),
                 },
-                PointType::Complex => Some(Inferred::new_saved(self.file, node, point)),
+                PointType::MultiDefinition => {
+                    todo!("{:?} {:?}", point.get_type(), node);
+                }
+                PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
+                    Some(Inferred::new_saved(self.file, node, point))
+                }
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);
-                }
-                _ => {
-                    todo!("{:?} {:?}", point.get_type(), node)
                 }
             }
         } else {

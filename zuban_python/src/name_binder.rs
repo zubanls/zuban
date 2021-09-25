@@ -101,7 +101,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.extend(unresolved_names);
     }
 
-    fn add_new_definition(&self, name_def: PyNode<'db>, point: Point) {
+    fn add_new_definition(&self, name_def: PyNode<'db>, mut point: Point) {
         debug_assert_eq!(
             name_def.get_type(),
             Nonterminal(NonterminalType::name_definition)
@@ -109,7 +109,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
         if let Some(replaced) = replaced {
-            //dbg!("TODO multi reference {:?}", replaced);
+            self.points[name_def.index as usize].set(point);
+            point = Point::new_multi_definition(replaced, Locality::File);
         }
         self.points[name.index as usize].set(point);
     }

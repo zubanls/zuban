@@ -72,8 +72,9 @@ impl Point {
         Self { flags, node_index }
     }
 
-    pub fn new_multi_definition() -> Self {
-        todo!()
+    pub fn new_multi_definition(node_index: NodeIndex, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(PointType::MultiDefinition, 0, locality);
+        Self { flags, node_index }
     }
 
     pub fn new_complex_point(complex_index: u32, locality: Locality) -> Self {
