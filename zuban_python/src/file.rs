@@ -660,14 +660,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match point.get_type() {
                 PointType::Redirect => {
                     let file_index = point.get_file_index();
+                    let node = self.file.tree.get_node_by_index(point.get_node_index());
                     if file_index == self.file_index {
-                        self.follow_redirects_in_point_cache(point.get_node_index())
+                        self.follow_redirects_in_point_cache(node)
                     } else {
                         self.i_s
                             .database
                             .get_loaded_python_file(file_index)
                             .get_inference(self.i_s)
-                            .follow_redirects_in_point_cache(point.get_node_index())
+                            .follow_redirects_in_point_cache(node)
                     }
                 }
                 PointType::LanguageSpecific => match point.get_language_specific() {
@@ -701,13 +702,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn follow_redirects_in_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
-        let node = self.file.tree.get_node_by_index(node_index);
+    fn follow_redirects_in_point_cache(&mut self, node: PyNode<'db>) -> Option<Inferred<'db>> {
         self.check_point_cache(node).or_else(|| {
             if node.is_type(Terminal(TerminalType::Name)) {
                 Some(self.infer_name(node))
             } else {
-                todo!("{:?}, {:?}", self.file.get_file_index().0, node_index)
+                todo!("{:?}, {:?}", self.file.get_file_index().0, node)
             }
         })
     }
