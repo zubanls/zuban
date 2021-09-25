@@ -2,8 +2,9 @@ use parsa::NodeIndex;
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
-use crate::database::{Locality, Point, Specific};
+use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
+use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::tree_utils::get_class_name;
@@ -58,15 +59,27 @@ impl<'db> Value<'db> for Class<'db> {
 
     fn execute(
         &self,
-        database: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        let point =
-            Point::new_simple_language_specific(Specific::InstanceWithArguments, Locality::Stmt);
-        match args.get_type() {
-            ArgumentsType::Normal(file, primary_node) => {
-                Inferred::new_and_save(file, primary_node, point)
+        if args.get_outer_execution().is_some() {
+            Inferred::new_unsaved_complex(
+                i_s.database,
+                ComplexPoint::Instance(
+                    PointLink::new(self.file.get_file_index(), self.node_index),
+                    args.as_execution(&self.get_init_func(i_s, args)),
+                ),
+            )
+        } else {
+            let point = Point::new_simple_language_specific(
+                Specific::InstanceWithArguments,
+                Locality::Stmt,
+            );
+            match args.get_type() {
+                ArgumentsType::Normal(file, primary_node) => {
+                    Inferred::new_and_save(file, primary_node, point)
+                }
             }
         }
     }

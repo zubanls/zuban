@@ -12,7 +12,7 @@ pub enum ArgumentsType<'db> {
     Normal(&'db PythonFile, PyNode<'db>),
 }
 
-pub trait Arguments<'db> {
+pub trait Arguments<'db>: std::fmt::Debug {
     fn iter_arguments(&self) -> ArgumentIterator<'db>;
     fn get_outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;

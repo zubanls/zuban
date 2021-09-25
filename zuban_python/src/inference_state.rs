@@ -39,7 +39,9 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn infer_param(&mut self, definition: &NodeReference<'db>) -> Inferred<'db> {
         if let Some((function, args)) = self.current_execution {
-            function.infer_param(self, definition.node.index, args)
+            function
+                .infer_param(self, definition.node.index, args)
+                .resolve_function_return(self)
         } else {
             todo!()
         }

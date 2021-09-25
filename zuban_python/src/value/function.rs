@@ -5,6 +5,7 @@ use parsa_python::{
     PyNodeType::{Nonterminal, Terminal},
     SiblingIterator, TerminalType,
 };
+use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
@@ -15,10 +16,18 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
-#[derive(Debug)]
 pub struct Function<'db> {
     file: &'db PythonFile,
     node_index: NodeIndex,
+}
+
+impl<'db> fmt::Debug for Function<'db> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Inferred")
+            .field("file", self.file)
+            .field("node", &self.get_node())
+            .finish()
+    }
 }
 
 impl<'db> Function<'db> {
