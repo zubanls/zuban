@@ -186,10 +186,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     );
                 } else {
                     debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
+                    /*
                     self.add_point_definition(
                         not_decorated.get_nth_child(0).get_nth_child(1),
-                        Specific::LazyInferredClass,
                     );
+                    */
+                    todo!("async stmt")
                 }
                 0
             } else if child.is_type(Nonterminal(if_stmt)) {
