@@ -672,15 +672,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match point.get_type() {
                 PointType::Redirect => {
                     let file_index = point.get_file_index();
-                    if file_index == self.file_index {
-                        self.follow_redirects_in_point_cache(point.get_node_index())
-                    } else {
-                        self.i_s
-                            .database
-                            .get_loaded_python_file(file_index)
-                            .get_inference(self.i_s)
-                            .follow_redirects_in_point_cache(point.get_node_index())
-                    }
+                    self.follow_redirects_in_point_cache(file_index, point.get_node_index())
                 }
                 PointType::LanguageSpecific => match point.get_language_specific() {
                     Specific::LazyInferredFunction => {
@@ -714,11 +706,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn follow_redirects_in_point_cache(&mut self, node_index: NodeIndex) -> Inferred<'db> {
+    fn follow_redirects_in_point_cache(
+        &mut self,
+        file_index: FileIndex,
+        node_index: NodeIndex,
+    ) -> Inferred<'db> {
+        if file_index != self.file_index {
+            return self
+                .i_s
+                .database
+                .get_loaded_python_file(file_index)
+                .get_inference(self.i_s)
+                .follow_redirects_in_point_cache(file_index, node_index);
+        }
         let point = self.file.get_point(node_index);
         if point.is_calculated() {
             if let PointType::Redirect = point.get_type() {
-                return self.follow_redirects_in_point_cache(point.get_node_index());
+                return self.follow_redirects_in_point_cache(
+                    point.get_file_index(),
+                    point.get_node_index(),
+                );
             }
         }
         let node = self.file.tree.get_node_by_index(node_index);
