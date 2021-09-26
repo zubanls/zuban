@@ -701,7 +701,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let previous_node = self.file.tree.get_node_by_index(point.get_node_index());
                     let inferred = self.infer_name(previous_node);
                     // Check for the cache of name_definition
-                    dbg!(node.index);
                     inferred.union(self.infer_multi_definition(node.get_parent().unwrap()))
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
@@ -801,7 +800,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
         debug_assert!(self.file.get_point(node.index).is_calculated());
-        self.infer_name(node)
+        if let PointType::MultiDefinition = self.file.get_point(node.index).get_type() {
+            // We are trying to infer the name here. We don't have to follow the multi definition,
+            // because the cache handling takes care of that.
+            self.infer_multi_definition(node.get_parent().unwrap())
+        } else {
+            self.infer_name(node)
+        }
     }
 }
 
