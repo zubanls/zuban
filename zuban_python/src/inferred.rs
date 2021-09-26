@@ -82,6 +82,7 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        reducer: &impl Fn(T, T) -> T,
         on_missing: &impl Fn(Inferred<'db>) -> T,
     ) -> T {
         use PointType::*;
@@ -112,9 +113,9 @@ impl<'db> Inferred<'db> {
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                             callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                         }
-                        Specific::Param => {
-                            i_s.infer_param(definition).run(i_s, callable, on_missing)
-                        }
+                        Specific::Param => i_s
+                            .infer_param(definition)
+                            .run(i_s, callable, reducer, on_missing),
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)
@@ -133,21 +134,8 @@ impl<'db> Inferred<'db> {
                             &cls_storage.symbol_table,
                         );
                         callable(i_s, &class)
-                    } else if let ComplexPoint::Union(lst) = complex {
-                        /*
-                        for &p in lst.iter() {
-                            let node_ref = NodeReference::from_link(i_s.database, p);
-                            let point = node_ref.file.get_point(node_ref.node_index);
-                            Inferred {state: InferredState::Saved(node_ref, point)}.run(
-                                i_s,
-                                callable,
-                                || unreachable!()
-                            );
-                        }
-                        */
-                        todo!()
                     } else {
-                        self.run_on_complex(i_s, complex, Some(definition), callable)
+                        self.run_on_complex(i_s, complex, Some(definition), callable, reducer)
                     }
                 }
                 MissingOrUnknown => on_missing(self.clone()),
@@ -158,7 +146,7 @@ impl<'db> Inferred<'db> {
                 _ => unreachable!(),
             },
             InferredState::UnsavedComplex(complex) => {
-                self.run_on_complex(i_s, complex, None, callable)
+                self.run_on_complex(i_s, complex, None, callable, reducer)
             }
         }
     }
@@ -170,6 +158,7 @@ impl<'db> Inferred<'db> {
         complex: &ComplexPoint,
         definition: Option<&NodeReference<'db>>,
         callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
             ComplexPoint::Instance(cls_definition, execution) => {
@@ -186,6 +175,18 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
+            ComplexPoint::Union(lst) => lst
+                .iter()
+                .map(|&p| {
+                    let node_ref = NodeReference::from_link(i_s.database, p);
+                    let point = node_ref.get_point();
+                    Inferred {
+                        state: InferredState::Saved(node_ref, point),
+                    }
+                    .run(i_s, callable, reducer, &|i| unreachable!())
+                })
+                .reduce(reducer)
+                .unwrap(),
             ComplexPoint::Method(bla, bar) => {
                 todo!()
             }
@@ -209,9 +210,6 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Generic(bla) => {
                 todo!()
             }
-            ComplexPoint::Union(lst) => {
-                unreachable!("Union is handled earlier")
-            }
             ComplexPoint::Class(cls_storage) => {
                 unreachable!("Class is handled earlier")
             }
@@ -224,15 +222,15 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
     ) -> Inferred<'db> {
-        self.run(i_s, callable, &|inferred| inferred)
+        self.run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
     }
 
     #[inline]
-    pub fn run_on_value_names<'a, C, T>(
+    pub fn run_on_value_names<C, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &'a C,
-    ) -> ValueNameIterator<'a, C, T>
+        callable: &C,
+    ) -> ValueNameIterator<T>
     where
         C: Fn(&dyn ValueName<'db>) -> T,
     {
@@ -240,6 +238,33 @@ impl<'db> Inferred<'db> {
             i_s,
             &|i_s, value| {
                 ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
+            },
+            &|iter1, iter2| {
+                // Reducer
+                match iter1 {
+                    ValueNameIterator::Single(element1) => match iter2 {
+                        ValueNameIterator::Single(element2) => {
+                            ValueNameIterator::Multiple(vec![element1, element2])
+                        }
+                        ValueNameIterator::Multiple(mut list2) => {
+                            list2.push(element1);
+                            ValueNameIterator::Multiple(list2)
+                        }
+                        ValueNameIterator::Finished => ValueNameIterator::Single(element1),
+                    },
+                    ValueNameIterator::Multiple(mut list1) => match iter2 {
+                        ValueNameIterator::Single(element2) => {
+                            list1.push(element2);
+                            ValueNameIterator::Multiple(list1)
+                        }
+                        ValueNameIterator::Multiple(mut list2) => {
+                            list1.append(&mut list2);
+                            ValueNameIterator::Multiple(list1)
+                        }
+                        ValueNameIterator::Finished => ValueNameIterator::Multiple(list1),
+                    },
+                    ValueNameIterator::Finished => iter2,
+                }
             },
             &|inferred| ValueNameIterator::Finished,
         )

@@ -241,16 +241,13 @@ impl<'db, 'a> ValueName<'db> for WithValueName<'db, 'a> {
     }
 }
 
-pub enum ValueNameIterator<'a, C, T> {
+pub enum ValueNameIterator<T> {
     Single(T),
-    Multiple(&'a C),
+    Multiple(Vec<T>),
     Finished,
 }
 
-impl<'db, 'a, C, T> Iterator for ValueNameIterator<'a, C, T>
-where
-    C: Fn(&dyn ValueName<'db>) -> T,
-{
+impl<'db, T> Iterator for ValueNameIterator<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -264,9 +261,7 @@ where
                     unreachable!()
                 }
             }
-            Self::Multiple(c) => {
-                todo!()
-            }
+            Self::Multiple(list) => list.pop(),
             Self::Finished => None,
         }
     }

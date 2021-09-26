@@ -117,11 +117,11 @@ impl<'a> Script<'a> {
     pub fn complete(&self, position: Position) {}
 
     //pub fn infer_definition<'b, T>(&self, callable: &'b ValueNameCallable<'a, 'b, T>, position: Position) -> impl Iterator<Item = T> {
-    pub fn infer_definition<'b, C, T>(
+    pub fn infer_definition<C, T>(
         &'a self,
-        callable: &'b C,
+        callable: &C,
         position: Position,
-    ) -> ValueNameIterator<'b, C, T>
+    ) -> ValueNameIterator<T>
     // impl Iterator<Item = T>
     where
         C: Fn(&dyn ValueName<'a>) -> T,
