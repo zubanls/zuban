@@ -20,14 +20,16 @@ enum CaseType {
 }
 
 impl TestFile {
-    pub fn test(&self) {
+    pub fn test(&self) -> usize {
         let mut project = zuban_python::Project::new("foo".to_owned());
         let script = Script::new(
             &mut project,
             Some(self.path.to_str().unwrap().to_owned()),
             Some(self.code.clone()),
         );
-        for case in self.get_test_cases() {
+        let cases = self.get_test_cases();
+        let count = cases.len();
+        for case in cases {
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = script
@@ -47,6 +49,7 @@ impl TestFile {
                 }
             }
         }
+        count
     }
 
     fn get_test_cases(&self) -> Vec<TestCase> {

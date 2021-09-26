@@ -3,6 +3,7 @@ mod cases;
 use std::env;
 use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
+use std::time::Instant;
 
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
@@ -12,17 +13,27 @@ fn main() {
         filters = cli_args[1..].iter().filter(|x| *x != "blackbox").collect();
     }
 
-    for python_file in get_python_files() {
+    let files = get_python_files();
+    let start = Instant::now();
+    let mut count = 0;
+    let file_count = files.len();
+    for python_file in files {
         let file_name = python_file.file_name().unwrap().to_str().unwrap();
         if filters.len() == 0 || filters.iter().any(|x| file_name.contains(*x)) {
             let code = read_to_string(&python_file).unwrap();
-            cases::TestFile {
+            let f = cases::TestFile {
                 path: python_file,
                 code,
-            }
-            .test();
+            };
+            count += f.test();
         }
     }
+    println!(
+        "Run {} integration tests in {} files; finished in {:.2}s",
+        count,
+        file_count,
+        start.elapsed().as_secs_f32(),
+    );
 }
 
 fn get_python_files() -> Vec<PathBuf> {
