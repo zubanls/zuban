@@ -1,4 +1,4 @@
-use std::cell::UnsafeCell;
+use std::cell::{Cell, UnsafeCell};
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -7,10 +7,29 @@ use std::pin::Pin;
 use parsa::{Node, NodeIndex};
 use parsa_python::PyNode;
 
+thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = Cell::new(0));
+
+#[inline]
+pub fn debug_indent<C: FnOnce() -> T, T>(f: C) -> T {
+    if cfg!(feature = "zuban_debug") {
+        DEBUG_INDENTATION.with(|i| {
+            i.set(i.get() + 1);
+            let result = f();
+            i.set(i.get() - 1);
+            result
+        })
+    } else {
+        f()
+    }
+}
+
 #[macro_export]
 macro_rules! debug {
     ($($arg:tt)*) => {
         if cfg!(feature="zuban_debug") {
+            use std::iter::repeat;
+            let indent = $crate::utils::DEBUG_INDENTATION.with(|i| i.get());
+            print!("{}", repeat(' ').take(indent).collect::<String>());
             println!($($arg)*);
         }
     }

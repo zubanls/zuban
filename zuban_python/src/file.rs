@@ -9,7 +9,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
-use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use parsa::{CodeIndex, Node, NodeIndex};
 use parsa_python::{
     NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
@@ -290,12 +290,14 @@ pub struct PythonInference<'db, 'a, 'b> {
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path) => {
         $vis fn $name(&mut self, node: PyNode<'db>) -> $crate::inferred::Inferred<'db> {
-            let point = self.file.get_point(node.index);
-            self.check_point_cache(
-                $func as fn (self_: &mut Self, Node: parsa_python::PyNode<'db>) -> Inferred<'db>,
-                point,
-                node
-            )
+            debug_indent(|| {
+                let point = self.file.get_point(node.index);
+                self.check_point_cache(
+                    $func as fn (self_: &mut Self, Node: parsa_python::PyNode<'db>) -> Inferred<'db>,
+                    point,
+                    node
+                )
+            })
         }
     }
 }
