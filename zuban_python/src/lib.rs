@@ -18,7 +18,7 @@ mod value;
 use database::{Database, FileIndex, Workspace};
 use file_state::{Leaf, PythonFileLoader};
 use inference_state::InferenceState;
-use name::{Names, ValueName, ValueNameIterator};
+use name::{Names, ValueName};
 use parsa::CodeIndex;
 pub use value::ValueKind;
 
@@ -116,16 +116,11 @@ impl<'a> Script<'a> {
 
     pub fn complete(&self, position: Position) {}
 
-    //pub fn infer_definition<'b, T>(&self, callable: &'b ValueNameCallable<'a, 'b, T>, position: Position) -> impl Iterator<Item = T> {
-    pub fn infer_definition<C, T>(
+    pub fn infer_definition<C: Fn(&dyn ValueName<'a>) -> T, T>(
         &'a self,
         callable: &C,
         position: Position,
-    ) -> ValueNameIterator<T>
-    // impl Iterator<Item = T>
-    where
-        C: Fn(&dyn ValueName<'a>) -> T,
-    {
+    ) -> impl Iterator<Item = T> {
         let mut i_s = InferenceState::new(&self.project.database);
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
