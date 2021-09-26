@@ -178,7 +178,9 @@ impl Point {
 
     pub fn get_node_index(self) -> NodeIndex {
         debug_assert!(
-            self.get_type() == PointType::Redirect || self.get_type() == PointType::NodeAnalysis
+            self.get_type() == PointType::Redirect
+                || self.get_type() == PointType::NodeAnalysis
+                || self.get_type() == PointType::MultiDefinition
         );
         self.node_index
     }

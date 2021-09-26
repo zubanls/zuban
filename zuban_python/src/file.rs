@@ -438,9 +438,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         Target::Name(n) => {
                             let point = self.file.get_point(n.index);
                             if point.is_calculated() {
-                                todo!("{:?} {:?} {:?}", self.file, point, n);
+                                // Save on name_definition
+                                debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
+                                debug_assert_eq!(
+                                    n.get_parent().unwrap().get_type(),
+                                    Nonterminal(name_definition)
+                                );
+                                inferred.clone().save_redirect(self.file, n.index - 1);
+                            } else {
+                                inferred.clone().save_redirect(self.file, n.index);
                             }
-                            inferred.clone().save_redirect(self.file, n.index);
                         }
                         Target::NameExpression(_, name_node) => {
                             inferred.clone().save_redirect(self.file, name_node.index);
@@ -689,7 +696,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     _ => Inferred::new_saved(self.file, node, point),
                 },
                 PointType::MultiDefinition => {
-                    todo!("{:?} {:?}", point.get_type(), node);
+                    let previous_node = self.file.tree.get_node_by_index(point.get_node_index());
+                    let inferred = self.infer_name(previous_node);
+                    // Check for the cache of name_definition
+                    self.infer_multi_definition(node.get_parent().unwrap())
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node, point)
@@ -704,6 +714,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             callable(self, node)
         }
+    }
+
+    check_point_cache_with!(infer_multi_definition, Self::_infer_multi_definition);
+    fn _infer_multi_definition(&mut self, name_def: PyNode<'db>) -> Inferred<'db> {
+        self._infer_name(name_def.get_nth_child(0))
     }
 
     fn follow_redirects_in_point_cache(
@@ -721,6 +736,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
         let point = self.file.get_point(node_index);
         if point.is_calculated() {
+            // This is just a shortcut to avoid fetching the node.
             if let PointType::Redirect = point.get_type() {
                 return self.follow_redirects_in_point_cache(
                     point.get_file_index(),

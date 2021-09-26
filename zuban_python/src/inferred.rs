@@ -338,7 +338,11 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 if file.get_point(index).is_calculated() {
-                    todo!()
+                    todo!(
+                        "{:?} {:?}",
+                        file.get_point(index),
+                        file.tree.get_node_by_index(index)
+                    );
                 }
                 file.set_point(
                     index,
