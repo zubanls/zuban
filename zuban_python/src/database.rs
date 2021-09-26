@@ -465,8 +465,10 @@ impl Workspace {
                     .push(n);
             }
             let name = entry.file_name();
-
             if let Some(name) = name.to_str() {
+                if !loaders.iter().any(|l| l.might_be_relevant(name)) {
+                    continue;
+                }
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {

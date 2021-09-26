@@ -16,3 +16,10 @@ or:
 with debug enabled:
 
     RUST_BACKTRACE=1 CARGO_TARGET_DIR=/tmp/cargo_target RUSTFLAGS="-Z macro-backtrace" cargo     test --features zuban_debug
+
+
+### Profiling
+
+    sudo sysctl -w kernel.perf_event_paranoid=1  # Might be needed
+    flamegraph cargo test blackbox --release
+    firefox flamegraph.svg

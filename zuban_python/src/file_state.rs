@@ -39,6 +39,8 @@ pub enum Leaf<'db> {
 pub trait FileStateLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
+    fn might_be_relevant(&self, name: &str) -> bool;
+
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
@@ -52,6 +54,13 @@ pub struct PythonFileLoader {}
 impl FileStateLoader for PythonFileLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str> {
         vec!["py", "pyi"]
+    }
+
+    fn might_be_relevant(&self, name: &str) -> bool {
+        if name.ends_with(".py") {
+            return true;
+        }
+        name != "__pycache__" && !name.contains(".") && !name.contains("-")
     }
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
