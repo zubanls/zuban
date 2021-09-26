@@ -277,7 +277,7 @@ pub enum Locality {
     ImplicitExtern, // Contains star imports for now (always recheck on invalidation of the module)
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
@@ -295,7 +295,7 @@ pub struct LocalityLink {
     pub locality: Locality,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
@@ -305,7 +305,7 @@ pub enum ComplexPoint {
     Generic(Execution),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Execution {
     pub function: PointLink,
     pub in_: Option<Box<Execution>>,
@@ -599,5 +599,11 @@ impl ClassStorage {
 impl std::clone::Clone for ClassStorage {
     fn clone(&self) -> Self {
         unreachable!("This should never happen, because should never be cloned");
+    }
+}
+
+impl<'db> std::cmp::PartialEq for ClassStorage {
+    fn eq(&self, other: &Self) -> bool {
+        unreachable!("Should never happen with classes")
     }
 }

@@ -699,7 +699,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let previous_node = self.file.tree.get_node_by_index(point.get_node_index());
                     let inferred = self.infer_name(previous_node);
                     // Check for the cache of name_definition
-                    self.infer_multi_definition(node.get_parent().unwrap())
+                    dbg!(node.index);
+                    inferred.union(self.infer_multi_definition(node.get_parent().unwrap()))
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node, point)

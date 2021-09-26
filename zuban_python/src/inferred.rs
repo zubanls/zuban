@@ -15,6 +15,12 @@ pub struct NodeReference<'db> {
     pub node: PyNode<'db>,
 }
 
+impl<'db> std::cmp::PartialEq for NodeReference<'db> {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.file, other.file) && self.node.index == other.node.index
+    }
+}
+
 impl<'db> NodeReference<'db> {
     fn from_link(database: &'db Database, point: PointLink) -> Self {
         let file = database.get_loaded_python_file(point.file);
@@ -42,7 +48,7 @@ impl<'db> NodeReference<'db> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
     UnsavedComplex(ComplexPoint),
@@ -65,7 +71,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn new_unsaved_complex(database: &'db Database, complex: ComplexPoint) -> Self {
+    pub fn new_unsaved_complex(complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
         }
@@ -127,6 +133,19 @@ impl<'db> Inferred<'db> {
                             &cls_storage.symbol_table,
                         );
                         callable(i_s, &class)
+                    } else if let ComplexPoint::Union(lst) = complex {
+                        /*
+                        for &p in lst.iter() {
+                            let node_ref = NodeReference::from_link(i_s.database, p);
+                            let point = node_ref.file.get_point(node_ref.node_index);
+                            Inferred {state: InferredState::Saved(node_ref, point)}.run(
+                                i_s,
+                                callable,
+                                || unreachable!()
+                            );
+                        }
+                        */
+                        todo!()
                     } else {
                         self.run_on_complex(i_s, complex, Some(definition), callable)
                     }
@@ -153,12 +172,6 @@ impl<'db> Inferred<'db> {
         callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
     ) -> T {
         match complex {
-            ComplexPoint::Union(lst) => {
-                todo!()
-            }
-            ComplexPoint::Class(cls_storage) => {
-                unreachable!("Class is handled earlier")
-            }
             ComplexPoint::Instance(cls_definition, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
@@ -195,6 +208,12 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::Generic(bla) => {
                 todo!()
+            }
+            ComplexPoint::Union(lst) => {
+                unreachable!("Union is handled earlier")
+            }
+            ComplexPoint::Class(cls_storage) => {
+                unreachable!("Class is handled earlier")
             }
         }
     }
@@ -270,25 +289,16 @@ impl<'db> Inferred<'db> {
                             .resolve_function_return(i_s);
                         let args = SimpleArguments::new(definition.file, definition.node, None);
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
-                        return Inferred::new_unsaved_complex(
-                            i_s.database,
-                            ComplexPoint::Instance(
-                                cls.get_saved().unwrap().0.as_link(),
-                                args.as_execution(&init),
-                            ),
-                        );
+                        return Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                            cls.get_saved().unwrap().0.as_link(),
+                            args.as_execution(&init),
+                        ));
                     }
                     Specific::Closure => {
-                        return Inferred::new_unsaved_complex(
-                            i_s.database,
-                            ComplexPoint::Closure(
-                                PointLink::new(
-                                    definition.file.get_file_index(),
-                                    definition.node.index,
-                                ),
-                                i_s.args_as_execution().unwrap(),
-                            ),
-                        );
+                        return Inferred::new_unsaved_complex(ComplexPoint::Closure(
+                            PointLink::new(definition.file.get_file_index(), definition.node.index),
+                            i_s.args_as_execution().unwrap(),
+                        ));
                     }
                     Specific::Param => {
                         return i_s.infer_param(&definition);
@@ -381,6 +391,30 @@ impl<'db> Inferred<'db> {
         match self.state {
             InferredState::Saved(definition, point) => Some((definition, point)),
             _ => None,
+        }
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        if self.state == other.state {
+            self
+        } else {
+            let mut list = vec![];
+            let insert = |list: &mut Vec<PointLink>, state| {
+                match state {
+                    InferredState::Saved(definition, _) => {
+                        list.push(definition.as_link());
+                    }
+                    InferredState::UnsavedComplex(complex) => match complex {
+                        ComplexPoint::Union(lst) => {
+                            list.extend(lst.iter());
+                        }
+                        _ => todo!("{:?}", complex),
+                    },
+                };
+            };
+            insert(&mut list, self.state);
+            insert(&mut list, other.state);
+            Self::new_unsaved_complex(ComplexPoint::Union(list.into_boxed_slice()))
         }
     }
 }
