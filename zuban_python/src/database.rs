@@ -448,6 +448,7 @@ impl Workspace {
             PathBuf::from(&root),
             DirectoryOrFile::Directory(root, vec![]),
         )];
+        // TODO optimize if there are a lot of files
         for entry in WalkDir::new(&stack[0].1.get_name())
             .follow_links(true)
             .into_iter()
