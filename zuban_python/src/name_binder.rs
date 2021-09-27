@@ -194,7 +194,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.index_function_name_and_param_defaults(child, ordered, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(class_def)) {
-                self.index_class(child, in_base_scope);
+                self.index_class(child, false, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
@@ -205,12 +205,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         in_base_scope,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
-                    // TODO infer class here
-                    self.add_point_definition(
-                        not_decorated.get_nth_child(1),
-                        Specific::LazyInferredClass,
-                        in_base_scope,
-                    );
+                    self.index_class(not_decorated, true, in_base_scope);
                 } else {
                     debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
                     /*
@@ -453,7 +448,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_class(&mut self, class: PyNode<'db>, in_base_scope: bool) {
+    fn index_class(&mut self, class: PyNode<'db>, is_decorated: bool, in_base_scope: bool) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
@@ -474,7 +469,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_redirect_definition(class.get_nth_child(1), class.index as u32, in_base_scope);
+        if is_decorated {
+            self.add_point_definition(
+                class.get_nth_child(1),
+                Specific::LazyInferredClass,
+                in_base_scope,
+            );
+        } else {
+            self.add_redirect_definition(class.get_nth_child(1), class.index as u32, in_base_scope);
+        }
     }
 
     fn index_self_vars(&mut self, class: PyNode<'db>, symbol_table: &SymbolTable) {
