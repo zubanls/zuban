@@ -101,39 +101,58 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.extend(unresolved_names);
     }
 
-    fn add_new_definition(&self, name_def: PyNode<'db>, mut point: Point) {
+    fn add_new_definition(&self, name_def: PyNode<'db>, mut point: Point, in_base_scope: bool) {
         debug_assert_eq!(
             name_def.get_type(),
             Nonterminal(NonterminalType::name_definition)
         );
         let name = name_def.get_nth_child(0);
         let replaced = self.symbol_table.add_or_replace_symbol(name);
-        if let Some(replaced) = replaced {
-            self.points[name_def.index as usize].set(point);
-            point = Point::new_multi_definition(replaced, Locality::File);
+        if !in_base_scope {
+            if let Some(replaced) = replaced {
+                self.points[name_def.index as usize].set(point);
+                point = Point::new_multi_definition(replaced, Locality::File);
+            }
         }
         self.points[name.index as usize].set(point);
     }
 
-    fn add_point_definition(&mut self, name_def: PyNode<'db>, type_: Specific) {
+    fn add_point_definition(
+        &mut self,
+        name_def: PyNode<'db>,
+        type_: Specific,
+        in_base_scope: bool,
+    ) {
         self.add_new_definition(
             name_def,
             Point::new_simple_language_specific(type_, Locality::Stmt),
+            in_base_scope,
         );
     }
 
-    fn add_redirect_definition(&mut self, name_def: PyNode<'db>, node_index: NodeIndex) {
+    fn add_redirect_definition(
+        &mut self,
+        name_def: PyNode<'db>,
+        node_index: NodeIndex,
+        in_base_scope: bool,
+    ) {
         self.add_new_definition(
             name_def,
             Point::new_redirect(self.file_index, node_index, Locality::Stmt),
+            in_base_scope,
         );
     }
 
     pub fn index_file(&mut self, file_node: PyNode<'db>) {
-        self.index_stmts(file_node.iter_children(), true);
+        self.index_stmts(file_node.iter_children(), true, true);
     }
 
-    fn index_block(&mut self, block_node: PyNode<'db>, ordered: bool) -> NodeIndex {
+    fn index_block(
+        &mut self,
+        block_node: PyNode<'db>,
+        ordered: bool,
+        in_base_scope: bool,
+    ) -> NodeIndex {
         // Returns the latest return/yield index
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
@@ -146,9 +165,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             .get_nth_child(0)
             .is_type(Nonterminal(NonterminalType::simple_stmts))
         {
-            self.index_non_block_node(block_node, ordered)
+            self.index_non_block_node(block_node, ordered, in_base_scope)
         } else {
-            self.index_stmts(block_node.iter_children().skip(2), ordered)
+            self.index_stmts(block_node.iter_children().skip(2), ordered, in_base_scope)
         }
     }
 
@@ -156,6 +175,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         &mut self,
         stmts: impl Iterator<Item = PyNode<'db>>,
         ordered: bool,
+        in_base_scope: bool,
     ) -> NodeIndex {
         use NonterminalType::*;
         //debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
@@ -169,21 +189,27 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
             let child = child.get_nth_child(0);
             let return_or_yield = if child.is_type(Nonterminal(simple_stmts)) {
-                self.index_non_block_node(child, ordered)
+                self.index_non_block_node(child, ordered, in_base_scope)
             } else if child.is_type(Nonterminal(function_def)) {
-                self.index_function_name_and_param_defaults(child, ordered);
+                self.index_function_name_and_param_defaults(child, ordered, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(class_def)) {
-                self.index_class(child);
+                self.index_class(child, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
-                    self.index_function_name_and_param_defaults(not_decorated, ordered);
+                    self.index_function_name_and_param_defaults(
+                        not_decorated,
+                        ordered,
+                        in_base_scope,
+                    );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
+                    // TODO infer class here
                     self.add_point_definition(
                         not_decorated.get_nth_child(1),
                         Specific::LazyInferredClass,
+                        in_base_scope,
                     );
                 } else {
                     debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
@@ -212,7 +238,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 let mut iterator = iterator.skip(1);
                 let inner = iterator.next().unwrap();
                 if inner.is_type(Nonterminal(function_def)) {
-                    self.index_function_name_and_param_defaults(inner, ordered);
+                    self.index_function_name_and_param_defaults(inner, ordered, in_base_scope);
                     0
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered)
@@ -275,7 +301,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 });
             } else if n.is_type(Nonterminal(expression)) {
                 // Typically annotations
-                self.index_non_block_node(n, true);
+                self.index_non_block_node(n, true, false);
             } else if n.is_type(Nonterminal(function_def)) {
                 let symbol_table = SymbolTable::default();
                 self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
@@ -295,14 +321,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let iterator = for_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         let mut iterator = iterator.skip(1);
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         let mut iterator = iterator.skip(1);
-        let latest = self.index_block(iterator.next().unwrap(), false);
+        let latest = self.index_block(iterator.next().unwrap(), false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         if ordered {
@@ -310,7 +336,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
-            let latest = self.index_block(else_.get_nth_child(2), ordered);
+            let latest = self.index_block(else_.get_nth_child(2), ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -327,17 +353,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let iterator = while_stmt.iter_children();
         let mut iterator = iterator.skip(1);
 
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         let mut iterator = iterator.skip(1);
-        let latest = self.index_non_block_node(iterator.next().unwrap(), false);
+        let latest = self.index_non_block_node(iterator.next().unwrap(), false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_) = iterator.next() {
             // "else" ":" block
-            let latest = self.index_block(else_.get_nth_child(2), ordered);
+            let latest = self.index_block(else_.get_nth_child(2), ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -355,12 +381,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let latest = match child.get_type() {
                 Nonterminal(NonterminalType::with_item) => {
                     // expression ["as" star_target]
-                    let latest = self.index_non_block_node(child.get_nth_child(0), ordered);
+                    let latest = self.index_non_block_node(child.get_nth_child(0), ordered, false);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_non_block_node(child.get_nth_child(2), ordered)
+                    self.index_non_block_node(child.get_nth_child(2), ordered, false)
                 }
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
                 _ => 0,
             };
             latest_return_or_yield =
@@ -377,11 +403,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for child in if_stmt.iter_children().skip(1) {
             let latest = match child.get_type() {
                 Nonterminal(NonterminalType::named_expression) => {
-                    self.index_non_block_node(child, ordered)
+                    self.index_non_block_node(child, ordered, false)
                 }
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
                 Nonterminal(NonterminalType::else_block) => {
-                    self.index_block(child.get_nth_child(2), ordered)
+                    self.index_block(child.get_nth_child(2), ordered, false)
                 }
                 Keyword => 0,
                 _ => (unreachable!()),
@@ -398,26 +424,26 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
         for child in try_stmt.iter_children() {
             let latest = match child.get_type() {
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered),
+                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
                 Nonterminal(NonterminalType::except_block) => {
                     // except_clause ":" block
                     let except_clause = child.get_nth_child(0);
                     // except_clause: "except" [expression ["as" name_definition]]
                     for child in except_clause.iter_children() {
                         if child.is_type(Nonterminal(NonterminalType::expression)) {
-                            self.index_non_block_node(child, ordered);
+                            self.index_non_block_node(child, ordered, false);
                         } else if child.is_type(Nonterminal(NonterminalType::name_definition)) {
-                            self.add_redirect_definition(child, except_clause.index as u32);
+                            self.add_redirect_definition(child, except_clause.index as u32, false);
                         }
                     }
                     // block
-                    self.index_block(child.get_nth_child(2), ordered)
+                    self.index_block(child.get_nth_child(2), ordered, false)
                 }
                 Nonterminal(NonterminalType::finally_block)
                 | Nonterminal(NonterminalType::else_block) => {
                     // "finally" ":" block
                     // "else" ":" block
-                    self.index_block(child.get_nth_child(2), ordered)
+                    self.index_block(child.get_nth_child(2), ordered, false)
                 }
                 _ => 0,
             };
@@ -427,16 +453,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_class(&mut self, class: PyNode<'db>) {
+    fn index_class(&mut self, class: PyNode<'db>, in_base_scope: bool) {
         // "class" name_definition ["(" [arguments] ")"] ":" block
         debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
         let symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
             for child in class.iter_children() {
                 if child.is_type(Nonterminal(NonterminalType::arguments)) {
-                    binder.index_non_block_node(child, true);
+                    binder.index_non_block_node(child, true, true);
                 } else if child.is_type(Nonterminal(NonterminalType::block)) {
-                    binder.index_block(child, true);
+                    binder.index_block(child, true, true);
                 }
             }
         });
@@ -448,7 +474,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
-        self.add_redirect_definition(class.get_nth_child(1), class.index as u32);
+        self.add_redirect_definition(class.get_nth_child(1), class.index as u32, in_base_scope);
     }
 
     fn index_self_vars(&mut self, class: PyNode<'db>, symbol_table: &SymbolTable) {
@@ -500,7 +526,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         todo!("match_stmt")
     }
 
-    fn index_non_block_node(&mut self, node: PyNode<'db>, ordered: bool) -> NodeIndex {
+    fn index_non_block_node(
+        &mut self,
+        node: PyNode<'db>,
+        ordered: bool,
+        in_base_scope: bool,
+    ) -> NodeIndex {
         use NonterminalType::*;
         const SEARCH_NAMES: &[PyNodeType] = &[
             Terminal(TerminalType::Name),
@@ -518,7 +549,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 if parent.is_type(Nonterminal(name_definition)) {
                     if !parent.get_parent().unwrap().is_type(Nonterminal(t_primary)) {
                         // The types are inferred later.
-                        self.add_new_definition(parent, Point::new_uncalculated())
+                        self.add_new_definition(parent, Point::new_uncalculated(), in_base_scope)
                     }
                 } else {
                     self.index_reference(n, parent, ordered);
@@ -580,22 +611,27 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         debug_assert_eq!(clause.get_type(), Nonterminal(sync_for_if_clause));
         for child in clause.iter_children() {
             if child.is_type(Nonterminal(disjunction)) || child.is_type(Nonterminal(comp_if)) {
-                self.index_non_block_node(child, true);
+                self.index_non_block_node(child, true, false);
             }
         }
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Comprehension, &symbol_table, |binder| {
-            binder.index_non_block_node(clause.get_nth_child(1), true);
+            binder.index_non_block_node(clause.get_nth_child(1), true, false);
             if let Some(clause) = clauses.next() {
                 binder.index_comprehension_clause(clauses, clause, result_node);
             } else {
-                binder.index_non_block_node(result_node, true);
+                binder.index_non_block_node(result_node, true, false);
             }
         });
     }
 
-    fn index_function_name_and_param_defaults(&mut self, node: PyNode<'db>, ordered: bool) {
+    fn index_function_name_and_param_defaults(
+        &mut self,
+        node: PyNode<'db>,
+        ordered: bool,
+        in_base_scope: bool,
+    ) {
         use NonterminalType::*;
         debug_assert_eq!(node.get_type(), Nonterminal(function_def));
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
@@ -617,7 +653,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         if n.is_type(Nonterminal(annotation)) {
                             self.unresolved_nodes.push(n.get_nth_child(1));
                         } else {
-                            self.index_non_block_node(n, ordered);
+                            self.index_non_block_node(n, ordered, false);
                         }
                     }
                 }
@@ -633,6 +669,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else {
                 Specific::LazyInferredFunction
             },
+            in_base_scope,
         );
     }
 
@@ -650,12 +687,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)])
                     {
                         if n.is_type(Nonterminal(name_definition)) {
-                            self.add_point_definition(n, Specific::Param);
+                            self.add_point_definition(n, Specific::Param, true);
                         } // defaults and annotations are already indexed
                     }
                 }
             } else if child.is_type(Nonterminal(block)) {
-                let latest_return_index = self.index_block(child, true);
+                let latest_return_index = self.index_block(child, true, true);
                 // It's kind of hard to know where to store the latest reference statement.
                 self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
                     Locality::ClassOrFunction,
@@ -694,7 +731,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let params = node.get_nth_child(1);
         if params.is_type(Nonterminal(lambda_parameters)) {
             for n in params.search(&[Nonterminal(expression)]) {
-                self.index_non_block_node(n, ordered);
+                self.index_non_block_node(n, ordered, false);
             }
         }
     }
@@ -706,12 +743,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_point_definition(n, Specific::Param);
+                        self.add_point_definition(n, Specific::Param, true);
                     } // defaults are already indexed
                 }
             }
             if child.is_type(Nonterminal(expression)) {
-                self.index_non_block_node(child, true);
+                self.index_non_block_node(child, true, true);
             }
         }
     }
