@@ -40,6 +40,7 @@ pub trait FileStateLoader {
     fn responsible_for_file_endings(&self) -> Vec<&str>;
 
     fn might_be_relevant(&self, name: &str) -> bool;
+    fn should_be_ignored(&self, name: &str) -> bool;
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
 
@@ -60,7 +61,11 @@ impl FileStateLoader for PythonFileLoader {
         if name.ends_with(".py") {
             return true;
         }
-        name != "__pycache__" && !name.contains(".") && !name.contains("-")
+        !name.contains('.') && !name.contains('-')
+    }
+
+    fn should_be_ignored(&self, name: &str) -> bool {
+        name == "__pycache__" && !name.ends_with(".pyc")
     }
 
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {

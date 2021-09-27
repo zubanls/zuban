@@ -452,6 +452,16 @@ impl Workspace {
         for entry in WalkDir::new(&stack[0].1.get_name())
             .follow_links(true)
             .into_iter()
+            .filter_entry(|entry| {
+                entry
+                    .file_name()
+                    .to_str()
+                    .map(|name| {
+                        !loaders.iter().any(|l| l.should_be_ignored(name))
+                            && loaders.iter().any(|l| l.might_be_relevant(name))
+                    })
+                    .unwrap_or(false)
+            })
             .filter_map(|e| e.ok())
             .skip(1)
         {
@@ -467,9 +477,6 @@ impl Workspace {
             }
             let name = entry.file_name();
             if let Some(name) = name.to_str() {
-                if !loaders.iter().any(|l| l.might_be_relevant(name)) {
-                    continue;
-                }
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {
