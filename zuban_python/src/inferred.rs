@@ -4,7 +4,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
-use crate::value::{Class, Function, Instance, Module, Value};
+use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
 use parsa::{Node, NodeIndex};
 use parsa_python::PyNode;
 use std::fmt;
@@ -116,6 +116,7 @@ impl<'db> Inferred<'db> {
                         Specific::Param => i_s
                             .infer_param(definition)
                             .run(i_s, callable, reducer, on_missing),
+                        Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)

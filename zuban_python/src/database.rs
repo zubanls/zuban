@@ -240,8 +240,10 @@ pub enum Specific {
     None,
 
     Ellipsis,
-    ComprehensionGenerator,
     Tuple,
+    GeneratorComprehension,
+    List,
+    ListComprehension,
 
     SelfParam,
     Param,

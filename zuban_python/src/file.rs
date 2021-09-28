@@ -569,7 +569,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 })
             }
             "[" => {
-                todo!()
+                let f = self.file;
+                base.run_on_value(self.i_s, &|i_s, value| {
+                    debug!("Get Item {}", value.get_name());
+                    let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
+                    value.get_item(i_s, &SimpleArguments::new(f, node, x.as_ref()))
+                })
             }
             _ => unreachable!(),
         }
@@ -625,7 +630,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         Nonterminal(named_expression) => {
                             todo!("named_expression");
                         }
-                        Nonterminal(comprehension) => Specific::ComprehensionGenerator,
+                        Nonterminal(comprehension) => Specific::GeneratorComprehension,
                         PyNodeType::Keyword => {
                             debug_assert_eq!(next_node.get_code(), ")");
                             Specific::Tuple
@@ -634,7 +639,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 "[" => {
-                    todo!("List literal")
+                    let next_node = iter.next().unwrap();
+                    if next_node.is_type(Nonterminal(star_named_expressions)) {
+                        Specific::List
+                    } else {
+                        debug_assert_eq!(next_node.get_type(), Nonterminal(comprehension));
+                        Specific::ListComprehension
+                    }
                 }
                 "{" => match iter.next().unwrap().get_type() {
                     Nonterminal(dict_content) | Nonterminal(dict_comprehension) => {

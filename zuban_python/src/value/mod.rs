@@ -1,6 +1,7 @@
 mod class;
 mod function;
 mod instance;
+mod iterable;
 mod module;
 
 use crate::arguments::Arguments;
@@ -9,6 +10,7 @@ use crate::inferred::Inferred;
 pub use class::Class;
 pub use function::Function;
 pub use instance::Instance;
+pub use iterable::ListLiteral;
 pub use module::Module;
 
 enum ArrayType {
@@ -63,5 +65,14 @@ pub trait Value<'db>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> Inferred<'db>;
+    ) -> Inferred<'db> {
+        todo!()
+    }
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        todo!()
+    }
 }
