@@ -5,6 +5,7 @@ mod iterable;
 mod module;
 
 use crate::arguments::Arguments;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use class::Class;
@@ -71,7 +72,7 @@ pub trait Value<'db>: std::fmt::Debug {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         todo!()
     }

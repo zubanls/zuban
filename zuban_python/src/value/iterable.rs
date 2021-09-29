@@ -1,5 +1,5 @@
 use super::{Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
@@ -20,7 +20,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
     }
 
     fn get_name(&self) -> &'db str {
-        todo!()
+        "list"
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
@@ -30,8 +30,20 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        todo!()
+        match slice_type {
+            SliceType::Simple(simple) => {
+                let index = simple.infer(i_s);
+                dbg!(index);
+                todo!()
+            }
+            SliceType::Slice(simple) => {
+                todo!()
+            }
+            SliceType::Slices(simple) => {
+                todo!()
+            }
+        }
     }
 }

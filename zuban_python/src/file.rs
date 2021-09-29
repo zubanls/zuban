@@ -4,6 +4,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
+use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -573,7 +574,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Get Item {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
-                    value.get_item(i_s, &SimpleArguments::new(f, node, x.as_ref()))
+                    value.get_item(i_s, &SliceType::new(f, second))
                 })
             }
             _ => unreachable!(),

@@ -9,6 +9,10 @@ use parsa::{Node, NodeIndex};
 use parsa_python::PyNode;
 use std::fmt;
 
+pub trait Inferrable<'db> {
+    fn infer(&self) -> Inferred<'db>;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct NodeReference<'db> {
     pub file: &'db PythonFile,
