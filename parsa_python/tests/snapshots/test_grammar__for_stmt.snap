@@ -89,12 +89,10 @@ file: 0-82
         Keyword: 58-59 "."
         Name: 59-60 "y"
        Keyword: 60-61 "["
-       slices: 61-62
-        slice: 61-62
-         named_expression: 61-62
-          expression: 61-62
-           atom: 61-62
-            Number: 61-62 "0"
+       named_expression: 61-62
+        expression: 61-62
+         atom: 61-62
+          Number: 61-62 "0"
        Keyword: 62-63 "]"
      Keyword: 63-64 ")"
    Keyword: 65-67 "in"

@@ -259,8 +259,8 @@ create_grammar!(
         | "[" [star_named_expressions | comprehension] "]"
         | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
         | Name | Number | strings | "..." | "None" | "True" | "False"
-    slices: ",".slice+ [","]
-    slice: expression? ":" expression? [":" expression?] | named_expression
+    slices:? ",".slice+ [","]
+    slice:? expression? ":" expression? [":" expression?] | named_expression
 
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+

@@ -44,12 +44,10 @@ file: 0-63
         Keyword: 22-23 "."
         Name: 23-26 "bar"
        Keyword: 26-27 "["
-       slices: 27-28
-        slice: 27-28
-         named_expression: 27-28
-          expression: 27-28
-           atom: 27-28
-            Number: 27-28 "1"
+       named_expression: 27-28
+        expression: 27-28
+         atom: 27-28
+          Number: 27-28 "1"
        Keyword: 28-29 "]"
      Keyword: 30-31 "="
      star_expressions: 32-33
@@ -86,12 +84,10 @@ file: 0-63
         Keyword: 51-52 "."
         Name: 52-55 "bar"
        Keyword: 55-56 "["
-       slices: 56-57
-        slice: 56-57
-         named_expression: 56-57
-          expression: 56-57
-           atom: 56-57
-            Number: 56-57 "1"
+       named_expression: 56-57
+        expression: 56-57
+         atom: 56-57
+          Number: 56-57 "1"
        Keyword: 57-58 "]"
      Keyword: 59-60 "="
      star_expressions: 61-62
