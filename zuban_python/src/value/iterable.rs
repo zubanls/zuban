@@ -1,3 +1,5 @@
+use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
+
 use super::{Value, ValueKind};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -34,8 +36,22 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
     ) -> Inferred<'db> {
         match slice_type {
             SliceType::Simple(simple) => {
-                let index = simple.infer(i_s);
-                dbg!(index);
+                let n = self.node_reference.node.get_nth_child(1);
+                if let Some(i) = simple.infer(i_s).expect_int() {
+                    if let Some(node) = n.iter_children().nth(i as usize * 2) {
+                        let child = node.get_nth_child(0);
+                        if child.is_type(Nonterminal(NonterminalType::named_expression)) {
+                            return self
+                                .node_reference
+                                .file
+                                .get_inference(i_s)
+                                .infer_named_expression(child);
+                        } else {
+                            todo!("{:?}", child)
+                        }
+                    }
+                }
+                for child in n.iter_children() {}
                 todo!()
             }
             SliceType::Slice(simple) => {

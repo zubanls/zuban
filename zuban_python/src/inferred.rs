@@ -373,6 +373,19 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn expect_int(&self) -> Option<i64> {
+        if let InferredState::Saved(definition, point) = self.state {
+            if let PointType::LanguageSpecific = point.get_type() {
+                if let Specific::Integer = point.get_language_specific() {
+                    //if definition.node.is_type(Terminal(TerminalType::Number)) {
+                    return definition.node.get_code().parse().ok();
+                    //}
+                }
+            }
+        }
+        None
+    }
+
     pub fn save_redirect(self, file: &'db PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
@@ -492,4 +505,13 @@ fn load_builtin_instance_from_str<'db>(
     debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
     use_instance(builtins, v.get_node_index())
+}
+
+// TODO unused -> delete?!
+enum Exact<'db> {
+    Int(bool),
+    Str(&'db str),
+    Bool(bool),
+    Bytes(&'db str),
+    Float(f64),
 }
