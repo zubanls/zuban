@@ -1,6 +1,6 @@
 use parsa_python::{
-    NonterminalType::*, PyNode, PyNodeType::Nonterminal, PyTree, SiblingIterator, TerminalType,
-    PYTHON_GRAMMAR,
+    NodeIndex, NonterminalType::*, PyNode, PyNodeType::Nonterminal, PyTree, SiblingIterator,
+    TerminalType, PYTHON_GRAMMAR,
 };
 
 macro_rules! create_nonterminal_structs {
@@ -8,9 +8,15 @@ macro_rules! create_nonterminal_structs {
         $(
             pub struct $name<'db>(PyNode<'db>);
             impl<'db> $name<'db> {
+                #[inline]
                 pub fn new(node: PyNode<'db>) -> Self {
                     debug_assert_eq!(node.get_type(), Nonterminal($nonterminal));
                     Self(node)
+                }
+
+                #[inline]
+                pub fn by_index(tree: &'db PyTree, index: NodeIndex) -> Self {
+                    Self::new(tree.get_node_by_index(index))
                 }
             }
         )+

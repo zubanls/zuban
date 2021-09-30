@@ -4,6 +4,7 @@ mod tokenizer;
 
 pub use crate::tokenizer::TerminalType;
 use crate::tokenizer::{PyTerminal, PythonTokenizer};
+pub use parsa::NodeIndex;
 use parsa::{create_grammar, Grammar};
 
 create_grammar!(
