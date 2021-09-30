@@ -132,7 +132,7 @@ create_grammar!(
     star_expressions: ",".(expression|star_expression)+ [","]
     star_expression: "*" bitwise_or
     star_named_expressions: ",".star_named_expression+ [","]
-    star_named_expression: "*" disjunction | named_expression
+    star_named_expression:? "*" disjunction | named_expression
 
     named_expression: name_definition ":=" expression | expression
 

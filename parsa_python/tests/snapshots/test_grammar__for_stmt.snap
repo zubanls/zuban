@@ -15,17 +15,15 @@ file: 0-82
      atom: 10-15
       Keyword: 10-11 "["
       star_named_expressions: 11-14
-       star_named_expression: 11-12
-        named_expression: 11-12
-         expression: 11-12
-          atom: 11-12
-           Number: 11-12 "1"
+       named_expression: 11-12
+        expression: 11-12
+         atom: 11-12
+          Number: 11-12 "1"
        Keyword: 12-13 ","
-       star_named_expression: 13-14
-        named_expression: 13-14
-         expression: 13-14
-          atom: 13-14
-           Number: 13-14 "2"
+       named_expression: 13-14
+        expression: 13-14
+         atom: 13-14
+          Number: 13-14 "2"
       Keyword: 14-15 "]"
    Keyword: 15-16 ":"
    block: 16-25
