@@ -70,16 +70,13 @@ pub trait ValueName<'db>: Name<'db> {
     fn get_kind(&self) -> ValueKind;
 }
 
-pub struct TreeName<'db, F: File, N: Node<'db>> {
+pub struct TreeName<'db, F: File, N> {
     database: &'db Database,
     file: &'db F,
     tree_node: N,
 }
 
-impl<'db, F: File, N: Node<'db>> fmt::Debug for TreeName<'db, F, N>
-where
-    Self: LanguageTreeName<'db>,
-{
+impl<'db> fmt::Debug for TreeName<'db, PythonFile, PyNode<'db>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
             .field("file", &self.get_file_path())
@@ -88,7 +85,7 @@ where
     }
 }
 
-impl<'db, F: File, N: Node<'db>> TreeName<'db, F, N> {
+impl<'db, F: File, N> TreeName<'db, F, N> {
     pub fn new(database: &'db Database, file: &'db F, tree_node: N) -> Self {
         Self {
             database,
@@ -98,30 +95,7 @@ impl<'db, F: File, N: Node<'db>> TreeName<'db, F, N> {
     }
 }
 
-pub trait LanguageTreeName<'db> {
-    fn tree_infer(&self) -> Inferred<'db>;
-    fn tree_goto(&self) -> Names<'db>;
-}
-
-impl<'db> LanguageTreeName<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
-    fn tree_infer(&self) -> Inferred<'db> {
-        if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
-            let mut i_s = InferenceState::new(self.database);
-            self.file.get_inference(&mut i_s).infer_name(self.tree_node)
-        } else {
-            todo!()
-        }
-    }
-
-    fn tree_goto(&self) -> Names<'db> {
-        todo!()
-    }
-}
-
-impl<'db, F: File, N: Node<'db>> Name<'db> for TreeName<'db, F, N>
-where
-    TreeName<'db, F, N>: LanguageTreeName<'db>,
-{
+impl<'db> Name<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
     fn get_name(&self) -> &'db str {
         self.tree_node.get_code()
     }
@@ -162,11 +136,16 @@ where
     */
 
     fn infer(&self) -> Inferred<'db> {
-        self.tree_infer()
+        if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
+            let mut i_s = InferenceState::new(self.database);
+            self.file.get_inference(&mut i_s).infer_name(self.tree_node)
+        } else {
+            todo!()
+        }
     }
 
     fn goto(&self) -> Names<'db> {
-        self.tree_goto()
+        todo!()
     }
 }
 
