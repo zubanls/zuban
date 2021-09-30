@@ -7,9 +7,8 @@ use crate::database::{
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
-use parsa::NodeIndex;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
-use parsa_python::{NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
+use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
 
 pub enum NameBinderType {
     Global,

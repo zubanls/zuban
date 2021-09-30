@@ -5,8 +5,7 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
-use parsa::NodeIndex;
-use parsa_python::PyNode;
+use parsa_python::{NodeIndex, PyNode};
 use std::fmt;
 
 pub trait Inferrable<'db> {

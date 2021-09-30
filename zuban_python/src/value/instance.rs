@@ -1,4 +1,4 @@
-use parsa::NodeIndex;
+use parsa_python::NodeIndex;
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;

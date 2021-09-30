@@ -4,8 +4,7 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::value::{Value, ValueKind};
-use parsa::CodeIndex;
-use parsa_python::{PyNode, PyNodeType, TerminalType};
+use parsa_python::{CodeIndex, PyNode, PyNodeType, TerminalType};
 use std::fmt;
 use std::mem;
 

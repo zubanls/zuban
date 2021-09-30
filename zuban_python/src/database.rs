@@ -1,4 +1,4 @@
-use parsa::NodeIndex;
+use parsa_python::NodeIndex;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;

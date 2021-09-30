@@ -1,6 +1,5 @@
-use parsa::NodeIndex;
 use parsa_python::{
-    NonterminalType, PyNode,
+    NodeIndex, NonterminalType, PyNode,
     PyNodeType::{Nonterminal, Terminal},
     SiblingIterator, TerminalType,
 };

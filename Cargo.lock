@@ -322,7 +322,6 @@ name = "zuban_python"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "parsa",
  "parsa_python",
  "parsa_python_ast",
  "regex",
