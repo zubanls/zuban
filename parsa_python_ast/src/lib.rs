@@ -3,23 +3,30 @@ use parsa_python::{
     PYTHON_GRAMMAR,
 };
 
-macro_rules! create_structs {
-    ($($name:ident),+) => {
+macro_rules! create_nonterminal_structs {
+    ($($name:ident: $nonterminal:ident)+) => {
         $(
             pub struct $name<'db>(PyNode<'db>);
+            impl<'db> $name<'db> {
+                pub fn new(node: PyNode<'db>) -> Self {
+                    debug_assert_eq!(node.get_type(), Nonterminal($nonterminal));
+                    Self(node)
+                }
+            }
         )+
     }
 }
 
-create_structs!(Stmt, StarExpressions, StarExpressionsTuple, StarExpression);
+create_nonterminal_structs!(
+    Stmt: stmt
+    StarExpressions: star_expressions
+    StarExpressionsTuple: star_expressions
+    StarExpression: star_expression
+);
 
 impl<'db> Stmt<'db> {}
 
 impl<'db> StarExpressions<'db> {
-    pub fn new(node: PyNode<'db>) -> Self {
-        Self(node)
-    }
-
     pub fn unpack(&self) -> StarExpressionContent<'db> {
         let mut iter = self.0.iter_children();
         let expr = iter.next().unwrap();
