@@ -37,21 +37,28 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         match slice_type {
             SliceType::Simple(simple) => {
                 let n = self.node_reference.node.get_nth_child(1);
-                if let Some(i) = simple.infer(i_s).expect_int() {
-                    if let Some(node) = n.iter_children().nth(i as usize * 2) {
-                        let child = node.get_nth_child(0);
+                if let Some(wanted) = simple.infer(i_s).expect_int() {
+                    for (i, child) in n.iter_children().step_by(2).enumerate() {
                         if child.is_type(Nonterminal(NonterminalType::named_expression)) {
-                            return self
-                                .node_reference
-                                .file
-                                .get_inference(i_s)
-                                .infer_named_expression(child);
+                            if i as i64 == wanted {
+                                return self
+                                    .node_reference
+                                    .file
+                                    .get_inference(i_s)
+                                    .infer_named_expression(child);
+                            }
                         } else {
-                            todo!("{:?}", child)
+                            debug_assert_eq!(
+                                child.get_type(),
+                                Nonterminal(NonterminalType::star_named_expression)
+                            );
+                            // It gets quite complicated to figure out the index here, so just stop
+                            // for now.
+                            break;
                         }
                     }
                 }
-                for child in n.iter_children() {}
+                for (i, child) in n.iter_children().enumerate().step_by(2) {}
                 todo!()
             }
             SliceType::Slice(simple) => {
