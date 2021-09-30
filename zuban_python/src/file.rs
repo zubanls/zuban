@@ -15,6 +15,7 @@ use parsa::{CodeIndex, NodeIndex};
 use parsa_python::{
     NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
+use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
@@ -427,7 +428,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if expression_node.is_type(Nonterminal(yield_expr)) {
                     todo!("cache yield expr");
                 } else {
-                    self.infer_star_expressions(expression_node)
+                    self.infer_star_expressions(StarExpressions::new(expression_node))
                 }
             }
         };
@@ -471,26 +472,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_star_expressions(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        debug_assert_eq!(
-            node.get_type(),
-            Nonterminal(NonterminalType::star_expressions)
-        );
-
-        let mut iter = node.iter_children();
-        let expression = iter.next().unwrap();
-        if iter.next().is_none() {
-            if expression.is_type(Nonterminal(NonterminalType::expression)) {
-                self.infer_expression(expression)
-            } else {
-                debug_assert_eq!(
-                    node.get_type(),
-                    Nonterminal(NonterminalType::star_expression)
-                );
-                todo!("Add error: can't use starred expression here");
+    pub fn infer_star_expressions(&mut self, exprs: StarExpressions<'db>) -> Inferred<'db> {
+        match exprs.unpack() {
+            StarExpressionContent::Expression(expr) => self.infer_expression(expr),
+            StarExpressionContent::StarExpression(expr) => {
+                todo!("Add error: can't use starred expression here")
             }
-        } else {
-            todo!("it's a tuple, cache that!")
+            StarExpressionContent::Tuple(expr) => todo!("it's a tuple, cache that!"),
         }
     }
 

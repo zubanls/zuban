@@ -4,6 +4,7 @@ use parsa_python::{
     PyNodeType::{Nonterminal, Terminal},
     SiblingIterator, TerminalType,
 };
+use parsa_python_ast::StarExpressions;
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -116,7 +117,7 @@ impl<'db> Function<'db> {
             return self
                 .file
                 .get_inference(&mut inner_i_s)
-                .infer_star_expressions(node.get_nth_child(1))
+                .infer_star_expressions(StarExpressions::new(node.get_nth_child(1)))
                 .resolve_function_return(&mut inner_i_s);
         }
         todo!("Should just return None or maybe NoReturn?");

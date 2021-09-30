@@ -113,6 +113,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "parsa_python_ast"
+version = "0.1.0"
+dependencies = [
+ "parsa_python",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -317,6 +324,7 @@ dependencies = [
  "lazy_static",
  "parsa",
  "parsa_python",
+ "parsa_python_ast",
  "regex",
  "walkdir",
 ]

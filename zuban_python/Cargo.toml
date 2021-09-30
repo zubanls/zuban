@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 parsa_python = { path = "../parsa_python" }
+parsa_python_ast = { path = "../parsa_python_ast" }
 parsa = { path = "../parsa" }
 lazy_static = "*"
 regex = "*"
