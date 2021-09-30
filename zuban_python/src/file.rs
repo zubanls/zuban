@@ -673,7 +673,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     #[inline]
     fn check_point_cache(
         &mut self,
-        callable: fn(self_: &mut Self, Node: PyNode<'db>) -> Inferred<'db>,
+        callable: fn(&mut Self, PyNode<'db>) -> Inferred<'db>,
         point: Point,
         node: PyNode<'db>,
     ) -> Inferred<'db> {
