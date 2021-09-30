@@ -1,6 +1,5 @@
 extern crate insta;
 
-use parsa::Node;
 use parsa_python::*;
 
 fn dedent(s: &'static str) -> String {

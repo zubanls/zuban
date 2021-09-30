@@ -1,4 +1,3 @@
-use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
 
 pub fn get_class_name(class_node: PyNode) -> &str {

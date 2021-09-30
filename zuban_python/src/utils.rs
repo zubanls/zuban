@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 
-use parsa::{Node, NodeIndex};
+use parsa::NodeIndex;
 use parsa_python::PyNode;
 
 thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = Cell::new(0));

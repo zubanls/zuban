@@ -4,7 +4,6 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
-use parsa::Node;
 use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 use std::mem;
 

@@ -7,7 +7,7 @@ use crate::database::{
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
-use parsa::{Node, NodeIndex};
+use parsa::NodeIndex;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
 

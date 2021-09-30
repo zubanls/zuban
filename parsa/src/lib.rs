@@ -20,22 +20,6 @@ pub use grammar::{
     CodeIndex, CodeLength, Grammar, InternalNode, InternalTree, NodeIndex, Token, Tokenizer,
 };
 
-pub trait Node<'a>: std::fmt::Debug {
-    fn get_code(&self) -> &'a str;
-
-    fn get_prefix(&self) -> &'a str;
-
-    fn get_suffix(&self) -> &'a str;
-
-    fn start(&self) -> CodeIndex;
-
-    fn end(&self) -> CodeIndex;
-
-    fn length(&self) -> CodeLength;
-
-    fn is_leaf(&self) -> bool;
-}
-
 #[macro_export]
 macro_rules! __filter_labels_and_create_node_set {
     ([$($args:tt)+], $label:ident: $($rule:tt)+) => {
@@ -143,8 +127,6 @@ macro_rules! __create_node {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
 
-        use $crate::Node;
-
         #[derive(Debug, PartialEq, Eq, Copy, Clone)]
         pub enum $NodeType{
             Nonterminal($NonterminalType),
@@ -180,12 +162,20 @@ macro_rules! __create_node {
             internal_node: &'a $crate::InternalNode,
         }
 
-        impl<'a> Node<'a> for $Node<'a> {
-            fn get_code(&self) -> &'a str {
+        impl<'a> $Node<'a> {
+            fn new(
+                internal_tree: &'a $crate::InternalTree,
+                index: $crate::NodeIndex,
+                internal_node: &'a $crate::InternalNode
+            ) -> Self {
+                Self {internal_tree, index, internal_node}
+            }
+
+            pub fn get_code(&self) -> &'a str {
                 self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
-            fn get_prefix(&self) -> &'a str {
+            pub fn get_prefix(&self) -> &'a str {
                 let start;
                 if self.index == 0 {
                     start = 0;
@@ -196,7 +186,7 @@ macro_rules! __create_node {
                 string
             }
 
-            fn get_suffix(&self) -> &'a str {
+            pub fn get_suffix(&self) -> &'a str {
                 let end;
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
@@ -210,30 +200,20 @@ macro_rules! __create_node {
                 string
             }
 
-            fn start(&self) -> u32 {
+            pub fn start(&self) -> u32 {
                 self.internal_node.start_index
             }
 
-            fn end(&self) -> u32 {
+            pub fn end(&self) -> u32 {
                 self.start() + self.length()
             }
 
-            fn length(&self) -> u32 {
+            pub fn length(&self) -> u32 {
                 self.internal_node.length
             }
 
-            fn is_leaf(&self) -> bool {
+            pub fn is_leaf(&self) -> bool {
                 self.internal_node.type_.is_leaf()
-            }
-        }
-
-        impl<'a> $Node<'a> {
-            fn new(
-                internal_tree: &'a $crate::InternalTree,
-                index: $crate::NodeIndex,
-                internal_node: &'a $crate::InternalNode
-            ) -> Self {
-                Self {internal_tree, index, internal_node}
             }
 
             fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {

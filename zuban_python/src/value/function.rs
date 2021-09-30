@@ -1,4 +1,3 @@
-use parsa::Node;
 use parsa::NodeIndex;
 use parsa_python::{
     NonterminalType, PyNode,
