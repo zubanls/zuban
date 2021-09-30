@@ -1,4 +1,4 @@
-use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
+use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
 
 use super::{Value, ValueKind};
 use crate::getitem::SliceType;
@@ -13,6 +13,17 @@ pub struct ListLiteral<'db, 'a> {
 impl<'db, 'a> ListLiteral<'db, 'a> {
     pub fn new(node_reference: &'a NodeReference<'db>) -> Self {
         Self { node_reference }
+    }
+
+    fn infer_named_expr(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        node: PyNode<'db>,
+    ) -> Inferred<'db> {
+        self.node_reference
+            .file
+            .get_inference(i_s)
+            .infer_named_expression(node)
     }
 }
 
@@ -41,11 +52,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
                     for (i, child) in n.iter_children().step_by(2).enumerate() {
                         if child.is_type(Nonterminal(NonterminalType::named_expression)) {
                             if i as i64 == wanted {
-                                return self
-                                    .node_reference
-                                    .file
-                                    .get_inference(i_s)
-                                    .infer_named_expression(child);
+                                return self.infer_named_expr(i_s, child);
                             }
                         } else {
                             debug_assert_eq!(
@@ -58,8 +65,25 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
                         }
                     }
                 }
-                for (i, child) in n.iter_children().enumerate().step_by(2) {}
-                todo!()
+                let mut iterator = n.iter_children().step_by(2);
+                if let Some(first_node) = iterator.next() {
+                    let mut inferred =
+                        if first_node.is_type(Nonterminal(NonterminalType::named_expression)) {
+                            self.infer_named_expr(i_s, first_node)
+                        } else {
+                            todo!()
+                        };
+                    for child in iterator {
+                        if child.is_type(Nonterminal(NonterminalType::named_expression)) {
+                            inferred = inferred.union(self.infer_named_expr(i_s, child));
+                        } else {
+                            todo!()
+                        }
+                    }
+                    inferred
+                } else {
+                    todo!()
+                }
             }
             SliceType::Slice(simple) => {
                 todo!()
