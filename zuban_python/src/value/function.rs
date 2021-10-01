@@ -172,7 +172,7 @@ impl<'db> Value<'db> for Function<'db> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    Inferred::new_and_save(self.file, return_annotation.0, point)
+                    Inferred::new_and_save(self.file, return_annotation.index(), point)
                 })
             }
         } else {

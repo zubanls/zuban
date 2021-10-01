@@ -47,7 +47,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
     ) -> Inferred<'db> {
         match slice_type {
             SliceType::Simple(simple) => {
-                let n = self.node_reference.node.get_nth_child(1);
+                let n = self.node_reference.node().get_nth_child(1);
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
                     for (i, child) in n.iter_children().step_by(2).enumerate() {
                         if child.is_type(Nonterminal(NonterminalType::named_expression)) {

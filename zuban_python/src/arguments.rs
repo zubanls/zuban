@@ -4,7 +4,7 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
-use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
+use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
 use std::mem;
 
 pub enum ArgumentsType<'db> {
@@ -156,12 +156,12 @@ pub enum Argument<'db> {
 }
 
 impl<'db> Argument<'db> {
-    fn new_argument(file: &'db PythonFile, node: PyNode<'db>) -> Self {
-        Self::Argument(NodeReference { file, node })
+    fn new_argument(file: &'db PythonFile, node_index: NodeIndex) -> Self {
+        Self::Argument(NodeReference { file, node_index })
     }
 
-    fn new_keyword_argument(file: &'db PythonFile, node: PyNode<'db>, name: &'db str) -> Self {
-        Self::KeywordArgument(name, NodeReference { file, node })
+    fn new_keyword_argument(file: &'db PythonFile, node_index: NodeIndex, name: &'db str) -> Self {
+        Self::KeywordArgument(name, NodeReference { file, node_index })
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
@@ -174,7 +174,7 @@ impl<'db> Argument<'db> {
                     .file
                     // TODO this execution is wrong
                     .get_inference(i_s)
-                    .infer_named_expression(reference.node)
+                    .infer_named_expression(reference.node())
             }
         }
     }
@@ -210,7 +210,7 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 for node in iterator {
                     use NonterminalType::*;
                     if node.is_type(Nonterminal(named_expression)) {
-                        return Some(Self::Item::new_argument(python_file, node));
+                        return Some(Self::Item::new_argument(python_file, node.index));
                     } else if node.is_type(Nonterminal(kwargs)) {
                         *self = Self::Normal(Iterator(python_file, node.iter_children()));
                         return self.next();
@@ -220,7 +220,11 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                         let name = kwarg_iterator.next().unwrap().get_code();
                         kwarg_iterator.next();
                         let arg = kwarg_iterator.next().unwrap();
-                        return Some(Self::Item::new_keyword_argument(python_file, node, name));
+                        return Some(Self::Item::new_keyword_argument(
+                            python_file,
+                            node.index,
+                            name,
+                        ));
                     } else if node.is_type(Nonterminal(starred_expression)) {
                         todo!("*args");
                     } else if node.is_type(Nonterminal(double_starred_expression)) {
@@ -229,7 +233,9 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 }
                 None
             }
-            Self::Normal(Comprehension(file, node)) => Some(Argument::new_argument(file, *node)),
+            Self::Normal(Comprehension(file, node)) => {
+                Some(Argument::new_argument(file, node.index))
+            }
             Self::Normal(Finished) => None,
         }
     }

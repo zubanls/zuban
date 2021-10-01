@@ -393,7 +393,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             } else {
                 Point::new_missing_file()
             };
-            Inferred::new_and_save(self.file, first, point)
+            Inferred::new_and_save(self.file, first.index, point)
         } else {
             let base = self.infer_import_dotted_name(first);
             let name = dotted.get_nth_child(2);
@@ -650,7 +650,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             _ => unreachable!(),
         };
         let point = Point::new_simple_language_specific(specific_enum, Locality::Stmt);
-        Inferred::new_and_save(self.file, node, point)
+        Inferred::new_and_save(self.file, node.index, point)
     }
 
     check_point_cache_with!(infer_name_reference, Self::_infer_name_reference);
@@ -695,7 +695,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         debug_assert!(point.is_calculated());
                         self.check_point_cache(callable, point, node)
                     }
-                    _ => Inferred::new_saved(self.file, node, point),
+                    _ => Inferred::new_saved(self.file, node.index, point),
                 },
                 PointType::MultiDefinition => {
                     let previous_node = self.file.tree.get_node_by_index(point.get_node_index());
@@ -704,7 +704,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     inferred.union(self.infer_multi_definition(node.get_parent().unwrap()))
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
-                    Inferred::new_saved(self.file, node, point)
+                    Inferred::new_saved(self.file, node.index, point)
                 }
                 PointType::NodeAnalysis => {
                     panic!("Invalid state, should not happen {:?}", node);

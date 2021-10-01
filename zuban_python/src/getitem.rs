@@ -14,12 +14,21 @@ impl<'db> SliceType<'db> {
     pub fn new(f: &'db PythonFile, node: PyNode<'db>) -> Self {
         use NonterminalType::*;
         if node.is_type(Nonterminal(named_expression)) {
-            Self::Simple(Simple(NodeReference { file: f, node }))
+            Self::Simple(Simple(NodeReference {
+                file: f,
+                node_index: node.index,
+            }))
         } else if node.is_type(Nonterminal(slice)) {
-            Self::Slice(Slice(NodeReference { file: f, node }))
+            Self::Slice(Slice(NodeReference {
+                file: f,
+                node_index: node.index,
+            }))
         } else {
             debug_assert_eq!(node.get_type(), Nonterminal(slices));
-            Self::Slices(Slices(NodeReference { file: f, node }))
+            Self::Slices(Slices(NodeReference {
+                file: f,
+                node_index: node.index,
+            }))
         }
     }
 }
@@ -31,7 +40,7 @@ impl<'db> Simple<'db> {
         self.0
             .file
             .get_inference(i_s)
-            .infer_named_expression(self.0.node)
+            .infer_named_expression(self.0.node())
     }
 }
 

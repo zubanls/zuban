@@ -75,7 +75,7 @@ impl<'db> Value<'db> for Class<'db> {
             );
             match args.get_type() {
                 ArgumentsType::Normal(file, primary_node) => {
-                    Inferred::new_and_save(file, primary_node, point)
+                    Inferred::new_and_save(file, primary_node.index, point)
                 }
             }
         }
