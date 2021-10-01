@@ -268,14 +268,14 @@ impl<'db> Annotation<'db> {
 pub enum ArgumentsDetails<'db> {
     None,
     Comprehension(Comprehension<'db>),
-    Node(PyNode<'db>),
+    Node(Arguments<'db>),
 }
 
 impl<'db> Primary<'db> {
     pub fn expect_arguments(&self) -> ArgumentsDetails<'db> {
         let arguments_node = self.0.get_nth_child(2);
         if arguments_node.is_type(Nonterminal(arguments)) {
-            ArgumentsDetails::Node(arguments_node)
+            ArgumentsDetails::Node(Arguments(arguments_node))
         } else if arguments_node.is_type(Nonterminal(comprehension)) {
             ArgumentsDetails::Comprehension(Comprehension(arguments_node))
         } else {
@@ -283,4 +283,46 @@ impl<'db> Primary<'db> {
             ArgumentsDetails::None
         }
     }
+}
+
+impl<'db> Arguments<'db> {
+    pub fn iter(&self) -> ArgumentsIterator<'db> {
+        ArgumentsIterator(self.0.iter_children())
+    }
+}
+
+pub struct ArgumentsIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for ArgumentsIterator<'db> {
+    type Item = Argument<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for node in &mut self.0 {
+            if node.is_type(Nonterminal(named_expression)) {
+                return Some(Argument::Positional(NamedExpression(node)));
+            } else if node.is_type(Nonterminal(kwargs)) {
+                *self = Self(node.iter_children());
+                return self.next();
+            } else if node.is_type(Nonterminal(kwarg)) {
+                // kwarg: Name "=" expression
+                let mut kwarg_iterator = node.iter_children();
+                let name = kwarg_iterator.next().unwrap().get_code();
+                kwarg_iterator.next();
+                let arg = kwarg_iterator.next().unwrap();
+                return Some(Argument::Keyword(name, Expression(arg)));
+            } else if node.is_type(Nonterminal(starred_expression)) {
+                return Some(Argument::Starred(Expression(node.get_nth_child(1))));
+            } else if node.is_type(Nonterminal(double_starred_expression)) {
+                return Some(Argument::DoubleStarred(Expression(node.get_nth_child(1))));
+            }
+        }
+        None
+    }
+}
+
+pub enum Argument<'db> {
+    Positional(NamedExpression<'db>),
+    Keyword(&'db str, Expression<'db>),
+    Starred(Expression<'db>),
+    DoubleStarred(Expression<'db>),
 }

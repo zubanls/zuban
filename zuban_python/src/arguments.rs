@@ -4,8 +4,9 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
-use parsa_python::{NonterminalType, PyNodeType::Nonterminal, SiblingIterator};
-use parsa_python_ast::{ArgumentsDetails, Comprehension, NodeIndex, Primary};
+use parsa_python_ast::{
+    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex, Primary,
+};
 use std::mem;
 
 pub enum ArgumentsType<'db> {
@@ -69,8 +70,8 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
     pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
         match self.details {
-            ArgumentsDetails::Node(node) => {
-                ArgumentIteratorBase::Iterator(self.file, node.iter_children())
+            ArgumentsDetails::Node(arguments) => {
+                ArgumentIteratorBase::Iterator(self.file, arguments.iter())
             }
             ArgumentsDetails::Comprehension(comprehension) => {
                 ArgumentIteratorBase::Comprehension(self.file, comprehension)
@@ -147,7 +148,7 @@ impl<'db> Argument<'db> {
         Self::Positional(NodeReference { file, node_index })
     }
 
-    fn new_keyword_argument(file: &'db PythonFile, node_index: NodeIndex, name: &'db str) -> Self {
+    fn new_keyword_argument(file: &'db PythonFile, name: &'db str, node_index: NodeIndex) -> Self {
         Self::Keyword(name, NodeReference { file, node_index })
     }
 
@@ -168,7 +169,7 @@ impl<'db> Argument<'db> {
 }
 
 pub enum ArgumentIteratorBase<'db> {
-    Iterator(&'db PythonFile, SiblingIterator<'db>),
+    Iterator(&'db PythonFile, ArgumentsIterator<'db>),
     Comprehension(&'db PythonFile, Comprehension<'db>),
     Finished,
 }
@@ -194,28 +195,20 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 }
             }
             Self::Normal(Iterator(python_file, iterator)) => {
-                for node in iterator {
-                    use NonterminalType::*;
-                    if node.is_type(Nonterminal(named_expression)) {
-                        return Some(Self::Item::new_argument(python_file, node.index));
-                    } else if node.is_type(Nonterminal(kwargs)) {
-                        *self = Self::Normal(Iterator(python_file, node.iter_children()));
-                        return self.next();
-                    } else if node.is_type(Nonterminal(kwarg)) {
-                        // kwarg: Name "=" expression
-                        let mut kwarg_iterator = node.iter_children();
-                        let name = kwarg_iterator.next().unwrap().get_code();
-                        kwarg_iterator.next();
-                        let arg = kwarg_iterator.next().unwrap();
-                        return Some(Self::Item::new_keyword_argument(
-                            python_file,
-                            node.index,
-                            name,
-                        ));
-                    } else if node.is_type(Nonterminal(starred_expression)) {
-                        todo!("*args");
-                    } else if node.is_type(Nonterminal(double_starred_expression)) {
-                        todo!("**kwargs");
+                for arg in iterator {
+                    match arg {
+                        ASTArgument::Positional(named_expr) => {
+                            return Some(Self::Item::new_argument(python_file, named_expr.index()))
+                        }
+                        ASTArgument::Keyword(name, expr) => {
+                            return Some(Self::Item::new_keyword_argument(
+                                python_file,
+                                name,
+                                expr.index(),
+                            ))
+                        }
+                        ASTArgument::Starred(expr) => todo!("*args"),
+                        ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
                     }
                 }
                 None
