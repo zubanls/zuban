@@ -1,5 +1,5 @@
+pub use parsa_python::{CodeIndex, NodeIndex};
 use parsa_python::{
-    NodeIndex,
     NonterminalType::*,
     PyNode,
     PyNodeType::{Nonterminal, Terminal},

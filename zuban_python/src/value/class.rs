@@ -1,5 +1,4 @@
-use parsa_python::NodeIndex;
-use parsa_python_ast::ClassDef;
+use parsa_python_ast::{ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
