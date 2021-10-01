@@ -1,4 +1,3 @@
-use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
@@ -52,21 +51,16 @@ impl<'db> Function<'db> {
         param_name_index: NodeIndex,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let func_node = self
-            .file
-            .tree
-            .get_node_by_index(param_name_index)
-            .get_parent_until(&[Nonterminal(NonterminalType::function_def)])
-            .unwrap();
+        let func_node = FunctionDef::from_param_name_index(&self.file.tree, param_name_index);
         let temporary_args;
         let temporary_func;
-        let (check_args, func) = if func_node.index == self.node_index {
+        let (check_args, func) = if func_node.index() == self.node_index {
             (args, self)
         } else {
             let mut execution = args.get_outer_execution();
             loop {
                 let exec = execution.unwrap();
-                if func_node.index == exec.function.node_index {
+                if func_node.index() == exec.function.node_index {
                     // TODO this could be an instance as well
                     temporary_args = SimpleArguments::from_execution(i_s.database, exec);
                     temporary_func = Function::from_execution(i_s.database, exec);

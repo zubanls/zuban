@@ -141,6 +141,14 @@ impl<'db> ClassDef<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
+    pub fn from_param_name_index(tree: &'db PyTree, param_name_index: NodeIndex) -> Self {
+        Self(
+            tree.get_node_by_index(param_name_index)
+                .get_parent_until(&[Nonterminal(function_def)])
+                .unwrap(),
+        )
+    }
+
     pub fn annotation(&self) -> Option<ReturnAnnotation<'db>> {
         let ret = self.0.get_nth_child(3);
         if ret.is_type(Nonterminal(return_annotation)) {
