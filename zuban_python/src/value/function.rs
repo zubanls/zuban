@@ -1,9 +1,5 @@
-use parsa_python::{
-    NodeIndex, NonterminalType, PyNode,
-    PyNodeType::{Nonterminal, Terminal},
-    TerminalType,
-};
-use parsa_python_ast::{FunctionDef, Param, ParamIterator, StarExpressions};
+use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
+use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, StarExpressions};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -155,7 +151,7 @@ impl<'db> Value<'db> for Function<'db> {
             if let Some(inferred) = resolve_type_vars(
                 i_s,
                 self.file,
-                expr.0,
+                expr,
                 &mut FunctionTypeVarFinder::new(self.file, self, args),
             ) {
                 inferred
@@ -203,16 +199,16 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
 fn resolve_type_vars<'db, 'a>(
     i_s: &mut InferenceState<'db, '_>,
     file: &'db PythonFile,
-    node: PyNode<'db>,
+    expr: Expression<'db>,
     type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
 ) -> Option<Inferred<'db>> {
-    //let type_var = Ty
-    let inferred = file.get_inference(i_s).infer_expression(node);
+    let inferred = file.get_inference(i_s).infer_expression(expr.0);
     if inferred.is_type_var(i_s) {
         type_var_finder
-            .lookup(i_s, node.get_code())
+            .lookup(i_s, expr.0.get_code())
             .or_else(|| todo!())
     } else {
+        /*
         if !node.is_leaf() {
             for node in node.iter_children() {
                 if node.is_type(Terminal(TerminalType::Name)) {
@@ -224,6 +220,7 @@ fn resolve_type_vars<'db, 'a>(
                 }
             }
         }
+        */
         None
     }
 }

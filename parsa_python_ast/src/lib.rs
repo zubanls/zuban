@@ -10,7 +10,7 @@ use parsa_python::{
 
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         pub struct $name<'db>(pub PyNode<'db>);
 
         impl<'db> $name<'db> {
