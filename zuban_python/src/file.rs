@@ -528,10 +528,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn infer_primary(&mut self, n: PyNode<'db>) -> Inferred<'db> {
-        //   primary "." Name
-        // | primary "(" [arguments | comprehension] ")"
-        // | primary "[" slices "]"
-        // | atom
         let primary = Primary(n);
         let base = match primary.first() {
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom.0),
@@ -552,13 +548,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     value.execute(i_s, &SimpleArguments::new(f, primary, x.as_ref()))
                 })
             }
-            _ => {
+            PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Get Item {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
-                    let second = n.get_nth_child(2);
-                    value.get_item(i_s, &SliceType::new(f, second))
+                    value.get_item(i_s, &SliceType::new(f, slice_type))
                 })
             }
         }

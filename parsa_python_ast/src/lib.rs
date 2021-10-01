@@ -308,20 +308,20 @@ impl<'db> Primary<'db> {
         }
     }
 
-    pub fn second(&self) -> PrimaryContent<'db> {
+    pub fn second(self) -> PrimaryContent<'db> {
         let second = self.0.get_nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {
             PrimaryContent::Attribute(Name(second))
         } else if second.is_type(Nonterminal(arguments)) {
             PrimaryContent::ExecutionArguments(Arguments(second))
         } else if second.is_type(Nonterminal(named_expression)) {
-            PrimaryContent::GetItemNamedExpression(NamedExpression(second))
+            PrimaryContent::GetItem(SliceType::NamedExpression(NamedExpression(second)))
         } else if second.is_type(Nonterminal(comprehension)) {
             PrimaryContent::ExecutionComprehension(Comprehension(second))
         } else if second.is_type(Nonterminal(slice)) {
-            PrimaryContent::GetItemSlice(Slice(second))
+            PrimaryContent::GetItem(SliceType::Slice(Slice(second)))
         } else if second.is_type(Nonterminal(slices)) {
-            PrimaryContent::GetItemSlices(Slices(second))
+            PrimaryContent::GetItem(SliceType::Slices(Slices(second)))
         } else {
             debug_assert_eq!(second.get_code(), ")");
             PrimaryContent::ExecutionWithoutArguments
@@ -339,9 +339,14 @@ pub enum PrimaryContent<'db> {
     ExecutionArguments(Arguments<'db>),
     ExecutionWithoutArguments,
     ExecutionComprehension(Comprehension<'db>),
-    GetItemSlices(Slices<'db>),
-    GetItemSlice(Slice<'db>),
-    GetItemNamedExpression(NamedExpression<'db>),
+    GetItem(SliceType<'db>),
+}
+
+#[derive(Clone, Copy)]
+pub enum SliceType<'db> {
+    Slices(Slices<'db>),
+    Slice(Slice<'db>),
+    NamedExpression(NamedExpression<'db>),
 }
 
 impl<'db> Arguments<'db> {

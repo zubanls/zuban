@@ -1,8 +1,10 @@
-use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
+use parsa_python_ast::{
+    NamedExpression, Slice as ASTSlice, SliceType as ASTSliceType, Slices as ASTSlices,
+};
 
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::Inferred;
 
 pub enum SliceType<'db> {
     Simple(Simple<'db>),
@@ -11,39 +13,34 @@ pub enum SliceType<'db> {
 }
 
 impl<'db> SliceType<'db> {
-    pub fn new(f: &'db PythonFile, node: PyNode<'db>) -> Self {
-        use NonterminalType::*;
-        if node.is_type(Nonterminal(named_expression)) {
-            Self::Simple(Simple(NodeReference {
-                file: f,
-                node_index: node.index,
-            }))
-        } else if node.is_type(Nonterminal(slice)) {
-            Self::Slice(Slice(NodeReference {
-                file: f,
-                node_index: node.index,
-            }))
-        } else {
-            debug_assert_eq!(node.get_type(), Nonterminal(slices));
-            Self::Slices(Slices(NodeReference {
-                file: f,
-                node_index: node.index,
-            }))
+    pub fn new(file: &'db PythonFile, type_: ASTSliceType<'db>) -> Self {
+        match type_ {
+            ASTSliceType::NamedExpression(named_expr) => Self::Simple(Simple { file, named_expr }),
+            ASTSliceType::Slice(slice) => Self::Slice(Slice { file, slice }),
+            ASTSliceType::Slices(slices) => Self::Slices(Slices { file, slices }),
         }
     }
 }
 
-pub struct Simple<'db>(NodeReference<'db>);
+pub struct Simple<'db> {
+    file: &'db PythonFile,
+    named_expr: NamedExpression<'db>,
+}
 
 impl<'db> Simple<'db> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        self.0
-            .file
+        self.file
             .get_inference(i_s)
-            .infer_named_expression(self.0.node())
+            .infer_named_expression(self.named_expr.0)
     }
 }
 
-pub struct Slice<'db>(NodeReference<'db>);
+pub struct Slice<'db> {
+    file: &'db PythonFile,
+    slice: ASTSlice<'db>,
+}
 
-pub struct Slices<'db>(NodeReference<'db>);
+pub struct Slices<'db> {
+    file: &'db PythonFile,
+    slices: ASTSlices<'db>,
+}
