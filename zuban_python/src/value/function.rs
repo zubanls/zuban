@@ -310,7 +310,7 @@ impl<'db> InferrableParamIterator<'db> {
     fn get_next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db>> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
-                Argument::KeywordArgument(name, reference) => {
+                Argument::Keyword(name, reference) => {
                     if name == &param.name().as_str() {
                         return Some(self.unused_keyword_arguments.remove(i));
                     }
@@ -321,7 +321,7 @@ impl<'db> InferrableParamIterator<'db> {
         for argument in &mut self.arguments {
             // TODO check param type here and make sure that it makes sense.
             match argument {
-                Argument::KeywordArgument(name, reference) => {
+                Argument::Keyword(name, reference) => {
                     todo!()
                 }
                 _ => return Some(argument),

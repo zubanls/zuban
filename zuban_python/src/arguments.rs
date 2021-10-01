@@ -150,26 +150,26 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub enum Argument<'db> {
-    Instance(PointLink),
-    KeywordArgument(&'db str, NodeReference<'db>),
-    Argument(NodeReference<'db>),
+    PositionalInstance(PointLink),
+    Keyword(&'db str, NodeReference<'db>),
+    Positional(NodeReference<'db>),
 }
 
 impl<'db> Argument<'db> {
     fn new_argument(file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        Self::Argument(NodeReference { file, node_index })
+        Self::Positional(NodeReference { file, node_index })
     }
 
     fn new_keyword_argument(file: &'db PythonFile, node_index: NodeIndex, name: &'db str) -> Self {
-        Self::KeywordArgument(name, NodeReference { file, node_index })
+        Self::Keyword(name, NodeReference { file, node_index })
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::Instance(point_link) => {
+            Self::PositionalInstance(point_link) => {
                 todo!()
             }
-            Self::KeywordArgument(_, reference) | Self::Argument(reference) => {
+            Self::Keyword(_, reference) | Self::Positional(reference) => {
                 reference
                     .file
                     // TODO this execution is wrong
@@ -201,7 +201,7 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 if let Self::Instance(point_link, base) = mem::replace(self, Self::Normal(Finished))
                 {
                     *self = Self::Normal(base);
-                    Some(Argument::Instance(point_link))
+                    Some(Argument::PositionalInstance(point_link))
                 } else {
                     unreachable!()
                 }
