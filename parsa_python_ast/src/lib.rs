@@ -59,6 +59,8 @@ create_nonterminal_structs!(
     FunctionDef: function_def
     ReturnAnnotation: return_annotation
     Annotation: annotation
+    ReturnStmt: return_stmt
+    YieldExpr: yield_expr
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -325,4 +327,27 @@ pub enum Argument<'db> {
     Keyword(&'db str, Expression<'db>),
     Starred(Expression<'db>),
     DoubleStarred(Expression<'db>),
+}
+
+pub enum ReturnOrYield<'db> {
+    Return(ReturnStmt<'db>),
+    Yield(YieldExpr<'db>),
+}
+
+impl<'db> ReturnOrYield<'db> {
+    #[inline]
+    pub fn by_index(tree: &'db PyTree, index: NodeIndex) -> Self {
+        let node = tree.get_node_by_index(index);
+        if node.is_type(Nonterminal(return_stmt)) {
+            ReturnOrYield::Return(ReturnStmt(node))
+        } else {
+            ReturnOrYield::Yield(YieldExpr(node))
+        }
+    }
+}
+
+impl<'db> ReturnStmt<'db> {
+    pub fn star_expressions(&self) -> StarExpressions<'db> {
+        StarExpressions(self.0.get_nth_child(1))
+    }
 }

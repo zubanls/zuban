@@ -1,5 +1,5 @@
-use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
-use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, StarExpressions};
+use parsa_python::{NonterminalType, PyNodeType::Nonterminal};
+use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -92,14 +92,19 @@ impl<'db> Function<'db> {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
         let mut inner_i_s = i_s.with_func_and_args(self, args);
-        for node in self.iter_return_or_yield() {
-            debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::return_stmt));
-            // TODO multiple returns, this is an early exit
-            return self
-                .file
-                .get_inference(&mut inner_i_s)
-                .infer_star_expressions(StarExpressions::new(node.get_nth_child(1)))
-                .resolve_function_return(&mut inner_i_s);
+        for return_or_yield in self.iter_return_or_yield() {
+            match return_or_yield {
+                ReturnOrYield::Return(ret) =>
+                // TODO multiple returns, this is an early exit
+                {
+                    return self
+                        .file
+                        .get_inference(&mut inner_i_s)
+                        .infer_star_expressions(ret.star_expressions())
+                        .resolve_function_return(&mut inner_i_s)
+                }
+                ReturnOrYield::Yield(yield_expr) => unreachable!(),
+            }
         }
         todo!("Should just return None or maybe NoReturn?");
     }
@@ -114,8 +119,8 @@ impl<'db> Function<'db> {
     }
 
     fn is_generator(&self) -> bool {
-        for node in self.iter_return_or_yield() {
-            if node.is_type(Nonterminal(NonterminalType::yield_expr)) {
+        for return_or_yield in self.iter_return_or_yield() {
+            if let ReturnOrYield::Yield(_) = return_or_yield {
                 return true;
             }
         }
@@ -183,15 +188,15 @@ struct ReturnOrYieldIterator<'db> {
 }
 
 impl<'db> Iterator for ReturnOrYieldIterator<'db> {
-    type Item = PyNode<'db>;
+    type Item = ReturnOrYield<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_node_index == 0 {
             None
         } else {
-            let result = self.file.tree.get_node_by_index(self.next_node_index - 1);
             let point = self.file.get_point(self.next_node_index);
+            let index = self.next_node_index;
             self.next_node_index = point.get_node_index();
-            Some(result)
+            Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
         }
     }
 }
