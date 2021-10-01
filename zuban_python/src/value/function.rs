@@ -1,9 +1,9 @@
 use parsa_python::{
     NodeIndex, NonterminalType, PyNode,
     PyNodeType::{Nonterminal, Terminal},
-    SiblingIterator, TerminalType,
+    TerminalType,
 };
-use parsa_python_ast::StarExpressions;
+use parsa_python_ast::{FunctionDef, Param, ParamIterator, StarExpressions};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -39,29 +39,15 @@ impl<'db> Function<'db> {
         Function::new(f_func, execution.function.node_index)
     }
 
-    fn get_node(&self) -> PyNode<'db> {
-        self.file.tree.get_node_by_index(self.node_index)
-    }
-
-    fn iter_params(&self) -> ParamIterator<'db> {
-        // function_def: "def" name_definition function_def_parameters ...
-        // function_def_parameters: "(" [parameters] ")"
-        let params = self.get_node().get_nth_child(2).get_nth_child(1);
-        if params.is_type(Nonterminal(NonterminalType::parameters)) {
-            let positional_only = params
-                .iter_children()
-                .any(|n| n.is_leaf() && n.get_code() == "/");
-            ParamIterator::Iterator(params.iter_children(), positional_only)
-        } else {
-            ParamIterator::Finished
-        }
+    fn get_node(&self) -> FunctionDef<'db> {
+        FunctionDef::by_index(&self.file.tree, self.node_index)
     }
 
     fn iter_inferrable_params(
         &self,
         args: &dyn Arguments<'db>,
     ) -> impl Iterator<Item = InferrableParam<'db>> {
-        InferrableParamIterator::new(self.iter_params(), args.iter_arguments())
+        InferrableParamIterator::new(self.get_node().iter_params(), args.iter_arguments())
     }
 
     pub fn infer_param(
@@ -164,19 +150,17 @@ impl<'db> Value<'db> for Function<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let return_annotation = self.get_node().get_nth_child(3);
-        // Is an annotation
-        if return_annotation.is_type(Nonterminal(NonterminalType::return_annotation)) {
-            let expr = return_annotation.get_nth_child(1);
+        if let Some(return_annotation) = self.get_node().annotation() {
+            let expr = return_annotation.expression();
             if let Some(inferred) = resolve_type_vars(
                 i_s,
                 self.file,
-                expr,
+                expr.0,
                 &mut FunctionTypeVarFinder::new(self.file, self, args),
             ) {
                 inferred
             } else {
-                let inferred = self.file.get_inference(i_s).infer_expression(expr);
+                let inferred = self.file.get_inference(i_s).infer_expression(expr.0);
                 inferred.run_on_value(i_s, &|i_s, v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
@@ -188,7 +172,7 @@ impl<'db> Value<'db> for Function<'db> {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
                         todo!();
                     };
-                    Inferred::new_and_save(self.file, return_annotation, point)
+                    Inferred::new_and_save(self.file, return_annotation.0, point)
                 })
             }
         } else {
@@ -214,95 +198,6 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
             Some(result)
         }
     }
-}
-
-enum ParamIterator<'db> {
-    Iterator(SiblingIterator<'db>, bool),
-    Finished,
-}
-
-impl<'db> Iterator for ParamIterator<'db> {
-    type Item = Param<'db>;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self {
-            Self::Iterator(iterator, positional_only) => {
-                for node in iterator {
-                    use NonterminalType::*;
-                    use ParamType::*;
-                    if node.is_type(Nonterminal(param_no_default))
-                        || node.is_type(Nonterminal(param_with_default))
-                    {
-                        return Some(Self::Item::new(
-                            &mut node.iter_children(),
-                            if *positional_only {
-                                PositionalOnly
-                            } else {
-                                PositionalOrKeyword
-                            },
-                        ));
-                    } else if node.is_type(Nonterminal(star_etc)) {
-                        *self = Self::Iterator(node.iter_children(), false);
-                        return self.next();
-                    } else if node.is_type(Nonterminal(param_maybe_default)) {
-                        debug_assert!(!*positional_only);
-                        return Some(Self::Item::new(&mut node.iter_children(), KeywordOnly));
-                    } else if node.is_type(Nonterminal(starred_param)) {
-                        return Some(Self::Item::new(
-                            &mut node.iter_children().skip(1),
-                            MultiArgs,
-                        ));
-                    } else if node.is_type(Nonterminal(double_starred_param)) {
-                        return Some(Self::Item::new(
-                            &mut node.iter_children().skip(1),
-                            MultiKwargs,
-                        ));
-                    }
-                }
-                None
-            }
-            Self::Finished => None,
-        }
-    }
-}
-
-struct Param<'db> {
-    typ: ParamType,
-    name_node: PyNode<'db>,
-    annotation_node: Option<PyNode<'db>>,
-    default_node: Option<PyNode<'db>>,
-}
-
-impl<'db> Param<'db> {
-    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, typ: ParamType) -> Self {
-        let name_node = param_children.next().unwrap();
-        debug_assert_eq!(
-            name_node.get_type(),
-            Nonterminal(NonterminalType::name_definition)
-        );
-        let annotation_node = param_children
-            .next()
-            .map(|n: PyNode<'db>| n.get_nth_child(1));
-        param_children.next();
-        let default_node = param_children.next();
-        Self {
-            typ,
-            name_node: name_node.get_nth_child(0),
-            annotation_node,
-            default_node,
-        }
-    }
-
-    fn get_name(&self) -> &'db str {
-        self.name_node.get_code()
-    }
-}
-
-enum ParamType {
-    PositionalOnly,
-    PositionalOrKeyword,
-    MultiArgs,
-    MultiKwargs,
-    KeywordOnly,
 }
 
 fn resolve_type_vars<'db, 'a>(
@@ -377,9 +272,9 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
         let mut calculated_type_vars = vec![];
         for p in self.function.iter_inferrable_params(self.args) {
-            if let Some(annotation) = p.param.annotation_node {
+            if let Some(annotation) = p.param.annotation() {
                 // TODO we should only check names, not expressions
-                let name = annotation;
+                let name = annotation.0;
                 if !calculated_type_vars
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
@@ -416,7 +311,7 @@ impl<'db> InferrableParamIterator<'db> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::KeywordArgument(name, reference) => {
-                    if name == &param.get_name() {
+                    if name == &param.name().as_str() {
                         return Some(self.unused_keyword_arguments.remove(i));
                     }
                 }
@@ -454,13 +349,13 @@ struct InferrableParam<'db> {
 
 impl<'db> InferrableParam<'db> {
     fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        debug!("Infer param {}", self.param.get_name());
+        debug!("Infer param {}", self.param.name().as_str());
         self.argument
             .map(|a| a.infer(i_s))
             .unwrap_or_else(|| todo!())
     }
 
     fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.name_node.index == index
+        self.param.name().index() == index
     }
 }
