@@ -47,6 +47,10 @@ create_nonterminal_structs!(
     Expression: expression
     NamedExpression: named_expression
 
+    Primary: primary
+
+    Arguments: arguments
+
     List: atom
     Comprehension: comprehension
 
@@ -55,7 +59,6 @@ create_nonterminal_structs!(
     FunctionDef: function_def
     ReturnAnnotation: return_annotation
     Annotation: annotation
-
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -258,5 +261,26 @@ impl<'db> ReturnAnnotation<'db> {
 impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression(self.0.get_nth_child(1))
+    }
+}
+
+#[derive(Debug)]
+pub enum ArgumentsDetails<'db> {
+    None,
+    Comprehension(PyNode<'db>),
+    Node(PyNode<'db>),
+}
+
+impl<'db> Primary<'db> {
+    pub fn expect_arguments(&self) -> ArgumentsDetails<'db> {
+        let arguments_node = self.0.get_nth_child(2);
+        if arguments_node.is_type(Nonterminal(arguments)) {
+            ArgumentsDetails::Node(arguments_node)
+        } else if arguments_node.is_type(Nonterminal(comprehension)) {
+            ArgumentsDetails::Comprehension(arguments_node)
+        } else {
+            debug_assert_eq!(arguments_node.get_code(), ")");
+            ArgumentsDetails::None
+        }
     }
 }

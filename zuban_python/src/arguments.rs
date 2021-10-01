@@ -5,10 +5,11 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
+use parsa_python_ast::{ArgumentsDetails, Primary};
 use std::mem;
 
 pub enum ArgumentsType<'db> {
-    Normal(&'db PythonFile, PyNode<'db>),
+    Normal(&'db PythonFile, Primary<'db>),
 }
 
 pub trait Arguments<'db>: std::fmt::Debug {
@@ -19,19 +20,12 @@ pub trait Arguments<'db>: std::fmt::Debug {
 }
 
 #[derive(Debug)]
-enum SimpleArgumentsDetailed<'db> {
-    None,
-    Comprehension(PyNode<'db>),
-    Node(PyNode<'db>),
-}
-
-#[derive(Debug)]
 pub struct SimpleArguments<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
     file: &'db PythonFile,
-    primary_node: PyNode<'db>,
-    details: SimpleArgumentsDetailed<'db>,
+    primary_node: Primary<'db>,
+    details: ArgumentsDetails<'db>,
     in_: Option<&'a Execution>,
 }
 
@@ -47,7 +41,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn as_execution(&self, function: &Function) -> Execution {
         Execution::new(
             function.as_point_link(),
-            PointLink::new(self.file.get_file_index(), self.primary_node.index),
+            PointLink::new(self.file.get_file_index(), self.primary_node.index()),
             self.in_,
         )
     }
@@ -58,37 +52,27 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 }
 
 impl<'db, 'a> SimpleArguments<'db, 'a> {
-    pub fn new(f: &'db PythonFile, primary_node: PyNode<'db>, in_: Option<&'a Execution>) -> Self {
-        use NonterminalType::*;
-        debug_assert_eq!(primary_node.get_type(), Nonterminal(primary));
-        let arguments_node = primary_node.get_nth_child(2);
-        let details = if arguments_node.is_type(Nonterminal(arguments)) {
-            SimpleArgumentsDetailed::Node(arguments_node)
-        } else if arguments_node.is_type(Nonterminal(comprehension)) {
-            SimpleArgumentsDetailed::Comprehension(arguments_node)
-        } else {
-            SimpleArgumentsDetailed::None
-        };
+    pub fn new(f: &'db PythonFile, primary_node: Primary<'db>, in_: Option<&'a Execution>) -> Self {
         Self {
             file: f,
             primary_node,
-            details,
+            details: primary_node.expect_arguments(),
             in_,
         }
     }
 
     pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
         let f = database.get_loaded_python_file(execution.argument_node.file);
-        let primary_node = f.tree.get_node_by_index(execution.argument_node.node_index);
-        Self::new(f, primary_node, execution.in_.as_deref())
+        let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
+        Self::new(f, primary, execution.in_.as_deref())
     }
 
     pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
         use ArgumentIteratorBase::*;
         match self.details {
-            SimpleArgumentsDetailed::Node(node) => Iterator(self.file, node.iter_children()),
-            SimpleArgumentsDetailed::Comprehension(node) => Comprehension(self.file, node),
-            SimpleArgumentsDetailed::None => Finished,
+            ArgumentsDetails::Node(node) => Iterator(self.file, node.iter_children()),
+            ArgumentsDetails::Comprehension(node) => Comprehension(self.file, node),
+            ArgumentsDetails::None => Finished,
         }
     }
 }
@@ -127,7 +111,7 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
     pub fn new(
         instance: &'a Instance<'db>,
         f: &'db PythonFile,
-        primary_node: PyNode<'db>,
+        primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
     ) -> Self {
         Self {

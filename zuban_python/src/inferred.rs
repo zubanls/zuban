@@ -5,7 +5,8 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
-use parsa_python::{NodeIndex, PyNode};
+use parsa_python::PyNode;
+use parsa_python_ast::{NodeIndex, Primary};
 use std::fmt;
 
 pub trait Inferrable<'db> {
@@ -114,7 +115,7 @@ impl<'db> Inferred<'db> {
                             let args = InstanceArguments::new(
                                 &instance,
                                 definition.file,
-                                definition.node(),
+                                Primary(definition.node()),
                                 None,
                             );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
@@ -323,7 +324,8 @@ impl<'db> Inferred<'db> {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let args = SimpleArguments::new(definition.file, definition.node(), None);
+                        let args =
+                            SimpleArguments::new(definition.file, Primary(definition.node()), None);
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             cls.get_saved().unwrap().0.as_link(),
