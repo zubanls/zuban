@@ -1022,7 +1022,7 @@ fn plans_for_dfa(
         .collect();
     if !conflict_tokens.is_empty() {
         let automaton = automatons.get_mut(&automaton_key).unwrap();
-        let (generated_dfa_ids, end) = split_tokens(automaton, &dfa_state, conflict_transitions);
+        let (generated_dfa_ids, end) = split_tokens(automaton, dfa_state, conflict_transitions);
         let t = automaton.type_;
         for &dfa_id in generated_dfa_ids.iter().rev() {
             let (new_plans, left_recursive) = plans_for_dfa(

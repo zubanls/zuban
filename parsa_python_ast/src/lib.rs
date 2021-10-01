@@ -3,7 +3,7 @@ use parsa_python::{
     NonterminalType::*,
     PyNode,
     PyNodeType::{Nonterminal, Terminal},
-    PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
+    PyTree, SiblingIterator, TerminalType,
 };
 
 macro_rules! create_struct {
@@ -183,7 +183,7 @@ impl<'db> Param<'db> {
     }
 
     pub fn annotation(&self) -> Option<Annotation<'db>> {
-        self.annotation_node.map(|n| Annotation(n))
+        self.annotation_node.map(Annotation)
     }
 }
 
