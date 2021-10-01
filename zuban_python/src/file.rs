@@ -527,44 +527,40 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_primary(&mut self, node: PyNode<'db>) -> Inferred<'db> {
+    fn infer_primary(&mut self, n: PyNode<'db>) -> Inferred<'db> {
         //   primary "." Name
         // | primary "(" [arguments | comprehension] ")"
         // | primary "[" slices "]"
         // | atom
-        debug_assert_eq!(node.get_type(), Nonterminal(primary));
-        use NonterminalType::*;
-        let mut iter = node.iter_children();
-        let first = iter.next().unwrap();
-        let base = match first.get_type() {
-            Nonterminal(atom) => self.infer_atom(first),
-            Nonterminal(primary) => self.infer_primary(first),
-            _ => unreachable!(),
+        let primary = Primary(n);
+        let base = match primary.first() {
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom.0),
+            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary.0),
         };
-        let op = iter.next().unwrap();
-        let second = iter.next().unwrap();
-        match op.get_code() {
-            "." => base.run_on_value(self.i_s, &|i_s, value| {
-                debug!("Lookup {}.{}", value.get_name(), second.get_code());
-                value.lookup(i_s, second.get_code())
+        match primary.second() {
+            PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &|i_s, value| {
+                debug!("Lookup {}.{}", value.get_name(), name.as_str());
+                value.lookup(i_s, name.as_str())
             }),
-            "(" => {
+            PrimaryContent::ExecutionArguments(_)
+            | PrimaryContent::ExecutionWithoutArguments
+            | PrimaryContent::ExecutionComprehension(_) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Execute {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
-                    value.execute(i_s, &SimpleArguments::new(f, Primary(node), x.as_ref()))
+                    value.execute(i_s, &SimpleArguments::new(f, primary, x.as_ref()))
                 })
             }
-            "[" => {
+            _ => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Get Item {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
+                    let second = n.get_nth_child(2);
                     value.get_item(i_s, &SliceType::new(f, second))
                 })
             }
-            _ => unreachable!(),
         }
     }
 

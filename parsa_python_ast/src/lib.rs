@@ -51,8 +51,11 @@ create_nonterminal_structs!(
 
     Arguments: arguments
 
+    Atom: atom
     List: atom
     Comprehension: comprehension
+    Slices: slices
+    Slice: slice
 
     ClassDef: class_def
 
@@ -105,6 +108,7 @@ pub enum ListElement<'db> {
 }
 
 impl<'db> Name<'db> {
+    #[inline]
     pub fn as_str(&self) -> &'db str {
         self.0.get_code()
     }
@@ -293,6 +297,51 @@ impl<'db> Primary<'db> {
             ArgumentsDetails::None
         }
     }
+
+    pub fn first(&self) -> PrimaryOrAtom<'db> {
+        let first = self.0.get_nth_child(0);
+        if first.is_type(Nonterminal(atom)) {
+            PrimaryOrAtom::Atom(Atom(first))
+        } else {
+            debug_assert_eq!(first.get_type(), Nonterminal(primary));
+            PrimaryOrAtom::Primary(Primary(first))
+        }
+    }
+
+    pub fn second(&self) -> PrimaryContent<'db> {
+        let second = self.0.get_nth_child(2);
+        if second.is_type(Terminal(TerminalType::Name)) {
+            PrimaryContent::Attribute(Name(second))
+        } else if second.is_type(Nonterminal(arguments)) {
+            PrimaryContent::ExecutionArguments(Arguments(second))
+        } else if second.is_type(Nonterminal(named_expression)) {
+            PrimaryContent::GetItemNamedExpression(NamedExpression(second))
+        } else if second.is_type(Nonterminal(comprehension)) {
+            PrimaryContent::ExecutionComprehension(Comprehension(second))
+        } else if second.is_type(Nonterminal(slice)) {
+            PrimaryContent::GetItemSlice(Slice(second))
+        } else if second.is_type(Nonterminal(slices)) {
+            PrimaryContent::GetItemSlices(Slices(second))
+        } else {
+            debug_assert_eq!(second.get_code(), ")");
+            PrimaryContent::ExecutionWithoutArguments
+        }
+    }
+}
+
+pub enum PrimaryOrAtom<'db> {
+    Primary(Primary<'db>),
+    Atom(Atom<'db>),
+}
+
+pub enum PrimaryContent<'db> {
+    Attribute(Name<'db>),
+    ExecutionArguments(Arguments<'db>),
+    ExecutionWithoutArguments,
+    ExecutionComprehension(Comprehension<'db>),
+    GetItemSlices(Slices<'db>),
+    GetItemSlice(Slice<'db>),
+    GetItemNamedExpression(NamedExpression<'db>),
 }
 
 impl<'db> Arguments<'db> {
