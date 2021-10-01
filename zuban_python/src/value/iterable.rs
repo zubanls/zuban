@@ -1,4 +1,4 @@
-use parsa_python::{NonterminalType, PyNode, PyNodeType::Nonterminal};
+use parsa_python_ast::{List, ListContent, ListElement, NamedExpression};
 
 use super::{Value, ValueKind};
 use crate::getitem::SliceType;
@@ -18,12 +18,19 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
     fn infer_named_expr(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        node: PyNode<'db>,
+        named_expr: NamedExpression<'db>,
     ) -> Inferred<'db> {
         self.node_reference
             .file
             .get_inference(i_s)
-            .infer_named_expression(node)
+            .infer_named_expression(named_expr.0)
+    }
+
+    fn get_list(&self) -> List<'db> {
+        List::by_index(
+            &self.node_reference.file.tree,
+            self.node_reference.node_index,
+        )
     }
 }
 
@@ -47,42 +54,53 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
     ) -> Inferred<'db> {
         match slice_type {
             SliceType::Simple(simple) => {
-                let n = self.node_reference.node().get_nth_child(1);
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
-                    for (i, child) in n.iter_children().step_by(2).enumerate() {
-                        if child.is_type(Nonterminal(NonterminalType::named_expression)) {
-                            if i as i64 == wanted {
-                                return self.infer_named_expr(i_s, child);
+                    match self.get_list().unpack() {
+                        ListContent::Elements(elements) => {
+                            for (i, child) in elements.enumerate() {
+                                match child {
+                                    ListElement::NamedExpression(named_expr) => {
+                                        if i as i64 == wanted {
+                                            return self.infer_named_expr(i_s, named_expr);
+                                        }
+                                    }
+                                    ListElement::StarNamedExpression(_) => {
+                                        // It gets quite complicated to figure out the index here,
+                                        // so just stop for now.
+                                        break;
+                                    }
+                                }
                             }
-                        } else {
-                            debug_assert_eq!(
-                                child.get_type(),
-                                Nonterminal(NonterminalType::star_named_expression)
-                            );
-                            // It gets quite complicated to figure out the index here, so just stop
-                            // for now.
-                            break;
                         }
-                    }
+                        ListContent::Comprehension(_) => unreachable!(),
+                        ListContent::None => todo!(),
+                    };
                 }
-                let mut iterator = n.iter_children().step_by(2);
-                if let Some(first_node) = iterator.next() {
-                    let mut inferred =
-                        if first_node.is_type(Nonterminal(NonterminalType::named_expression)) {
-                            self.infer_named_expr(i_s, first_node)
-                        } else {
-                            todo!()
+                match self.get_list().unpack() {
+                    ListContent::Elements(mut elements) => {
+                        let mut inferred = match elements.next().unwrap() {
+                            ListElement::NamedExpression(named_expr) => {
+                                self.infer_named_expr(i_s, named_expr)
+                            }
+                            ListElement::StarNamedExpression(_) => {
+                                todo!()
+                            }
                         };
-                    for child in iterator {
-                        if child.is_type(Nonterminal(NonterminalType::named_expression)) {
-                            inferred = inferred.union(self.infer_named_expr(i_s, child));
-                        } else {
-                            todo!()
+                        for child in elements {
+                            match child {
+                                ListElement::NamedExpression(named_expr) => {
+                                    inferred =
+                                        inferred.union(self.infer_named_expr(i_s, named_expr));
+                                }
+                                ListElement::StarNamedExpression(_) => {
+                                    todo!()
+                                }
+                            }
                         }
+                        inferred
                     }
-                    inferred
-                } else {
-                    todo!()
+                    ListContent::Comprehension(_) => unreachable!(),
+                    ListContent::None => todo!(),
                 }
             }
             SliceType::Slice(simple) => {

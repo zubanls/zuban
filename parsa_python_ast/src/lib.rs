@@ -1,3 +1,5 @@
+use std::iter::StepBy;
+
 pub use parsa_python::{CodeIndex, NodeIndex};
 use parsa_python::{
     NonterminalType::*,
@@ -41,7 +43,12 @@ create_nonterminal_structs!(
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
+    StarNamedExpression: star_named_expression
     Expression: expression
+    NamedExpression: named_expression
+
+    List: atom
+    Comprehension: comprehension
 
     ClassDef: class_def
 
@@ -52,6 +59,45 @@ create_nonterminal_structs!(
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
+
+impl<'db> List<'db> {
+    pub fn unpack(&self) -> ListContent<'db> {
+        let n = self.0.get_nth_child(1);
+        if n.is_type(Nonterminal(star_named_expressions)) {
+            ListContent::Elements(ListElementIterator(n.iter_children().step_by(2)))
+        } else if n.is_type(Nonterminal(comprehension)) {
+            ListContent::Comprehension(Comprehension(n))
+        } else {
+            ListContent::None
+        }
+    }
+}
+
+pub enum ListContent<'db> {
+    None,
+    Elements(ListElementIterator<'db>),
+    Comprehension(Comprehension<'db>),
+}
+
+pub struct ListElementIterator<'db>(StepBy<SiblingIterator<'db>>);
+
+impl<'db> Iterator for ListElementIterator<'db> {
+    type Item = ListElement<'db>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|next| {
+            if next.is_type(Nonterminal(named_expression)) {
+                ListElement::NamedExpression(NamedExpression(next))
+            } else {
+                ListElement::StarNamedExpression(StarNamedExpression(next))
+            }
+        })
+    }
+}
+
+pub enum ListElement<'db> {
+    NamedExpression(NamedExpression<'db>),
+    StarNamedExpression(StarNamedExpression<'db>),
+}
 
 impl<'db> Name<'db> {
     pub fn as_str(&self) -> &'db str {
