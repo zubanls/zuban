@@ -1,4 +1,5 @@
 use parsa_python::NodeIndex;
+use parsa_python_ast::ClassDef;
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
@@ -7,7 +8,6 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::tree_utils::get_class_name;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
@@ -30,6 +30,9 @@ impl<'db, 'a> Instance<'db> {
         }
     }
 
+    pub fn get_node(&self) -> ClassDef<'db> {
+        ClassDef::by_index(&self.file.tree, self.node_index)
+    }
     pub fn as_point_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
@@ -41,7 +44,7 @@ impl<'db> Value<'db> for Instance<'db> {
     }
 
     fn get_name(&self) -> &'db str {
-        get_class_name(self.file.tree.get_node_by_index(self.node_index))
+        self.get_node().name().as_str()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

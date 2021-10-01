@@ -12,7 +12,6 @@ mod inference_state;
 mod inferred;
 mod name;
 mod name_binder;
-mod tree_utils;
 mod utils;
 mod value;
 

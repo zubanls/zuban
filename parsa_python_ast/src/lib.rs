@@ -43,6 +43,8 @@ create_nonterminal_structs!(
     StarExpression: star_expression
     Expression: expression
 
+    ClassDef: class_def
+
     FunctionDef: function_def
     ReturnAnnotation: return_annotation
     Annotation: annotation
@@ -79,6 +81,12 @@ pub enum StarExpressionContent<'db> {
     Expression(PyNode<'db>),
     StarExpression(StarExpression<'db>),
     Tuple(StarExpressionsTuple<'db>),
+}
+
+impl<'db> ClassDef<'db> {
+    pub fn name(&self) -> Name<'db> {
+        Name(self.0.get_nth_child(1))
+    }
 }
 
 impl<'db> FunctionDef<'db> {
