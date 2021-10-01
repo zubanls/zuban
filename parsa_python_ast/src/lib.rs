@@ -267,7 +267,7 @@ impl<'db> Annotation<'db> {
 #[derive(Debug)]
 pub enum ArgumentsDetails<'db> {
     None,
-    Comprehension(PyNode<'db>),
+    Comprehension(Comprehension<'db>),
     Node(PyNode<'db>),
 }
 
@@ -277,7 +277,7 @@ impl<'db> Primary<'db> {
         if arguments_node.is_type(Nonterminal(arguments)) {
             ArgumentsDetails::Node(arguments_node)
         } else if arguments_node.is_type(Nonterminal(comprehension)) {
-            ArgumentsDetails::Comprehension(arguments_node)
+            ArgumentsDetails::Comprehension(Comprehension(arguments_node))
         } else {
             debug_assert_eq!(arguments_node.get_code(), ")");
             ArgumentsDetails::None

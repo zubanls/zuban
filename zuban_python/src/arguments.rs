@@ -4,8 +4,8 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
-use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType::Nonterminal, SiblingIterator};
-use parsa_python_ast::{ArgumentsDetails, Primary};
+use parsa_python::{NonterminalType, PyNodeType::Nonterminal, SiblingIterator};
+use parsa_python_ast::{ArgumentsDetails, Comprehension, NodeIndex, Primary};
 use std::mem;
 
 pub enum ArgumentsType<'db> {
@@ -68,11 +68,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
     }
 
     pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
-        use ArgumentIteratorBase::*;
         match self.details {
-            ArgumentsDetails::Node(node) => Iterator(self.file, node.iter_children()),
-            ArgumentsDetails::Comprehension(node) => Comprehension(self.file, node),
-            ArgumentsDetails::None => Finished,
+            ArgumentsDetails::Node(node) => {
+                ArgumentIteratorBase::Iterator(self.file, node.iter_children())
+            }
+            ArgumentsDetails::Comprehension(comprehension) => {
+                ArgumentIteratorBase::Comprehension(self.file, comprehension)
+            }
+            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
         }
     }
 }
@@ -166,7 +169,7 @@ impl<'db> Argument<'db> {
 
 pub enum ArgumentIteratorBase<'db> {
     Iterator(&'db PythonFile, SiblingIterator<'db>),
-    Comprehension(&'db PythonFile, PyNode<'db>),
+    Comprehension(&'db PythonFile, Comprehension<'db>),
     Finished,
 }
 
@@ -217,8 +220,8 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 }
                 None
             }
-            Self::Normal(Comprehension(file, node)) => {
-                Some(Argument::new_argument(file, node.index))
+            Self::Normal(Comprehension(file, comprehension)) => {
+                Some(Argument::new_argument(file, comprehension.index()))
             }
             Self::Normal(Finished) => None,
         }
