@@ -19,7 +19,7 @@ use database::{Database, FileIndex, Workspace};
 use file_state::{Leaf, PythonFileLoader};
 use inference_state::InferenceState;
 use name::{Names, ValueName};
-use parsa_python::CodeIndex;
+use parsa_python_ast::CodeIndex;
 pub use value::ValueKind;
 
 pub enum ProjectType {

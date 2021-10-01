@@ -11,7 +11,6 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{CodeIndex, NodeIndex};
 use parsa_python::{
     NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
@@ -240,7 +239,7 @@ impl<'db> PythonFile {
         )
     }
 
-    fn calculate_node_scope_definitions(&self, node: PyNode) {
+    fn calculate_node_scope_definitions(&self, node: PyNode<'db>) {
         let symbol_table = SymbolTable::default();
         self.with_global_binder(|binder| {
             binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
