@@ -141,7 +141,7 @@ impl File for PythonFile {
         {
             if let Some(primary) = leaf.maybe_primary_parent() {
                 let mut i_s = InferenceState::new(database);
-                return self.get_inference(&mut i_s).infer_primary(primary.0);
+                return self.get_inference(&mut i_s).infer_primary(primary);
             }
         }
         todo!()
@@ -523,16 +523,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         use NonterminalType::*;
         match node.get_type() {
             Nonterminal(atom) => self.infer_atom(node),
-            Nonterminal(primary) => self.infer_primary(node),
+            Nonterminal(primary) => self.infer_primary(Primary(node)),
             _ => todo!("Did not handle {:?}", node),
         }
     }
 
-    fn infer_primary(&mut self, n: PyNode<'db>) -> Inferred<'db> {
-        let primary = Primary(n);
+    fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = match primary.first() {
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom.0),
-            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary.0),
+            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary),
         };
         match primary.second() {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &|i_s, value| {
@@ -779,7 +778,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // References are not calculated by the name binder for star imports and lookups.
                 let parent = node.get_parent().unwrap();
                 if parent.is_type(Nonterminal(NonterminalType::primary)) {
-                    return self.infer_primary(parent);
+                    return self.infer_primary(Primary(parent));
                 } else {
                     dbg!(parent);
                     todo!("star import {:?}", node);
