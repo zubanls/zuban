@@ -278,7 +278,7 @@ impl<'db> Annotation<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum ArgumentsDetails<'db> {
     None,
     Comprehension(Comprehension<'db>),
@@ -286,18 +286,6 @@ pub enum ArgumentsDetails<'db> {
 }
 
 impl<'db> Primary<'db> {
-    pub fn expect_arguments(&self) -> ArgumentsDetails<'db> {
-        let arguments_node = self.0.get_nth_child(2);
-        if arguments_node.is_type(Nonterminal(arguments)) {
-            ArgumentsDetails::Node(Arguments(arguments_node))
-        } else if arguments_node.is_type(Nonterminal(comprehension)) {
-            ArgumentsDetails::Comprehension(Comprehension(arguments_node))
-        } else {
-            debug_assert_eq!(arguments_node.get_code(), ")");
-            ArgumentsDetails::None
-        }
-    }
-
     pub fn first(&self) -> PrimaryOrAtom<'db> {
         let first = self.0.get_nth_child(0);
         if first.is_type(Nonterminal(atom)) {
@@ -313,18 +301,18 @@ impl<'db> Primary<'db> {
         if second.is_type(Terminal(TerminalType::Name)) {
             PrimaryContent::Attribute(Name(second))
         } else if second.is_type(Nonterminal(arguments)) {
-            PrimaryContent::ExecutionArguments(Arguments(second))
+            PrimaryContent::Execution(ArgumentsDetails::Node(Arguments(second)))
         } else if second.is_type(Nonterminal(named_expression)) {
             PrimaryContent::GetItem(SliceType::NamedExpression(NamedExpression(second)))
         } else if second.is_type(Nonterminal(comprehension)) {
-            PrimaryContent::ExecutionComprehension(Comprehension(second))
+            PrimaryContent::Execution(ArgumentsDetails::Comprehension(Comprehension(second)))
         } else if second.is_type(Nonterminal(slice)) {
             PrimaryContent::GetItem(SliceType::Slice(Slice(second)))
         } else if second.is_type(Nonterminal(slices)) {
             PrimaryContent::GetItem(SliceType::Slices(Slices(second)))
         } else {
             debug_assert_eq!(second.get_code(), ")");
-            PrimaryContent::ExecutionWithoutArguments
+            PrimaryContent::Execution(ArgumentsDetails::None)
         }
     }
 }
@@ -336,9 +324,7 @@ pub enum PrimaryOrAtom<'db> {
 
 pub enum PrimaryContent<'db> {
     Attribute(Name<'db>),
-    ExecutionArguments(Arguments<'db>),
-    ExecutionWithoutArguments,
-    ExecutionComprehension(Comprehension<'db>),
+    Execution(ArgumentsDetails<'db>),
     GetItem(SliceType<'db>),
 }
 

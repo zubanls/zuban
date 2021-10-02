@@ -538,14 +538,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 debug!("Lookup {}.{}", value.get_name(), name.as_str());
                 value.lookup(i_s, name.as_str())
             }),
-            PrimaryContent::ExecutionArguments(_)
-            | PrimaryContent::ExecutionWithoutArguments
-            | PrimaryContent::ExecutionComprehension(_) => {
+            PrimaryContent::Execution(details) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &|i_s, value| {
                     debug!("Execute {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
-                    value.execute(i_s, &SimpleArguments::new(f, primary, x.as_ref()))
+                    value.execute(i_s, &SimpleArguments::new(f, primary, details, x.as_ref()))
                 })
             }
             PrimaryContent::GetItem(slice_type) => {

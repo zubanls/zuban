@@ -5,7 +5,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
 use parsa_python_ast::{
-    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex, Primary,
+    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
+    Primary, PrimaryContent,
 };
 use std::mem;
 
@@ -53,19 +54,35 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 }
 
 impl<'db, 'a> SimpleArguments<'db, 'a> {
-    pub fn new(f: &'db PythonFile, primary_node: Primary<'db>, in_: Option<&'a Execution>) -> Self {
+    pub fn new(
+        file: &'db PythonFile,
+        primary_node: Primary<'db>,
+        details: ArgumentsDetails<'db>,
+        in_: Option<&'a Execution>,
+    ) -> Self {
         Self {
-            file: f,
+            file,
             primary_node,
-            details: primary_node.expect_arguments(),
+            details,
             in_,
+        }
+    }
+
+    pub fn from_primary(
+        file: &'db PythonFile,
+        primary_node: Primary<'db>,
+        in_: Option<&'a Execution>,
+    ) -> Self {
+        match primary_node.second() {
+            PrimaryContent::Execution(details) => Self::new(file, primary_node, details, in_),
+            _ => unreachable!(),
         }
     }
 
     pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
         let f = database.get_loaded_python_file(execution.argument_node.file);
         let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
-        Self::new(f, primary, execution.in_.as_deref())
+        Self::from_primary(f, primary, execution.in_.as_deref())
     }
 
     pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
@@ -112,14 +129,14 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(
+    pub fn from_primary(
         instance: &'a Instance<'db>,
         f: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
     ) -> Self {
         Self {
-            arguments: SimpleArguments::new(f, primary_node, in_),
+            arguments: SimpleArguments::from_primary(f, primary_node, in_),
             instance,
         }
     }

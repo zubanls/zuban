@@ -112,7 +112,7 @@ impl<'db> Inferred<'db> {
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
                             let instance = cls.instantiate();
-                            let args = InstanceArguments::new(
+                            let args = InstanceArguments::from_primary(
                                 &instance,
                                 definition.file,
                                 Primary(definition.node()),
@@ -324,8 +324,11 @@ impl<'db> Inferred<'db> {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let args =
-                            SimpleArguments::new(definition.file, Primary(definition.node()), None);
+                        let args = SimpleArguments::from_primary(
+                            definition.file,
+                            Primary(definition.node()),
+                            None,
+                        );
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             cls.get_saved().unwrap().0.as_link(),
