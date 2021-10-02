@@ -470,6 +470,24 @@ impl<'db> ImportFromAsName<'db> {
         }
     }
 }
+impl<'db> DottedName<'db> {
+    pub fn unpack(&self) -> DottedNameContent<'db> {
+        let mut children = self.0.iter_children();
+        let first = children.next().unwrap();
+        if first.is_type(Terminal(TerminalType::Name)) {
+            DottedNameContent::Name(Name::new(first))
+        } else {
+            children.next();
+            let name = children.next().unwrap();
+            DottedNameContent::DottedName(DottedName::new(first), Name::new(name))
+        }
+    }
+}
+
+pub enum DottedNameContent<'db> {
+    DottedName(DottedName<'db>, Name<'db>),
+    Name(Name<'db>),
+}
 
 impl<'db> Primary<'db> {
     pub fn first(&self) -> PrimaryOrAtom<'db> {

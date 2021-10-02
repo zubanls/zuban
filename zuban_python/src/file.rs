@@ -263,7 +263,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let inferred = if level > 0 {
             todo!()
         } else {
-            Some(self.infer_import_dotted_name(dotted_name.unwrap().0))
+            Some(self.infer_import_dotted_name(dotted_name.unwrap()))
         };
 
         match imp.unpack_targets() {
@@ -285,22 +285,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_import_dotted_name(&mut self, dotted: PyNode<'db>) -> Inferred<'db> {
-        debug_assert_eq!(dotted.get_type(), Nonterminal(NonterminalType::dotted_name));
-        // dotted_name: [dotted_name "."] Name
-        let first = dotted.get_nth_child(0);
-        if first.is_type(Terminal(TerminalType::Name)) {
-            let file_index = global_import(self.i_s.database, first.get_code());
-            let point = if let Some(file_index) = file_index {
-                Point::new_file_reference(file_index, Locality::DirectExtern)
-            } else {
-                Point::new_missing_file()
-            };
-            Inferred::new_and_save(self.file, first.index, point)
-        } else {
-            let base = self.infer_import_dotted_name(first);
-            let name = dotted.get_nth_child(2);
-            todo!()
+    fn infer_import_dotted_name(&mut self, dotted: DottedName<'db>) -> Inferred<'db> {
+        match dotted.unpack() {
+            DottedNameContent::Name(name) => {
+                let file_index = global_import(self.i_s.database, name.as_str());
+                let point = if let Some(file_index) = file_index {
+                    Point::new_file_reference(file_index, Locality::DirectExtern)
+                } else {
+                    Point::new_missing_file()
+                };
+                Inferred::new_and_save(self.file, name.index(), point)
+            }
+            DottedNameContent::DottedName(dotted_name, name) => {
+                let base = self.infer_import_dotted_name(dotted_name);
+                todo!()
+            }
         }
     }
 
