@@ -52,8 +52,14 @@ create_nonterminal_structs!(
     Arguments: arguments
 
     Atom: atom
+    StringsOrBytes: strings
+
     List: atom
+    Set: atom
+    Tuple: atom
+    Dict: atom
     Comprehension: comprehension
+    DictComprehension: dict_comprehension
     Slices: slices
     Slice: slice
 
@@ -67,6 +73,9 @@ create_nonterminal_structs!(
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
+create_struct!(Int: Terminal(TerminalType::Number));
+create_struct!(Float: Terminal(TerminalType::Number));
+create_struct!(Complex: Terminal(TerminalType::Number));
 create_struct!(Keyword: PyNodeType::Keyword);
 
 impl<'db> Name<'db> {
@@ -422,5 +431,117 @@ impl<'db> ReturnOrYield<'db> {
 impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
         StarExpressions(self.0.get_nth_child(1))
+    }
+}
+
+impl<'db> Atom<'db> {
+    #[inline]
+    pub fn unpack(&self) -> AtomContent {
+        let mut iter = self.0.iter_children();
+        let first = iter.next().unwrap();
+
+        match first.get_type() {
+            Terminal(TerminalType::Name) => AtomContent::Name(Name(first)),
+            Terminal(TerminalType::Number) => {
+                let code = first.get_code();
+                if code.contains('j') {
+                    AtomContent::Complex(Complex(first))
+                } else if code.contains('.') {
+                    AtomContent::Float(Float(first))
+                } else {
+                    AtomContent::Int(Int(first))
+                }
+            }
+            Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes(first)),
+            PyNodeType::Keyword => match first.get_code() {
+                "None" => AtomContent::None,
+                "True" | "False" => AtomContent::Boolean(Keyword(first)),
+                "..." => AtomContent::Ellipsis,
+                "(" => {
+                    let next_node = iter.next().unwrap();
+                    match next_node.get_type() {
+                        Nonterminal(tuple_content) => AtomContent::Tuple(Tuple(self.0)),
+                        Nonterminal(yield_expr) => AtomContent::YieldExpr(YieldExpr(next_node)),
+                        Nonterminal(named_expression) => {
+                            AtomContent::NamedExpression(NamedExpression(next_node))
+                        }
+                        Nonterminal(comprehension) => {
+                            AtomContent::GeneratorComprehension(Comprehension(next_node))
+                        }
+                        PyNodeType::Keyword => {
+                            debug_assert_eq!(next_node.get_code(), ")");
+                            AtomContent::Tuple(Tuple(self.0))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                "[" => {
+                    let next_node = iter.next().unwrap();
+                    if next_node.is_type(Nonterminal(comprehension)) {
+                        AtomContent::ListComprehension(Comprehension(next_node))
+                    } else {
+                        AtomContent::List(List(self.0))
+                    }
+                }
+                "{" => {
+                    let next_node = iter.next().unwrap();
+                    match next_node.get_type() {
+                        Nonterminal(dict_content) => AtomContent::Dict(Dict(self.0)),
+                        Nonterminal(dict_comprehension) => {
+                            AtomContent::DictComprehension(DictComprehension(next_node))
+                        }
+                        Nonterminal(star_named_expression) => AtomContent::Set(Set(self.0)),
+                        Nonterminal(comprehension) => {
+                            AtomContent::SetComprehension(Comprehension(next_node))
+                        }
+                        PyNodeType::Keyword => {
+                            debug_assert_eq!(next_node.get_code(), "}");
+                            AtomContent::Dict(Dict(self.0))
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub enum AtomContent<'db> {
+    Name(Name<'db>),
+
+    Float(Float<'db>),
+    Int(Int<'db>),
+    Complex(Complex<'db>),
+    StringsOrBytes(StringsOrBytes<'db>),
+
+    None,
+    Boolean(Keyword<'db>),
+    Ellipsis,
+
+    List(List<'db>),
+    ListComprehension(Comprehension<'db>),
+    Dict(Dict<'db>),
+    DictComprehension(DictComprehension<'db>),
+    Set(Set<'db>),
+    SetComprehension(Comprehension<'db>),
+    Tuple(Tuple<'db>),
+    GeneratorComprehension(Comprehension<'db>),
+    YieldExpr(YieldExpr<'db>),
+    NamedExpression(NamedExpression<'db>),
+}
+
+impl<'db> StringsOrBytes<'db> {
+    pub fn starts_with_string(&self) -> bool {
+        let code = self.0.get_nth_child(0).get_code();
+        for byte in code.bytes() {
+            if byte == b'"' || byte == b'\'' {
+                break;
+            } else if byte == b'b' || byte == b'B' {
+                return false;
+            }
+        }
+        true
     }
 }

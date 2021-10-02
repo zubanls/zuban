@@ -290,10 +290,10 @@ pub struct PythonInference<'db, 'a, 'b> {
 }
 
 macro_rules! check_point_cache_with {
-    ($vis:vis $name:ident, $func:path) => {
-        $vis fn $name(&mut self, node: PyNode<'db>) -> $crate::inferred::Inferred<'db> {
+    ($vis:vis $name:ident, $func:path, $ast:ident) => {
+        $vis fn $name(&mut self, node: $ast<'db>) -> $crate::inferred::Inferred<'db> {
             debug_indent(|| {
-                let point = self.file.get_point(node.index);
+                let point = self.file.get_point(node.index());
                 self.check_point_cache(
                     $func as fn (self_: &mut Self, Node: parsa_python::PyNode<'db>) -> Inferred<'db>,
                     point,
@@ -495,7 +495,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_expression(expr)
     }
 
-    check_point_cache_with!(pub infer_expression, Self::_infer_expression);
+    _check_point_cache_with!(pub infer_expression, Self::_infer_expression);
     fn _infer_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // disjunction ["if" disjunction "else" expression] | lambda
         debug_assert_eq!(node.get_type(), Nonterminal(NonterminalType::expression));
@@ -530,7 +530,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = match primary.first() {
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom.0),
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom),
             PrimaryOrAtom::Primary(primary) => self.infer_primary(primary),
         };
         match primary.second() {
@@ -557,91 +557,40 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    check_point_cache_with!(infer_atom, Self::_infer_atom);
-    fn _infer_atom(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        use NonterminalType::*;
-        debug_assert_eq!(node.get_type(), Nonterminal(atom));
-
-        let mut iter = node.iter_children();
-        let first = iter.next().unwrap();
-        let specific_enum = match first.get_type() {
-            Terminal(TerminalType::Name) => return self.infer_name_reference(first),
-            Terminal(TerminalType::Number) => {
-                let code = first.get_code();
-                if code.contains('j') {
-                    Specific::Complex
-                } else if code.contains('.') {
-                    Specific::Float
-                } else {
-                    Specific::Integer
-                }
-            }
-            Nonterminal(strings) => {
-                let code = first.get_nth_child(0).get_code();
-                let mut is_byte = false;
-                for byte in code.bytes() {
-                    if byte == b'"' || byte == b'\'' {
-                        break;
-                    } else if byte == b'b' || byte == b'B' {
-                        is_byte = true;
-                        break;
-                    }
-                }
-                if is_byte {
-                    Specific::Bytes
-                } else {
+    check_point_cache_with!(infer_atom, Self::_infer_atom, Atom);
+    fn _infer_atom(&mut self, atom: Atom<'db>) -> Inferred<'db> {
+        use AtomContent::*;
+        let specific = match atom.unpack() {
+            Name(n) => return self.infer_name_reference(n.0),
+            Int(_) => Specific::Integer,
+            Float(_) => Specific::Float,
+            Complex(_) => Specific::Complex,
+            StringsOrBytes(s_o_b) => {
+                if s_o_b.starts_with_string() {
                     Specific::String
+                } else {
+                    Specific::Bytes
                 }
             }
-            PyNodeType::Keyword => match first.get_code() {
-                "None" => Specific::None,
-                "True" | "False" => Specific::Boolean,
-                "..." => Specific::Ellipsis,
-                "(" => {
-                    let next_node = iter.next().unwrap();
-                    match next_node.get_type() {
-                        Nonterminal(tuple_content) => Specific::Tuple,
-                        Nonterminal(yield_expr) => {
-                            todo!("yield_expr");
-                        }
-                        Nonterminal(named_expression) => {
-                            todo!("named_expression");
-                        }
-                        Nonterminal(comprehension) => Specific::GeneratorComprehension,
-                        PyNodeType::Keyword => {
-                            debug_assert_eq!(next_node.get_code(), ")");
-                            Specific::Tuple
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                "[" => {
-                    let next_node = iter.next().unwrap();
-                    if next_node.is_type(Nonterminal(star_named_expressions)) {
-                        Specific::List
-                    } else {
-                        debug_assert_eq!(next_node.get_type(), Nonterminal(comprehension));
-                        Specific::ListComprehension
-                    }
-                }
-                "{" => match iter.next().unwrap().get_type() {
-                    Nonterminal(dict_content) | Nonterminal(dict_comprehension) => {
-                        todo!("dict literal")
-                    }
-                    Nonterminal(star_named_expression) | Nonterminal(comprehension) => {
-                        todo!("set literal")
-                    }
-                    _ => unreachable!(),
-                },
-                _ => unreachable!(),
-            },
-            _ => unreachable!(),
+            None => Specific::None,
+            Boolean(_) => Specific::Boolean,
+            Ellipsis => Specific::Ellipsis,
+            List(_) => Specific::List,
+            ListComprehension(_) => Specific::List,
+            Dict(_) => todo!(),
+            DictComprehension(_) => todo!(),
+            Set(_) => todo!(),
+            SetComprehension(_) => todo!(),
+            Tuple(_) => Specific::Tuple,
+            GeneratorComprehension(_) => Specific::GeneratorComprehension,
+            YieldExpr(_) => todo!(),
+            NamedExpression(named_expression) => todo!(),
         };
-        let point = Point::new_simple_language_specific(specific_enum, Locality::Stmt);
-        Inferred::new_and_save(self.file, node.index, point)
+        let point = Point::new_simple_language_specific(specific, Locality::Stmt);
+        Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    check_point_cache_with!(infer_name_reference, Self::_infer_name_reference);
+    _check_point_cache_with!(infer_name_reference, Self::_infer_name_reference);
     fn _infer_name_reference(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         todo!("star import? {:?}", node)
     }
@@ -651,9 +600,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         callable: fn(&mut Self, PyNode<'db>) -> Inferred<'db>,
         point: Point,
-        node: PyNode<'db>,
+        node_index: NodeIndex,
     ) -> Inferred<'db> {
-        let point = self.file.get_point(node.index);
+        let point = self.file.get_point(node_index);
         if point.is_calculated() {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {}",
@@ -706,7 +655,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    check_point_cache_with!(infer_multi_definition, Self::_infer_multi_definition);
+    _check_point_cache_with!(infer_multi_definition, Self::_infer_multi_definition);
     fn _infer_multi_definition(&mut self, name_def: PyNode<'db>) -> Inferred<'db> {
         self._infer_name(name_def.get_nth_child(0))
     }
@@ -751,7 +700,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_name(node)
     }
 
-    check_point_cache_with!(pub infer_name, Self::_infer_name);
+    _check_point_cache_with!(pub infer_name, Self::_infer_name);
     fn _infer_name(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // TODO move this after debug_assert_eq???
         debug_assert_eq!(
