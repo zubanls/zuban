@@ -51,6 +51,7 @@ create_nonterminal_structs!(
 
     Arguments: arguments
 
+    NameDefinition: name_definition
     Atom: atom
     StringsOrBytes: strings
 
@@ -90,6 +91,14 @@ impl<'db> Name<'db> {
 
     pub fn end(&self) -> CodeIndex {
         self.0.end()
+    }
+
+    pub fn is_reference(&self) -> bool {
+        !self
+            .0
+            .get_parent()
+            .unwrap()
+            .is_type(Nonterminal(name_definition))
     }
 }
 
@@ -431,6 +440,13 @@ impl<'db> ReturnOrYield<'db> {
 impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
         StarExpressions(self.0.get_nth_child(1))
+    }
+}
+
+impl<'db> NameDefinition<'db> {
+    #[inline]
+    pub fn name(&self) -> Name<'db> {
+        Name(self.0.get_nth_child(0))
     }
 }
 
