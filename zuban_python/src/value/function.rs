@@ -155,7 +155,7 @@ impl<'db> Value<'db> for Function<'db> {
             ) {
                 inferred
             } else {
-                let inferred = self.file.get_inference(i_s).infer_expression(expr.0);
+                let inferred = self.file.get_inference(i_s).infer_expression(expr);
                 inferred.run_on_value(i_s, &|i_s, v| {
                     // TODO locality is wrong!!!!!1
                     let point = if v.get_kind() == ValueKind::Class {
@@ -201,7 +201,7 @@ fn resolve_type_vars<'db, 'a>(
     expr: Expression<'db>,
     type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
 ) -> Option<Inferred<'db>> {
-    let inferred = file.get_inference(i_s).infer_expression(expr.0);
+    let inferred = file.get_inference(i_s).infer_expression(expr);
     if inferred.is_type_var(i_s) {
         type_var_finder
             .lookup(i_s, expr.0.get_code())
@@ -275,7 +275,10 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
                 {
-                    let inferred = self.file.get_inference(i_s).infer_expression(name);
+                    let inferred = self
+                        .file
+                        .get_inference(i_s)
+                        .infer_expression(annotation.expression());
                     if inferred.is_type_var(i_s) {
                         calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {

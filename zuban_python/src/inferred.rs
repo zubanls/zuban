@@ -6,7 +6,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
 use parsa_python::PyNode;
-use parsa_python_ast::{NodeIndex, Primary};
+use parsa_python_ast::{Expression, NodeIndex, Primary};
 use std::fmt;
 
 pub trait Inferrable<'db> {
@@ -49,6 +49,14 @@ impl<'db> NodeReference<'db> {
 
     fn as_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
+    }
+
+    fn as_annotation_instance_expression(&self) -> Expression<'db> {
+        Expression::by_index(&self.file.tree, self.node_index + 2)
+    }
+
+    fn as_primary(&self) -> Primary<'db> {
+        Primary::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn node(&self) -> PyNode<'db> {
@@ -106,7 +114,7 @@ impl<'db> Inferred<'db> {
                             let inferred = definition
                                 .file
                                 .get_inference(i_s)
-                                .infer_expression(definition.node().get_nth_child(1));
+                                .infer_expression(definition.as_annotation_instance_expression());
                             callable(i_s, &inferred.instantiate())
                         }
                         Specific::InstanceWithArguments => {
@@ -115,7 +123,7 @@ impl<'db> Inferred<'db> {
                             let args = InstanceArguments::from_primary(
                                 &instance,
                                 definition.file,
-                                Primary(definition.node()),
+                                definition.as_primary(),
                                 None,
                             );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
@@ -326,7 +334,7 @@ impl<'db> Inferred<'db> {
                             .resolve_function_return(i_s);
                         let args = SimpleArguments::from_primary(
                             definition.file,
-                            Primary(definition.node()),
+                            definition.as_primary(),
                             None,
                         );
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);

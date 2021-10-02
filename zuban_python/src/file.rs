@@ -295,9 +295,9 @@ macro_rules! check_point_cache_with {
             debug_indent(|| {
                 let point = self.file.get_point(node.index());
                 self.check_point_cache(
-                    $func as fn (self_: &mut Self, Node: parsa_python::PyNode<'db>) -> Inferred<'db>,
+                    $func as fn (&mut Self, parsa_python::PyNode<'db>) -> Inferred<'db>,
                     point,
-                    node
+                    node.0
                 )
             })
         }
@@ -492,12 +492,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if !expr.is_type(Nonterminal(NonterminalType::expression)) {
             expr = node.get_nth_child(2);
         }
-        self.infer_expression(expr)
+        self.infer_expression(Expression(expr))
     }
 
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);
-    fn _infer_expression(&mut self, node: Expression<'db>) -> Inferred<'db> {
-        let mut iter = node.0.iter_children();
+    fn _infer_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+        let mut iter = expr.0.iter_children();
         let first = iter.next().unwrap();
         let inferred = match first.is_type(Nonterminal(NonterminalType::lambda)) {
             true => {
@@ -512,14 +512,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
         };
-        inferred.save_redirect(self.file, node.index)
+        inferred.save_redirect(self.file, expr.index())
     }
 
     pub fn infer_expression_part(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // Responsible for all
         use NonterminalType::*;
         match node.get_type() {
-            Nonterminal(atom) => self.infer_atom(node),
+            Nonterminal(atom) => self.infer_atom(Atom(node)),
             Nonterminal(primary) => self.infer_primary(Primary(node)),
             _ => todo!("Did not handle {:?}", node),
         }
@@ -587,7 +587,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    check_point_cache_with!(infer_name_reference, Self::_infer_name_reference);
+    check_point_cache_with!(infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
         todo!("star import? {:?}", name)
     }
@@ -597,9 +597,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         callable: fn(&mut Self, PyNode<'db>) -> Inferred<'db>,
         point: Point,
-        node_index: NodeIndex,
+        node: PyNode<'db>,
     ) -> Inferred<'db> {
-        let point = self.file.get_point(node_index);
+        let point = self.file.get_point(node.index);
         if point.is_calculated() {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {}",
@@ -632,10 +632,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     _ => Inferred::new_saved(self.file, node.index, point),
                 },
                 PointType::MultiDefinition => {
-                    let previous_node = self.file.tree.get_node_by_index(point.get_node_index());
-                    let inferred = self.infer_name(previous_node);
+                    let inferred =
+                        self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
                     // Check for the cache of name_definition
-                    inferred.union(self.infer_multi_definition(node.get_parent().unwrap()))
+                    inferred.union(
+                        self.infer_multi_definition(NameDefinition(node.get_parent().unwrap())),
+                    )
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node.index, point)
@@ -690,7 +692,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn infer_arbitrary_node(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         if node.is_type(Terminal(TerminalType::Name)) {
-            self.infer_name(node)
+            self.infer_name(Name(node))
         } else {
             todo!("{:?}, {:?}", self.file.get_file_index().0, node)
         }
@@ -734,7 +736,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if let PointType::MultiDefinition = self.file.get_point(name.index()).get_type() {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.
-            self.infer_multi_definition(name.0.get_parent().unwrap())
+            self.infer_multi_definition(name.name_definition().unwrap())
         } else {
             self.infer_name(name)
         }

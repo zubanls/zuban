@@ -100,6 +100,15 @@ impl<'db> Name<'db> {
             .unwrap()
             .is_type(Nonterminal(name_definition))
     }
+
+    pub fn name_definition(&self) -> Option<NameDefinition<'db>> {
+        let parent = self.0.get_parent().unwrap();
+        if parent.is_type(Nonterminal(name_definition)) {
+            Some(NameDefinition(parent))
+        } else {
+            None
+        }
+    }
 }
 
 impl<'db> Keyword<'db> {
@@ -165,7 +174,7 @@ impl<'db> StarExpressions<'db> {
         let expr = iter.next().unwrap();
         if iter.next().is_none() {
             if expr.is_type(Nonterminal(expression)) {
-                StarExpressionContent::Expression(expr)
+                StarExpressionContent::Expression(Expression(expr))
             } else {
                 StarExpressionContent::StarExpression(StarExpression(expr))
             }
@@ -176,7 +185,7 @@ impl<'db> StarExpressions<'db> {
 }
 
 pub enum StarExpressionContent<'db> {
-    Expression(PyNode<'db>),
+    Expression(Expression<'db>),
     StarExpression(StarExpression<'db>),
     Tuple(StarExpressionsTuple<'db>),
 }
