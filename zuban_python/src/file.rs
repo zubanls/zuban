@@ -45,91 +45,15 @@ impl File for PythonFile {
     }
 
     fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
-        fn calculate<'a>(
-            file: &'a PythonFile,
-            database: &'a Database,
-            node: PyNode<'a>,
-            position: CodeIndex,
-        ) -> Leaf<'a> {
-            match node.get_type() {
-                Terminal(t) | ErrorTerminal(t) => match t {
-                    TerminalType::Name => {
-                        Leaf::Name(Box::new(TreeName::new(database, file, Name(node))))
-                    }
-                    _ => Leaf::None,
-                },
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => Leaf::Keyword(Keyword(node)),
-                Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str()),
+        match NameOrKeywordLookup::from_position(&self.tree, position) {
+            NameOrKeywordLookup::Name(name) => {
+                Leaf::Name(Box::new(TreeName::new(database, self, name)))
             }
+            NameOrKeywordLookup::Keyword(keyword) => Leaf::Keyword(keyword),
+            NameOrKeywordLookup::None => Leaf::None,
         }
-        // First check the token left and right of the cursor
-        let mut left = self.tree.get_leaf_by_position(position);
-        let mut right = left;
-        if left.start() == position {
-            if let Some(n) = left.get_previous_leaf() {
-                if n.end() == position {
-                    left = n;
-                }
-            }
-        } else if left.end() == position {
-            if let Some(n) = left.get_next_leaf() {
-                if n.start() == position {
-                    right = n;
-                }
-            }
-        }
-        // From now on left is the node we're passing.
-        if left.index != right.index {
-            use TerminalType::*;
-            let order = [
-                Name,
-                Number,
-                String,
-                Bytes,
-                FStringString,
-                FStringStart,
-                FStringEnd,
-            ];
-            match left.get_type() {
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    match right.get_type() {
-                        PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                            let is_alpha =
-                                |n: PyNode| n.get_code().chars().all(|x| x.is_alphanumeric());
-                            if is_alpha(right) && !is_alpha(left) {
-                                // Prefer keywords to operators
-                                left = right;
-                            }
-                        }
-                        Terminal(t) | ErrorTerminal(t) => {
-                            // If it is any of the wanted types, just use that instead.
-                            if order.contains(&t) {
-                                left = right;
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-                Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
-                    match right.get_type() {
-                        Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            let order_func =
-                                |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
-                            let left_index = order_func(left_terminal);
-                            let right_index = order_func(right_terminal);
-                            // Both are terminals, prefer the one that is higher in the order
-                            if right_index < left_index {
-                                left = right;
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-                Nonterminal(n) | ErrorNonterminal(n) => unreachable!(),
-            }
-        }
-        calculate(self, database, left, position)
     }
+
     fn infer_operator_leaf<'db>(
         &'db self,
         database: &'db Database,
