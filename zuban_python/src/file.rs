@@ -404,17 +404,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_named_expression(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        // named_expression: name_definition ":=" expression | expression
-        debug_assert_eq!(
-            node.get_type(),
-            Nonterminal(NonterminalType::named_expression)
-        );
-        let mut expr = node.get_nth_child(0);
-        if !expr.is_type(Nonterminal(NonterminalType::expression)) {
-            expr = node.get_nth_child(2);
+    pub fn infer_named_expression(&mut self, named_expr: NamedExpression<'db>) -> Inferred<'db> {
+        match named_expr.unpack() {
+            NamedExpressionContent::Expression(expr)
+            | NamedExpressionContent::Definition(_, expr) => self.infer_expression(expr),
         }
-        self.infer_expression(Expression(expr))
     }
 
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);

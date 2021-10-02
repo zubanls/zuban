@@ -184,6 +184,23 @@ pub enum ListElement<'db> {
     StarNamedExpression(StarNamedExpression<'db>),
 }
 
+impl<'db> NamedExpression<'db> {
+    pub fn unpack(self) -> NamedExpressionContent<'db> {
+        let node = self.0.get_nth_child(0);
+        if node.is_type(Nonterminal(expression)) {
+            NamedExpressionContent::Expression(Expression(node))
+        } else {
+            let expr = node.get_nth_child(2);
+            NamedExpressionContent::Definition(NameDefinition(node), Expression(expr))
+        }
+    }
+}
+
+pub enum NamedExpressionContent<'db> {
+    Expression(Expression<'db>),
+    Definition(NameDefinition<'db>, Expression<'db>),
+}
+
 impl<'db> Stmt<'db> {}
 
 impl<'db> StarExpressions<'db> {

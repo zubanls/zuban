@@ -31,7 +31,7 @@ impl<'db> Simple<'db> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         self.file
             .get_inference(i_s)
-            .infer_named_expression(self.named_expr.0)
+            .infer_named_expression(self.named_expr)
     }
 }
 

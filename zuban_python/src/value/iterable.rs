@@ -23,7 +23,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
         self.node_reference
             .file
             .get_inference(i_s)
-            .infer_named_expression(named_expr.0)
+            .infer_named_expression(named_expr)
     }
 
     fn get_list(&self) -> List<'db> {
