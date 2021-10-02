@@ -4,7 +4,7 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::value::{Value, ValueKind};
-use parsa_python::{CodeIndex, PyNode, PyNodeType, TerminalType};
+use parsa_python_ast::{CodeIndex, Name as ASTName};
 use std::fmt;
 use std::mem;
 
@@ -72,10 +72,10 @@ pub trait ValueName<'db>: Name<'db> {
 pub struct TreeName<'db, F: File, N> {
     database: &'db Database,
     file: &'db F,
-    tree_node: N,
+    ast_name: N,
 }
 
-impl<'db> fmt::Debug for TreeName<'db, PythonFile, PyNode<'db>> {
+impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
             .field("file", &self.get_file_path())
@@ -85,18 +85,18 @@ impl<'db> fmt::Debug for TreeName<'db, PythonFile, PyNode<'db>> {
 }
 
 impl<'db, F: File, N> TreeName<'db, F, N> {
-    pub fn new(database: &'db Database, file: &'db F, tree_node: N) -> Self {
+    pub fn new(database: &'db Database, file: &'db F, ast_name: N) -> Self {
         Self {
             database,
-            tree_node,
+            ast_name,
             file,
         }
     }
 }
 
-impl<'db> Name<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
+impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     fn get_name(&self) -> &'db str {
-        self.tree_node.get_code()
+        self.ast_name.as_str()
     }
 
     fn get_file_path(&self) -> &str {
@@ -106,14 +106,14 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
     fn get_start_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
-            position: self.tree_node.start(),
+            position: self.ast_name.start(),
         }
     }
 
     fn get_end_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
-            position: self.tree_node.end(),
+            position: self.ast_name.end(),
         }
     }
 
@@ -135,12 +135,10 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, PyNode<'db>> {
     */
 
     fn infer(&self) -> Inferred<'db> {
-        if let PyNodeType::Terminal(TerminalType::Name) = self.tree_node.get_type() {
-            let mut i_s = InferenceState::new(self.database);
-            self.file.get_inference(&mut i_s).infer_name(self.tree_node)
-        } else {
-            todo!()
-        }
+        let mut i_s = InferenceState::new(self.database);
+        self.file
+            .get_inference(&mut i_s)
+            .infer_name(self.ast_name.0)
     }
 
     fn goto(&self) -> Names<'db> {

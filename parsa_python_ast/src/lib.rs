@@ -112,6 +112,14 @@ impl<'db> Name<'db> {
     pub fn as_str(&self) -> &'db str {
         self.0.get_code()
     }
+
+    pub fn start(&self) -> CodeIndex {
+        self.0.start()
+    }
+
+    pub fn end(&self) -> CodeIndex {
+        self.0.end()
+    }
 }
 
 impl<'db> Stmt<'db> {}

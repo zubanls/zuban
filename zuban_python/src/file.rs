@@ -53,7 +53,9 @@ impl File for PythonFile {
         ) -> Leaf<'a> {
             match node.get_type() {
                 Terminal(t) | ErrorTerminal(t) => match t {
-                    TerminalType::Name => Leaf::Name(Box::new(TreeName::new(database, file, node))),
+                    TerminalType::Name => {
+                        Leaf::Name(Box::new(TreeName::new(database, file, Name(node))))
+                    }
                     _ => Leaf::None,
                 },
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => Leaf::Keyword(node),
