@@ -589,6 +589,61 @@ pub enum NameOrKeywordLookup<'db> {
     None,
 }
 
+pub enum Target<'db> {
+    Tuple(TargetIterator<'db>),
+    Name(PyNode<'db>),
+    NameExpression(PyNode<'db>, PyNode<'db>),
+    IndexExpression(PyNode<'db>),
+    Starred(PyNode<'db>),
+}
+
+impl<'db> Target<'db> {
+    pub fn new(node: PyNode<'db>) -> Self {
+        // star_targets: ",".star_target+ [","]
+        let mut iterator = node.iter_children();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_none() {
+            if first.is_type(Nonterminal(name_definition)) {
+                Self::Name(first.get_nth_child(0))
+            } else if first.is_type(Nonterminal(t_primary)) {
+                first
+                    .iter_children()
+                    .find(|x| x.is_type(Nonterminal(name_definition)))
+                    .map(|name_def| Self::NameExpression(first, name_def.get_nth_child(0)))
+                    .unwrap_or_else(|| Self::IndexExpression(first))
+            } else if first.is_type(Nonterminal(star_target_brackets)) {
+                todo!("star_target_brackets")
+            } else if first.is_type(Nonterminal(star_target)) {
+                Self::Starred(first.get_nth_child(1))
+            } else {
+                unreachable!();
+            }
+        } else {
+            Self::Tuple(TargetIterator {
+                siblings: node.iter_children(),
+            })
+        }
+    }
+}
+
+pub struct TargetIterator<'db> {
+    siblings: SiblingIterator<'db>,
+}
+
+impl<'db> Iterator for TargetIterator<'db> {
+    type Item = Target<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.siblings.next();
+        if let Some(sibling) = current {
+            self.siblings.next();
+            Some(Target::new(sibling))
+        } else {
+            None
+        }
+    }
+}
+
 impl<'db> NameOrKeywordLookup<'db> {
     pub fn from_position(tree: &'db PyTree, position: CodeIndex) -> Self {
         // First check the token left and right of the cursor
@@ -654,7 +709,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                         _ => (),
                     }
                 }
-                Nonterminal(n) | ErrorNonterminal(n) => unreachable!(),
+                Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
             }
         }
         match left.get_type() {
@@ -663,7 +718,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                 _ => Self::None,
             },
             PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword(left)),
-            Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", left.type_str()),
+            Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         }
     }
 }

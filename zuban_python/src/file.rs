@@ -11,14 +11,12 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{
-    NonterminalType, PyNode, PyNodeType, PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
-};
+use parsa_python::{NonterminalType, PyNode, PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
-use PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal};
+use PyNodeType::{Nonterminal, Terminal};
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -663,61 +661,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             self.infer_multi_definition(name.name_definition().unwrap())
         } else {
             self.infer_name(name)
-        }
-    }
-}
-
-enum Target<'db> {
-    Tuple(TargetIterator<'db>),
-    Name(PyNode<'db>),
-    NameExpression(PyNode<'db>, PyNode<'db>),
-    IndexExpression(PyNode<'db>),
-    Starred(PyNode<'db>),
-}
-
-impl<'db> Target<'db> {
-    fn new(node: PyNode<'db>) -> Self {
-        // star_targets: ",".star_target+ [","]
-        let mut iterator = node.iter_children();
-        let first = iterator.next().unwrap();
-        if iterator.next().is_none() {
-            if first.is_type(Nonterminal(NonterminalType::name_definition)) {
-                Self::Name(first.get_nth_child(0))
-            } else if first.is_type(Nonterminal(NonterminalType::t_primary)) {
-                first
-                    .iter_children()
-                    .find(|x| x.is_type(Nonterminal(NonterminalType::name_definition)))
-                    .map(|name_def| Self::NameExpression(first, name_def.get_nth_child(0)))
-                    .unwrap_or_else(|| Self::IndexExpression(first))
-            } else if first.is_type(Nonterminal(NonterminalType::star_target_brackets)) {
-                todo!("star_target_brackets")
-            } else if first.is_type(Nonterminal(NonterminalType::star_target)) {
-                Self::Starred(first.get_nth_child(1))
-            } else {
-                unreachable!();
-            }
-        } else {
-            Self::Tuple(TargetIterator {
-                siblings: node.iter_children(),
-            })
-        }
-    }
-}
-
-struct TargetIterator<'db> {
-    siblings: SiblingIterator<'db>,
-}
-
-impl<'db> Iterator for TargetIterator<'db> {
-    type Item = Target<'db>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.siblings.next();
-        if let Some(sibling) = current {
-            self.siblings.next();
-            Some(Target::new(sibling))
-        } else {
-            None
         }
     }
 }
