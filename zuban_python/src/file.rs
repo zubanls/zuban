@@ -295,9 +295,9 @@ macro_rules! check_point_cache_with {
             debug_indent(|| {
                 let point = self.file.get_point(node.index());
                 self.check_point_cache(
-                    $func as fn (&mut Self, parsa_python::PyNode<'db>) -> Inferred<'db>,
+                    $func,
                     point,
-                    node.0
+                    node
                 )
             })
         }
@@ -517,7 +517,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     pub fn infer_expression_part(&mut self, node: PyNode<'db>) -> Inferred<'db> {
         // Responsible for all
-        use NonterminalType::*;
+        use NonterminalType::{atom, primary};
         match node.get_type() {
             Nonterminal(atom) => self.infer_atom(Atom(node)),
             Nonterminal(primary) => self.infer_primary(Primary(node)),
@@ -593,19 +593,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     #[inline]
-    fn check_point_cache(
+    fn check_point_cache<T: HasIndex<'db>>(
         &mut self,
-        callable: fn(&mut Self, PyNode<'db>) -> Inferred<'db>,
+        callable: impl Fn(&mut Self, T) -> Inferred<'db>,
         point: Point,
-        node: PyNode<'db>,
+        node: T,
     ) -> Inferred<'db> {
-        let point = self.file.get_point(node.index);
+        let point = self.file.get_point(node.index());
         if point.is_calculated() {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {}",
-                get_node_debug_output(node),
+                node.short_debug(),
                 self.file.get_file_index(),
-                node.index,
+                node.index(),
                 if matches!(point.get_type(), PointType::LanguageSpecific) {
                     format!("{:?}", point.get_language_specific())
                 } else {
@@ -619,31 +619,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::LanguageSpecific => match point.get_language_specific() {
                     Specific::LazyInferredFunction => {
-                        let func = node.get_parent().unwrap().get_parent().unwrap();
-                        debug_assert_eq!(
-                            func.get_type(),
-                            Nonterminal(NonterminalType::function_def)
-                        );
-                        self.file.calculate_node_scope_definitions(func);
-                        let point = self.file.get_point(node.index);
+                        let name = Name::by_index(&self.file.tree, node.index());
+                        let func = name.expect_function_def();
+                        self.file.calculate_node_scope_definitions(func.0);
+                        let point = self.file.get_point(node.index());
                         debug_assert!(point.is_calculated());
                         self.check_point_cache(callable, point, node)
                     }
-                    _ => Inferred::new_saved(self.file, node.index, point),
+                    _ => Inferred::new_saved(self.file, node.index(), point),
                 },
                 PointType::MultiDefinition => {
                     let inferred =
                         self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
                     // Check for the cache of name_definition
-                    inferred.union(
-                        self.infer_multi_definition(NameDefinition(node.get_parent().unwrap())),
-                    )
+                    let name_def = NameDefinition::by_index(&self.file.tree, node.index() - 1);
+                    inferred.union(self.infer_multi_definition(name_def))
                 }
                 PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
-                    Inferred::new_saved(self.file, node.index, point)
+                    Inferred::new_saved(self.file, node.index(), point)
                 }
                 PointType::NodeAnalysis => {
-                    panic!("Invalid state, should not happen {:?}", node);
+                    panic!("Invalid state, should not happen {:?}", node.short_debug());
                 }
             }
         } else {
@@ -686,12 +682,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 );
             }
         }
-        let node = self.file.tree.get_node_by_index(node_index);
-        self.check_point_cache(Self::infer_arbitrary_node, point, node)
-    }
 
-    fn infer_arbitrary_node(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        if node.is_type(Terminal(TerminalType::Name)) {
+        let node = self.file.tree.get_node_by_index(node_index);
+        if node.is_type(Terminal(TerminalType::Name))
+            || node.is_type(Nonterminal(NonterminalType::function_def))
+            || node.is_type(Nonterminal(NonterminalType::atom))
+            || node.is_type(Nonterminal(NonterminalType::expression))
+            || node.is_type(Nonterminal(NonterminalType::class_def))
+            || node.is_type(Nonterminal(NonterminalType::primary))
+            || node.is_type(Nonterminal(NonterminalType::return_annotation))
+        {
+            // TODO this is so wrong
             self.infer_name(Name(node))
         } else {
             todo!("{:?}, {:?}", self.file.get_file_index().0, node)
@@ -725,7 +726,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if parent.is_type(Nonterminal(NonterminalType::primary)) {
                     return self.infer_primary(Primary(parent));
                 } else {
-                    dbg!(parent);
                     todo!("star import {:?}", name);
                 }
             } else {
@@ -796,8 +796,4 @@ impl<'db> Iterator for TargetIterator<'db> {
             None
         }
     }
-}
-
-fn get_node_debug_output(node: PyNode) -> &str {
-    node.get_code().get(..20).unwrap_or_else(|| node.get_code())
 }

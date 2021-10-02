@@ -8,6 +8,12 @@ use parsa_python::{
     PyTree, SiblingIterator, TerminalType,
 };
 
+pub trait HasIndex<'db> {
+    fn index(&self) -> NodeIndex;
+
+    fn short_debug(&self) -> &'db str;
+}
+
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
@@ -24,10 +30,19 @@ macro_rules! create_struct {
             pub fn by_index(tree: &'db PyTree, index: NodeIndex) -> Self {
                 Self::new(tree.get_node_by_index(index))
             }
+        }
 
+        impl<'db> HasIndex<'db> for $name<'db> {
             #[inline]
-            pub fn index(&self) -> NodeIndex {
+            fn index(&self) -> NodeIndex {
                 self.0.index
+            }
+
+            fn short_debug(&self) -> &'db str {
+                self.0
+                    .get_code()
+                    .get(..20)
+                    .unwrap_or_else(|| self.0.get_code())
             }
         }
     };
@@ -68,7 +83,6 @@ create_nonterminal_structs!(
 
     FunctionDef: function_def
     ReturnAnnotation: return_annotation
-    Annotation: annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
 );
@@ -108,6 +122,10 @@ impl<'db> Name<'db> {
         } else {
             None
         }
+    }
+
+    pub fn expect_function_def(&self) -> FunctionDef<'db> {
+        FunctionDef(self.0.get_parent().unwrap().get_parent().unwrap())
     }
 }
 
@@ -305,8 +323,8 @@ impl<'db> Param<'db> {
         Name(self.name_node)
     }
 
-    pub fn annotation(&self) -> Option<Annotation<'db>> {
-        self.annotation_node.map(Annotation)
+    pub fn annotation(&self) -> Option<Expression<'db>> {
+        self.annotation_node.map(Expression::new)
     }
 }
 
@@ -319,12 +337,6 @@ pub enum ParamType {
 }
 
 impl<'db> ReturnAnnotation<'db> {
-    pub fn expression(&self) -> Expression<'db> {
-        Expression(self.0.get_nth_child(1))
-    }
-}
-
-impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression(self.0.get_nth_child(1))
     }
@@ -461,7 +473,7 @@ impl<'db> NameDefinition<'db> {
 
 impl<'db> Atom<'db> {
     #[inline]
-    pub fn unpack(&self) -> AtomContent {
+    pub fn unpack(&self) -> AtomContent<'db> {
         let mut iter = self.0.iter_children();
         let first = iter.next().unwrap();
 

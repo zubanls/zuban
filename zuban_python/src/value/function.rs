@@ -1,4 +1,6 @@
-use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
+use parsa_python_ast::{
+    Expression, FunctionDef, HasIndex, NodeIndex, Param, ParamIterator, ReturnOrYield,
+};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -275,10 +277,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
                 {
-                    let inferred = self
-                        .file
-                        .get_inference(i_s)
-                        .infer_expression(annotation.expression());
+                    let inferred = self.file.get_inference(i_s).infer_expression(annotation);
                     if inferred.is_type_var(i_s) {
                         calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {
