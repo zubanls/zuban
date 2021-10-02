@@ -413,20 +413,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);
     fn _infer_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        let mut iter = expr.0.iter_children();
-        let first = iter.next().unwrap();
-        let inferred = match first.is_type(Nonterminal(NonterminalType::lambda)) {
-            true => {
-                todo!("lambda")
-            }
-            false => {
-                if iter.next().is_none() {
-                    // No if
-                    self.infer_expression_part(first)
-                } else {
-                    todo!("has an if in expression");
-                }
-            }
+        let inferred = match expr.unpack() {
+            ExpressionContent::Expression(n) => self.infer_expression_part(n),
+            ExpressionContent::Lambda(_) => todo!(),
+            ExpressionContent::Ternary(_) => todo!(),
         };
         inferred.save_redirect(self.file, expr.index())
     }

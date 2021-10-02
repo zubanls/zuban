@@ -60,6 +60,7 @@ create_nonterminal_structs!(
     StarExpression: star_expression
     StarNamedExpression: star_named_expression
     Expression: expression
+    Ternary: expression
     NamedExpression: named_expression
 
     Primary: primary
@@ -85,6 +86,7 @@ create_nonterminal_structs!(
     ReturnAnnotation: return_annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
+    Lambda: lambda
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -182,6 +184,26 @@ impl<'db> Iterator for ListElementIterator<'db> {
 pub enum ListElement<'db> {
     NamedExpression(NamedExpression<'db>),
     StarNamedExpression(StarNamedExpression<'db>),
+}
+
+impl<'db> Expression<'db> {
+    pub fn unpack(self) -> ExpressionContent<'db> {
+        let mut iter = self.0.iter_children();
+        let first = iter.next().unwrap();
+        if first.is_type(Nonterminal(lambda)) {
+            ExpressionContent::Lambda(Lambda::new(first))
+        } else if iter.next().is_none() {
+            ExpressionContent::Expression(first)
+        } else {
+            ExpressionContent::Ternary(Ternary::new(self.0))
+        }
+    }
+}
+
+pub enum ExpressionContent<'db> {
+    Expression(PyNode<'db>),
+    Ternary(Ternary<'db>),
+    Lambda(Lambda<'db>),
 }
 
 impl<'db> NamedExpression<'db> {
