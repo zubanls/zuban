@@ -63,6 +63,10 @@ create_nonterminal_structs!(
     Ternary: expression
     NamedExpression: named_expression
 
+    ImportFrom: import_from
+    DottedName: dotted_name
+    ImportFromAsName: import_from_as_name
+
     Primary: primary
 
     Arguments: arguments
@@ -386,6 +390,85 @@ pub enum ArgumentsDetails<'db> {
     None,
     Comprehension(Comprehension<'db>),
     Node(Arguments<'db>),
+}
+
+impl<'db> ImportFrom<'db> {
+    pub fn level_with_dotted_name(&self) -> (usize, Option<DottedName<'db>>) {
+        // | "from" ("." | "...")* dotted_name "import" import_from_targets
+        // | "from" ("." | "...")+ "import" import_from_targets
+        let mut level = 0;
+        for node in self.0.iter_children().skip(1) {
+            if node.is_type(Nonterminal(dotted_name)) {
+                return (level, Some(DottedName(node)));
+            } else if node.get_code() == "." {
+                level += 1;
+            } else if node.get_code() == "..." {
+                level += 3;
+            } else if node.get_code() == "import" {
+                break;
+            }
+        }
+        (level, None)
+    }
+
+    pub fn unpack_targets(&self) -> ImportFromTargets<'db> {
+        // import_from_targets:
+        //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+        for node in self.0.iter_children().skip(3) {
+            if node.is_type(Nonterminal(import_from_targets)) {
+                let first = node.get_nth_child(0);
+                if first.is_leaf() && first.get_code() == "*" {
+                    return ImportFromTargets::Star;
+                } else {
+                    return ImportFromTargets::Iterator(ImportFromTargetsIterator(
+                        node.iter_children(),
+                    ));
+                }
+            }
+        }
+        unreachable!()
+    }
+}
+
+pub enum ImportFromTargets<'db> {
+    Star,
+    Iterator(ImportFromTargetsIterator<'db>),
+}
+
+pub struct ImportFromTargetsIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for ImportFromTargetsIterator<'db> {
+    type Item = ImportFromAsName<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for child in &mut self.0 {
+            if child.is_type(Nonterminal(import_from_as_name)) {
+                // import_from_as_name: Name "as" name_definition | name_definition
+                return Some(ImportFromAsName(child));
+            }
+        }
+        None
+    }
+}
+
+impl<'db> ImportFromAsName<'db> {
+    pub fn name_definition(&self) -> NameDefinition {
+        let first = self.0.get_nth_child(0);
+        if first.is_type(Nonterminal(name_definition)) {
+            NameDefinition(first)
+        } else {
+            NameDefinition(self.0.get_nth_child(2))
+        }
+    }
+
+    pub fn import_name(&self) -> Name {
+        let first = self.0.get_nth_child(0);
+        if first.is_type(Nonterminal(name_definition)) {
+            Name::new(first.get_nth_child(0))
+        } else {
+            Name::new(first)
+        }
+    }
 }
 
 impl<'db> Primary<'db> {

@@ -245,7 +245,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if self.file.get_point(name.index).is_calculated() {
                             todo!("Multi name");
                         }
-                        self.cache_import_from(simple_child);
+                        self.cache_import_from(ImportFrom::new(simple_child));
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
                         todo!();
                     } else {
@@ -258,48 +258,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn cache_import_from(&mut self, imp: PyNode<'db>) {
-        // | "from" ("." | "...")* dotted_name "import" import_from_targets
-        // | "from" ("." | "...")+ "import" import_from_targets
-        use NonterminalType::*;
-        let mut level = 0;
-        let mut inferred = None;
-        for node in imp.iter_children() {
-            if node.is_type(Nonterminal(dotted_name)) {
-                if level > 0 {
-                    todo!()
-                }
-                inferred = Some(self.infer_import_dotted_name(node));
-            } else if node.is_type(Nonterminal(import_from_targets)) {
-                if level > 0 {
-                    todo!()
-                }
-                // import_from_targets:
-                //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
-                for child in node.iter_children() {
-                    if child.is_type(Nonterminal(import_from_as_name)) {
-                        // import_from_as_name: Name "as" name_definition | name_definition
-                        let from_as_name = child.get_nth_child(0);
-                        if from_as_name.is_type(Nonterminal(name_definition)) {
-                            if self.file.get_point(from_as_name.index + 1).is_calculated() {
-                                todo!()
-                            }
-                            let i = inferred
-                                .as_ref()
-                                .unwrap()
-                                .run_on_value(self.i_s, &|i_s, value| {
-                                    value.lookup(i_s, from_as_name.get_code())
-                                });
-                            i.save_redirect(self.file, from_as_name.index + 1);
-                        } else {
-                            todo!("from import as")
-                        }
+    fn cache_import_from(&mut self, imp: ImportFrom<'db>) {
+        let (level, dotted_name) = imp.level_with_dotted_name();
+        let inferred = if level > 0 {
+            todo!()
+        } else {
+            Some(self.infer_import_dotted_name(dotted_name.unwrap().0))
+        };
+
+        match imp.unpack_targets() {
+            ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
+            ImportFromTargets::Iterator(targets) => {
+                // as names should have been calculated earlier
+                for target in targets {
+                    let name = target.import_name();
+                    if self.file.get_point(name.index()).is_calculated() {
+                        todo!("multi definition")
                     }
+                    let i = inferred
+                        .as_ref()
+                        .unwrap()
+                        .run_on_value(self.i_s, &|i_s, value| value.lookup(i_s, name.as_str()));
+                    i.save_redirect(self.file, name.index());
                 }
-            } else if node.get_code() == "." {
-                level += 1;
-            } else if node.get_code() == "..." {
-                level += 3;
             }
         }
     }
