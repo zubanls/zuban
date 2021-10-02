@@ -3,7 +3,7 @@ use std::iter::StepBy;
 pub use parsa_python::{CodeIndex, NodeIndex};
 use parsa_python::{
     NonterminalType::*,
-    PyNode,
+    PyNode, PyNodeType,
     PyNodeType::{Nonterminal, Terminal},
     PyTree, SiblingIterator, TerminalType,
 };
@@ -67,6 +67,38 @@ create_nonterminal_structs!(
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
+create_struct!(Keyword: PyNodeType::Keyword);
+
+impl<'db> Name<'db> {
+    #[inline]
+    pub fn as_str(&self) -> &'db str {
+        self.0.get_code()
+    }
+
+    pub fn start(&self) -> CodeIndex {
+        self.0.start()
+    }
+
+    pub fn end(&self) -> CodeIndex {
+        self.0.end()
+    }
+}
+
+impl<'db> Keyword<'db> {
+    #[inline]
+    pub fn as_str(&self) -> &'db str {
+        self.0.get_code()
+    }
+
+    pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
+        let parent = self.0.get_parent().unwrap();
+        if parent.is_type(Nonterminal(primary)) {
+            Some(Primary(parent))
+        } else {
+            None
+        }
+    }
+}
 
 impl<'db> List<'db> {
     pub fn unpack(&self) -> ListContent<'db> {
@@ -105,21 +137,6 @@ impl<'db> Iterator for ListElementIterator<'db> {
 pub enum ListElement<'db> {
     NamedExpression(NamedExpression<'db>),
     StarNamedExpression(StarNamedExpression<'db>),
-}
-
-impl<'db> Name<'db> {
-    #[inline]
-    pub fn as_str(&self) -> &'db str {
-        self.0.get_code()
-    }
-
-    pub fn start(&self) -> CodeIndex {
-        self.0.start()
-    }
-
-    pub fn end(&self) -> CodeIndex {
-        self.0.end()
-    }
 }
 
 impl<'db> Stmt<'db> {}

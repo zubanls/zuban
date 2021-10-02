@@ -125,9 +125,9 @@ impl<'a> Script<'a> {
         match self.get_leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
-            Leaf::Keyword(node) => self
+            Leaf::Keyword(keyword) => self
                 .get_file()
-                .infer_operator_leaf(&self.project.database, node),
+                .infer_operator_leaf(&self.project.database, keyword),
             Leaf::None | Leaf::String => todo!(),
         }
         .run_on_value_names(&mut i_s, callable)

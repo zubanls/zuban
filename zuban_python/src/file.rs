@@ -58,7 +58,7 @@ impl File for PythonFile {
                     }
                     _ => Leaf::None,
                 },
-                PyNodeType::ErrorKeyword | PyNodeType::Keyword => Leaf::Keyword(node),
+                PyNodeType::ErrorKeyword | PyNodeType::Keyword => Leaf::Keyword(Keyword(node)),
                 Nonterminal(n) | ErrorNonterminal(n) => unreachable!("{}", node.type_str()),
             }
         }
@@ -133,16 +133,15 @@ impl File for PythonFile {
     fn infer_operator_leaf<'db>(
         &'db self,
         database: &'db Database,
-        leaf: PyNode<'db>,
+        leaf: Keyword<'db>,
     ) -> Inferred<'db> {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
-            .any(|&x| x == leaf.get_code())
+            .any(|&x| x == leaf.as_str())
         {
-            let parent = leaf.get_parent().unwrap();
-            if parent.is_type(Nonterminal(NonterminalType::primary)) {
+            if let Some(primary) = leaf.maybe_primary_parent() {
                 let mut i_s = InferenceState::new(database);
-                return self.get_inference(&mut i_s).infer_expression_part(parent);
+                return self.get_inference(&mut i_s).infer_primary(primary.0);
             }
         }
         todo!()

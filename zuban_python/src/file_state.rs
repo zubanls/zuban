@@ -2,8 +2,7 @@ use crate::database::{Database, FileIndex, Locality};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names};
-use parsa_python::PyNode;
-use parsa_python_ast::{CodeIndex, NodeIndex};
+use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 use std::any::Any;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
@@ -32,7 +31,7 @@ pub enum Leaf<'db> {
     Name(Box<dyn Name<'db> + 'db>),
     String,
     Number,
-    Keyword(PyNode<'db>),
+    Keyword(Keyword<'db>),
     None,
 }
 
@@ -108,7 +107,7 @@ pub trait File: std::fmt::Debug + AsAny {
     fn infer_operator_leaf<'db>(
         &'db self,
         database: &'db Database,
-        node: PyNode<'db>,
+        keyword: Keyword<'db>,
     ) -> Inferred<'db>;
     fn get_file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
