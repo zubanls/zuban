@@ -551,20 +551,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
 
-        let node = self.file.tree.get_node_by_index(node_index);
-        if node.is_type(Terminal(TerminalType::Name))
-            || node.is_type(Nonterminal(NonterminalType::function_def))
-            || node.is_type(Nonterminal(NonterminalType::atom))
-            || node.is_type(Nonterminal(NonterminalType::expression))
-            || node.is_type(Nonterminal(NonterminalType::class_def))
-            || node.is_type(Nonterminal(NonterminalType::primary))
-            || node.is_type(Nonterminal(NonterminalType::return_annotation))
-        {
-            // TODO this is so wrong
-            self.infer_name(Name(node))
-        } else {
-            todo!("{:?}, {:?}", self.file.get_file_index().0, node)
-        }
+        self.check_point(node_index, point).unwrap_or_else(|| {
+            let node = self.file.tree.get_node_by_index(node_index);
+            if node.is_type(Terminal(TerminalType::Name)) {
+                self.infer_name(Name::new(node))
+            } else {
+                todo!("{:?}, {:?}", self.file.get_file_index().0, node)
+            }
+        })
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
