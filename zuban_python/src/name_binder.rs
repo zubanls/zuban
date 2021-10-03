@@ -25,9 +25,9 @@ pub struct NameBinder<'db, 'a> {
     symbol_table: &'a SymbolTable,
     points: &'db [Cell<Point>],
     complex_points: &'db ComplexValues,
-    unordered_references: Vec<PyNode<'db>>,
+    unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<PyNode<'db>>,
-    unresolved_names: Vec<PyNode<'db>>,
+    unresolved_names: Vec<Name<'db>>,
     file_index: FileIndex,
     parent_lookup_not_finished: bool,
     parent: Option<&'a NameBinder<'db, 'a>>,
@@ -98,7 +98,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func(&mut name_binder);
         name_binder.close();
         let unresolved_names = name_binder.unresolved_names;
-        self.unresolved_nodes.extend(unresolved_names);
+        self.unresolved_nodes
+            .extend(unresolved_names.iter().map(|n| n.0));
     }
 
     fn add_new_definition(&self, name_def: PyNode<'db>, mut point: Point, in_base_scope: bool) {
@@ -284,7 +285,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.parent_lookup_not_finished = true;
         while let Some(n) = self.unresolved_nodes.pop() {
             if n.is_type(Terminal(TerminalType::Name)) {
-                self.maybe_add_reference(n, true);
+                self.maybe_add_reference(Name::new(n), true);
             } else if n.is_type(Nonterminal(comprehension)) {
                 // TODO It is not correct to index the last part of the expression here. It should
                 // have been done at the point where the generator was created.
@@ -556,7 +557,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         self.add_new_definition(parent, Point::new_uncalculated(), in_base_scope)
                     }
                 } else {
-                    self.index_reference(n, parent, ordered);
+                    self.index_reference(Name::new(n), parent, ordered);
                 }
             } else if n.is_type(Nonterminal(lambda)) {
                 self.index_lambda_param_defaults(n, ordered);
@@ -757,9 +758,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    fn index_reference(&mut self, name: PyNode<'db>, parent: PyNode<'db>, ordered: bool) {
+    fn index_reference(&mut self, name: Name<'db>, parent: PyNode<'db>, ordered: bool) {
         use NonterminalType::*;
-        debug_assert_eq!(name.get_type(), Terminal(TerminalType::Name));
         if parent.is_type(Nonterminal(atom)) {
             self.maybe_add_reference(name, ordered);
         } else if parent.is_type(Nonterminal(global_stmt)) {
@@ -772,7 +772,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     #[inline]
-    fn maybe_add_reference(&mut self, name: PyNode<'db>, ordered: bool) {
+    fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
         if ordered {
             let mut n = None;
             self.add_reference(name, |name| n = Some(name));
@@ -785,14 +785,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     #[inline]
-    fn add_reference(
-        &self,
-        name: PyNode<'db>,
-        mut unresolved_name_callback: impl FnMut(PyNode<'db>),
-    ) {
+    fn add_reference(&self, name: Name<'db>, mut unresolved_name_callback: impl FnMut(Name<'db>)) {
         let point = {
             if self.parent_lookup_not_finished {
-                if let Some(definition) = self.symbol_table.lookup_symbol(name.get_code()) {
+                if let Some(definition) = self.symbol_table.lookup_symbol(name.as_str()) {
                     Point::new_redirect(self.file_index, definition, Locality::File)
                 } else {
                     unresolved_name_callback(name);
@@ -804,12 +800,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 Point::new_missing_or_unknown(self.file_index, Locality::File)
             }
         };
-        self.points[name.index as usize].set(point);
+        self.points[name.index() as usize].set(point);
     }
 
-    fn lookup_name(&self, name: PyNode<'db>) -> Option<NodeIndex> {
+    fn lookup_name(&self, name: Name<'db>) -> Option<NodeIndex> {
         self.symbol_table
-            .lookup_symbol(name.get_code())
+            .lookup_symbol(name.as_str())
             // If the symbol is not defined in the symbol table, it can also be in a parent scope.
             .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
     }
