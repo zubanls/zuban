@@ -63,6 +63,10 @@ create_nonterminal_structs!(
     Ternary: expression
     NamedExpression: named_expression
 
+    Assignment: assignment
+    SingleTarget: single_target
+    AugAssign: augassign
+
     ImportFrom: import_from
     DottedName: dotted_name
     ImportFromAsName: import_from_as_name
@@ -390,6 +394,78 @@ pub enum ArgumentsDetails<'db> {
     None,
     Comprehension(Comprehension<'db>),
     Node(Arguments<'db>),
+}
+
+impl<'db> Assignment<'db> {
+    pub fn unpack(&self) -> AssignmentContent<'db> {
+        // | (star_targets "=" )+ (yield_expr | star_expressions)
+        // | single_target ":" expression ["=" (yield_expr | star_expressions)]
+        // | single_target augassign (yield_expr | star_expressions)
+        let mut iterator = self.0.iter_children().skip(1);
+        while let Some(child) = iterator.next() {
+            if child.is_type(Nonterminal(yield_expr))
+                || child.is_type(Nonterminal(star_expressions))
+            {
+                let iter = AssignmentTargetIterator(self.0.iter_children().step_by(2));
+                return AssignmentContent::Normal(iter, Self::right_side(child));
+            } else if child.is_type(Nonterminal(expression)) {
+                iterator.next();
+                let right = iterator.next().map(Self::right_side);
+                return AssignmentContent::WithAnnotation(
+                    Target::new(self.0),
+                    Expression::new(child),
+                    right,
+                );
+            } else if child.is_type(Nonterminal(augassign)) {
+                iterator.next();
+                let right = Self::right_side(iterator.next().unwrap());
+                return AssignmentContent::AugAssign(
+                    Target::new(self.0),
+                    AugAssign::new(child),
+                    right,
+                );
+            }
+        }
+        unreachable!()
+    }
+
+    fn right_side(child: PyNode) -> AssignmentRightSide {
+        if child.is_type(Nonterminal(star_expressions)) {
+            return AssignmentRightSide::StarExpressions(StarExpressions(child));
+        } else {
+            return AssignmentRightSide::YieldExpr(YieldExpr(child));
+        }
+    }
+}
+
+pub enum AssignmentContent<'db> {
+    Normal(AssignmentTargetIterator<'db>, AssignmentRightSide<'db>),
+    WithAnnotation(
+        Target<'db>,
+        Expression<'db>,
+        Option<AssignmentRightSide<'db>>,
+    ),
+    AugAssign(Target<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
+}
+
+pub enum AssignmentRightSide<'db> {
+    YieldExpr(YieldExpr<'db>),
+    StarExpressions(StarExpressions<'db>),
+}
+
+pub struct AssignmentTargetIterator<'db>(StepBy<SiblingIterator<'db>>);
+
+impl<'db> Iterator for AssignmentTargetIterator<'db> {
+    type Item = Target<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.0.next() {
+            if node.is_type(Nonterminal(star_targets)) {
+                return Some(Target::new(node));
+            }
+        }
+        None
+    }
 }
 
 impl<'db> ImportFrom<'db> {
@@ -738,10 +814,14 @@ pub enum Target<'db> {
 }
 
 impl<'db> Target<'db> {
-    pub fn new(node: PyNode<'db>) -> Self {
+    fn new(node: PyNode<'db>) -> Self {
         // star_targets: ",".star_target+ [","]
+        if node.is_type(Nonterminal(single_target)) {
+            todo!()
+        }
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
+        dbg!(first);
         if iterator.next().is_none() {
             if first.is_type(Nonterminal(name_definition)) {
                 Self::Name(first.get_nth_child(0))

@@ -240,7 +240,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if node.is_type(Nonterminal(NonterminalType::simple_stmt)) {
                     let simple_child = node.get_nth_child(0);
                     if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
-                        self.cache_assignment_nodes(simple_child);
+                        self.cache_assignment_nodes(Assignment::new(simple_child));
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
                         if self.file.get_point(name.index).is_calculated() {
                             todo!("Multi name");
@@ -303,75 +303,59 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn cache_assignment_nodes(&mut self, assignment_node: PyNode<'db>) {
-        // | (star_targets "=" )+ (yield_expr | star_expressions)
-        // | single_target ":" expression ["=" (yield_expr | star_expressions)]
-        // | single_target augassign (yield_expr | star_expressions)
-        use NonterminalType::*;
-        let mut expression_node = None;
-        let mut annotation_node = None;
-        for child in assignment_node.iter_children() {
-            match child.get_type() {
-                Nonterminal(expression) => {
-                    annotation_node = Some(child);
+    fn cache_assignment_nodes(&mut self, assignment: Assignment<'db>) {
+        match assignment.unpack() {
+            AssignmentContent::Normal(targets, right_side) => {
+                let right = self.infer_assignment_right_side(right_side);
+                for target in targets {
+                    self.assign_targets(target, &right)
                 }
-                Nonterminal(yield_expr | star_expressions) => {
-                    expression_node = Some(child);
-                }
-                _ => {}
+            }
+            AssignmentContent::WithAnnotation(target, annotation, _) => {
+                let right = self.infer_expression(annotation);
+                self.assign_targets(target, &right)
+            }
+            AssignmentContent::AugAssign(target, aug_assign, right_side) => {
+                let right = self.infer_assignment_right_side(right_side);
+                todo!()
             }
         }
-        let inferred = match annotation_node {
-            Some(annotation_node) => {
-                todo!();
+    }
+
+    fn infer_assignment_right_side(&mut self, right: AssignmentRightSide<'db>) -> Inferred<'db> {
+        match right {
+            AssignmentRightSide::StarExpressions(star_exprs) => {
+                self.infer_star_expressions(star_exprs)
             }
-            None => {
-                let expression_node = expression_node.unwrap();
-                if expression_node.is_type(Nonterminal(yield_expr)) {
-                    todo!("cache yield expr");
+            AssignmentRightSide::YieldExpr(yield_expr) => todo!(),
+        }
+    }
+
+    fn assign_targets(&mut self, target: Target<'db>, value: &Inferred<'db>) {
+        match target {
+            Target::Tuple(target_iterator) => {
+                todo!("Tuple unpack");
+            }
+            Target::Name(n) => {
+                let point = self.file.get_point(n.index);
+                if point.is_calculated() {
+                    // Save on name_definition
+                    debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
+                    value.clone().save_redirect(self.file, n.index - 1);
                 } else {
-                    self.infer_star_expressions(StarExpressions::new(expression_node))
+                    value.clone().save_redirect(self.file, n.index);
                 }
+            }
+            Target::NameExpression(_, name_node) => {
+                value.clone().save_redirect(self.file, name_node.index);
+            }
+            Target::IndexExpression(n) => {
+                todo!("{:?}", n);
+            }
+            Target::Starred(n) => {
+                todo!("Star tuple unpack");
             }
         };
-        for child in assignment_node.iter_children() {
-            match child.get_type() {
-                Nonterminal(star_targets) => {
-                    match Target::new(child) {
-                        Target::Tuple(target_iterator) => {
-                            todo!("Tuple unpack");
-                        }
-                        Target::Name(n) => {
-                            let point = self.file.get_point(n.index);
-                            if point.is_calculated() {
-                                // Save on name_definition
-                                debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
-                                debug_assert_eq!(
-                                    n.get_parent().unwrap().get_type(),
-                                    Nonterminal(name_definition)
-                                );
-                                inferred.clone().save_redirect(self.file, n.index - 1);
-                            } else {
-                                inferred.clone().save_redirect(self.file, n.index);
-                            }
-                        }
-                        Target::NameExpression(_, name_node) => {
-                            inferred.clone().save_redirect(self.file, name_node.index);
-                        }
-                        Target::IndexExpression(n) => {
-                            todo!("{:?}", n);
-                        }
-                        Target::Starred(n) => {
-                            todo!("Star tuple unpack");
-                        }
-                    };
-                }
-                Nonterminal(single_target) => {
-                    todo!();
-                }
-                _ => {}
-            }
-        }
     }
 
     pub fn infer_star_expressions(&mut self, exprs: StarExpressions<'db>) -> Inferred<'db> {
