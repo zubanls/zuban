@@ -259,7 +259,7 @@ impl<'db> Expression<'db> {
         if first.is_type(Nonterminal(lambda)) {
             ExpressionContent::Lambda(Lambda::new(first))
         } else if iter.next().is_none() {
-            ExpressionContent::Expression(first)
+            ExpressionContent::ExpressionPart(ExpressionPart::new(first))
         } else {
             ExpressionContent::Ternary(Ternary::new(self.0))
         }
@@ -267,9 +267,27 @@ impl<'db> Expression<'db> {
 }
 
 pub enum ExpressionContent<'db> {
-    Expression(PyNode<'db>),
+    ExpressionPart(ExpressionPart<'db>),
     Ternary(Ternary<'db>),
     Lambda(Lambda<'db>),
+}
+
+#[derive(Debug)]
+pub enum ExpressionPart<'db> {
+    Atom(Atom<'db>),
+    Primary(Primary<'db>),
+}
+
+impl<'db> ExpressionPart<'db> {
+    fn new(node: PyNode<'db>) -> Self {
+        if node.is_type(Nonterminal(atom)) {
+            Self::Atom(Atom::new(node))
+        } else if node.is_type(Nonterminal(primary)) {
+            Self::Primary(Primary::new(node))
+        } else {
+            unreachable!()
+        }
+    }
 }
 
 impl<'db> NamedExpression<'db> {

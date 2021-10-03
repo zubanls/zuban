@@ -11,7 +11,7 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{NonterminalType, PyNode, PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
+use parsa_python::{NonterminalType, PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
@@ -374,20 +374,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);
     fn _infer_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
         let inferred = match expr.unpack() {
-            ExpressionContent::Expression(n) => self.infer_expression_part(n),
+            ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(_) => todo!(),
         };
         inferred.save_redirect(self.file, expr.index())
     }
 
-    pub fn infer_expression_part(&mut self, node: PyNode<'db>) -> Inferred<'db> {
-        // Responsible for all
-        use NonterminalType::{atom, primary};
-        match node.get_type() {
-            Nonterminal(atom) => self.infer_atom(Atom(node)),
-            Nonterminal(primary) => self.infer_primary(Primary(node)),
-            _ => todo!("Did not handle {:?}", node),
+    fn infer_expression_part(&mut self, node: ExpressionPart<'db>) -> Inferred<'db> {
+        match node {
+            ExpressionPart::Atom(atom) => self.infer_atom(atom),
+            ExpressionPart::Primary(primary) => self.infer_primary(primary),
+            _ => todo!("Not handled yet {:?}", node),
         }
     }
 
