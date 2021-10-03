@@ -415,7 +415,6 @@ impl<'db> ForStmt<'db> {
         let exprs = StarExpressions::new(iterator.next().unwrap());
         iterator.next();
         let block_ = Block::new(iterator.next().unwrap());
-        iterator.next();
         let else_block_ = iterator.next().map(ElseBlock::new);
         (star_targets_, exprs, block_, else_block_)
     }
@@ -424,6 +423,18 @@ impl<'db> ForStmt<'db> {
 impl<'db> ElseBlock<'db> {
     pub fn block(&self) -> Block<'db> {
         Block::new(self.0.get_nth_child(1))
+    }
+}
+
+impl<'db> WhileStmt<'db> {
+    pub fn unpack(&self) -> (NamedExpression<'db>, Block<'db>, Option<ElseBlock<'db>>) {
+        // "while" named_expression ":" block else_block?
+        let mut iterator = self.0.iter_children().skip(1);
+        let named = NamedExpression::new(iterator.next().unwrap());
+        iterator.next();
+        let block_ = Block::new(iterator.next().unwrap());
+        let else_block_ = iterator.next().map(ElseBlock::new);
+        (named, block_, else_block_)
     }
 }
 

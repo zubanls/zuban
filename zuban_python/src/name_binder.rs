@@ -9,7 +9,9 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree};
+use parsa_python_ast::{
+    ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree, WhileStmt,
+};
 
 pub enum NameBinderType {
     Global,
@@ -229,7 +231,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if child.is_type(Nonterminal(for_stmt)) {
                 self.index_for_stmt(ForStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(child, ordered)
+                self.index_while_stmt(WhileStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(match_stmt)) {
                 self.index_match_stmt(child, ordered)
             } else if child.is_type(Nonterminal(with_stmt)) {
@@ -341,27 +343,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_while_stmt(&mut self, while_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(
-            while_stmt.get_type(),
-            Nonterminal(NonterminalType::while_stmt)
-        );
+    fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        // "while" named_expression ":" block else_block?
-        let iterator = while_stmt.iter_children();
-        let mut iterator = iterator.skip(1);
-
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
+        let (condition, block, else_block) = while_stmt.unpack();
+        let latest = self.index_non_block_node(condition.0, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let mut iterator = iterator.skip(1);
-        let latest = self.index_non_block_node(iterator.next().unwrap(), false, false);
+        let latest = self.index_block(block.0, false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         if ordered {
             self.index_unordered_references();
         }
-        if let Some(else_) = iterator.next() {
+        if let Some(else_block) = else_block {
             // "else" ":" block
-            let latest = self.index_block(else_.get_nth_child(2), ordered, false);
+            let latest = self.index_block(else_block.block().0, ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
