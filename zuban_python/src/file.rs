@@ -11,12 +11,12 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{NonterminalType, PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
+use parsa_python::{PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
-use PyNodeType::{Nonterminal, Terminal};
+use PyNodeType::Terminal;
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -216,7 +216,7 @@ macro_rules! check_point_cache_with {
         $vis fn $name(&mut self, node: $ast<'db>) -> $crate::inferred::Inferred<'db> {
             debug_indent(|| {
                 let point = self.file.get_point(node.index());
-                if let Some(inferred) = self.check_point(node.index(), point) {
+                if let Some(inferred) = self.check_point_cache(node.index(), point) {
                     debug!(
                         "Infer {:?} ({}, {}) from cache: {}",
                         node.short_debug(),
@@ -470,7 +470,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         todo!("star import? {:?}", name)
     }
 
-    fn check_point(&mut self, node_index: NodeIndex, point: Point) -> Option<Inferred<'db>> {
+    fn check_point_cache(&mut self, node_index: NodeIndex, point: Point) -> Option<Inferred<'db>> {
         point.is_calculated().then(|| match point.get_type() {
             PointType::Redirect => {
                 let file_index = point.get_file_index();
@@ -483,7 +483,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.file.calculate_function_scope_definitions(func);
                     let point = self.file.get_point(node_index);
                     debug_assert!(point.is_calculated());
-                    self.check_point(node_index, point).unwrap()
+                    self.check_point_cache(node_index, point).unwrap()
                 }
                 _ => Inferred::new_saved(self.file, node_index, point),
             },
@@ -536,14 +536,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
 
-        self.check_point(node_index, point).unwrap_or_else(|| {
-            let node = self.file.tree.get_node_by_index(node_index);
-            if node.is_type(Terminal(TerminalType::Name)) {
-                self.infer_name(Name::new(node))
-            } else {
-                todo!("{:?}, {:?}", self.file.get_file_index().0, node)
-            }
-        })
+        self.check_point_cache(node_index, point)
+            .unwrap_or_else(|| {
+                let node = self.file.tree.get_node_by_index(node_index);
+                if node.is_type(Terminal(TerminalType::Name)) {
+                    self.infer_name(Name::new(node))
+                } else {
+                    todo!("{:?}, {:?}", self.file.get_file_index().0, node)
+                }
+            })
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
