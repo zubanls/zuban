@@ -74,6 +74,19 @@ create_nonterminal_structs!(
     DottedName: dotted_name
     ImportFromAsName: import_from_as_name
 
+    Disjunction: disjunction
+    Conjunction: conjunction
+    Inversion: inversion
+    Comparison: comparison
+    BitwiseOr: bitwise_or
+    BitwiseXor: bitwise_xor
+    BitwiseAnd: bitwise_and
+    ShiftExpr: shift_expr
+    Sum: sum
+    Term: term
+    Factor: factor
+    Power: power
+    AwaitPrimary: await_primary
     Primary: primary
 
     PrimaryTarget: t_primary
@@ -276,14 +289,54 @@ pub enum ExpressionContent<'db> {
 pub enum ExpressionPart<'db> {
     Atom(Atom<'db>),
     Primary(Primary<'db>),
+    AwaitPrimary(AwaitPrimary<'db>),
+    Power(Power<'db>),
+    Factor(Factor<'db>),
+    Term(Term<'db>),
+    Sum(Sum<'db>),
+    ShiftExpr(ShiftExpr<'db>),
+    BitwiseAnd(BitwiseAnd<'db>),
+    BitwiseXor(BitwiseXor<'db>),
+    BitwiseOr(BitwiseOr<'db>),
+    Comparison(Comparison<'db>),
+    Inversion(Inversion<'db>),
+    Conjunction(Conjunction<'db>),
+    Disjunction(Disjunction<'db>),
 }
 
 impl<'db> ExpressionPart<'db> {
     fn new(node: PyNode<'db>) -> Self {
+        // Sorted by how often they probably appear
         if node.is_type(Nonterminal(atom)) {
             Self::Atom(Atom::new(node))
         } else if node.is_type(Nonterminal(primary)) {
             Self::Primary(Primary::new(node))
+        } else if node.is_type(Nonterminal(sum)) {
+            Self::Sum(Sum::new(node))
+        } else if node.is_type(Nonterminal(term)) {
+            Self::Term(Term::new(node))
+        } else if node.is_type(Nonterminal(await_primary)) {
+            Self::AwaitPrimary(AwaitPrimary::new(node))
+        } else if node.is_type(Nonterminal(power)) {
+            Self::Power(Power::new(node))
+        } else if node.is_type(Nonterminal(factor)) {
+            Self::Factor(Factor::new(node))
+        } else if node.is_type(Nonterminal(shift_expr)) {
+            Self::ShiftExpr(ShiftExpr::new(node))
+        } else if node.is_type(Nonterminal(bitwise_and)) {
+            Self::BitwiseAnd(BitwiseAnd::new(node))
+        } else if node.is_type(Nonterminal(bitwise_xor)) {
+            Self::BitwiseXor(BitwiseXor::new(node))
+        } else if node.is_type(Nonterminal(bitwise_or)) {
+            Self::BitwiseOr(BitwiseOr::new(node))
+        } else if node.is_type(Nonterminal(comparison)) {
+            Self::Comparison(Comparison::new(node))
+        } else if node.is_type(Nonterminal(inversion)) {
+            Self::Inversion(Inversion::new(node))
+        } else if node.is_type(Nonterminal(conjunction)) {
+            Self::Conjunction(Conjunction::new(node))
+        } else if node.is_type(Nonterminal(disjunction)) {
+            Self::Disjunction(Disjunction::new(node))
         } else {
             unreachable!()
         }
