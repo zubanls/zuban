@@ -9,7 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{ClassDef, File, FunctionDef, Lambda, Name, NameDefinition, Tree};
+use parsa_python_ast::{ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -227,7 +227,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if child.is_type(Nonterminal(try_stmt)) {
                 self.index_try_stmt(child, ordered)
             } else if child.is_type(Nonterminal(for_stmt)) {
-                self.index_for_stmt(child, ordered)
+                self.index_for_stmt(ForStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(while_stmt)) {
                 self.index_while_stmt(child, ordered)
             } else if child.is_type(Nonterminal(match_stmt)) {
@@ -246,7 +246,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     );
                     0
                 } else if inner.is_type(Nonterminal(for_stmt)) {
-                    self.index_for_stmt(inner, ordered)
+                    self.index_for_stmt(ForStmt::new(inner), ordered)
                 } else if inner.is_type(Nonterminal(with_stmt)) {
                     self.index_with_stmt(child, ordered)
                 } else {
@@ -319,29 +319,22 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
-    fn index_for_stmt(&mut self, for_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(for_stmt.get_type(), Nonterminal(NonterminalType::for_stmt));
+    fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        // "for" star_targets "in" star_expressions ":" block else_block?
-        let iterator = for_stmt.iter_children();
-        let mut iterator = iterator.skip(1);
-
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
+        let (star_targets, star_expressions, block, else_block) = for_stmt.unpack();
+        let latest = self.index_non_block_node(star_targets.0, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let mut iterator = iterator.skip(1);
-        let latest = self.index_non_block_node(iterator.next().unwrap(), ordered, false);
+        let latest = self.index_non_block_node(star_expressions.0, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
-        let mut iterator = iterator.skip(1);
-        let latest = self.index_block(iterator.next().unwrap(), false, false);
+        let latest = self.index_block(block.0, false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         if ordered {
             self.index_unordered_references();
         }
-        if let Some(else_) = iterator.next() {
-            // "else" ":" block
-            let latest = self.index_block(else_.get_nth_child(2), ordered, false);
+        if let Some(else_block) = else_block {
+            let latest = self.index_block(else_block.block().0, ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }

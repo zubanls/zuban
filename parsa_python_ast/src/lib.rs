@@ -76,6 +76,13 @@ create_nonterminal_structs!(
     Block: block
 
     Stmt: stmt
+    ForStmt: for_stmt
+    WhileStmt: while_stmt
+    WithStmt: with_stmt
+    IfStmt: if_stmt
+    TryStmt: try_stmt
+    ElseBlock: else_block
+
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
@@ -135,6 +142,8 @@ create_nonterminal_structs!(
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
     Lambda: lambda
+
+    StarTargets: star_targets
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -388,6 +397,34 @@ impl<'db> NamedExpression<'db> {
 pub enum NamedExpressionContent<'db> {
     Expression(Expression<'db>),
     Definition(NameDefinition<'db>, Expression<'db>),
+}
+
+impl<'db> ForStmt<'db> {
+    pub fn unpack(
+        &self,
+    ) -> (
+        StarTargets<'db>,
+        StarExpressions<'db>,
+        Block<'db>,
+        Option<ElseBlock<'db>>,
+    ) {
+        // "for" star_targets "in" star_expressions ":" block else_block?
+        let mut iterator = self.0.iter_children().skip(1);
+        let star_targets_ = StarTargets::new(iterator.next().unwrap());
+        iterator.next();
+        let exprs = StarExpressions::new(iterator.next().unwrap());
+        iterator.next();
+        let block_ = Block::new(iterator.next().unwrap());
+        iterator.next();
+        let else_block_ = iterator.next().map(ElseBlock::new);
+        (star_targets_, exprs, block_, else_block_)
+    }
+}
+
+impl<'db> ElseBlock<'db> {
+    pub fn block(&self) -> Block<'db> {
+        Block::new(self.0.get_nth_child(1))
+    }
 }
 
 impl<'db> Stmt<'db> {
