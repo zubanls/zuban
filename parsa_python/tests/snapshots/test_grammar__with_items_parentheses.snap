@@ -6,15 +6,16 @@ file: 0-116
  stmt: 1-24
   with_stmt: 1-24
    Keyword: 1-5 "with"
-   Keyword: 6-7 "("
-   with_item: 7-17
-    expression: 7-10
-     atom: 7-10
-      Name: 7-10 "foo"
-    Keyword: 11-13 "as"
-    name_definition: 14-17
-     Name: 14-17 "bar"
-   Keyword: 17-18 ")"
+   with_items: 6-18
+    Keyword: 6-7 "("
+    with_item: 7-17
+     expression: 7-10
+      atom: 7-10
+       Name: 7-10 "foo"
+     Keyword: 11-13 "as"
+     name_definition: 14-17
+      Name: 14-17 "bar"
+    Keyword: 17-18 ")"
    Keyword: 18-19 ":"
    block: 20-24
     simple_stmts: 20-24
@@ -27,20 +28,21 @@ file: 0-116
  stmt: 24-52
   with_stmt: 24-52
    Keyword: 24-28 "with"
-   Keyword: 29-30 "("
-   with_item: 30-40
-    expression: 30-33
-     atom: 30-33
-      Name: 30-33 "foo"
-    Keyword: 34-36 "as"
-    name_definition: 37-40
-     Name: 37-40 "bar"
-   Keyword: 40-41 ","
-   with_item: 42-45
-    expression: 42-45
-     atom: 42-45
-      Name: 42-45 "baz"
-   Keyword: 45-46 ")"
+   with_items: 29-46
+    Keyword: 29-30 "("
+    with_item: 30-40
+     expression: 30-33
+      atom: 30-33
+       Name: 30-33 "foo"
+     Keyword: 34-36 "as"
+     name_definition: 37-40
+      Name: 37-40 "bar"
+    Keyword: 40-41 ","
+    with_item: 42-45
+     expression: 42-45
+      atom: 42-45
+       Name: 42-45 "baz"
+    Keyword: 45-46 ")"
    Keyword: 46-47 ":"
    block: 48-52
     simple_stmts: 48-52
@@ -53,17 +55,18 @@ file: 0-116
  stmt: 52-70
   with_stmt: 52-70
    Keyword: 52-56 "with"
-   Keyword: 57-58 "("
-   with_item: 58-63
-    expression: 58-63
-     atom: 58-63
-      Keyword: 58-59 "("
-      named_expression: 59-62
-       expression: 59-62
-        atom: 59-62
-         Name: 59-62 "foo"
-      Keyword: 62-63 ")"
-   Keyword: 63-64 ")"
+   with_items: 57-64
+    Keyword: 57-58 "("
+    with_item: 58-63
+     expression: 58-63
+      atom: 58-63
+       Keyword: 58-59 "("
+       named_expression: 59-62
+        expression: 59-62
+         atom: 59-62
+          Name: 59-62 "foo"
+       Keyword: 62-63 ")"
+    Keyword: 63-64 ")"
    Keyword: 64-65 ":"
    block: 66-70
     simple_stmts: 66-70
@@ -76,25 +79,26 @@ file: 0-116
  stmt: 70-96
   with_stmt: 70-96
    Keyword: 70-74 "with"
-   with_item: 75-90
-    expression: 75-90
-     atom: 75-90
-      Keyword: 75-76 "("
-      comprehension: 76-89
-       named_expression: 76-77
-        expression: 76-77
-         atom: 76-77
-          Name: 76-77 "i"
-       for_if_clauses: 78-89
-        sync_for_if_clause: 78-89
-         Keyword: 78-81 "for"
-         star_targets: 82-83
-          name_definition: 82-83
-           Name: 82-83 "i"
-         Keyword: 84-86 "in"
-         atom: 87-89
-          Number: 87-89 "42"
-      Keyword: 89-90 ")"
+   with_items: 75-90
+    with_item: 75-90
+     expression: 75-90
+      atom: 75-90
+       Keyword: 75-76 "("
+       comprehension: 76-89
+        named_expression: 76-77
+         expression: 76-77
+          atom: 76-77
+           Name: 76-77 "i"
+        for_if_clauses: 78-89
+         sync_for_if_clause: 78-89
+          Keyword: 78-81 "for"
+          star_targets: 82-83
+           name_definition: 82-83
+            Name: 82-83 "i"
+          Keyword: 84-86 "in"
+          atom: 87-89
+           Number: 87-89 "42"
+       Keyword: 89-90 ")"
    Keyword: 90-91 ":"
    block: 92-96
     simple_stmts: 92-96
@@ -107,17 +111,18 @@ file: 0-116
  stmt: 96-116
   with_stmt: 96-116
    Keyword: 96-100 "with"
-   with_item: 101-110
-    expression: 101-110
-     atom: 101-110
-      Keyword: 101-102 "("
-      yield_expr: 102-109
-       Keyword: 102-107 "yield"
-       star_expressions: 108-109
-        expression: 108-109
-         atom: 108-109
-          Name: 108-109 "y"
-      Keyword: 109-110 ")"
+   with_items: 101-110
+    with_item: 101-110
+     expression: 101-110
+      atom: 101-110
+       Keyword: 101-102 "("
+       yield_expr: 102-109
+        Keyword: 102-107 "yield"
+        star_expressions: 108-109
+         expression: 108-109
+          atom: 108-109
+           Name: 108-109 "y"
+       Keyword: 109-110 ")"
    Keyword: 110-111 ":"
    block: 112-116
     simple_stmts: 112-116

@@ -65,7 +65,8 @@ create_grammar!(
     except_block: except_clause ":" block
     except_clause: "except" [expression ["as" name_definition]]
     finally_block: "finally" ":" block
-    with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
+    with_stmt: "with" with_items ":" block
+    with_items: "(" ",".with_item+ ","? ")" | ",".with_item+
     with_item: expression ["as" star_target]
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
