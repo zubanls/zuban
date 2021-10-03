@@ -46,6 +46,12 @@ macro_rules! create_struct {
             pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
                 Self::new(tree.0.get_node_by_index(index))
             }
+
+            #[inline]
+            pub fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
+                let node = tree.0.get_node_by_index(node_index);
+                node.is_type($type).then(|| Self::new(node))
+            }
         }
 
         impl<'db> HasIndex<'db> for $name<'db> {
@@ -139,12 +145,6 @@ create_struct!(Complex: Terminal(TerminalType::Number));
 create_struct!(Keyword: PyNodeType::Keyword);
 
 impl<'db> Name<'db> {
-    pub fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
-        let node = tree.0.get_node_by_index(node_index);
-        node.is_type(Terminal(TerminalType::Name))
-            .then(|| Self::new(node))
-    }
-
     #[inline]
     pub fn as_str(&self) -> &'db str {
         self.0.get_code()
@@ -209,6 +209,13 @@ impl<'db> Name<'db> {
         } else {
             unreachable!()
         }
+    }
+}
+
+impl<'db> Int<'db> {
+    #[inline]
+    pub fn as_str(&self) -> &'db str {
+        self.0.get_code()
     }
 }
 

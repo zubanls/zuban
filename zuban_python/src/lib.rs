@@ -110,6 +110,10 @@ impl<'a> Script<'a> {
     fn get_leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
         let leaf = self.get_file().get_leaf(&self.project.database, pos);
+        debug!(
+            "File {}",
+            self.get_file().get_file_path(&self.project.database)
+        );
         debug!("Position {:?} is on leaf {:?}", position, leaf);
         leaf
     }

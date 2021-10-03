@@ -5,8 +5,9 @@ use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
-use parsa_python::PyNode;
-use parsa_python_ast::{Expression, NamedExpression, NodeIndex, Primary, PrimaryOrAtom};
+use parsa_python_ast::{
+    ClassDef, Expression, Int, NamedExpression, NodeIndex, Primary, PrimaryOrAtom,
+};
 use std::fmt;
 
 pub trait Inferrable<'db> {
@@ -59,12 +60,16 @@ impl<'db> NodeReference<'db> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_named_expression(&self) -> NamedExpression<'db> {
-        NamedExpression::by_index(&self.file.tree, self.node_index)
+    pub fn maybe_int(&self) -> Option<Int<'db>> {
+        Int::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn node(&self) -> PyNode<'db> {
-        self.file.tree.0.get_node_by_index(self.node_index)
+    pub fn maybe_class(&self) -> Option<ClassDef<'db>> {
+        ClassDef::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn as_named_expression(&self) -> NamedExpression<'db> {
+        NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 }
 
@@ -319,9 +324,9 @@ impl<'db> Inferred<'db> {
                     return cls_definition.file.get_file_index()
                         == i_s.database.python_state.get_typing().get_file_index()
                         && cls_definition
-                            .node()
-                            .get_code()
-                            .starts_with("class TypeVar");
+                            .maybe_class()
+                            .map(|cls| cls.name().as_str() == "TypeVar")
+                            .unwrap_or(false);
                 }
             }
         }
@@ -401,9 +406,10 @@ impl<'db> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if let PointType::LanguageSpecific = point.get_type() {
                 if let Specific::Integer = point.get_language_specific() {
-                    //if definition.node.is_type(Terminal(TerminalType::Number)) {
-                    return definition.node().get_code().parse().ok();
-                    //}
+                    return definition.maybe_int().and_then(|i| {
+                        dbg!(i);
+                        i.as_str().parse().ok()
+                    });
                 }
             }
         }
