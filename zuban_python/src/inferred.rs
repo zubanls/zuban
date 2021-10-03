@@ -64,7 +64,7 @@ impl<'db> NodeReference<'db> {
     }
 
     pub fn node(&self) -> PyNode<'db> {
-        self.file.tree.get_node_by_index(self.node_index)
+        self.file.tree.0.get_node_by_index(self.node_index)
     }
 }
 
@@ -418,7 +418,7 @@ impl<'db> Inferred<'db> {
                     todo!(
                         "{:?} {:?}",
                         file.get_point(index),
-                        file.tree.get_node_by_index(index)
+                        file.tree.0.get_node_by_index(index)
                     );
                 }
                 file.set_point(

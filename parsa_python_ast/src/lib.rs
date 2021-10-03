@@ -5,8 +5,24 @@ use parsa_python::{
     NonterminalType::*,
     PyNode, PyNodeType,
     PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
-    PyTree, SiblingIterator, TerminalType,
+    PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
+
+pub struct Tree(pub PyTree);
+
+impl Tree {
+    pub fn parse(code: String) -> Self {
+        Self(PYTHON_GRAMMAR.parse(code))
+    }
+
+    pub fn length(&self) -> usize {
+        self.0.get_length()
+    }
+
+    pub fn code(&self) -> &str {
+        self.0.get_code()
+    }
+}
 
 pub trait HasIndex<'db> {
     fn index(&self) -> NodeIndex;
@@ -27,8 +43,8 @@ macro_rules! create_struct {
             }
 
             #[inline]
-            pub fn by_index(tree: &'db PyTree, index: NodeIndex) -> Self {
-                Self::new(tree.get_node_by_index(index))
+            pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
+                Self::new(tree.0.get_node_by_index(index))
             }
         }
 
@@ -123,8 +139,8 @@ create_struct!(Complex: Terminal(TerminalType::Number));
 create_struct!(Keyword: PyNodeType::Keyword);
 
 impl<'db> Name<'db> {
-    pub fn maybe_by_index(tree: &'db PyTree, node_index: NodeIndex) -> Option<Self> {
-        let node = tree.get_node_by_index(node_index);
+    pub fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
+        let node = tree.0.get_node_by_index(node_index);
         node.is_type(Terminal(TerminalType::Name))
             .then(|| Self::new(node))
     }
@@ -443,9 +459,10 @@ impl<'db> ClassDef<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
-    pub fn from_param_name_index(tree: &'db PyTree, param_name_index: NodeIndex) -> Self {
+    pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
         Self(
-            tree.get_node_by_index(param_name_index)
+            tree.0
+                .get_node_by_index(param_name_index)
                 .get_parent_until(&[Nonterminal(function_def)])
                 .unwrap(),
         )
@@ -845,8 +862,8 @@ pub enum ReturnOrYield<'db> {
 
 impl<'db> ReturnOrYield<'db> {
     #[inline]
-    pub fn by_index(tree: &'db PyTree, index: NodeIndex) -> Self {
-        let node = tree.get_node_by_index(index);
+    pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
+        let node = tree.0.get_node_by_index(index);
         if node.is_type(Nonterminal(return_stmt)) {
             ReturnOrYield::Return(ReturnStmt(node))
         } else {
@@ -1051,9 +1068,9 @@ impl<'db> Iterator for TargetIterator<'db> {
 }
 
 impl<'db> NameOrKeywordLookup<'db> {
-    pub fn from_position(tree: &'db PyTree, position: CodeIndex) -> Self {
+    pub fn from_position(tree: &'db Tree, position: CodeIndex) -> Self {
         // First check the token left and right of the cursor
-        let mut left = tree.get_leaf_by_position(position);
+        let mut left = tree.0.get_leaf_by_position(position);
         let mut right = left;
         if left.start() == position {
             if let Some(n) = left.get_previous_leaf() {

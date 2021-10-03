@@ -134,7 +134,7 @@ impl<'db> Value<'db> for Function<'db> {
     }
 
     fn get_name(&self) -> &'db str {
-        let func_node = self.file.tree.get_node_by_index(self.node_index);
+        let func_node = self.file.tree.0.get_node_by_index(self.node_index);
         func_node.get_nth_child(1).get_nth_child(0).get_code()
     }
 

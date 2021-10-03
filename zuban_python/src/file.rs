@@ -11,7 +11,6 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{PyTree, PYTHON_GRAMMAR};
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
@@ -90,7 +89,7 @@ impl File for PythonFile {
 }
 
 pub struct PythonFile {
-    pub tree: PyTree, // TODO should probably not be public
+    pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
     pub points: Vec<Cell<Point>>,
@@ -112,8 +111,8 @@ impl fmt::Debug for PythonFile {
 
 impl<'db> PythonFile {
     pub fn new(code: String) -> Self {
-        let tree = PYTHON_GRAMMAR.parse(code);
-        let length = tree.get_length();
+        let tree = Tree::parse(code);
+        let length = tree.length();
         Self {
             tree,
             file_index: Cell::new(None),
@@ -131,7 +130,7 @@ impl<'db> PythonFile {
         if ptr.is_none() {
             // TODO probably use a OnceCell or something
             let mut v = vec![0];
-            for m in NEWLINES.find_iter(self.tree.get_code()) {
+            for m in NEWLINES.find_iter(self.tree.code()) {
                 v.push(m.end() as CodeIndex);
             }
             *ptr = Some(v);
@@ -144,14 +143,14 @@ impl<'db> PythonFile {
             // It was already done.
             return;
         }
-        self.with_global_binder(|binder| binder.index_file(self.tree.get_root_node()));
+        self.with_global_binder(|binder| binder.index_file(self.tree.0.get_root_node()));
 
         self.set_point(0, Point::new_node_analysis(Locality::File));
     }
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
-            &self.tree,
+            &self.tree.0,
             &self.symbol_table,
             &self.points,
             &self.complex_points,
