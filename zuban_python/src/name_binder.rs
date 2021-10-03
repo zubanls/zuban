@@ -9,6 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
+use parsa_python_ast::Name;
 
 pub enum NameBinderType {
     Global,
@@ -106,7 +107,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             Nonterminal(NonterminalType::name_definition)
         );
         let name = name_def.get_nth_child(0);
-        let replaced = self.symbol_table.add_or_replace_symbol(name);
+        let replaced = self.symbol_table.add_or_replace_symbol(Name::new(name));
         if !in_base_scope {
             if let Some(replaced) = replaced {
                 self.points[name_def.index as usize].set(point);
@@ -488,7 +489,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     let self_name = atom.get_nth_child(0);
                     if self_name.is_type(Terminal(TerminalType::Name)) {
                         if self.is_self_param(self_name.index as usize) {
-                            symbol_table.add_or_replace_symbol(name_def.get_nth_child(0));
+                            symbol_table
+                                .add_or_replace_symbol(Name::new(name_def.get_nth_child(0)));
                         }
                     }
                 }

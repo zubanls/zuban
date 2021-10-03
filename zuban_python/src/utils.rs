@@ -4,7 +4,7 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::pin::Pin;
 
-use parsa_python::{NodeIndex, PyNode};
+use parsa_python_ast::{HasIndex, Name, NodeIndex};
 
 thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = Cell::new(0));
 
@@ -151,9 +151,9 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn add_or_replace_symbol(&self, name: PyNode) -> Option<NodeIndex> {
+    pub fn add_or_replace_symbol(&self, name: Name) -> Option<NodeIndex> {
         self.symbols
-            .insert(HashableRawStr::new(name.get_code()), name.index as u32)
+            .insert(HashableRawStr::new(name.as_str()), name.index())
     }
 
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
