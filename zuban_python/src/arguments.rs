@@ -5,8 +5,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
 use parsa_python_ast::{
-    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, HasIndex,
-    NodeIndex, Primary, PrimaryContent,
+    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
+    Primary, PrimaryContent,
 };
 use std::mem;
 

@@ -24,12 +24,6 @@ impl Tree {
     }
 }
 
-pub trait HasIndex<'db> {
-    fn index(&self) -> NodeIndex;
-
-    fn short_debug(&self) -> &'db str;
-}
-
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
@@ -52,15 +46,13 @@ macro_rules! create_struct {
                 let node = tree.0.get_node_by_index(node_index);
                 node.is_type($type).then(|| Self::new(node))
             }
-        }
 
-        impl<'db> HasIndex<'db> for $name<'db> {
             #[inline]
-            fn index(&self) -> NodeIndex {
+            pub fn index(&self) -> NodeIndex {
                 self.0.index
             }
 
-            fn short_debug(&self) -> &'db str {
+            pub fn short_debug(&self) -> &'db str {
                 self.0
                     .get_code()
                     .get(..20)

@@ -1,6 +1,4 @@
-use parsa_python_ast::{
-    Expression, FunctionDef, HasIndex, NodeIndex, Param, ParamIterator, ReturnOrYield,
-};
+use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
 use super::{Value, ValueKind};
