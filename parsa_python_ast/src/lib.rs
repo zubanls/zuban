@@ -461,8 +461,12 @@ pub enum StarExpressionContent<'db> {
 }
 
 impl<'db> ClassDef<'db> {
+    pub fn name_definition(&self) -> NameDefinition<'db> {
+        NameDefinition::new(self.0.get_nth_child(1))
+    }
+
     pub fn name(&self) -> Name<'db> {
-        Name(self.0.get_nth_child(1))
+        self.name_definition().name()
     }
 
     pub fn unpack(&self) -> (Option<Arguments<'db>>, Block<'db>) {
