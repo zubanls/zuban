@@ -216,11 +216,25 @@ macro_rules! check_point_cache_with {
         $vis fn $name(&mut self, node: $ast<'db>) -> $crate::inferred::Inferred<'db> {
             debug_indent(|| {
                 let point = self.file.get_point(node.index());
-                self.check_point_cache(
-                    $func,
-                    point,
-                    node
-                )
+                if let Some(inferred) = self.check_point(node.index(), point) {
+                    debug!(
+                        "Infer {:?} ({}, {}) from cache: {}",
+                        node.short_debug(),
+                        self.file.get_file_index(),
+                        node.index(),
+                        if matches!(point.get_type(), PointType::LanguageSpecific) {
+                            format!("{:?}", point.get_language_specific())
+                        } else {
+                            format!("{:?}", point.get_type())
+                        },
+                    );
+                    inferred
+                } else {
+                    if point.is_calculating() {
+                        todo!("Set recursion error and return that");
+                    }
+                    $func(self, node)
+                }
             })
         }
     }
@@ -454,35 +468,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     check_point_cache_with!(infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
         todo!("star import? {:?}", name)
-    }
-
-    #[inline]
-    fn check_point_cache<T: HasIndex<'db>>(
-        &mut self,
-        callable: impl Fn(&mut Self, T) -> Inferred<'db>,
-        point: Point,
-        node: T,
-    ) -> Inferred<'db> {
-        let point = self.file.get_point(node.index());
-        if let Some(inferred) = self.check_point(node.index(), point) {
-            debug!(
-                "Infer {:?} ({}, {}) from cache: {}",
-                node.short_debug(),
-                self.file.get_file_index(),
-                node.index(),
-                if matches!(point.get_type(), PointType::LanguageSpecific) {
-                    format!("{:?}", point.get_language_specific())
-                } else {
-                    format!("{:?}", point.get_type())
-                },
-            );
-            inferred
-        } else {
-            if point.is_calculating() {
-                todo!("Set recursion error and return that");
-            }
-            callable(self, node)
-        }
     }
 
     fn check_point(&mut self, node_index: NodeIndex, point: Point) -> Option<Inferred<'db>> {
