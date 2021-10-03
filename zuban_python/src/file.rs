@@ -227,14 +227,14 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    fn cache_stmt_name(&mut self, stmt: PyNode<'db>, name: PyNode<'db>) {
+    fn cache_stmt_name(&mut self, stmt: Stmt<'db>) {
         debug!(
             "Infer stmt ({}, {}): {}",
             self.file.get_file_index(),
-            stmt.index,
-            stmt.get_code().chars().take(10).collect::<String>().trim()
+            stmt.index(),
+            stmt.short_debug().trim()
         );
-        let child = stmt.get_nth_child(0);
+        let child = stmt.0.get_nth_child(0);
         if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
             for node in child.iter_children() {
                 if node.is_type(Nonterminal(NonterminalType::simple_stmt)) {
@@ -242,9 +242,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
                         self.cache_assignment_nodes(Assignment::new(simple_child));
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
-                        if self.file.get_point(name.index).is_calculated() {
-                            todo!("Multi name");
-                        }
                         self.cache_import_from(ImportFrom::new(simple_child));
                     } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
                         todo!();
@@ -590,7 +587,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             todo!("star import {:?}", name);
                         }
                     } else {
-                        self.cache_stmt_name(stmt.0, name.0);
+                        self.cache_stmt_name(stmt);
                     }
                 }
                 _ => todo!("{:?}", stmt_like),

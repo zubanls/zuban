@@ -877,7 +877,6 @@ impl<'db> Target<'db> {
         // star_target:? "*"? (t_primary | star_target_brackets | name_definition)
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
-        dbg!(first);
         if iterator.next().is_none() {
             if first.is_type(Nonterminal(name_definition)) {
                 Self::Name(Name::new(first.get_nth_child(0)))
