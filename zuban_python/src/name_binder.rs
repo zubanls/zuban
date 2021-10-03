@@ -9,7 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{ClassDef, File, FunctionDef, Name, Tree};
+use parsa_python_ast::{ClassDef, File, FunctionDef, Name, NameDefinition, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -102,25 +102,26 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             .extend(unresolved_names.iter().map(|n| n.0));
     }
 
-    fn add_new_definition(&self, name_def: PyNode<'db>, mut point: Point, in_base_scope: bool) {
-        debug_assert_eq!(
-            name_def.get_type(),
-            Nonterminal(NonterminalType::name_definition)
-        );
-        let name = name_def.get_nth_child(0);
-        let replaced = self.symbol_table.add_or_replace_symbol(Name::new(name));
+    fn add_new_definition(
+        &self,
+        name_def: NameDefinition<'db>,
+        mut point: Point,
+        in_base_scope: bool,
+    ) {
+        let name = name_def.name();
+        let replaced = self.symbol_table.add_or_replace_symbol(name);
         if !in_base_scope {
             if let Some(replaced) = replaced {
-                self.points[name_def.index as usize].set(point);
+                self.points[name_def.index() as usize].set(point);
                 point = Point::new_multi_definition(replaced, Locality::File);
             }
         }
-        self.points[name.index as usize].set(point);
+        self.points[name.index() as usize].set(point);
     }
 
     fn add_point_definition(
         &mut self,
-        name_def: PyNode<'db>,
+        name_def: NameDefinition<'db>,
         type_: Specific,
         in_base_scope: bool,
     ) {
@@ -133,7 +134,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn add_redirect_definition(
         &mut self,
-        name_def: PyNode<'db>,
+        name_def: NameDefinition<'db>,
         node_index: NodeIndex,
         in_base_scope: bool,
     ) {
@@ -192,7 +193,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let return_or_yield = if child.is_type(Nonterminal(simple_stmts)) {
                 self.index_non_block_node(child, ordered, in_base_scope)
             } else if child.is_type(Nonterminal(function_def)) {
-                self.index_function_name_and_param_defaults(child, ordered, in_base_scope);
+                self.index_function_name_and_param_defaults(
+                    FunctionDef::new(child),
+                    ordered,
+                    in_base_scope,
+                );
                 0
             } else if child.is_type(Nonterminal(class_def)) {
                 self.index_class(ClassDef::new(child), false, in_base_scope);
@@ -201,7 +206,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 let not_decorated = child.get_nth_child(1);
                 if not_decorated.is_type(Nonterminal(function_def)) {
                     self.index_function_name_and_param_defaults(
-                        not_decorated,
+                        FunctionDef::new(not_decorated),
                         ordered,
                         in_base_scope,
                     );
@@ -234,7 +239,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 let mut iterator = iterator.skip(1);
                 let inner = iterator.next().unwrap();
                 if inner.is_type(Nonterminal(function_def)) {
-                    self.index_function_name_and_param_defaults(inner, ordered, in_base_scope);
+                    self.index_function_name_and_param_defaults(
+                        FunctionDef::new(inner),
+                        ordered,
+                        in_base_scope,
+                    );
                     0
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(inner, ordered)
@@ -429,7 +438,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         if child.is_type(Nonterminal(NonterminalType::expression)) {
                             self.index_non_block_node(child, ordered, false);
                         } else if child.is_type(Nonterminal(NonterminalType::name_definition)) {
-                            self.add_redirect_definition(child, except_clause.index as u32, false);
+                            self.add_redirect_definition(
+                                NameDefinition::new(child),
+                                except_clause.index as u32,
+                                false,
+                            );
                         }
                     }
                     // block
@@ -468,12 +481,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // the class name.
         if is_decorated {
             self.add_point_definition(
-                class.0.get_nth_child(1),
+                class.name_definition(),
                 Specific::LazyInferredClass,
                 in_base_scope,
             );
         } else {
-            self.add_redirect_definition(class.0.get_nth_child(1), class.index(), in_base_scope);
+            self.add_redirect_definition(class.name_definition(), class.index(), in_base_scope);
         }
     }
 
@@ -550,7 +563,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 if parent.is_type(Nonterminal(name_definition)) {
                     if !parent.get_parent().unwrap().is_type(Nonterminal(t_primary)) {
                         // The types are inferred later.
-                        self.add_new_definition(parent, Point::new_uncalculated(), in_base_scope)
+                        self.add_new_definition(
+                            NameDefinition::new(parent),
+                            Point::new_uncalculated(),
+                            in_base_scope,
+                        )
                     }
                 } else {
                     self.index_reference(Name::new(n), parent, ordered);
@@ -629,20 +646,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_function_name_and_param_defaults(
         &mut self,
-        node: PyNode<'db>,
+        func: FunctionDef<'db>,
         ordered: bool,
         in_base_scope: bool,
     ) {
         use NonterminalType::*;
-        debug_assert_eq!(node.get_type(), Nonterminal(function_def));
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
         if self.parent.is_some() {
             // Has to be resolved, because we otherwise have no knowledge about the symbol
             // tables in parents.
-            self.unresolved_nodes.push(node);
+            self.unresolved_nodes.push(func.0);
         }
 
-        for child in node.iter_children() {
+        for child in func.0.iter_children() {
             if child.is_type(Nonterminal(function_def_parameters)) {
                 let parameters_node = child.get_nth_child(1);
                 if parameters_node.is_type(Nonterminal(parameters)) {
@@ -664,7 +680,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
         }
         self.add_point_definition(
-            node.get_nth_child(1),
+            func.name_definition(),
             if matches!(self.typ, NameBinderType::Function) {
                 Specific::LazyInferredClosure
             } else {
@@ -686,7 +702,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)])
                     {
                         if n.is_type(Nonterminal(name_definition)) {
-                            self.add_point_definition(n, Specific::Param, true);
+                            self.add_point_definition(
+                                NameDefinition::new(n),
+                                Specific::Param,
+                                true,
+                            );
                         } // defaults and annotations are already indexed
                     }
                 }
@@ -742,7 +762,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
-                        self.add_point_definition(n, Specific::Param, true);
+                        self.add_point_definition(NameDefinition::new(n), Specific::Param, true);
                     } // defaults are already indexed
                 }
             }

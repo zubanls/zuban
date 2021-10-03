@@ -483,8 +483,12 @@ impl<'db> ClassDef<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
+    pub fn name_definition(&self) -> NameDefinition<'db> {
+        NameDefinition::new(self.0.get_nth_child(1))
+    }
+
     pub fn name(&self) -> Name<'db> {
-        Name::new(self.0.get_nth_child(1).get_nth_child(0))
+        self.name_definition().name()
     }
 
     pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
