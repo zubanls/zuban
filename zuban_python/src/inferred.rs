@@ -6,7 +6,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
 use parsa_python_ast::{
-    ClassDef, Expression, Int, NamedExpression, NodeIndex, Primary, PrimaryOrAtom,
+    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryOrAtom,
 };
 use std::fmt;
 
@@ -60,8 +60,13 @@ impl<'db> NodeReference<'db> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_int(&self) -> Option<Int<'db>> {
-        Int::maybe_by_index(&self.file.tree, self.node_index)
+    pub fn infer_int(&self) -> Option<i64> {
+        Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
+            match atom.unpack() {
+                AtomContent::Int(i) => i.as_str().parse().ok(),
+                _ => None,
+            }
+        })
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'db>> {
@@ -406,10 +411,7 @@ impl<'db> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if let PointType::LanguageSpecific = point.get_type() {
                 if let Specific::Integer = point.get_language_specific() {
-                    return definition.maybe_int().and_then(|i| {
-                        dbg!(i);
-                        i.as_str().parse().ok()
-                    });
+                    return definition.infer_int();
                 }
             }
         }
