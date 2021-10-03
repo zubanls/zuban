@@ -164,7 +164,7 @@ impl<'db> PythonFile {
         let symbol_table = SymbolTable::default();
         self.with_global_binder(|binder| {
             binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
-                b.index_function_body(func.0)
+                b.index_function_body(func)
             })
         });
     }

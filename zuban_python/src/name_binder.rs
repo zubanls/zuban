@@ -9,7 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{ClassDef, File, Name, Tree};
+use parsa_python_ast::{ClassDef, File, FunctionDef, Name, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -301,7 +301,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if n.is_type(Nonterminal(function_def)) {
                 let symbol_table = SymbolTable::default();
                 self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
-                    binder.index_function_body(n)
+                    binder.index_function_body(FunctionDef::new(n))
                 });
             } else {
                 unreachable!("closing scope {:?}", n);
@@ -674,14 +674,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
     }
 
-    pub fn index_function_body(&mut self, func: PyNode<'db>) {
+    pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
         // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
         use NonterminalType::*;
-        debug_assert_eq!(func.get_type(), Nonterminal(function_def));
-
-        let func_index = func.index as usize;
+        let func_index = func.index() as usize;
         // Function name was indexed already.
-        for child in func.iter_children() {
+        for child in func.0.iter_children() {
             if child.is_type(Nonterminal(function_def_parameters)) {
                 let parameters_node = child.get_nth_child(1);
                 if parameters_node.is_type(Nonterminal(parameters)) {
@@ -701,7 +699,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 ));
             }
         }
-        let parent = func.get_parent().unwrap();
+        let parent = func.0.get_parent().unwrap();
         if !parent.is_type(Nonterminal(stmt)) && !parent.is_type(Nonterminal(decorated)) {
             todo!("{:?}", parent);
         }
@@ -715,13 +713,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ));
 
         // Avoid overwriting multi definitions
-        let mut name_index = func.index as usize + 3;
+        let mut name_index = func.index() as usize + 3;
         if self.points[name_index].get().get_type() == MultiDefinition {
             name_index -= 1;
         }
         self.points[name_index].set(Point::new_redirect(
             self.file_index,
-            func.index,
+            func.index(),
             Locality::Stmt,
         ));
     }
