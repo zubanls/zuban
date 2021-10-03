@@ -73,6 +73,9 @@ create_nonterminal_structs!(
 
     Primary: primary
 
+    PrimaryTarget: t_primary
+    StarTarget: star_target
+
     Arguments: arguments
 
     NameDefinition: name_definition
@@ -807,34 +810,40 @@ pub enum NameOrKeywordLookup<'db> {
 
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
-    Name(PyNode<'db>),
-    NameExpression(PyNode<'db>, PyNode<'db>),
-    IndexExpression(PyNode<'db>),
-    Starred(PyNode<'db>),
+    Name(Name<'db>),
+    NameExpression(PrimaryTarget<'db>, Name<'db>),
+    IndexExpression(PrimaryTarget<'db>),
+    Starred(StarTarget<'db>),
 }
 
 impl<'db> Target<'db> {
     fn new(node: PyNode<'db>) -> Self {
-        // star_targets: ",".star_target+ [","]
         if node.is_type(Nonterminal(single_target)) {
             todo!()
         }
+        // star_targets: ",".star_target+ [","]
+        // star_target:? "*"? (t_primary | star_target_brackets | name_definition)
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
         dbg!(first);
         if iterator.next().is_none() {
             if first.is_type(Nonterminal(name_definition)) {
-                Self::Name(first.get_nth_child(0))
+                Self::Name(Name::new(first.get_nth_child(0)))
             } else if first.is_type(Nonterminal(t_primary)) {
                 first
                     .iter_children()
                     .find(|x| x.is_type(Nonterminal(name_definition)))
-                    .map(|name_def| Self::NameExpression(first, name_def.get_nth_child(0)))
-                    .unwrap_or_else(|| Self::IndexExpression(first))
+                    .map(|name_def| {
+                        Self::NameExpression(
+                            PrimaryTarget::new(first),
+                            Name::new(name_def.get_nth_child(0)),
+                        )
+                    })
+                    .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget(first)))
             } else if first.is_type(Nonterminal(star_target_brackets)) {
                 todo!("star_target_brackets")
             } else if first.is_type(Nonterminal(star_target)) {
-                Self::Starred(first.get_nth_child(1))
+                Self::Starred(StarTarget::new(first.get_nth_child(1)))
             } else {
                 unreachable!();
             }

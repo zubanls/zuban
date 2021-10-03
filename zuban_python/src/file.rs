@@ -337,17 +337,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!("Tuple unpack");
             }
             Target::Name(n) => {
-                let point = self.file.get_point(n.index);
+                let point = self.file.get_point(n.index());
                 if point.is_calculated() {
                     // Save on name_definition
                     debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
-                    value.clone().save_redirect(self.file, n.index - 1);
+                    value.clone().save_redirect(self.file, n.index() - 1);
                 } else {
-                    value.clone().save_redirect(self.file, n.index);
+                    value.clone().save_redirect(self.file, n.index());
                 }
             }
             Target::NameExpression(_, name_node) => {
-                value.clone().save_redirect(self.file, name_node.index);
+                value.clone().save_redirect(self.file, name_node.index());
             }
             Target::IndexExpression(n) => {
                 todo!("{:?}", n);
