@@ -131,7 +131,16 @@ impl<'db> Name<'db> {
     pub fn name_definition(&self) -> Option<NameDefinition<'db>> {
         let parent = self.0.get_parent().unwrap();
         if parent.is_type(Nonterminal(name_definition)) {
-            Some(NameDefinition(parent))
+            Some(NameDefinition::new(parent))
+        } else {
+            None
+        }
+    }
+
+    pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
+        let parent = self.0.get_parent().unwrap();
+        if parent.is_type(Nonterminal(primary)) {
+            Some(Primary::new(parent))
         } else {
             None
         }

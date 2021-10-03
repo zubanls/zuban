@@ -584,9 +584,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if name.is_reference() {
                         // References are not calculated by the name binder for star imports and
                         // lookups.
-                        let parent = name.0.get_parent().unwrap();
-                        if parent.is_type(Nonterminal(NonterminalType::primary)) {
-                            return self.infer_primary(Primary(parent));
+                        if let Some(primary) = name.maybe_primary_parent() {
+                            return self.infer_primary(primary);
                         } else {
                             todo!("star import {:?}", name);
                         }
