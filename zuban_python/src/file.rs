@@ -474,7 +474,31 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         point.is_calculated().then(|| match point.get_type() {
             PointType::Redirect => {
                 let file_index = point.get_file_index();
-                self.follow_redirects_in_point_cache(file_index, point.get_node_index())
+                let node_index = point.get_node_index();
+                let infer = |inference: &mut PythonInference<'db, '_, '_>| {
+                    let point = inference.file.get_point(point.get_node_index());
+                    inference
+                        .check_point_cache(node_index, point)
+                        .unwrap_or_else(|| {
+                            let node = inference.file.tree.get_node_by_index(node_index);
+                            if node.is_type(Terminal(TerminalType::Name)) {
+                                inference.infer_name(Name::new(node))
+                            } else {
+                                todo!("{:?}, {:?}", inference.file.get_file_index().0, node)
+                            }
+                        })
+                };
+                if file_index == self.file_index {
+                    infer(self)
+                } else {
+                    infer(
+                        &mut self
+                            .i_s
+                            .database
+                            .get_loaded_python_file(file_index)
+                            .get_inference(self.i_s),
+                    )
+                }
             }
             PointType::LanguageSpecific => match point.get_language_specific() {
                 Specific::LazyInferredFunction => {
@@ -510,41 +534,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     );
     fn _infer_multi_definition(&mut self, name_def: NameDefinition<'db>) -> Inferred<'db> {
         self._infer_name(name_def.name())
-    }
-
-    fn follow_redirects_in_point_cache(
-        &mut self,
-        file_index: FileIndex,
-        node_index: NodeIndex,
-    ) -> Inferred<'db> {
-        if file_index != self.file_index {
-            return self
-                .i_s
-                .database
-                .get_loaded_python_file(file_index)
-                .get_inference(self.i_s)
-                .follow_redirects_in_point_cache(file_index, node_index);
-        }
-        let point = self.file.get_point(node_index);
-        if point.is_calculated() {
-            // This is just a shortcut to avoid fetching the node.
-            if let PointType::Redirect = point.get_type() {
-                return self.follow_redirects_in_point_cache(
-                    point.get_file_index(),
-                    point.get_node_index(),
-                );
-            }
-        }
-
-        self.check_point_cache(node_index, point)
-            .unwrap_or_else(|| {
-                let node = self.file.tree.get_node_by_index(node_index);
-                if node.is_type(Terminal(TerminalType::Name)) {
-                    self.infer_name(Name::new(node))
-                } else {
-                    todo!("{:?}, {:?}", self.file.get_file_index().0, node)
-                }
-            })
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
