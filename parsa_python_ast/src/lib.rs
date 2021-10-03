@@ -63,11 +63,14 @@ create_nonterminal_structs!(
     Ternary: expression
     NamedExpression: named_expression
 
+    SimpleStmts: simple_stmts
+    SimpleStmt: simple_stmt
     Assignment: assignment
     SingleTarget: single_target
     AugAssign: augassign
 
     ImportFrom: import_from
+    ImportName: import_name
     DottedName: dotted_name
     ImportFromAsName: import_from_as_name
 
@@ -286,7 +289,53 @@ pub enum NamedExpressionContent<'db> {
     Definition(NameDefinition<'db>, Expression<'db>),
 }
 
-impl<'db> Stmt<'db> {}
+impl<'db> Stmt<'db> {
+    pub fn as_simple_stmts(&self) -> Option<SimpleStmts<'db>> {
+        let child = self.0.get_nth_child(0);
+        if child.is_type(Nonterminal(simple_stmts)) {
+            Some(SimpleStmts::new(child))
+        } else {
+            None
+        }
+    }
+}
+
+impl<'db> SimpleStmts<'db> {
+    pub fn iter(&self) -> SimpleStmtIterator<'db> {
+        SimpleStmtIterator(self.0.iter_children().step_by(2))
+    }
+}
+
+pub struct SimpleStmtIterator<'db>(StepBy<SiblingIterator<'db>>);
+
+impl<'db> Iterator for SimpleStmtIterator<'db> {
+    type Item = SimpleStmt<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(Self::Item::new)
+    }
+}
+impl<'db> SimpleStmt<'db> {
+    pub fn unpack(&self) -> SimpleStmtContent<'db> {
+        let simple_child = self.0.get_nth_child(0);
+        if simple_child.is_type(Nonterminal(assignment)) {
+            SimpleStmtContent::Assignment(Assignment::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(import_from)) {
+            SimpleStmtContent::ImportFrom(ImportFrom::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(import_name)) {
+            SimpleStmtContent::ImportName(ImportName::new(simple_child))
+        } else {
+            SimpleStmtContent::Other
+        }
+    }
+}
+
+pub enum SimpleStmtContent<'db> {
+    Assignment(Assignment<'db>),
+    ImportFrom(ImportFrom<'db>),
+    ImportName(ImportName<'db>),
+    Other,
+}
 
 impl<'db> StarExpressions<'db> {
     pub fn unpack(&self) -> StarExpressionContent<'db> {

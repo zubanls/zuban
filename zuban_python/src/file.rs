@@ -234,24 +234,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             stmt.index(),
             stmt.short_debug().trim()
         );
-        let child = stmt.0.get_nth_child(0);
-        if child.is_type(Nonterminal(NonterminalType::simple_stmts)) {
-            for node in child.iter_children() {
-                if node.is_type(Nonterminal(NonterminalType::simple_stmt)) {
-                    let simple_child = node.get_nth_child(0);
-                    if simple_child.is_type(Nonterminal(NonterminalType::assignment)) {
-                        self.cache_assignment_nodes(Assignment::new(simple_child));
-                    } else if simple_child.is_type(Nonterminal(NonterminalType::import_from)) {
-                        self.cache_import_from(ImportFrom::new(simple_child));
-                    } else if simple_child.is_type(Nonterminal(NonterminalType::import_name)) {
-                        todo!();
-                    } else {
-                        unreachable!("Found type {:?}", simple_child.get_type());
+        if let Some(simple_stmts) = stmt.as_simple_stmts() {
+            for simple_stmt in simple_stmts.iter() {
+                match simple_stmt.unpack() {
+                    SimpleStmtContent::Assignment(assignment) => {
+                        self.cache_assignment_nodes(assignment);
                     }
+                    SimpleStmtContent::ImportFrom(import_from) => {
+                        self.cache_import_from(import_from);
+                    }
+                    SimpleStmtContent::ImportName(import_from) => {
+                        todo!()
+                    }
+                    _ => unreachable!("Found {:?}", simple_stmt),
                 }
             }
         } else {
-            unreachable!("Found type {:?}", child.get_type());
+            unreachable!("Found type {:?}", stmt.short_debug());
         }
     }
 
