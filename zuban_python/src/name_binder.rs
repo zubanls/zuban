@@ -10,7 +10,7 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree, WhileStmt,
+    ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -235,7 +235,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if child.is_type(Nonterminal(match_stmt)) {
                 self.index_match_stmt(child, ordered)
             } else if child.is_type(Nonterminal(with_stmt)) {
-                self.index_with_stmt(child, ordered)
+                self.index_with_stmt(WithStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(async_stmt)) {
                 let iterator = child.iter_children();
                 let mut iterator = iterator.skip(1);
@@ -250,7 +250,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 } else if inner.is_type(Nonterminal(for_stmt)) {
                     self.index_for_stmt(ForStmt::new(inner), ordered)
                 } else if inner.is_type(Nonterminal(with_stmt)) {
-                    self.index_with_stmt(child, ordered)
+                    self.index_with_stmt(WithStmt::new(child), ordered)
                 } else {
                     unreachable!()
                 }
@@ -362,29 +362,22 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_with_stmt(&mut self, with_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(
-            with_stmt.get_type(),
-            Nonterminal(NonterminalType::with_stmt)
-        );
+    fn index_with_stmt(&mut self, with_stmt: WithStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        // with_stmt: "with" ("(" ",".with_item+ ","? ")" | ",".with_item+ )  ":" block
-        for child in with_stmt.iter_children() {
-            let latest = match child.get_type() {
-                Nonterminal(NonterminalType::with_item) => {
-                    // expression ["as" star_target]
-                    let latest = self.index_non_block_node(child.get_nth_child(0), ordered, false);
-                    latest_return_or_yield =
-                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_non_block_node(child.get_nth_child(2), ordered, false)
-                }
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
-                _ => 0,
-            };
+        let (with_items, block) = with_stmt.unpack();
+        for with_item in with_items.iter() {
+            let (expr, star_target) = with_item.unpack();
+            let latest = self.index_non_block_node(expr.0, ordered, false);
+            latest_return_or_yield =
+                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+            if let Some(star_target) = star_target {
+                let latest = self.index_non_block_node(star_target.0, ordered, false);
+            }
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
-        latest_return_or_yield
+        let latest = self.index_block(block.0, ordered, false);
+        self.merge_latest_return_or_yield(latest_return_or_yield, latest)
     }
 
     fn index_if_stmt(&mut self, if_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {

@@ -144,6 +144,8 @@ create_nonterminal_structs!(
     Lambda: lambda
 
     StarTargets: star_targets
+    WithItems: with_items
+    WithItem: with_item
 );
 
 create_struct!(Name: Terminal(TerminalType::Name));
@@ -435,6 +437,47 @@ impl<'db> WhileStmt<'db> {
         let block_ = Block::new(iterator.next().unwrap());
         let else_block_ = iterator.next().map(ElseBlock::new);
         (named, block_, else_block_)
+    }
+}
+
+impl<'db> WithStmt<'db> {
+    pub fn unpack(&self) -> (WithItems<'db>, Block<'db>) {
+        // with_stmt: "with" with_items  ":" block
+        let mut iterator = self.0.iter_children().skip(1);
+        let with = WithItems::new(iterator.next().unwrap());
+        iterator.next();
+        (with, Block::new(iterator.next().unwrap()))
+    }
+}
+
+impl<'db> WithItems<'db> {
+    pub fn iter(&self) -> WithItemsIterator<'db> {
+        WithItemsIterator(self.0.iter_children())
+    }
+}
+
+pub struct WithItemsIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for WithItemsIterator<'db> {
+    type Item = WithItem<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for n in &mut self.0 {
+            if n.is_type(Nonterminal(with_item)) {
+                return Some(Self::Item::new(n));
+            }
+        }
+        None
+    }
+}
+
+impl<'db> WithItem<'db> {
+    pub fn unpack(&self) -> (Expression<'db>, Option<StarTarget<'db>>) {
+        // expression ["as" star_target]
+        let mut iterator = self.0.iter_children();
+        let expr = iterator.next().unwrap();
+        iterator.next();
+        (Expression::new(expr), iterator.next().map(StarTarget::new))
     }
 }
 
