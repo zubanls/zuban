@@ -123,6 +123,12 @@ create_struct!(Complex: Terminal(TerminalType::Number));
 create_struct!(Keyword: PyNodeType::Keyword);
 
 impl<'db> Name<'db> {
+    pub fn maybe_by_index(tree: &'db PyTree, node_index: NodeIndex) -> Option<Self> {
+        let node = tree.get_node_by_index(node_index);
+        node.is_type(Terminal(TerminalType::Name))
+            .then(|| Self::new(node))
+    }
+
     #[inline]
     pub fn as_str(&self) -> &'db str {
         self.0.get_code()

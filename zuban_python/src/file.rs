@@ -11,12 +11,11 @@ use crate::inferred::Inferred;
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use parsa_python::{PyNodeType, PyTree, TerminalType, PYTHON_GRAMMAR};
+use parsa_python::{PyTree, PYTHON_GRAMMAR};
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
-use PyNodeType::Terminal;
 
 lazy_static::lazy_static! {
     static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
@@ -480,11 +479,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let infer = |inference: &mut PythonInference<'db, '_, '_>| {
                         let point = inference.file.get_point(point.get_node_index());
                         inference.check_point_cache(node_index).unwrap_or_else(|| {
-                            let node = inference.file.tree.get_node_by_index(node_index);
-                            if node.is_type(Terminal(TerminalType::Name)) {
-                                inference.infer_name(Name::new(node))
+                            let name = Name::maybe_by_index(&inference.file.tree, node_index);
+                            if let Some(name) = name {
+                                inference.infer_name(name)
                             } else {
-                                todo!("{:?}, {:?}", inference.file.get_file_index().0, node)
+                                todo!("{:?}, {:?}", inference.file.get_file_index().0, node_index)
                             }
                         })
                     };
