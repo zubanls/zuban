@@ -215,24 +215,23 @@ macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident) => {
         $vis fn $name(&mut self, node: $ast<'db>) -> $crate::inferred::Inferred<'db> {
             debug_indent(|| {
-                let point = self.file.get_point(node.index());
-                if let Some(inferred) = self.check_point_cache(node.index(), point) {
+                if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
                         "Infer {:?} ({}, {}) from cache: {}",
                         node.short_debug(),
                         self.file.get_file_index(),
                         node.index(),
-                        if matches!(point.get_type(), PointType::LanguageSpecific) {
-                            format!("{:?}", point.get_language_specific())
-                        } else {
-                            format!("{:?}", point.get_type())
+                        {
+                            let point = self.file.get_point(node.index());
+                            if matches!(point.get_type(), PointType::LanguageSpecific) {
+                                format!("{:?}", point.get_language_specific())
+                            } else {
+                                format!("{:?}", point.get_type())
+                            }
                         },
                     );
                     inferred
                 } else {
-                    if point.is_calculating() {
-                        todo!("Set recursion error and return that");
-                    }
                     $func(self, node)
                 }
             })
@@ -470,16 +469,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         todo!("star import? {:?}", name)
     }
 
-    fn check_point_cache(&mut self, node_index: NodeIndex, point: Point) -> Option<Inferred<'db>> {
-        point.is_calculated().then(|| match point.get_type() {
-            PointType::Redirect => {
-                let file_index = point.get_file_index();
-                let node_index = point.get_node_index();
-                let infer = |inference: &mut PythonInference<'db, '_, '_>| {
-                    let point = inference.file.get_point(point.get_node_index());
-                    inference
-                        .check_point_cache(node_index, point)
-                        .unwrap_or_else(|| {
+    fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
+        let point = self.file.get_point(node_index);
+        point
+            .is_calculated()
+            .then(|| match point.get_type() {
+                PointType::Redirect => {
+                    let file_index = point.get_file_index();
+                    let node_index = point.get_node_index();
+                    let infer = |inference: &mut PythonInference<'db, '_, '_>| {
+                        let point = inference.file.get_point(point.get_node_index());
+                        inference.check_point_cache(node_index).unwrap_or_else(|| {
                             let node = inference.file.tree.get_node_by_index(node_index);
                             if node.is_type(Terminal(TerminalType::Name)) {
                                 inference.infer_name(Name::new(node))
@@ -487,44 +487,50 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 todo!("{:?}, {:?}", inference.file.get_file_index().0, node)
                             }
                         })
-                };
-                if file_index == self.file_index {
-                    infer(self)
-                } else {
-                    infer(
-                        &mut self
-                            .i_s
-                            .database
-                            .get_loaded_python_file(file_index)
-                            .get_inference(self.i_s),
-                    )
+                    };
+                    if file_index == self.file_index {
+                        infer(self)
+                    } else {
+                        infer(
+                            &mut self
+                                .i_s
+                                .database
+                                .get_loaded_python_file(file_index)
+                                .get_inference(self.i_s),
+                        )
+                    }
                 }
-            }
-            PointType::LanguageSpecific => match point.get_language_specific() {
-                Specific::LazyInferredFunction => {
-                    let name = Name::by_index(&self.file.tree, node_index);
-                    let func = name.expect_function_def();
-                    self.file.calculate_function_scope_definitions(func);
-                    let point = self.file.get_point(node_index);
-                    debug_assert!(point.is_calculated());
-                    self.check_point_cache(node_index, point).unwrap()
+                PointType::LanguageSpecific => match point.get_language_specific() {
+                    Specific::LazyInferredFunction => {
+                        let name = Name::by_index(&self.file.tree, node_index);
+                        let func = name.expect_function_def();
+                        self.file.calculate_function_scope_definitions(func);
+                        let point = self.file.get_point(node_index);
+                        debug_assert!(point.is_calculated());
+                        self.check_point_cache(node_index).unwrap()
+                    }
+                    _ => Inferred::new_saved(self.file, node_index, point),
+                },
+                PointType::MultiDefinition => {
+                    let inferred =
+                        self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
+                    // Check for the cache of name_definition
+                    let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
+                    inferred.union(self.infer_multi_definition(name_def))
                 }
-                _ => Inferred::new_saved(self.file, node_index, point),
-            },
-            PointType::MultiDefinition => {
-                let inferred =
-                    self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
-                // Check for the cache of name_definition
-                let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
-                inferred.union(self.infer_multi_definition(name_def))
-            }
-            PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
-                Inferred::new_saved(self.file, node_index, point)
-            }
-            PointType::NodeAnalysis => {
-                panic!("Invalid state, should not happen {:?}", node_index);
-            }
-        })
+                PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
+                    Inferred::new_saved(self.file, node_index, point)
+                }
+                PointType::NodeAnalysis => {
+                    panic!("Invalid state, should not happen {:?}", node_index);
+                }
+            })
+            .or_else(|| {
+                if point.is_calculating() {
+                    todo!("Set recursion error and return that");
+                }
+                None
+            })
     }
 
     check_point_cache_with!(
