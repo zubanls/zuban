@@ -575,31 +575,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(pub infer_name, Self::_infer_name, Name);
     fn _infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
-        let stmt = name
-            .0
-            .get_parent_until(&[
-                Nonterminal(NonterminalType::lambda),
-                Nonterminal(NonterminalType::comprehension),
-                Nonterminal(NonterminalType::dict_comprehension),
-                Nonterminal(NonterminalType::stmt),
-            ])
-            .expect("There should always be a stmt");
+        let stmt_like = name.expect_stmt_like_ancestor();
 
-        if !self.file.get_point(stmt.index).is_calculated() {
-            if !stmt.is_type(Nonterminal(NonterminalType::stmt)) {
-                todo!()
-            }
-            //self.calculate_node_scope_definitions(node);
-            if name.is_reference() {
-                // References are not calculated by the name binder for star imports and lookups.
-                let parent = name.0.get_parent().unwrap();
-                if parent.is_type(Nonterminal(NonterminalType::primary)) {
-                    return self.infer_primary(Primary(parent));
-                } else {
-                    todo!("star import {:?}", name);
+        if !self.file.get_point(stmt_like.index()).is_calculated() {
+            match stmt_like {
+                StmtLike::Stmt(stmt) => {
+                    //self.calculate_node_scope_definitions(node);
+                    if name.is_reference() {
+                        // References are not calculated by the name binder for star imports and
+                        // lookups.
+                        let parent = name.0.get_parent().unwrap();
+                        if parent.is_type(Nonterminal(NonterminalType::primary)) {
+                            return self.infer_primary(Primary(parent));
+                        } else {
+                            todo!("star import {:?}", name);
+                        }
+                    } else {
+                        self.cache_stmt_name(stmt.0, name.0);
+                    }
                 }
-            } else {
-                self.cache_stmt_name(stmt, name.0);
+                _ => todo!("{:?}", stmt_like),
             }
         }
         debug_assert!(self.file.get_point(name.index()).is_calculated());

@@ -140,6 +140,49 @@ impl<'db> Name<'db> {
     pub fn expect_function_def(&self) -> FunctionDef<'db> {
         FunctionDef(self.0.get_parent().unwrap().get_parent().unwrap())
     }
+
+    pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
+        let stmt_node = self
+            .0
+            .get_parent_until(&[
+                Nonterminal(stmt),
+                Nonterminal(lambda),
+                Nonterminal(comprehension),
+                Nonterminal(dict_comprehension),
+            ])
+            .expect("There should always be a stmt");
+        if stmt_node.is_type(Nonterminal(stmt)) {
+            StmtLike::Stmt(Stmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(lambda)) {
+            StmtLike::Lambda(Lambda::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(comprehension)) {
+            StmtLike::Comprehension(Comprehension::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
+            StmtLike::DictComprehension(DictComprehension::new(stmt_node))
+        } else {
+            unreachable!()
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum StmtLike<'db> {
+    Stmt(Stmt<'db>),
+    Lambda(Lambda<'db>),
+    Comprehension(Comprehension<'db>),
+    DictComprehension(DictComprehension<'db>),
+}
+
+impl<'db> StmtLike<'db> {
+    #[inline]
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            StmtLike::Stmt(n) => n.index(),
+            StmtLike::Lambda(n) => n.index(),
+            StmtLike::Comprehension(n) => n.index(),
+            StmtLike::DictComprehension(n) => n.index(),
+        }
+    }
 }
 
 impl<'db> Keyword<'db> {
