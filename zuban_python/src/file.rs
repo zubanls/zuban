@@ -464,7 +464,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         node: T,
     ) -> Inferred<'db> {
         let point = self.file.get_point(node.index());
-        if point.is_calculated() {
+        if let Some(inferred) = self.check_point(node.index(), point) {
             debug!(
                 "Infer {:?} ({}, {}) from cache: {}",
                 node.short_debug(),
@@ -476,42 +476,46 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     format!("{:?}", point.get_type())
                 },
             );
-            match point.get_type() {
-                PointType::Redirect => {
-                    let file_index = point.get_file_index();
-                    self.follow_redirects_in_point_cache(file_index, point.get_node_index())
-                }
-                PointType::LanguageSpecific => match point.get_language_specific() {
-                    Specific::LazyInferredFunction => {
-                        let name = Name::by_index(&self.file.tree, node.index());
-                        let func = name.expect_function_def();
-                        self.file.calculate_function_scope_definitions(func);
-                        let point = self.file.get_point(node.index());
-                        debug_assert!(point.is_calculated());
-                        self.check_point_cache(callable, point, node)
-                    }
-                    _ => Inferred::new_saved(self.file, node.index(), point),
-                },
-                PointType::MultiDefinition => {
-                    let inferred =
-                        self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
-                    // Check for the cache of name_definition
-                    let name_def = NameDefinition::by_index(&self.file.tree, node.index() - 1);
-                    inferred.union(self.infer_multi_definition(name_def))
-                }
-                PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
-                    Inferred::new_saved(self.file, node.index(), point)
-                }
-                PointType::NodeAnalysis => {
-                    panic!("Invalid state, should not happen {:?}", node.short_debug());
-                }
-            }
+            inferred
         } else {
             if point.is_calculating() {
                 todo!("Set recursion error and return that");
             }
             callable(self, node)
         }
+    }
+
+    fn check_point(&mut self, node_index: NodeIndex, point: Point) -> Option<Inferred<'db>> {
+        point.is_calculated().then(|| match point.get_type() {
+            PointType::Redirect => {
+                let file_index = point.get_file_index();
+                self.follow_redirects_in_point_cache(file_index, point.get_node_index())
+            }
+            PointType::LanguageSpecific => match point.get_language_specific() {
+                Specific::LazyInferredFunction => {
+                    let name = Name::by_index(&self.file.tree, node_index);
+                    let func = name.expect_function_def();
+                    self.file.calculate_function_scope_definitions(func);
+                    let point = self.file.get_point(node_index);
+                    debug_assert!(point.is_calculated());
+                    self.check_point(node_index, point).unwrap()
+                }
+                _ => Inferred::new_saved(self.file, node_index, point),
+            },
+            PointType::MultiDefinition => {
+                let inferred =
+                    self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
+                // Check for the cache of name_definition
+                let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
+                inferred.union(self.infer_multi_definition(name_def))
+            }
+            PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
+                Inferred::new_saved(self.file, node_index, point)
+            }
+            PointType::NodeAnalysis => {
+                panic!("Invalid state, should not happen {:?}", node_index);
+            }
+        })
     }
 
     check_point_cache_with!(
