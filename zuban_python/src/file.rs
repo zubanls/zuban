@@ -162,11 +162,11 @@ impl<'db> PythonFile {
         )
     }
 
-    fn calculate_node_scope_definitions(&self, node: PyNode<'db>) {
+    fn calculate_function_scope_definitions(&self, func: FunctionDef<'db>) {
         let symbol_table = SymbolTable::default();
         self.with_global_binder(|binder| {
             binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
-                b.index_function_body(node)
+                b.index_function_body(func.0)
             })
         });
     }
@@ -487,7 +487,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::LazyInferredFunction => {
                         let name = Name::by_index(&self.file.tree, node.index());
                         let func = name.expect_function_def();
-                        self.file.calculate_node_scope_definitions(func.0);
+                        self.file.calculate_function_scope_definitions(func);
                         let point = self.file.get_point(node.index());
                         debug_assert!(point.is_calculated());
                         self.check_point_cache(callable, point, node)
@@ -576,7 +576,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if !self.file.get_point(stmt_like.index()).is_calculated() {
             match stmt_like {
                 StmtLike::Stmt(stmt) => {
-                    //self.calculate_node_scope_definitions(node);
                     if name.is_reference() {
                         // References are not calculated by the name binder for star imports and
                         // lookups.
