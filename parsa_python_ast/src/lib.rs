@@ -8,7 +8,7 @@ use parsa_python::{
     PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
 
-pub struct Tree(pub PyTree);
+pub struct Tree(PyTree);
 
 impl Tree {
     pub fn parse(code: String) -> Self {
@@ -21,6 +21,10 @@ impl Tree {
 
     pub fn code(&self) -> &str {
         self.0.get_code()
+    }
+
+    pub fn root(&self) -> File {
+        File::new(self.0.get_root_node())
     }
 }
 
@@ -68,6 +72,7 @@ macro_rules! create_nonterminal_structs {
 }
 
 create_nonterminal_structs!(
+    File: file
     Stmt: stmt
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
@@ -246,6 +251,8 @@ impl<'db> Keyword<'db> {
         }
     }
 }
+
+impl<'db> File<'db> {}
 
 impl<'db> List<'db> {
     pub fn unpack(&self) -> ListContent<'db> {
@@ -458,6 +465,10 @@ impl<'db> ClassDef<'db> {
 }
 
 impl<'db> FunctionDef<'db> {
+    pub fn name(&self) -> Name<'db> {
+        Name::new(self.0.get_nth_child(1).get_nth_child(0))
+    }
+
     pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
         Self(
             tree.0

@@ -8,8 +8,8 @@ use crate::database::{
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
-use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, PyTree, TerminalType};
-use parsa_python_ast::Name;
+use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
+use parsa_python_ast::{File, Name, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -20,7 +20,7 @@ pub enum NameBinderType {
 }
 
 pub struct NameBinder<'db, 'a> {
-    tree: &'db PyTree,
+    tree: &'db Tree,
     typ: NameBinderType,
     symbol_table: &'a SymbolTable,
     points: &'db [Cell<Point>],
@@ -35,7 +35,7 @@ pub struct NameBinder<'db, 'a> {
 
 impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
-        tree: &'db PyTree,
+        tree: &'db Tree,
         typ: NameBinderType,
         symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
@@ -59,7 +59,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn with_global_binder(
-        tree: &'db PyTree,
+        tree: &'db Tree,
         symbol_table: &'a SymbolTable,
         points: &'db [Cell<Point>],
         complex_points: &'db ComplexValues,
@@ -143,8 +143,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
     }
 
-    pub fn index_file(&mut self, file_node: PyNode<'db>) {
-        self.index_stmts(file_node.iter_children(), true, true);
+    pub fn index_file(&mut self, file_node: File<'db>) {
+        self.index_stmts(file_node.0.iter_children(), true, true);
     }
 
     fn index_block(
@@ -505,9 +505,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let param_point = self.points[param_index as usize].get();
             if let LanguageSpecific = param_point.get_type() {
                 if param_point.get_language_specific() == Specific::Param {
-                    let name_node = self.tree.get_node_by_index(param_index);
+                    let name_node = Name::by_index(self.tree, param_index);
                     // Parents are name_definition/param_no_default/parameters
-                    let param = name_node.get_parent().unwrap().get_parent().unwrap();
+                    let param = name_node.0.get_parent().unwrap().get_parent().unwrap();
                     let params = param.get_parent().unwrap();
                     // Could also be a kwarg, which is never a self
                     if params.is_type(Nonterminal(NonterminalType::parameters)) {

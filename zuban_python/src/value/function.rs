@@ -132,8 +132,8 @@ impl<'db> Value<'db> for Function<'db> {
     }
 
     fn get_name(&self) -> &'db str {
-        let func_node = self.file.tree.0.get_node_by_index(self.node_index);
-        func_node.get_nth_child(1).get_nth_child(0).get_code()
+        let func = FunctionDef::by_index(&self.file.tree, self.node_index);
+        func.name().as_str()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

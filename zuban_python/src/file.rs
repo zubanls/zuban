@@ -143,14 +143,14 @@ impl<'db> PythonFile {
             // It was already done.
             return;
         }
-        self.with_global_binder(|binder| binder.index_file(self.tree.0.get_root_node()));
+        self.with_global_binder(|binder| binder.index_file(self.tree.root()));
 
         self.set_point(0, Point::new_node_analysis(Locality::File));
     }
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
-            &self.tree.0,
+            &self.tree,
             &self.symbol_table,
             &self.points,
             &self.complex_points,
