@@ -9,7 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{ClassDef, File, FunctionDef, Name, NameDefinition, Tree};
+use parsa_python_ast::{ClassDef, File, FunctionDef, Lambda, Name, NameDefinition, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -302,7 +302,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if n.is_type(Nonterminal(lambda)) {
                 let symbol_table = SymbolTable::default();
                 self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
-                    binder.index_lambda(n)
+                    binder.index_lambda(Lambda::new(n))
                 });
             } else if n.is_type(Nonterminal(expression)) {
                 // Typically annotations
@@ -755,10 +755,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    fn index_lambda(&mut self, node: PyNode<'db>) {
+    fn index_lambda(&mut self, node: Lambda<'db>) {
         use NonterminalType::*;
-        debug_assert_eq!(node.get_type(), Nonterminal(lambda));
-        for child in node.iter_children() {
+        for child in node.0.iter_children() {
             if child.is_type(Nonterminal(lambda_parameters)) {
                 for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
                     if n.is_type(Nonterminal(name_definition)) {
