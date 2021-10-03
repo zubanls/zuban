@@ -6,7 +6,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
 use parsa_python::PyNode;
-use parsa_python_ast::{Expression, NamedExpression, NodeIndex, Primary};
+use parsa_python_ast::{Expression, NamedExpression, NodeIndex, Primary, PrimaryOrAtom};
 use std::fmt;
 
 pub trait Inferrable<'db> {
@@ -368,10 +368,11 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         definition: &NodeReference<'db>,
     ) -> Self {
-        definition
-            .file
-            .get_inference(i_s)
-            .infer_expression_part(definition.node().get_nth_child(0))
+        let mut inference = definition.file.get_inference(i_s);
+        match definition.as_primary().first() {
+            PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
+            PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
+        }
     }
 
     fn instantiate(&self) -> Instance<'db> {

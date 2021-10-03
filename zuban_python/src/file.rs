@@ -391,7 +391,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
+    pub fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = match primary.first() {
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom),
             PrimaryOrAtom::Primary(primary) => self.infer_primary(primary),
@@ -420,7 +420,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    check_point_cache_with!(infer_atom, Self::_infer_atom, Atom);
+    check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom);
     fn _infer_atom(&mut self, atom: Atom<'db>) -> Inferred<'db> {
         use AtomContent::*;
         let specific = match atom.unpack() {
