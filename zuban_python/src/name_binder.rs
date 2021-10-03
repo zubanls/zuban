@@ -9,7 +9,7 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
-use parsa_python_ast::{File, Name, Tree};
+use parsa_python_ast::{ClassDef, File, Name, Tree};
 
 pub enum NameBinderType {
     Global,
@@ -195,7 +195,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.index_function_name_and_param_defaults(child, ordered, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(class_def)) {
-                self.index_class(child, false, in_base_scope);
+                self.index_class(ClassDef::new(child), false, in_base_scope);
                 0
             } else if child.is_type(Nonterminal(decorated)) {
                 let not_decorated = child.get_nth_child(1);
@@ -206,7 +206,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         in_base_scope,
                     );
                 } else if not_decorated.is_type(Nonterminal(class_def)) {
-                    self.index_class(not_decorated, true, in_base_scope);
+                    self.index_class(ClassDef::new(not_decorated), true, in_base_scope);
                 } else {
                     debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
                     /*
@@ -449,40 +449,36 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_class(&mut self, class: PyNode<'db>, is_decorated: bool, in_base_scope: bool) {
-        // "class" name_definition ["(" [arguments] ")"] ":" block
-        debug_assert_eq!(class.get_type(), Nonterminal(NonterminalType::class_def));
+    fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {
         let symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
-            for child in class.iter_children() {
-                if child.is_type(Nonterminal(NonterminalType::arguments)) {
-                    binder.index_non_block_node(child, true, true);
-                } else if child.is_type(Nonterminal(NonterminalType::block)) {
-                    binder.index_block(child, true, true);
-                }
+            let (arguments, block) = class.unpack();
+            if let Some(arguments) = arguments {
+                binder.index_non_block_node(arguments.0, true, true);
             }
+            binder.index_block(block.0, true, true);
         });
         self.index_self_vars(class, &symbol_table);
         self.complex_points.insert(
             self.points,
-            class.index,
+            class.index(),
             ComplexPoint::Class(ClassStorage::new(symbol_table)),
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
         if is_decorated {
             self.add_point_definition(
-                class.get_nth_child(1),
+                class.0.get_nth_child(1),
                 Specific::LazyInferredClass,
                 in_base_scope,
             );
         } else {
-            self.add_redirect_definition(class.get_nth_child(1), class.index as u32, in_base_scope);
+            self.add_redirect_definition(class.0.get_nth_child(1), class.index(), in_base_scope);
         }
     }
 
-    fn index_self_vars(&mut self, class: PyNode<'db>, symbol_table: &SymbolTable) {
-        for node in class.search(&[Nonterminal(NonterminalType::t_primary)]) {
+    fn index_self_vars(&mut self, class: ClassDef<'db>, symbol_table: &SymbolTable) {
+        for node in class.0.search(&[Nonterminal(NonterminalType::t_primary)]) {
             let name_def = node.get_nth_child(2);
             if name_def.is_type(Nonterminal(NonterminalType::name_definition)) {
                 let atom = node.get_nth_child(0);

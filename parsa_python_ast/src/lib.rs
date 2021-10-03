@@ -73,6 +73,8 @@ macro_rules! create_nonterminal_structs {
 
 create_nonterminal_structs!(
     File: file
+    Block: block
+
     Stmt: stmt
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
@@ -461,6 +463,18 @@ pub enum StarExpressionContent<'db> {
 impl<'db> ClassDef<'db> {
     pub fn name(&self) -> Name<'db> {
         Name(self.0.get_nth_child(1))
+    }
+
+    pub fn unpack(&self) -> (Option<Arguments<'db>>, Block<'db>) {
+        let mut args = None;
+        for child in self.0.iter_children().skip(3) {
+            if child.is_type(Nonterminal(arguments)) {
+                args = Some(Arguments::new(child));
+            } else if child.is_type(Nonterminal(block)) {
+                return (args, Block::new(child));
+            }
+        }
+        unreachable!()
     }
 }
 
