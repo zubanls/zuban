@@ -148,7 +148,6 @@ create_nonterminal_structs!(
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
     Lambda: lambda
-    LambdaParameters: lambda_parameters
 
     StarTargets: star_targets
     WithItems: with_items
@@ -1173,38 +1172,30 @@ impl<'db> ReturnStmt<'db> {
 }
 
 impl<'db> Lambda<'db> {
-    pub fn params(&self) -> Option<LambdaParameters<'db>> {
-        let n = self.0.get_nth_child(1);
-        if n.is_type(Nonterminal(lambda_parameters)) {
-            Some(LambdaParameters::new(n))
+    fn calculate_param_iterator(lambda_param_node: &PyNode<'db>) -> ParamIterator<'db> {
+        if lambda_param_node.is_type(Nonterminal(lambda_parameters)) {
+            let positional_only = lambda_param_node
+                .iter_children()
+                .any(|n| n.is_leaf() && n.get_code() == "/");
+            ParamIterator::Iterator(lambda_param_node.iter_children(), positional_only)
         } else {
-            None
+            ParamIterator::Finished
         }
     }
 
-    pub fn unpack(&self) -> (Option<LambdaParameters<'db>>, Expression<'db>) {
+    pub fn params(&self) -> ParamIterator<'db> {
+        let n = self.0.get_nth_child(1);
+        Self::calculate_param_iterator(&n)
+    }
+
+    pub fn unpack(&self) -> (ParamIterator<'db>, Expression<'db>) {
         // "lambda" [lambda_parameters] ":" expression
         let mut iterator = self.0.iter_children().skip(1);
-        let mut params = iterator.next();
-        if params.unwrap().is_type(Nonterminal(lambda_parameters)) {
+        let params = Self::calculate_param_iterator(&iterator.next().unwrap());
+        if let ParamIterator::Iterator(_, _) = params {
             iterator.next();
-        } else {
-            params = None;
         }
-        (
-            params.map(LambdaParameters::new),
-            Expression::new(iterator.next().unwrap()),
-        )
-    }
-}
-
-impl<'db> LambdaParameters<'db> {
-    pub fn iter(&self) -> ParamIterator<'db> {
-        let positional_only = self
-            .0
-            .iter_children()
-            .any(|n| n.is_leaf() && n.get_code() == "/");
-        ParamIterator::Iterator(self.0.iter_children(), positional_only)
+        (params, Expression::new(iterator.next().unwrap()))
     }
 }
 

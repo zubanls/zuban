@@ -681,21 +681,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_lambda_param_defaults(&mut self, lambda: Lambda<'db>, ordered: bool) {
         // lambda: "lambda" [lambda_parameters] ":" expression
-        if let Some(params) = lambda.params() {
-            for param in params.iter() {
-                if let Some(default) = param.default() {
-                    self.index_non_block_node(default.0, ordered, false);
-                }
+        for param in lambda.params() {
+            if let Some(default) = param.default() {
+                self.index_non_block_node(default.0, ordered, false);
             }
         }
     }
 
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
-        if let Some(params) = params {
-            for param in params.iter() {
-                self.add_point_definition(param.name_definition(), Specific::Param, true);
-            }
+        for param in params {
+            self.add_point_definition(param.name_definition(), Specific::Param, true);
         }
         self.index_non_block_node(expr.0, true, true);
     }
