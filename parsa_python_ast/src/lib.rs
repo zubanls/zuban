@@ -144,6 +144,7 @@ create_nonterminal_structs!(
     FunctionDef: function_def
     FunctionDefParameters: function_def_parameters
     ReturnAnnotation: return_annotation
+    Annotation: annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
     Lambda: lambda
@@ -821,43 +822,56 @@ impl<'db> Iterator for ParamIterator<'db> {
 }
 
 pub struct Param<'db> {
-    typ: ParamType,
+    type_: ParamType,
     name_def: NameDefinition<'db>,
-    annotation_node: Option<PyNode<'db>>,
-    default_node: Option<PyNode<'db>>,
+    annotation: Option<Annotation<'db>>,
+    default: Option<Expression<'db>>,
 }
 
 impl<'db> Param<'db> {
-    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, typ: ParamType) -> Self {
+    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamType) -> Self {
         let name_def = NameDefinition::new(param_children.next().unwrap());
-        let annotation_node = param_children
-            .next()
-            .map(|n: PyNode<'db>| n.get_nth_child(1));
+        let annot = param_children.next().map(Annotation::new);
         param_children.next();
         let default_node = param_children.next();
         Self {
-            typ,
+            type_,
             name_def,
-            annotation_node,
-            default_node,
+            annotation: annot,
+            default: default_node.map(Expression::new),
         }
+    }
+
+    pub fn type_(&self) -> ParamType {
+        self.type_
+    }
+
+    pub fn default(&self) -> Option<Expression<'db>> {
+        self.default
     }
 
     pub fn name_definition(&self) -> NameDefinition<'db> {
         self.name_def
     }
 
-    pub fn annotation(&self) -> Option<Expression<'db>> {
-        self.annotation_node.map(Expression::new)
+    pub fn annotation(&self) -> Option<Annotation<'db>> {
+        self.annotation
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum ParamType {
     PositionalOnly,
     PositionalOrKeyword,
     MultiArgs,
     MultiKwargs,
     KeywordOnly,
+}
+
+impl<'db> Annotation<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression(self.0.get_nth_child(1))
+    }
 }
 
 impl<'db> ReturnAnnotation<'db> {

@@ -270,12 +270,15 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation() {
                 // TODO we should only check names, not expressions
-                let name = annotation.0;
+                let name = annotation.expression().0;
                 if !calculated_type_vars
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
                 {
-                    let inferred = self.file.get_inference(i_s).infer_expression(annotation);
+                    let inferred = self
+                        .file
+                        .get_inference(i_s)
+                        .infer_expression(annotation.expression());
                     if inferred.is_type_var(i_s) {
                         calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {

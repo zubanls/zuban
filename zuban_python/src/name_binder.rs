@@ -601,7 +601,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ordered: bool,
         in_base_scope: bool,
     ) {
-        use NonterminalType::*;
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
         if self.parent.is_some() {
             // Has to be resolved, because we otherwise have no knowledge about the symbol
@@ -609,29 +608,23 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.unresolved_nodes.push(func.0);
         }
 
-        for child in func.0.iter_children() {
-            if child.is_type(Nonterminal(function_def_parameters)) {
-                let parameters_node = child.get_nth_child(1);
-                if parameters_node.is_type(Nonterminal(parameters)) {
-                    for n in
-                        parameters_node.search(&[Nonterminal(annotation), Nonterminal(expression)])
-                    {
-                        // expressions are resolved immediately while annotations are inferred at the
-                        // end of a module.
-                        if n.is_type(Nonterminal(annotation)) {
-                            self.unresolved_nodes.push(n.get_nth_child(1));
-                        } else {
-                            self.index_non_block_node(n, ordered, false);
-                        }
-                    }
-                }
-            } else if child.is_type(Nonterminal(return_annotation)) {
-                // This is the -> annotation that needs to be resolved at the end of a module.
-                self.unresolved_nodes.push(child.get_nth_child(1));
+        let (name_def, params, return_annotation, _) = func.unpack();
+        for param in params.iter() {
+            // expressions are resolved immediately while annotations are inferred at the
+            // end of a module.
+            if let Some(annotation) = param.annotation() {
+                self.unresolved_nodes.push(annotation.expression().0);
+            }
+            if let Some(expression) = param.default() {
+                self.index_non_block_node(expression.0, ordered, false);
             }
         }
+        if let Some(return_annotation) = return_annotation {
+            // This is the -> annotation that needs to be resolved at the end of a module.
+            self.unresolved_nodes.push(return_annotation.expression().0);
+        }
         self.add_point_definition(
-            func.name_definition(),
+            name_def,
             if matches!(self.typ, NameBinderType::Function) {
                 Specific::LazyInferredClosure
             } else {
@@ -645,7 +638,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let func_index = func.index() as usize;
 
         // Function name was indexed already.
-        let (name_def, params, ret_annot, block) = func.unpack();
+        let (name_def, params, _, block) = func.unpack();
 
         for param in params.iter() {
             // defaults and annotations are already indexed
