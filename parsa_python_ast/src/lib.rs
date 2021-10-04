@@ -831,7 +831,13 @@ pub struct Param<'db> {
 impl<'db> Param<'db> {
     fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamType) -> Self {
         let name_def = NameDefinition::new(param_children.next().unwrap());
-        let annot = param_children.next().map(Annotation::new);
+        let annot = param_children.next().and_then(|n| {
+            if n.is_type(Nonterminal(annotation)) {
+                Some(Annotation::new(n))
+            } else {
+                None
+            }
+        });
         param_children.next();
         let default_node = param_children.next();
         Self {
