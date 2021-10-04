@@ -138,9 +138,11 @@ create_nonterminal_structs!(
     Slices: slices
     Slice: slice
 
+    Decorated: decorated
     ClassDef: class_def
 
     FunctionDef: function_def
+    FunctionDefParameters: function_def_parameters
     ReturnAnnotation: return_annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
@@ -700,10 +702,65 @@ impl<'db> FunctionDef<'db> {
         }
     }
 
-    pub fn iter_params(&self) -> ParamIterator<'db> {
-        // function_def: "def" name_definition function_def_parameters ...
+    pub fn params(&self) -> FunctionDefParameters<'db> {
+        FunctionDefParameters::new(self.0.get_nth_child(2))
+    }
+
+    pub fn parent(&self) -> FunctionParent<'db> {
+        let parent = self.0.get_parent().unwrap();
+        if parent.is_type(Nonterminal(stmt)) {
+            FunctionParent::Normal
+        } else if parent.is_type(Nonterminal(decorated)) {
+            FunctionParent::Decorated(Decorated::new(parent))
+        } else if parent.is_type(Nonterminal(async_stmt)) {
+            FunctionParent::Async
+        } else if parent.is_type(Nonterminal(async_function_def)) {
+            FunctionParent::DecoratedAsync(Decorated::new(parent))
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn unpack(
+        &self,
+    ) -> (
+        NameDefinition<'db>,
+        FunctionDefParameters<'db>,
+        Option<ReturnAnnotation<'db>>,
+        Block<'db>,
+    ) {
+        // function_def: "def" name_definition function_def_parameters
+        //               return_annotation? ":" block
+        let mut iterator = self.0.iter_children();
+        iterator.next();
+        let name_def = NameDefinition::new(iterator.next().unwrap());
+        let params = FunctionDefParameters::new(iterator.next().unwrap());
+        let mut ret_annot = iterator.next();
+        if ret_annot.unwrap().is_type(Nonterminal(return_annotation)) {
+            iterator.next();
+        } else {
+            ret_annot = None;
+        }
+        (
+            name_def,
+            params,
+            ret_annot.map(ReturnAnnotation::new),
+            Block::new(iterator.next().unwrap()),
+        )
+    }
+}
+
+pub enum FunctionParent<'db> {
+    Decorated(Decorated<'db>),
+    Async,
+    DecoratedAsync(Decorated<'db>),
+    Normal,
+}
+
+impl<'db> FunctionDefParameters<'db> {
+    pub fn iter(&self) -> ParamIterator<'db> {
         // function_def_parameters: "(" [parameters] ")"
-        let params = self.0.get_nth_child(2).get_nth_child(1);
+        let params = self.0.get_nth_child(1);
         if params.is_type(Nonterminal(parameters)) {
             let positional_only = params
                 .iter_children()
@@ -765,15 +822,14 @@ impl<'db> Iterator for ParamIterator<'db> {
 
 pub struct Param<'db> {
     typ: ParamType,
-    name_node: PyNode<'db>,
+    name_def: NameDefinition<'db>,
     annotation_node: Option<PyNode<'db>>,
     default_node: Option<PyNode<'db>>,
 }
 
 impl<'db> Param<'db> {
     fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, typ: ParamType) -> Self {
-        let name_node = param_children.next().unwrap();
-        debug_assert_eq!(name_node.get_type(), Nonterminal(name_definition));
+        let name_def = NameDefinition::new(param_children.next().unwrap());
         let annotation_node = param_children
             .next()
             .map(|n: PyNode<'db>| n.get_nth_child(1));
@@ -781,14 +837,14 @@ impl<'db> Param<'db> {
         let default_node = param_children.next();
         Self {
             typ,
-            name_node: name_node.get_nth_child(0),
+            name_def,
             annotation_node,
             default_node,
         }
     }
 
-    pub fn name(&self) -> Name<'db> {
-        Name(self.name_node)
+    pub fn name_definition(&self) -> NameDefinition<'db> {
+        self.name_def
     }
 
     pub fn annotation(&self) -> Option<Expression<'db>> {

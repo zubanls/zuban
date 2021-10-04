@@ -10,8 +10,8 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    Block, ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, MatchStmt, Name,
-    NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    Block, ClassDef, File, ForStmt, FunctionDef, FunctionParent, IfBlockType, IfStmt, Lambda,
+    MatchStmt, Name, NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -642,37 +642,28 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
-        // "def" name_definition "(" [parameters] ")" ["->" expression] ":" block
-        use NonterminalType::*;
         let func_index = func.index() as usize;
+
         // Function name was indexed already.
-        for child in func.0.iter_children() {
-            if child.is_type(Nonterminal(function_def_parameters)) {
-                let parameters_node = child.get_nth_child(1);
-                if parameters_node.is_type(Nonterminal(parameters)) {
-                    for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)])
-                    {
-                        if n.is_type(Nonterminal(name_definition)) {
-                            self.add_point_definition(
-                                NameDefinition::new(n),
-                                Specific::Param,
-                                true,
-                            );
-                        } // defaults and annotations are already indexed
-                    }
-                }
-            } else if child.is_type(Nonterminal(block)) {
-                let latest_return_index = self.index_block(Block::new(child), true, true);
-                // It's kind of hard to know where to store the latest reference statement.
-                self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
-                    Locality::ClassOrFunction,
-                    latest_return_index,
-                ));
-            }
+        let (name_def, params, ret_annot, block) = func.unpack();
+
+        for param in params.iter() {
+            // defaults and annotations are already indexed
+            self.add_point_definition(param.name_definition(), Specific::Param, true);
         }
-        let parent = func.0.get_parent().unwrap();
-        if !parent.is_type(Nonterminal(stmt)) && !parent.is_type(Nonterminal(decorated)) {
-            todo!("{:?}", parent);
+
+        let latest_return_index = self.index_block(block, true, true);
+        // It's kind of hard to know where to store the latest reference statement.
+        self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
+            Locality::ClassOrFunction,
+            latest_return_index,
+        ));
+
+        if matches!(
+            func.parent(),
+            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
+        ) {
+            todo!()
         }
         self.points[func_index].set(Point::new_simple_language_specific(
             if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
@@ -684,11 +675,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ));
 
         // Avoid overwriting multi definitions
-        let mut name_index = func.index() as usize + 3;
-        if self.points[name_index].get().get_type() == MultiDefinition {
-            name_index -= 1;
+        let mut name_index = name_def.name().index();
+        if self.points[name_index as usize].get().get_type() == MultiDefinition {
+            name_index = name_def.index();
         }
-        self.points[name_index].set(Point::new_redirect(
+        self.points[name_index as usize].set(Point::new_redirect(
             self.file_index,
             func.index(),
             Locality::Stmt,

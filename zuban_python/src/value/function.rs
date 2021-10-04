@@ -42,7 +42,7 @@ impl<'db> Function<'db> {
         &self,
         args: &dyn Arguments<'db>,
     ) -> impl Iterator<Item = InferrableParam<'db>> {
-        InferrableParamIterator::new(self.get_node().iter_params(), args.iter_arguments())
+        InferrableParamIterator::new(self.get_node().params().iter(), args.iter_arguments())
     }
 
     pub fn infer_param(
@@ -307,7 +307,7 @@ impl<'db> InferrableParamIterator<'db> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
-                    if name == &param.name().as_str() {
+                    if name == &param.name_definition().name().as_str() {
                         return Some(self.unused_keyword_arguments.remove(i));
                     }
                 }
@@ -345,13 +345,16 @@ struct InferrableParam<'db> {
 
 impl<'db> InferrableParam<'db> {
     fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        debug!("Infer param {}", self.param.name().as_str());
+        debug!(
+            "Infer param {}",
+            self.param.name_definition().name().as_str()
+        );
         self.argument
             .map(|a| a.infer(i_s))
             .unwrap_or_else(|| todo!())
     }
 
     fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.name().index() == index
+        self.param.name_definition().name().index() == index
     }
 }
