@@ -11,7 +11,7 @@ use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
     ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, MatchStmt, Name,
-    NameDefinition, Tree, WhileStmt, WithStmt,
+    NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -228,7 +228,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if child.is_type(Nonterminal(if_stmt)) {
                 self.index_if_stmt(IfStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(try_stmt)) {
-                self.index_try_stmt(child, ordered)
+                self.index_try_stmt(TryStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(for_stmt)) {
                 self.index_for_stmt(ForStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(while_stmt)) {
@@ -399,38 +399,25 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_try_stmt(&mut self, try_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(try_stmt.get_type(), Nonterminal(NonterminalType::try_stmt));
+    fn index_try_stmt(&mut self, try_stmt: TryStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
-        for child in try_stmt.iter_children() {
-            let latest = match child.get_type() {
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
-                Nonterminal(NonterminalType::except_block) => {
-                    // except_clause ":" block
-                    let except_clause = child.get_nth_child(0);
-                    // except_clause: "except" [expression ["as" name_definition]]
-                    for child in except_clause.iter_children() {
-                        if child.is_type(Nonterminal(NonterminalType::expression)) {
-                            self.index_non_block_node(child, ordered, false);
-                        } else if child.is_type(Nonterminal(NonterminalType::name_definition)) {
-                            self.add_redirect_definition(
-                                NameDefinition::new(child),
-                                except_clause.index as u32,
-                                false,
-                            );
-                        }
+        for b in try_stmt.iter_blocks() {
+            let latest = match b {
+                TryBlockType::Try(block) => self.index_block(block.0, ordered, false),
+                TryBlockType::Except(except) => {
+                    let (expression, name_def, block) = except.unpack();
+                    let latest = self.index_non_block_node(expression.0, ordered, false);
+                    latest_return_or_yield =
+                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    if let Some(name_def) = name_def {
+                        self.add_redirect_definition(name_def, expression.index() as u32, false);
                     }
-                    // block
-                    self.index_block(child.get_nth_child(2), ordered, false)
+                    self.index_block(block.0, ordered, false)
                 }
-                Nonterminal(NonterminalType::finally_block)
-                | Nonterminal(NonterminalType::else_block) => {
-                    // "finally" ":" block
-                    // "else" ":" block
-                    self.index_block(child.get_nth_child(2), ordered, false)
+                TryBlockType::Else(else_) => self.index_block(else_.block().0, ordered, false),
+                TryBlockType::Finally(finally) => {
+                    self.index_block(finally.block().0, ordered, false)
                 }
-                _ => 0,
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);

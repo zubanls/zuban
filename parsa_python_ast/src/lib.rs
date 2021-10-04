@@ -81,8 +81,10 @@ create_nonterminal_structs!(
     WithStmt: with_stmt
     IfStmt: if_stmt
     TryStmt: try_stmt
-    MatchStmt: match_stmt
     ElseBlock: else_block
+    ExceptBlock: except_block
+    FinallyBlock: finally_block
+    MatchStmt: match_stmt
 
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
@@ -512,6 +514,70 @@ impl<'db> Iterator for IfBlockIterator<'db> {
             }
         }
         None
+    }
+}
+
+impl<'db> TryStmt<'db> {
+    pub fn iter_blocks(&self) -> TryBlockIterator<'db> {
+        let mut iterator = self.0.iter_children();
+        iterator.next(); // Ignore try
+        TryBlockIterator(iterator)
+    }
+}
+
+pub enum TryBlockType<'db> {
+    Try(Block<'db>),
+    Except(ExceptBlock<'db>),
+    Else(ElseBlock<'db>),
+    Finally(FinallyBlock<'db>),
+}
+
+pub struct TryBlockIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for TryBlockIterator<'db> {
+    type Item = TryBlockType<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // "try" ":" block (except_block+ else_block? finally_block? | finally_block)
+        for n in &mut self.0 {
+            if n.is_type(Nonterminal(block)) {
+                return Some(TryBlockType::Try(Block::new(n)));
+            } else if n.is_type(Nonterminal(except_block)) {
+                return Some(TryBlockType::Except(ExceptBlock::new(n)));
+            } else if n.is_type(Nonterminal(else_block)) {
+                return Some(TryBlockType::Else(ElseBlock::new(n)));
+            } else if n.is_type(Nonterminal(finally_block)) {
+                return Some(TryBlockType::Finally(FinallyBlock::new(n)));
+            }
+        }
+        None
+    }
+}
+
+impl<'db> FinallyBlock<'db> {
+    pub fn block(&self) -> Block<'db> {
+        Block::new(self.0.get_nth_child(2))
+    }
+}
+
+impl<'db> ExceptBlock<'db> {
+    pub fn unpack(&self) -> (Expression<'db>, Option<NameDefinition<'db>>, Block<'db>) {
+        // except_clause ":" block
+        let mut iterator = self.0.iter_children();
+        let except_clause_ = iterator.next().unwrap();
+        iterator.next();
+        let block_ = iterator.next().unwrap();
+
+        // except_clause: "except" [expression ["as" name_definition]]
+        let mut clause_iterator = except_clause_.iter_children();
+        clause_iterator.next();
+        let expr = clause_iterator.next().unwrap();
+        clause_iterator.next();
+        (
+            Expression::new(expr),
+            clause_iterator.next().map(NameDefinition::new),
+            Block::new(block_),
+        )
     }
 }
 
