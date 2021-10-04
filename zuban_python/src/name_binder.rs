@@ -7,10 +7,11 @@ use crate::database::{
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
-use parsa_python::PyNodeType::{Keyword, Nonterminal, Terminal};
+use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    ClassDef, File, ForStmt, FunctionDef, Lambda, Name, NameDefinition, Tree, WhileStmt, WithStmt,
+    ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, Name, NameDefinition, Tree,
+    WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -225,7 +226,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
                 0
             } else if child.is_type(Nonterminal(if_stmt)) {
-                self.index_if_stmt(child, ordered)
+                self.index_if_stmt(IfStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(try_stmt)) {
                 self.index_try_stmt(child, ordered)
             } else if child.is_type(Nonterminal(for_stmt)) {
@@ -380,22 +381,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.merge_latest_return_or_yield(latest_return_or_yield, latest)
     }
 
-    fn index_if_stmt(&mut self, if_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(if_stmt.get_type(), Nonterminal(NonterminalType::if_stmt));
-        // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
-
+    fn index_if_stmt(&mut self, if_stmt: IfStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
-        for child in if_stmt.iter_children().skip(1) {
-            let latest = match child.get_type() {
-                Nonterminal(NonterminalType::named_expression) => {
-                    self.index_non_block_node(child, ordered, false)
+        for if_block in if_stmt.iter_blocks() {
+            let latest = match if_block {
+                IfBlockType::If(expr, block) => {
+                    let latest = self.index_non_block_node(expr.0, ordered, false);
+                    latest_return_or_yield =
+                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    self.index_block(block.0, ordered, false)
                 }
-                Nonterminal(NonterminalType::block) => self.index_block(child, ordered, false),
-                Nonterminal(NonterminalType::else_block) => {
-                    self.index_block(child.get_nth_child(2), ordered, false)
-                }
-                Keyword => 0,
-                _ => (unreachable!()),
+                IfBlockType::Else(block) => self.index_block(block.0, ordered, false),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);

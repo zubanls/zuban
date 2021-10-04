@@ -481,6 +481,39 @@ impl<'db> WithItem<'db> {
     }
 }
 
+impl<'db> IfStmt<'db> {
+    pub fn iter_blocks(&self) -> IfBlockIterator<'db> {
+        let mut iterator = self.0.iter_children();
+        iterator.next(); // Ignore if
+        IfBlockIterator(iterator)
+    }
+}
+
+pub enum IfBlockType<'db> {
+    If(NamedExpression<'db>, Block<'db>),
+    Else(Block<'db>),
+}
+
+pub struct IfBlockIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for IfBlockIterator<'db> {
+    type Item = IfBlockType<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
+        while let Some(n) = self.0.next() {
+            if n.is_type(Nonterminal(named_expression)) {
+                self.0.next();
+                let block_ = self.0.next().unwrap();
+                return Some(Self::Item::If(NamedExpression::new(n), Block::new(block_)));
+            } else if n.is_type(Nonterminal(else_block)) {
+                return Some(Self::Item::Else(Block::new(n.get_nth_child(2))));
+            }
+        }
+        None
+    }
+}
+
 impl<'db> Stmt<'db> {
     pub fn as_simple_stmts(&self) -> Option<SimpleStmts<'db>> {
         let child = self.0.get_nth_child(0);
