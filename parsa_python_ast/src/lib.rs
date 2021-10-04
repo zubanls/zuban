@@ -148,6 +148,7 @@ create_nonterminal_structs!(
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
     Lambda: lambda
+    LambdaParameters: lambda_parameters
 
     StarTargets: star_targets
     WithItems: with_items
@@ -1168,6 +1169,42 @@ impl<'db> ReturnOrYield<'db> {
 impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
         StarExpressions(self.0.get_nth_child(1))
+    }
+}
+
+impl<'db> Lambda<'db> {
+    pub fn params(&self) -> Option<LambdaParameters<'db>> {
+        let n = self.0.get_nth_child(1);
+        if n.is_type(Nonterminal(lambda_parameters)) {
+            Some(LambdaParameters::new(n))
+        } else {
+            None
+        }
+    }
+
+    pub fn unpack(&self) -> (Option<LambdaParameters<'db>>, Expression<'db>) {
+        // "lambda" [lambda_parameters] ":" expression
+        let mut iterator = self.0.iter_children().skip(1);
+        let mut params = iterator.next();
+        if params.unwrap().is_type(Nonterminal(lambda_parameters)) {
+            iterator.next();
+        } else {
+            params = None;
+        }
+        (
+            params.map(LambdaParameters::new),
+            Expression::new(iterator.next().unwrap()),
+        )
+    }
+}
+
+impl<'db> LambdaParameters<'db> {
+    pub fn iter(&self) -> ParamIterator<'db> {
+        let positional_only = self
+            .0
+            .iter_children()
+            .any(|n| n.is_leaf() && n.get_code() == "/");
+        ParamIterator::Iterator(self.0.iter_children(), positional_only)
     }
 }
 

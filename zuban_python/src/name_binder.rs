@@ -524,7 +524,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     self.index_reference(Name::new(n), parent, ordered);
                 }
             } else if n.is_type(Nonterminal(lambda)) {
-                self.index_lambda_param_defaults(n, ordered);
+                self.index_lambda_param_defaults(Lambda::new(n), ordered);
                 self.unresolved_nodes.push(n);
             } else if n.is_type(Nonterminal(return_stmt)) || n.is_type(Nonterminal(yield_expr)) {
                 let keyword_index = n.index + 1;
@@ -679,31 +679,25 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ));
     }
 
-    fn index_lambda_param_defaults(&mut self, node: PyNode<'db>, ordered: bool) {
-        use NonterminalType::*;
+    fn index_lambda_param_defaults(&mut self, lambda: Lambda<'db>, ordered: bool) {
         // lambda: "lambda" [lambda_parameters] ":" expression
-        let params = node.get_nth_child(1);
-        if params.is_type(Nonterminal(lambda_parameters)) {
-            for n in params.search(&[Nonterminal(expression)]) {
-                self.index_non_block_node(n, ordered, false);
+        if let Some(params) = lambda.params() {
+            for param in params.iter() {
+                if let Some(default) = param.default() {
+                    self.index_non_block_node(default.0, ordered, false);
+                }
             }
         }
     }
 
-    fn index_lambda(&mut self, node: Lambda<'db>) {
-        use NonterminalType::*;
-        for child in node.0.iter_children() {
-            if child.is_type(Nonterminal(lambda_parameters)) {
-                for n in child.search(&[Nonterminal(name_definition), Nonterminal(expression)]) {
-                    if n.is_type(Nonterminal(name_definition)) {
-                        self.add_point_definition(NameDefinition::new(n), Specific::Param, true);
-                    } // defaults are already indexed
-                }
-            }
-            if child.is_type(Nonterminal(expression)) {
-                self.index_non_block_node(child, true, true);
+    fn index_lambda(&mut self, lambda: Lambda<'db>) {
+        let (params, expr) = lambda.unpack();
+        if let Some(params) = params {
+            for param in params.iter() {
+                self.add_point_definition(param.name_definition(), Specific::Param, true);
             }
         }
+        self.index_non_block_node(expr.0, true, true);
     }
 
     fn index_reference(&mut self, name: Name<'db>, parent: PyNode<'db>, ordered: bool) {
