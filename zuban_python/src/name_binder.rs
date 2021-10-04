@@ -10,7 +10,7 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, MatchStmt, Name,
+    Block, ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, MatchStmt, Name,
     NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
@@ -152,12 +152,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.index_stmts(file_node.0.iter_children(), true, true);
     }
 
-    fn index_block(
-        &mut self,
-        block_node: PyNode<'db>,
-        ordered: bool,
-        in_base_scope: bool,
-    ) -> NodeIndex {
+    fn index_block(&mut self, block: Block<'db>, ordered: bool, in_base_scope: bool) -> NodeIndex {
         // Returns the latest return/yield index
         // Theory:
         // - while_stmt, for_stmt: ignore order (at least mostly)
@@ -165,14 +160,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-        debug_assert_eq!(block_node.get_type(), Nonterminal(NonterminalType::block));
-        if block_node
+        if block
+            .0
             .get_nth_child(0)
             .is_type(Nonterminal(NonterminalType::simple_stmts))
         {
-            self.index_non_block_node(block_node, ordered, in_base_scope)
+            self.index_non_block_node(block.0, ordered, in_base_scope)
         } else {
-            self.index_stmts(block_node.iter_children().skip(2), ordered, in_base_scope)
+            self.index_stmts(block.0.iter_children().skip(2), ordered, in_base_scope)
         }
     }
 
@@ -330,14 +325,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let latest = self.index_non_block_node(star_expressions.0, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
-        let latest = self.index_block(block.0, false, false);
+        let latest = self.index_block(block, false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
-            let latest = self.index_block(else_block.block().0, ordered, false);
+            let latest = self.index_block(else_block.block(), ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -349,14 +344,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let (condition, block, else_block) = while_stmt.unpack();
         let latest = self.index_non_block_node(condition.0, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_block(block.0, false, false);
+        let latest = self.index_block(block, false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         if ordered {
             self.index_unordered_references();
         }
         if let Some(else_block) = else_block {
             // "else" ":" block
-            let latest = self.index_block(else_block.block().0, ordered, false);
+            let latest = self.index_block(else_block.block(), ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
@@ -377,7 +372,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
-        let latest = self.index_block(block.0, ordered, false);
+        let latest = self.index_block(block, ordered, false);
         self.merge_latest_return_or_yield(latest_return_or_yield, latest)
     }
 
@@ -389,9 +384,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     let latest = self.index_non_block_node(expr.0, ordered, false);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_block(block.0, ordered, false)
+                    self.index_block(block, ordered, false)
                 }
-                IfBlockType::Else(block) => self.index_block(block.0, ordered, false),
+                IfBlockType::Else(block) => self.index_block(block, ordered, false),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -403,7 +398,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         for b in try_stmt.iter_blocks() {
             let latest = match b {
-                TryBlockType::Try(block) => self.index_block(block.0, ordered, false),
+                TryBlockType::Try(block) => self.index_block(block, ordered, false),
                 TryBlockType::Except(except) => {
                     let (expression, name_def, block) = except.unpack();
                     let latest = self.index_non_block_node(expression.0, ordered, false);
@@ -412,12 +407,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     if let Some(name_def) = name_def {
                         self.add_redirect_definition(name_def, expression.index() as u32, false);
                     }
-                    self.index_block(block.0, ordered, false)
+                    self.index_block(block, ordered, false)
                 }
-                TryBlockType::Else(else_) => self.index_block(else_.block().0, ordered, false),
-                TryBlockType::Finally(finally) => {
-                    self.index_block(finally.block().0, ordered, false)
-                }
+                TryBlockType::Else(else_) => self.index_block(else_.block(), ordered, false),
+                TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered, false),
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -432,7 +425,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if let Some(arguments) = arguments {
                 binder.index_non_block_node(arguments.0, true, true);
             }
-            binder.index_block(block.0, true, true);
+            binder.index_block(block, true, true);
         });
         self.index_self_vars(class, &symbol_table);
         self.complex_points.insert(
@@ -669,7 +662,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 }
             } else if child.is_type(Nonterminal(block)) {
-                let latest_return_index = self.index_block(child, true, true);
+                let latest_return_index = self.index_block(Block::new(child), true, true);
                 // It's kind of hard to know where to store the latest reference statement.
                 self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
                     Locality::ClassOrFunction,
