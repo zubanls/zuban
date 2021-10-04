@@ -81,6 +81,7 @@ create_nonterminal_structs!(
     WithStmt: with_stmt
     IfStmt: if_stmt
     TryStmt: try_stmt
+    MatchStmt: match_stmt
     ElseBlock: else_block
 
     StarExpressions: star_expressions

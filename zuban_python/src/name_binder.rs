@@ -10,8 +10,8 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, Name, NameDefinition, Tree,
-    WhileStmt, WithStmt,
+    ClassDef, File, ForStmt, FunctionDef, IfBlockType, IfStmt, Lambda, MatchStmt, Name,
+    NameDefinition, Tree, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -234,7 +234,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if child.is_type(Nonterminal(while_stmt)) {
                 self.index_while_stmt(WhileStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(match_stmt)) {
-                self.index_match_stmt(child, ordered)
+                self.index_match_stmt(MatchStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(with_stmt)) {
                 self.index_with_stmt(WithStmt::new(child), ordered)
             } else if child.is_type(Nonterminal(async_stmt)) {
@@ -507,12 +507,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         false
     }
 
-    fn index_match_stmt(&mut self, match_stmt: PyNode<'db>, ordered: bool) -> NodeIndex {
-        debug_assert_eq!(
-            match_stmt.get_type(),
-            Nonterminal(NonterminalType::match_stmt)
-        );
-        // "match" subject_expr ":" Newline Indent case_block+ Dedent
+    fn index_match_stmt(&mut self, match_stmt: MatchStmt<'db>, ordered: bool) -> NodeIndex {
         todo!("match_stmt")
     }
 
