@@ -133,8 +133,12 @@ create_nonterminal_structs!(
     Set: atom
     Tuple: atom
     Dict: atom
+    DictKeyValue: dict_key_value
     Comprehension: comprehension
     DictComprehension: dict_comprehension
+    ForIfClauses: for_if_clauses
+    SyncForIfClause: sync_for_if_clause
+    CompIf: comp_if
     Slices: slices
     Slice: slice
 
@@ -610,6 +614,7 @@ impl<'db> Iterator for SimpleStmtIterator<'db> {
         self.0.next().map(Self::Item::new)
     }
 }
+
 impl<'db> SimpleStmt<'db> {
     pub fn unpack(&self) -> SimpleStmtContent<'db> {
         let simple_child = self.0.get_nth_child(0);
@@ -652,6 +657,78 @@ pub enum StarExpressionContent<'db> {
     Expression(Expression<'db>),
     StarExpression(StarExpression<'db>),
     Tuple(StarExpressionsTuple<'db>),
+}
+
+impl<'db> Comprehension<'db> {
+    pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
+        let mut iter = self.0.iter_children();
+        let expr =
+            CommonComprehensionExpression::Single(NamedExpression::new(iter.next().unwrap()));
+        (expr, ForIfClauses::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> DictComprehension<'db> {
+    pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
+        let mut iter = self.0.iter_children();
+        let expr =
+            CommonComprehensionExpression::DictKeyValue(DictKeyValue::new(iter.next().unwrap()));
+        (expr, ForIfClauses::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> ForIfClauses<'db> {
+    pub fn iter(&self) -> ForIfClauseIterator<'db> {
+        ForIfClauseIterator(self.0.iter_children())
+    }
+}
+
+pub enum ForIfClause<'db> {
+    Async(SyncForIfClause<'db>),
+    Sync(SyncForIfClause<'db>),
+}
+
+pub struct ForIfClauseIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for ForIfClauseIterator<'db> {
+    type Item = ForIfClause<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|n| {
+            if n.is_type(Nonterminal(sync_for_if_clause)) {
+                Self::Item::Sync(SyncForIfClause::new(n))
+            } else {
+                Self::Item::Async(SyncForIfClause::new(n.get_nth_child(1)))
+            }
+        })
+    }
+}
+
+pub enum CommonComprehensionExpression<'db> {
+    Single(NamedExpression<'db>),
+    DictKeyValue(DictKeyValue<'db>),
+}
+
+impl<'db> SyncForIfClause<'db> {
+    pub fn unpack(&self) -> (StarTargets<'db>, Disjunction<'db>, CompIfIterator<'db>) {
+        // "for" star_targets "in" disjunction comp_if*
+        let mut iterator = self.0.iter_children();
+        iterator.next();
+        let star_targets_ = StarTargets::new(iterator.next().unwrap());
+        iterator.next();
+        let disjunction_ = Disjunction::new(iterator.next().unwrap());
+        (star_targets_, disjunction_, CompIfIterator(iterator))
+    }
+}
+
+pub struct CompIfIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for CompIfIterator<'db> {
+    type Item = CompIf<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(Self::Item::new)
+    }
 }
 
 impl<'db> ClassDef<'db> {

@@ -10,8 +10,9 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    Block, ClassDef, File, ForStmt, FunctionDef, FunctionParent, IfBlockType, IfStmt, Lambda,
-    MatchStmt, Name, NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    Block, ClassDef, CommonComprehensionExpression, Comprehension, DictComprehension, File,
+    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent, IfBlockType, IfStmt,
+    Lambda, MatchStmt, Name, NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -296,7 +297,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if n.is_type(Nonterminal(comprehension)) {
                 // TODO It is not correct to index the last part of the expression here. It should
                 // have been done at the point where the generator was created.
-                self.index_comprehension(n, true);
+                self.index_comprehension(Comprehension::new(n), true);
+            } else if n.is_type(Nonterminal(comprehension)) {
+                self.index_dict_comprehension(DictComprehension::new(n), true);
             } else if n.is_type(Nonterminal(lambda)) {
                 let symbol_table = SymbolTable::default();
                 self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
@@ -538,8 +541,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 // in the current scope.
                 let parent = n.get_parent().unwrap();
                 let bracket = parent.get_nth_child(0).get_code();
-                if (bracket == "[" || bracket == "{") && parent.is_type(Nonterminal(atom)) {
-                    self.index_comprehension(n, ordered);
+                if bracket == "[" && parent.is_type(Nonterminal(atom)) {
+                    self.index_comprehension(Comprehension::new(n), ordered);
+                } else if bracket == "{" && parent.is_type(Nonterminal(atom)) {
+                    self.index_dict_comprehension(DictComprehension::new(n), ordered);
                 } else {
                     self.unresolved_nodes.push(n);
                 }
@@ -548,49 +553,51 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_comprehension(&mut self, comp: PyNode<'db>, ordered: bool) {
-        // comprehension: named_expression for_if_clauses
-        // dict_comprehension: dict_key_value for_if_clauses
-        let clauses = comp.get_nth_child(1);
-        debug_assert_eq!(
-            clauses.get_type(),
-            Nonterminal(NonterminalType::for_if_clauses)
-        );
-        let mut iterator = clauses.iter_children();
-
-        let first_clause = iterator.next().unwrap();
+    fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
         // TODO the ordered argument is not used here currently and it should probably be used.
-        self.index_comprehension_clause(&mut iterator, first_clause, comp.get_nth_child(0));
+        let (expr, for_if_clauses) = comp.unpack();
+        let mut clauses = for_if_clauses.iter();
+        self.index_comprehension_clause(&expr, &clauses.next().unwrap(), &mut clauses)
+    }
+
+    fn index_dict_comprehension(&mut self, comp: DictComprehension<'db>, ordered: bool) {
+        let (expr, for_if_clauses) = comp.unpack();
+        let mut clauses = for_if_clauses.iter();
+        self.index_comprehension_clause(&expr, &clauses.next().unwrap(), &mut clauses)
     }
 
     fn index_comprehension_clause(
         &mut self,
-        clauses: &mut impl Iterator<Item = PyNode<'db>>,
-        mut clause: PyNode<'db>,
-        // Either a named_expression or a dict_key_value
-        result_node: PyNode<'db>,
+        expr: &CommonComprehensionExpression<'db>,
+        clause: &ForIfClause<'db>,
+        clauses: &mut ForIfClauseIterator<'db>,
     ) {
-        use NonterminalType::*;
-        if clause.is_type(Nonterminal(async_for_if_clause)) {
-            // async_for_if_clause:? ["async"] sync_for_if_clause
-            clause = clause.get_nth_child(1);
-        }
-
-        // sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
-        debug_assert_eq!(clause.get_type(), Nonterminal(sync_for_if_clause));
-        for child in clause.iter_children() {
-            if child.is_type(Nonterminal(disjunction)) || child.is_type(Nonterminal(comp_if)) {
-                self.index_non_block_node(child, true, false);
+        let targets = match clause {
+            ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
+                let (targets, from, ifs) = sync_for_if_clause.unpack();
+                self.index_non_block_node(from.0, true, false);
+                for if_ in ifs {
+                    self.index_non_block_node(if_.0, true, false);
+                }
+                targets
             }
-        }
+        };
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Comprehension, &symbol_table, |binder| {
-            binder.index_non_block_node(clause.get_nth_child(1), true, false);
+            binder.index_non_block_node(targets.0, true, false);
+
             if let Some(clause) = clauses.next() {
-                binder.index_comprehension_clause(clauses, clause, result_node);
+                binder.index_comprehension_clause(expr, &clause, clauses);
             } else {
-                binder.index_non_block_node(result_node, true, false);
+                match expr {
+                    CommonComprehensionExpression::Single(named_expr) => {
+                        binder.index_non_block_node(named_expr.0, true, false)
+                    }
+                    CommonComprehensionExpression::DictKeyValue(dict_key_value) => {
+                        binder.index_non_block_node(dict_key_value.0, true, false)
+                    }
+                };
             }
         });
     }
