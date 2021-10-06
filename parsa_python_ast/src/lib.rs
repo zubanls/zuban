@@ -275,7 +275,11 @@ impl<'db> Keyword<'db> {
     }
 }
 
-impl<'db> File<'db> {}
+impl<'db> File<'db> {
+    pub fn iter_stmts(&self) -> StmtIterator<'db> {
+        StmtIterator(self.0.iter_children())
+    }
+}
 
 impl<'db> List<'db> {
     pub fn unpack(&self) -> ListContent<'db> {
@@ -429,6 +433,49 @@ impl<'db> ForStmt<'db> {
         let block_ = Block::new(iterator.next().unwrap());
         let else_block_ = iterator.next().map(ElseBlock::new);
         (star_targets_, exprs, block_, else_block_)
+    }
+}
+
+impl<'db> Block<'db> {
+    pub fn unpack(&self) -> BlockContent<'db> {
+        // simple_stmts | Newline Indent stmt+ Dedent
+        let mut iterator = self.0.iter_children();
+        let first = iterator.next().unwrap();
+        if first.is_type(Nonterminal(simple_stmts)) {
+            BlockContent::OneLine(SimpleStmts::new(first))
+        } else {
+            iterator.next(); // get rid of indent leaf
+            BlockContent::Indented(StmtIterator(iterator))
+        }
+    }
+}
+
+pub enum BlockContent<'db> {
+    OneLine(SimpleStmts<'db>),
+    Indented(StmtIterator<'db>),
+}
+
+pub struct StmtIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for StmtIterator<'db> {
+    type Item = Stmt<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(n) = self.0.next() {
+            if n.is_type(Nonterminal(stmt)) {
+                Some(Self::Item::new(n))
+            } else {
+                debug_assert!(
+                    n.is_type(Terminal(TerminalType::Dedent))
+                        || n.is_type(Terminal(TerminalType::Endmarker)),
+                    "{:?}",
+                    n.get_type()
+                );
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 

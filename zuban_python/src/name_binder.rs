@@ -10,9 +10,10 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    Block, ClassDef, CommonComprehensionExpression, Comprehension, DictComprehension, File,
-    ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent, IfBlockType, IfStmt,
-    Lambda, MatchStmt, Name, NameDefinition, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, DictComprehension,
+    File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent, IfBlockType,
+    IfStmt, Lambda, MatchStmt, Name, NameDefinition, StmtIterator, Tree, TryBlockType, TryStmt,
+    WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -150,7 +151,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn index_file(&mut self, file_node: File<'db>) {
-        self.index_stmts(file_node.0.iter_children(), true, true);
+        self.index_stmts(file_node.iter_stmts(), true, true);
     }
 
     fn index_block(&mut self, block: Block<'db>, ordered: bool, in_base_scope: bool) -> NodeIndex {
@@ -161,27 +162,24 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // - sync_for_if_clause: reversed order and only in scope
         // - lambda: only in scope
         // - function_def, class_def: ignore
-        if block
-            .0
-            .get_nth_child(0)
-            .is_type(Nonterminal(NonterminalType::simple_stmts))
-        {
-            self.index_non_block_node(block.0, ordered, in_base_scope)
-        } else {
-            self.index_stmts(block.0.iter_children().skip(2), ordered, in_base_scope)
+        match block.unpack() {
+            BlockContent::OneLine(simple) => {
+                self.index_non_block_node(simple.0, ordered, in_base_scope)
+            }
+            BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered, in_base_scope),
         }
     }
 
     fn index_stmts(
         &mut self,
-        stmts: impl Iterator<Item = PyNode<'db>>,
+        stmts: StmtIterator<'db>,
         ordered: bool,
         in_base_scope: bool,
     ) -> NodeIndex {
         use NonterminalType::*;
-        //debug_assert_eq!(stmts_node.get_type(), Nonterminal(stmts));
         let mut latest_return_or_yield = 0;
         for child in stmts {
+            let child = child.0;
             if child.is_type(Terminal(TerminalType::Endmarker))
                 || child.is_type(Terminal(TerminalType::Newline))
                 || child.is_type(Terminal(TerminalType::Dedent))
