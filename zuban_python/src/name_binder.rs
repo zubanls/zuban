@@ -10,10 +10,10 @@ use crate::utils::SymbolTable;
 use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
-    Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, DictComprehension,
-    File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent, IfBlockType,
-    IfStmt, Lambda, MatchStmt, Name, NameDefinition, StmtIterator, Tree, TryBlockType, TryStmt,
-    WhileStmt, WithStmt,
+    AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
+    Decoratee, DictComprehension, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
+    FunctionParent, IfBlockType, IfStmt, Lambda, MatchStmt, Name, NameDefinition, StmtContent,
+    StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -176,81 +176,56 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ordered: bool,
         in_base_scope: bool,
     ) -> NodeIndex {
-        use NonterminalType::*;
         let mut latest_return_or_yield = 0;
-        for child in stmts {
-            let child = child.0;
-            if child.is_type(Terminal(TerminalType::Endmarker))
-                || child.is_type(Terminal(TerminalType::Newline))
-                || child.is_type(Terminal(TerminalType::Dedent))
-            {
-                continue;
-            }
-            let child = child.get_nth_child(0);
-            let return_or_yield = if child.is_type(Nonterminal(simple_stmts)) {
-                self.index_non_block_node(child, ordered, in_base_scope)
-            } else if child.is_type(Nonterminal(function_def)) {
-                self.index_function_name_and_param_defaults(
-                    FunctionDef::new(child),
-                    ordered,
-                    in_base_scope,
-                );
-                0
-            } else if child.is_type(Nonterminal(class_def)) {
-                self.index_class(ClassDef::new(child), false, in_base_scope);
-                0
-            } else if child.is_type(Nonterminal(decorated)) {
-                let not_decorated = child.get_nth_child(1);
-                if not_decorated.is_type(Nonterminal(function_def)) {
-                    self.index_function_name_and_param_defaults(
-                        FunctionDef::new(not_decorated),
-                        ordered,
-                        in_base_scope,
-                    );
-                } else if not_decorated.is_type(Nonterminal(class_def)) {
-                    self.index_class(ClassDef::new(not_decorated), true, in_base_scope);
-                } else {
-                    debug_assert_eq!(not_decorated.get_type(), Nonterminal(async_function_def));
-                    /*
-                    self.add_point_definition(
-                        not_decorated.get_nth_child(0).get_nth_child(1),
-                    );
-                    */
-                    todo!("async stmt")
+        for stmt in stmts {
+            let return_or_yield = match stmt.unpack() {
+                StmtContent::SimpleStmts(simple) => {
+                    self.index_non_block_node(simple.0, ordered, in_base_scope)
                 }
-                0
-            } else if child.is_type(Nonterminal(if_stmt)) {
-                self.index_if_stmt(IfStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(try_stmt)) {
-                self.index_try_stmt(TryStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(for_stmt)) {
-                self.index_for_stmt(ForStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(while_stmt)) {
-                self.index_while_stmt(WhileStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(match_stmt)) {
-                self.index_match_stmt(MatchStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(with_stmt)) {
-                self.index_with_stmt(WithStmt::new(child), ordered)
-            } else if child.is_type(Nonterminal(async_stmt)) {
-                let iterator = child.iter_children();
-                let mut iterator = iterator.skip(1);
-                let inner = iterator.next().unwrap();
-                if inner.is_type(Nonterminal(function_def)) {
-                    self.index_function_name_and_param_defaults(
-                        FunctionDef::new(inner),
-                        ordered,
-                        in_base_scope,
-                    );
+                StmtContent::FunctionDef(func) => {
+                    self.index_function_name_and_param_defaults(func, ordered, in_base_scope);
                     0
-                } else if inner.is_type(Nonterminal(for_stmt)) {
-                    self.index_for_stmt(ForStmt::new(inner), ordered)
-                } else if inner.is_type(Nonterminal(with_stmt)) {
-                    self.index_with_stmt(WithStmt::new(child), ordered)
-                } else {
-                    unreachable!()
                 }
-            } else {
-                unreachable!("But found {:?}", child.get_type());
+                StmtContent::ClassDef(class) => {
+                    self.index_class(class, false, in_base_scope);
+                    0
+                }
+                StmtContent::Decorated(decorated) => {
+                    match decorated.decoratee() {
+                        Decoratee::FunctionDef(func) | Decoratee::AsyncFunctionDef(func) => {
+                            self.index_function_name_and_param_defaults(
+                                func,
+                                ordered,
+                                in_base_scope,
+                            );
+                        }
+                        Decoratee::ClassDef(cls) => {
+                            self.index_class(cls, true, in_base_scope);
+                        }
+                    }
+                    0
+                }
+                StmtContent::IfStmt(if_stmt) => self.index_if_stmt(if_stmt, ordered),
+                StmtContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
+                StmtContent::TryStmt(try_stmt) => self.index_try_stmt(try_stmt, ordered),
+                StmtContent::WhileStmt(while_stmt) => self.index_while_stmt(while_stmt, ordered),
+                StmtContent::WithStmt(with_stmt) => self.index_with_stmt(with_stmt, ordered),
+                StmtContent::MatchStmt(match_stmt) => self.index_match_stmt(match_stmt, ordered),
+                StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                    AsyncStmtContent::FunctionDef(function_def) => {
+                        self.index_function_name_and_param_defaults(
+                            function_def,
+                            ordered,
+                            in_base_scope,
+                        );
+                        0
+                    }
+                    AsyncStmtContent::ForStmt(for_stmt) => self.index_for_stmt(for_stmt, ordered),
+                    AsyncStmtContent::WithStmt(with_stmt) => {
+                        self.index_with_stmt(with_stmt, ordered)
+                    }
+                },
+                StmtContent::Newline => 0,
             };
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, return_or_yield);

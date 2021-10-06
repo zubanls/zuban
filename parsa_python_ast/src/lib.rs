@@ -85,6 +85,7 @@ create_nonterminal_structs!(
     ExceptBlock: except_block
     FinallyBlock: finally_block
     MatchStmt: match_stmt
+    AsyncStmt: async_stmt
 
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
@@ -644,6 +645,92 @@ impl<'db> Stmt<'db> {
             None
         }
     }
+
+    #[inline]
+    pub fn unpack(&self) -> StmtContent<'db> {
+        let child = self.0.get_nth_child(0);
+        if child.is_type(Nonterminal(simple_stmts)) {
+            StmtContent::SimpleStmts(SimpleStmts::new(child))
+        } else if child.is_type(Nonterminal(function_def)) {
+            StmtContent::FunctionDef(FunctionDef::new(child))
+        } else if child.is_type(Nonterminal(class_def)) {
+            StmtContent::ClassDef(ClassDef::new(child))
+        } else if child.is_type(Nonterminal(decorated)) {
+            StmtContent::Decorated(Decorated::new(child))
+        } else if child.is_type(Nonterminal(if_stmt)) {
+            StmtContent::IfStmt(IfStmt::new(child))
+        } else if child.is_type(Nonterminal(try_stmt)) {
+            StmtContent::TryStmt(TryStmt::new(child))
+        } else if child.is_type(Nonterminal(for_stmt)) {
+            StmtContent::ForStmt(ForStmt::new(child))
+        } else if child.is_type(Nonterminal(while_stmt)) {
+            StmtContent::WhileStmt(WhileStmt::new(child))
+        } else if child.is_type(Nonterminal(with_stmt)) {
+            StmtContent::WithStmt(WithStmt::new(child))
+        } else if child.is_type(Nonterminal(match_stmt)) {
+            StmtContent::MatchStmt(MatchStmt::new(child))
+        } else if child.is_type(Nonterminal(async_stmt)) {
+            StmtContent::AsyncStmt(AsyncStmt::new(child))
+        } else {
+            debug_assert_eq!(child.get_type(), Terminal(TerminalType::Newline));
+            StmtContent::Newline
+        }
+    }
+}
+
+pub enum StmtContent<'db> {
+    SimpleStmts(SimpleStmts<'db>),
+    FunctionDef(FunctionDef<'db>),
+    ClassDef(ClassDef<'db>),
+    Decorated(Decorated<'db>),
+    AsyncStmt(AsyncStmt<'db>),
+    IfStmt(IfStmt<'db>),
+    WhileStmt(WhileStmt<'db>),
+    ForStmt(ForStmt<'db>),
+    TryStmt(TryStmt<'db>),
+    WithStmt(WithStmt<'db>),
+    MatchStmt(MatchStmt<'db>),
+    Newline,
+}
+
+impl<'db> Decorated<'db> {
+    pub fn decoratee(&self) -> Decoratee<'db> {
+        let decoratee = self.0.get_nth_child(1);
+        if decoratee.is_type(Nonterminal(function_def)) {
+            Decoratee::FunctionDef(FunctionDef::new(decoratee))
+        } else if decoratee.is_type(Nonterminal(class_def)) {
+            Decoratee::ClassDef(ClassDef::new(decoratee))
+        } else {
+            debug_assert_eq!(decoratee.get_type(), Nonterminal(async_function_def));
+            Decoratee::AsyncFunctionDef(FunctionDef::new(decoratee.get_nth_child(1)))
+        }
+    }
+}
+
+pub enum Decoratee<'db> {
+    ClassDef(ClassDef<'db>),
+    FunctionDef(FunctionDef<'db>),
+    AsyncFunctionDef(FunctionDef<'db>),
+}
+
+impl<'db> AsyncStmt<'db> {
+    pub fn unpack(&self) -> AsyncStmtContent<'db> {
+        let child = self.0.get_nth_child(1);
+        if child.is_type(Nonterminal(function_def)) {
+            AsyncStmtContent::FunctionDef(FunctionDef::new(child))
+        } else if child.is_type(Nonterminal(for_stmt)) {
+            AsyncStmtContent::ForStmt(ForStmt::new(child))
+        } else {
+            debug_assert_eq!(child.get_type(), Nonterminal(with_stmt));
+            AsyncStmtContent::WithStmt(WithStmt::new(child))
+        }
+    }
+}
+
+pub enum AsyncStmtContent<'db> {
+    FunctionDef(FunctionDef<'db>),
+    ForStmt(ForStmt<'db>),
+    WithStmt(WithStmt<'db>),
 }
 
 impl<'db> SimpleStmts<'db> {
