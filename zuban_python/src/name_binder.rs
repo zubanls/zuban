@@ -13,7 +13,7 @@ use parsa_python_ast::{
     AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
     Decoratee, DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt,
     FunctionDef, FunctionParent, IfBlockType, IfStmt, Lambda, MatchStmt, Name, NameDefinition,
-    StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    NameParent, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -472,18 +472,37 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         for n in node.search(SEARCH_NAMES) {
             if n.is_type(Terminal(TerminalType::Name)) {
-                let parent = n.get_parent().unwrap();
-                if parent.is_type(Nonterminal(name_definition)) {
-                    if !parent.get_parent().unwrap().is_type(Nonterminal(t_primary)) {
-                        // The types are inferred later.
-                        self.add_new_definition(
-                            NameDefinition::new(parent),
-                            Point::new_uncalculated(),
-                            in_base_scope,
-                        )
+                let name = Name::new(n);
+                match name.parent() {
+                    NameParent::Atom => {
+                        self.maybe_add_reference(name, ordered);
                     }
-                } else {
-                    self.index_reference(Name::new(n), parent, ordered);
+                    NameParent::NameDefinition(name_def) => {
+                        if !name_def
+                            .0
+                            .get_parent()
+                            .unwrap()
+                            .is_type(Nonterminal(t_primary))
+                        {
+                            // The types are inferred later.
+                            self.add_new_definition(
+                                name_def,
+                                Point::new_uncalculated(),
+                                in_base_scope,
+                            )
+                        }
+                    }
+                    NameParent::GlobalStmt => {
+                        //self.maybe_add_reference(name, ordered);
+                        dbg!("TODO unhandled global");
+                    }
+                    NameParent::NonlocalStmt => {
+                        // TODO nonlocal
+                    }
+                    NameParent::Other => {
+                        // All other names are not references or part of imports and should be
+                        // resolved later.
+                    }
                 }
             } else if n.is_type(Nonterminal(lambda)) {
                 self.index_lambda_param_defaults(Lambda::new(n), ordered);
@@ -664,19 +683,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.add_point_definition(param.name_definition(), Specific::Param, true);
         }
         self.index_non_block_node(expr.0, true, true);
-    }
-
-    fn index_reference(&mut self, name: Name<'db>, parent: PyNode<'db>, ordered: bool) {
-        use NonterminalType::*;
-        if parent.is_type(Nonterminal(atom)) {
-            self.maybe_add_reference(name, ordered);
-        } else if parent.is_type(Nonterminal(global_stmt)) {
-            //self.maybe_add_reference(name, ordered);
-            dbg!("TODO unhandled global");
-        } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
-            // TODO nonlocal
-        }
-        // All other names are not references or part of imports and should be resolved later.
     }
 
     #[inline]

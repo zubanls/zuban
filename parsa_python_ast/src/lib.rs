@@ -87,6 +87,9 @@ create_nonterminal_structs!(
     MatchStmt: match_stmt
     AsyncStmt: async_stmt
 
+    GlobalStmt: global_stmt
+    NonlocalStmt: nonlocal_stmt
+
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
@@ -239,6 +242,29 @@ impl<'db> Name<'db> {
         // Could also be a kwarg, which is never a self
         params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
     }
+
+    pub fn parent(&self) -> NameParent<'db> {
+        let parent = self.0.get_parent().unwrap();
+        if parent.is_type(Nonterminal(atom)) {
+            NameParent::Atom
+        } else if parent.is_type(Nonterminal(name_definition)) {
+            NameParent::NameDefinition(NameDefinition::new(parent))
+        } else if parent.is_type(Nonterminal(global_stmt)) {
+            NameParent::GlobalStmt
+        } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
+            NameParent::NonlocalStmt
+        } else {
+            NameParent::Other
+        }
+    }
+}
+
+pub enum NameParent<'db> {
+    NameDefinition(NameDefinition<'db>),
+    Atom,
+    GlobalStmt,
+    NonlocalStmt,
+    Other,
 }
 
 impl<'db> Int<'db> {
