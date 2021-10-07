@@ -231,6 +231,14 @@ impl<'db> Name<'db> {
             unreachable!()
         }
     }
+
+    pub fn has_self_param_position(&self) -> bool {
+        // Parents are name_definition/param_no_default/parameters
+        let param = self.0.get_parent().unwrap().get_parent().unwrap();
+        let params = param.get_parent().unwrap();
+        // Could also be a kwarg, which is never a self
+        params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
+    }
 }
 
 impl<'db> Int<'db> {

@@ -441,16 +441,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let param_point = self.points[param_index as usize].get();
             if let LanguageSpecific = param_point.get_type() {
                 if param_point.get_language_specific() == Specific::Param {
-                    let name_node = Name::by_index(self.tree, param_index);
-                    // Parents are name_definition/param_no_default/parameters
-                    let param = name_node.0.get_parent().unwrap().get_parent().unwrap();
-                    let params = param.get_parent().unwrap();
-                    // Could also be a kwarg, which is never a self
-                    if params.is_type(Nonterminal(NonterminalType::parameters)) {
-                        if params.index + 1 == param.index {
-                            return true;
-                        }
-                    }
+                    let name = Name::by_index(self.tree, param_index);
+                    return name.has_self_param_position();
                 }
             }
         }
