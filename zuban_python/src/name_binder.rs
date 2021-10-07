@@ -11,9 +11,9 @@ use parsa_python::PyNodeType::{Nonterminal, Terminal};
 use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
 use parsa_python_ast::{
     AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
-    Decoratee, DictComprehension, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
-    FunctionParent, IfBlockType, IfStmt, Lambda, MatchStmt, Name, NameDefinition, StmtContent,
-    StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    Decoratee, DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt,
+    FunctionDef, FunctionParent, IfBlockType, IfStmt, Lambda, MatchStmt, Name, NameDefinition,
+    StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -24,6 +24,15 @@ pub enum NameBinderType {
     Comprehension,
 }
 
+enum Unresolved<'db> {
+    FunctionDef(FunctionDef<'db>),
+    Lambda(Lambda<'db>),
+    Expression(Expression<'db>),
+    Comprehension(Comprehension<'db>),
+    DictComprehension(DictComprehension<'db>),
+    Name(Name<'db>),
+}
+
 pub struct NameBinder<'db, 'a> {
     tree: &'db Tree,
     typ: NameBinderType,
@@ -31,7 +40,7 @@ pub struct NameBinder<'db, 'a> {
     points: &'db [Cell<Point>],
     complex_points: &'db ComplexValues,
     unordered_references: Vec<Name<'db>>,
-    unresolved_nodes: Vec<PyNode<'db>>,
+    unresolved_nodes: Vec<Unresolved<'db>>,
     unresolved_names: Vec<Name<'db>>,
     file_index: FileIndex,
     parent_lookup_not_finished: bool,
@@ -104,7 +113,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         name_binder.close();
         let unresolved_names = name_binder.unresolved_names;
         self.unresolved_nodes
-            .extend(unresolved_names.iter().map(|n| n.0));
+            .extend(unresolved_names.into_iter().map(Unresolved::Name));
     }
 
     fn add_new_definition(
@@ -260,35 +269,30 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn close(&mut self) {
-        use NonterminalType::*;
         self.index_unordered_references();
 
         self.parent_lookup_not_finished = true;
         while let Some(n) = self.unresolved_nodes.pop() {
-            if n.is_type(Terminal(TerminalType::Name)) {
-                self.maybe_add_reference(Name::new(n), true);
-            } else if n.is_type(Nonterminal(comprehension)) {
-                // TODO It is not correct to index the last part of the expression here. It should
-                // have been done at the point where the generator was created.
-                self.index_comprehension(Comprehension::new(n), true);
-            } else if n.is_type(Nonterminal(comprehension)) {
-                self.index_dict_comprehension(DictComprehension::new(n), true);
-            } else if n.is_type(Nonterminal(lambda)) {
-                let symbol_table = SymbolTable::default();
-                self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
-                    binder.index_lambda(Lambda::new(n))
-                });
-            } else if n.is_type(Nonterminal(expression)) {
-                // Typically annotations
-                self.index_non_block_node(n, true, false);
-            } else if n.is_type(Nonterminal(function_def)) {
-                let symbol_table = SymbolTable::default();
-                self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
-                    binder.index_function_body(FunctionDef::new(n))
-                });
-            } else {
-                unreachable!("closing scope {:?}", n);
-            }
+            match n {
+                Unresolved::Name(name) => self.maybe_add_reference(name, true),
+                Unresolved::Expression(expr) => {
+                    self.index_non_block_node(expr.0, true, false);
+                }
+                Unresolved::FunctionDef(func) => {
+                    let symbol_table = SymbolTable::default();
+                    self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
+                        binder.index_function_body(func)
+                    });
+                }
+                Unresolved::Lambda(lambda) => {
+                    let symbol_table = SymbolTable::default();
+                    self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
+                        binder.index_lambda(lambda)
+                    });
+                }
+                Unresolved::Comprehension(comp) => self.index_comprehension(comp, true),
+                Unresolved::DictComprehension(comp) => self.index_dict_comprehension(comp, true),
+            };
         }
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
@@ -501,7 +505,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             } else if n.is_type(Nonterminal(lambda)) {
                 self.index_lambda_param_defaults(Lambda::new(n), ordered);
-                self.unresolved_nodes.push(n);
+                self.unresolved_nodes
+                    .push(Unresolved::Lambda(Lambda::new(n)));
             } else if n.is_type(Nonterminal(return_stmt)) || n.is_type(Nonterminal(yield_expr)) {
                 let keyword_index = n.index + 1;
                 self.points[keyword_index as usize].set(Point::new_node_analysis_with_node_index(
@@ -519,7 +524,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 } else if bracket == "{" && parent.is_type(Nonterminal(atom)) {
                     self.index_dict_comprehension(DictComprehension::new(n), ordered);
                 } else {
-                    self.unresolved_nodes.push(n);
+                    self.unresolved_nodes
+                        .push(Unresolved::Comprehension(Comprehension::new(n)));
                 }
             }
         }
@@ -585,7 +591,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         if self.parent.is_some() {
             // Has to be resolved, because we otherwise have no knowledge about the symbol
             // tables in parents.
-            self.unresolved_nodes.push(func.0);
+            self.unresolved_nodes.push(Unresolved::FunctionDef(func));
         }
 
         let (name_def, params, return_annotation, _) = func.unpack();
@@ -593,7 +599,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
             if let Some(annotation) = param.annotation() {
-                self.unresolved_nodes.push(annotation.expression().0);
+                self.unresolved_nodes
+                    .push(Unresolved::Expression(annotation.expression()));
             }
             if let Some(expression) = param.default() {
                 self.index_non_block_node(expression.0, ordered, false);
@@ -601,7 +608,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation that needs to be resolved at the end of a module.
-            self.unresolved_nodes.push(return_annotation.expression().0);
+            self.unresolved_nodes
+                .push(Unresolved::Expression(return_annotation.expression()));
         }
         self.add_point_definition(
             name_def,
