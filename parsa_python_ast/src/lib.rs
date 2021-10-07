@@ -69,13 +69,15 @@ impl<'db> Iterator for InterestingNodes<'db> {
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
-        pub struct $name<'db>(PyNode<'db>);
+        pub struct $name<'db> {
+            node: PyNode<'db>,
+        }
 
         impl<'db> $name<'db> {
             #[inline]
             pub fn new(node: PyNode<'db>) -> Self {
                 debug_assert_eq!(node.get_type(), $type);
-                Self(node)
+                Self { node }
             }
 
             #[inline]
@@ -91,19 +93,19 @@ macro_rules! create_struct {
 
             #[inline]
             pub fn index(&self) -> NodeIndex {
-                self.0.index
+                self.node.index
             }
 
             pub fn short_debug(&self) -> &'db str {
-                self.0
+                self.node
                     .get_code()
                     .get(..20)
-                    .unwrap_or_else(|| self.0.get_code())
+                    .unwrap_or_else(|| self.node.get_code())
             }
 
             pub fn get_legacy_node(&self) -> PyNode<'db> {
                 // TODO remove this
-                self.0
+                self.node
             }
         }
 
@@ -118,7 +120,7 @@ macro_rules! create_struct {
                     Nonterminal(return_stmt),
                     Nonterminal(dict_comprehension),
                 ];
-                InterestingNodes(self.0.search(SEARCH_NAMES))
+                InterestingNodes(self.node.search(SEARCH_NAMES))
             }
         }
     };
@@ -230,27 +232,27 @@ create_struct!(Keyword: PyNodeType::Keyword);
 impl<'db> Name<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.0.get_code()
+        self.node.get_code()
     }
 
     pub fn start(&self) -> CodeIndex {
-        self.0.start()
+        self.node.start()
     }
 
     pub fn end(&self) -> CodeIndex {
-        self.0.end()
+        self.node.end()
     }
 
     pub fn is_reference(&self) -> bool {
         !self
-            .0
+            .node
             .get_parent()
             .unwrap()
             .is_type(Nonterminal(name_definition))
     }
 
     pub fn name_definition(&self) -> Option<NameDefinition<'db>> {
-        let parent = self.0.get_parent().unwrap();
+        let parent = self.node.get_parent().unwrap();
         if parent.is_type(Nonterminal(name_definition)) {
             Some(NameDefinition::new(parent))
         } else {
@@ -259,7 +261,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
-        let parent = self.0.get_parent().unwrap();
+        let parent = self.node.get_parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
             Some(Primary::new(parent))
         } else {
@@ -268,12 +270,12 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_function_def(&self) -> FunctionDef<'db> {
-        FunctionDef(self.0.get_parent().unwrap().get_parent().unwrap())
+        FunctionDef::new(self.node.get_parent().unwrap().get_parent().unwrap())
     }
 
     pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
         let stmt_node = self
-            .0
+            .node
             .get_parent_until(&[
                 Nonterminal(stmt),
                 Nonterminal(lambda),
@@ -296,14 +298,14 @@ impl<'db> Name<'db> {
 
     pub fn has_self_param_position(&self) -> bool {
         // Parents are name_definition/param_no_default/parameters
-        let param = self.0.get_parent().unwrap().get_parent().unwrap();
+        let param = self.node.get_parent().unwrap().get_parent().unwrap();
         let params = param.get_parent().unwrap();
         // Could also be a kwarg, which is never a self
         params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
     }
 
     pub fn parent(&self) -> NameParent<'db> {
-        let parent = self.0.get_parent().unwrap();
+        let parent = self.node.get_parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
             NameParent::Atom
         } else if parent.is_type(Nonterminal(name_definition)) {
@@ -329,7 +331,7 @@ pub enum NameParent<'db> {
 impl<'db> Int<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.0.get_code()
+        self.node.get_code()
     }
 }
 
@@ -356,13 +358,13 @@ impl<'db> StmtLike<'db> {
 impl<'db> Keyword<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.0.get_code()
+        self.node.get_code()
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
-        let parent = self.0.get_parent().unwrap();
+        let parent = self.node.get_parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
-            Some(Primary(parent))
+            Some(Primary::new(parent))
         } else {
             None
         }
@@ -371,17 +373,17 @@ impl<'db> Keyword<'db> {
 
 impl<'db> File<'db> {
     pub fn iter_stmts(&self) -> StmtIterator<'db> {
-        StmtIterator(self.0.iter_children())
+        StmtIterator(self.node.iter_children())
     }
 }
 
 impl<'db> List<'db> {
     pub fn unpack(&self) -> ListContent<'db> {
-        let n = self.0.get_nth_child(1);
+        let n = self.node.get_nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
             ListContent::Elements(ListElementIterator(n.iter_children().step_by(2)))
         } else if n.is_type(Nonterminal(comprehension)) {
-            ListContent::Comprehension(Comprehension(n))
+            ListContent::Comprehension(Comprehension::new(n))
         } else {
             ListContent::None
         }
@@ -401,9 +403,9 @@ impl<'db> Iterator for ListElementIterator<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|next| {
             if next.is_type(Nonterminal(named_expression)) {
-                ListElement::NamedExpression(NamedExpression(next))
+                ListElement::NamedExpression(NamedExpression::new(next))
             } else {
-                ListElement::StarNamedExpression(StarNamedExpression(next))
+                ListElement::StarNamedExpression(StarNamedExpression::new(next))
             }
         })
     }
@@ -416,14 +418,14 @@ pub enum ListElement<'db> {
 
 impl<'db> Expression<'db> {
     pub fn unpack(self) -> ExpressionContent<'db> {
-        let mut iter = self.0.iter_children();
+        let mut iter = self.node.iter_children();
         let first = iter.next().unwrap();
         if first.is_type(Nonterminal(lambda)) {
             ExpressionContent::Lambda(Lambda::new(first))
         } else if iter.next().is_none() {
             ExpressionContent::ExpressionPart(ExpressionPart::new(first))
         } else {
-            ExpressionContent::Ternary(Ternary::new(self.0))
+            ExpressionContent::Ternary(Ternary::new(self.node))
         }
     }
 }
@@ -494,12 +496,12 @@ impl<'db> ExpressionPart<'db> {
 
 impl<'db> NamedExpression<'db> {
     pub fn unpack(self) -> NamedExpressionContent<'db> {
-        let node = self.0.get_nth_child(0);
+        let node = self.node.get_nth_child(0);
         if node.is_type(Nonterminal(expression)) {
-            NamedExpressionContent::Expression(Expression(node))
+            NamedExpressionContent::Expression(Expression::new(node))
         } else {
             let expr = node.get_nth_child(2);
-            NamedExpressionContent::Definition(NameDefinition(node), Expression(expr))
+            NamedExpressionContent::Definition(NameDefinition::new(node), Expression::new(expr))
         }
     }
 }
@@ -519,7 +521,7 @@ impl<'db> ForStmt<'db> {
         Option<ElseBlock<'db>>,
     ) {
         // "for" star_targets "in" star_expressions ":" block else_block?
-        let mut iterator = self.0.iter_children().skip(1);
+        let mut iterator = self.node.iter_children().skip(1);
         let star_targets_ = StarTargets::new(iterator.next().unwrap());
         iterator.next();
         let exprs = StarExpressions::new(iterator.next().unwrap());
@@ -533,7 +535,7 @@ impl<'db> ForStmt<'db> {
 impl<'db> Block<'db> {
     pub fn unpack(&self) -> BlockContent<'db> {
         // simple_stmts | Newline Indent stmt+ Dedent
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         let first = iterator.next().unwrap();
         if first.is_type(Nonterminal(simple_stmts)) {
             BlockContent::OneLine(SimpleStmts::new(first))
@@ -575,14 +577,14 @@ impl<'db> Iterator for StmtIterator<'db> {
 
 impl<'db> ElseBlock<'db> {
     pub fn block(&self) -> Block<'db> {
-        Block::new(self.0.get_nth_child(1))
+        Block::new(self.node.get_nth_child(1))
     }
 }
 
 impl<'db> WhileStmt<'db> {
     pub fn unpack(&self) -> (NamedExpression<'db>, Block<'db>, Option<ElseBlock<'db>>) {
         // "while" named_expression ":" block else_block?
-        let mut iterator = self.0.iter_children().skip(1);
+        let mut iterator = self.node.iter_children().skip(1);
         let named = NamedExpression::new(iterator.next().unwrap());
         iterator.next();
         let block_ = Block::new(iterator.next().unwrap());
@@ -594,7 +596,7 @@ impl<'db> WhileStmt<'db> {
 impl<'db> WithStmt<'db> {
     pub fn unpack(&self) -> (WithItems<'db>, Block<'db>) {
         // with_stmt: "with" with_items  ":" block
-        let mut iterator = self.0.iter_children().skip(1);
+        let mut iterator = self.node.iter_children().skip(1);
         let with = WithItems::new(iterator.next().unwrap());
         iterator.next();
         (with, Block::new(iterator.next().unwrap()))
@@ -603,7 +605,7 @@ impl<'db> WithStmt<'db> {
 
 impl<'db> WithItems<'db> {
     pub fn iter(&self) -> WithItemsIterator<'db> {
-        WithItemsIterator(self.0.iter_children())
+        WithItemsIterator(self.node.iter_children())
     }
 }
 
@@ -625,7 +627,7 @@ impl<'db> Iterator for WithItemsIterator<'db> {
 impl<'db> WithItem<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<StarTarget<'db>>) {
         // expression ["as" star_target]
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         let expr = iterator.next().unwrap();
         iterator.next();
         (Expression::new(expr), iterator.next().map(StarTarget::new))
@@ -634,7 +636,7 @@ impl<'db> WithItem<'db> {
 
 impl<'db> IfStmt<'db> {
     pub fn iter_blocks(&self) -> IfBlockIterator<'db> {
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         iterator.next(); // Ignore if
         IfBlockIterator(iterator)
     }
@@ -667,7 +669,7 @@ impl<'db> Iterator for IfBlockIterator<'db> {
 
 impl<'db> TryStmt<'db> {
     pub fn iter_blocks(&self) -> TryBlockIterator<'db> {
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         iterator.next(); // Ignore try
         TryBlockIterator(iterator)
     }
@@ -704,14 +706,14 @@ impl<'db> Iterator for TryBlockIterator<'db> {
 
 impl<'db> FinallyBlock<'db> {
     pub fn block(&self) -> Block<'db> {
-        Block::new(self.0.get_nth_child(2))
+        Block::new(self.node.get_nth_child(2))
     }
 }
 
 impl<'db> ExceptBlock<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<NameDefinition<'db>>, Block<'db>) {
         // except_clause ":" block
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         let except_clause_ = iterator.next().unwrap();
         iterator.next();
         let block_ = iterator.next().unwrap();
@@ -731,7 +733,7 @@ impl<'db> ExceptBlock<'db> {
 
 impl<'db> Stmt<'db> {
     pub fn as_simple_stmts(&self) -> Option<SimpleStmts<'db>> {
-        let child = self.0.get_nth_child(0);
+        let child = self.node.get_nth_child(0);
         if child.is_type(Nonterminal(simple_stmts)) {
             Some(SimpleStmts::new(child))
         } else {
@@ -741,7 +743,7 @@ impl<'db> Stmt<'db> {
 
     #[inline]
     pub fn unpack(&self) -> StmtContent<'db> {
-        let child = self.0.get_nth_child(0);
+        let child = self.node.get_nth_child(0);
         if child.is_type(Nonterminal(simple_stmts)) {
             StmtContent::SimpleStmts(SimpleStmts::new(child))
         } else if child.is_type(Nonterminal(function_def)) {
@@ -788,7 +790,7 @@ pub enum StmtContent<'db> {
 
 impl<'db> Decorated<'db> {
     pub fn decoratee(&self) -> Decoratee<'db> {
-        let decoratee = self.0.get_nth_child(1);
+        let decoratee = self.node.get_nth_child(1);
         if decoratee.is_type(Nonterminal(function_def)) {
             Decoratee::FunctionDef(FunctionDef::new(decoratee))
         } else if decoratee.is_type(Nonterminal(class_def)) {
@@ -808,7 +810,7 @@ pub enum Decoratee<'db> {
 
 impl<'db> AsyncStmt<'db> {
     pub fn unpack(&self) -> AsyncStmtContent<'db> {
-        let child = self.0.get_nth_child(1);
+        let child = self.node.get_nth_child(1);
         if child.is_type(Nonterminal(function_def)) {
             AsyncStmtContent::FunctionDef(FunctionDef::new(child))
         } else if child.is_type(Nonterminal(for_stmt)) {
@@ -828,7 +830,7 @@ pub enum AsyncStmtContent<'db> {
 
 impl<'db> SimpleStmts<'db> {
     pub fn iter(&self) -> SimpleStmtIterator<'db> {
-        SimpleStmtIterator(self.0.iter_children().step_by(2))
+        SimpleStmtIterator(self.node.iter_children().step_by(2))
     }
 }
 
@@ -844,7 +846,7 @@ impl<'db> Iterator for SimpleStmtIterator<'db> {
 
 impl<'db> SimpleStmt<'db> {
     pub fn unpack(&self) -> SimpleStmtContent<'db> {
-        let simple_child = self.0.get_nth_child(0);
+        let simple_child = self.node.get_nth_child(0);
         if simple_child.is_type(Nonterminal(assignment)) {
             SimpleStmtContent::Assignment(Assignment::new(simple_child))
         } else if simple_child.is_type(Nonterminal(import_from)) {
@@ -866,16 +868,16 @@ pub enum SimpleStmtContent<'db> {
 
 impl<'db> StarExpressions<'db> {
     pub fn unpack(&self) -> StarExpressionContent<'db> {
-        let mut iter = self.0.iter_children();
+        let mut iter = self.node.iter_children();
         let expr = iter.next().unwrap();
         if iter.next().is_none() {
             if expr.is_type(Nonterminal(expression)) {
-                StarExpressionContent::Expression(Expression(expr))
+                StarExpressionContent::Expression(Expression::new(expr))
             } else {
-                StarExpressionContent::StarExpression(StarExpression(expr))
+                StarExpressionContent::StarExpression(StarExpression::new(expr))
             }
         } else {
-            StarExpressionContent::Tuple(StarExpressionsTuple(self.0))
+            StarExpressionContent::Tuple(StarExpressionsTuple::new(self.node))
         }
     }
 }
@@ -888,20 +890,20 @@ pub enum StarExpressionContent<'db> {
 
 impl<'db> Comprehension<'db> {
     pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
-        let mut iter = self.0.iter_children();
+        let mut iter = self.node.iter_children();
         let expr =
             CommonComprehensionExpression::Single(NamedExpression::new(iter.next().unwrap()));
         (expr, ForIfClauses::new(iter.next().unwrap()))
     }
 
     pub fn is_generator(&self) -> bool {
-        return self.0.get_next_leaf().unwrap().get_code() == ")";
+        return self.node.get_next_leaf().unwrap().get_code() == ")";
     }
 }
 
 impl<'db> DictComprehension<'db> {
     pub fn unpack(&self) -> (CommonComprehensionExpression<'db>, ForIfClauses<'db>) {
-        let mut iter = self.0.iter_children();
+        let mut iter = self.node.iter_children();
         let expr =
             CommonComprehensionExpression::DictKeyValue(DictKeyValue::new(iter.next().unwrap()));
         (expr, ForIfClauses::new(iter.next().unwrap()))
@@ -910,7 +912,7 @@ impl<'db> DictComprehension<'db> {
 
 impl<'db> ForIfClauses<'db> {
     pub fn iter(&self) -> ForIfClauseIterator<'db> {
-        ForIfClauseIterator(self.0.iter_children())
+        ForIfClauseIterator(self.node.iter_children())
     }
 }
 
@@ -943,7 +945,7 @@ pub enum CommonComprehensionExpression<'db> {
 impl<'db> SyncForIfClause<'db> {
     pub fn unpack(&self) -> (StarTargets<'db>, Disjunction<'db>, CompIfIterator<'db>) {
         // "for" star_targets "in" disjunction comp_if*
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         iterator.next();
         let star_targets_ = StarTargets::new(iterator.next().unwrap());
         iterator.next();
@@ -964,7 +966,7 @@ impl<'db> Iterator for CompIfIterator<'db> {
 
 impl<'db> ClassDef<'db> {
     pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.0.get_nth_child(1))
+        NameDefinition::new(self.node.get_nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -973,7 +975,7 @@ impl<'db> ClassDef<'db> {
 
     pub fn unpack(&self) -> (Option<Arguments<'db>>, Block<'db>) {
         let mut args = None;
-        for child in self.0.iter_children().skip(3) {
+        for child in self.node.iter_children().skip(3) {
             if child.is_type(Nonterminal(arguments)) {
                 args = Some(Arguments::new(child));
             } else if child.is_type(Nonterminal(block)) {
@@ -984,7 +986,7 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {
-        PotentialSelfAssignments(self.0.search(&[Nonterminal(t_primary)]))
+        PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)]))
     }
 }
 
@@ -1011,7 +1013,7 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
 
 impl<'db> FunctionDef<'db> {
     pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.0.get_nth_child(1))
+        NameDefinition::new(self.node.get_nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -1019,7 +1021,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
-        Self(
+        Self::new(
             tree.0
                 .get_node_by_index(param_name_index)
                 .get_parent_until(&[Nonterminal(function_def)])
@@ -1028,20 +1030,20 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn annotation(&self) -> Option<ReturnAnnotation<'db>> {
-        let ret = self.0.get_nth_child(3);
+        let ret = self.node.get_nth_child(3);
         if ret.is_type(Nonterminal(return_annotation)) {
-            Some(ReturnAnnotation(ret))
+            Some(ReturnAnnotation::new(ret))
         } else {
             None
         }
     }
 
     pub fn params(&self) -> FunctionDefParameters<'db> {
-        FunctionDefParameters::new(self.0.get_nth_child(2))
+        FunctionDefParameters::new(self.node.get_nth_child(2))
     }
 
     pub fn parent(&self) -> FunctionParent<'db> {
-        let parent = self.0.get_parent().unwrap();
+        let parent = self.node.get_parent().unwrap();
         if parent.is_type(Nonterminal(stmt)) {
             FunctionParent::Normal
         } else if parent.is_type(Nonterminal(decorated)) {
@@ -1065,7 +1067,7 @@ impl<'db> FunctionDef<'db> {
     ) {
         // function_def: "def" name_definition function_def_parameters
         //               return_annotation? ":" block
-        let mut iterator = self.0.iter_children();
+        let mut iterator = self.node.iter_children();
         iterator.next();
         let name_def = NameDefinition::new(iterator.next().unwrap());
         let params = FunctionDefParameters::new(iterator.next().unwrap());
@@ -1094,7 +1096,7 @@ pub enum FunctionParent<'db> {
 impl<'db> FunctionDefParameters<'db> {
     pub fn iter(&self) -> ParamIterator<'db> {
         // function_def_parameters: "(" [parameters] ")"
-        let params = self.0.get_nth_child(1);
+        let params = self.node.get_nth_child(1);
         if params.is_type(Nonterminal(parameters)) {
             let positional_only = params
                 .iter_children()
@@ -1209,13 +1211,13 @@ pub enum ParamType {
 
 impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
-        Expression(self.0.get_nth_child(1))
+        Expression::new(self.node.get_nth_child(1))
     }
 }
 
 impl<'db> ReturnAnnotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
-        Expression(self.0.get_nth_child(1))
+        Expression::new(self.node.get_nth_child(1))
     }
 }
 
@@ -1231,18 +1233,18 @@ impl<'db> Assignment<'db> {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target ":" expression ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
-        let mut iterator = self.0.iter_children().skip(1);
+        let mut iterator = self.node.iter_children().skip(1);
         while let Some(child) = iterator.next() {
             if child.is_type(Nonterminal(yield_expr))
                 || child.is_type(Nonterminal(star_expressions))
             {
-                let iter = AssignmentTargetIterator(self.0.iter_children().step_by(2));
+                let iter = AssignmentTargetIterator(self.node.iter_children().step_by(2));
                 return AssignmentContent::Normal(iter, Self::right_side(child));
             } else if child.is_type(Nonterminal(expression)) {
                 iterator.next();
                 let right = iterator.next().map(Self::right_side);
                 return AssignmentContent::WithAnnotation(
-                    Target::new(self.0),
+                    Target::new(self.node),
                     Expression::new(child),
                     right,
                 );
@@ -1250,7 +1252,7 @@ impl<'db> Assignment<'db> {
                 iterator.next();
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
-                    Target::new(self.0),
+                    Target::new(self.node),
                     AugAssign::new(child),
                     right,
                 );
@@ -1261,9 +1263,9 @@ impl<'db> Assignment<'db> {
 
     fn right_side(child: PyNode) -> AssignmentRightSide {
         if child.is_type(Nonterminal(star_expressions)) {
-            return AssignmentRightSide::StarExpressions(StarExpressions(child));
+            return AssignmentRightSide::StarExpressions(StarExpressions::new(child));
         } else {
-            return AssignmentRightSide::YieldExpr(YieldExpr(child));
+            return AssignmentRightSide::YieldExpr(YieldExpr::new(child));
         }
     }
 }
@@ -1303,9 +1305,9 @@ impl<'db> ImportFrom<'db> {
         // | "from" ("." | "...")* dotted_name "import" import_from_targets
         // | "from" ("." | "...")+ "import" import_from_targets
         let mut level = 0;
-        for node in self.0.iter_children().skip(1) {
+        for node in self.node.iter_children().skip(1) {
             if node.is_type(Nonterminal(dotted_name)) {
-                return (level, Some(DottedName(node)));
+                return (level, Some(DottedName::new(node)));
             } else if node.get_code() == "." {
                 level += 1;
             } else if node.get_code() == "..." {
@@ -1320,7 +1322,7 @@ impl<'db> ImportFrom<'db> {
     pub fn unpack_targets(&self) -> ImportFromTargets<'db> {
         // import_from_targets:
         //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
-        for node in self.0.iter_children().skip(3) {
+        for node in self.node.iter_children().skip(3) {
             if node.is_type(Nonterminal(import_from_targets)) {
                 let first = node.get_nth_child(0);
                 if first.is_leaf() && first.get_code() == "*" {
@@ -1350,7 +1352,7 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
         for child in &mut self.0 {
             if child.is_type(Nonterminal(import_from_as_name)) {
                 // import_from_as_name: Name "as" name_definition | name_definition
-                return Some(ImportFromAsName(child));
+                return Some(ImportFromAsName::new(child));
             }
         }
         None
@@ -1359,16 +1361,16 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
 
 impl<'db> ImportFromAsName<'db> {
     pub fn name_definition(&self) -> NameDefinition {
-        let first = self.0.get_nth_child(0);
+        let first = self.node.get_nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            NameDefinition(first)
+            NameDefinition::new(first)
         } else {
-            NameDefinition(self.0.get_nth_child(2))
+            NameDefinition::new(self.node.get_nth_child(2))
         }
     }
 
     pub fn import_name(&self) -> Name {
-        let first = self.0.get_nth_child(0);
+        let first = self.node.get_nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
             Name::new(first.get_nth_child(0))
         } else {
@@ -1378,7 +1380,7 @@ impl<'db> ImportFromAsName<'db> {
 }
 impl<'db> DottedName<'db> {
     pub fn unpack(&self) -> DottedNameContent<'db> {
-        let mut children = self.0.iter_children();
+        let mut children = self.node.iter_children();
         let first = children.next().unwrap();
         if first.is_type(Terminal(TerminalType::Name)) {
             DottedNameContent::Name(Name::new(first))
@@ -1397,29 +1399,29 @@ pub enum DottedNameContent<'db> {
 
 impl<'db> Primary<'db> {
     pub fn first(&self) -> PrimaryOrAtom<'db> {
-        let first = self.0.get_nth_child(0);
+        let first = self.node.get_nth_child(0);
         if first.is_type(Nonterminal(atom)) {
-            PrimaryOrAtom::Atom(Atom(first))
+            PrimaryOrAtom::Atom(Atom::new(first))
         } else {
             debug_assert_eq!(first.get_type(), Nonterminal(primary));
-            PrimaryOrAtom::Primary(Primary(first))
+            PrimaryOrAtom::Primary(Primary::new(first))
         }
     }
 
     pub fn second(self) -> PrimaryContent<'db> {
-        let second = self.0.get_nth_child(2);
+        let second = self.node.get_nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {
-            PrimaryContent::Attribute(Name(second))
+            PrimaryContent::Attribute(Name::new(second))
         } else if second.is_type(Nonterminal(arguments)) {
-            PrimaryContent::Execution(ArgumentsDetails::Node(Arguments(second)))
+            PrimaryContent::Execution(ArgumentsDetails::Node(Arguments::new(second)))
         } else if second.is_type(Nonterminal(named_expression)) {
-            PrimaryContent::GetItem(SliceType::NamedExpression(NamedExpression(second)))
+            PrimaryContent::GetItem(SliceType::NamedExpression(NamedExpression::new(second)))
         } else if second.is_type(Nonterminal(comprehension)) {
-            PrimaryContent::Execution(ArgumentsDetails::Comprehension(Comprehension(second)))
+            PrimaryContent::Execution(ArgumentsDetails::Comprehension(Comprehension::new(second)))
         } else if second.is_type(Nonterminal(slice)) {
-            PrimaryContent::GetItem(SliceType::Slice(Slice(second)))
+            PrimaryContent::GetItem(SliceType::Slice(Slice::new(second)))
         } else if second.is_type(Nonterminal(slices)) {
-            PrimaryContent::GetItem(SliceType::Slices(Slices(second)))
+            PrimaryContent::GetItem(SliceType::Slices(Slices::new(second)))
         } else {
             debug_assert_eq!(second.get_code(), ")");
             PrimaryContent::Execution(ArgumentsDetails::None)
@@ -1447,7 +1449,7 @@ pub enum SliceType<'db> {
 
 impl<'db> Arguments<'db> {
     pub fn iter(&self) -> ArgumentsIterator<'db> {
-        ArgumentsIterator(self.0.iter_children())
+        ArgumentsIterator(self.node.iter_children())
     }
 }
 
@@ -1459,7 +1461,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
     fn next(&mut self) -> Option<Self::Item> {
         for node in &mut self.0 {
             if node.is_type(Nonterminal(named_expression)) {
-                return Some(Argument::Positional(NamedExpression(node)));
+                return Some(Argument::Positional(NamedExpression::new(node)));
             } else if node.is_type(Nonterminal(kwargs)) {
                 *self = Self(node.iter_children());
                 return self.next();
@@ -1469,11 +1471,13 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
                 let name = kwarg_iterator.next().unwrap().get_code();
                 kwarg_iterator.next();
                 let arg = kwarg_iterator.next().unwrap();
-                return Some(Argument::Keyword(name, Expression(arg)));
+                return Some(Argument::Keyword(name, Expression::new(arg)));
             } else if node.is_type(Nonterminal(starred_expression)) {
-                return Some(Argument::Starred(Expression(node.get_nth_child(1))));
+                return Some(Argument::Starred(Expression::new(node.get_nth_child(1))));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
-                return Some(Argument::DoubleStarred(Expression(node.get_nth_child(1))));
+                return Some(Argument::DoubleStarred(Expression::new(
+                    node.get_nth_child(1),
+                )));
             }
         }
         None
@@ -1497,16 +1501,16 @@ impl<'db> ReturnOrYield<'db> {
     pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
         let node = tree.0.get_node_by_index(index);
         if node.is_type(Nonterminal(return_stmt)) {
-            ReturnOrYield::Return(ReturnStmt(node))
+            ReturnOrYield::Return(ReturnStmt::new(node))
         } else {
-            ReturnOrYield::Yield(YieldExpr(node))
+            ReturnOrYield::Yield(YieldExpr::new(node))
         }
     }
 }
 
 impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
-        StarExpressions(self.0.get_nth_child(1))
+        StarExpressions::new(self.node.get_nth_child(1))
     }
 }
 
@@ -1523,13 +1527,13 @@ impl<'db> Lambda<'db> {
     }
 
     pub fn params(&self) -> ParamIterator<'db> {
-        let n = self.0.get_nth_child(1);
+        let n = self.node.get_nth_child(1);
         Self::calculate_param_iterator(&n)
     }
 
     pub fn unpack(&self) -> (ParamIterator<'db>, Expression<'db>) {
         // "lambda" [lambda_parameters] ":" expression
-        let mut iterator = self.0.iter_children().skip(1);
+        let mut iterator = self.node.iter_children().skip(1);
         let params = Self::calculate_param_iterator(&iterator.next().unwrap());
         if let ParamIterator::Iterator(_, _) = params {
             iterator.next();
@@ -1541,51 +1545,57 @@ impl<'db> Lambda<'db> {
 impl<'db> NameDefinition<'db> {
     #[inline]
     pub fn name(&self) -> Name<'db> {
-        Name(self.0.get_nth_child(0))
+        Name::new(self.node.get_nth_child(0))
     }
 
     pub fn is_not_primary(&self) -> bool {
-        !self.0.get_parent().unwrap().is_type(Nonterminal(t_primary))
+        !self
+            .node
+            .get_parent()
+            .unwrap()
+            .is_type(Nonterminal(t_primary))
     }
 }
 
 impl<'db> Atom<'db> {
     #[inline]
     pub fn unpack(&self) -> AtomContent<'db> {
-        let mut iter = self.0.iter_children();
+        let mut iter = self.node.iter_children();
         let first = iter.next().unwrap();
 
         match first.get_type() {
-            Terminal(TerminalType::Name) => AtomContent::Name(Name(first)),
+            Terminal(TerminalType::Name) => AtomContent::Name(Name::new(first)),
             Terminal(TerminalType::Number) => {
                 let code = first.get_code();
                 if code.contains('j') {
-                    AtomContent::Complex(Complex(first))
+                    AtomContent::Complex(Complex::new(first))
                 } else if code.contains('.') {
-                    AtomContent::Float(Float(first))
+                    AtomContent::Float(Float::new(first))
                 } else {
-                    AtomContent::Int(Int(first))
+                    AtomContent::Int(Int::new(first))
                 }
             }
-            Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes(first)),
+            Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes::new(first)),
             PyNodeType::Keyword => match first.get_code() {
                 "None" => AtomContent::None,
-                "True" | "False" => AtomContent::Boolean(Keyword(first)),
+                "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
                 "..." => AtomContent::Ellipsis,
                 "(" => {
                     let next_node = iter.next().unwrap();
                     match next_node.get_type() {
-                        Nonterminal(tuple_content) => AtomContent::Tuple(Tuple(self.0)),
-                        Nonterminal(yield_expr) => AtomContent::YieldExpr(YieldExpr(next_node)),
+                        Nonterminal(tuple_content) => AtomContent::Tuple(Tuple::new(self.node)),
+                        Nonterminal(yield_expr) => {
+                            AtomContent::YieldExpr(YieldExpr::new(next_node))
+                        }
                         Nonterminal(named_expression) => {
-                            AtomContent::NamedExpression(NamedExpression(next_node))
+                            AtomContent::NamedExpression(NamedExpression::new(next_node))
                         }
                         Nonterminal(comprehension) => {
-                            AtomContent::GeneratorComprehension(Comprehension(next_node))
+                            AtomContent::GeneratorComprehension(Comprehension::new(next_node))
                         }
                         PyNodeType::Keyword => {
                             debug_assert_eq!(next_node.get_code(), ")");
-                            AtomContent::Tuple(Tuple(self.0))
+                            AtomContent::Tuple(Tuple::new(self.node))
                         }
                         _ => unreachable!(),
                     }
@@ -1593,25 +1603,25 @@ impl<'db> Atom<'db> {
                 "[" => {
                     let next_node = iter.next().unwrap();
                     if next_node.is_type(Nonterminal(comprehension)) {
-                        AtomContent::ListComprehension(Comprehension(next_node))
+                        AtomContent::ListComprehension(Comprehension::new(next_node))
                     } else {
-                        AtomContent::List(List(self.0))
+                        AtomContent::List(List::new(self.node))
                     }
                 }
                 "{" => {
                     let next_node = iter.next().unwrap();
                     match next_node.get_type() {
-                        Nonterminal(dict_content) => AtomContent::Dict(Dict(self.0)),
+                        Nonterminal(dict_content) => AtomContent::Dict(Dict::new(self.node)),
                         Nonterminal(dict_comprehension) => {
-                            AtomContent::DictComprehension(DictComprehension(next_node))
+                            AtomContent::DictComprehension(DictComprehension::new(next_node))
                         }
-                        Nonterminal(star_named_expression) => AtomContent::Set(Set(self.0)),
+                        Nonterminal(star_named_expression) => AtomContent::Set(Set::new(self.node)),
                         Nonterminal(comprehension) => {
-                            AtomContent::SetComprehension(Comprehension(next_node))
+                            AtomContent::SetComprehension(Comprehension::new(next_node))
                         }
                         PyNodeType::Keyword => {
                             debug_assert_eq!(next_node.get_code(), "}");
-                            AtomContent::Dict(Dict(self.0))
+                            AtomContent::Dict(Dict::new(self.node))
                         }
                         _ => unreachable!(),
                     }
@@ -1649,7 +1659,7 @@ pub enum AtomContent<'db> {
 
 impl<'db> StringsOrBytes<'db> {
     pub fn starts_with_string(&self) -> bool {
-        let code = self.0.get_nth_child(0).get_code();
+        let code = self.node.get_nth_child(0).get_code();
         for byte in code.bytes() {
             if byte == b'"' || byte == b'\'' {
                 break;
@@ -1697,7 +1707,7 @@ impl<'db> Target<'db> {
                             Name::new(name_def.get_nth_child(0)),
                         )
                     })
-                    .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget(first)))
+                    .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(first)))
             } else if first.is_type(Nonterminal(star_target_brackets)) {
                 todo!("star_target_brackets")
             } else if first.is_type(Nonterminal(star_target)) {
@@ -1801,10 +1811,10 @@ impl<'db> NameOrKeywordLookup<'db> {
         }
         match left.get_type() {
             Terminal(t) | ErrorTerminal(t) => match t {
-                TerminalType::Name => Self::Name(Name(left)),
+                TerminalType::Name => Self::Name(Name::new(left)),
                 _ => Self::None,
             },
-            PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword(left)),
+            PyNodeType::ErrorKeyword | PyNodeType::Keyword => Self::Keyword(Keyword::new(left)),
             Nonterminal(_) | ErrorNonterminal(_) => unreachable!("{}", left.type_str()),
         }
     }
