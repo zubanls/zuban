@@ -7,8 +7,6 @@ use crate::database::{
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
-use parsa_python::NonterminalType;
-use parsa_python::PyNodeType::Nonterminal;
 use parsa_python_ast::{
     AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
     Decoratee, DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt,
@@ -504,9 +502,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 InterestingNode::Comprehension(comp) => {
                     // Index the first expression of a comprehension, which is always executed
                     // in the current scope.
-                    let parent = comp.0.get_parent().unwrap();
-                    let bracket = parent.get_nth_child(0).get_code();
-                    if bracket == "(" && parent.is_type(Nonterminal(NonterminalType::atom)) {
+                    if comp.is_generator() {
                         self.unresolved_nodes.push(Unresolved::Comprehension(comp));
                     } else {
                         self.index_comprehension(comp, ordered);

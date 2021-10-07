@@ -888,6 +888,10 @@ impl<'db> Comprehension<'db> {
             CommonComprehensionExpression::Single(NamedExpression::new(iter.next().unwrap()));
         (expr, ForIfClauses::new(iter.next().unwrap()))
     }
+
+    pub fn is_generator(&self) -> bool {
+        return self.0.get_next_leaf().unwrap().get_code() == ")";
+    }
 }
 
 impl<'db> DictComprehension<'db> {
