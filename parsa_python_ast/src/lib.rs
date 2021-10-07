@@ -69,7 +69,7 @@ impl<'db> Iterator for InterestingNodes<'db> {
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
-        pub struct $name<'db>(pub PyNode<'db>);
+        pub struct $name<'db>(PyNode<'db>);
 
         impl<'db> $name<'db> {
             #[inline]
@@ -99,6 +99,11 @@ macro_rules! create_struct {
                     .get_code()
                     .get(..20)
                     .unwrap_or_else(|| self.0.get_code())
+            }
+
+            pub fn get_legacy_node(&self) -> PyNode<'db> {
+                // TODO remove this
+                self.0
             }
         }
 

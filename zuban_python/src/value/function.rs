@@ -204,7 +204,7 @@ fn resolve_type_vars<'db, 'a>(
     let inferred = file.get_inference(i_s).infer_expression(expr);
     if inferred.is_type_var(i_s) {
         type_var_finder
-            .lookup(i_s, expr.0.get_code())
+            .lookup(i_s, expr.get_legacy_node().get_code())
             .or_else(|| todo!())
     } else {
         /*
@@ -270,7 +270,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         for p in self.function.iter_inferrable_params(self.args) {
             if let Some(annotation) = p.param.annotation() {
                 // TODO we should only check names, not expressions
-                let name = annotation.expression().0;
+                let name = annotation.expression().get_legacy_node();
                 if !calculated_type_vars
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
