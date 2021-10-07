@@ -5,7 +5,7 @@ use parsa_python::{
     NonterminalType::*,
     PyNode, PyNodeType,
     PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
-    PyTree, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
+    PyTree, SearchIterator, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
 
 pub struct Tree(PyTree);
@@ -884,6 +884,31 @@ impl<'db> ClassDef<'db> {
             }
         }
         unreachable!()
+    }
+
+    pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {
+        PotentialSelfAssignments(self.0.search(&[Nonterminal(t_primary)]))
+    }
+}
+
+pub struct PotentialSelfAssignments<'db>(SearchIterator<'db>);
+
+impl<'db> Iterator for PotentialSelfAssignments<'db> {
+    type Item = (Name<'db>, Name<'db>);
+    fn next(&mut self) -> Option<Self::Item> {
+        for node in &mut self.0 {
+            let name_def = node.get_nth_child(2);
+            if name_def.is_type(Nonterminal(name_definition)) {
+                let atom_ = node.get_nth_child(0);
+                if atom_.is_type(Nonterminal(atom)) {
+                    let self_name = atom_.get_nth_child(0);
+                    if self_name.is_type(Terminal(TerminalType::Name)) {
+                        return Some((Name::new(self_name), NameDefinition::new(name_def).name()));
+                    }
+                }
+            }
+        }
+        None
     }
 }
 

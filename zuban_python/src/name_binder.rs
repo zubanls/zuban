@@ -427,25 +427,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn index_self_vars(&mut self, class: ClassDef<'db>, symbol_table: &SymbolTable) {
-        for node in class.0.search(&[Nonterminal(NonterminalType::t_primary)]) {
-            let name_def = node.get_nth_child(2);
-            if name_def.is_type(Nonterminal(NonterminalType::name_definition)) {
-                let atom = node.get_nth_child(0);
-                if atom.is_type(Nonterminal(NonterminalType::atom)) {
-                    let self_name = atom.get_nth_child(0);
-                    if self_name.is_type(Terminal(TerminalType::Name)) {
-                        if self.is_self_param(self_name.index as usize) {
-                            symbol_table
-                                .add_or_replace_symbol(Name::new(name_def.get_nth_child(0)));
-                        }
-                    }
-                }
+        for (self_name, name) in class.search_potential_self_assignments() {
+            if self.is_self_param(self_name.index()) {
+                symbol_table.add_or_replace_symbol(name);
             }
         }
     }
 
-    fn is_self_param(&self, name_index: usize) -> bool {
-        let point = self.points[name_index].get();
+    fn is_self_param(&self, name_index: NodeIndex) -> bool {
+        let point = self.points[name_index as usize].get();
         if let Redirect = point.get_type() {
             let param_index = point.get_node_index();
             let param_point = self.points[param_index as usize].get();
