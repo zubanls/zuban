@@ -1480,6 +1480,10 @@ impl<'db> NameDefinition<'db> {
     pub fn name(&self) -> Name<'db> {
         Name(self.0.get_nth_child(0))
     }
+
+    pub fn is_not_primary(&self) -> bool {
+        !self.0.get_parent().unwrap().is_type(Nonterminal(t_primary))
+    }
 }
 
 impl<'db> Atom<'db> {

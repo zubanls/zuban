@@ -478,12 +478,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         self.maybe_add_reference(name, ordered);
                     }
                     NameParent::NameDefinition(name_def) => {
-                        if !name_def
-                            .0
-                            .get_parent()
-                            .unwrap()
-                            .is_type(Nonterminal(t_primary))
-                        {
+                        if name_def.is_not_primary() {
                             // The types are inferred later.
                             self.add_new_definition(
                                 name_def,
