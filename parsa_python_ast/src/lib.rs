@@ -28,6 +28,44 @@ impl Tree {
     }
 }
 
+pub trait InterestingNodeSearcher<'db> {
+    fn search_interesting_nodes(&self) -> InterestingNodes<'db>;
+}
+
+// A bit special, since this does not make much sense except for zuban's NameBinder.
+pub enum InterestingNode<'db> {
+    Name(Name<'db>),
+    Lambda(Lambda<'db>),
+    Comprehension(Comprehension<'db>),
+    DictComprehension(DictComprehension<'db>),
+    YieldExpr(YieldExpr<'db>),
+    ReturnStmt(ReturnStmt<'db>),
+}
+pub struct InterestingNodes<'db>(SearchIterator<'db>);
+
+impl<'db> Iterator for InterestingNodes<'db> {
+    type Item = InterestingNode<'db>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|n| {
+            if n.is_type(Terminal(TerminalType::Name)) {
+                InterestingNode::Name(Name::new(n))
+            } else if n.is_type(Nonterminal(return_stmt)) {
+                InterestingNode::ReturnStmt(ReturnStmt::new(n))
+            } else if n.is_type(Nonterminal(yield_expr)) {
+                InterestingNode::YieldExpr(YieldExpr::new(n))
+            } else if n.is_type(Nonterminal(lambda)) {
+                InterestingNode::Lambda(Lambda::new(n))
+            } else if n.is_type(Nonterminal(comprehension)) {
+                InterestingNode::Comprehension(Comprehension::new(n))
+            } else {
+                debug_assert_eq!(n.get_type(), Nonterminal(comprehension));
+                InterestingNode::DictComprehension(DictComprehension::new(n))
+            }
+        })
+    }
+}
+
 macro_rules! create_struct {
     ($name:ident: $type:expr) => {
         #[derive(Debug, Clone, Copy)]
@@ -63,8 +101,24 @@ macro_rules! create_struct {
                     .unwrap_or_else(|| self.0.get_code())
             }
         }
+
+        impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
+            fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
+                const SEARCH_NAMES: &[PyNodeType] = &[
+                    Terminal(TerminalType::Name),
+                    Nonterminal(lambda),
+                    Nonterminal(comprehension),
+                    Nonterminal(dict_comprehension),
+                    Nonterminal(yield_expr),
+                    Nonterminal(return_stmt),
+                    Nonterminal(dict_comprehension),
+                ];
+                InterestingNodes(self.0.search(SEARCH_NAMES))
+            }
+        }
     };
 }
+
 macro_rules! create_nonterminal_structs {
     ($($name:ident: $nonterminal:ident)+) => {
         $(create_struct!{$name: Nonterminal($nonterminal)})+

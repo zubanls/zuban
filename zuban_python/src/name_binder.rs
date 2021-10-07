@@ -7,13 +7,14 @@ use crate::database::{
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
-use parsa_python::PyNodeType::{Nonterminal, Terminal};
-use parsa_python::{NodeIndex, NonterminalType, PyNode, PyNodeType, TerminalType};
+use parsa_python::NonterminalType;
+use parsa_python::PyNodeType::Nonterminal;
 use parsa_python_ast::{
     AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
     Decoratee, DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt,
-    FunctionDef, FunctionParent, IfBlockType, IfStmt, Lambda, MatchStmt, Name, NameDefinition,
-    NameParent, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    FunctionDef, FunctionParent, IfBlockType, IfStmt, InterestingNode, InterestingNodeSearcher,
+    Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex, StmtContent, StmtIterator,
+    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -173,7 +174,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // - function_def, class_def: ignore
         match block.unpack() {
             BlockContent::OneLine(simple) => {
-                self.index_non_block_node(simple.0, ordered, in_base_scope)
+                self.index_non_block_node(&simple, ordered, in_base_scope)
             }
             BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered, in_base_scope),
         }
@@ -189,7 +190,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for stmt in stmts {
             let return_or_yield = match stmt.unpack() {
                 StmtContent::SimpleStmts(simple) => {
-                    self.index_non_block_node(simple.0, ordered, in_base_scope)
+                    self.index_non_block_node(&simple, ordered, in_base_scope)
                 }
                 StmtContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(func, ordered, in_base_scope);
@@ -276,7 +277,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             match n {
                 Unresolved::Name(name) => self.maybe_add_reference(name, true),
                 Unresolved::Expression(expr) => {
-                    self.index_non_block_node(expr.0, true, false);
+                    self.index_non_block_node(&expr, true, false);
                 }
                 Unresolved::FunctionDef(func) => {
                     let symbol_table = SymbolTable::default();
@@ -300,9 +301,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let (star_targets, star_expressions, block, else_block) = for_stmt.unpack();
-        let latest = self.index_non_block_node(star_targets.0, ordered, false);
+        let latest = self.index_non_block_node(&star_targets, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-        let latest = self.index_non_block_node(star_expressions.0, ordered, false);
+        let latest = self.index_non_block_node(&star_expressions, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
 
         let latest = self.index_block(block, false, false);
@@ -322,7 +323,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_while_stmt(&mut self, while_stmt: WhileStmt<'db>, ordered: bool) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         let (condition, block, else_block) = while_stmt.unpack();
-        let latest = self.index_non_block_node(condition.0, ordered, false);
+        let latest = self.index_non_block_node(&condition, ordered, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         let latest = self.index_block(block, false, false);
         latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -343,11 +344,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
             let (expr, star_target) = with_item.unpack();
-            let latest = self.index_non_block_node(expr.0, ordered, false);
+            let latest = self.index_non_block_node(&expr, ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
             if let Some(star_target) = star_target {
-                let latest = self.index_non_block_node(star_target.0, ordered, false);
+                let latest = self.index_non_block_node(&star_target, ordered, false);
             }
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
@@ -361,7 +362,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for if_block in if_stmt.iter_blocks() {
             let latest = match if_block {
                 IfBlockType::If(expr, block) => {
-                    let latest = self.index_non_block_node(expr.0, ordered, false);
+                    let latest = self.index_non_block_node(&expr, ordered, false);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                     self.index_block(block, ordered, false)
@@ -381,7 +382,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 TryBlockType::Try(block) => self.index_block(block, ordered, false),
                 TryBlockType::Except(except) => {
                     let (expression, name_def, block) = except.unpack();
-                    let latest = self.index_non_block_node(expression.0, ordered, false);
+                    let latest = self.index_non_block_node(&expression, ordered, false);
                     latest_return_or_yield =
                         self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                     if let Some(name_def) = name_def {
@@ -403,7 +404,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
             let (arguments, block) = class.unpack();
             if let Some(arguments) = arguments {
-                binder.index_non_block_node(arguments.0, true, true);
+                binder.index_non_block_node(&arguments, true, true);
             }
             binder.index_block(block, true, true);
         });
@@ -453,79 +454,79 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         todo!("match_stmt")
     }
 
-    fn index_non_block_node(
+    fn index_non_block_node<T: InterestingNodeSearcher<'db>>(
         &mut self,
-        node: PyNode<'db>,
+        node: &T,
         ordered: bool,
         in_base_scope: bool,
     ) -> NodeIndex {
-        use NonterminalType::*;
-        const SEARCH_NAMES: &[PyNodeType] = &[
-            Terminal(TerminalType::Name),
-            Nonterminal(lambda),
-            Nonterminal(comprehension),
-            Nonterminal(dict_comprehension),
-            Nonterminal(yield_expr),
-            Nonterminal(return_stmt),
-            Nonterminal(dict_comprehension),
-        ];
         let mut latest_return_or_yield = 0;
-        for n in node.search(SEARCH_NAMES) {
-            if n.is_type(Terminal(TerminalType::Name)) {
-                let name = Name::new(n);
-                match name.parent() {
-                    NameParent::Atom => {
-                        self.maybe_add_reference(name, ordered);
-                    }
-                    NameParent::NameDefinition(name_def) => {
-                        if name_def.is_not_primary() {
-                            // The types are inferred later.
-                            self.add_new_definition(
-                                name_def,
-                                Point::new_uncalculated(),
-                                in_base_scope,
-                            )
+        for n in node.search_interesting_nodes() {
+            match n {
+                InterestingNode::Name(name) => {
+                    match name.parent() {
+                        NameParent::Atom => {
+                            self.maybe_add_reference(name, ordered);
+                        }
+                        NameParent::NameDefinition(name_def) => {
+                            if name_def.is_not_primary() {
+                                // The types are inferred later.
+                                self.add_new_definition(
+                                    name_def,
+                                    Point::new_uncalculated(),
+                                    in_base_scope,
+                                )
+                            }
+                        }
+                        NameParent::GlobalStmt => {
+                            //self.maybe_add_reference(name, ordered);
+                            dbg!("TODO unhandled global");
+                        }
+                        NameParent::NonlocalStmt => {
+                            // TODO nonlocal
+                        }
+                        NameParent::Other => {
+                            // All other names are not references or part of imports and should be
+                            // resolved later.
                         }
                     }
-                    NameParent::GlobalStmt => {
-                        //self.maybe_add_reference(name, ordered);
-                        dbg!("TODO unhandled global");
-                    }
-                    NameParent::NonlocalStmt => {
-                        // TODO nonlocal
-                    }
-                    NameParent::Other => {
-                        // All other names are not references or part of imports and should be
-                        // resolved later.
+                }
+                InterestingNode::YieldExpr(n) => {
+                    self.index_return_or_yield(&mut latest_return_or_yield, n.index());
+                }
+                InterestingNode::ReturnStmt(n) => {
+                    self.index_return_or_yield(&mut latest_return_or_yield, n.index());
+                }
+                InterestingNode::Lambda(lambda) => {
+                    self.index_lambda_param_defaults(lambda, ordered);
+                    self.unresolved_nodes.push(Unresolved::Lambda(lambda));
+                }
+                InterestingNode::Comprehension(comp) => {
+                    // Index the first expression of a comprehension, which is always executed
+                    // in the current scope.
+                    let parent = comp.0.get_parent().unwrap();
+                    let bracket = parent.get_nth_child(0).get_code();
+                    if bracket == "(" && parent.is_type(Nonterminal(NonterminalType::atom)) {
+                        self.unresolved_nodes.push(Unresolved::Comprehension(comp));
+                    } else {
+                        self.index_comprehension(comp, ordered);
                     }
                 }
-            } else if n.is_type(Nonterminal(lambda)) {
-                self.index_lambda_param_defaults(Lambda::new(n), ordered);
-                self.unresolved_nodes
-                    .push(Unresolved::Lambda(Lambda::new(n)));
-            } else if n.is_type(Nonterminal(return_stmt)) || n.is_type(Nonterminal(yield_expr)) {
-                let keyword_index = n.index + 1;
-                self.points[keyword_index as usize].set(Point::new_node_analysis_with_node_index(
-                    Locality::File,
-                    latest_return_or_yield,
-                ));
-                latest_return_or_yield = keyword_index
-            } else {
-                // Index the first expression of a comprehension, which is always executed
-                // in the current scope.
-                let parent = n.get_parent().unwrap();
-                let bracket = parent.get_nth_child(0).get_code();
-                if bracket == "[" && parent.is_type(Nonterminal(atom)) {
-                    self.index_comprehension(Comprehension::new(n), ordered);
-                } else if bracket == "{" && parent.is_type(Nonterminal(atom)) {
-                    self.index_dict_comprehension(DictComprehension::new(n), ordered);
-                } else {
-                    self.unresolved_nodes
-                        .push(Unresolved::Comprehension(Comprehension::new(n)));
+                InterestingNode::DictComprehension(comp) => {
+                    self.index_dict_comprehension(comp, ordered);
                 }
             }
         }
         latest_return_or_yield
+    }
+
+    fn index_return_or_yield(&self, latest_return_or_yield: &mut NodeIndex, node_index: NodeIndex) {
+        let keyword_index = node_index + 1;
+        self.points[keyword_index as usize].set(Point::new_node_analysis_with_node_index(
+            Locality::File,
+            *latest_return_or_yield,
+        ));
+        *latest_return_or_yield = keyword_index
     }
 
     fn index_comprehension(&mut self, comp: Comprehension<'db>, ordered: bool) {
@@ -550,9 +551,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let targets = match clause {
             ForIfClause::Sync(sync_for_if_clause) | ForIfClause::Async(sync_for_if_clause) => {
                 let (targets, from, ifs) = sync_for_if_clause.unpack();
-                self.index_non_block_node(from.0, true, false);
+                self.index_non_block_node(&from, true, false);
                 for if_ in ifs {
-                    self.index_non_block_node(if_.0, true, false);
+                    self.index_non_block_node(&if_, true, false);
                 }
                 targets
             }
@@ -560,17 +561,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Comprehension, &symbol_table, |binder| {
-            binder.index_non_block_node(targets.0, true, false);
+            binder.index_non_block_node(&targets, true, false);
 
             if let Some(clause) = clauses.next() {
                 binder.index_comprehension_clause(expr, &clause, clauses);
             } else {
                 match expr {
                     CommonComprehensionExpression::Single(named_expr) => {
-                        binder.index_non_block_node(named_expr.0, true, false)
+                        binder.index_non_block_node(named_expr, true, false)
                     }
                     CommonComprehensionExpression::DictKeyValue(dict_key_value) => {
-                        binder.index_non_block_node(dict_key_value.0, true, false)
+                        binder.index_non_block_node(dict_key_value, true, false)
                     }
                 };
             }
@@ -599,7 +600,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     .push(Unresolved::Expression(annotation.expression()));
             }
             if let Some(expression) = param.default() {
-                self.index_non_block_node(expression.0, ordered, false);
+                self.index_non_block_node(&expression, ordered, false);
             }
         }
         if let Some(return_annotation) = return_annotation {
@@ -667,7 +668,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // lambda: "lambda" [lambda_parameters] ":" expression
         for param in lambda.params() {
             if let Some(default) = param.default() {
-                self.index_non_block_node(default.0, ordered, false);
+                self.index_non_block_node(&default, ordered, false);
             }
         }
     }
@@ -677,7 +678,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         for param in params {
             self.add_point_definition(param.name_definition(), Specific::Param, true);
         }
-        self.index_non_block_node(expr.0, true, true);
+        self.index_non_block_node(&expr, true, true);
     }
 
     #[inline]
