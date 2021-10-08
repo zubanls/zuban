@@ -270,16 +270,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
             ImportFromTargets::Iterator(targets) => {
                 // as names should have been calculated earlier
+                let import_file = self
+                    .i_s
+                    .database
+                    .get_loaded_python_file(inferred.unwrap().as_file_index().unwrap());
                 for target in targets {
                     let name = target.import_name();
-                    if self.file.points.get(name.index()).is_calculated() {
-                        todo!("multi definition")
-                    }
-                    let i = inferred
-                        .as_ref()
-                        .unwrap()
-                        .run_on_value(self.i_s, &|i_s, value| value.lookup(i_s, name.as_str()));
-                    i.save_redirect(self.file, name.index());
+                    let point = if let Some(link) = import_file.lookup_global(name.as_str()) {
+                        debug_assert!(
+                            link.file != self.file_index || link.node_index != name.index()
+                        );
+                        link.into_point_redirect()
+                    } else {
+                        // TODO star imports
+                        Point::new_missing_or_unknown(
+                            import_file.get_file_index(),
+                            Locality::DirectExtern,
+                        )
+                    };
+                    self.file.points.set_on_name(&name, point);
                 }
             }
         }
@@ -466,12 +475,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .get_builtins()
             .lookup_global(name.as_str())
         {
-            Point::new_redirect(link.file, link.node_index, link.locality)
+            debug_assert!(link.file != self.file_index || link.node_index != name.index());
+            link.into_point_redirect()
         } else {
             // TODO star imports
             Point::new_missing_or_unknown(self.file_index, Locality::File)
         };
-        self.file.points.set_on_name(name.index(), point);
+        self.file.points.set_on_name(&name, point);
         debug_assert!(self.file.points.get(name.index()).is_calculated());
         self.infer_name_reference(name)
     }
@@ -489,7 +499,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         inference.check_point_cache(node_index).unwrap_or_else(|| {
                             let name = Name::maybe_by_index(&inference.file.tree, node_index);
                             if let Some(name) = name {
-                                inference.infer_name(name)
+                                inference._infer_name(name)
                             } else {
                                 todo!("{:?}, {:?}", inference.file.get_file_index().0, node_index)
                             }

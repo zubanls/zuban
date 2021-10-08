@@ -1,5 +1,7 @@
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
-use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType, Specific};
+use crate::database::{
+    ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
@@ -483,6 +485,15 @@ impl<'db> Inferred<'db> {
             insert(&mut list, other.state);
             Self::new_unsaved_complex(ComplexPoint::Union(list.into_boxed_slice()))
         }
+    }
+
+    pub fn as_file_index(&self) -> Option<FileIndex> {
+        if let InferredState::Saved(reference, point) = self.state {
+            if matches!(point.get_type(), PointType::FileReference) {
+                return Some(point.get_file_index());
+            }
+        }
+        None
     }
 }
 

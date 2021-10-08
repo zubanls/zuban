@@ -1,4 +1,4 @@
-use parsa_python_ast::NodeIndex;
+use parsa_python_ast::{Name, NodeIndex};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -231,8 +231,9 @@ impl Points {
         self.0[index as usize].set(point);
     }
 
-    pub fn set_on_name(&self, mut index: NodeIndex, point: Point) {
+    pub fn set_on_name(&self, name: &Name, point: Point) {
         debug_assert!(point.get_type() != PointType::MultiDefinition);
+        let mut index = name.index();
         let current = self.get(index);
         if current.is_calculated() && current.get_type() == PointType::MultiDefinition {
             index -= 1 // Set it on NameDefinition
@@ -322,6 +323,12 @@ pub struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
     pub locality: Locality,
+}
+
+impl LocalityLink {
+    pub fn into_point_redirect(self) -> Point {
+        Point::new_redirect(self.file, self.node_index, self.locality)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
