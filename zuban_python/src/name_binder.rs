@@ -703,7 +703,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else if let Some(definition) = self.lookup_name(name) {
                 Point::new_redirect(self.file_index, definition, Locality::File)
             } else {
-                Point::new_missing_or_unknown(self.file_index, Locality::File)
+                Point::new_uncalculated()
             }
         };
         self.points[name.index() as usize].set(point);

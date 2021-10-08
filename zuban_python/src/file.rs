@@ -464,7 +464,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
-        todo!("star import? {:?}", name)
+        // If it's not inferred already through the name binder, it's either a star import, a
+        // builtin or really missing.
+        todo!("missing builtin/star import")
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
