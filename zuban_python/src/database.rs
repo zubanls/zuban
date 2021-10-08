@@ -230,6 +230,15 @@ impl Points {
     pub fn set(&self, index: NodeIndex, point: Point) {
         self.0[index as usize].set(point);
     }
+
+    pub fn set_on_name(&self, mut index: NodeIndex, point: Point) {
+        debug_assert!(point.get_type() != PointType::MultiDefinition);
+        let current = self.get(index);
+        if current.is_calculated() && current.get_type() == PointType::MultiDefinition {
+            index -= 1 // Set it on NameDefinition
+        }
+        self.set(index, point);
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

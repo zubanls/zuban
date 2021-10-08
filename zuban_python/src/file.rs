@@ -471,7 +471,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             // TODO star imports
             Point::new_uncalculated()
         };
-        self.file.points.set(name.index(), point);
+        self.file.points.set_on_name(name.index(), point);
         self.infer_name(name)
     }
 
