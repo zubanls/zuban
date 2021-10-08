@@ -273,9 +273,8 @@ pub enum Specific {
     List,
     ListComprehension,
 
-    SelfParam,
+    // SelfParam, TODO Use maybe?
     Param,
-    ParamWithDefault,         // TODO Redirect to default maybe?
     LazyInferredClass,        // A class that will be inferred later.
     LazyInferredDynamicClass, // A class defined in a function that will be inferred later.
     LazyInferredFunction,     // A function that will be inferred later.
