@@ -274,7 +274,6 @@ pub enum Specific {
 
     SelfParam,
     Param,
-    SimpleGeneric,            // primary: primary '[' slices ']'
     ParamWithDefault,         // TODO Redirect to default maybe?
     LazyInferredClass,        // A class that will be inferred later.
     LazyInferredDynamicClass, // A class defined in a function that will be inferred later.
@@ -286,6 +285,7 @@ pub enum Specific {
 
     InstanceWithArguments, // A primary node
     AnnotationInstance,
+    SimpleGeneric, // primary: primary '[' slices ']'
 
     TypeVar,
     Any,

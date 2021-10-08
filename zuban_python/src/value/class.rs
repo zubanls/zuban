@@ -5,6 +5,7 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
@@ -56,7 +57,7 @@ impl<'db> Value<'db> for Class<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file.get_inference(i_s).infer_name_by_index(node_index)
         } else {
-            todo!()
+            todo!("{:?}.{:?}", self.get_name(), name)
         }
     }
 
@@ -81,6 +82,20 @@ impl<'db> Value<'db> for Class<'db> {
                     Inferred::new_and_save(file, primary_node.index(), point)
                 }
             }
+        }
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        let point = Point::new_simple_language_specific(Specific::SimpleGeneric, Locality::Stmt);
+        match slice_type {
+            SliceType::Simple(simple) => {
+                Inferred::new_and_save(simple.file, simple.primary_index, point)
+            }
+            _ => todo!(),
         }
     }
 }

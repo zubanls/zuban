@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    NamedExpression, Slice as ASTSlice, SliceType as ASTSliceType, Slices as ASTSlices,
+    NamedExpression, NodeIndex, Slice as ASTSlice, SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
 use crate::file::PythonFile;
@@ -13,9 +13,13 @@ pub enum SliceType<'db> {
 }
 
 impl<'db> SliceType<'db> {
-    pub fn new(file: &'db PythonFile, type_: ASTSliceType<'db>) -> Self {
+    pub fn new(file: &'db PythonFile, primary_index: NodeIndex, type_: ASTSliceType<'db>) -> Self {
         match type_ {
-            ASTSliceType::NamedExpression(named_expr) => Self::Simple(Simple { file, named_expr }),
+            ASTSliceType::NamedExpression(named_expr) => Self::Simple(Simple {
+                file,
+                primary_index,
+                named_expr,
+            }),
             ASTSliceType::Slice(slice) => Self::Slice(Slice { file, slice }),
             ASTSliceType::Slices(slices) => Self::Slices(Slices { file, slices }),
         }
@@ -23,7 +27,8 @@ impl<'db> SliceType<'db> {
 }
 
 pub struct Simple<'db> {
-    file: &'db PythonFile,
+    pub file: &'db PythonFile,
+    pub primary_index: NodeIndex,
     named_expr: NamedExpression<'db>,
 }
 
