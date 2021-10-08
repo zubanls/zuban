@@ -1244,7 +1244,7 @@ impl<'db> Assignment<'db> {
                 iterator.next();
                 let right = iterator.next().map(Self::right_side);
                 return AssignmentContent::WithAnnotation(
-                    Target::new(self.node),
+                    Target::new_single_target(self.node.get_nth_child(0)),
                     Expression::new(child),
                     right,
                 );
@@ -1252,7 +1252,7 @@ impl<'db> Assignment<'db> {
                 iterator.next();
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
-                    Target::new(self.node),
+                    Target::new_single_target(self.node.get_nth_child(0)),
                     AugAssign::new(child),
                     right,
                 );
@@ -1687,9 +1687,6 @@ pub enum Target<'db> {
 
 impl<'db> Target<'db> {
     fn new(node: PyNode<'db>) -> Self {
-        if node.is_type(Nonterminal(single_target)) {
-            todo!()
-        }
         // star_targets: ",".star_target+ [","]
         // star_target:? "*"? (t_primary | star_target_brackets | name_definition)
         let mut iterator = node.iter_children();
@@ -1698,16 +1695,7 @@ impl<'db> Target<'db> {
             if first.is_type(Nonterminal(name_definition)) {
                 Self::Name(Name::new(first.get_nth_child(0)))
             } else if first.is_type(Nonterminal(t_primary)) {
-                first
-                    .iter_children()
-                    .find(|x| x.is_type(Nonterminal(name_definition)))
-                    .map(|name_def| {
-                        Self::NameExpression(
-                            PrimaryTarget::new(first),
-                            Name::new(name_def.get_nth_child(0)),
-                        )
-                    })
-                    .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(first)))
+                Self::new_t_primary(first)
             } else if first.is_type(Nonterminal(star_target_brackets)) {
                 todo!("star_target_brackets")
             } else if first.is_type(Nonterminal(star_target)) {
@@ -1719,6 +1707,34 @@ impl<'db> Target<'db> {
             Self::Tuple(TargetIterator {
                 siblings: node.iter_children(),
             })
+        }
+    }
+
+    fn new_t_primary(t_prim: PyNode<'db>) -> Self {
+        t_prim
+            .iter_children()
+            .find(|x| x.is_type(Nonterminal(name_definition)))
+            .map(|name_def| {
+                Self::NameExpression(
+                    PrimaryTarget::new(t_prim),
+                    Name::new(name_def.get_nth_child(0)),
+                )
+            })
+            .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(t_prim)))
+    }
+
+    fn new_single_target(node: PyNode<'db>) -> Self {
+        debug_assert_eq!(node.get_type(), Nonterminal(single_target));
+
+        // t_primary | name_definition | "(" single_target ")"
+        let first = node.get_nth_child(0);
+        if first.is_type(Nonterminal(name_definition)) {
+            Self::Name(NameDefinition::new(first).name())
+        } else if first.is_type(Nonterminal(primary)) {
+            Self::new_t_primary(first)
+        } else {
+            debug_assert_eq!(node.get_nth_child(0).get_code(), "(");
+            Self::new_single_target(first.get_nth_child(1))
         }
     }
 }
