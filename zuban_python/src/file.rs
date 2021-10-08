@@ -459,7 +459,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
-        todo!("missing builtin/star import")
+        let point = if let Some(link) = self
+            .i_s
+            .database
+            .python_state
+            .get_builtins()
+            .lookup_global(name.as_str())
+        {
+            Point::new_redirect(link.file, link.node_index, link.locality)
+        } else {
+            // TODO star imports
+            Point::new_uncalculated()
+        };
+        self.file.points.set(name.index(), point);
+        self.infer_name(name)
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
