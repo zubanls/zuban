@@ -1,6 +1,6 @@
 use crate::arguments::SimpleArguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Specific,
+    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Points, Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -28,10 +28,13 @@ impl ComplexValues {
         self.0.get(index).unwrap()
     }
 
-    pub fn insert(&self, points: &[Cell<Point>], node_index: NodeIndex, complex: ComplexPoint) {
+    pub fn insert(&self, points: &Points, node_index: NodeIndex, complex: ComplexPoint) {
         let complex_index = self.0.len() as u32;
         self.0.push(Box::pin(complex));
-        points[node_index as usize].set(Point::new_complex_point(complex_index, Locality::Stmt));
+        points.set(
+            node_index,
+            Point::new_complex_point(complex_index, Locality::Stmt),
+        );
     }
 }
 
@@ -92,7 +95,7 @@ pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
     //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    pub points: Vec<Cell<Point>>,
+    pub points: Points,
     pub complex_points: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
@@ -117,7 +120,7 @@ impl<'db> PythonFile {
             tree,
             file_index: Cell::new(None),
             symbol_table: Default::default(),
-            points: vec![Default::default(); length],
+            points: Points::new(length),
             complex_points: Default::default(),
             dependencies: vec![],
             issues: vec![],
@@ -139,13 +142,13 @@ impl<'db> PythonFile {
     }
 
     pub fn calculate_global_definitions_and_references(&self) {
-        if self.get_point(0).is_calculated() {
+        if self.points.get(0).is_calculated() {
             // It was already done.
             return;
         }
         self.with_global_binder(|binder| binder.index_file(self.tree.root()));
 
-        self.set_point(0, Point::new_node_analysis(Locality::File));
+        self.points.set(0, Point::new_node_analysis(Locality::File));
     }
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
@@ -181,16 +184,6 @@ impl<'db> PythonFile {
         }
     }
 
-    #[inline]
-    pub fn get_point(&self, index: NodeIndex) -> Point {
-        self.points[index as usize].get()
-    }
-
-    #[inline]
-    pub fn set_point(&self, index: NodeIndex, point: Point) {
-        self.points[index as usize].set(point);
-    }
-
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.calculate_global_definitions_and_references();
         self.symbol_table
@@ -220,7 +213,7 @@ macro_rules! check_point_cache_with {
                         self.file.get_file_index(),
                         node.index(),
                         {
-                            let point = self.file.get_point(node.index());
+                            let point = self.file.points.get(node.index());
                             if matches!(point.get_type(), PointType::LanguageSpecific) {
                                 format!("{:?}", point.get_language_specific())
                             } else {
@@ -279,7 +272,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // as names should have been calculated earlier
                 for target in targets {
                     let name = target.import_name();
-                    if self.file.get_point(name.index()).is_calculated() {
+                    if self.file.points.get(name.index()).is_calculated() {
                         todo!("multi definition")
                     }
                     let i = inferred
@@ -344,7 +337,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!("Tuple unpack");
             }
             Target::Name(n) => {
-                let point = self.file.get_point(n.index());
+                let point = self.file.points.get(n.index());
                 if point.is_calculated() {
                     // Save on name_definition
                     debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
@@ -470,7 +463,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
-        let point = self.file.get_point(node_index);
+        let point = self.file.points.get(node_index);
         point
             .is_calculated()
             .then(|| match point.get_type() {
@@ -478,7 +471,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let file_index = point.get_file_index();
                     let node_index = point.get_node_index();
                     let infer = |inference: &mut PythonInference<'db, '_, '_>| {
-                        let point = inference.file.get_point(point.get_node_index());
+                        let point = inference.file.points.get(point.get_node_index());
                         inference.check_point_cache(node_index).unwrap_or_else(|| {
                             let name = Name::maybe_by_index(&inference.file.tree, node_index);
                             if let Some(name) = name {
@@ -505,7 +498,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let name = Name::by_index(&self.file.tree, node_index);
                         let func = name.expect_function_def();
                         self.file.calculate_function_scope_definitions(func);
-                        let point = self.file.get_point(node_index);
+                        let point = self.file.points.get(node_index);
                         debug_assert!(point.is_calculated());
                         self.check_point_cache(node_index).unwrap()
                     }
@@ -550,7 +543,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
         let stmt_like = name.expect_stmt_like_ancestor();
 
-        if !self.file.get_point(stmt_like.index()).is_calculated() {
+        if !self.file.points.get(stmt_like.index()).is_calculated() {
             match stmt_like {
                 StmtLike::Stmt(stmt) => {
                     if name.is_reference() {
@@ -568,8 +561,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 _ => todo!("{:?}", stmt_like),
             }
         }
-        debug_assert!(self.file.get_point(name.index()).is_calculated());
-        if let PointType::MultiDefinition = self.file.get_point(name.index()).get_type() {
+        debug_assert!(self.file.points.get(name.index()).is_calculated());
+        if let PointType::MultiDefinition = self.file.points.get(name.index()).get_type() {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.
             self.infer_multi_definition(name.name_definition().unwrap())

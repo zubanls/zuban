@@ -1,9 +1,7 @@
-use std::cell::Cell;
-
 use crate::database::{
     ClassStorage, ComplexPoint, FileIndex, Locality, Point,
     PointType::{LanguageSpecific, MultiDefinition, Redirect},
-    Specific,
+    Points, Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
@@ -36,7 +34,7 @@ pub struct NameBinder<'db, 'a> {
     tree: &'db Tree,
     typ: NameBinderType,
     symbol_table: &'a SymbolTable,
-    points: &'db [Cell<Point>],
+    points: &'db Points,
     complex_points: &'db ComplexValues,
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
@@ -51,7 +49,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         tree: &'db Tree,
         typ: NameBinderType,
         symbol_table: &'a SymbolTable,
-        points: &'db [Cell<Point>],
+        points: &'db Points,
         complex_points: &'db ComplexValues,
         file_index: FileIndex,
         parent: Option<&'a Self>,
@@ -74,7 +72,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     pub fn with_global_binder(
         tree: &'db Tree,
         symbol_table: &'a SymbolTable,
-        points: &'db [Cell<Point>],
+        points: &'db Points,
         complex_points: &'db ComplexValues,
         file_index: FileIndex,
         parent: Option<&'a Self>,
@@ -125,11 +123,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let replaced = self.symbol_table.add_or_replace_symbol(name);
         if !in_base_scope {
             if let Some(replaced) = replaced {
-                self.points[name_def.index() as usize].set(point);
+                self.points.set(name_def.index(), point);
                 point = Point::new_multi_definition(replaced, Locality::File);
             }
         }
-        self.points[name.index() as usize].set(point);
+        self.points.set(name.index(), point);
     }
 
     fn add_point_definition(
@@ -244,15 +242,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn merge_latest_return_or_yield(&self, first: NodeIndex, mut second: NodeIndex) -> NodeIndex {
         if first != 0 && second != 0 {
             loop {
-                let point = self.points[second as usize].get();
+                let point = self.points.get(second);
                 let node_index = point.get_node_index();
                 if node_index == 0 {
                     // Now that we have the first node in the chain of the second nodes, link that
                     // to the first one (like a linked list)
-                    self.points[second as usize].set(Point::new_node_analysis_with_node_index(
-                        Locality::File,
-                        first,
-                    ));
+                    self.points.set(
+                        second,
+                        Point::new_node_analysis_with_node_index(Locality::File, first),
+                    );
                     break;
                 } else {
                     assert!(node_index < second);
@@ -434,10 +432,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn is_self_param(&self, name_index: NodeIndex) -> bool {
-        let point = self.points[name_index as usize].get();
+        let point = self.points.get(name_index);
         if let Redirect = point.get_type() {
             let param_index = point.get_node_index();
-            let param_point = self.points[param_index as usize].get();
+            let param_point = self.points.get(param_index);
             if let LanguageSpecific = param_point.get_type() {
                 if param_point.get_language_specific() == Specific::Param {
                     let name = Name::by_index(self.tree, param_index);
@@ -518,10 +516,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_return_or_yield(&self, latest_return_or_yield: &mut NodeIndex, node_index: NodeIndex) {
         let keyword_index = node_index + 1;
-        self.points[keyword_index as usize].set(Point::new_node_analysis_with_node_index(
-            Locality::File,
-            *latest_return_or_yield,
-        ));
+        self.points.set(
+            keyword_index,
+            Point::new_node_analysis_with_node_index(Locality::File, *latest_return_or_yield),
+        );
         *latest_return_or_yield = keyword_index
     }
 
@@ -616,7 +614,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
-        let func_index = func.index() as usize;
+        let func_index = func.index();
 
         // Function name was indexed already.
         let (name_def, params, _, block) = func.unpack();
@@ -628,10 +626,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
         let latest_return_index = self.index_block(block, true, true);
         // It's kind of hard to know where to store the latest reference statement.
-        self.points[func_index + 1].set(Point::new_node_analysis_with_node_index(
-            Locality::ClassOrFunction,
-            latest_return_index,
-        ));
+        self.points.set(
+            func_index + 1,
+            Point::new_node_analysis_with_node_index(
+                Locality::ClassOrFunction,
+                latest_return_index,
+            ),
+        );
 
         if matches!(
             func.parent(),
@@ -639,25 +640,27 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ) {
             todo!()
         }
-        self.points[func_index].set(Point::new_simple_language_specific(
-            if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
-                Specific::Closure
-            } else {
-                Specific::Function
-            },
-            Locality::Stmt,
-        ));
+        self.points.set(
+            func_index,
+            Point::new_simple_language_specific(
+                if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
+                    Specific::Closure
+                } else {
+                    Specific::Function
+                },
+                Locality::Stmt,
+            ),
+        );
 
         // Avoid overwriting multi definitions
         let mut name_index = name_def.name().index();
-        if self.points[name_index as usize].get().get_type() == MultiDefinition {
+        if self.points.get(name_index).get_type() == MultiDefinition {
             name_index = name_def.index();
         }
-        self.points[name_index as usize].set(Point::new_redirect(
-            self.file_index,
-            func.index(),
-            Locality::Stmt,
-        ));
+        self.points.set(
+            name_index,
+            Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
+        );
     }
 
     fn index_lambda_param_defaults(&mut self, lambda: Lambda<'db>, ordered: bool) {
@@ -706,7 +709,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 Point::new_uncalculated()
             }
         };
-        self.points[name.index() as usize].set(point);
+        self.points.set(name.index(), point);
     }
 
     fn lookup_name(&self, name: Name<'db>) -> Option<NodeIndex> {

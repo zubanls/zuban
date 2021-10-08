@@ -104,7 +104,7 @@ impl<'db> Function<'db> {
     }
 
     fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
-        let def_point = self.file.get_point(self.node_index + 1);
+        let def_point = self.file.points.get(self.node_index + 1);
         let first_return_or_yield = def_point.get_node_index();
         ReturnOrYieldIterator {
             file: self.file,
@@ -187,7 +187,7 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
         if self.next_node_index == 0 {
             None
         } else {
-            let point = self.file.get_point(self.next_node_index);
+            let point = self.file.points.get(self.next_node_index);
             let index = self.next_node_index;
             self.next_node_index = point.get_node_index();
             Some(ReturnOrYield::by_index(&self.file.tree, index - 1))

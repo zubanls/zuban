@@ -36,7 +36,7 @@ impl<'db> NodeReference<'db> {
     }
 
     fn get_point(&self) -> Point {
-        self.file.get_point(self.node_index)
+        self.file.points.get(self.node_index)
     }
 
     fn get_complex(&self) -> Option<&'db ComplexPoint> {
@@ -91,7 +91,7 @@ pub struct Inferred<'db> {
 
 impl<'db> Inferred<'db> {
     pub fn new_and_save(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
-        file.set_point(node_index, point);
+        file.points.set(node_index, point);
         Self::new_saved(file, node_index, point)
     }
 
@@ -422,10 +422,10 @@ impl<'db> Inferred<'db> {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
             InferredState::Saved(definition, point) => {
-                if file.get_point(index).is_calculated() {
-                    todo!("{:?} {:?}", file.get_point(index), index);
+                if file.points.get(index).is_calculated() {
+                    todo!("{:?} {:?}", file.points.get(index), index);
                 }
-                file.set_point(
+                file.points.set(
                     index,
                     Point::new_redirect(
                         definition.file.get_file_index(),
@@ -438,7 +438,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 file.complex_points
                     .insert(&file.points, index, complex.clone());
-                Self::new_saved(file, index, file.get_point(index))
+                Self::new_saved(file, index, file.points.get(index))
             }
         }
     }
@@ -500,7 +500,7 @@ impl fmt::Debug for Inferred<'_> {
 }
 
 fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
-    let v = file.get_point(node_index);
+    let v = file.points.get(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
@@ -510,7 +510,7 @@ fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
 }
 
 fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
-    let v = file.get_point(node_index);
+    let v = file.points.get(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
@@ -525,7 +525,7 @@ fn load_builtin_instance_from_str<'db>(
 ) -> Instance<'db> {
     let builtins = database.python_state.get_builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index;
-    let v = builtins.get_point(node_index);
+    let v = builtins.points.get(node_index);
     debug_assert_eq!(v.get_type(), PointType::Redirect);
     debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
     use_instance(builtins, v.get_node_index())

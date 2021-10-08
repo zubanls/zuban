@@ -214,6 +214,24 @@ impl fmt::Debug for Point {
     }
 }
 
+pub struct Points(Vec<Cell<Point>>);
+
+impl Points {
+    pub fn new(length: usize) -> Self {
+        Self(vec![Default::default(); length])
+    }
+
+    #[inline]
+    pub fn get(&self, index: NodeIndex) -> Point {
+        self.0[index as usize].get()
+    }
+
+    #[inline]
+    pub fn set(&self, index: NodeIndex, point: Point) {
+        self.0[index as usize].set(point);
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PointType {
