@@ -469,10 +469,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_redirect(link.file, link.node_index, link.locality)
         } else {
             // TODO star imports
-            Point::new_uncalculated()
+            Point::new_missing_or_unknown(self.file_index, Locality::File)
         };
         self.file.points.set_on_name(name.index(), point);
-        self.infer_name(name)
+        debug_assert!(self.file.points.get(name.index()).is_calculated());
+        self.infer_name_reference(name)
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
