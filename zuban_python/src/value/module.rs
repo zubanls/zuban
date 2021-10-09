@@ -3,17 +3,15 @@ use crate::arguments::Arguments;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Module<'db> {
     file: &'db PythonFile,
-    symbol_table: &'db SymbolTable,
 }
 
 impl<'db> Module<'db> {
-    pub fn new(file: &'db PythonFile, symbol_table: &'db SymbolTable) -> Self {
-        Self { file, symbol_table }
+    pub fn new(file: &'db PythonFile) -> Self {
+        Self { file }
     }
 }
 
@@ -28,7 +26,7 @@ impl<'db> Value<'db> for Module<'db> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         self.file.calculate_global_definitions_and_references();
-        if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
+        if let Some(node_index) = self.file.symbol_table.lookup_symbol(name) {
             self.file.get_inference(i_s).infer_name_by_index(node_index)
         } else {
             todo!()
