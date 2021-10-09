@@ -512,7 +512,12 @@ impl fmt::Debug for Inferred<'_> {
 
 fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
     let v = file.points.get(node_index);
-    debug_assert_eq!(v.get_type(), PointType::Complex);
+    debug_assert_eq!(
+        v.get_type(),
+        PointType::Complex,
+        "Complex expected, found {:?}",
+        v
+    );
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
         ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table),
