@@ -321,7 +321,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, _) => {
-                let right = self.infer_expression(annotation);
+                let right = Inferred::new_and_save(
+                    self.file,
+                    annotation.index(),
+                    Point::new_simple_language_specific(
+                        Specific::AnnotationInstance,
+                        Locality::Stmt,
+                    ),
+                );
                 self.assign_targets(target, &right)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
@@ -585,7 +592,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 _ => todo!("{:?}", stmt_like),
             }
         }
-        debug_assert!(self.file.points.get(name.index()).is_calculated());
+        debug_assert!(
+            self.file.points.get(name.index()).is_calculated(),
+            "{:?}",
+            name
+        );
         if let PointType::MultiDefinition = self.file.points.get(name.index()).get_type() {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.

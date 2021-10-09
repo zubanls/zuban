@@ -10,10 +10,11 @@ file: 0-53
      single_target: 1-4
       name_definition: 1-4
        Name: 1-4 "foo"
-     Keyword: 4-5 ":"
-     expression: 6-9
-      atom: 6-9
-       Name: 6-9 "bar"
+     annotation: 4-9
+      Keyword: 4-5 ":"
+      expression: 6-9
+       atom: 6-9
+        Name: 6-9 "bar"
    Newline: 9-10 "\n"
  stmt: 10-23
   simple_stmts: 10-23
@@ -22,10 +23,11 @@ file: 0-53
      single_target: 10-13
       name_definition: 10-13
        Name: 10-13 "foo"
-     Keyword: 13-14 ":"
-     expression: 15-18
-      atom: 15-18
-       Name: 15-18 "int"
+     annotation: 13-18
+      Keyword: 13-14 ":"
+      expression: 15-18
+       atom: 15-18
+        Name: 15-18 "int"
      Keyword: 19-20 "="
      star_expressions: 21-22
       expression: 21-22
@@ -43,10 +45,11 @@ file: 0-53
        Keyword: 26-27 "."
        name_definition: 27-30
         Name: 27-30 "bar"
-     Keyword: 30-31 ":"
-     expression: 32-35
-      atom: 32-35
-       Name: 32-35 "baz"
+     annotation: 30-35
+      Keyword: 30-31 ":"
+      expression: 32-35
+       atom: 32-35
+        Name: 32-35 "baz"
    Newline: 35-36 "\n"
  Error(stmt): 36-48
   Error(simple_stmts): 36-48
@@ -55,10 +58,11 @@ file: 0-53
      single_target: 36-39
       name_definition: 36-39
        Name: 36-39 "foo"
-     Keyword: 39-40 ":"
-     expression: 41-44
-      atom: 41-44
-       Name: 41-44 "bar"
+     annotation: 39-44
+      Keyword: 39-40 ":"
+      expression: 41-44
+       atom: 41-44
+        Name: 41-44 "bar"
      Keyword: 45-46 "="
      star_expressions: 47-48
       expression: 47-48

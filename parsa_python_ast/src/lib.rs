@@ -1231,7 +1231,7 @@ pub enum ArgumentsDetails<'db> {
 impl<'db> Assignment<'db> {
     pub fn unpack(&self) -> AssignmentContent<'db> {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
-        // | single_target ":" expression ["=" (yield_expr | star_expressions)]
+        // | single_target annotation ["=" (yield_expr | star_expressions)]
         // | single_target augassign (yield_expr | star_expressions)
         let mut iterator = self.node.iter_children().skip(1);
         while let Some(child) = iterator.next() {
@@ -1240,12 +1240,12 @@ impl<'db> Assignment<'db> {
             {
                 let iter = AssignmentTargetIterator(self.node.iter_children().step_by(2));
                 return AssignmentContent::Normal(iter, Self::right_side(child));
-            } else if child.is_type(Nonterminal(expression)) {
+            } else if child.is_type(Nonterminal(annotation)) {
                 iterator.next();
                 let right = iterator.next().map(Self::right_side);
                 return AssignmentContent::WithAnnotation(
                     Target::new_single_target(self.node.get_nth_child(0)),
-                    Expression::new(child),
+                    Annotation::new(child),
                     right,
                 );
             } else if child.is_type(Nonterminal(augassign)) {
@@ -1274,7 +1274,7 @@ pub enum AssignmentContent<'db> {
     Normal(AssignmentTargetIterator<'db>, AssignmentRightSide<'db>),
     WithAnnotation(
         Target<'db>,
-        Expression<'db>,
+        Annotation<'db>,
         Option<AssignmentRightSide<'db>>,
     ),
     AugAssign(Target<'db>, AugAssign<'db>, AssignmentRightSide<'db>),

@@ -157,10 +157,11 @@ file: 0-103
      single_target: 96-97
       name_definition: 96-97
        Name: 96-97 "b"
-     Keyword: 97-98 ":"
-     expression: 99-102
-      atom: 99-102
-       Keyword: 99-102 "..."
+     annotation: 97-102
+      Keyword: 97-98 ":"
+      expression: 99-102
+       atom: 99-102
+        Keyword: 99-102 "..."
    Newline: 102-103 "\n"
  Endmarker: 103-103 ""
 

@@ -33,10 +33,11 @@ file: 0-100
      single_target: 16-22
       name_definition: 16-22
        Name: 16-22 "kwargs"
-     Keyword: 22-23 ":"
-     expression: 24-27
-      atom: 24-27
-       Keyword: 24-27 "..."
+     annotation: 22-27
+      Keyword: 22-23 ":"
+      expression: 24-27
+       atom: 24-27
+        Keyword: 24-27 "..."
    Newline: 27-28 "\n"
  Error(stmt): 28-41
   Error(simple_stmts): 28-41
@@ -88,10 +89,11 @@ file: 0-100
      single_target: 59-60
       name_definition: 59-60
        Name: 59-60 "b"
-     Keyword: 60-61 ":"
-     expression: 62-65
-      atom: 62-65
-       Keyword: 62-65 "..."
+     annotation: 60-65
+      Keyword: 60-61 ":"
+      expression: 62-65
+       atom: 62-65
+        Keyword: 62-65 "..."
    Newline: 65-66 "\n"
  Error(stmt): 66-80
   Error(simple_stmts): 66-80

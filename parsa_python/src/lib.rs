@@ -30,7 +30,7 @@ create_grammar!(
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
     assignment:
         | (star_targets "=" )+ (yield_expr | star_expressions)
-        | single_target ":" expression ["=" (yield_expr | star_expressions)]
+        | single_target annotation ["=" (yield_expr | star_expressions)]
         | single_target augassign (yield_expr | star_expressions)
 
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
