@@ -165,7 +165,7 @@ impl<'db> Value<'db> for Function<'db> {
                         )
                     } else {
                         Point::new_missing_or_unknown(self.file.get_file_index(), Locality::Stmt);
-                        todo!();
+                        todo!("{:?}", self.get_name());
                     };
                     Inferred::new_and_save(self.file, return_annotation.index(), point)
                 })

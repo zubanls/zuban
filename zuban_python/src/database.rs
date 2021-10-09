@@ -471,9 +471,26 @@ impl Database {
     }
 
     fn initial_python_load(&mut self) {
-        let builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
-        let typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
-        self.python_state.initialize(builtins, typing);
+        self.python_state.builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
+        self.python_state.typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
+
+        use crate::inference_state::InferenceState;
+        use crate::value::{Module, Value};
+        let mut i_s = InferenceState::new(self);
+        let builtins = self.python_state.get_builtins();
+        let obj = Module::new(builtins).lookup(&mut i_s, "object");
+        let init = obj.run_on_value(&mut i_s, &|i_s, v| v.lookup(i_s, "__init__"));
+        let func = init.find_function_alternative();
+        let link = func.as_point_link();
+        assert_eq!(
+            builtins.points.get(link.node_index).get_type(),
+            PointType::LanguageSpecific
+        );
+        assert_eq!(
+            builtins.points.get(link.node_index).get_language_specific(),
+            Specific::Function
+        );
+        self.python_state.object_init_method_node_index = link.node_index;
     }
 }
 
@@ -622,29 +639,6 @@ impl PythonState {
             builtins: null(),
             typing: null(),
             object_init_method_node_index: 0,
-        }
-    }
-
-    fn initialize(&mut self, builtins: *const PythonFile, typing: *const PythonFile) {
-        self.builtins = builtins;
-        self.typing = typing;
-
-        let builtins = self.get_builtins();
-        builtins.calculate_global_definitions_and_references();
-        let link = builtins.lookup_global("object").unwrap();
-        let cls_name = builtins.points.get(link.node_index);
-        let complex = builtins.complex_points.get(
-            builtins
-                .points
-                .get(cls_name.get_node_index())
-                .get_complex_index(),
-        );
-        match complex {
-            ComplexPoint::Class(c) => {
-                self.object_init_method_node_index =
-                    c.symbol_table.lookup_symbol("__init__").unwrap();
-            }
-            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
 
