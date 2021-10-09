@@ -131,11 +131,12 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s)
                                 .infer_expression(definition.as_annotation_instance_expression());
-                            callable(i_s, &inferred.instantiate())
+                            let instance = inferred.instantiate(i_s);
+                            callable(i_s, &instance)
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            let instance = cls.instantiate();
+                            let instance = cls.instantiate(i_s);
                             let args = InstanceArguments::from_primary(
                                 &instance,
                                 definition.file,
@@ -387,13 +388,29 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn instantiate(&self) -> Instance<'db> {
+    fn instantiate(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db> {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                use_instance(definition.file, definition.node_index)
+                if point.get_type() == PointType::LanguageSpecific {
+                    if let Specific::SimpleGeneric = point.get_language_specific() {
+                        let mut inference = definition.file.get_inference(i_s);
+                        let cls =
+                            match Primary::by_index(&definition.file.tree, definition.node_index)
+                                .first()
+                            {
+                                PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
+                                PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
+                            };
+                        cls.instantiate(i_s)
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    use_instance(definition.file, definition.node_index)
+                }
             }
             InferredState::UnsavedComplex(complex) => {
-                unreachable!("{:?}", complex)
+                todo!("{:?}", complex)
             }
         }
     }
@@ -511,14 +528,8 @@ impl fmt::Debug for Inferred<'_> {
 }
 
 fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
-    let v = file.points.get(node_index);
-    debug_assert_eq!(
-        v.get_type(),
-        PointType::Complex,
-        "Complex expected, found {:?}",
-        v
-    );
-    let complex = file.complex_points.get(v.get_complex_index() as usize);
+    let point = file.points.get(node_index);
+    let complex = file.complex_points.get(point.get_complex_index() as usize);
     match complex {
         ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),

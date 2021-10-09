@@ -172,7 +172,11 @@ impl Point {
     }
 
     pub fn get_complex_index(self) -> usize {
-        debug_assert!(self.get_type() == PointType::Complex);
+        debug_assert!(
+            self.get_type() == PointType::Complex,
+            "Expected complex, got {:?}",
+            self
+        );
         (self.flags & REST_MASK) as usize
     }
 

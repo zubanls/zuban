@@ -2,10 +2,14 @@ use parsa_python_ast::{
     NamedExpression, NodeIndex, Slice as ASTSlice, SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
+use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
+use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::value::Function;
 
+#[derive(Debug)]
 pub enum SliceType<'db> {
     Simple(Simple<'db>),
     Slice(Slice<'db>),
@@ -26,6 +30,13 @@ impl<'db> SliceType<'db> {
     }
 }
 
+impl<'db> SliceType<'db> {
+    pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
+        SliceArguments(self)
+    }
+}
+
+#[derive(Debug)]
 pub struct Simple<'db> {
     pub file: &'db PythonFile,
     pub primary_index: NodeIndex,
@@ -40,12 +51,48 @@ impl<'db> Simple<'db> {
     }
 }
 
+#[derive(Debug)]
 pub struct Slice<'db> {
     file: &'db PythonFile,
     slice: ASTSlice<'db>,
 }
 
+#[derive(Debug)]
 pub struct Slices<'db> {
     file: &'db PythonFile,
     slices: ASTSlices<'db>,
+}
+
+#[derive(Debug)]
+pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);
+
+impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db> {
+        //ArgumentIterator::Normal(self.get_argument_iterator_base())
+        todo!()
+    }
+
+    fn get_outer_execution(&self) -> Option<&Execution> {
+        todo!()
+    }
+
+    fn as_execution(&self, function: &Function) -> Execution {
+        /*
+        Execution::new(
+            function.as_point_link(),
+            PointLink::new(self.file.get_file_index(), self.primary_node.index()),
+            self.in_,
+        )
+        */
+        todo!()
+    }
+
+    fn get_type(&self) -> ArgumentsType<'db> {
+        /*
+        match {
+            ArgumentsType::Normal(self.file, self.primary_node)
+        }
+        */
+        todo!()
+    }
 }

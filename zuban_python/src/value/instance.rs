@@ -5,6 +5,7 @@ use crate::arguments::Arguments;
 use crate::database::PointLink;
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
@@ -63,5 +64,14 @@ impl<'db> Value<'db> for Instance<'db> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         todo!()
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        self.lookup(i_s, "__getitem__")
+            .run_on_value(i_s, &|i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
 }
