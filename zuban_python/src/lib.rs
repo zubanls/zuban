@@ -1,6 +1,7 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
 #![allow(clippy::collapsible_if)]
+#![allow(mutable_borrow_reservation_conflict)]
 
 mod arguments;
 mod database;

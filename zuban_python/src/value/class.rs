@@ -57,7 +57,9 @@ impl<'db> Value<'db> for Class<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.file.get_inference(i_s).infer_name_by_index(node_index)
         } else {
-            todo!("{:?}.{:?}", self.get_name(), name)
+            // todo!("{:?}.{:?}", self.get_name(), name)
+            // TODO inheritance
+            i_s.database.python_state.object_init_as_inferred()
         }
     }
 

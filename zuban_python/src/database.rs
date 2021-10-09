@@ -12,6 +12,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
+use crate::inferred::Inferred;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -470,8 +471,9 @@ impl Database {
     }
 
     fn initial_python_load(&mut self) {
-        self.python_state.builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
-        self.python_state.typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
+        let builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
+        let typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
+        self.python_state.initialize(builtins, typing);
     }
 }
 
@@ -611,6 +613,7 @@ impl DirectoryOrFile {
 pub struct PythonState {
     builtins: *const PythonFile,
     typing: *const PythonFile,
+    object_init_method_node_index: NodeIndex,
 }
 
 impl PythonState {
@@ -618,6 +621,30 @@ impl PythonState {
         Self {
             builtins: null(),
             typing: null(),
+            object_init_method_node_index: 0,
+        }
+    }
+
+    fn initialize(&mut self, builtins: *const PythonFile, typing: *const PythonFile) {
+        self.builtins = builtins;
+        self.typing = typing;
+
+        let builtins = self.get_builtins();
+        builtins.calculate_global_definitions_and_references();
+        let link = builtins.lookup_global("object").unwrap();
+        let cls_name = builtins.points.get(link.node_index);
+        let complex = builtins.complex_points.get(
+            builtins
+                .points
+                .get(cls_name.get_node_index())
+                .get_complex_index(),
+        );
+        match complex {
+            ComplexPoint::Class(c) => {
+                self.object_init_method_node_index =
+                    c.symbol_table.lookup_symbol("__init__").unwrap();
+            }
+            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
 
@@ -631,6 +658,15 @@ impl PythonState {
     pub fn get_typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
+    }
+
+    pub fn object_init_as_inferred(&self) -> Inferred {
+        let builtins = self.get_builtins();
+        Inferred::new_saved(
+            builtins,
+            self.object_init_method_node_index,
+            builtins.points.get(self.object_init_method_node_index),
+        )
     }
 }
 
