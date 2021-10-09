@@ -172,7 +172,7 @@ impl<'db> Inferred<'db> {
                         self.run_on_complex(i_s, complex, Some(definition), callable, reducer)
                     }
                 }
-                MissingOrUnknown => on_missing(self.clone()),
+                Unknown => on_missing(self.clone()),
                 FileReference => {
                     let f = i_s.database.get_loaded_python_file(point.get_file_index());
                     callable(i_s, &Module::new(f))

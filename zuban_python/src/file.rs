@@ -283,10 +283,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         link.into_point_redirect()
                     } else {
                         // TODO star imports
-                        Point::new_missing_or_unknown(
-                            import_file.get_file_index(),
-                            Locality::DirectExtern,
-                        )
+                        Point::new_unknown(import_file.get_file_index(), Locality::DirectExtern)
                     };
                     self.file.points.set_on_name(&name, point);
                 }
@@ -486,7 +483,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             link.into_point_redirect()
         } else {
             // TODO star imports
-            Point::new_missing_or_unknown(self.file_index, Locality::File)
+            Point::new_unknown(self.file_index, Locality::File)
         };
         self.file.points.set_on_name(&name, point);
         debug_assert!(self.file.points.get(name.index()).is_calculated());
@@ -542,7 +539,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
                     inferred.union(self.infer_multi_definition(name_def))
                 }
-                PointType::Complex | PointType::MissingOrUnknown | PointType::FileReference => {
+                PointType::Complex | PointType::Unknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node_index, point)
                 }
                 PointType::NodeAnalysis => {

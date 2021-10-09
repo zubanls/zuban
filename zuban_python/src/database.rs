@@ -86,8 +86,8 @@ impl Point {
         }
     }
 
-    pub fn new_missing_or_unknown(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::MissingOrUnknown, file.0, locality);
+    pub fn new_unknown(file: FileIndex, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(PointType::Unknown, file.0, locality);
         Self {
             flags,
             node_index: 0,
@@ -254,7 +254,7 @@ pub enum PointType {
     MultiDefinition,
     Complex,
     // In case of a reference it's missing otherwise unknown.
-    MissingOrUnknown,
+    Unknown,
     LanguageSpecific,
     FileReference,
     // Basically stuff like if/for nodes
