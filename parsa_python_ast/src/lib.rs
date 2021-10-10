@@ -973,6 +973,12 @@ impl<'db> ClassDef<'db> {
         self.name_definition().name()
     }
 
+    pub fn arguments(&self) -> Option<Arguments<'db>> {
+        let args = self.node.get_nth_child(3);
+        args.is_type(Nonterminal(arguments))
+            .then(|| Arguments::new(args))
+    }
+
     pub fn unpack(&self) -> (Option<Arguments<'db>>, Block<'db>) {
         let mut args = None;
         for child in self.node.iter_children().skip(3) {

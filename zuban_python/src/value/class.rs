@@ -1,10 +1,11 @@
-use parsa_python_ast::{ClassDef, NodeIndex};
+use parsa_python_ast::{Argument, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::generics::TypeVarFinder;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -99,5 +100,72 @@ impl<'db> Value<'db> for Class<'db> {
             }
             _ => todo!(),
         }
+    }
+}
+
+struct ClassTypeVarFinder<'db, 'a> {
+    file: &'db PythonFile,
+    class: &'a Class<'db>,
+    args: &'a dyn Arguments<'db>,
+    calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
+}
+
+impl<'db, 'a> TypeVarFinder<'db, 'a> for ClassTypeVarFinder<'db, 'a> {
+    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
+        if let Some(type_vars) = &self.calculated_type_vars {
+            for (type_var, result) in type_vars {
+                if *type_var == name {
+                    return Some(result.clone());
+                }
+            }
+            None
+        } else {
+            self.calculate_type_vars(i_s);
+            self.lookup(i_s, name)
+        }
+    }
+}
+
+impl<'db, 'a> ClassTypeVarFinder<'db, 'a> {
+    fn new(file: &'db PythonFile, class: &'a Class<'db>, args: &'a dyn Arguments<'db>) -> Self {
+        Self {
+            file,
+            class,
+            args,
+            calculated_type_vars: None,
+        }
+    }
+
+    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
+        let mut calculated_type_vars = vec![];
+        if let Some(arguments) = self.class.get_node().arguments() {
+            for arg in arguments.iter() {
+                match arg {
+                    Argument::Positional(a) => {
+                        todo!()
+                    }
+                    _ => {
+                        todo!()
+                    }
+                }
+                /*
+                    if !calculated_type_vars
+                        .iter()
+                        .any(|(n, _)| *n == name.get_code())
+                    {
+                        let inferred = self
+                            .file
+                            .get_inference(i_s)
+                            .infer_expression(annotation.expression());
+                        if inferred.is_type_var(i_s) {
+                            calculated_type_vars.push((name.get_code(), p.infer(i_s)));
+                        } else {
+                            // TODO stuff like List[T]
+                        }
+                    }
+                */
+            }
+        }
+        self.calculated_type_vars = Some(calculated_type_vars);
     }
 }
