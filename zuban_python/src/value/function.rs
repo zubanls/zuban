@@ -253,6 +253,10 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         // TODO stuff like List[T]
                     }
                 }
+            } else {
+                if let Some(Argument::PositionalInstance(point_link)) = p.argument {
+                    todo!()
+                }
             }
         }
         self.calculated_type_vars = Some(calculated_type_vars);

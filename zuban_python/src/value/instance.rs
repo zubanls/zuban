@@ -53,6 +53,7 @@ impl<'db> Value<'db> for Instance<'db> {
                 .get_inference(i_s)
                 .infer_name_by_index(node_index)
                 .resolve_function_return(i_s)
+                .bind(self)
         } else {
             todo!("{:?}", name)
         }

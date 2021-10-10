@@ -287,6 +287,7 @@ pub enum Specific {
     Function,                 // The node point so the index of the result
     Closure,
     NoReturnFunction,
+    BoundMethod,
 
     InstanceWithArguments, // A primary node
     AnnotationInstance,
@@ -336,11 +337,17 @@ impl LocalityLink {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct InstanceLink {
+    pub node: PointLink,
+    pub execution: Execution,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
-    Instance(PointLink, Execution),
-    Method(PointLink, Execution),
+    Instance(InstanceLink),
+    BoundMethod(InstanceLink, PointLink),
     Closure(PointLink, Execution),
     Generic(Execution),
 }

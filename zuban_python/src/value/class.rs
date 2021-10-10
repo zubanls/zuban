@@ -2,7 +2,7 @@ use parsa_python_ast::{Argument, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
-use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
+use crate::database::{ComplexPoint, InstanceLink, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::TypeVarFinder;
@@ -71,10 +71,10 @@ impl<'db> Value<'db> for Class<'db> {
     ) -> Inferred<'db> {
         // TODO locality!!!
         if args.get_outer_execution().is_some() {
-            Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                PointLink::new(self.file.get_file_index(), self.node_index),
-                args.as_execution(&self.get_init_func(i_s, args)),
-            ))
+            Inferred::new_unsaved_complex(ComplexPoint::Instance(InstanceLink {
+                node: PointLink::new(self.file.get_file_index(), self.node_index),
+                execution: args.as_execution(&self.get_init_func(i_s, args)),
+            }))
         } else {
             let point = Point::new_simple_language_specific(
                 Specific::InstanceWithArguments,
