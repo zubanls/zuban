@@ -27,6 +27,13 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn with_annotation_instance(&self) -> Self {
+        Self {
+            database: self.database,
+            current_execution: None,
+        }
+    }
+
     pub fn run_with_execution<T>(
         &self,
         execution: &Execution,

@@ -2,7 +2,7 @@ use parsa_python_ast::{ClassDef, NodeIndex};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::PointLink;
+use crate::database::{BoundInstanceLink, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -33,8 +33,16 @@ impl<'db, 'a> Instance<'db> {
     pub fn get_node(&self) -> ClassDef<'db> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
+
     pub fn as_point_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
+    }
+
+    pub fn as_bound_instance_link(&self, i_s: &InferenceState<'db, '_>) -> BoundInstanceLink {
+        BoundInstanceLink {
+            node: self.as_point_link(),
+            execution: i_s.args_as_execution(),
+        }
     }
 }
 
@@ -53,7 +61,7 @@ impl<'db> Value<'db> for Instance<'db> {
                 .get_inference(i_s)
                 .infer_name_by_index(node_index)
                 .resolve_function_return(i_s)
-                .bind(self)
+                .bind(i_s, self)
         } else {
             todo!("{:?}", name)
         }

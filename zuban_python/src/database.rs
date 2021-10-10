@@ -337,17 +337,17 @@ impl LocalityLink {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct InstanceLink {
+pub struct BoundInstanceLink {
     pub node: PointLink,
-    pub execution: Execution,
+    pub execution: Option<Execution>, // Optional, because of annotations
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
     Class(ClassStorage),
     Union(Box<[PointLink]>),
-    Instance(InstanceLink),
-    BoundMethod(InstanceLink, PointLink),
+    Instance(PointLink, Execution),
+    BoundMethod(BoundInstanceLink, PointLink),
     Closure(PointLink, Execution),
     Generic(Execution),
 }

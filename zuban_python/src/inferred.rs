@@ -1,7 +1,6 @@
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, FileIndex, InstanceLink, Locality, Point, PointLink, PointType,
-    Specific,
+    ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -133,7 +132,7 @@ impl<'db> Inferred<'db> {
                                 .get_inference(i_s)
                                 .infer_expression(definition.as_annotation_instance_expression());
                             let instance = inferred.instantiate(i_s);
-                            callable(i_s, &instance)
+                            callable(&mut i_s.with_annotation_instance(), &instance)
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
@@ -196,18 +195,15 @@ impl<'db> Inferred<'db> {
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
-            ComplexPoint::Instance(instance_link) => {
-                let def = NodeReference::from_link(i_s.database, instance_link.node);
+            ComplexPoint::Instance(cls_definition, execution) => {
+                let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let instance =
                         Instance::new(def.file, def.node_index, &cls_storage.symbol_table);
-                    let args = InstanceArguments::from_execution(
-                        i_s.database,
-                        &instance,
-                        &instance_link.execution,
-                    );
-                    let init = Function::from_execution(i_s.database, &instance_link.execution);
+                    let args =
+                        InstanceArguments::from_execution(i_s.database, &instance, execution);
+                    let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()
@@ -360,10 +356,8 @@ impl<'db> Inferred<'db> {
                         );
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                            InstanceLink {
-                                node: cls.get_saved().unwrap().0.as_link(),
-                                execution: args.as_execution(&init),
-                            },
+                            cls.get_saved().unwrap().0.as_link(),
+                            args.as_execution(&init),
                         ));
                     }
                     Specific::Closure => {
@@ -520,12 +514,16 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn bind(self, instance: &Instance<'db>) -> Self {
+    pub fn bind(self, i_s: &InferenceState<'db, '_>, instance: &Instance<'db>) -> Self {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
                 PointType::LanguageSpecific => {
                     if point.get_language_specific() == Specific::Function {
-                        todo!()
+                        let complex = ComplexPoint::BoundMethod(
+                            instance.as_bound_instance_link(i_s),
+                            definition.as_link(),
+                        );
+                        return Self::new_unsaved_complex(complex);
                     }
                 }
                 PointType::Complex => {
