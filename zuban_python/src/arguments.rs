@@ -1,6 +1,7 @@
 use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 use crate::value::{Function, Instance};
@@ -194,6 +195,7 @@ pub enum ArgumentIteratorBase<'db> {
 pub enum ArgumentIterator<'db> {
     Normal(ArgumentIteratorBase<'db>),
     Instance(PointLink, ArgumentIteratorBase<'db>),
+    SliceType(SliceType<'db>),
 }
 
 impl<'db> Iterator for ArgumentIterator<'db> {
@@ -234,6 +236,7 @@ impl<'db> Iterator for ArgumentIterator<'db> {
                 Some(Argument::new_argument(file, comprehension.index()))
             }
             Self::Normal(Finished) => None,
+            Self::SliceType(slice_type) => None,
         }
     }
 }

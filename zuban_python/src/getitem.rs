@@ -9,7 +9,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::value::Function;
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum SliceType<'db> {
     Simple(Simple<'db>),
     Slice(Slice<'db>),
@@ -36,7 +36,7 @@ impl<'db> SliceType<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Simple<'db> {
     pub file: &'db PythonFile,
     pub primary_index: NodeIndex,
@@ -51,13 +51,13 @@ impl<'db> Simple<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Slice<'db> {
     file: &'db PythonFile,
     slice: ASTSlice<'db>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Slices<'db> {
     file: &'db PythonFile,
     slices: ASTSlices<'db>,
@@ -68,8 +68,7 @@ pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     fn iter_arguments(&self) -> ArgumentIterator<'db> {
-        //ArgumentIterator::Normal(self.get_argument_iterator_base())
-        todo!()
+        ArgumentIterator::SliceType(*self.0)
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {

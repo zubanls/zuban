@@ -282,7 +282,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                     if inferred.is_type_var(i_s) {
                         calculated_type_vars.push((name.get_code(), p.infer(i_s)));
                     } else {
-                        todo!()
+                        // TODO stuff like List[T]
                     }
                 }
             }
