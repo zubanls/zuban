@@ -7,6 +7,7 @@ mod arguments;
 mod database;
 mod file;
 mod file_state;
+mod generics;
 mod getitem;
 mod imports;
 mod inference_state;

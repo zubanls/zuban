@@ -7,6 +7,7 @@ use crate::database::{Database, Execution, Locality, Point, PointLink, Specific}
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::generics::TypeVarFinder;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -222,10 +223,6 @@ fn resolve_type_vars<'db, 'a>(
         */
         None
     }
-}
-
-trait TypeVarFinder<'db, 'a> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
 }
 
 struct FunctionTypeVarFinder<'db, 'a> {
