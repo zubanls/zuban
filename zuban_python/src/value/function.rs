@@ -1,4 +1,4 @@
-use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
+use parsa_python_ast::{FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -7,7 +7,7 @@ use crate::database::{Database, Execution, Locality, Point, PointLink, Specific}
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::TypeVarFinder;
+use crate::generics::{resolve_type_vars, TypeVarFinder};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -193,35 +193,6 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
             self.next_node_index = point.get_node_index();
             Some(ReturnOrYield::by_index(&self.file.tree, index - 1))
         }
-    }
-}
-
-fn resolve_type_vars<'db, 'a>(
-    i_s: &mut InferenceState<'db, '_>,
-    file: &'db PythonFile,
-    expr: Expression<'db>,
-    type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
-) -> Option<Inferred<'db>> {
-    let inferred = file.get_inference(i_s).infer_expression(expr);
-    if inferred.is_type_var(i_s) {
-        type_var_finder
-            .lookup(i_s, expr.get_legacy_node().get_code())
-            .or_else(|| todo!())
-    } else {
-        /*
-        if !node.is_leaf() {
-            for node in node.iter_children() {
-                if node.is_type(Terminal(TerminalType::Name)) {
-                    if let Some(resolved_type_var) =
-                        resolve_type_vars(i_s, file, node, type_var_finder)
-                    {
-                        todo!()
-                    }
-                }
-            }
-        }
-        */
-        None
     }
 }
 
