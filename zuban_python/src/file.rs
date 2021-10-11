@@ -602,4 +602,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             self.infer_name(name)
         }
     }
+
+    pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
+        self.check_point_cache(node_index)
+            .unwrap_or_else(|| todo!())
+    }
 }
