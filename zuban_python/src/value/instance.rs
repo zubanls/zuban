@@ -34,13 +34,9 @@ impl<'db, 'a> Instance<'db> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_point_link(&self) -> PointLink {
-        PointLink::new(self.file.get_file_index(), self.node_index)
-    }
-
     pub fn as_bound_instance_link(&self, i_s: &InferenceState<'db, '_>) -> BoundInstanceLink {
         BoundInstanceLink {
-            node: self.as_point_link(),
+            node: PointLink::new(self.file.get_file_index(), self.node_index),
             execution: i_s.args_as_execution(),
         }
     }

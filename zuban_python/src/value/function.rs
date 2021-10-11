@@ -253,11 +253,11 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         // TODO stuff like List[T]
                     }
                 }
-            } else if let Some(Argument::PositionalInstance(point_link)) = p.argument {
-                let file = i_s.database.get_loaded_python_file(point_link.file);
+            } else if let Some(Argument::PositionalInstance(link)) = p.argument {
+                let file = i_s.database.get_loaded_python_file(link.node.file);
                 let inferred = file
                     .get_inference(i_s)
-                    .infer_by_node_index(point_link.node_index);
+                    .infer_by_node_index(link.node.node_index);
                 dbg!(inferred.description(i_s));
             }
         }

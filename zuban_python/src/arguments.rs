@@ -1,10 +1,10 @@
-use crate::database::{Database, Execution, PointLink};
+use crate::database::{BoundInstanceLink, Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::{Function, Instance};
+use crate::value::Function;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -101,14 +101,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a> {
-    instance: &'a Instance<'db>,
+    instance: BoundInstanceLink,
     arguments: &'a dyn Arguments<'db>,
 }
 
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, 'a> {
         let args = self.arguments.iter_arguments();
-        ArgumentIterator::Instance(self.instance.as_point_link(), self.arguments)
+        ArgumentIterator::Instance(self.instance.clone(), self.arguments)
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {
@@ -125,7 +125,7 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(instance: &'a Instance<'db>, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(instance: BoundInstanceLink, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
             instance,
@@ -135,7 +135,7 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub enum Argument<'db> {
-    PositionalInstance(PointLink),
+    PositionalInstance(BoundInstanceLink),
     Keyword(&'db str, NodeReference<'db>),
     Positional(NodeReference<'db>),
 }
@@ -173,7 +173,7 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(PointLink, &'a dyn Arguments<'db>),
+    Instance(BoundInstanceLink, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 

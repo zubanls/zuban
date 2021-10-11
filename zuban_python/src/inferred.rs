@@ -142,7 +142,8 @@ impl<'db> Inferred<'db> {
                                 definition.as_primary(),
                                 None,
                             );
-                            let args = InstanceArguments::new(&instance, &args);
+                            let args =
+                                InstanceArguments::new(instance.as_bound_instance_link(i_s), &args);
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                             callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                         }
@@ -202,7 +203,7 @@ impl<'db> Inferred<'db> {
                     let instance =
                         Instance::new(def.file, def.node_index, &cls_storage.symbol_table);
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let args = InstanceArguments::new(&instance, &args);
+                    let args = InstanceArguments::new(instance.as_bound_instance_link(i_s), &args);
                     let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {

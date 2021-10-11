@@ -36,11 +36,12 @@ impl<'db> Value<'db> for BoundMethod<'db, '_> {
     ) -> Inferred<'db> {
         let file = i_s.database.get_loaded_python_file(self.instance.node.file);
         let instance = use_instance(file, self.instance.node.node_index);
-        let args = InstanceArguments::new(&instance, args);
+        let instance_link = instance.as_bound_instance_link(i_s);
+        let args = InstanceArguments::new(instance_link.clone(), args);
         if let Some(execution) = &self.instance.execution {
             let init = Function::from_execution(i_s.database, &execution);
             let instance_args = SimpleArguments::from_execution(i_s.database, &execution);
-            let instance_args = InstanceArguments::new(&instance, &instance_args);
+            let instance_args = InstanceArguments::new(instance_link, &instance_args);
             self.function
                 .execute(&mut i_s.with_func_and_args(&init, &instance_args), &args)
         } else {
