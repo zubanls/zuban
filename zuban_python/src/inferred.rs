@@ -539,6 +539,15 @@ impl<'db> Inferred<'db> {
         }
         self
     }
+
+    pub fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        self.run(
+            i_s,
+            &|i_s, v| v.description(),
+            &|i1, i2| format!("{}|{}", i1, i2),
+            &|inferred| "Unknown".to_owned(),
+        )
+    }
 }
 
 impl fmt::Debug for Inferred<'_> {

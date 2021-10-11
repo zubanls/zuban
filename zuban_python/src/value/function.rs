@@ -258,6 +258,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                 let inferred = file
                     .get_inference(i_s)
                     .infer_by_node_index(point_link.node_index);
+                dbg!(inferred.description(i_s));
             }
         }
         self.calculated_type_vars = Some(calculated_type_vars);

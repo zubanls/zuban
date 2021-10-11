@@ -63,6 +63,14 @@ pub trait Value<'db>: std::fmt::Debug {
 
     fn get_name(&self) -> &'db str;
 
+    fn description(&self) -> String {
+        format!(
+            "{} {}",
+            format!("{:?}", self.get_kind()).to_lowercase(),
+            self.get_name()
+        )
+    }
+
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;
     fn execute(
         &self,
