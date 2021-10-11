@@ -16,7 +16,7 @@ pub enum ArgumentsType<'db> {
 }
 
 pub trait Arguments<'db>: std::fmt::Debug {
-    fn iter_arguments(&self) -> ArgumentIterator<'db>;
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
     fn get_outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn get_type(&self) -> ArgumentsType<'db>;
@@ -33,7 +33,7 @@ pub struct SimpleArguments<'db, 'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::Normal(self.get_argument_iterator_base())
     }
 
@@ -101,19 +101,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a> {
-    // The node id of the grammar node called primary, which is defined like
-    // primary "(" [arguments | comprehension] ")"
-    arguments: SimpleArguments<'db, 'a>,
     instance: &'a Instance<'db>,
+    arguments: &'a dyn Arguments<'db>,
 }
 
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, 'a> {
         let args = self.arguments.iter_arguments();
-        ArgumentIterator::Instance(
-            self.instance.as_point_link(),
-            self.arguments.get_argument_iterator_base(),
-        )
+        ArgumentIterator::Instance(self.instance.as_point_link(), self.arguments)
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {
@@ -130,26 +125,10 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn from_primary(
-        instance: &'a Instance<'db>,
-        f: &'db PythonFile,
-        primary_node: Primary<'db>,
-        in_: Option<&'a Execution>,
-    ) -> Self {
+    pub fn new(instance: &'a Instance<'db>, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
-            arguments: SimpleArguments::from_primary(f, primary_node, in_),
+            arguments,
             instance,
-        }
-    }
-
-    pub fn from_execution(
-        database: &'db Database,
-        instance: &'a Instance<'db>,
-        execution: &'a Execution,
-    ) -> Self {
-        Self {
-            instance,
-            arguments: SimpleArguments::from_execution(database, execution),
         }
     }
 }
@@ -192,22 +171,22 @@ pub enum ArgumentIteratorBase<'db> {
     Finished,
 }
 
-pub enum ArgumentIterator<'db> {
+pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(PointLink, ArgumentIteratorBase<'db>),
+    Instance(PointLink, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 
-impl<'db> Iterator for ArgumentIterator<'db> {
+impl<'db> Iterator for ArgumentIterator<'db, '_> {
     type Item = Argument<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use ArgumentIteratorBase::*;
         match self {
             Self::Instance(_, _) => {
-                if let Self::Instance(point_link, base) = mem::replace(self, Self::Normal(Finished))
+                if let Self::Instance(point_link, args) = mem::replace(self, Self::Normal(Finished))
                 {
-                    *self = Self::Normal(base);
+                    *self = args.iter_arguments();
                     Some(Argument::PositionalInstance(point_link))
                 } else {
                     unreachable!()

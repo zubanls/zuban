@@ -1,3 +1,4 @@
+mod bound_method;
 mod class;
 mod function;
 mod instance;
@@ -8,6 +9,7 @@ use crate::arguments::Arguments;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+pub use bound_method::BoundMethod;
 pub use class::Class;
 pub use function::Function;
 pub use instance::Instance;

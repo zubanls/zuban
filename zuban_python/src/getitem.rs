@@ -67,7 +67,7 @@ pub struct Slices<'db> {
 pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::SliceType(*self.0)
     }
 

@@ -39,10 +39,10 @@ impl<'db> Function<'db> {
         FunctionDef::by_index(&self.file.tree, self.node_index)
     }
 
-    fn iter_inferrable_params(
+    fn iter_inferrable_params<'a>(
         &self,
-        args: &dyn Arguments<'db>,
-    ) -> impl Iterator<Item = InferrableParam<'db>> {
+        args: &'a dyn Arguments<'db>,
+    ) -> InferrableParamIterator<'db, 'a> {
         InferrableParamIterator::new(self.get_node().params().iter(), args.iter_arguments())
     }
 
@@ -263,14 +263,14 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     }
 }
 
-struct InferrableParamIterator<'db> {
-    arguments: ArgumentIterator<'db>,
+struct InferrableParamIterator<'db, 'a> {
+    arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
     unused_keyword_arguments: Vec<Argument<'db>>,
 }
 
-impl<'db> InferrableParamIterator<'db> {
-    fn new(params: ParamIterator<'db>, arguments: ArgumentIterator<'db>) -> Self {
+impl<'db, 'a> InferrableParamIterator<'db, 'a> {
+    fn new(params: ParamIterator<'db>, arguments: ArgumentIterator<'db, 'a>) -> Self {
         InferrableParamIterator {
             arguments,
             params,
@@ -302,7 +302,7 @@ impl<'db> InferrableParamIterator<'db> {
     }
 }
 
-impl<'db> Iterator for InferrableParamIterator<'db> {
+impl<'db> Iterator for InferrableParamIterator<'db, '_> {
     type Item = InferrableParam<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -6,7 +6,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
-use crate::value::{Class, Function, Instance, ListLiteral, Module, Value};
+use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value};
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryOrAtom,
 };
@@ -137,12 +137,12 @@ impl<'db> Inferred<'db> {
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
                             let instance = cls.instantiate(i_s);
-                            let args = InstanceArguments::from_primary(
-                                &instance,
+                            let args = SimpleArguments::from_primary(
                                 definition.file,
                                 definition.as_primary(),
                                 None,
                             );
+                            let args = InstanceArguments::new(&instance, &args);
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                             callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                         }
@@ -201,8 +201,8 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let instance =
                         Instance::new(def.file, def.node_index, &cls_storage.symbol_table);
-                    let args =
-                        InstanceArguments::from_execution(i_s.database, &instance, execution);
+                    let args = SimpleArguments::from_execution(i_s.database, execution);
+                    let args = InstanceArguments::new(&instance, &args);
                     let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
@@ -221,8 +221,10 @@ impl<'db> Inferred<'db> {
                 })
                 .reduce(reducer)
                 .unwrap(),
-            ComplexPoint::BoundMethod(instance, func_link) => {
-                todo!()
+            ComplexPoint::BoundMethod(instance_link, func_link) => {
+                let file = i_s.database.get_loaded_python_file(func_link.file);
+                let func = Function::new(file, func_link.node_index);
+                callable(i_s, &BoundMethod::new(instance_link, &func))
             }
             ComplexPoint::Closure(function, execution) => {
                 let f = i_s.database.get_loaded_python_file(function.file);
@@ -552,7 +554,7 @@ impl fmt::Debug for Inferred<'_> {
     }
 }
 
-fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
+pub fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
     let point = file.points.get(node_index);
     let complex = file.complex_points.get(point.get_complex_index() as usize);
     match complex {
