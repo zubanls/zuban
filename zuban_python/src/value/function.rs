@@ -3,7 +3,9 @@ use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
+use crate::database::{
+    BoundInstanceLink, Database, Execution, Locality, Point, PointLink, Specific,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -206,6 +208,13 @@ struct FunctionTypeVarFinder<'db, 'a> {
 impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
+            if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
+                if let Some(Argument::PositionalInstance(link)) = p.argument {
+                    if let Some(inf) = Self::find_instance_typ_var(i_s, &link, name) {
+                        return Some(inf);
+                    }
+                }
+            }
             for (type_var, result) in type_vars {
                 if *type_var == name {
                     return Some(result.clone());
@@ -253,15 +262,22 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         // TODO stuff like List[T]
                     }
                 }
-            } else if let Some(Argument::PositionalInstance(link)) = p.argument {
-                let file = i_s.database.get_loaded_python_file(link.node.file);
-                let inferred = file
-                    .get_inference(i_s)
-                    .infer_by_node_index(link.node.node_index);
-                dbg!(inferred.description(i_s));
             }
         }
         self.calculated_type_vars = Some(calculated_type_vars);
+    }
+
+    fn find_instance_typ_var(
+        i_s: &mut InferenceState<'db, '_>,
+        link: &BoundInstanceLink,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        let file = i_s.database.get_loaded_python_file(link.node.file);
+        let inferred = file
+            .get_inference(i_s)
+            .infer_by_node_index(link.node.node_index);
+        dbg!(inferred.description(i_s));
+        todo!()
     }
 }
 
