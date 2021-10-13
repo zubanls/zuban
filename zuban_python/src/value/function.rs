@@ -1,9 +1,9 @@
 use parsa_python_ast::{FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{Value, ValueKind};
+use super::{Instance, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{AnyLink, Database, Execution, Locality, Point, PointLink, Specific};
+use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -207,8 +207,8 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
-                if let Some(Argument::PositionalInstance(link)) = p.argument {
-                    if let Some(inf) = Self::find_instance_typ_var(i_s, &link, name) {
+                if let Some(Argument::PositionalInstance(instance)) = p.argument {
+                    if let Some(inf) = Self::find_instance_typ_var(i_s, instance, name) {
                         return Some(inf);
                     }
                 }
@@ -267,7 +267,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
 
     fn find_instance_typ_var(
         i_s: &mut InferenceState<'db, '_>,
-        link: &AnyLink,
+        link: &Instance<'db, '_>,
         name: &str,
     ) -> Option<Inferred<'db>> {
         /*

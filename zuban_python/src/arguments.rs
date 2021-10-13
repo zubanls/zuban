@@ -1,10 +1,10 @@
-use crate::database::{AnyLink, Database, Execution, PointLink};
+use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::Function;
+use crate::value::{Function, Instance};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -101,7 +101,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a> {
-    instance: &'a AnyLink,
+    instance: &'a Instance<'db, 'a>,
     arguments: &'a dyn Arguments<'db>,
 }
 
@@ -125,7 +125,7 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(instance: &'a AnyLink, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(instance: &'a Instance<'db, 'a>, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
             instance,
@@ -135,7 +135,7 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub enum Argument<'db, 'a> {
-    PositionalInstance(&'a AnyLink),
+    PositionalInstance(&'a Instance<'db, 'a>),
     Keyword(&'db str, NodeReference<'db>),
     Positional(NodeReference<'db>),
 }
@@ -151,9 +151,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::PositionalInstance(point_link) => {
-                todo!()
-            }
+            Self::PositionalInstance(instance) => instance.as_inferred().clone(),
             Self::Keyword(_, reference) | Self::Positional(reference) => {
                 reference
                     .file
@@ -173,7 +171,7 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(&'a AnyLink, &'a dyn Arguments<'db>),
+    Instance(&'a Instance<'db, 'a>, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 
@@ -184,10 +182,9 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
         use ArgumentIteratorBase::*;
         match self {
             Self::Instance(_, _) => {
-                if let Self::Instance(point_link, args) = mem::replace(self, Self::Normal(Finished))
-                {
+                if let Self::Instance(instance, args) = mem::replace(self, Self::Normal(Finished)) {
                     *self = args.iter_arguments();
-                    Some(Argument::PositionalInstance(point_link))
+                    Some(Argument::PositionalInstance(instance))
                 } else {
                     unreachable!()
                 }

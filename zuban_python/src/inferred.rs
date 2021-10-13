@@ -143,8 +143,7 @@ impl<'db> Inferred<'db> {
                                 None,
                             );
                             cls.with_instance(i_s, |i_s, instance| {
-                                let foo = &instance.as_inferred().as_any_link(i_s);
-                                let args = InstanceArguments::new(foo, &args);
+                                let args = InstanceArguments::new(instance, &args);
                                 let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
@@ -205,8 +204,7 @@ impl<'db> Inferred<'db> {
                     let instance =
                         Instance::new(def.file, def.node_index, &cls_storage.symbol_table, self);
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let foo = instance.as_inferred().as_any_link(i_s);
-                    let args = InstanceArguments::new(&foo, &args);
+                    let args = InstanceArguments::new(&instance, &args);
                     let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
@@ -441,7 +439,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn use_instance<'a>(&self, file: &'db PythonFile, node_index: NodeIndex) -> Instance<'db, '_> {
+    fn use_instance(&self, file: &'db PythonFile, node_index: NodeIndex) -> Instance<'db, '_> {
         let point = file.points.get(node_index);
         let complex = file.complex_points.get(point.get_complex_index() as usize);
         match complex {

@@ -36,8 +36,8 @@ impl<'db> Value<'db> for BoundMethod<'db, '_> {
     ) -> Inferred<'db> {
         let inferred = Inferred::from_any_link(i_s.database, self.instance);
         inferred.run_on_value(i_s, &|i_s, value| {
-            let link = value.as_instance().unwrap().as_inferred().as_any_link(i_s);
-            let args = InstanceArguments::new(&link, args);
+            let instance = value.as_instance().unwrap();
+            let args = InstanceArguments::new(instance, args);
             self.function.execute(i_s, &args)
         })
     }
