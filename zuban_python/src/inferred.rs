@@ -588,6 +588,17 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
         }
     }
+
+    pub fn from_any_link(database: &'db Database, any: &AnyLink) -> Self {
+        match any {
+            AnyLink::Reference(def) => {
+                let file = database.get_loaded_python_file(def.file);
+                Self::new_saved(file, def.node_index, file.points.get(def.node_index))
+            }
+            AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
+            AnyLink::Specific(_) => todo!(),
+        }
+    }
 }
 
 impl fmt::Debug for Inferred<'_> {

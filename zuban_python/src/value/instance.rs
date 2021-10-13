@@ -77,4 +77,8 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
         self.lookup(i_s, "__getitem__")
             .run_on_value(i_s, &|i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
+
+    fn as_instance(&self) -> Option<&Instance<'db, '_>> {
+        Some(self)
+    }
 }

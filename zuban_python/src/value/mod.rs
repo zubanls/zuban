@@ -86,4 +86,8 @@ pub trait Value<'db>: std::fmt::Debug {
     ) -> Inferred<'db> {
         todo!()
     }
+
+    fn as_instance(&self) -> Option<&Instance<'db, '_>> {
+        None
+    }
 }

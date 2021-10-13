@@ -1,5 +1,5 @@
 use super::{Function, Value, ValueKind};
-use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
+use crate::arguments::{Arguments, InstanceArguments};
 use crate::database::AnyLink;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -34,22 +34,11 @@ impl<'db> Value<'db> for BoundMethod<'db, '_> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        /*
-        let file = i_s.database.get_loaded_python_file(self.instance.node.file);
-        let instance = use_instance(file, self.instance.node.node_index);
-        let instance_link = instance.as_link(i_s);
-        let args = InstanceArguments::new(instance_link, args);
-        if let Some(execution) = &self.instance.execution {
-            let init = Function::from_execution(i_s.database, &execution);
-            let instance_args = SimpleArguments::from_execution(i_s.database, &execution);
-            let instance_args = InstanceArguments::new(instance_link, &instance_args);
-            self.function
-                .execute(&mut i_s.with_func_and_args(&init, &instance_args), &args)
-        } else {
-            self.function
-                .execute(&mut i_s.with_annotation_instance(), &args)
-        }
-        */
-        todo!()
+        let inferred = Inferred::from_any_link(i_s.database, self.instance);
+        inferred.run_on_value(i_s, &|i_s, value| {
+            let link = value.as_instance().unwrap().as_inferred().as_any_link(i_s);
+            let args = InstanceArguments::new(&link, args);
+            self.function.execute(i_s, &args)
+        })
     }
 }
