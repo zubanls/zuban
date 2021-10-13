@@ -583,7 +583,10 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn as_any_link(&self, i_s: &InferenceState<'db, '_>) -> AnyLink {
-        todo!()
+        match &self.state {
+            InferredState::Saved(definition, _) => AnyLink::Reference(definition.as_link()),
+            InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
+        }
     }
 }
 
