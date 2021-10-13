@@ -3,9 +3,7 @@ use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{
-    BoundInstanceLink, Database, Execution, Locality, Point, PointLink, Specific,
-};
+use crate::database::{AnyLink, Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -269,14 +267,16 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
 
     fn find_instance_typ_var(
         i_s: &mut InferenceState<'db, '_>,
-        link: &BoundInstanceLink,
+        link: &AnyLink,
         name: &str,
     ) -> Option<Inferred<'db>> {
+        /*
         let file = i_s.database.get_loaded_python_file(link.node.file);
         let inferred = file
             .get_inference(i_s)
             .infer_by_node_index(link.node.node_index);
         dbg!(inferred.description(i_s));
+        */
         todo!()
     }
 }
@@ -284,7 +284,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
 struct InferrableParamIterator<'db, 'a> {
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
-    unused_keyword_arguments: Vec<Argument<'db>>,
+    unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
 
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
@@ -296,7 +296,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         }
     }
 
-    fn get_next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db>> {
+    fn get_next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db, 'a>> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
@@ -320,8 +320,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     }
 }
 
-impl<'db> Iterator for InferrableParamIterator<'db, '_> {
-    type Item = InferrableParam<'db>;
+impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
+    type Item = InferrableParam<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.params.next().map(|param| {
@@ -331,12 +331,12 @@ impl<'db> Iterator for InferrableParamIterator<'db, '_> {
     }
 }
 
-struct InferrableParam<'db> {
+struct InferrableParam<'db, 'a> {
     param: Param<'db>,
-    argument: Option<Argument<'db>>,
+    argument: Option<Argument<'db, 'a>>,
 }
 
-impl<'db> InferrableParam<'db> {
+impl<'db, 'a> InferrableParam<'db, 'a> {
     fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!(
             "Infer param {}",

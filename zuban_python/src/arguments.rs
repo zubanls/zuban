@@ -1,4 +1,4 @@
-use crate::database::{BoundInstanceLink, Database, Execution, PointLink};
+use crate::database::{AnyLink, Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -101,14 +101,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a> {
-    instance: BoundInstanceLink,
+    instance: &'a AnyLink,
     arguments: &'a dyn Arguments<'db>,
 }
 
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, 'a> {
         let args = self.arguments.iter_arguments();
-        ArgumentIterator::Instance(self.instance.clone(), self.arguments)
+        ArgumentIterator::Instance(self.instance, self.arguments)
     }
 
     fn get_outer_execution(&self) -> Option<&Execution> {
@@ -125,7 +125,7 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(instance: BoundInstanceLink, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(instance: &'a AnyLink, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
             instance,
@@ -134,13 +134,13 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub enum Argument<'db> {
-    PositionalInstance(BoundInstanceLink),
+pub enum Argument<'db, 'a> {
+    PositionalInstance(&'a AnyLink),
     Keyword(&'db str, NodeReference<'db>),
     Positional(NodeReference<'db>),
 }
 
-impl<'db> Argument<'db> {
+impl<'db> Argument<'db, '_> {
     fn new_argument(file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self::Positional(NodeReference { file, node_index })
     }
@@ -173,12 +173,12 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(BoundInstanceLink, &'a dyn Arguments<'db>),
+    Instance(&'a AnyLink, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 
-impl<'db> Iterator for ArgumentIterator<'db, '_> {
-    type Item = Argument<'db>;
+impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+    type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use ArgumentIteratorBase::*;

@@ -2,31 +2,32 @@ use parsa_python_ast::{ClassDef, NodeIndex};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{BoundInstanceLink, PointLink};
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Instance<'db> {
+pub struct Instance<'db, 'a> {
     file: &'db PythonFile,
     symbol_table: &'db SymbolTable,
+    inferred: &'a Inferred<'db>,
     node_index: NodeIndex,
 }
 
-impl<'db, 'a> Instance<'db> {
+impl<'db, 'a> Instance<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
+        inferred: &'a Inferred<'db>,
     ) -> Self {
         Self {
             file,
             node_index,
             symbol_table,
+            inferred,
         }
     }
 
@@ -34,15 +35,12 @@ impl<'db, 'a> Instance<'db> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_bound_instance_link(&self, i_s: &InferenceState<'db, '_>) -> BoundInstanceLink {
-        BoundInstanceLink {
-            node: PointLink::new(self.file.get_file_index(), self.node_index),
-            execution: i_s.args_as_execution(),
-        }
+    pub fn as_inferred(&self) -> &'a Inferred<'db> {
+        self.inferred
     }
 }
 
-impl<'db> Value<'db> for Instance<'db> {
+impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Object
     }

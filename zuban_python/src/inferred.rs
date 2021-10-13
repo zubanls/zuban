@@ -1,6 +1,6 @@
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+    AnyLink, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -131,21 +131,23 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s)
                                 .infer_expression(definition.as_annotation_instance_expression());
-                            let instance = inferred.instantiate(i_s);
-                            callable(&mut i_s.with_annotation_instance(), &instance)
+                            inferred.with_instance(i_s, |i_s, instance| {
+                                callable(&mut i_s.with_annotation_instance(), instance)
+                            })
                         }
                         Specific::InstanceWithArguments => {
                             let cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            let instance = cls.instantiate(i_s);
                             let args = SimpleArguments::from_primary(
                                 definition.file,
                                 definition.as_primary(),
                                 None,
                             );
-                            let args =
-                                InstanceArguments::new(instance.as_bound_instance_link(i_s), &args);
-                            let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
-                            callable(&mut i_s.with_func_and_args(&init, &args), &instance)
+                            cls.with_instance(i_s, |i_s, instance| {
+                                let foo = &instance.as_inferred().as_any_link(i_s);
+                                let args = InstanceArguments::new(foo, &args);
+                                let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                                callable(&mut i_s.with_func_and_args(&init, &args), instance)
+                            })
                         }
                         Specific::Param => i_s
                             .infer_param(definition)
@@ -201,9 +203,10 @@ impl<'db> Inferred<'db> {
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let instance =
-                        Instance::new(def.file, def.node_index, &cls_storage.symbol_table);
+                        Instance::new(def.file, def.node_index, &cls_storage.symbol_table, self);
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let args = InstanceArguments::new(instance.as_bound_instance_link(i_s), &args);
+                    let foo = instance.as_inferred().as_any_link(i_s);
+                    let args = InstanceArguments::new(&foo, &args);
                     let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
@@ -307,8 +310,8 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db> {
-        load_builtin_instance_from_str(
+    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
+        self.load_builtin_instance_from_str(
             database,
             match specific {
                 Specific::String => "str",
@@ -321,6 +324,19 @@ impl<'db> Inferred<'db> {
                 actual => todo!("{:?}", actual),
             },
         )
+    }
+
+    fn load_builtin_instance_from_str(
+        &self,
+        database: &'db Database,
+        name: &'static str,
+    ) -> Instance<'db, '_> {
+        let builtins = database.python_state.get_builtins();
+        let node_index = builtins.lookup_global(name).unwrap().node_index;
+        let v = builtins.points.get(node_index);
+        debug_assert_eq!(v.get_type(), PointType::Redirect);
+        debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
+        self.use_instance(builtins, v.get_node_index())
     }
 
     pub fn is_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -391,7 +407,11 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn instantiate(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db> {
+    fn with_instance<T>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
+    ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 if point.get_type() == PointType::LanguageSpecific {
@@ -404,17 +424,29 @@ impl<'db> Inferred<'db> {
                                 PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
                                 PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
                             };
-                        cls.instantiate(i_s)
+                        cls.with_instance(i_s, callable)
                     } else {
                         unreachable!()
                     }
                 } else {
-                    use_instance(definition.file, definition.node_index)
+                    callable(
+                        i_s,
+                        &self.use_instance(definition.file, definition.node_index),
+                    )
                 }
             }
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }
+        }
+    }
+
+    fn use_instance<'a>(&self, file: &'db PythonFile, node_index: NodeIndex) -> Instance<'db, '_> {
+        let point = file.points.get(node_index);
+        let complex = file.complex_points.get(point.get_complex_index() as usize);
+        match complex {
+            ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table, self),
+            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
 
@@ -517,13 +549,13 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn bind(self, i_s: &InferenceState<'db, '_>, instance: &Instance<'db>) -> Self {
+    pub fn bind(self, i_s: &InferenceState<'db, '_>, instance: &Instance<'db, '_>) -> Self {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
                 PointType::LanguageSpecific => {
                     if point.get_language_specific() == Specific::Function {
                         let complex = ComplexPoint::BoundMethod(
-                            instance.as_bound_instance_link(i_s),
+                            instance.as_inferred().as_any_link(i_s),
                             definition.as_link(),
                         );
                         return Self::new_unsaved_complex(complex);
@@ -549,6 +581,10 @@ impl<'db> Inferred<'db> {
             &|inferred| "Unknown".to_owned(),
         )
     }
+
+    pub fn as_any_link(&self, i_s: &InferenceState<'db, '_>) -> AnyLink {
+        todo!()
+    }
 }
 
 impl fmt::Debug for Inferred<'_> {
@@ -564,15 +600,6 @@ impl fmt::Debug for Inferred<'_> {
     }
 }
 
-pub fn use_instance(file: &PythonFile, node_index: NodeIndex) -> Instance {
-    let point = file.points.get(node_index);
-    let complex = file.complex_points.get(point.get_complex_index() as usize);
-    match complex {
-        ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table),
-        _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
-    }
-}
-
 fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
     let v = file.points.get(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex);
@@ -581,18 +608,6 @@ fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
         ComplexPoint::Class(c) => Some(Class::new(file, node_index, &c.symbol_table)),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
-}
-
-fn load_builtin_instance_from_str<'db>(
-    database: &'db Database,
-    name: &'static str,
-) -> Instance<'db> {
-    let builtins = database.python_state.get_builtins();
-    let node_index = builtins.lookup_global(name).unwrap().node_index;
-    let v = builtins.points.get(node_index);
-    debug_assert_eq!(v.get_type(), PointType::Redirect);
-    debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-    use_instance(builtins, v.get_node_index())
 }
 
 // TODO unused -> delete?!
