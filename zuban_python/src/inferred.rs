@@ -131,7 +131,7 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s)
                                 .infer_expression(definition.as_annotation_instance_expression());
-                            inferred.with_instance(i_s, |i_s, instance| {
+                            inferred.with_instance(i_s, self, |i_s, instance| {
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
                         }
@@ -142,7 +142,7 @@ impl<'db> Inferred<'db> {
                                 definition.as_primary(),
                                 None,
                             );
-                            cls.with_instance(i_s, |i_s, instance| {
+                            cls.with_instance(i_s, self, |i_s, instance| {
                                 let args = InstanceArguments::new(instance, &args);
                                 let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
@@ -408,6 +408,7 @@ impl<'db> Inferred<'db> {
     fn with_instance<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        instance: &Self,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
     ) -> T {
         match &self.state {
@@ -422,14 +423,14 @@ impl<'db> Inferred<'db> {
                                 PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
                                 PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
                             };
-                        cls.with_instance(i_s, callable)
+                        cls.with_instance(i_s, instance, callable)
                     } else {
                         unreachable!()
                     }
                 } else {
                     callable(
                         i_s,
-                        &self.use_instance(definition.file, definition.node_index),
+                        &instance.use_instance(definition.file, definition.node_index),
                     )
                 }
             }

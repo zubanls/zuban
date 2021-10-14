@@ -208,7 +208,7 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
                 if let Some(Argument::PositionalInstance(instance)) = p.argument {
-                    if let Some(inf) = Self::find_instance_typ_var(i_s, instance, name) {
+                    if let Some(inf) = Self::find_instance_type_var(i_s, instance, name) {
                         return Some(inf);
                     }
                 }
@@ -265,9 +265,9 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         self.calculated_type_vars = Some(calculated_type_vars);
     }
 
-    fn find_instance_typ_var(
+    fn find_instance_type_var(
         i_s: &mut InferenceState<'db, '_>,
-        link: &Instance<'db, '_>,
+        instance: &Instance<'db, '_>,
         name: &str,
     ) -> Option<Inferred<'db>> {
         /*
