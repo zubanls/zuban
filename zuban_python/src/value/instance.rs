@@ -38,6 +38,37 @@ impl<'db, 'a> Instance<'db, 'a> {
     pub fn as_inferred(&self) -> &'a Inferred<'db> {
         self.inferred
     }
+
+    pub fn lookup_type_var(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        let mut found_type_vars = vec![];
+        if let Some(arguments) = self.get_node().arguments() {
+            for n in arguments.search_names() {
+                let inferred = self.file.get_inference(i_s).infer_name(n);
+                if inferred.is_type_var(i_s) {
+                    if n.as_str() == name {
+                        let index = found_type_vars.len();
+                        todo!()
+                    }
+                    if !found_type_vars.contains(&n.as_str()) {
+                        found_type_vars.push(n.as_str());
+                    }
+                }
+            }
+        }
+        //instance.generics.get
+        /*
+        let file = i_s.database.get_loaded_python_file(link.node.file);
+        let inferred = file
+            .get_inference(i_s)
+            .infer_by_node_index(link.node.node_index);
+        dbg!(inferred.description(i_s));
+        */
+        todo!()
+    }
 }
 
 impl<'db, 'a> Value<'db> for Instance<'db, 'a> {

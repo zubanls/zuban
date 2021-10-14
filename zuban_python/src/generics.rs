@@ -36,3 +36,7 @@ pub fn resolve_type_vars<'db, 'a>(
         None
     }
 }
+
+pub trait Generics<'db> {
+    fn get_nth(&self, n: usize) -> Inferred<'db>;
+}

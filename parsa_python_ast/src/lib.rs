@@ -1457,6 +1457,20 @@ impl<'db> Arguments<'db> {
     pub fn iter(&self) -> ArgumentsIterator<'db> {
         ArgumentsIterator(self.node.iter_children())
     }
+
+    pub fn search_names(&self) -> NameIterator<'db> {
+        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
+    }
+}
+
+pub struct NameIterator<'db>(SearchIterator<'db>);
+
+impl<'db> Iterator for NameIterator<'db> {
+    type Item = Name<'db>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(Name::new)
+    }
 }
 
 pub struct ArgumentsIterator<'db>(SiblingIterator<'db>);
@@ -1490,6 +1504,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
     Keyword(&'db str, Expression<'db>),

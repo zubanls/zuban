@@ -1,7 +1,7 @@
 use parsa_python_ast::{FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{Instance, Value, ValueKind};
+use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
@@ -208,7 +208,7 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
                 if let Some(Argument::PositionalInstance(instance)) = p.argument {
-                    if let Some(inf) = Self::find_instance_type_var(i_s, instance, name) {
+                    if let Some(inf) = instance.lookup_type_var(i_s, name) {
                         return Some(inf);
                     }
                 }
@@ -263,21 +263,6 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             }
         }
         self.calculated_type_vars = Some(calculated_type_vars);
-    }
-
-    fn find_instance_type_var(
-        i_s: &mut InferenceState<'db, '_>,
-        instance: &Instance<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        /*
-        let file = i_s.database.get_loaded_python_file(link.node.file);
-        let inferred = file
-            .get_inference(i_s)
-            .infer_by_node_index(link.node.node_index);
-        dbg!(inferred.description(i_s));
-        */
-        todo!()
     }
 }
 
