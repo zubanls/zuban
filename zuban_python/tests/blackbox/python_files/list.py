@@ -9,3 +9,6 @@ foo: list[int] = ""
 
 #? int()
 foo[0]
+
+#? int()
+foo.pop()
