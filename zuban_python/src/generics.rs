@@ -85,7 +85,7 @@ impl<'db> Generics<'db> for AnnotationGenerics<'db> {
         match self.slice_type {
             SliceType::Simple(simple) => {
                 if n == 0 {
-                    Some(simple.infer(i_s))
+                    Some(simple.infer_annotation(i_s))
                 } else {
                     None
                 }

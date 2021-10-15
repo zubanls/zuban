@@ -10,7 +10,7 @@ use crate::generics::{
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
-use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value};
+use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind};
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
     PrimaryOrAtom,
@@ -59,8 +59,8 @@ impl<'db> NodeReference<'db> {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
-    fn as_annotation_instance_expression(&self) -> Expression<'db> {
-        Expression::by_index(&self.file.tree, self.node_index + 2)
+    fn as_expression(&self) -> Expression<'db> {
+        Expression::by_index(&self.file.tree, self.node_index)
     }
 
     fn as_primary(&self) -> Primary<'db> {
@@ -135,7 +135,7 @@ impl<'db> Inferred<'db> {
                             let inferred = definition
                                 .file
                                 .get_inference(i_s)
-                                .infer_expression(definition.as_annotation_instance_expression());
+                                .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
                             let generics = annotation_generics
                                 .as_ref()
@@ -158,6 +158,14 @@ impl<'db> Inferred<'db> {
                                 let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
+                        }
+                        Specific::SimpleGeneric => {
+                            let mut inference = definition.file.get_inference(i_s);
+                            let inf = match definition.as_primary().first() {
+                                PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
+                                PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
+                            };
+                            inf.run(i_s, callable, reducer, on_missing)
                         }
                         Specific::Param => i_s
                             .infer_param(definition)
@@ -442,7 +450,7 @@ impl<'db> Inferred<'db> {
                             };
                         cls.with_instance(i_s, instance, generics, callable)
                     } else {
-                        unreachable!()
+                        unreachable!("{:?}", point)
                     }
                 } else {
                     callable(
@@ -644,6 +652,15 @@ impl<'db> Inferred<'db> {
             }
         }
         None
+    }
+
+    pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        self.run(
+            i_s,
+            &|i_s, v| v.get_kind() == ValueKind::Class,
+            &|i1, i2| i1 & i2,
+            &|inferred| false,
+        )
     }
 }
 

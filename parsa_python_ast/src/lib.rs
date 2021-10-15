@@ -495,6 +495,13 @@ impl<'db> ExpressionPart<'db> {
 }
 
 impl<'db> NamedExpression<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        match self.unpack() {
+            NamedExpressionContent::Expression(expr) => expr,
+            NamedExpressionContent::Definition(_, expr) => expr,
+        }
+    }
+
     pub fn unpack(self) -> NamedExpressionContent<'db> {
         let node = self.node.get_nth_child(0);
         if node.is_type(Nonterminal(expression)) {

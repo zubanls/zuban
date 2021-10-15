@@ -318,14 +318,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, _) => {
-                let right = Inferred::new_and_save(
-                    self.file,
-                    annotation.index(),
-                    Point::new_simple_language_specific(
-                        Specific::AnnotationInstance,
-                        Locality::Stmt,
-                    ),
-                );
+                let right = self.infer_annotation_expression(annotation.expression());
                 self.assign_targets(target, &right)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
@@ -390,12 +383,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);
     fn _infer_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        let inferred = match expr.unpack() {
+        let inferred = self.infer_expression_no_save(expr);
+        inferred.save_redirect(self.file, expr.index())
+    }
+
+    pub fn infer_expression_no_save(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(_) => todo!(),
+        }
+    }
+
+    pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+        let inferred = self.infer_expression_no_save(expr);
+        // TODO locality is wrong!!!!!1
+        let point = if inferred.is_class(self.i_s) {
+            Point::new_simple_language_specific(Specific::AnnotationInstance, Locality::Stmt)
+        } else {
+            Point::new_unknown(self.file.get_file_index(), Locality::Stmt)
         };
-        inferred.save_redirect(self.file, expr.index())
+        Inferred::new_and_save(self.file, expr.index(), point)
     }
 
     fn infer_expression_part(&mut self, node: ExpressionPart<'db>) -> Inferred<'db> {

@@ -49,6 +49,12 @@ impl<'db> Simple<'db> {
             .get_inference(i_s)
             .infer_named_expression(self.named_expr)
     }
+
+    pub fn infer_annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        self.file
+            .get_inference(i_s)
+            .infer_annotation_expression(self.named_expr.expression())
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

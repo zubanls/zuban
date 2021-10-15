@@ -3,7 +3,7 @@ use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{Database, Execution, Locality, Point, PointLink, Specific};
+use crate::database::{Database, Execution, PointLink};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -156,20 +156,9 @@ impl<'db> Value<'db> for Function<'db> {
             ) {
                 inferred
             } else {
-                let inferred = self.file.get_inference(i_s).infer_expression(expr);
-                inferred.run_on_value(i_s, &|i_s, v| {
-                    // TODO locality is wrong!!!!!1
-                    let point = if v.get_kind() == ValueKind::Class {
-                        Point::new_simple_language_specific(
-                            Specific::AnnotationInstance,
-                            Locality::Stmt,
-                        )
-                    } else {
-                        Point::new_unknown(self.file.get_file_index(), Locality::Stmt);
-                        todo!("{:?}", self.get_name());
-                    };
-                    Inferred::new_and_save(self.file, return_annotation.index(), point)
-                })
+                self.file
+                    .get_inference(i_s)
+                    .infer_annotation_expression(expr)
             }
         } else {
             self.execute_without_annotation(i_s, args)
