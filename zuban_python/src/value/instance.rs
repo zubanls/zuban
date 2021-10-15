@@ -3,6 +3,7 @@ use parsa_python_ast::{ClassDef, NodeIndex};
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::file::PythonFile;
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -14,6 +15,7 @@ pub struct Instance<'db, 'a> {
     symbol_table: &'db SymbolTable,
     inferred: &'a Inferred<'db>,
     node_index: NodeIndex,
+    generics: &'a dyn Generics<'db>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
@@ -22,12 +24,14 @@ impl<'db, 'a> Instance<'db, 'a> {
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
         inferred: &'a Inferred<'db>,
+        generics: &'a dyn Generics<'db>,
     ) -> Self {
         Self {
             file,
             node_index,
             symbol_table,
             inferred,
+            generics,
         }
     }
 
@@ -51,7 +55,7 @@ impl<'db, 'a> Instance<'db, 'a> {
                 if inferred.is_type_var(i_s) {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
-                        todo!()
+                        return self.generics.get_nth(i_s, index);
                     }
                     if !found_type_vars.contains(&n.as_str()) {
                         found_type_vars.push(n.as_str());
@@ -59,15 +63,7 @@ impl<'db, 'a> Instance<'db, 'a> {
                 }
             }
         }
-        //instance.generics.get
-        /*
-        let file = i_s.database.get_loaded_python_file(link.node.file);
-        let inferred = file
-            .get_inference(i_s)
-            .infer_by_node_index(link.node.node_index);
-        dbg!(inferred.description(i_s));
-        */
-        todo!()
+        None
     }
 }
 

@@ -1,6 +1,7 @@
 use parsa_python_ast::Expression;
 
 use crate::file::PythonFile;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -37,6 +38,67 @@ pub fn resolve_type_vars<'db, 'a>(
     }
 }
 
-pub trait Generics<'db> {
-    fn get_nth(&self, n: usize) -> Inferred<'db>;
+pub trait Generics<'db>: std::fmt::Debug {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>>;
+}
+
+#[derive(Debug)]
+pub struct ExpectNoGenerics();
+
+impl<'db> Generics<'db> for ExpectNoGenerics {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+        unreachable!("Should not even ask for generics")
+    }
+}
+
+#[derive(Debug)]
+pub struct NoGenerics();
+
+impl<'db> Generics<'db> for NoGenerics {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+        unreachable!("Should not even ask for generics")
+    }
+}
+
+#[derive(Debug)]
+pub struct CalculableGenerics();
+
+impl<'db> Generics<'db> for CalculableGenerics {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct AnnotationGenerics<'db> {
+    slice_type: SliceType<'db>,
+}
+
+impl<'db> AnnotationGenerics<'db> {
+    pub fn new(slice_type: SliceType<'db>) -> Self {
+        Self { slice_type }
+    }
+}
+
+impl<'db> Generics<'db> for AnnotationGenerics<'db> {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+        match self.slice_type {
+            SliceType::Simple(simple) => {
+                if n == 0 {
+                    Some(simple.infer(i_s))
+                } else {
+                    None
+                }
+            }
+            SliceType::Slices(slices) => {
+                // This is an error, the annotation List[foo:bar] makes no sense.
+                dbg!(slices);
+                todo!()
+            }
+            SliceType::Slice(slice) => {
+                // This is an error, the annotation List[foo:bar] makes no sense.
+                None
+            }
+        }
+    }
 }

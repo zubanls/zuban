@@ -4,11 +4,16 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::generics::{
+    AnnotationGenerics, CalculableGenerics, ExpectNoGenerics, Generics, NoGenerics,
+};
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value};
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryOrAtom,
+    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
+    PrimaryOrAtom,
 };
 use std::fmt;
 
@@ -131,7 +136,12 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s)
                                 .infer_expression(definition.as_annotation_instance_expression());
-                            inferred.with_instance(i_s, self, |i_s, instance| {
+                            let annotation_generics = inferred.expect_generics();
+                            let generics = annotation_generics
+                                .as_ref()
+                                .map(|g| g as &dyn Generics)
+                                .unwrap_or_else(|| &NoGenerics());
+                            inferred.with_instance(i_s, self, generics, |i_s, instance| {
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
                         }
@@ -142,7 +152,8 @@ impl<'db> Inferred<'db> {
                                 definition.as_primary(),
                                 None,
                             );
-                            cls.with_instance(i_s, self, |i_s, instance| {
+                            let generics = CalculableGenerics();
+                            cls.with_instance(i_s, self, &generics, |i_s, instance| {
                                 let args = InstanceArguments::new(instance, &args);
                                 let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
@@ -201,8 +212,13 @@ impl<'db> Inferred<'db> {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
-                    let instance =
-                        Instance::new(def.file, def.node_index, &cls_storage.symbol_table, self);
+                    let instance = Instance::new(
+                        def.file,
+                        def.node_index,
+                        &cls_storage.symbol_table,
+                        self,
+                        &CalculableGenerics(),
+                    );
                     let args = SimpleArguments::from_execution(i_s.database, execution);
                     let args = InstanceArguments::new(&instance, &args);
                     let init = Function::from_execution(i_s.database, execution);
@@ -334,7 +350,7 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.get_type(), PointType::Redirect);
         debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-        self.use_instance(builtins, v.get_node_index())
+        self.use_instance(builtins, v.get_node_index(), &ExpectNoGenerics())
     }
 
     pub fn is_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -409,6 +425,7 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         instance: &Self,
+        generics: &dyn Generics<'db>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
     ) -> T {
         match &self.state {
@@ -423,14 +440,14 @@ impl<'db> Inferred<'db> {
                                 PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
                                 PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
                             };
-                        cls.with_instance(i_s, instance, callable)
+                        cls.with_instance(i_s, instance, generics, callable)
                     } else {
                         unreachable!()
                     }
                 } else {
                     callable(
                         i_s,
-                        &instance.use_instance(definition.file, definition.node_index),
+                        &instance.use_instance(definition.file, definition.node_index, generics),
                     )
                 }
             }
@@ -440,11 +457,18 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn use_instance(&self, file: &'db PythonFile, node_index: NodeIndex) -> Instance<'db, '_> {
+    fn use_instance<'a>(
+        &'a self,
+        file: &'db PythonFile,
+        node_index: NodeIndex,
+        generics: &'a dyn Generics<'db>,
+    ) -> Instance<'db, 'a> {
         let point = file.points.get(node_index);
         let complex = file.complex_points.get(point.get_complex_index() as usize);
         match complex {
-            ComplexPoint::Class(c) => Instance::new(file, node_index, &c.symbol_table, self),
+            ComplexPoint::Class(c) => {
+                Instance::new(file, node_index, &c.symbol_table, self, generics)
+            }
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -597,6 +621,29 @@ impl<'db> Inferred<'db> {
             AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
             AnyLink::Specific(_) => todo!(),
         }
+    }
+
+    pub fn expect_generics(&self) -> Option<AnnotationGenerics<'db>> {
+        if let InferredState::Saved(definition, point) = self.state {
+            if point.get_type() == PointType::LanguageSpecific
+                && point.get_language_specific() == Specific::SimpleGeneric
+            {
+                let primary = definition.as_primary();
+                match primary.second() {
+                    PrimaryContent::GetItem(slice_type) => {
+                        return Some(AnnotationGenerics::new(SliceType::new(
+                            definition.file,
+                            primary.index(),
+                            slice_type,
+                        )))
+                    }
+                    _ => {
+                        unreachable!()
+                    }
+                }
+            }
+        }
+        None
     }
 }
 
