@@ -15,10 +15,11 @@ pub fn resolve_type_vars<'db, 'a>(
     expr: Expression<'db>,
     type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
 ) -> Option<Inferred<'db>> {
-    let inferred = file.get_inference(i_s).infer_expression(expr);
-    if inferred.is_type_var(i_s) {
+    let mut i_s = i_s.with_annotation_instance();
+    let inferred = file.get_inference(&mut i_s).infer_expression(expr);
+    if inferred.is_type_var(&mut i_s) {
         type_var_finder
-            .lookup(i_s, expr.get_legacy_node().get_code())
+            .lookup(&mut i_s, expr.get_legacy_node().get_code())
             .or_else(|| todo!())
     } else {
         /*
@@ -26,7 +27,7 @@ pub fn resolve_type_vars<'db, 'a>(
             for node in node.iter_children() {
                 if node.is_type(Terminal(TerminalType::Name)) {
                     if let Some(resolved_type_var) =
-                        resolve_type_vars(i_s, file, node, type_var_finder)
+                        resolve_type_vars(&mut i_s, file, node, type_var_finder)
                     {
                         todo!()
                     }
@@ -56,7 +57,7 @@ pub struct NoGenerics();
 
 impl<'db> Generics<'db> for NoGenerics {
     fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
-        unreachable!("Should not even ask for generics")
+        None
     }
 }
 

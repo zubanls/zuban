@@ -396,9 +396,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        let inferred = self.infer_expression_no_save(expr);
+        // Make sure that we're not working "inside" of a function/closure. Annotations are always
+        // considered global and should not use params or local state.
+        let mut inf_state = self.i_s.with_annotation_instance();
+        let mut inference = self.file.get_inference(&mut inf_state);
+        let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
-        let point = if inferred.is_class(self.i_s) {
+        let point = if inferred.is_class(inference.i_s) {
             Point::new_simple_language_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
             Point::new_unknown(self.file.get_file_index(), Locality::Stmt)
