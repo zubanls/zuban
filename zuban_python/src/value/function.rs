@@ -7,7 +7,7 @@ use crate::database::{Database, Execution, PointLink};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{resolve_type_vars, TypeVarFinder};
+use crate::generics::{resolve_type_vars, FunctionTypeVarFinder};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -39,7 +39,7 @@ impl<'db> Function<'db> {
         FunctionDef::by_index(&self.file.tree, self.node_index)
     }
 
-    fn iter_inferrable_params<'a>(
+    pub fn iter_inferrable_params<'a>(
         &self,
         args: &'a dyn Arguments<'db>,
     ) -> InferrableParamIterator<'db, 'a> {
@@ -185,77 +185,7 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
     }
 }
 
-struct FunctionTypeVarFinder<'db, 'a> {
-    file: &'db PythonFile,
-    function: &'a Function<'db>,
-    args: &'a dyn Arguments<'db>,
-    calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
-}
-
-impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
-        if let Some(type_vars) = &self.calculated_type_vars {
-            if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
-                if let Some(Argument::PositionalInstance(instance)) = p.argument {
-                    if let Some(inf) = instance.lookup_type_var(i_s, name) {
-                        return Some(inf);
-                    }
-                }
-            }
-            for (type_var, result) in type_vars {
-                if *type_var == name {
-                    return Some(result.clone());
-                }
-            }
-            None
-        } else {
-            self.calculate_type_vars(i_s);
-            self.lookup(i_s, name)
-        }
-    }
-}
-
-impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
-    fn new(
-        file: &'db PythonFile,
-        function: &'a Function<'db>,
-        args: &'a dyn Arguments<'db>,
-    ) -> Self {
-        Self {
-            file,
-            function,
-            args,
-            calculated_type_vars: None,
-        }
-    }
-
-    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
-        let mut calculated_type_vars = vec![];
-        for p in self.function.iter_inferrable_params(self.args) {
-            if let Some(annotation) = p.param.annotation() {
-                // TODO we should only check names, not expressions
-                let name = annotation.expression().get_legacy_node();
-                if !calculated_type_vars
-                    .iter()
-                    .any(|(n, _)| *n == name.get_code())
-                {
-                    let inferred = self
-                        .file
-                        .get_inference(i_s)
-                        .infer_expression(annotation.expression());
-                    if inferred.is_type_var(i_s) {
-                        calculated_type_vars.push((name.get_code(), p.infer(i_s)));
-                    } else {
-                        // TODO stuff like List[T]
-                    }
-                }
-            }
-        }
-        self.calculated_type_vars = Some(calculated_type_vars);
-    }
-}
-
-struct InferrableParamIterator<'db, 'a> {
+pub struct InferrableParamIterator<'db, 'a> {
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
@@ -305,13 +235,13 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
     }
 }
 
-struct InferrableParam<'db, 'a> {
-    param: Param<'db>,
-    argument: Option<Argument<'db, 'a>>,
+pub struct InferrableParam<'db, 'a> {
+    pub param: Param<'db>,
+    pub argument: Option<Argument<'db, 'a>>,
 }
 
 impl<'db, 'a> InferrableParam<'db, 'a> {
-    fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!(
             "Infer param {}",
             self.param.name_definition().name().as_str()
