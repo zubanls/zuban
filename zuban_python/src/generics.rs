@@ -115,7 +115,6 @@ impl<'db> Generics<'db> for AnnotationGenerics<'db> {
 }
 
 pub struct FunctionTypeVarFinder<'db, 'a> {
-    file: &'db PythonFile,
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
@@ -145,13 +144,8 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
 }
 
 impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
-    pub fn new(
-        file: &'db PythonFile,
-        function: &'a Function<'db>,
-        args: &'a dyn Arguments<'db>,
-    ) -> Self {
+    pub fn new(function: &'a Function<'db>, args: &'a dyn Arguments<'db>) -> Self {
         Self {
-            file,
             function,
             args,
             calculated_type_vars: None,
@@ -169,6 +163,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                     .any(|(n, _)| *n == name.get_code())
                 {
                     let inferred = self
+                        .function
                         .file
                         .get_inference(i_s)
                         .infer_expression(annotation.expression());

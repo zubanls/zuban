@@ -12,7 +12,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 pub struct Function<'db> {
-    file: &'db PythonFile,
+    pub file: &'db PythonFile,
     node_index: NodeIndex,
 }
 
@@ -152,7 +152,7 @@ impl<'db> Value<'db> for Function<'db> {
                 i_s,
                 self.file,
                 expr,
-                &mut FunctionTypeVarFinder::new(self.file, self, args),
+                &mut FunctionTypeVarFinder::new(self, args),
             ) {
                 inferred
             } else {
