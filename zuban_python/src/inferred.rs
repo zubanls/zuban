@@ -152,10 +152,10 @@ impl<'db> Inferred<'db> {
                                 definition.as_primary(),
                                 None,
                             );
-                            let generics = CalculableGenerics();
+                            let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                            let generics = CalculableGenerics::new(&init);
                             cls.with_instance(i_s, self, &generics, |i_s, instance| {
                                 let args = InstanceArguments::new(instance, &args);
-                                let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
                         }
@@ -218,18 +218,19 @@ impl<'db> Inferred<'db> {
         match complex {
             ComplexPoint::Instance(cls_definition, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
+                let init = Function::from_execution(i_s.database, execution);
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
+                    let generics = CalculableGenerics::new(&init);
                     let instance = Instance::new(
                         def.file,
                         def.node_index,
                         &cls_storage.symbol_table,
                         self,
-                        &CalculableGenerics(),
+                        &generics,
                     );
                     let args = SimpleArguments::from_execution(i_s.database, execution);
                     let args = InstanceArguments::new(&instance, &args);
-                    let init = Function::from_execution(i_s.database, execution);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()

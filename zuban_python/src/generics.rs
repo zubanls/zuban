@@ -4,6 +4,7 @@ use crate::file::PythonFile;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::value::Function;
 
 pub trait TypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
@@ -62,9 +63,17 @@ impl<'db> Generics<'db> for NoGenerics {
 }
 
 #[derive(Debug)]
-pub struct CalculableGenerics();
+pub struct CalculableGenerics<'db, 'a> {
+    init: &'a Function<'db>,
+}
 
-impl<'db> Generics<'db> for CalculableGenerics {
+impl<'db, 'a> CalculableGenerics<'db, 'a> {
+    pub fn new(init: &'a Function<'db>) -> Self {
+        Self { init }
+    }
+}
+
+impl<'db> Generics<'db> for CalculableGenerics<'db, '_> {
     fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
         todo!()
     }
