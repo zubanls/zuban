@@ -46,6 +46,7 @@ impl<'db, 'a> Instance<'db, 'a> {
     pub fn lookup_type_var(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        args: &'a dyn Arguments<'db>,
         name: &str,
     ) -> Option<Inferred<'db>> {
         let mut found_type_vars = vec![];
@@ -55,7 +56,7 @@ impl<'db, 'a> Instance<'db, 'a> {
                 if inferred.is_type_var(i_s) {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
-                        return self.generics.get_nth(i_s, index);
+                        return self.generics.get_nth(i_s, args, index);
                     }
                     if !found_type_vars.contains(&n.as_str()) {
                         found_type_vars.push(n.as_str());
