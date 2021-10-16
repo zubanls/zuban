@@ -42,24 +42,14 @@ pub fn resolve_type_vars<'db, 'a>(
 }
 
 pub trait Generics<'db>: std::fmt::Debug {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        n: usize,
-    ) -> Option<Inferred<'db>>;
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>>;
 }
 
 #[derive(Debug)]
 pub struct ExpectNoGenerics();
 
 impl<'db> Generics<'db> for ExpectNoGenerics {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        n: usize,
-    ) -> Option<Inferred<'db>> {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
         unreachable!("Should not even ask for generics")
     }
 }
@@ -68,12 +58,7 @@ impl<'db> Generics<'db> for ExpectNoGenerics {
 pub struct NoGenerics();
 
 impl<'db> Generics<'db> for NoGenerics {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        n: usize,
-    ) -> Option<Inferred<'db>> {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
         None
     }
 }
@@ -90,13 +75,7 @@ impl<'db, 'a> CalculableGenerics<'db, 'a> {
 }
 
 impl<'db> Generics<'db> for CalculableGenerics<'db, '_> {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        n: usize,
-    ) -> Option<Inferred<'db>> {
-        let tv = FunctionTypeVarFinder::new(file, self.init, args);
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
         todo!()
     }
 }
@@ -113,12 +92,7 @@ impl<'db> AnnotationGenerics<'db> {
 }
 
 impl<'db> Generics<'db> for AnnotationGenerics<'db> {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        n: usize,
-    ) -> Option<Inferred<'db>> {
+    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
         match self.slice_type {
             SliceType::Simple(simple) => {
                 if n == 0 {
@@ -152,7 +126,7 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
                 if let Some(Argument::PositionalInstance(instance)) = p.argument {
-                    if let Some(inf) = instance.lookup_type_var(i_s, self.args, name) {
+                    if let Some(inf) = instance.lookup_type_var(i_s, name) {
                         return Some(inf);
                     }
                 }
