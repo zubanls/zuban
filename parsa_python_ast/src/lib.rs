@@ -273,6 +273,10 @@ impl<'db> Name<'db> {
         FunctionDef::new(self.node.get_parent().unwrap().get_parent().unwrap())
     }
 
+    pub fn expect_class_def(&self) -> ClassDef<'db> {
+        ClassDef::new(self.node.get_parent().unwrap().get_parent().unwrap())
+    }
+
     pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
         let stmt_node = self
             .node

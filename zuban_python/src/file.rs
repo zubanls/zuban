@@ -535,11 +535,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::LanguageSpecific => match point.get_language_specific() {
                     Specific::LazyInferredFunction => {
+                        // TODO this does not analyze decorators
                         let name = Name::by_index(&self.file.tree, node_index);
                         let func = name.expect_function_def();
                         self.file.calculate_function_scope_definitions(func);
                         let point = self.file.points.get(node_index);
                         debug_assert!(point.is_calculated());
+                        self.check_point_cache(node_index).unwrap()
+                    }
+                    Specific::LazyInferredClass => {
+                        // TODO this does not analyze decorators
+                        let name = Name::by_index(&self.file.tree, node_index);
+                        let class = name.expect_class_def();
+                        // Avoid overwriting multi definitions
+                        let mut name_index = name.index();
+                        if self.file.points.get(name_index).get_type() == PointType::MultiDefinition
+                        {
+                            name_index = name.name_definition().unwrap().index();
+                        }
+                        self.file.points.set(
+                            name_index,
+                            Point::new_redirect(self.file_index, class.index(), Locality::Stmt),
+                        );
+                        debug_assert!(self.file.points.get(node_index).is_calculated());
                         self.check_point_cache(node_index).unwrap()
                     }
                     _ => Inferred::new_saved(self.file, node_index, point),
