@@ -55,7 +55,7 @@ impl<'db, 'a> Instance<'db, 'a> {
                 if inferred.is_type_var(i_s) {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
-                        return self.generics.get_nth(i_s, index);
+                        return self.generics.get_nth(i_s, index, name);
                     }
                     if !found_type_vars.contains(&n.as_str()) {
                         found_type_vars.push(n.as_str());

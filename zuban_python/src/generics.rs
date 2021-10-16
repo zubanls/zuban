@@ -42,14 +42,24 @@ pub fn resolve_type_vars<'db, 'a>(
 }
 
 pub trait Generics<'db>: std::fmt::Debug {
-    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>>;
+    fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>>;
 }
 
 #[derive(Debug)]
 pub struct ExpectNoGenerics();
 
 impl<'db> Generics<'db> for ExpectNoGenerics {
-    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+    fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         unreachable!("Should not even ask for generics")
     }
 }
@@ -58,7 +68,12 @@ impl<'db> Generics<'db> for ExpectNoGenerics {
 pub struct NoGenerics();
 
 impl<'db> Generics<'db> for NoGenerics {
-    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+    fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         None
     }
 }
@@ -66,17 +81,23 @@ impl<'db> Generics<'db> for NoGenerics {
 #[derive(Debug)]
 pub struct CalculableGenerics<'db, 'a> {
     init: &'a Function<'db>,
+    args: &'a dyn Arguments<'db>,
 }
 
 impl<'db, 'a> CalculableGenerics<'db, 'a> {
-    pub fn new(init: &'a Function<'db>) -> Self {
-        Self { init }
+    pub fn new(init: &'a Function<'db>, args: &'a dyn Arguments<'db>) -> Self {
+        Self { init, args }
     }
 }
 
 impl<'db> Generics<'db> for CalculableGenerics<'db, '_> {
-    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
-        todo!()
+    fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        FunctionTypeVarFinder::new(self.init, self.args).lookup(i_s, name)
     }
 }
 
@@ -92,7 +113,12 @@ impl<'db> AnnotationGenerics<'db> {
 }
 
 impl<'db> Generics<'db> for AnnotationGenerics<'db> {
-    fn get_nth(&self, i_s: &mut InferenceState<'db, '_>, n: usize) -> Option<Inferred<'db>> {
+    fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         match self.slice_type {
             SliceType::Simple(simple) => {
                 if n == 0 {
