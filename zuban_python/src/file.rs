@@ -419,10 +419,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
-        let base = match primary.first() {
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom),
-            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary),
-        };
+        let base = self.infer_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &|i_s, value| {
                 debug!("Lookup {}.{}", value.get_name(), name.as_str());
@@ -444,6 +441,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
                 })
             }
+        }
+    }
+
+    pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> Inferred<'db> {
+        match p {
+            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary),
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom),
         }
     }
 

@@ -13,7 +13,6 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind};
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
-    PrimaryOrAtom,
 };
 use std::fmt;
 
@@ -159,14 +158,11 @@ impl<'db> Inferred<'db> {
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
                         }
-                        Specific::SimpleGeneric => {
-                            let mut inference = definition.file.get_inference(i_s);
-                            let inf = match definition.as_primary().first() {
-                                PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
-                                PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
-                            };
-                            inf.run(i_s, callable, reducer, on_missing)
-                        }
+                        Specific::SimpleGeneric => definition
+                            .file
+                            .get_inference(i_s)
+                            .infer_primary_or_atom(definition.as_primary().first())
+                            .run(i_s, callable, reducer, on_missing),
                         Specific::Param => i_s
                             .infer_param(definition)
                             .run(i_s, callable, reducer, on_missing),
@@ -423,11 +419,10 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         definition: &NodeReference<'db>,
     ) -> Self {
-        let mut inference = definition.file.get_inference(i_s);
-        match definition.as_primary().first() {
-            PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
-            PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
-        }
+        definition
+            .file
+            .get_inference(i_s)
+            .infer_primary_or_atom(definition.as_primary().first())
     }
 
     fn with_instance<T>(
@@ -441,14 +436,11 @@ impl<'db> Inferred<'db> {
             InferredState::Saved(definition, point) => {
                 if point.get_type() == PointType::LanguageSpecific {
                     if let Specific::SimpleGeneric = point.get_language_specific() {
-                        let mut inference = definition.file.get_inference(i_s);
-                        let cls =
-                            match Primary::by_index(&definition.file.tree, definition.node_index)
-                                .first()
-                            {
-                                PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
-                                PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
-                            };
+                        let p = Primary::by_index(&definition.file.tree, definition.node_index);
+                        let cls = definition
+                            .file
+                            .get_inference(i_s)
+                            .infer_primary_or_atom(p.first());
                         cls.with_instance(i_s, instance, generics, callable)
                     } else {
                         unreachable!("{:?}", point)

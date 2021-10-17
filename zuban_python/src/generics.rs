@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent, PrimaryOrAtom,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent,
 };
 
 use crate::arguments::{Argument, Arguments};
@@ -238,11 +238,11 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             }
             ExpressionPart::Primary(primary) => match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
-                    let mut inference = self.function.file.get_inference(i_s);
-                    let inf = match primary.first() {
-                        PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
-                        PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
-                    };
+                    let inf = self
+                        .function
+                        .file
+                        .get_inference(i_s)
+                        .infer_primary_or_atom(primary.first());
                     todo!()
                 }
                 PrimaryContent::Attribute(name) => {
