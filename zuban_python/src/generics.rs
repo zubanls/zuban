@@ -150,8 +150,12 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
-                if let Some(Argument::PositionalInstance(instance)) = p.argument {
-                    if let Some(inf) = instance.lookup_type_var(i_s, name) {
+                if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                    if let Some(inf) = instance
+                        .as_instance()
+                        .unwrap_or_else(|| todo!())
+                        .lookup_type_var(i_s, name)
+                    {
                         return Some(inf);
                     }
                 }

@@ -4,7 +4,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::{Function, Instance};
+use crate::value::{Function, Instance, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -135,7 +135,8 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub enum Argument<'db, 'a> {
-    PositionalInstance(&'a Instance<'db, 'a>),
+    // Can be used for classmethod class or self in bound methods
+    PositionalFirst(&'a dyn Value<'db>),
     Keyword(&'db str, NodeReference<'db>),
     Positional(NodeReference<'db>),
 }
@@ -151,7 +152,11 @@ impl<'db> Argument<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::PositionalInstance(instance) => instance.as_inferred().clone(),
+            Self::PositionalFirst(instance) => instance
+                .as_instance()
+                .unwrap_or_else(|| todo!())
+                .as_inferred()
+                .clone(),
             Self::Keyword(_, reference) | Self::Positional(reference) => {
                 reference
                     .file
@@ -171,7 +176,7 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(&'a Instance<'db, 'a>, &'a dyn Arguments<'db>),
+    Instance(&'a dyn Value<'db>, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 
@@ -184,7 +189,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             Self::Instance(_, _) => {
                 if let Self::Instance(instance, args) = mem::replace(self, Self::Normal(Finished)) {
                     *self = args.iter_arguments();
-                    Some(Argument::PositionalInstance(instance))
+                    Some(Argument::PositionalFirst(instance))
                 } else {
                     unreachable!()
                 }
