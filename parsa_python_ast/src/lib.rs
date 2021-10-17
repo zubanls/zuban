@@ -1173,6 +1173,7 @@ impl<'db> Iterator for ParamIterator<'db> {
     }
 }
 
+#[derive(Debug)]
 pub struct Param<'db> {
     type_: ParamType,
     name_def: NameDefinition<'db>,
@@ -1217,7 +1218,7 @@ impl<'db> Param<'db> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum ParamType {
     PositionalOnly,
     PositionalOrKeyword,

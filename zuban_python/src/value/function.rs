@@ -235,6 +235,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: Param<'db>,
     pub argument: Option<Argument<'db, 'a>>,

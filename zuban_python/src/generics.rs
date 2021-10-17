@@ -184,6 +184,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             if let Some(annotation) = p.param.annotation() {
                 // TODO we should only check names, not expressions
                 let name = annotation.expression().get_legacy_node();
+
                 if !calculated_type_vars
                     .iter()
                     .any(|(n, _)| *n == name.get_code())
