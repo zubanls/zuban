@@ -97,7 +97,7 @@ impl<'db> Generics<'db> for CalculableGenerics<'db, '_> {
         n: usize,
         name: &str,
     ) -> Option<Inferred<'db>> {
-        FunctionTypeVarFinder::new(self.init, self.args).lookup(i_s, name)
+        FunctionTypeVarFinder::new(self.init, self.args, true).lookup(i_s, name)
     }
 }
 
@@ -144,19 +144,26 @@ pub struct FunctionTypeVarFinder<'db, 'a> {
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
+    skip_first: bool,
 }
 
 impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
-            if let Some(p) = self.function.iter_inferrable_params(self.args).next() {
-                if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                    if let Some(inf) = instance
-                        .as_instance()
-                        .unwrap_or_else(|| todo!())
-                        .lookup_type_var(i_s, name)
-                    {
-                        return Some(inf);
+            if !self.skip_first {
+                if let Some(p) = self
+                    .function
+                    .iter_inferrable_params(self.args, self.skip_first)
+                    .next()
+                {
+                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                        if let Some(inf) = instance
+                            .as_instance()
+                            .unwrap_or_else(|| todo!())
+                            .lookup_type_var(i_s, name)
+                        {
+                            return Some(inf);
+                        }
                     }
                 }
             }
@@ -174,17 +181,25 @@ impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
 }
 
 impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
-    pub fn new(function: &'a Function<'db>, args: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(
+        function: &'a Function<'db>,
+        args: &'a dyn Arguments<'db>,
+        skip_first: bool,
+    ) -> Self {
         Self {
             function,
             args,
             calculated_type_vars: None,
+            skip_first,
         }
     }
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
         let mut calculated_type_vars = vec![];
-        for p in self.function.iter_inferrable_params(self.args) {
+        for p in self
+            .function
+            .iter_inferrable_params(self.args, self.skip_first)
+        {
             if let Some(annotation) = p.param.annotation() {
                 // TODO we should only check names, not expressions
                 let name = annotation.expression().get_legacy_node();

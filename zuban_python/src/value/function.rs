@@ -42,8 +42,13 @@ impl<'db> Function<'db> {
     pub fn iter_inferrable_params<'a>(
         &self,
         args: &'a dyn Arguments<'db>,
+        skip_first_param: bool,
     ) -> InferrableParamIterator<'db, 'a> {
-        InferrableParamIterator::new(self.get_node().params().iter(), args.iter_arguments())
+        let mut params = self.get_node().params().iter();
+        if skip_first_param {
+            params.next();
+        }
+        InferrableParamIterator::new(params, args.iter_arguments())
     }
 
     pub fn infer_param(
@@ -70,7 +75,7 @@ impl<'db> Function<'db> {
                 execution = exec.in_.as_deref();
             }
         };
-        for param in func.iter_inferrable_params(check_args) {
+        for param in func.iter_inferrable_params(check_args, false) {
             if param.is_at(param_name_index) {
                 return param.infer(i_s);
             }
@@ -152,7 +157,7 @@ impl<'db> Value<'db> for Function<'db> {
                 i_s,
                 self.file,
                 expr,
-                &mut FunctionTypeVarFinder::new(self, args),
+                &mut FunctionTypeVarFinder::new(self, args, false),
             ) {
                 inferred
             } else {
@@ -193,7 +198,7 @@ pub struct InferrableParamIterator<'db, 'a> {
 
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(params: ParamIterator<'db>, arguments: ArgumentIterator<'db, 'a>) -> Self {
-        InferrableParamIterator {
+        Self {
             arguments,
             params,
             unused_keyword_arguments: vec![],
