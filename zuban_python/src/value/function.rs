@@ -9,7 +9,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::{resolve_type_vars, FunctionTypeVarFinder};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferrable, Inferred};
 
 pub struct Function<'db> {
     pub file: &'db PythonFile,
@@ -246,18 +246,21 @@ pub struct InferrableParam<'db, 'a> {
     pub argument: Option<Argument<'db, 'a>>,
 }
 
-impl<'db, 'a> InferrableParam<'db, 'a> {
-    pub fn infer(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+impl<'db> InferrableParam<'db, '_> {
+    fn is_at(&self, index: NodeIndex) -> bool {
+        self.param.name_definition().name().index() == index
+    }
+}
+
+impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
+    fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!(
             "Infer param {}",
             self.param.name_definition().name().as_str()
         );
         self.argument
+            .as_ref()
             .map(|a| a.infer(i_s))
             .unwrap_or_else(|| todo!())
-    }
-
-    fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.name_definition().name().index() == index
     }
 }

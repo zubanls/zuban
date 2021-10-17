@@ -1,10 +1,12 @@
-use parsa_python_ast::Expression;
+use parsa_python_ast::{
+    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent, PrimaryOrAtom,
+};
 
 use crate::arguments::{Argument, Arguments};
 use crate::file::PythonFile;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferrable, Inferred};
 use crate::value::Function;
 
 pub trait TypeVarFinder<'db, 'a> {
@@ -195,32 +197,66 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     }
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
-        let mut calculated_type_vars = vec![];
+        self.calculated_type_vars = Some(vec![]);
         for p in self
             .function
             .iter_inferrable_params(self.args, self.skip_first)
         {
             if let Some(annotation) = p.param.annotation() {
-                // TODO we should only check names, not expressions
-                let name = annotation.expression().get_legacy_node();
-
-                if !calculated_type_vars
-                    .iter()
-                    .any(|(n, _)| *n == name.get_code())
-                {
-                    let inferred = self
-                        .function
-                        .file
-                        .get_inference(i_s)
-                        .infer_expression(annotation.expression());
-                    if inferred.is_type_var(i_s) {
-                        calculated_type_vars.push((name.get_code(), p.infer(i_s)));
-                    } else {
-                        // TODO stuff like List[T]
-                    }
+                if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
+                    self.try_to_find(i_s, &part, &p)
                 }
             }
         }
-        self.calculated_type_vars = Some(calculated_type_vars);
+    }
+
+    fn try_to_find(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        content: &ExpressionPart<'db>,
+        inferrable: &dyn Inferrable<'db>,
+    ) {
+        match content {
+            ExpressionPart::Atom(atom) => {
+                if let AtomContent::Name(name) = atom.unpack() {
+                    if !self
+                        .calculated_type_vars
+                        .as_ref()
+                        .unwrap()
+                        .iter()
+                        .any(|(n, _)| *n == name.as_str())
+                    {
+                        let inferred = self.function.file.get_inference(i_s).infer_name(name);
+                        if inferred.is_type_var(i_s) {
+                            self.calculated_type_vars
+                                .as_mut()
+                                .unwrap()
+                                .push((name.as_str(), inferrable.infer(i_s)));
+                        }
+                    }
+                }
+            }
+            ExpressionPart::Primary(primary) => match primary.second() {
+                PrimaryContent::GetItem(slice_type) => {
+                    let mut inference = self.function.file.get_inference(i_s);
+                    let inf = match primary.first() {
+                        PrimaryOrAtom::Primary(primary) => inference.infer_primary(primary),
+                        PrimaryOrAtom::Atom(atom) => inference.infer_atom(atom),
+                    };
+                    todo!()
+                }
+                PrimaryContent::Attribute(name) => {
+                    let x = self
+                        .function
+                        .file
+                        .get_inference(i_s)
+                        .infer_primary(*primary);
+                    todo!()
+                }
+                PrimaryContent::Execution(_) => (),
+            },
+            ExpressionPart::BitwiseOr(bitwise_or) => todo!("unions"),
+            _ => (),
+        }
     }
 }

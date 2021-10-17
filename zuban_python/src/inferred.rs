@@ -18,7 +18,7 @@ use parsa_python_ast::{
 use std::fmt;
 
 pub trait Inferrable<'db> {
-    fn infer(&self) -> Inferred<'db>;
+    fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db>;
 }
 
 #[derive(Debug, Clone, Copy)]
