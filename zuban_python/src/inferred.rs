@@ -474,7 +474,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn expect_class(&self) -> Option<Class<'db>> {
+    pub fn expect_class(&self) -> Option<Class<'db>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 use_class(definition.file, definition.node_index)

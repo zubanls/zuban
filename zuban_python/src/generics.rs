@@ -243,7 +243,9 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .file
                         .get_inference(i_s)
                         .infer_primary_or_atom(primary.first());
-                    todo!()
+                    if let Some(cls) = inf.expect_class() {
+                        cls.infer_type_vars(i_s, inferrable.infer(i_s))
+                    }
                 }
                 PrimaryContent::Attribute(name) => {
                     let x = self

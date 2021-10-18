@@ -42,6 +42,35 @@ impl<'db> Class<'db> {
     pub fn get_node(&self) -> ClassDef<'db> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
+
+    pub fn infer_type_vars(&self, i_s: &mut InferenceState<'db, '_>, value: Inferred<'db>) {
+        // Note: we need to handle the MRO _in order_, so we need to extract
+        // the elements from the set first, then handle them, even if we put
+        // them back in a set afterwards.
+        let value_class: Self = todo!();
+        ();
+        for base_class in value_class.mro() {
+            if base_class.node_index == self.node_index
+                && base_class.file.get_file_index() == self.file.get_file_index()
+            {
+                let mut value_generics = base_class.generics.iter();
+                for generic in self.generics.iter() {
+                    let v = value_generics.next().unwrap_or_else(todo!());
+                    if generic.is_type_var() {
+                        todo!("report pls: {} is {}", generic, v)
+                    } else if let Some(cls) = generic.expect_class() {
+                        cls.infer_type_vars(i_s, v)
+                    }
+                }
+                break;
+            }
+        }
+        todo!();
+    }
+
+    fn mro(&self) -> impl Iterator<Item = &Class> {
+        std::iter::empty()
+    }
 }
 
 impl<'db> Value<'db> for Class<'db> {
