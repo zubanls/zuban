@@ -158,11 +158,14 @@ impl<'db> Inferred<'db> {
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
                         }
-                        Specific::SimpleGeneric => definition
-                            .file
-                            .get_inference(i_s)
-                            .infer_primary_or_atom(definition.as_primary().first())
-                            .run(i_s, callable, reducer, on_missing),
+                        Specific::SimpleGeneric => {
+                            todo!("foo");
+                            definition
+                                .file
+                                .get_inference(i_s)
+                                .infer_primary_or_atom(definition.as_primary().first())
+                                .run(i_s, callable, reducer, on_missing)
+                        }
                         Specific::Param => i_s
                             .infer_param(definition)
                             .run(i_s, callable, reducer, on_missing),
@@ -183,6 +186,7 @@ impl<'db> Inferred<'db> {
                             definition.file,
                             definition.node_index,
                             &cls_storage.symbol_table,
+                            &NoGenerics(),
                         );
                         callable(i_s, &class)
                     } else {
@@ -474,7 +478,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_class(&self) -> Option<Class<'db>> {
+    pub fn expect_class(&self) -> Option<Class<'db, '_>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 use_class(definition.file, definition.node_index)
@@ -675,7 +679,9 @@ fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
     debug_assert_eq!(v.get_type(), PointType::Complex);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
-        ComplexPoint::Class(c) => Some(Class::new(file, node_index, &c.symbol_table)),
+        ComplexPoint::Class(c) => {
+            Some(Class::new(file, node_index, &c.symbol_table, &NoGenerics()))
+        }
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }

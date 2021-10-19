@@ -50,6 +50,11 @@ pub trait Generics<'db>: std::fmt::Debug {
         n: usize,
         name: &str,
     ) -> Option<Inferred<'db>>;
+
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> std::iter::Empty<Inferred<'db>> {
+        todo!();
+        std::iter::empty()
+    }
 }
 
 #[derive(Debug)]
@@ -244,7 +249,8 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .get_inference(i_s)
                         .infer_primary_or_atom(primary.first());
                     if let Some(cls) = inf.expect_class() {
-                        cls.infer_type_vars(i_s, inferrable.infer(i_s))
+                        let i = inferrable.infer(i_s);
+                        cls.infer_type_vars(i_s, i)
                     }
                 }
                 PrimaryContent::Attribute(name) => {

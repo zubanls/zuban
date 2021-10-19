@@ -1,32 +1,36 @@
-use parsa_python_ast::{ClassDef, NodeIndex};
+use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Class<'db> {
+pub struct Class<'db, 'a> {
     file: &'db PythonFile,
     symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
+    generics: &'a dyn Generics<'db>,
 }
 
-impl<'db> Class<'db> {
+impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
+        generics: &'a dyn Generics<'db>,
     ) -> Self {
         Self {
             file,
             node_index,
             symbol_table,
+            generics,
         }
     }
 
@@ -47,17 +51,17 @@ impl<'db> Class<'db> {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        let value_class: Self = todo!();
-        ();
+        dbg!(value);
+        let value_class = self;
         for base_class in value_class.mro() {
             if base_class.node_index == self.node_index
                 && base_class.file.get_file_index() == self.file.get_file_index()
             {
-                let mut value_generics = base_class.generics.iter();
-                for generic in self.generics.iter() {
-                    let v = value_generics.next().unwrap_or_else(todo!());
-                    if generic.is_type_var() {
-                        todo!("report pls: {} is {}", generic, v)
+                let mut value_generics = base_class.generics.iter(i_s);
+                for generic in self.generics.iter(i_s) {
+                    let v = value_generics.next().unwrap_or_else(|| todo!());
+                    if generic.is_type_var(i_s) {
+                        todo!("report pls: {:?} is {:?}", generic, v)
                     } else if let Some(cls) = generic.expect_class() {
                         cls.infer_type_vars(i_s, v)
                     }
@@ -68,12 +72,19 @@ impl<'db> Class<'db> {
         todo!();
     }
 
-    fn mro(&self) -> impl Iterator<Item = &Class> {
+    fn bases(&self) -> BasesIterator<'db> {
+        BasesIterator {
+            file: self.file,
+            args: self.get_node().arguments().map(|a| a.iter()),
+        }
+    }
+
+    fn mro(&self) -> impl Iterator<Item = Class<'db, '_>> {
         std::iter::empty()
     }
 }
 
-impl<'db> Value<'db> for Class<'db> {
+impl<'db> Value<'db> for Class<'db, '_> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -130,3 +141,26 @@ impl<'db> Value<'db> for Class<'db> {
         }
     }
 }
+
+struct BasesIterator<'db> {
+    file: &'db PythonFile,
+    args: Option<ArgumentsIterator<'db>>,
+}
+
+impl<'db> BasesIterator<'db> {
+    fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+        if let Some(args) = self.args.as_mut() {
+            match args.next() {
+                Some(Argument::Positional(p)) => {
+                    return Some(self.file.get_inference(i_s).infer_named_expression(p))
+                }
+                None => (),
+                other => todo!("{:?}", other),
+            }
+        }
+        None
+    }
+}
+
+//struct MroIterator<'db, 'a> {
+//}
