@@ -90,4 +90,7 @@ pub trait Value<'db>: std::fmt::Debug {
     fn as_instance(&self) -> Option<&Instance<'db, '_>> {
         None
     }
+    fn as_class(&self) -> Option<&Class<'db, '_>> {
+        None
+    }
 }

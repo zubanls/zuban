@@ -5,7 +5,7 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::generics::{CalculableGenerics, Generics};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -51,22 +51,42 @@ impl<'db, 'a> Class<'db, 'a> {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        dbg!(value);
-        let value_class = self;
-        for base_class in value_class.mro() {
-            if base_class.node_index == self.node_index
-                && base_class.file.get_file_index() == self.file.get_file_index()
-            {
-                let mut value_generics = base_class.generics.iter(i_s);
-                for generic in self.generics.iter(i_s) {
-                    let v = value_generics.next().unwrap_or_else(|| todo!());
-                    if generic.is_type_var(i_s) {
-                        todo!("report pls: {:?} is {:?}", generic, v)
-                    } else if let Some(cls) = generic.expect_class() {
-                        cls.infer_type_vars(i_s, v)
+        // TODO use mro
+        if let Some(value) = value.expect_class() {
+            let mut bases = value.bases();
+            while let Some(inf) = bases.next(i_s) {
+                /*
+                TODO Test why this is not working. Somehow lifetimes are screwed.
+                inf.run_on_value(i_s, &|i_s: &mut InferenceState<'db, '_>, value| {
+                    self.generics.get_nth(i_s, 0, "");
+                    self.file.get_inference(i_s).infer_name_by_index(self.node_index)
+                });
+                */
+                inf.run_on_value(i_s, &|i_s: &mut InferenceState<'db, '_>, value| {
+                    // TODO FUUUUUUUUUUUUUUUUUUUUUUUU LIFETIMES IN CLOSURES
+                    // This lifetime is valid, but the compiler is wrong...
+                    let generics = unsafe { &*(self.generics as *const dyn Generics) };
+                    dbg!(value.get_name());
+                    if let Some(base_class) = value.as_class() {
+                        if base_class.node_index == self.node_index
+                            && base_class.file.get_file_index() == self.file.get_file_index()
+                        {
+                            let mut value_generics = base_class.generics.iter(i_s);
+                            let generics = unsafe { &*(self.generics as *const dyn Generics) };
+                            for generic in generics.iter(i_s) {
+                                dbg!(&generic);
+                                let v = value_generics.next().unwrap_or_else(|| todo!());
+                                if generic.is_type_var(i_s) {
+                                    todo!("report pls: {:?} is {:?}", generic, v)
+                                } else if let Some(cls) = generic.expect_class() {
+                                    cls.infer_type_vars(i_s, v)
+                                }
+                            }
+                            //break;
+                        }
                     }
-                }
-                break;
+                    todo!()
+                });
             }
         }
         todo!();
