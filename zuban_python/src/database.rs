@@ -351,6 +351,7 @@ pub enum ComplexPoint {
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Execution),
     Generic(Execution),
+    ClassInfos(ClassInfos),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -368,6 +369,27 @@ impl Execution {
             argument_node,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassInfos {
+    type_vars: Vec<PointLink>,
+    mro: Vec<ClassWithTypeVarIndex>, // Does never include `object`
+    is_protocol: bool,
+}
+
+pub type TypeVarIndex = u8;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassWithTypeVarIndex {
+    class: PointLink,
+    type_var_infos: Box<[Option<TypeVarInfo>]>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeVarInfo {
+    TypeVar(TypeVarIndex),
+    ClassWithTypeVarIndex(Box<ClassWithTypeVarIndex>),
 }
 
 pub struct Database {

@@ -273,8 +273,8 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Generic(bla) => {
                 todo!()
             }
-            ComplexPoint::Class(cls_storage) => {
-                unreachable!("Class is handled earlier")
+            _ => {
+                unreachable!("Classes are handled earlier {:?}", complex)
             }
         }
     }
