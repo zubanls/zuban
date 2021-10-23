@@ -16,8 +16,8 @@ use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Class<'db> {
-    file: &'db PythonFile,
-    symbol_table: &'db SymbolTable,
+    pub(super) file: &'db PythonFile,
+    pub(super) symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
     generics: Generics<'db>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
