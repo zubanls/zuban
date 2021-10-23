@@ -373,17 +373,17 @@ impl Execution {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    type_vars: Vec<PointLink>,
-    mro: Vec<ClassWithTypeVarIndex>, // Does never include `object`
-    is_protocol: bool,
+    pub type_vars: Vec<PointLink>,
+    pub mro: Vec<ClassWithTypeVarIndex>, // Does never include `object`
+    pub is_protocol: bool,
 }
 
 pub type TypeVarIndex = u8;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassWithTypeVarIndex {
-    class: PointLink,
-    type_var_remap: Box<[Option<TypeVarRemap>]>,
+    pub class: PointLink,
+    pub type_var_remap: Box<[Option<TypeVarRemap>]>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

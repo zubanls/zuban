@@ -2,7 +2,10 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
-use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific, TypeVarRemap};
+use crate::database::{
+    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, Locality, Point, PointLink,
+    PointType, Specific, TypeVarRemap,
+};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::Generics;
@@ -26,13 +29,35 @@ impl<'db> Class<'db> {
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
         generics: Generics<'db>,
+        type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Self {
         Self {
             file,
             node_index,
             symbol_table,
             generics,
-            type_var_remap: None,
+            type_var_remap,
+        }
+    }
+
+    pub fn from_position(
+        file: &'db PythonFile,
+        node_index: NodeIndex,
+        generics: Generics<'db>,
+        type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
+    ) -> Option<Self> {
+        let v = file.points.get(node_index);
+        debug_assert_eq!(v.get_type(), PointType::Complex, "{:?}", v);
+        let complex = file.complex_points.get(v.get_complex_index() as usize);
+        match complex {
+            ComplexPoint::Class(c) => Some(Self::new(
+                file,
+                node_index,
+                &c.symbol_table,
+                generics,
+                type_var_remap,
+            )),
+            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
 
@@ -55,53 +80,49 @@ impl<'db> Class<'db> {
         // them back in a set afterwards.
         // TODO use mro
         if let Some(value) = value.expect_class() {
-            let mut bases = value.bases();
-            while let Some(inf) = bases.next(i_s) {
-                /*
-                TODO Test why this is not working. Somehow lifetimes are screwed.
-                inf.run_on_value(i_s, &|i_s: &mut InferenceState<'db, '_>, value| {
-                    self.generics.get_nth(i_s, 0, "");
-                    self.file.get_inference(i_s).infer_name_by_index(self.node_index)
-                });
-                */
-                inf.run_on_value(i_s, &|i_s: &mut InferenceState<'db, '_>, value| {
-                    // TODO FUUUUUUUUUUUUUUUUUUUUUUUU LIFETIMES IN CLOSURES
-                    // This lifetime is valid, but the compiler is wrong...
-                    dbg!(value.get_name());
-                    if let Some(base_class) = value.as_class() {
-                        if base_class.node_index == self.node_index
-                            && base_class.file.get_file_index() == self.file.get_file_index()
-                        {
-                            let mut value_generics = base_class.generics.iter();
-                            let mut generics = self.generics.iter();
-                            while let Some(generic) = generics.next(i_s) {
-                                dbg!(&generic);
-                                let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                                if generic.is_type_var(i_s) {
-                                    todo!("report pls: {:?} is {:?}", generic, v)
-                                } else if let Some(cls) = generic.expect_class() {
-                                    cls.infer_type_vars(i_s, v)
-                                }
+            todo!();
+            ();
+            for cls in value.mro(i_s.database) {
+                if let Some(base_class) = value.as_class() {
+                    if base_class.node_index == self.node_index
+                        && base_class.file.get_file_index() == self.file.get_file_index()
+                    {
+                        let mut value_generics = base_class.generics.iter();
+                        let mut generics = self.generics.iter();
+                        while let Some(generic) = generics.next(i_s) {
+                            dbg!(&generic);
+                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
+                            if generic.is_type_var(i_s) {
+                                todo!("report pls: {:?} is {:?}", generic, v)
+                            } else if let Some(cls) = generic.expect_class() {
+                                cls.infer_type_vars(i_s, v)
                             }
-                            //break;
                         }
+                        //break;
                     }
-                    todo!()
-                });
+                }
+                todo!()
             }
         }
         todo!();
     }
 
-    fn bases(&self) -> BasesIterator<'db> {
-        BasesIterator {
-            file: self.file,
-            args: self.get_node().arguments().map(|a| a.iter()),
+    fn get_class_infos(&self) -> &'db ClassInfos {
+        let point = self.file.points.get(self.node_index + 1);
+        let complex_index = point.get_complex_index();
+        match self.file.complex_points.get(complex_index) {
+            ComplexPoint::ClassInfos(class_infos) => class_infos,
+            _ => unreachable!(),
         }
     }
 
-    fn mro(&self) -> impl Iterator<Item = Class<'db>> {
-        std::iter::empty()
+    fn mro(&self, database: &'db Database) -> MroIterator<'db, '_> {
+        let class_infos = self.get_class_infos();
+        MroIterator {
+            database,
+            generics: &self.generics,
+            iterator: class_infos.mro.iter(),
+        }
     }
 }
 
@@ -183,5 +204,25 @@ impl<'db> BasesIterator<'db> {
     }
 }
 
-//struct MroIterator<'db, 'a> {
-//}
+struct MroIterator<'db, 'a> {
+    database: &'db Database,
+    generics: &'a Generics<'db>,
+    iterator: std::slice::Iter<'db, ClassWithTypeVarIndex>,
+}
+
+impl<'db> Iterator for MroIterator<'db, '_> {
+    type Item = Class<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iterator.next().map(|c| {
+            let file = self.database.get_loaded_python_file(c.class.file);
+            Class::from_position(
+                file,
+                c.class.node_index,
+                Generics::None,
+                Some(&c.type_var_remap),
+            )
+            .unwrap()
+        })
+    }
+}

@@ -182,6 +182,7 @@ impl<'db> Inferred<'db> {
                             definition.node_index,
                             &cls_storage.symbol_table,
                             Generics::None,
+                            None,
                         );
                         callable(i_s, &class)
                     } else {
@@ -476,7 +477,7 @@ impl<'db> Inferred<'db> {
     pub fn expect_class(&self) -> Option<Class<'db>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                use_class(definition.file, definition.node_index, Generics::None)
+                Class::from_position(definition.file, definition.node_index, Generics::None, None)
             }
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
@@ -662,21 +663,6 @@ impl fmt::Debug for Inferred<'_> {
             InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
         }
         .finish()
-    }
-}
-
-#[inline]
-fn use_class<'db>(
-    file: &'db PythonFile,
-    node_index: NodeIndex,
-    generics: Generics<'db>,
-) -> Option<Class<'db>> {
-    let v = file.points.get(node_index);
-    debug_assert_eq!(v.get_type(), PointType::Complex, "{:?}", v);
-    let complex = file.complex_points.get(v.get_complex_index() as usize);
-    match complex {
-        ComplexPoint::Class(c) => Some(Class::new(file, node_index, &c.symbol_table, generics)),
-        _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }
 

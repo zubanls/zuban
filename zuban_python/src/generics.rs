@@ -66,7 +66,17 @@ impl<'db> Generics<'db> {
         n: usize,
         name: &str,
     ) -> Option<Inferred<'db>> {
-        todo!()
+        match self {
+            Self::Expression(file, expr) => {
+                if n == 0 {
+                    Some(file.get_inference(i_s).infer_expression(*expr))
+                } else {
+                    None
+                }
+            }
+            Self::Slices(slices) => todo!(),
+            Self::None => None,
+        }
     }
 
     pub fn iter(&self) -> GenericsIterator<'db> {
