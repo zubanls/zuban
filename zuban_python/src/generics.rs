@@ -1,10 +1,10 @@
 use parsa_python_ast::{
-    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
+    SliceType, Slices,
 };
 
 use crate::arguments::{Argument, Arguments};
 use crate::file::PythonFile;
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
 use crate::value::Function;
@@ -43,16 +43,60 @@ pub fn resolve_type_vars<'db, 'a>(
     }
 }
 
-/*
 #[derive(Debug)]
-enum Generics {
-    Single(NodeIndex),
-    Slice(NodeIndex),
-    Multiple(Box<Foo>),
+pub enum Generics<'db> {
+    Expression(&'db PythonFile, Expression<'db>),
+    Slices(Slices<'db>),
+    //Multiple(Box<[&Foo]>),
     None,
 }
-*/
 
+impl<'db> Generics<'db> {
+    pub fn new_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
+        match slice_type {
+            SliceType::NamedExpression(named) => Self::Expression(file, named.expression()),
+            SliceType::Slice(_) => Self::None,
+            SliceType::Slices(slices) => Self::Slices(slices),
+        }
+    }
+
+    pub fn get_nth(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        n: usize,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        todo!()
+    }
+
+    pub fn iter(&self) -> GenericsIterator<'db> {
+        match self {
+            Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
+            Self::Slices(slices) => todo!(),
+            Self::None => GenericsIterator::None,
+        }
+    }
+}
+
+pub enum GenericsIterator<'db> {
+    Expression(&'db PythonFile, Expression<'db>),
+    None,
+}
+
+impl<'db> GenericsIterator<'db> {
+    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+        match self {
+            Self::Expression(file, expr) => {
+                let result = file.get_inference(i_s).infer_expression(*expr);
+                *self = GenericsIterator::None;
+                Some(result)
+            }
+            GenericsIterator::None => None,
+        }
+    }
+}
+
+/*
 pub trait Generics<'db>: std::fmt::Debug {
     fn get_nth(
         &self,
@@ -156,6 +200,7 @@ impl<'db> Generics<'db> for AnnotationGenerics<'db> {
         }
     }
 }
+*/
 
 pub struct FunctionTypeVarFinder<'db, 'a> {
     function: &'a Function<'db>,

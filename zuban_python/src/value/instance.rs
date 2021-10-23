@@ -15,7 +15,7 @@ pub struct Instance<'db, 'a> {
     symbol_table: &'db SymbolTable,
     inferred: &'a Inferred<'db>,
     node_index: NodeIndex,
-    generics: &'a dyn Generics<'db>,
+    generics: Generics<'db>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
@@ -24,7 +24,7 @@ impl<'db, 'a> Instance<'db, 'a> {
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
         inferred: &'a Inferred<'db>,
-        generics: &'a dyn Generics<'db>,
+        generics: Generics<'db>,
     ) -> Self {
         Self {
             file,

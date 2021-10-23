@@ -5,27 +5,27 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific, TypeVarRemap};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{CalculableGenerics, Generics};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Class<'db, 'a> {
+pub struct Class<'db> {
     file: &'db PythonFile,
     symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
-    generics: &'a dyn Generics<'db>,
+    generics: Generics<'db>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
-impl<'db, 'a> Class<'db, 'a> {
+impl<'db> Class<'db> {
     pub fn new(
         file: &'db PythonFile,
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
-        generics: &'a dyn Generics<'db>,
+        generics: Generics<'db>,
     ) -> Self {
         Self {
             file,
@@ -67,17 +67,16 @@ impl<'db, 'a> Class<'db, 'a> {
                 inf.run_on_value(i_s, &|i_s: &mut InferenceState<'db, '_>, value| {
                     // TODO FUUUUUUUUUUUUUUUUUUUUUUUU LIFETIMES IN CLOSURES
                     // This lifetime is valid, but the compiler is wrong...
-                    let generics = unsafe { &*(self.generics as *const dyn Generics) };
                     dbg!(value.get_name());
                     if let Some(base_class) = value.as_class() {
                         if base_class.node_index == self.node_index
                             && base_class.file.get_file_index() == self.file.get_file_index()
                         {
-                            let mut value_generics = base_class.generics.iter(i_s);
-                            let generics = unsafe { &*(self.generics as *const dyn Generics) };
-                            for generic in generics.iter(i_s) {
+                            let mut value_generics = base_class.generics.iter();
+                            let mut generics = self.generics.iter();
+                            while let Some(generic) = generics.next(i_s) {
                                 dbg!(&generic);
-                                let v = value_generics.next().unwrap_or_else(|| todo!());
+                                let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
                                 if generic.is_type_var(i_s) {
                                     todo!("report pls: {:?} is {:?}", generic, v)
                                 } else if let Some(cls) = generic.expect_class() {
@@ -101,12 +100,12 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    fn mro(&self) -> impl Iterator<Item = Class<'db, '_>> {
+    fn mro(&self) -> impl Iterator<Item = Class<'db>> {
         std::iter::empty()
     }
 }
 
-impl<'db> Value<'db> for Class<'db, '_> {
+impl<'db> Value<'db> for Class<'db> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Class
     }

@@ -4,9 +4,7 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{
-    AnnotationGenerics, CalculableGenerics, ExpectNoGenerics, Generics, NoGenerics,
-};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
@@ -136,10 +134,7 @@ impl<'db> Inferred<'db> {
                                 .get_inference(i_s)
                                 .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
-                            let generics = annotation_generics
-                                .as_ref()
-                                .map(|g| g as &dyn Generics)
-                                .unwrap_or_else(|| &NoGenerics());
+                            let generics = annotation_generics.unwrap_or_else(|| Generics::None);
                             inferred.with_instance(i_s, self, generics, |i_s, instance| {
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
@@ -152,8 +147,8 @@ impl<'db> Inferred<'db> {
                                 None,
                             );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
-                            let generics = CalculableGenerics::new(&init, &args);
-                            cls.with_instance(i_s, self, &generics, |i_s, instance| {
+                            //let generics = CalculableGenerics::new(&init, &args);
+                            cls.with_instance(i_s, self, Generics::None, |i_s, instance| {
                                 let args = InstanceArguments::new(instance, &args);
                                 callable(&mut i_s.with_func_and_args(&init, &args), instance)
                             })
@@ -186,7 +181,7 @@ impl<'db> Inferred<'db> {
                             definition.file,
                             definition.node_index,
                             &cls_storage.symbol_table,
-                            &NoGenerics(),
+                            Generics::None,
                         );
                         callable(i_s, &class)
                     } else {
@@ -222,13 +217,13 @@ impl<'db> Inferred<'db> {
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let generics = CalculableGenerics::new(&init, &args);
+                    //let generics = CalculableGenerics::new(&init, &args);
                     let instance = Instance::new(
                         def.file,
                         def.node_index,
                         &cls_storage.symbol_table,
                         self,
-                        &generics,
+                        Generics::None,
                     );
                     let args = InstanceArguments::new(&instance, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
@@ -359,7 +354,7 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.get_type(), PointType::Redirect);
         debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-        self.use_instance(builtins, v.get_node_index(), &ExpectNoGenerics())
+        self.use_instance(builtins, v.get_node_index(), Generics::None)
     }
 
     pub fn is_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -433,7 +428,7 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         instance: &Self,
-        generics: &dyn Generics<'db>,
+        generics: Generics<'db>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
     ) -> T {
         match &self.state {
@@ -466,7 +461,7 @@ impl<'db> Inferred<'db> {
         &'a self,
         file: &'db PythonFile,
         node_index: NodeIndex,
-        generics: &'a dyn Generics<'db>,
+        generics: Generics<'db>,
     ) -> Instance<'db, 'a> {
         let point = file.points.get(node_index);
         let complex = file.complex_points.get(point.get_complex_index() as usize);
@@ -478,10 +473,10 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_class(&self) -> Option<Class<'db, '_>> {
+    pub fn expect_class(&self) -> Option<Class<'db>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                use_class(definition.file, definition.node_index)
+                use_class(definition.file, definition.node_index, Generics::None)
             }
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
@@ -628,7 +623,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_generics(&self) -> Option<AnnotationGenerics<'db>> {
+    fn expect_generics(&self) -> Option<Generics<'db>> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::SimpleGeneric
@@ -636,11 +631,7 @@ impl<'db> Inferred<'db> {
                 let primary = definition.as_primary();
                 match primary.second() {
                     PrimaryContent::GetItem(slice_type) => {
-                        return Some(AnnotationGenerics::new(SliceType::new(
-                            definition.file,
-                            primary.index(),
-                            slice_type,
-                        )))
+                        return Some(Generics::new_slice(definition.file, slice_type))
                     }
                     _ => {
                         unreachable!()
@@ -674,14 +665,17 @@ impl fmt::Debug for Inferred<'_> {
     }
 }
 
-fn use_class(file: &PythonFile, node_index: NodeIndex) -> Option<Class> {
+#[inline]
+fn use_class<'db>(
+    file: &'db PythonFile,
+    node_index: NodeIndex,
+    generics: Generics<'db>,
+) -> Option<Class<'db>> {
     let v = file.points.get(node_index);
     debug_assert_eq!(v.get_type(), PointType::Complex, "{:?}", v);
     let complex = file.complex_points.get(v.get_complex_index() as usize);
     match complex {
-        ComplexPoint::Class(c) => {
-            Some(Class::new(file, node_index, &c.symbol_table, &NoGenerics()))
-        }
+        ComplexPoint::Class(c) => Some(Class::new(file, node_index, &c.symbol_table, generics)),
         _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
     }
 }
