@@ -43,6 +43,16 @@ pub fn resolve_type_vars<'db, 'a>(
     }
 }
 
+/*
+#[derive(Debug)]
+enum Generics {
+    Single(NodeIndex),
+    Slice(NodeIndex),
+    Multiple(Box<Foo>),
+    None,
+}
+*/
+
 pub trait Generics<'db>: std::fmt::Debug {
     fn get_nth(
         &self,

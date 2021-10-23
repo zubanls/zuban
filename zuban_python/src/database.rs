@@ -383,13 +383,14 @@ pub type TypeVarIndex = u8;
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassWithTypeVarIndex {
     class: PointLink,
-    type_var_infos: Box<[Option<TypeVarInfo>]>,
+    type_var_remap: Box<[Option<TypeVarRemap>]>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum TypeVarInfo {
+pub enum TypeVarRemap {
     TypeVar(TypeVarIndex),
     ClassWithTypeVarIndex(Box<ClassWithTypeVarIndex>),
+    Class(PointLink),
 }
 
 pub struct Database {

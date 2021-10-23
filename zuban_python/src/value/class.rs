@@ -2,7 +2,7 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
-use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific};
+use crate::database::{ComplexPoint, Locality, Point, PointLink, Specific, TypeVarRemap};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::{CalculableGenerics, Generics};
@@ -17,6 +17,7 @@ pub struct Class<'db, 'a> {
     symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
     generics: &'a dyn Generics<'db>,
+    type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
 impl<'db, 'a> Class<'db, 'a> {
@@ -31,6 +32,7 @@ impl<'db, 'a> Class<'db, 'a> {
             node_index,
             symbol_table,
             generics,
+            type_var_remap: None,
         }
     }
 
