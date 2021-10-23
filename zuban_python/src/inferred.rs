@@ -154,7 +154,7 @@ impl<'db> Inferred<'db> {
                             })
                         }
                         Specific::SimpleGeneric => {
-                            todo!("foo");
+                            // TODO generics are not included!
                             definition
                                 .file
                                 .get_inference(i_s)

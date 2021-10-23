@@ -69,7 +69,7 @@ impl<'db> Generics<'db> {
         match self {
             Self::Expression(file, expr) => {
                 if n == 0 {
-                    Some(file.get_inference(i_s).infer_expression(*expr))
+                    Some(file.get_inference(i_s).infer_annotation_expression(*expr))
                 } else {
                     None
                 }

@@ -7,16 +7,16 @@
 
 foo: list[int] = ""
 
-##? list()
+#? list()
 foo
 
-##? int()
+#? int()
 foo[0]
 
-##? int()
+#? int()
 foo.pop()
 
 bar = list([1])
 
-##? list()
+#? list()
 bar
