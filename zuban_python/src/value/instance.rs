@@ -1,42 +1,18 @@
-use parsa_python_ast::{ClassDef, NodeIndex};
-
-use super::{Value, ValueKind};
+use super::{Class, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::file::PythonFile;
-use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::utils::SymbolTable;
 
 #[derive(Debug)]
 pub struct Instance<'db, 'a> {
-    file: &'db PythonFile,
-    symbol_table: &'db SymbolTable,
+    class: Class<'db>,
     inferred: &'a Inferred<'db>,
-    node_index: NodeIndex,
-    generics: Generics<'db>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
-    pub fn new(
-        file: &'db PythonFile,
-        node_index: NodeIndex,
-        symbol_table: &'db SymbolTable,
-        inferred: &'a Inferred<'db>,
-        generics: Generics<'db>,
-    ) -> Self {
-        Self {
-            file,
-            node_index,
-            symbol_table,
-            inferred,
-            generics,
-        }
-    }
-
-    pub fn get_node(&self) -> ClassDef<'db> {
-        ClassDef::by_index(&self.file.tree, self.node_index)
+    pub fn new(class: Class<'db>, inferred: &'a Inferred<'db>) -> Self {
+        Self { class, inferred }
     }
 
     pub fn as_inferred(&self) -> &'a Inferred<'db> {
@@ -48,22 +24,7 @@ impl<'db, 'a> Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
     ) -> Option<Inferred<'db>> {
-        let mut found_type_vars = vec![];
-        if let Some(arguments) = self.get_node().arguments() {
-            for n in arguments.search_names() {
-                let inferred = self.file.get_inference(i_s).infer_name(n);
-                if inferred.is_type_var(i_s) {
-                    if n.as_str() == name {
-                        let index = found_type_vars.len();
-                        return self.generics.get_nth(i_s, index, name);
-                    }
-                    if !found_type_vars.contains(&n.as_str()) {
-                        found_type_vars.push(n.as_str());
-                    }
-                }
-            }
-        }
-        None
+        self.class.lookup_type_var(i_s, name)
     }
 }
 
@@ -73,19 +34,11 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
     }
 
     fn get_name(&self) -> &'db str {
-        self.get_node().name().as_str()
+        self.class.get_name()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.file
-                .get_inference(i_s)
-                .infer_name_by_index(node_index)
-                .resolve_function_return(i_s)
-                .bind(i_s, self)
-        } else {
-            todo!("{:?}", name)
-        }
+        self.class.lookup(i_s, name)
     }
 
     fn execute(

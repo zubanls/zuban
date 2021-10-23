@@ -107,6 +107,30 @@ impl<'db> Class<'db> {
         todo!();
     }
 
+    pub fn lookup_type_var(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        // TODO whyyy???
+        let mut found_type_vars = vec![];
+        if let Some(arguments) = self.get_node().arguments() {
+            for n in arguments.search_names() {
+                let inferred = self.file.get_inference(i_s).infer_name(n);
+                if inferred.is_type_var(i_s) {
+                    if n.as_str() == name {
+                        let index = found_type_vars.len();
+                        return self.generics.get_nth(i_s, index, name);
+                    }
+                    if !found_type_vars.contains(&n.as_str()) {
+                        found_type_vars.push(n.as_str());
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn get_class_infos(&self) -> &'db ClassInfos {
         let point = self.file.points.get(self.node_index + 1);
         let complex_index = point.get_complex_index();

@@ -219,13 +219,14 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
                     //let generics = CalculableGenerics::new(&init, &args);
-                    let instance = Instance::new(
+                    let class = Class::new(
                         def.file,
                         def.node_index,
                         &cls_storage.symbol_table,
-                        self,
                         Generics::None,
+                        None,
                     );
+                    let instance = Instance::new(class, self);
                     let args = InstanceArguments::new(&instance, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
@@ -464,12 +465,11 @@ impl<'db> Inferred<'db> {
         node_index: NodeIndex,
         generics: Generics<'db>,
     ) -> Instance<'db, 'a> {
+        let class = Class::from_position(file, node_index, generics, None).unwrap();
         let point = file.points.get(node_index);
         let complex = file.complex_points.get(point.get_complex_index() as usize);
         match complex {
-            ComplexPoint::Class(c) => {
-                Instance::new(file, node_index, &c.symbol_table, self, generics)
-            }
+            ComplexPoint::Class(c) => Instance::new(class, self),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
