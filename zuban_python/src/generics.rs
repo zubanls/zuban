@@ -2,7 +2,7 @@ use parsa_python_ast::{
     AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent, SliceType, Slices,
 };
 
-use crate::arguments::{Argument, Arguments};
+use crate::arguments::{Argument, Arguments, SimpleArguments};
 use crate::database::{CalculatableGenericsList, ComplexPoint, PointType};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -92,7 +92,22 @@ impl<'db> Generics<'db, '_> {
                         }
                     }
                     PointType::Redirect => {
-                        //.get_inference(i_s).
+                        let primary = reference.as_primary();
+                        dbg!(primary.get_legacy_node().get_parent());
+                        let inferred = reference
+                            .file
+                            .get_inference(i_s)
+                            .infer_primary_or_atom(primary.first());
+                        let cls = inferred.expect_class().unwrap();
+                        if let PrimaryContent::Execution(details) = primary.second() {
+                            let args = SimpleArguments::from_primary(reference.file, primary, None);
+                            let init = cls.get_init_func(i_s, &args);
+                            dbg!(FunctionTypeVarFinder::new(&init, &args, true).lookup(i_s, name));
+                            dbg!(init);
+                        }
+                        dbg!(cls.description());
+                        dbg!(&i_s.current_execution);
+                        use crate::value::*;
                         todo!()
                     }
                     _ => unreachable!(),
@@ -112,6 +127,8 @@ impl<'db> Generics<'db, '_> {
             Self::None => GenericsIterator::None,
         }
     }
+
+    fn calculate_generics() {}
 }
 
 pub enum GenericsIterator<'db> {

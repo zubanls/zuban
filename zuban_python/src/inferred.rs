@@ -62,7 +62,7 @@ impl<'db> NodeReference<'db> {
         Expression::by_index(&self.file.tree, self.node_index)
     }
 
-    fn as_primary(&self) -> Primary<'db> {
+    pub fn as_primary(&self) -> Primary<'db> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
