@@ -1,3 +1,4 @@
+use once_cell::unsync::OnceCell;
 use parsa_python_ast::{Name, NodeIndex};
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -347,7 +348,7 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    Instance(PointLink, Box<Execution>),
+    Instance(PointLink, OnceCell<Box<Generics>>, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
     Generic(Execution),
@@ -376,6 +377,15 @@ pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
     pub mro: Box<[ClassWithTypeVarIndex]>, // Does never include `object`
     pub is_protocol: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Generics(Box<[Generic]>);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Generic {
+    Class(PointLink),
+    NestedClass(PointLink, Generics),
 }
 
 pub type TypeVarIndex = u8;

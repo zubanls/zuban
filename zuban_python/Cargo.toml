@@ -11,6 +11,7 @@ parsa_python_ast = { path = "../parsa_python_ast" }
 lazy_static = "*"
 regex = "*"
 walkdir = "2"
+once_cell = "*"
 
 [features]
 zuban_debug = []

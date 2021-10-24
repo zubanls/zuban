@@ -1,3 +1,9 @@
+use once_cell::unsync::OnceCell;
+use parsa_python_ast::{
+    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
+};
+use std::fmt;
+
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
@@ -5,14 +11,9 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::Generics;
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind};
-use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
-};
-use std::fmt;
 
 pub trait Inferrable<'db> {
     fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db>;
@@ -217,7 +218,7 @@ impl<'db> Inferred<'db> {
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
-            ComplexPoint::Instance(cls_definition, execution) => {
+            ComplexPoint::Instance(cls_definition, generics, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let init = Function::from_execution(i_s.database, execution);
                 let complex = def.get_complex().unwrap();
@@ -401,6 +402,7 @@ impl<'db> Inferred<'db> {
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             cls.get_saved().unwrap().0.as_link(),
+                            OnceCell::new(),
                             Box::new(args.as_execution(&init)),
                         ));
                     }

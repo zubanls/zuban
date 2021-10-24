@@ -1,3 +1,4 @@
+use once_cell::unsync::OnceCell;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 
 use super::{Function, Value, ValueKind};
@@ -178,6 +179,7 @@ impl<'db> Value<'db> for Class<'db> {
         if args.get_outer_execution().is_some() {
             Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 PointLink::new(self.file.get_file_index(), self.node_index),
+                OnceCell::new(),
                 Box::new(args.as_execution(&self.get_init_func(i_s, args))),
             ))
         } else {
