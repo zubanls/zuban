@@ -134,7 +134,7 @@ impl<'db> Inferred<'db> {
                                 .get_inference(i_s)
                                 .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
-                            let generics = annotation_generics.unwrap_or_else(|| Generics::None);
+                            let generics = annotation_generics.unwrap_or(Generics::None);
                             inferred.with_instance(i_s, self, generics, |i_s, instance| {
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
@@ -148,10 +148,15 @@ impl<'db> Inferred<'db> {
                             );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                             //let generics = CalculableGenerics::new(&init, &args);
-                            cls.with_instance(i_s, self, Generics::None, |i_s, instance| {
-                                let args = InstanceArguments::new(instance, &args);
-                                callable(&mut i_s.with_func_and_args(&init, &args), instance)
-                            })
+                            cls.with_instance(
+                                i_s,
+                                self,
+                                Generics::Calculable(*definition),
+                                |i_s, instance| {
+                                    let args = InstanceArguments::new(instance, &args);
+                                    callable(&mut i_s.with_func_and_args(&init, &args), instance)
+                                },
+                            )
                         }
                         Specific::SimpleGeneric => {
                             // TODO generics are not included!
@@ -223,7 +228,7 @@ impl<'db> Inferred<'db> {
                         def.file,
                         def.node_index,
                         &cls_storage.symbol_table,
-                        Generics::None,
+                        Generics::Calculable(*definition.unwrap()),
                         None,
                     );
                     let instance = Instance::new(class, self);
@@ -396,13 +401,13 @@ impl<'db> Inferred<'db> {
                         let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             cls.get_saved().unwrap().0.as_link(),
-                            args.as_execution(&init),
+                            Box::new(args.as_execution(&init)),
                         ));
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(
                             PointLink::new(definition.file.get_file_index(), definition.node_index),
-                            i_s.args_as_execution().unwrap(),
+                            Box::new(i_s.args_as_execution().unwrap()),
                         ));
                     }
                     Specific::Param => {

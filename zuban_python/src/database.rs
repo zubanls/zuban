@@ -345,13 +345,13 @@ pub enum AnyLink {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
-    Class(ClassStorage),
+    Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    Instance(PointLink, Execution),
+    Instance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
-    Closure(PointLink, Execution),
+    Closure(PointLink, Box<Execution>),
     Generic(Execution),
-    ClassInfos(ClassInfos),
+    ClassInfos(Box<ClassInfos>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -373,8 +373,8 @@ impl Execution {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub type_vars: Vec<PointLink>,
-    pub mro: Vec<ClassWithTypeVarIndex>, // Does never include `object`
+    pub type_vars: Box<[PointLink]>,
+    pub mro: Box<[ClassWithTypeVarIndex]>, // Does never include `object`
     pub is_protocol: bool,
 }
 
@@ -715,5 +715,20 @@ impl std::clone::Clone for ClassStorage {
 impl<'db> std::cmp::PartialEq for ClassStorage {
     fn eq(&self, other: &Self) -> bool {
         unreachable!("Should never happen with classes")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sizes() {
+        use super::*;
+        use std::mem::size_of;
+        assert_eq!(size_of::<ClassStorage>(), 48);
+        assert_eq!(size_of::<ClassInfos>(), 40);
+        assert_eq!(size_of::<PointLink>(), 8);
+        assert_eq!(size_of::<AnyLink>(), 16);
+        assert_eq!(size_of::<Execution>(), 24);
+        assert_eq!(size_of::<ComplexPoint>(), 32);
     }
 }

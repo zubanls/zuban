@@ -408,7 +408,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.complex_points.insert(
             self.points,
             class.index(),
-            ComplexPoint::Class(ClassStorage::new(symbol_table)),
+            ComplexPoint::Class(Box::new(ClassStorage::new(symbol_table))),
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.

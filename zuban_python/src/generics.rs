@@ -1,12 +1,11 @@
 use parsa_python_ast::{
-    AtomContent, Expression, ExpressionContent, ExpressionPart, NodeIndex, PrimaryContent,
-    SliceType, Slices,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent, SliceType, Slices,
 };
 
 use crate::arguments::{Argument, Arguments};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred};
+use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::Function;
 
 pub trait TypeVarFinder<'db, 'a> {
@@ -47,6 +46,7 @@ pub fn resolve_type_vars<'db, 'a>(
 pub enum Generics<'db> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(Slices<'db>),
+    Calculable(NodeReference<'db>),
     //Multiple(Box<[&Foo]>),
     None,
 }
@@ -75,6 +75,7 @@ impl<'db> Generics<'db> {
                 }
             }
             Self::Slices(slices) => todo!(),
+            Self::Calculable(x) => todo!("{:?}", x),
             Self::None => None,
         }
     }
@@ -83,6 +84,7 @@ impl<'db> Generics<'db> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(slices) => todo!(),
+            Self::Calculable(_) => todo!(),
             Self::None => GenericsIterator::None,
         }
     }
