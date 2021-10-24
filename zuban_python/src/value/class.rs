@@ -16,20 +16,20 @@ use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
 #[derive(Debug)]
-pub struct Class<'db> {
+pub struct Class<'db, 'a> {
     pub(super) file: &'db PythonFile,
     pub(super) symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
-    generics: Generics<'db>,
+    generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
-impl<'db> Class<'db> {
+impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         node_index: NodeIndex,
         symbol_table: &'db SymbolTable,
-        generics: Generics<'db>,
+        generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Self {
         Self {
@@ -44,7 +44,7 @@ impl<'db> Class<'db> {
     pub fn from_position(
         file: &'db PythonFile,
         node_index: NodeIndex,
-        generics: Generics<'db>,
+        generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Option<Self> {
         let v = file.points.get(node_index);
@@ -151,7 +151,7 @@ impl<'db> Class<'db> {
     }
 }
 
-impl<'db> Value<'db> for Class<'db> {
+impl<'db> Value<'db> for Class<'db, '_> {
     fn get_kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -232,12 +232,12 @@ impl<'db> BasesIterator<'db> {
 
 struct MroIterator<'db, 'a> {
     database: &'db Database,
-    generics: &'a Generics<'db>,
+    generics: &'a Generics<'db, 'a>,
     iterator: std::slice::Iter<'db, ClassWithTypeVarIndex>,
 }
 
-impl<'db> Iterator for MroIterator<'db, '_> {
-    type Item = Class<'db>;
+impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
+    type Item = Class<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iterator.next().map(|c| {

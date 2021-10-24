@@ -3,6 +3,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{Argument, Arguments};
+use crate::database::{CalculatableGenericsList, ComplexPoint, PointType};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -43,15 +44,16 @@ pub fn resolve_type_vars<'db, 'a>(
 }
 
 #[derive(Debug)]
-pub enum Generics<'db> {
+pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(Slices<'db>),
     Calculable(NodeReference<'db>),
+    OnceCell(&'a CalculatableGenericsList),
     //Multiple(Box<[&Foo]>),
     None,
 }
 
-impl<'db> Generics<'db> {
+impl<'db> Generics<'db, '_> {
     pub fn new_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
         match slice_type {
             SliceType::NamedExpression(named) => Self::Expression(file, named.expression()),
@@ -75,7 +77,28 @@ impl<'db> Generics<'db> {
                 }
             }
             Self::Slices(slices) => todo!(),
-            Self::Calculable(x) => todo!("{:?}", x),
+            Self::Calculable(reference) => {
+                let point = reference.file.points.get(reference.node_index + 1);
+                match point.get_type() {
+                    PointType::Complex => {
+                        if let ComplexPoint::GenericClass(_, generics) =
+                            reference.file.complex_points.get(point.get_complex_index())
+                        {
+                            generics
+                                .nth(n)
+                                .map(|c| Inferred::from_generic_class(i_s.database, c))
+                        } else {
+                            unreachable!()
+                        }
+                    }
+                    PointType::Redirect => {
+                        //.get_inference(i_s).
+                        todo!()
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Self::OnceCell(_) => todo!(),
             Self::None => None,
         }
     }
@@ -85,6 +108,7 @@ impl<'db> Generics<'db> {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(slices) => todo!(),
             Self::Calculable(_) => todo!(),
+            Self::OnceCell(_) => todo!(),
             Self::None => GenericsIterator::None,
         }
     }

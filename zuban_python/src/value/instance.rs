@@ -6,12 +6,12 @@ use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct Instance<'db, 'a> {
-    class: Class<'db>,
+    class: Class<'db, 'a>,
     inferred: &'a Inferred<'db>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
-    pub fn new(class: Class<'db>, inferred: &'a Inferred<'db>) -> Self {
+    pub fn new(class: Class<'db, 'a>, inferred: &'a Inferred<'db>) -> Self {
         Self { class, inferred }
     }
 

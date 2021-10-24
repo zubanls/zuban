@@ -6,7 +6,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType, Specific,
+    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, Locality, Point, PointLink, PointType,
+    Specific,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -112,6 +113,19 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn from_generic_class(db: &'db Database, generic: &'db GenericPart) -> Self {
+        let state = match generic {
+            GenericPart::Class(link) => {
+                let node_reference = NodeReference::from_link(db, *link);
+                InferredState::Saved(node_reference, node_reference.get_point())
+            }
+            GenericPart::GenericClass(l, g) => {
+                InferredState::UnsavedComplex(ComplexPoint::GenericClass(*l, g.clone()))
+            }
+        };
+        Self { state }
+    }
+
     #[inline]
     fn run<T>(
         &self,
@@ -148,7 +162,6 @@ impl<'db> Inferred<'db> {
                                 None,
                             );
                             let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
-                            //let generics = CalculableGenerics::new(&init, &args);
                             cls.with_instance(
                                 i_s,
                                 self,
@@ -224,12 +237,11 @@ impl<'db> Inferred<'db> {
                 let complex = def.get_complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    //let generics = CalculableGenerics::new(&init, &args);
                     let class = Class::new(
                         def.file,
                         def.node_index,
                         &cls_storage.symbol_table,
-                        Generics::Calculable(*definition.unwrap()),
+                        Generics::OnceCell(generics),
                         None,
                     );
                     let instance = Instance::new(class, self);
@@ -273,7 +285,7 @@ impl<'db> Inferred<'db> {
                 })
                 */
             }
-            ComplexPoint::Generic(bla) => {
+            ComplexPoint::GenericClass(foo, bla) => {
                 todo!()
             }
             _ => {
@@ -437,7 +449,7 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         instance: &Self,
-        generics: Generics<'db>,
+        generics: Generics<'db, '_>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
     ) -> T {
         match &self.state {
@@ -470,7 +482,7 @@ impl<'db> Inferred<'db> {
         &'a self,
         file: &'db PythonFile,
         node_index: NodeIndex,
-        generics: Generics<'db>,
+        generics: Generics<'db, 'a>,
     ) -> Instance<'db, 'a> {
         let class = Class::from_position(file, node_index, generics, None).unwrap();
         let point = file.points.get(node_index);
@@ -481,7 +493,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_class(&self) -> Option<Class<'db>> {
+    pub fn expect_class(&self) -> Option<Class<'db, '_>> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 Class::from_position(definition.file, definition.node_index, Generics::None, None)
@@ -631,7 +643,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn expect_generics(&self) -> Option<Generics<'db>> {
+    fn expect_generics(&self) -> Option<Generics<'db, '_>> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::SimpleGeneric

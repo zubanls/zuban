@@ -348,10 +348,10 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    Instance(PointLink, OnceCell<Box<Generics>>, Box<Execution>),
+    Instance(PointLink, CalculatableGenericsList, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
-    Generic(Execution),
+    GenericClass(PointLink, GenericsList),
     ClassInfos(Box<ClassInfos>),
 }
 
@@ -379,13 +379,21 @@ pub struct ClassInfos {
     pub is_protocol: bool,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Generics(Box<[Generic]>);
+pub type CalculatableGenericsList = OnceCell<Box<GenericsList>>;
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Generic {
+pub struct GenericsList(Box<[GenericPart]>);
+
+impl GenericsList {
+    pub fn nth(&self, index: usize) -> Option<&GenericPart> {
+        self.0.get(index)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum GenericPart {
     Class(PointLink),
-    NestedClass(PointLink, Generics),
+    GenericClass(PointLink, GenericsList),
 }
 
 pub type TypeVarIndex = u8;
