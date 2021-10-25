@@ -358,7 +358,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .infer_primary_or_atom(primary.first());
                     if let Some(cls) = inf.expect_class() {
                         let i = inferrable.infer(i_s);
-                        cls.infer_type_vars(i_s, i)
+                        dbg!(cls.foo(i_s, i));
                     }
                 }
                 PrimaryContent::Attribute(name) => {

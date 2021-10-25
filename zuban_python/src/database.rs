@@ -385,6 +385,10 @@ pub type CalculatableGenericsList = OnceCell<Box<GenericsList>>;
 pub struct GenericsList(Box<[GenericPart]>);
 
 impl GenericsList {
+    pub fn new(parts: Box<[GenericPart]>) -> Self {
+        Self(parts)
+    }
+
     pub fn nth(&self, index: usize) -> Option<&GenericPart> {
         self.0.get(index)
     }
@@ -395,6 +399,7 @@ pub enum GenericPart {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(Box<[GenericPart]>),
+    Unknown,
 }
 
 pub type TypeVarIndex = u8;

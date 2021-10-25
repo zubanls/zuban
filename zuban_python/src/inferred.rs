@@ -130,6 +130,9 @@ impl<'db> Inferred<'db> {
                 }
                 return inferred;
             }
+            GenericPart::Unknown => {
+                todo!()
+            }
         };
         Self { state }
     }

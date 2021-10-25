@@ -4,8 +4,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, Locality, Point, PointLink,
-    PointType, Specific, TypeVarRemap,
+    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, GenericPart, GenericsList, Locality,
+    Point, PointLink, PointType, Specific, TypeVarRemap,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -76,7 +76,20 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn infer_type_vars(&self, i_s: &mut InferenceState<'db, '_>, value: Inferred<'db>) {
+    pub fn foo(&self, i_s: &mut InferenceState<'db, '_>, value: Inferred<'db>) -> GenericsList {
+        let mut list: Vec<_> = std::iter::repeat(GenericPart::Unknown)
+            .take(self.get_class_infos().type_vars.len())
+            .collect();
+        self.infer_type_vars(i_s, value, list.as_mut_slice());
+        GenericsList::new(list.into_boxed_slice())
+    }
+
+    pub fn infer_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: Inferred<'db>,
+        list: &mut [GenericPart],
+    ) {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
@@ -95,7 +108,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         if generic.is_type_var(i_s) {
                             todo!("report pls: {:?} is {:?}", generic, v)
                         } else if let Some(cls) = generic.expect_class() {
-                            cls.infer_type_vars(i_s, v)
+                            cls.infer_type_vars(i_s, v, list);
                         }
                     }
                     //break;
@@ -103,7 +116,6 @@ impl<'db, 'a> Class<'db, 'a> {
                 todo!()
             }
         }
-        todo!();
     }
 
     pub fn lookup_type_var(
