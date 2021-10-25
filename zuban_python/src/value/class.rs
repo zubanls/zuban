@@ -41,6 +41,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
+    #[inline]
     pub fn from_position(
         file: &'db PythonFile,
         node_index: NodeIndex,
@@ -80,27 +81,24 @@ impl<'db, 'a> Class<'db, 'a> {
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         // TODO use mro
-        if let Some(value) = value.expect_class() {
-            todo!();
-            ();
-            for cls in value.mro(i_s.database) {
-                if let Some(base_class) = value.as_class() {
-                    if base_class.node_index == self.node_index
-                        && base_class.file.get_file_index() == self.file.get_file_index()
-                    {
-                        let mut value_generics = base_class.generics.iter();
-                        let mut generics = self.generics.iter();
-                        while let Some(generic) = generics.next(i_s) {
-                            dbg!(&generic);
-                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                            if generic.is_type_var(i_s) {
-                                todo!("report pls: {:?} is {:?}", generic, v)
-                            } else if let Some(cls) = generic.expect_class() {
-                                cls.infer_type_vars(i_s, v)
-                            }
+        dbg!(self.get_name(), self.type_var_remap);
+        if let Some(check_class) = value.expect_class() {
+            for class in check_class.mro(i_s.database) {
+                if class.node_index == self.node_index
+                    && class.file.get_file_index() == self.file.get_file_index()
+                {
+                    let mut value_generics = class.generics.iter();
+                    let mut generics = self.generics.iter();
+                    while let Some(generic) = generics.next(i_s) {
+                        dbg!(&generic);
+                        let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
+                        if generic.is_type_var(i_s) {
+                            todo!("report pls: {:?} is {:?}", generic, v)
+                        } else if let Some(cls) = generic.expect_class() {
+                            cls.infer_type_vars(i_s, v)
                         }
-                        //break;
                     }
+                    //break;
                 }
                 todo!()
             }

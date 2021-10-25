@@ -122,6 +122,14 @@ impl<'db> Inferred<'db> {
             GenericPart::GenericClass(l, g) => {
                 InferredState::UnsavedComplex(ComplexPoint::GenericClass(*l, g.clone()))
             }
+            GenericPart::Union(multiple) => {
+                let mut multiple = multiple.iter();
+                let mut inferred = Self::from_generic_class(db, multiple.next().unwrap());
+                for m in multiple {
+                    inferred = inferred.union(Self::from_generic_class(db, m));
+                }
+                return inferred;
+            }
         };
         Self { state }
     }
@@ -495,9 +503,18 @@ impl<'db> Inferred<'db> {
 
     pub fn expect_class(&self) -> Option<Class<'db, '_>> {
         match &self.state {
-            InferredState::Saved(definition, point) => {
-                Class::from_position(definition.file, definition.node_index, Generics::None, None)
-            }
+            InferredState::Saved(definition, point) => match point.get_type() {
+                PointType::Complex => Class::from_position(
+                    definition.file,
+                    definition.node_index,
+                    Generics::None,
+                    None,
+                ),
+                PointType::LanguageSpecific => {
+                    todo!("{:?}", point)
+                }
+                _ => unreachable!(),
+            },
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }

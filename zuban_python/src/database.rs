@@ -394,6 +394,7 @@ impl GenericsList {
 pub enum GenericPart {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
+    Union(Box<[GenericPart]>),
 }
 
 pub type TypeVarIndex = u8;
