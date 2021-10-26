@@ -158,7 +158,6 @@ impl<'db> PythonFile {
             &self.points,
             &self.complex_points,
             self.file_index.get().unwrap(),
-            None,
             func,
         )
     }

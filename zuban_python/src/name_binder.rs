@@ -75,10 +75,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         points: &'db Points,
         complex_points: &'db ComplexValues,
         file_index: FileIndex,
-        parent: Option<&'a Self>,
-        func: impl FnOnce(&mut Self),
-    ) {
-        let mut binder = Self::new(
+        func: impl FnOnce(&mut NameBinder<'db, 'db>),
+    ) where
+        'a: 'db,
+    {
+        let mut binder = NameBinder::new(
             tree,
             NameBinderType::Global,
             symbol_table,
