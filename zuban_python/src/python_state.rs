@@ -1,7 +1,7 @@
 use std::ptr::null;
 use parsa_python_ast::NodeIndex;
 
-use crate::database::{Database, PointType, Specific};
+use crate::database::{Database, PointType, Specific, Point, Locality};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 
@@ -40,6 +40,8 @@ impl PythonState {
             Specific::Function
         );
         database.python_state.object_init_method_node_index = link.node_index;
+
+        typing_changes(database.python_state.get_typing());
     }
 
     #[inline]
@@ -64,3 +66,14 @@ impl PythonState {
     }
 }
 
+fn typing_changes(typing: &PythonFile) {
+    typing.calculate_global_definitions_and_references();
+    set_typing_inference(typing, "Protocol", Specific::Protocol);
+    set_typing_inference(typing, "Generic", Specific::TypingGeneric);
+}
+
+fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
+    let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
+    debug_assert!(!typing.points.get(node_index).is_calculated());
+    typing.points.set(node_index, Point::new_simple_language_specific(specific, Locality::Stmt));
+}
