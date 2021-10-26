@@ -138,10 +138,10 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    fn run<T>(
+    pub fn run<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &impl Fn(Inferred<'db>) -> T,
     ) -> T {
@@ -238,7 +238,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         complex: &ComplexPoint,
         definition: Option<&NodeReference<'db>>,
-        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
@@ -309,7 +309,7 @@ impl<'db> Inferred<'db> {
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
+        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
     ) -> Inferred<'db> {
         self.run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
     }
@@ -325,7 +325,7 @@ impl<'db> Inferred<'db> {
     {
         self.run(
             i_s,
-            &|i_s, value| {
+            &mut |i_s, value| {
                 ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
             },
             &|iter1, iter2| {
@@ -639,7 +639,7 @@ impl<'db> Inferred<'db> {
     pub fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         self.run(
             i_s,
-            &|i_s, v| v.description(),
+            &mut |i_s, v| v.description(),
             &|i1, i2| format!("{}|{}", i1, i2),
             &|inferred| "Unknown".to_owned(),
         )
@@ -685,7 +685,7 @@ impl<'db> Inferred<'db> {
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.run(
             i_s,
-            &|i_s, v| v.get_kind() == ValueKind::Class,
+            &mut |i_s, v| v.get_kind() == ValueKind::Class,
             &|i1, i2| i1 & i2,
             &|inferred| false,
         )

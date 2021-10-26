@@ -534,7 +534,7 @@ impl Database {
         let mut i_s = InferenceState::new(self);
         let builtins = self.python_state.get_builtins();
         let obj = Module::new(builtins).lookup(&mut i_s, "object");
-        let init = obj.run_on_value(&mut i_s, &|i_s, v| v.lookup(i_s, "__init__"));
+        let init = obj.run_on_value(&mut i_s, &mut |i_s, v| v.lookup(i_s, "__init__"));
         let func = init.find_function_alternative();
         let link = func.as_point_link();
         assert_eq!(
@@ -684,7 +684,7 @@ impl DirectoryOrFile {
 
 pub struct PythonState {
     builtins: *const PythonFile,
-    typing: *const PythonFile,
+    pub typing: *const PythonFile,
     object_init_method_node_index: NodeIndex,
 }
 

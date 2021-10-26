@@ -398,11 +398,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
         // Make sure that we're not working "inside" of a function/closure. Annotations are always
         // considered global and should not use params or local state.
+        dbg!(&expr);
         let mut inf_state = self.i_s.with_annotation_instance();
         let mut inference = self.file.get_inference(&mut inf_state);
         let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_class(inference.i_s) {
+            dbg!("X", expr);
             Point::new_simple_language_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
             Point::new_unknown(self.file.get_file_index(), Locality::Stmt)
@@ -421,13 +423,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &|i_s, value| {
+            PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.get_name(), name.as_str());
                 value.lookup(i_s, name.as_str())
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                base.run_on_value(self.i_s, &|i_s, value| {
+                base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Execute {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.execute(i_s, &SimpleArguments::new(f, primary, details, x.as_ref()))
@@ -435,7 +437,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
-                base.run_on_value(self.i_s, &|i_s, value| {
+                base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))

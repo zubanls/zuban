@@ -78,7 +78,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn foo(&self, i_s: &mut InferenceState<'db, '_>, value: Inferred<'db>) -> GenericsList {
         let mut list: Vec<_> = std::iter::repeat(GenericPart::Unknown)
-            .take(self.get_class_infos().type_vars.len())
+            .take(self.get_class_infos(i_s).type_vars.len())
             .collect();
         self.infer_type_vars(i_s, value, list.as_mut_slice());
         GenericsList::new(list.into_boxed_slice())
@@ -96,7 +96,7 @@ impl<'db, 'a> Class<'db, 'a> {
         // TODO use mro
         dbg!(self.get_name(), self.type_var_remap);
         if let Some(check_class) = value.expect_class() {
-            for class in check_class.mro(i_s.database) {
+            for class in check_class.mro(i_s) {
                 if class.node_index == self.node_index
                     && class.file.get_file_index() == self.file.get_file_index()
                 {
@@ -126,6 +126,7 @@ impl<'db, 'a> Class<'db, 'a> {
         // TODO whyyy???
         let mut found_type_vars = vec![];
         if let Some(arguments) = self.get_node().arguments() {
+            // TODO search names will probably not be used anymore in the future
             for n in arguments.search_names() {
                 let inferred = self.file.get_inference(i_s).infer_name(n);
                 if inferred.is_type_var(i_s) {
@@ -142,19 +143,73 @@ impl<'db, 'a> Class<'db, 'a> {
         None
     }
 
-    fn get_class_infos(&self) -> &'db ClassInfos {
-        let point = self.file.points.get(self.node_index + 1);
-        let complex_index = point.get_complex_index();
-        match self.file.complex_points.get(complex_index) {
-            ComplexPoint::ClassInfos(class_infos) => class_infos,
-            _ => unreachable!(),
+    fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+        let node_index = self.node_index + 1;
+        let point = self.file.points.get(node_index);
+        if point.is_calculated() {
+            let complex_index = point.get_complex_index();
+            match self.file.complex_points.get(complex_index) {
+                ComplexPoint::ClassInfos(class_infos) => class_infos,
+                _ => unreachable!(),
+            }
+        } else {
+            self.file.complex_points.insert(
+                &self.file.points,
+                node_index,
+                ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
+            );
+            debug_assert!(self.file.points.get(node_index).is_calculated());
+            self.get_class_infos(i_s)
         }
     }
 
-    fn mro(&self, database: &'db Database) -> MroIterator<'db, '_> {
-        let class_infos = self.get_class_infos();
+    fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
+        let mut mro = vec![];
+        let mut type_vars = vec![];
+        if let Some(arguments) = self.get_node().arguments() {
+            for argument in arguments.iter() {
+                match argument {
+                    Argument::Positional(n) => {
+                        let inf = self.file.get_inference(i_s).infer_named_expression(n);
+                        dbg!(&inf);
+                        dbg!(inf.description(i_s));
+                        inf.run(
+                            i_s,
+                            &mut |i_s, v| {
+                                if let Some(instance) = v.as_instance() {
+                                    let class = &instance.class;
+                                    dbg!(class.get_name());
+                                    dbg!(&class.generics);
+                                    mro.push(ClassWithTypeVarIndex {
+                                        class: PointLink {
+                                            file: class.file.get_file_index(),
+                                            node_index: class.node_index,
+                                        },
+                                        type_var_remap: vec![].into_boxed_slice(),
+                                    });
+                                }
+                            },
+                            // Just prefer the first class, if there are multiple
+                            &|i1, i2| (),
+                            &|inferred| (),
+                        )
+                    }
+                    Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
+                    Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
+                }
+            }
+        }
+        Box::new(ClassInfos {
+            type_vars: type_vars.into_boxed_slice(),
+            mro: mro.into_boxed_slice(),
+            is_protocol: false,
+        })
+    }
+
+    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+        let class_infos = self.get_class_infos(i_s);
         MroIterator {
-            database,
+            database: i_s.database,
             generics: &self.generics,
             iterator: class_infos.mro.iter(),
         }
@@ -217,6 +272,10 @@ impl<'db> Value<'db> for Class<'db, '_> {
             }
             _ => todo!(),
         }
+    }
+
+    fn as_class(&self) -> Option<&Self> {
+        Some(self)
     }
 }
 

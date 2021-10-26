@@ -93,7 +93,6 @@ impl<'db> Generics<'db, '_> {
                     }
                     PointType::Redirect => {
                         let primary = reference.as_primary();
-                        dbg!(primary.get_legacy_node().get_parent());
                         let inferred = reference
                             .file
                             .get_inference(i_s)

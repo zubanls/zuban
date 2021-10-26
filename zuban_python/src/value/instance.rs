@@ -6,7 +6,7 @@ use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct Instance<'db, 'a> {
-    class: Class<'db, 'a>,
+    pub class: Class<'db, 'a>,
     inferred: &'a Inferred<'db>,
 }
 
@@ -64,7 +64,7 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         self.lookup(i_s, "__getitem__")
-            .run_on_value(i_s, &|i_s, v| v.execute(i_s, &slice_type.as_args()))
+            .run_on_value(i_s, &mut |i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
 
     fn as_instance(&self) -> Option<&Instance<'db, '_>> {
