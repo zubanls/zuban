@@ -6,14 +6,13 @@ use std::fmt;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::ptr::null;
 use walkdir::WalkDir;
 
 use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
-use crate::inferred::Inferred;
+use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -296,6 +295,8 @@ pub enum Specific {
 
     TypeVar,
     Any,
+    Protocol,
+    TypingGeneric,
 }
 
 #[derive(Debug)]
@@ -439,8 +440,7 @@ impl Database {
             path_to_file: Default::default(),
             workspaces,
             files_managed_by_client: Default::default(),
-
-            python_state: PythonState::new(),
+            python_state: PythonState::reserve(),
         };
         this.initial_python_load();
         this
@@ -526,26 +526,9 @@ impl Database {
     }
 
     fn initial_python_load(&mut self) {
-        self.python_state.builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi");
-        self.python_state.typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi");
-
-        use crate::inference_state::InferenceState;
-        use crate::value::{Module, Value};
-        let mut i_s = InferenceState::new(self);
-        let builtins = self.python_state.get_builtins();
-        let obj = Module::new(builtins).lookup(&mut i_s, "object");
-        let init = obj.run_on_value(&mut i_s, &mut |i_s, v| v.lookup(i_s, "__init__"));
-        let func = init.find_function_alternative();
-        let link = func.as_point_link();
-        assert_eq!(
-            builtins.points.get(link.node_index).get_type(),
-            PointType::LanguageSpecific
-        );
-        assert_eq!(
-            builtins.points.get(link.node_index).get_language_specific(),
-            Specific::Function
-        );
-        self.python_state.object_init_method_node_index = link.node_index;
+        let builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi") as *const _;
+        let typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi") as *const _;
+        PythonState::initialize(self, builtins, typing);
     }
 }
 
@@ -679,43 +662,6 @@ impl DirectoryOrFile {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,
         }
-    }
-}
-
-pub struct PythonState {
-    builtins: *const PythonFile,
-    pub typing: *const PythonFile,
-    object_init_method_node_index: NodeIndex,
-}
-
-impl PythonState {
-    fn new() -> Self {
-        Self {
-            builtins: null(),
-            typing: null(),
-            object_init_method_node_index: 0,
-        }
-    }
-
-    #[inline]
-    pub fn get_builtins(&self) -> &PythonFile {
-        debug_assert!(!self.builtins.is_null());
-        unsafe { &*self.builtins }
-    }
-
-    #[inline]
-    pub fn get_typing(&self) -> &PythonFile {
-        debug_assert!(!self.typing.is_null());
-        unsafe { &*self.typing }
-    }
-
-    pub fn object_init_as_inferred(&self) -> Inferred {
-        let builtins = self.get_builtins();
-        Inferred::new_saved(
-            builtins,
-            self.object_init_method_node_index,
-            builtins.points.get(self.object_init_method_node_index),
-        )
     }
 }
 
