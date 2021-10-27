@@ -4,6 +4,7 @@ mod function;
 mod instance;
 mod iterable;
 mod module;
+mod typing;
 
 use crate::arguments::Arguments;
 use crate::getitem::SliceType;
@@ -15,6 +16,7 @@ pub use function::Function;
 pub use instance::Instance;
 pub use iterable::ListLiteral;
 pub use module::Module;
+pub use typing::{TypingClass, TypingWithGenerics};
 
 enum ArrayType {
     None,

@@ -68,7 +68,7 @@ impl PythonState {
 
 fn typing_changes(typing: &PythonFile) {
     typing.calculate_global_definitions_and_references();
-    set_typing_inference(typing, "Protocol", Specific::Protocol);
+    set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
 }
 

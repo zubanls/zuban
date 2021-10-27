@@ -14,7 +14,7 @@ use crate::file_state::File;
 use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
-use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind};
+use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind, TypingClass, TypingWithGenerics};
 
 pub trait Inferrable<'db> {
     fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db>;
@@ -195,6 +195,12 @@ impl<'db> Inferred<'db> {
                             .infer_param(definition)
                             .run(i_s, callable, reducer, on_missing),
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
+                        Specific::TypingProtocol | Specific::TypingGeneric => {
+                            callable(i_s, &TypingClass::new(*definition, specific))
+                        }
+                        Specific::TypingWithGenerics => {
+                            callable(i_s, &TypingWithGenerics::new(*definition))
+                        }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)

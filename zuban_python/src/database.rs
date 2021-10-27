@@ -292,11 +292,30 @@ pub enum Specific {
     InstanceWithArguments, // A primary node
     AnnotationInstance,
     SimpleGeneric, // primary: primary '[' slices ']'
+    TypingWithGenerics, // Same as SimpleGeneric, but with a Typing*Class instead
 
-    TypeVar,
-    Any,
-    Protocol,
+    TypingProtocol,
     TypingGeneric,
+    //TypingTuple,
+    //TypingCallable,
+
+    //TypingClassVar,
+    //TypingFinal,
+    //TypingType,
+    //TypingLiteral,
+    //TypingTypeAlias,
+    //TypingConcatenate,
+    //TypingAnnotated,
+    //TypingUnion,
+    //TypingOptional,
+
+    //TypingAliasClass,
+    //TypingAliasInstance,
+    //TypingAny,
+    //TypingOverload
+    //TypedDict,
+
+    //TypeVar,
 }
 
 #[derive(Debug)]
