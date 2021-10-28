@@ -608,6 +608,19 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    #[inline]
+    pub fn gather_union(mut callable: impl FnMut(&mut dyn FnMut(Self))) -> Self {
+        let mut result: Option<Self> = None;
+        let r = &mut result;
+        callable(&mut |inferred| {
+            *r = Some(match r.take() {
+                Some(i) => i.union(inferred),
+                None => inferred,
+            });
+        });
+        result.unwrap_or_else(|| todo!())
+    }
+
     pub fn as_file_index(&self) -> Option<FileIndex> {
         if let InferredState::Saved(reference, point) = self.state {
             if matches!(point.get_type(), PointType::FileReference) {

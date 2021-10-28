@@ -95,4 +95,7 @@ pub trait Value<'db>: std::fmt::Debug {
     fn as_class(&self) -> Option<&Class<'db, '_>> {
         None
     }
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+        todo!("{:?}", self)
+    }
 }

@@ -95,27 +95,34 @@ impl<'db, 'a> Class<'db, 'a> {
         // them back in a set afterwards.
         // TODO use mro
         dbg!(self.get_name(), self.type_var_remap);
-        if let Some(check_class) = value.expect_class() {
-            for class in check_class.mro(i_s) {
-                if class.node_index == self.node_index
-                    && class.file.get_file_index() == self.file.get_file_index()
-                {
-                    let mut value_generics = class.generics.iter();
-                    let mut generics = self.generics.iter();
-                    while let Some(generic) = generics.next(i_s) {
-                        dbg!(&generic);
-                        let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                        if generic.is_type_var(i_s) {
-                            todo!("report pls: {:?} is {:?}", generic, v)
-                        } else if let Some(cls) = generic.expect_class() {
-                            cls.infer_type_vars(i_s, v, list);
+        value.run(
+            i_s,
+            &mut |i_s, v| {
+                let check_class = v.class(i_s);
+                for class in check_class.mro(i_s) {
+                    if class.node_index == self.node_index
+                        && class.file.get_file_index() == self.file.get_file_index()
+                    {
+                        let mut value_generics = class.generics.iter();
+                        let mut generics = self.generics.iter();
+                        while let Some(generic) = generics.next(i_s) {
+                            dbg!(&generic);
+                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
+                            if generic.is_type_var(i_s) {
+                                todo!("report pls: {:?} is {:?}", generic, v)
+                            } else if let Some(cls) = generic.expect_class() {
+                                cls.infer_type_vars(i_s, v, list);
+                            }
                         }
+                        //break;
                     }
-                    //break;
+                    todo!()
                 }
-                todo!()
-            }
-        }
+            },
+            // Just prefer the first class, if there are multiple
+            &|i1, i2| (),
+            &|inferred| (),
+        );
     }
 
     pub fn lookup_type_var(

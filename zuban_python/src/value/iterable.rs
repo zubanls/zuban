@@ -1,6 +1,6 @@
 use parsa_python_ast::{List, ListContent, ListElement, NamedExpression};
 
-use super::{Value, ValueKind};
+use super::{Value, ValueKind, Class};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -109,6 +109,34 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
             SliceType::Slices(simple) => {
                 todo!()
             }
+        }
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+        let class_node_index = self.node_reference.node_index + 1;
+        if self.node_reference.file.points.get(class_node_index).is_calculated() {
+            todo!()
+        } else {
+            let inferred = Inferred::gather_union(|callable| {
+                match self.get_list().unpack() {
+                    ListContent::Elements(elements) => {
+                        for child in elements {
+                            match child {
+                                ListElement::NamedExpression(named_expr) => {
+                                    callable(self.infer_named_expr(i_s, named_expr));
+                                }
+                                ListElement::StarNamedExpression(_) => {
+                                    todo!()
+                                }
+                            }
+                        }
+                    }
+                    ListContent::Comprehension(_) => unreachable!(),
+                    ListContent::None => todo!(),
+                };
+            });
+            dbg!(inferred);
+            todo!("{:?}", self)
         }
     }
 }
