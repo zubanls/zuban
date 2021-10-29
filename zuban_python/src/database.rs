@@ -422,6 +422,37 @@ pub enum GenericPart {
     Unknown,
 }
 
+impl GenericPart {
+    pub fn union(self, other: Self) -> Self {
+        match self {
+            Self::Union(list) => {
+                let mut vec = list.into_vec();
+                match other {
+                    Self::Union(other_list) => {
+                        let mut other_vec = other_list.into_vec();
+                        vec.append(&mut other_vec)
+                    }
+                    Self::Unknown => (),
+                    _ => vec.push(other),
+                };
+                Self::Union(vec.into_boxed_slice())
+            }
+            Self::Unknown => other,
+            _ => {
+                match other {
+                    Self::Union(list) => {
+                        let mut vec = list.into_vec();
+                        vec.push(self);
+                        Self::Union(vec.into_boxed_slice())
+                    }
+                    Self::Unknown => self,
+                    _ => Self::Union(Box::new([self, other]))
+                }
+            }
+        }
+    }
+}
+
 pub type TypeVarIndex = u8;
 
 #[derive(Debug, Clone, PartialEq)]

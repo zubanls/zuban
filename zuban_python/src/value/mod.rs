@@ -10,6 +10,7 @@ use crate::arguments::Arguments;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::database::GenericPart;
 pub use bound_method::BoundMethod;
 pub use class::Class;
 pub use function::Function;
@@ -94,6 +95,9 @@ pub trait Value<'db>: std::fmt::Debug {
     }
     fn as_class(&self) -> Option<&Class<'db, '_>> {
         None
+    }
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        todo!("{:?}", self)
     }
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
         todo!("{:?}", self)

@@ -2,6 +2,7 @@ use parsa_python_ast::{List, ListContent, ListElement, NamedExpression};
 
 use super::{Value, ValueKind, Class};
 use crate::getitem::SliceType;
+use crate::database::GenericPart;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
@@ -112,7 +113,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         let class_node_index = self.node_reference.node_index + 1;
         if self.node_reference.file.points.get(class_node_index).is_calculated() {
             todo!()
@@ -138,5 +139,11 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
             dbg!(inferred);
             todo!("{:?}", self)
         }
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+        let generic = self.as_generic_part(i_s);
+        dbg!(generic);
+        todo!("{:?}", self)
     }
 }
