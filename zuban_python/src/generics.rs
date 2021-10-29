@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{Argument, Arguments, SimpleArguments};
-use crate::database::{CalculatableGenericsList, ComplexPoint, PointType};
+use crate::database::{CalculableGenericsList, ComplexPoint, GenericsList, PointType};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -43,13 +43,13 @@ pub fn resolve_type_vars<'db, 'a>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(Slices<'db>),
     Calculable(NodeReference<'db>),
-    OnceCell(&'a CalculatableGenericsList),
-    //Multiple(Box<[&Foo]>),
+    OnceCell(&'a CalculableGenericsList),
+    List(&'a GenericsList),
     None,
 }
 
@@ -113,6 +113,7 @@ impl<'db> Generics<'db, '_> {
                 }
             }
             Self::OnceCell(_) => todo!(),
+            Self::List(_) => todo!(),
             Self::None => None,
         }
     }
@@ -123,11 +124,31 @@ impl<'db> Generics<'db, '_> {
             Self::Slices(slices) => todo!(),
             Self::Calculable(_) => todo!(),
             Self::OnceCell(_) => todo!(),
+            Self::List(_) => todo!(),
             Self::None => GenericsIterator::None,
         }
     }
 
-    fn calculate_generics() {}
+    pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
+        match self {
+            Self::Expression(file, expr) => {
+                todo!()
+            }
+            Self::Slices(slices) => {
+                todo!()
+            }
+            Self::Calculable(node_ref) => {
+                todo!()
+            }
+            Self::OnceCell(calculable_list) => {
+                todo!()
+            }
+            Self::List(_) => {
+                todo!()
+            }
+            Self::None => None,
+        }
+    }
 }
 
 pub enum GenericsIterator<'db> {

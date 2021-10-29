@@ -15,7 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::utils::SymbolTable;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Class<'db, 'a> {
     pub(super) file: &'db PythonFile,
     pub(super) symbol_table: &'db SymbolTable,
@@ -95,34 +95,28 @@ impl<'db, 'a> Class<'db, 'a> {
         // them back in a set afterwards.
         // TODO use mro
         dbg!(self.get_name(), self.type_var_remap);
-        value.run(
-            i_s,
-            &mut |i_s, v| {
-                let check_class = v.class(i_s);
-                for class in check_class.mro(i_s) {
-                    if class.node_index == self.node_index
-                        && class.file.get_file_index() == self.file.get_file_index()
-                    {
-                        let mut value_generics = class.generics.iter();
-                        let mut generics = self.generics.iter();
-                        while let Some(generic) = generics.next(i_s) {
-                            dbg!(&generic);
-                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                            if generic.is_type_var(i_s) {
-                                todo!("report pls: {:?} is {:?}", generic, v)
-                            } else if let Some(cls) = generic.expect_class() {
-                                cls.infer_type_vars(i_s, v, list);
-                            }
+        value.run(i_s, &mut |i_s, v| {
+            let check_class = v.class(i_s);
+            for class in check_class.mro(i_s) {
+                if class.node_index == self.node_index
+                    && class.file.get_file_index() == self.file.get_file_index()
+                {
+                    let mut value_generics = class.generics.iter();
+                    let mut generics = self.generics.iter();
+                    while let Some(generic) = generics.next(i_s) {
+                        dbg!(&generic);
+                        let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
+                        if generic.is_type_var(i_s) {
+                            todo!("report pls: {:?} is {:?}", generic, v)
+                        } else if let Some(cls) = generic.expect_class() {
+                            cls.infer_type_vars(i_s, v, list);
                         }
-                        //break;
                     }
-                    todo!()
+                    //break;
                 }
-            },
-            // Just prefer the first class, if there are multiple
-            &|i1, i2| (),
-            &|inferred| (),
-        );
+                todo!()
+            }
+        });
     }
 
     pub fn lookup_type_var(
@@ -180,26 +174,20 @@ impl<'db, 'a> Class<'db, 'a> {
                         let inf = self.file.get_inference(i_s).infer_named_expression(n);
                         dbg!(&inf);
                         dbg!(inf.description(i_s));
-                        inf.run(
-                            i_s,
-                            &mut |i_s, v| {
-                                if let Some(instance) = v.as_instance() {
-                                    let class = &instance.class;
-                                    dbg!(class.get_name());
-                                    dbg!(&class.generics);
-                                    mro.push(ClassWithTypeVarIndex {
-                                        class: PointLink {
-                                            file: class.file.get_file_index(),
-                                            node_index: class.node_index,
-                                        },
-                                        type_var_remap: vec![].into_boxed_slice(),
-                                    });
-                                }
-                            },
-                            // Just prefer the first class, if there are multiple
-                            &|i1, i2| (),
-                            &|inferred| (),
-                        )
+                        inf.run(i_s, &mut |i_s, v| {
+                            if let Some(instance) = v.as_instance() {
+                                let class = &instance.class(i_s);
+                                dbg!(class.get_name());
+                                dbg!(&class.generics);
+                                mro.push(ClassWithTypeVarIndex {
+                                    class: PointLink {
+                                        file: class.file.get_file_index(),
+                                        node_index: class.node_index,
+                                    },
+                                    type_var_remap: vec![].into_boxed_slice(),
+                                });
+                            }
+                        })
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
@@ -220,6 +208,17 @@ impl<'db, 'a> Class<'db, 'a> {
             generics: &self.generics,
             iterator: class_infos.mro.iter(),
         }
+    }
+
+    pub fn to_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        let lst = self.generics.as_generics_list(i_s);
+        let link = self.to_point_link();
+        lst.map(|lst| GenericPart::GenericClass(link, lst))
+            .unwrap_or_else(|| GenericPart::Class(link))
+    }
+
+    pub fn to_point_link(&self) -> PointLink {
+        PointLink::new(self.file.get_file_index(), self.node_index)
     }
 }
 

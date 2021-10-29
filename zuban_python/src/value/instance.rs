@@ -6,7 +6,7 @@ use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct Instance<'db, 'a> {
-    pub class: Class<'db, 'a>,
+    class: Class<'db, 'a>,
     inferred: &'a Inferred<'db>,
 }
 
@@ -69,5 +69,9 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
 
     fn as_instance(&self) -> Option<&Instance<'db, '_>> {
         Some(self)
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+        self.class.clone()
     }
 }

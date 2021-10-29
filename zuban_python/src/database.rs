@@ -12,8 +12,10 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
+use crate::inference_state::InferenceState;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::value::Class;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -291,7 +293,7 @@ pub enum Specific {
 
     InstanceWithArguments, // A primary node
     AnnotationInstance,
-    SimpleGeneric, // primary: primary '[' slices ']'
+    SimpleGeneric,      // primary: primary '[' slices ']'
     TypingWithGenerics, // Same as SimpleGeneric, but with a Typing*Class instead
 
     TypingProtocol,
@@ -368,7 +370,7 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    Instance(PointLink, CalculatableGenericsList, Box<Execution>),
+    Instance(PointLink, CalculableGenericsList, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
@@ -399,7 +401,7 @@ pub struct ClassInfos {
     pub is_protocol: bool,
 }
 
-pub type CalculatableGenericsList = OnceCell<Box<GenericsList>>;
+pub type CalculableGenericsList = OnceCell<Box<GenericsList>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericsList(Box<[GenericPart]>);
@@ -423,34 +425,52 @@ pub enum GenericPart {
 }
 
 impl GenericPart {
-    pub fn union(self, other: Self) -> Self {
+    pub fn union<'db>(self, i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) -> Self {
+        let other = class.to_generic_part(i_s);
         match self {
             Self::Union(list) => {
                 let mut vec = list.into_vec();
                 match other {
                     Self::Union(other_list) => {
-                        let mut other_vec = other_list.into_vec();
-                        vec.append(&mut other_vec)
+                        for o in other_list.into_vec().into_iter() {
+                            if !vec.contains(&o) {
+                                vec.push(o);
+                            }
+                        }
                     }
                     Self::Unknown => (),
-                    _ => vec.push(other),
+                    _ => {
+                        if !vec.contains(&other) {
+                            vec.push(other)
+                        }
+                    }
                 };
                 Self::Union(vec.into_boxed_slice())
             }
             Self::Unknown => other,
-            _ => {
-                match other {
-                    Self::Union(list) => {
+            _ => match other {
+                Self::Union(list) => {
+                    if list.contains(&self) {
+                        Self::Union(list)
+                    } else {
                         let mut vec = list.into_vec();
                         vec.push(self);
                         Self::Union(vec.into_boxed_slice())
                     }
-                    Self::Unknown => self,
-                    _ => Self::Union(Box::new([self, other]))
                 }
-            }
+                Self::Unknown => self,
+                _ => {
+                    if self == other {
+                        self
+                    } else {
+                        Self::Union(Box::new([self, other]))
+                    }
+                }
+            },
         }
     }
+
+    fn x(&self) {}
 }
 
 pub type TypeVarIndex = u8;

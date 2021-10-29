@@ -1,8 +1,9 @@
-use std::ptr::null;
 use parsa_python_ast::NodeIndex;
+use std::ptr::null;
 
-use crate::database::{Database, PointType, Specific, Point, Locality};
+use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
+use crate::file_state::File;
 use crate::inferred::Inferred;
 
 pub struct PythonState {
@@ -20,7 +21,11 @@ impl PythonState {
         }
     }
 
-    pub fn initialize(database: &mut Database, builtins: *const PythonFile, typing: *const PythonFile) {
+    pub fn initialize(
+        database: &mut Database,
+        builtins: *const PythonFile,
+        typing: *const PythonFile,
+    ) {
         database.python_state.builtins = builtins;
         database.python_state.typing = typing;
         use crate::inference_state::InferenceState;
@@ -64,6 +69,14 @@ impl PythonState {
             builtins.points.get(self.object_init_method_node_index),
         )
     }
+
+    pub fn builtins_point_link(&self, name: &str) -> PointLink {
+        let builtins = self.get_builtins();
+        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
+        let point = builtins.points.get(node_index);
+        debug_assert_eq!(point.get_type(), PointType::Redirect);
+        PointLink::new(builtins.get_file_index(), point.get_node_index())
+    }
 }
 
 fn typing_changes(typing: &PythonFile) {
@@ -75,5 +88,8 @@ fn typing_changes(typing: &PythonFile) {
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
     debug_assert!(!typing.points.get(node_index).is_calculated());
-    typing.points.set(node_index, Point::new_simple_language_specific(specific, Locality::Stmt));
+    typing.points.set(
+        node_index,
+        Point::new_simple_language_specific(specific, Locality::Stmt),
+    );
 }

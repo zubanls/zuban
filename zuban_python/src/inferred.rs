@@ -14,7 +14,10 @@ use crate::file_state::File;
 use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
-use crate::value::{BoundMethod, Class, Function, Instance, ListLiteral, Module, Value, ValueKind, TypingClass, TypingWithGenerics};
+use crate::value::{
+    BoundMethod, Class, Function, Instance, ListLiteral, Module, TypingClass, TypingWithGenerics,
+    Value, ValueKind,
+};
 
 pub trait Inferrable<'db> {
     fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db>;
@@ -33,7 +36,7 @@ impl<'db> std::cmp::PartialEq for NodeReference<'db> {
 }
 
 impl<'db> NodeReference<'db> {
-    fn from_link(database: &'db Database, point: PointLink) -> Self {
+    pub fn from_link(database: &'db Database, point: PointLink) -> Self {
         let file = database.get_loaded_python_file(point.file);
         Self {
             file,
@@ -138,7 +141,7 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn run<T>(
+    fn internal_run<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
@@ -189,11 +192,11 @@ impl<'db> Inferred<'db> {
                                 .file
                                 .get_inference(i_s)
                                 .infer_primary_or_atom(definition.as_primary().first())
-                                .run(i_s, callable, reducer, on_missing)
+                                .internal_run(i_s, callable, reducer, on_missing)
                         }
                         Specific::Param => i_s
                             .infer_param(definition)
-                            .run(i_s, callable, reducer, on_missing),
+                            .internal_run(i_s, callable, reducer, on_missing),
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         Specific::TypingProtocol | Specific::TypingGeneric => {
                             callable(i_s, &TypingClass::new(*definition, specific))
@@ -276,7 +279,7 @@ impl<'db> Inferred<'db> {
                     Inferred {
                         state: InferredState::Saved(node_ref, point),
                     }
-                    .run(i_s, callable, reducer, &|i| unreachable!())
+                    .internal_run(i_s, callable, reducer, &|i| unreachable!())
                 })
                 .reduce(reducer)
                 .unwrap(),
@@ -317,7 +320,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
     ) -> Inferred<'db> {
-        self.run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
+        self.internal_run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
     }
 
     #[inline]
@@ -329,7 +332,7 @@ impl<'db> Inferred<'db> {
     where
         C: Fn(&dyn ValueName<'db>) -> T,
     {
-        self.run(
+        self.internal_run(
             i_s,
             &mut |i_s, value| {
                 ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
@@ -363,6 +366,15 @@ impl<'db> Inferred<'db> {
             },
             &|inferred| ValueNameIterator::Finished,
         )
+    }
+
+    #[inline]
+    pub fn run(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),
+    ) {
+        self.internal_run(i_s, callable, &|i1, i2| (), &|inferred| ())
     }
 
     fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
@@ -657,7 +669,7 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        self.run(
+        self.internal_run(
             i_s,
             &mut |i_s, v| v.description(),
             &|i1, i2| format!("{}|{}", i1, i2),
@@ -703,7 +715,7 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
-        self.run(
+        self.internal_run(
             i_s,
             &mut |i_s, v| v.get_kind() == ValueKind::Class,
             &|i1, i2| i1 & i2,

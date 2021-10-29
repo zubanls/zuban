@@ -1,8 +1,9 @@
 use parsa_python_ast::{List, ListContent, ListElement, NamedExpression};
 
-use super::{Value, ValueKind, Class};
+use super::{Class, Value, ValueKind};
+use crate::database::{ComplexPoint, GenericPart, GenericsList};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
-use crate::database::GenericPart;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
@@ -32,6 +33,61 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
             &self.node_reference.file.tree,
             self.node_reference.node_index,
         )
+    }
+
+    fn get_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+        let class_node_index = self.node_reference.node_index + 1;
+        if self
+            .node_reference
+            .file
+            .points
+            .get(class_node_index)
+            .is_calculated()
+        {
+            match self
+                .node_reference
+                .file
+                .complex_points
+                .by_node_index(&self.node_reference.file.points, class_node_index)
+                .unwrap()
+            {
+                ComplexPoint::GenericClass(_, list) => list,
+                _ => unreachable!(),
+            }
+        } else {
+            let mut result = GenericPart::Unknown;
+            let ptr = &mut result;
+            match self.get_list().unpack() {
+                ListContent::Elements(elements) => {
+                    for child in elements {
+                        match child {
+                            ListElement::NamedExpression(named_expr) => {
+                                self.infer_named_expr(i_s, named_expr)
+                                    .run(i_s, &mut |i_s, v| {
+                                        let cls = v.class(i_s);
+                                        *ptr = std::mem::replace(ptr, GenericPart::Unknown)
+                                            .union(i_s, &cls);
+                                    });
+                            }
+                            ListElement::StarNamedExpression(_) => {
+                                todo!()
+                            }
+                        }
+                    }
+                }
+                ListContent::Comprehension(_) => unreachable!(),
+                ListContent::None => todo!(),
+            };
+            self.node_reference.file.complex_points.insert(
+                &self.node_reference.file.points,
+                class_node_index,
+                ComplexPoint::GenericClass(
+                    i_s.database.python_state.builtins_point_link("list"),
+                    GenericsList::new(Box::new([result])),
+                ),
+            );
+            self.get_generic_part(i_s)
+        }
     }
 }
 
@@ -113,37 +169,17 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         }
     }
 
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        let class_node_index = self.node_reference.node_index + 1;
-        if self.node_reference.file.points.get(class_node_index).is_calculated() {
-            todo!()
-        } else {
-            let inferred = Inferred::gather_union(|callable| {
-                match self.get_list().unpack() {
-                    ListContent::Elements(elements) => {
-                        for child in elements {
-                            match child {
-                                ListElement::NamedExpression(named_expr) => {
-                                    callable(self.infer_named_expr(i_s, named_expr));
-                                }
-                                ListElement::StarNamedExpression(_) => {
-                                    todo!()
-                                }
-                            }
-                        }
-                    }
-                    ListContent::Comprehension(_) => unreachable!(),
-                    ListContent::None => todo!(),
-                };
-            });
-            dbg!(inferred);
-            todo!("{:?}", self)
-        }
-    }
-
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
-        let generic = self.as_generic_part(i_s);
-        dbg!(generic);
-        todo!("{:?}", self)
+        let node_reference = NodeReference::from_link(
+            i_s.database,
+            i_s.database.python_state.builtins_point_link("list"),
+        );
+        Class::from_position(
+            node_reference.file,
+            node_reference.node_index,
+            Generics::List(self.get_generic_part(i_s)),
+            None,
+        )
+        .unwrap()
     }
 }
