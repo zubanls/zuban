@@ -175,11 +175,11 @@ impl<'db> Inferred<'db> {
                                 definition.as_primary(),
                                 None,
                             );
-                            let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                            let init = cls.expect_class(i_s).unwrap().get_init_func(i_s, &args);
                             cls.with_instance(
                                 i_s,
                                 self,
-                                Generics::Calculable(*definition),
+                                Generics::InstanceWithArguments(*definition),
                                 |i_s, instance| {
                                     let args = InstanceArguments::new(instance, &args);
                                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
@@ -440,7 +440,7 @@ impl<'db> Inferred<'db> {
                             definition.as_primary(),
                             None,
                         );
-                        let init = cls.expect_class().unwrap().get_init_func(i_s, &args);
+                        let init = cls.expect_class(i_s).unwrap().get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             cls.get_saved().unwrap().0.as_link(),
                             OnceCell::new(),
@@ -522,7 +522,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_class(&self) -> Option<Class<'db, '_>> {
+    pub fn expect_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
                 PointType::Complex => Class::from_position(

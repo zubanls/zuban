@@ -157,7 +157,7 @@ impl<'db> Value<'db> for Function<'db> {
                 i_s,
                 self.file,
                 expr,
-                &mut FunctionTypeVarFinder::new(self, args, false),
+                &mut FunctionTypeVarFinder::new(self, args, false, None),
             ) {
                 inferred
             } else {

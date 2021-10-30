@@ -420,7 +420,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, expr.index(), point)
     }
 
-    fn infer_expression_part(&mut self, node: ExpressionPart<'db>) -> Inferred<'db> {
+    pub fn infer_expression_part(&mut self, node: ExpressionPart<'db>) -> Inferred<'db> {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),

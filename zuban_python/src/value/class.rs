@@ -76,10 +76,21 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn foo(&self, i_s: &mut InferenceState<'db, '_>, value: Inferred<'db>) -> GenericsList {
-        let mut list: Vec<_> = std::iter::repeat(GenericPart::Unknown)
+    pub fn new_unitialized_generic_parts(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Vec<GenericPart> {
+        std::iter::repeat(GenericPart::Unknown)
             .take(self.get_class_infos(i_s).type_vars.len())
-            .collect();
+            .collect()
+    }
+
+    pub fn infer_type_vars_foo(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: Inferred<'db>,
+    ) -> GenericsList {
+        let mut list = self.new_unitialized_generic_parts(i_s);
         self.infer_type_vars(i_s, value, list.as_mut_slice());
         GenericsList::new(list.into_boxed_slice())
     }
@@ -108,7 +119,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
                         if generic.is_type_var(i_s) {
                             todo!("report pls: {:?} is {:?}", generic, v)
-                        } else if let Some(cls) = generic.expect_class() {
+                        } else if let Some(cls) = generic.expect_class(i_s) {
                             cls.infer_type_vars(i_s, v, list);
                         }
                     }

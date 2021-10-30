@@ -1,9 +1,10 @@
 use parsa_python_ast::{
-    AtomContent, Expression, ExpressionContent, ExpressionPart, PrimaryContent, SliceType, Slices,
+    AtomContent, Expression, ExpressionContent, ExpressionPart, Name, PrimaryContent, SliceType,
+    Slices,
 };
 
 use crate::arguments::{Argument, Arguments, SimpleArguments};
-use crate::database::{CalculableGenericsList, ComplexPoint, GenericsList, PointType};
+use crate::database::{CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointType};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -47,7 +48,7 @@ pub fn resolve_type_vars<'db, 'a>(
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(Slices<'db>),
-    Calculable(NodeReference<'db>),
+    InstanceWithArguments(NodeReference<'db>),
     OnceCell(&'a CalculableGenericsList),
     List(&'a GenericsList),
     None,
@@ -77,7 +78,7 @@ impl<'db> Generics<'db, '_> {
                 }
             }
             Self::Slices(slices) => todo!(),
-            Self::Calculable(reference) => {
+            Self::InstanceWithArguments(reference) => {
                 let point = reference.file.points.get(reference.node_index + 1);
                 match point.get_type() {
                     PointType::Complex => {
@@ -97,11 +98,19 @@ impl<'db> Generics<'db, '_> {
                             .file
                             .get_inference(i_s)
                             .infer_primary_or_atom(primary.first());
-                        let cls = inferred.expect_class().unwrap();
+                        let cls = inferred.expect_class(i_s).unwrap();
                         if let PrimaryContent::Execution(details) = primary.second() {
                             let args = SimpleArguments::from_primary(reference.file, primary, None);
                             let init = cls.get_init_func(i_s, &args);
-                            dbg!(FunctionTypeVarFinder::new(&init, &args, true).lookup(i_s, name));
+                            let mut list = cls.new_unitialized_generic_parts(i_s);
+                            let x = FunctionTypeVarFinder::new(
+                                &init,
+                                &args,
+                                true,
+                                Some(list.as_mut_slice()),
+                            )
+                            .lookup(i_s, name);
+                            dbg!(x);
                             dbg!(init);
                         }
                         dbg!(cls.description());
@@ -122,7 +131,7 @@ impl<'db> Generics<'db, '_> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(slices) => todo!(),
-            Self::Calculable(_) => todo!(),
+            Self::InstanceWithArguments(_) => todo!(),
             Self::OnceCell(_) => todo!(),
             Self::List(_) => todo!(),
             Self::None => GenericsIterator::None,
@@ -137,7 +146,7 @@ impl<'db> Generics<'db, '_> {
             Self::Slices(slices) => {
                 todo!()
             }
-            Self::Calculable(node_ref) => {
+            Self::InstanceWithArguments(node_ref) => {
                 todo!()
             }
             Self::OnceCell(calculable_list) => {
@@ -280,6 +289,7 @@ pub struct FunctionTypeVarFinder<'db, 'a> {
     args: &'a dyn Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
     skip_first: bool,
+    class_foo_list: Option<&'a mut [GenericPart]>,
 }
 
 impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
@@ -320,12 +330,14 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
+        class_foo_list: Option<&'a mut [GenericPart]>,
     ) -> Self {
         Self {
             function,
             args,
             calculated_type_vars: None,
             skip_first,
+            class_foo_list,
         }
     }
 
@@ -336,6 +348,23 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             .iter_inferrable_params(self.args, self.skip_first)
         {
             if let Some(annotation) = p.param.annotation() {
+                // TODO this should be cached
+                if let Some(class_foo_list) = self.class_foo_list.as_mut() {
+                    let inferred = self
+                        .function
+                        .file
+                        .get_inference(i_s)
+                        .infer_expression_no_save(annotation.expression());
+                    if inferred.is_type_var(i_s) {
+                        todo!()
+                    } else {
+                        if let Some(cls) = inferred.expect_class(i_s) {
+                            let value = p.infer(i_s);
+                            cls.infer_type_vars(i_s, value, class_foo_list)
+                        }
+                        todo!()
+                    }
+                }
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     self.try_to_find(i_s, &part, &p)
                 }
@@ -352,13 +381,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         match content {
             ExpressionPart::Atom(atom) => {
                 if let AtomContent::Name(name) = atom.unpack() {
-                    if !self
-                        .calculated_type_vars
-                        .as_ref()
-                        .unwrap()
-                        .iter()
-                        .any(|(n, _)| *n == name.as_str())
-                    {
+                    if !self.already_in_calculated_type_vars(&name) {
                         let inferred = self.function.file.get_inference(i_s).infer_name(name);
                         if inferred.is_type_var(i_s) {
                             self.calculated_type_vars
@@ -376,9 +399,12 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .file
                         .get_inference(i_s)
                         .infer_primary_or_atom(primary.first());
-                    if let Some(cls) = inf.expect_class() {
+                    if let Some(cls) = inf.expect_class(i_s) {
                         let i = inferrable.infer(i_s);
-                        dbg!(cls.foo(i_s, i));
+                        //if !self.already_in_calculated_type_vars("foo")  {
+                        dbg!(cls.to_generic_part(i_s));
+                        dbg!(cls.infer_type_vars_foo(i_s, i));
+                        //}
                     }
                 }
                 PrimaryContent::Attribute(name) => {
@@ -395,4 +421,34 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             _ => (),
         }
     }
+
+    fn already_in_calculated_type_vars(&self, name: &Name) -> bool {
+        self.calculated_type_vars
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|(n, _)| *n == name.as_str())
+    }
+
+    /*
+    fn x(&self) {
+        match slice_type {
+            SliceType::NamedExpression(named) => {
+                let inferred = self.function.file.get_inference(i_s).infer_named_expression(named);
+                if inferred.is_type_var(i_s) {
+                    todo!()
+                } else {
+                    todo!()
+                }
+            }
+            SliceType::Slices(slices) => {
+                dbg!(slices);
+                todo!()
+            }
+            SliceType::Slice(slice) => {
+                // This is an error, the annotation List[foo:bar] makes no sense.
+            }
+        };
+    }
+    */
 }
