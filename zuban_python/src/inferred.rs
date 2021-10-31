@@ -57,7 +57,7 @@ impl<'db> NodeReference<'db> {
         }
     }
 
-    fn as_link(&self) -> PointLink {
+    pub fn as_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
@@ -402,7 +402,7 @@ impl<'db> Inferred<'db> {
         self.use_instance(builtins, v.get_node_index(), Generics::None)
     }
 
-    pub fn is_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
                 && point.get_language_specific() == Specific::InstanceWithArguments
@@ -411,16 +411,19 @@ impl<'db> Inferred<'db> {
                 // in python_state
                 let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
                 if let InferredState::Saved(cls_definition, _) = cls.state {
-                    return cls_definition.file.get_file_index()
+                    if cls_definition.file.get_file_index()
                         == i_s.database.python_state.get_typing().get_file_index()
                         && cls_definition
                             .maybe_class()
                             .map(|cls| cls.name().as_str() == "TypeVar")
-                            .unwrap_or(false);
+                            .unwrap_or(false)
+                    {
+                        return Some(definition);
+                    }
                 }
             }
         }
-        false
+        None
     }
 
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {

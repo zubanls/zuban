@@ -22,7 +22,7 @@ pub fn resolve_type_vars<'db, 'a>(
 ) -> Option<Inferred<'db>> {
     let mut i_s = i_s.with_annotation_instance();
     let inferred = file.get_inference(&mut i_s).infer_expression(expr);
-    if inferred.is_type_var(&mut i_s) {
+    if inferred.maybe_type_var(&mut i_s).is_some() {
         type_var_finder
             .lookup(&mut i_s, expr.get_legacy_node().get_code())
             .or_else(|| todo!())
@@ -374,7 +374,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .file
                         .get_inference(i_s)
                         .infer_annotation_expression(annotation.expression());
-                    if inferred.is_type_var(i_s) {
+                    if inferred.maybe_type_var(i_s).is_some() {
                         todo!()
                     } else {
                         inferred.run(i_s, &mut |i_s, v| {
@@ -403,7 +403,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                 if let AtomContent::Name(name) = atom.unpack() {
                     if !self.already_in_calculated_type_vars(&name) {
                         let inferred = self.function.file.get_inference(i_s).infer_name(name);
-                        if inferred.is_type_var(i_s) {
+                        if inferred.maybe_type_var(i_s).is_some() {
                             self.calculated_type_vars
                                 .as_mut()
                                 .unwrap()

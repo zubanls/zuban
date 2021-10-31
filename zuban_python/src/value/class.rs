@@ -117,7 +117,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     while let Some(generic) = generics.next(i_s) {
                         dbg!(&generic);
                         let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                        if generic.is_type_var(i_s) {
+                        if generic.maybe_type_var(i_s).is_some() {
                             todo!("report pls: {:?} is {:?}", generic, v)
                         } else if let Some(cls) = generic.expect_class(i_s) {
                             cls.infer_type_vars(i_s, v, list);
@@ -141,7 +141,7 @@ impl<'db, 'a> Class<'db, 'a> {
             // TODO search names will probably not be used anymore in the future
             for n in arguments.search_names() {
                 let inferred = self.file.get_inference(i_s).infer_name(n);
-                if inferred.is_type_var(i_s) {
+                if inferred.maybe_type_var(i_s).is_some() {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
                         return self.generics.get_nth(i_s, index, name);
@@ -182,6 +182,7 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
+                        // TODO this probably causes certain problems with infer_annotation_expression
                         let inf = self.file.get_inference(i_s).infer_named_expression(n);
                         dbg!(inf.description(i_s));
                         inf.run(i_s, &mut |i_s, v| {
@@ -190,8 +191,15 @@ impl<'db, 'a> Class<'db, 'a> {
                                 // TODO remapping type var ids is not correct
                                 let mut iterator = class.generics.iter();
                                 while let Some(g) = iterator.next(i_s) {
-                                    dbg!(g.description(i_s));
-                                    todo!()
+                                    if let Some(definition) = g.maybe_type_var(i_s) {
+                                        let link = definition.as_link();
+                                        if !type_vars.contains(&link) {
+                                            type_vars.push(link);
+                                        }
+                                    } else {
+                                        dbg!(g.description(i_s));
+                                        todo!()
+                                    }
                                 }
                                 mro.push(ClassWithTypeVarIndex {
                                     class: PointLink {
@@ -239,8 +247,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let generics_str = self.generics.as_str(i_s);
         let has_type_vars = self.get_class_infos(i_s).type_vars.len() > 0;
         format!(
-            "{} {}{}",
-            format!("{:?}", self.get_kind()).to_lowercase(),
+            "{}{}",
             self.get_name(),
             if has_type_vars { &generics_str } else { "" }
         )
