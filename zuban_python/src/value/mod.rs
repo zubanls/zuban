@@ -7,10 +7,10 @@ mod module;
 mod typing;
 
 use crate::arguments::Arguments;
+use crate::database::GenericPart;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::database::GenericPart;
 pub use bound_method::BoundMethod;
 pub use class::Class;
 pub use function::Function;
@@ -66,7 +66,7 @@ pub trait Value<'db>: std::fmt::Debug {
 
     fn get_name(&self) -> &'db str;
 
-    fn description(&self) -> String {
+    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.get_kind()).to_lowercase(),

@@ -141,7 +141,7 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    fn internal_run<T>(
+    pub fn internal_run<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
@@ -187,12 +187,8 @@ impl<'db> Inferred<'db> {
                             )
                         }
                         Specific::SimpleGeneric => {
-                            // TODO generics are not included!
-                            definition
-                                .file
-                                .get_inference(i_s)
-                                .infer_primary_or_atom(definition.as_primary().first())
-                                .internal_run(i_s, callable, reducer, on_missing)
+                            let class = self.expect_class(i_s).unwrap();
+                            callable(i_s, &class)
                         }
                         Specific::Param => i_s
                             .infer_param(definition)
@@ -522,18 +518,36 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
+    pub fn expect_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
+        let mut generics = Generics::None;
+        if let InferredState::Saved(definition, point) = &self.state {
+            if point.get_type() == PointType::LanguageSpecific {
+                generics = self.expect_generics().unwrap();
+            }
+        }
+        self.expect_class_internal(i_s, generics)
+    }
+
+    fn expect_class_internal<'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        generics: Generics<'db, 'a>,
+    ) -> Option<Class<'db, 'a>> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
-                PointType::Complex => Class::from_position(
-                    definition.file,
-                    definition.node_index,
-                    Generics::None,
-                    None,
-                ),
-                PointType::LanguageSpecific => {
-                    todo!("{:?}", point)
+                PointType::Complex => {
+                    Class::from_position(definition.file, definition.node_index, generics, None)
                 }
+                PointType::LanguageSpecific => match point.get_language_specific() {
+                    Specific::SimpleGeneric => {
+                        let inferred = definition
+                            .file
+                            .get_inference(i_s)
+                            .infer_primary_or_atom(definition.as_primary().first());
+                        inferred.expect_class_internal(i_s, generics)
+                    }
+                    _ => todo!("{:?}", point),
+                },
                 _ => unreachable!(),
             },
             InferredState::UnsavedComplex(complex) => {
@@ -671,7 +685,7 @@ impl<'db> Inferred<'db> {
     pub fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.description(),
+            &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
             &|inferred| "Unknown".to_owned(),
         )

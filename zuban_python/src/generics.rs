@@ -113,7 +113,7 @@ impl<'db> Generics<'db, '_> {
                             dbg!(x);
                             dbg!(init);
                         }
-                        dbg!(cls.description());
+                        dbg!(cls.description(i_s));
                         dbg!(&i_s.current_execution);
                         use crate::value::*;
                         todo!()
@@ -157,6 +157,25 @@ impl<'db> Generics<'db, '_> {
             }
             Self::None => None,
         }
+    }
+
+    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        // Returns something like [str] or [List[int], Set[Any]]
+        let mut iterator = self.iter();
+        let mut strings = vec![];
+        while let Some(inf) = iterator.next(i_s) {
+            strings.push(inf.internal_run(
+                i_s,
+                &mut |i_s, v| {
+                    v.as_class()
+                        .map(|c| c.as_str(i_s))
+                        .unwrap_or_else(|| "Unknown".to_owned())
+                },
+                &|i1, i2| format!("{}|{}", i1, i2),
+                &|inferred| "Unknown".to_owned(),
+            ));
+        }
+        format!("[{}]", strings.join(", "))
     }
 }
 
@@ -354,14 +373,15 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         .function
                         .file
                         .get_inference(i_s)
-                        .infer_expression_no_save(annotation.expression());
+                        .infer_annotation_expression(annotation.expression());
                     if inferred.is_type_var(i_s) {
                         todo!()
                     } else {
-                        if let Some(cls) = inferred.expect_class(i_s) {
+                        inferred.run(i_s, &mut |i_s, v| {
                             let value = p.infer(i_s);
-                            cls.infer_type_vars(i_s, value, class_foo_list)
-                        }
+                            v.class(i_s).infer_type_vars(i_s, value, class_foo_list);
+                        });
+                        dbg!(class_foo_list);
                         todo!()
                     }
                 }

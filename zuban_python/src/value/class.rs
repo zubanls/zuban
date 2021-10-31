@@ -183,19 +183,22 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let inf = self.file.get_inference(i_s).infer_named_expression(n);
-                        dbg!(&inf);
                         dbg!(inf.description(i_s));
                         inf.run(i_s, &mut |i_s, v| {
-                            if let Some(instance) = v.as_instance() {
-                                let class = &instance.class(i_s);
-                                dbg!(class.get_name());
-                                dbg!(&class.generics);
+                            if let Some(class) = v.as_class() {
+                                let mut type_var_remap = vec![];
+                                // TODO remapping type var ids is not correct
+                                let mut iterator = class.generics.iter();
+                                while let Some(g) = iterator.next(i_s) {
+                                    dbg!(g.description(i_s));
+                                    todo!()
+                                }
                                 mro.push(ClassWithTypeVarIndex {
                                     class: PointLink {
                                         file: class.file.get_file_index(),
                                         node_index: class.node_index,
                                     },
-                                    type_var_remap: vec![].into_boxed_slice(),
+                                    type_var_remap: type_var_remap.into_boxed_slice(),
                                 });
                             }
                         })
@@ -230,6 +233,17 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn to_point_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
+    }
+
+    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        let generics_str = self.generics.as_str(i_s);
+        let has_type_vars = self.get_class_infos(i_s).type_vars.len() > 0;
+        format!(
+            "{} {}{}",
+            format!("{:?}", self.get_kind()).to_lowercase(),
+            self.get_name(),
+            if has_type_vars { &generics_str } else { "" }
+        )
     }
 }
 
@@ -293,6 +307,14 @@ impl<'db> Value<'db> for Class<'db, '_> {
 
     fn as_class(&self) -> Option<&Self> {
         Some(self)
+    }
+
+    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        format!(
+            "{} {}",
+            format!("{:?}", self.get_kind()).to_lowercase(),
+            self.as_str(i_s),
+        )
     }
 }
 
