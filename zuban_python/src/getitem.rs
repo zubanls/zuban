@@ -40,7 +40,7 @@ impl<'db> SliceType<'db> {
 pub struct Simple<'db> {
     pub file: &'db PythonFile,
     pub primary_index: NodeIndex,
-    named_expr: NamedExpression<'db>,
+    pub named_expr: NamedExpression<'db>,
 }
 
 impl<'db> Simple<'db> {

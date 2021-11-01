@@ -12,7 +12,7 @@ use crate::file_state::File;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone)]
@@ -178,6 +178,13 @@ impl<'db, 'a> Class<'db, 'a> {
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         let mut mro = vec![];
         let mut type_vars = vec![];
+        let mut maybe_add_type_var = |definition: &NodeReference| {
+            let link = definition.as_link();
+            if !type_vars.contains(&link) {
+                type_vars.push(link);
+            }
+        };
+        let mut is_protocol = false;
         if let Some(arguments) = self.get_node().arguments() {
             for argument in arguments.iter() {
                 match argument {
@@ -188,19 +195,16 @@ impl<'db, 'a> Class<'db, 'a> {
                         inf.run(i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
                                 let mut type_var_remap = vec![];
-                                // TODO remapping type var ids is not correct
                                 let mut iterator = class.generics.iter();
                                 while let Some(g) = iterator.next(i_s) {
                                     if let Some(definition) = g.maybe_type_var(i_s) {
-                                        let link = definition.as_link();
-                                        if !type_vars.contains(&link) {
-                                            type_vars.push(link);
-                                        }
+                                        maybe_add_type_var(&definition)
                                     } else {
                                         dbg!(g.description(i_s));
                                         todo!()
                                     }
                                 }
+                                // TODO remapping type var ids is not correct
                                 mro.push(ClassWithTypeVarIndex {
                                     class: PointLink {
                                         file: class.file.get_file_index(),
@@ -208,6 +212,15 @@ impl<'db, 'a> Class<'db, 'a> {
                                     },
                                     type_var_remap: type_var_remap.into_boxed_slice(),
                                 });
+                            } else if let Some(t) = v.as_typing_with_generics(i_s) {
+                                if t.specific == Specific::TypingProtocol {
+                                    is_protocol = true;
+                                }
+                                for arg in t.get_generics().as_args().iter_arguments() {
+                                    if let Some(definition) = arg.infer(i_s).maybe_type_var(i_s) {
+                                        maybe_add_type_var(&definition)
+                                    }
+                                }
                             }
                         })
                     }
@@ -219,7 +232,7 @@ impl<'db, 'a> Class<'db, 'a> {
         Box::new(ClassInfos {
             type_vars: type_vars.into_boxed_slice(),
             mro: mro.into_boxed_slice(),
-            is_protocol: false,
+            is_protocol,
         })
     }
 

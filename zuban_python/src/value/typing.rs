@@ -1,7 +1,7 @@
-use parsa_python_ast::Name;
+use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::arguments::{ArgumentIterator, Arguments};
 use crate::database::{Locality, Point, Specific};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -69,11 +69,25 @@ impl<'db> Value<'db> for TypingClass<'db> {
 #[derive(Debug)]
 pub struct TypingWithGenerics<'db> {
     reference: NodeReference<'db>,
+    pub specific: Specific,
 }
 
 impl<'db> TypingWithGenerics<'db> {
-    pub fn new(reference: NodeReference<'db>) -> Self {
-        Self { reference }
+    pub fn new(reference: NodeReference<'db>, specific: Specific) -> Self {
+        Self {
+            reference,
+            specific,
+        }
+    }
+
+    pub fn get_generics(&self) -> SliceType<'db> {
+        let primary = self.reference.as_primary();
+        if let PrimaryContent::GetItem(slice_type) = primary.second() {
+            //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
+            SliceType::new(self.reference.file, primary.index(), slice_type)
+        } else {
+            unreachable!()
+        }
     }
 }
 
@@ -83,11 +97,17 @@ impl<'db> Value<'db> for TypingWithGenerics<'db> {
     }
 
     fn get_name(&self) -> &'db str {
-        // TODO wrong
-        "TODO"
+        match self.specific {
+            Specific::TypingGeneric => "Generic",
+            Specific::TypingProtocol => "Protocol",
+            _ => unreachable!(),
+        }
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
+    }
+    fn as_typing_with_generics(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&Self> {
+        Some(self)
     }
 }

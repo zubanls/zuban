@@ -198,7 +198,21 @@ impl<'db> Inferred<'db> {
                             callable(i_s, &TypingClass::new(*definition, specific))
                         }
                         Specific::TypingWithGenerics => {
-                            callable(i_s, &TypingWithGenerics::new(*definition))
+                            let inf = definition
+                                .file
+                                .get_inference(i_s)
+                                .infer_primary_or_atom(definition.as_primary().first());
+                            if let InferredState::Saved(_, p) = inf.state {
+                                callable(
+                                    i_s,
+                                    &TypingWithGenerics::new(
+                                        *definition,
+                                        p.get_language_specific(),
+                                    ),
+                                )
+                            } else {
+                                unreachable!()
+                            }
                         }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);

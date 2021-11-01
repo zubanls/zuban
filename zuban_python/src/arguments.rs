@@ -217,7 +217,18 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 Some(Argument::new_argument(file, comprehension.index()))
             }
             Self::Normal(Finished) => None,
-            Self::SliceType(slice_type) => None,
+            Self::SliceType(slice_type) => match slice_type {
+                SliceType::Simple(s) => {
+                    let file = s.file;
+                    let named_expr = s.named_expr;
+                    *self = Self::Normal(Finished);
+                    Some(Self::Item::Positional(NodeReference {
+                        file,
+                        node_index: named_expr.index(),
+                    }))
+                }
+                _ => todo!(),
+            },
         }
     }
 }

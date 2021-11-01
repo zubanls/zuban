@@ -96,8 +96,11 @@ pub trait Value<'db>: std::fmt::Debug {
     fn as_class(&self) -> Option<&Class<'db, '_>> {
         None
     }
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        todo!("{:?}", self)
+    fn as_typing_with_generics(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<&TypingWithGenerics<'db>> {
+        None
     }
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
         todo!("{:?}", self)
