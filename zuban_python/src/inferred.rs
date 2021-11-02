@@ -148,10 +148,9 @@ impl<'db> Inferred<'db> {
         reducer: &impl Fn(T, T) -> T,
         on_missing: &impl Fn(Inferred<'db>) -> T,
     ) -> T {
-        use PointType::*;
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
-                Specific => {
+                PointType::Specific => {
                     let specific = point.specific();
                     match specific {
                         Specific::Function => {
@@ -214,7 +213,7 @@ impl<'db> Inferred<'db> {
                         }
                     }
                 }
-                Complex => {
+                PointType::Complex => {
                     let complex = definition
                         .file
                         .complex_points
@@ -232,8 +231,8 @@ impl<'db> Inferred<'db> {
                         self.run_on_complex(i_s, complex, Some(definition), callable, reducer)
                     }
                 }
-                Unknown => on_missing(self.clone()),
-                FileReference => {
+                PointType::Unknown => on_missing(self.clone()),
+                PointType::FileReference => {
                     let f = i_s.database.get_loaded_python_file(point.get_file_index());
                     callable(i_s, &Module::new(f))
                 }
