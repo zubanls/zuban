@@ -90,6 +90,6 @@ fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
     debug_assert!(!typing.points.get(node_index).is_calculated());
     typing.points.set(
         node_index,
-        Point::new_simple_language_specific(specific, Locality::Stmt),
+        Point::new_simple_specific(specific, Locality::Stmt),
     );
 }

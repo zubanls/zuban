@@ -299,10 +299,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
                 Box::new(args.as_execution(&self.get_init_func(i_s, args))),
             ))
         } else {
-            let point = Point::new_simple_language_specific(
-                Specific::InstanceWithArguments,
-                Locality::Stmt,
-            );
+            let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Stmt);
             match args.get_type() {
                 ArgumentsType::Normal(file, primary_node) => {
                     Inferred::new_and_save(file, primary_node.index(), point)
@@ -316,7 +313,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        let point = Point::new_simple_language_specific(Specific::SimpleGeneric, Locality::Stmt);
+        let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Stmt);
         match slice_type {
             SliceType::Simple(simple) => {
                 Inferred::new_and_save(simple.file, simple.primary_index, point)

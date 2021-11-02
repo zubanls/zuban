@@ -411,7 +411,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_class(inference.i_s) {
-            Point::new_simple_language_specific(Specific::AnnotationInstance, Locality::Stmt)
+            Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
             Point::new_unknown(self.file.get_file_index(), Locality::Stmt)
         };
@@ -488,7 +488,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             YieldExpr(_) => todo!(),
             NamedExpression(named_expression) => todo!(),
         };
-        let point = Point::new_simple_language_specific(specific, Locality::Stmt);
+        let point = Point::new_simple_specific(specific, Locality::Stmt);
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 

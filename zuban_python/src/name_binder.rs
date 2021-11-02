@@ -139,7 +139,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) {
         self.add_new_definition(
             name_def,
-            Point::new_simple_language_specific(type_, Locality::Stmt),
+            Point::new_simple_specific(type_, Locality::Stmt),
             in_base_scope,
         );
     }
@@ -643,7 +643,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         self.points.set(
             func_index,
-            Point::new_simple_language_specific(
+            Point::new_simple_specific(
                 if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
                     Specific::Closure
                 } else {

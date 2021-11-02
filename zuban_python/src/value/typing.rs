@@ -44,8 +44,7 @@ impl<'db> Value<'db> for TypingClass<'db> {
             self.specific,
             Specific::TypingGeneric | Specific::TypingProtocol
         ) {
-            let point =
-                Point::new_simple_language_specific(Specific::TypingWithGenerics, Locality::Stmt);
+            let point = Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Stmt);
             match slice_type {
                 SliceType::Simple(simple) => {
                     Inferred::new_and_save(simple.file, simple.primary_index, point)

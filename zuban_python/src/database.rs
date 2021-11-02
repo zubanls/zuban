@@ -96,7 +96,7 @@ impl Point {
         }
     }
 
-    pub fn new_simple_language_specific(type_: Specific, locality: Locality) -> Self {
+    pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
         let flags = Self::calculate_flags(PointType::LanguageSpecific, type_ as u32, locality);
         Self {
             flags,
@@ -104,11 +104,7 @@ impl Point {
         }
     }
 
-    pub fn new_language_specific(
-        type_: Specific,
-        node_index: NodeIndex,
-        locality: Locality,
-    ) -> Self {
+    pub fn new_specific(type_: Specific, node_index: NodeIndex, locality: Locality) -> Self {
         todo!()
     }
 
