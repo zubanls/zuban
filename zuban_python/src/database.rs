@@ -19,6 +19,8 @@ use crate::value::Class;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TypeVarIndex(u32);
 
 impl fmt::Display for FileIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -44,8 +46,12 @@ const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
 const IN_MODULE_SCOPE_BIT_INDEX: usize = 26;
 const IS_NULLABLE_BIT_INDEX: usize = 25;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
+const TYPE_VAR_BIT_INDEX: usize = 8;
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
+const SPECIFIC_MASK: u32 = 0xFF; // 8 bits
+const MAX_TYPE_VAR_COUNT: u32 = 0xFF; // 256
+const TYPE_VAR_MASK: u32 = MAX_TYPE_VAR_COUNT << TYPE_VAR_BIT_INDEX; // 8 bits
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
@@ -142,6 +148,18 @@ impl Point {
         }
     }
 
+    pub fn new_type_var(locality: Locality, index: TypeVarIndex) -> Self {
+        let flags = Self::calculate_flags(
+            PointType::Specific,
+            Specific::TypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
+            locality,
+        );
+        Self {
+            flags: 0,
+            node_index: 0,
+        }
+    }
+
     pub fn get_type(self) -> PointType {
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
@@ -190,7 +208,12 @@ impl Point {
 
     pub fn specific(self) -> Specific {
         debug_assert!(self.get_type() == PointType::Specific);
-        unsafe { mem::transmute(self.flags & REST_MASK) }
+        unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
+    }
+
+    pub fn type_var_index(self) -> TypeVarIndex {
+        debug_assert!(self.get_type() == PointType::Specific);
+        TypeVarIndex(unsafe { mem::transmute(self.flags & TYPE_VAR_MASK >> TYPE_VAR_BIT_INDEX) })
     }
 }
 
@@ -312,8 +335,7 @@ pub enum Specific {
     //TypingAny,
     //TypingOverload
     //TypedDict,
-
-    //TypeVar,
+    TypeVar,
 }
 
 #[derive(Debug)]
@@ -469,8 +491,6 @@ impl GenericPart {
 
     fn x(&self) {}
 }
-
-pub type TypeVarIndex = u8;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassWithTypeVarIndex {
