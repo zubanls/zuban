@@ -97,7 +97,7 @@ impl Point {
     }
 
     pub fn new_simple_specific(type_: Specific, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::LanguageSpecific, type_ as u32, locality);
+        let flags = Self::calculate_flags(PointType::Specific, type_ as u32, locality);
         Self {
             flags,
             node_index: 0,
@@ -189,7 +189,7 @@ impl Point {
     }
 
     pub fn specific(self) -> Specific {
-        debug_assert!(self.get_type() == PointType::LanguageSpecific);
+        debug_assert!(self.get_type() == PointType::Specific);
         unsafe { mem::transmute(self.flags & REST_MASK) }
     }
 }
@@ -205,7 +205,7 @@ impl fmt::Debug for Point {
             s.field("type", &self.get_type())
                 .field("locality", &self.get_locality())
                 .field("node_index", &self.node_index);
-            if self.get_type() == PointType::LanguageSpecific {
+            if self.get_type() == PointType::Specific {
                 s.field("specific", &self.specific());
             }
             if self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
@@ -253,7 +253,7 @@ pub enum PointType {
     Complex,
     // In case of a reference it's missing otherwise unknown.
     Unknown,
-    LanguageSpecific,
+    Specific,
     FileReference,
     // Basically stuff like if/for nodes
     NodeAnalysis,

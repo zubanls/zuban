@@ -38,7 +38,7 @@ impl PythonState {
         let link = func.as_point_link();
         assert_eq!(
             builtins.points.get(link.node_index).get_type(),
-            PointType::LanguageSpecific
+            PointType::Specific
         );
         assert_eq!(
             builtins.points.get(link.node_index).specific(),

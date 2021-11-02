@@ -1,6 +1,6 @@
 use crate::database::{
     ClassStorage, ComplexPoint, FileIndex, Locality, Point,
-    PointType::{LanguageSpecific, MultiDefinition, Redirect},
+    PointType::{MultiDefinition, Redirect, Specific},
     Points, Specific,
 };
 use crate::file::ComplexValues;
@@ -437,7 +437,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         if let Redirect = point.get_type() {
             let param_index = point.get_node_index();
             let param_point = self.points.get(param_index);
-            if let LanguageSpecific = param_point.get_type() {
+            if let Specific = param_point.get_type() {
                 if param_point.specific() == Specific::Param {
                     let name = Name::by_index(self.tree, param_index);
                     return name.has_self_param_position();

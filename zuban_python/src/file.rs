@@ -222,7 +222,7 @@ macro_rules! check_point_cache_with {
                         node.index(),
                         {
                             let point = self.file.points.get(node.index());
-                            if matches!(point.get_type(), PointType::LanguageSpecific) {
+                            if matches!(point.get_type(), PointType::Specific) {
                                 format!("{:?}", point.specific())
                             } else {
                                 format!("{:?}", point.get_type())
@@ -545,7 +545,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         )
                     }
                 }
-                PointType::LanguageSpecific => match point.specific() {
+                PointType::Specific => match point.specific() {
                     Specific::LazyInferredFunction => {
                         // TODO this does not analyze decorators
                         let name = Name::by_index(&self.file.tree, node_index);
