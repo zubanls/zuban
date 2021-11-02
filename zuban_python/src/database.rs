@@ -192,7 +192,7 @@ impl Point {
         self.node_index
     }
 
-    pub fn get_language_specific(self) -> Specific {
+    pub fn specific(self) -> Specific {
         debug_assert!(self.get_type() == PointType::LanguageSpecific);
         unsafe { mem::transmute(self.flags & REST_MASK) }
     }
@@ -210,7 +210,7 @@ impl fmt::Debug for Point {
                 .field("locality", &self.get_locality())
                 .field("node_index", &self.node_index);
             if self.get_type() == PointType::LanguageSpecific {
-                s.field("specific", &self.get_language_specific());
+                s.field("specific", &self.specific());
             }
             if self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
             {

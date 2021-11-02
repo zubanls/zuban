@@ -41,7 +41,7 @@ impl PythonState {
             PointType::LanguageSpecific
         );
         assert_eq!(
-            builtins.points.get(link.node_index).get_language_specific(),
+            builtins.points.get(link.node_index).specific(),
             Specific::Function
         );
         database.python_state.object_init_method_node_index = link.node_index;

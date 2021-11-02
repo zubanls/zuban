@@ -152,7 +152,7 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
                 LanguageSpecific => {
-                    let specific = point.get_language_specific();
+                    let specific = point.specific();
                     match specific {
                         Specific::Function => {
                             callable(i_s, &Function::new(definition.file, definition.node_index))
@@ -203,13 +203,7 @@ impl<'db> Inferred<'db> {
                                 .get_inference(i_s)
                                 .infer_primary_or_atom(definition.as_primary().first());
                             if let InferredState::Saved(_, p) = inf.state {
-                                callable(
-                                    i_s,
-                                    &TypingWithGenerics::new(
-                                        *definition,
-                                        p.get_language_specific(),
-                                    ),
-                                )
+                                callable(i_s, &TypingWithGenerics::new(*definition, p.specific()))
                             } else {
                                 unreachable!()
                             }
@@ -419,7 +413,7 @@ impl<'db> Inferred<'db> {
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
-                && point.get_language_specific() == Specific::InstanceWithArguments
+                && point.specific() == Specific::InstanceWithArguments
             {
                 // TODO this check can/should be optimized by comparing node pointers that are cached
                 // in python_state
@@ -443,7 +437,7 @@ impl<'db> Inferred<'db> {
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific {
-                match point.get_language_specific() {
+                match point.specific() {
                     Specific::InstanceWithArguments => {
                         let cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
@@ -497,7 +491,7 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 if point.get_type() == PointType::LanguageSpecific {
-                    if let Specific::SimpleGeneric = point.get_language_specific() {
+                    if let Specific::SimpleGeneric = point.specific() {
                         let p = Primary::by_index(&definition.file.tree, definition.node_index);
                         let cls = definition
                             .file
@@ -555,7 +549,7 @@ impl<'db> Inferred<'db> {
                 PointType::Complex => {
                     Class::from_position(definition.file, definition.node_index, generics, None)
                 }
-                PointType::LanguageSpecific => match point.get_language_specific() {
+                PointType::LanguageSpecific => match point.specific() {
                     Specific::SimpleGeneric => {
                         let inferred = definition
                             .file
@@ -576,7 +570,7 @@ impl<'db> Inferred<'db> {
     pub fn expect_int(&self) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
             if let PointType::LanguageSpecific = point.get_type() {
-                if let Specific::Integer = point.get_language_specific() {
+                if let Specific::Integer = point.specific() {
                     return definition.infer_int();
                 }
             }
@@ -612,7 +606,7 @@ impl<'db> Inferred<'db> {
     pub fn find_function_alternative(&self) -> Function<'db> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let PointType::LanguageSpecific = point.get_type() {
-                if let Specific::Function = point.get_language_specific() {
+                if let Specific::Function = point.specific() {
                     return Function::new(definition.file, definition.node_index);
                 }
             }
@@ -679,7 +673,7 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
                 PointType::LanguageSpecific => {
-                    if point.get_language_specific() == Specific::Function {
+                    if point.specific() == Specific::Function {
                         let complex = ComplexPoint::BoundMethod(
                             instance.as_inferred().as_any_link(i_s),
                             definition.as_link(),
@@ -729,7 +723,7 @@ impl<'db> Inferred<'db> {
     fn expect_generics(&self) -> Option<Generics<'db, '_>> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::LanguageSpecific
-                && point.get_language_specific() == Specific::SimpleGeneric
+                && point.specific() == Specific::SimpleGeneric
             {
                 let primary = definition.as_primary();
                 match primary.second() {

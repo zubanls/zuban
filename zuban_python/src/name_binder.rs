@@ -438,7 +438,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let param_index = point.get_node_index();
             let param_point = self.points.get(param_index);
             if let LanguageSpecific = param_point.get_type() {
-                if param_point.get_language_specific() == Specific::Param {
+                if param_point.specific() == Specific::Param {
                     let name = Name::by_index(self.tree, param_index);
                     return name.has_self_param_position();
                 }
