@@ -425,6 +425,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
                         dbg!(cls.to_generic_part(i_s));
                         dbg!(cls.infer_type_vars_foo(i_s, i));
                         //}
+                        todo!()
                     }
                 }
                 PrimaryContent::Attribute(name) => {

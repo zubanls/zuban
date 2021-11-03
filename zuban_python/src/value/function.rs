@@ -130,6 +130,14 @@ impl<'db> Function<'db> {
     pub fn as_point_link(&self) -> PointLink {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
+
+    fn ensure_calculated_generics(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) {
+        todo!()
+    }
 }
 
 impl<'db> Value<'db> for Function<'db> {
@@ -152,6 +160,7 @@ impl<'db> Value<'db> for Function<'db> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.get_node().annotation() {
+            self.ensure_calculated_generics(i_s, args);
             let expr = return_annotation.expression();
             if let Some(inferred) = resolve_type_vars(
                 i_s,

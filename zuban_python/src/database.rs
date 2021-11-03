@@ -148,10 +148,22 @@ impl Point {
         }
     }
 
-    pub fn new_type_var(locality: Locality, index: TypeVarIndex) -> Self {
+    pub fn new_class_type_var(index: TypeVarIndex, locality: Locality) -> Self {
         let flags = Self::calculate_flags(
             PointType::Specific,
-            Specific::TypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
+            Specific::ClassTypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
+            locality,
+        );
+        Self {
+            flags: 0,
+            node_index: 0,
+        }
+    }
+
+    pub fn new_function_type_var(index: TypeVarIndex, locality: Locality) -> Self {
+        let flags = Self::calculate_flags(
+            PointType::Specific,
+            Specific::FunctionTypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
             locality,
         );
         Self {
@@ -335,7 +347,8 @@ pub enum Specific {
     //TypingAny,
     //TypingOverload
     //TypedDict,
-    TypeVar,
+    ClassTypeVar,
+    FunctionTypeVar,
 }
 
 #[derive(Debug)]
