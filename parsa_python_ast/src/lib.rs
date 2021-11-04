@@ -432,6 +432,10 @@ impl<'db> Expression<'db> {
             ExpressionContent::Ternary(Ternary::new(self.node))
         }
     }
+
+    pub fn search_names(&self) -> NameIterator<'db> {
+        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -1122,10 +1126,6 @@ impl<'db> FunctionDefParameters<'db> {
         } else {
             ParamIterator::Finished
         }
-    }
-
-    pub fn search_names(&self) -> NameIterator<'db> {
-        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
     }
 }
 

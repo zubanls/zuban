@@ -1,10 +1,10 @@
-use parsa_python_ast::{FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
+use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, Execution, Locality, Point, PointLink, TypeVarIndex,
+    ClassInfos, ComplexPoint, Database, Execution, Locality, Point, PointLink, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -152,7 +152,46 @@ impl<'db> Function<'db> {
             }
         }
         let mut found_type_vars = vec![];
-        for n in self.get_node().params().search_names() {
+        let func_node = self.get_node();
+        for param in func_node.params().iter() {
+            if let Some(annotation) = param.annotation() {
+                self.search_type_vars(
+                    i_s,
+                    &annotation.expression(),
+                    class_infos,
+                    &mut found_type_vars,
+                );
+            }
+        }
+        if let Some(return_annot) = func_node.annotation() {
+            self.search_type_vars(
+                i_s,
+                &return_annot.expression(),
+                class_infos,
+                &mut found_type_vars,
+            );
+        }
+        match found_type_vars.len() {
+            0 => self
+                .file
+                .points
+                .set(def_node_index, Point::new_node_analysis(Locality::Stmt)),
+            _ => self.file.complex_points.insert(
+                &self.file.points,
+                def_node_index,
+                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
+            ),
+        }
+    }
+
+    fn search_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        expression: &Expression<'db>,
+        class_infos: Option<&'db ClassInfos>,
+        found_type_vars: &mut Vec<PointLink>,
+    ) {
+        for n in expression.search_names() {
             let inferred = self.file.get_inference(i_s).infer_name(n);
             if let Some(definition) = inferred.maybe_type_var(i_s) {
                 let link = definition.as_link();
@@ -176,17 +215,6 @@ impl<'db> Function<'db> {
                     Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
                 );
             }
-        }
-        match found_type_vars.len() {
-            0 => self
-                .file
-                .points
-                .set(def_node_index, Point::new_node_analysis(Locality::Stmt)),
-            _ => self.file.complex_points.insert(
-                &self.file.points,
-                def_node_index,
-                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
-            ),
         }
     }
 }
