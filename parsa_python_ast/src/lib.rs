@@ -1123,6 +1123,10 @@ impl<'db> FunctionDefParameters<'db> {
             ParamIterator::Finished
         }
     }
+
+    pub fn search_names(&self) -> NameIterator<'db> {
+        NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
+    }
 }
 
 pub enum ParamIterator<'db> {

@@ -22,6 +22,12 @@ pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TypeVarIndex(u32);
 
+impl TypeVarIndex {
+    pub fn new(i: usize) -> Self {
+        Self(i as u32)
+    }
+}
+
 impl fmt::Display for FileIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -406,6 +412,7 @@ pub enum ComplexPoint {
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
     ClassInfos(Box<ClassInfos>),
+    FunctionTypeVars(Box<[PointLink]>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -430,6 +437,15 @@ pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
     pub mro: Box<[ClassWithTypeVarIndex]>, // Does never include `object`
     pub is_protocol: bool,
+}
+
+impl ClassInfos {
+    pub fn find_type_var_index(&self, link: PointLink) -> Option<TypeVarIndex> {
+        self.type_vars
+            .iter()
+            .position(|&r| r == link)
+            .map(|i| TypeVarIndex(i as u32))
+    }
 }
 
 pub type CalculableGenericsList = OnceCell<Box<GenericsList>>;

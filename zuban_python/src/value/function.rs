@@ -3,7 +3,9 @@ use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{Database, Execution, PointLink};
+use crate::database::{
+    ComplexPoint, Database, Execution, Locality, Point, PointLink, TypeVarIndex,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -136,7 +138,56 @@ impl<'db> Function<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) {
-        todo!()
+        // To save the generics (which happens mostly not really), just use the def keyword's
+        // storage.
+        let def_node_index = self.node_index + 1;
+        if self.file.points.get(def_node_index).is_calculated() {
+            return;
+        }
+        let mut class_infos = None;
+        // TODO getting the class this way is a bad idea.
+        if let Some(p) = self.iter_inferrable_params(args, false).next() {
+            if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                class_infos = Some(instance.class(i_s).get_class_infos(i_s));
+            }
+        }
+        let mut found_type_vars = vec![];
+        for n in self.get_node().params().search_names() {
+            let inferred = self.file.get_inference(i_s).infer_name(n);
+            if let Some(definition) = inferred.maybe_type_var(i_s) {
+                let link = definition.as_link();
+                if let Some(class_infos) = class_infos {
+                    if let Some(index) = class_infos.find_type_var_index(link) {
+                        // Overwrite with a better type var definition.
+                        self.file
+                            .points
+                            .set(n.index(), Point::new_class_type_var(index, Locality::Stmt));
+                        continue;
+                    }
+                }
+
+                let i = found_type_vars.iter().position(|&r| r == link);
+                if i.is_none() {
+                    found_type_vars.push(link);
+                };
+                let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
+                self.file.points.set(
+                    n.index(),
+                    Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
+                );
+            }
+        }
+        match found_type_vars.len() {
+            0 => self
+                .file
+                .points
+                .set(def_node_index, Point::new_node_analysis(Locality::Stmt)),
+            _ => self.file.complex_points.insert(
+                &self.file.points,
+                def_node_index,
+                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
+            ),
+        }
     }
 }
 

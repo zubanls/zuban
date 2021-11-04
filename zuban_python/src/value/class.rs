@@ -155,7 +155,7 @@ impl<'db, 'a> Class<'db, 'a> {
         None
     }
 
-    fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+    pub fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let node_index = self.node_index + 1;
         let point = self.file.points.get(node_index);
         if point.is_calculated() {

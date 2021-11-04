@@ -409,7 +409,7 @@ impl<'db> Inferred<'db> {
         self.use_instance(builtins, v.get_node_index(), Generics::None)
     }
 
-    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference> {
+    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference<'db>> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::Specific
                 && point.specific() == Specific::InstanceWithArguments

@@ -1,7 +1,7 @@
 use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{Value, ValueKind};
-use crate::arguments::{ArgumentIterator, Arguments};
+use crate::arguments::Arguments;
 use crate::database::{Locality, Point, Specific};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;

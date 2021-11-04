@@ -7,7 +7,6 @@ mod module;
 mod typing;
 
 use crate::arguments::Arguments;
-use crate::database::GenericPart;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
