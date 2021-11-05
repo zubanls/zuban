@@ -80,6 +80,8 @@ impl<'db> Generics<'db, '_> {
                             .nth(i_s, n);
                             dbg!(x);
                             dbg!(init);
+                        } else {
+                            unreachable!()
                         }
                         dbg!(cls.description(i_s));
                         dbg!(&i_s.current_execution);
@@ -164,112 +166,6 @@ impl<'db> GenericsIterator<'db> {
         }
     }
 }
-
-/*
-pub trait Generics<'db>: std::fmt::Debug {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>>;
-
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> std::iter::Empty<Inferred<'db>> {
-        todo!();
-        std::iter::empty()
-    }
-}
-
-#[derive(Debug)]
-pub struct ExpectNoGenerics();
-
-impl<'db> Generics<'db> for ExpectNoGenerics {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        unreachable!("Should not even ask for generics")
-    }
-}
-
-#[derive(Debug)]
-pub struct NoGenerics();
-
-impl<'db> Generics<'db> for NoGenerics {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        None
-    }
-}
-
-#[derive(Debug)]
-pub struct CalculableGenerics<'db, 'a> {
-    init: &'a Function<'db>,
-    args: &'a dyn Arguments<'db>,
-}
-
-impl<'db, 'a> CalculableGenerics<'db, 'a> {
-    pub fn new(init: &'a Function<'db>, args: &'a dyn Arguments<'db>) -> Self {
-        Self { init, args }
-    }
-}
-
-impl<'db> Generics<'db> for CalculableGenerics<'db, '_> {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        FunctionTypeVarFinder::new(self.init, self.args, true).lookup(i_s, name)
-    }
-}
-
-#[derive(Debug)]
-pub struct AnnotationGenerics<'db> {
-    slice_type: SliceType<'db>,
-}
-
-impl<'db> AnnotationGenerics<'db> {
-    pub fn new(slice_type: SliceType<'db>) -> Self {
-        Self { slice_type }
-    }
-}
-
-impl<'db> Generics<'db> for AnnotationGenerics<'db> {
-    fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        match self.slice_type {
-            SliceType::Simple(simple) => {
-                if n == 0 {
-                    Some(simple.infer_annotation(i_s))
-                } else {
-                    None
-                }
-            }
-            SliceType::Slices(slices) => {
-                // This is an error, the annotation List[foo:bar] makes no sense.
-                dbg!(slices);
-                todo!()
-            }
-            SliceType::Slice(slice) => {
-                // This is an error, the annotation List[foo:bar] makes no sense.
-                None
-            }
-        }
-    }
-}
-*/
 
 pub struct FunctionTypeVarFinder<'db, 'a> {
     function: &'a Function<'db>,
