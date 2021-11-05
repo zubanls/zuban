@@ -67,13 +67,9 @@ impl<'db> Generics<'db, '_> {
                             let init = cls.get_init_func(i_s, &args);
                             let mut list = cls.new_unitialized_generic_parts(i_s);
                             todo!();
-                            let x = FunctionTypeVarFinder::new(
-                                &init,
-                                &args,
-                                true,
-                                Some(list.as_mut_slice()),
-                            )
-                            .nth(i_s, n);
+                            let x =
+                                TypeVarMatcher::new(&init, &args, true, Some(list.as_mut_slice()))
+                                    .nth(i_s, n);
                             dbg!(x);
                             dbg!(init);
                         } else {
@@ -163,7 +159,7 @@ impl<'db> GenericsIterator<'db> {
     }
 }
 
-pub struct FunctionTypeVarFinder<'db, 'a> {
+pub struct TypeVarMatcher<'db, 'a> {
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
     calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
@@ -171,7 +167,7 @@ pub struct FunctionTypeVarFinder<'db, 'a> {
     class_foo_list: Option<&'a mut [GenericPart]>,
 }
 
-impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
+impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
@@ -278,8 +274,13 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             .any(|(n, _)| *n == name.as_str())
     }
 
-    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
-        todo!()
+    pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
+        if let Some(type_vars) = &self.calculated_type_vars {
+            todo!()
+        } else {
+            self.calculate_type_vars(i_s);
+            self.nth(i_s, index)
+        }
     }
 
     /*

@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{FunctionTypeVarFinder, Generics};
+use crate::generics::{Generics, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
@@ -437,7 +437,7 @@ impl<'db> Inferred<'db> {
         self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        func_finder: Option<&mut FunctionTypeVarFinder<'db, '_>>,
+        func_finder: Option<&mut TypeVarMatcher<'db, '_>>,
     ) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::Specific {

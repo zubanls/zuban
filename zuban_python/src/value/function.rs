@@ -12,7 +12,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::FunctionTypeVarFinder;
+use crate::generics::TypeVarMatcher;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
 
@@ -279,7 +279,7 @@ impl<'db> Value<'db> for Function<'db> {
                 }
                 // TODO use t
                 let mut finder =
-                    func_type_vars.map(|t| FunctionTypeVarFinder::new(self, args, false, None));
+                    func_type_vars.map(|t| TypeVarMatcher::new(self, args, false, None));
                 inferred.replace_type_vars(i_s, class.as_ref(), finder.as_mut())
             } else {
                 self.file
