@@ -5,7 +5,8 @@ use parsa_python_ast::{
 
 use crate::arguments::{Argument, Arguments, SimpleArguments};
 use crate::database::{
-    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointType, TypeVarIndex,
+    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointLink, PointType,
+    Specific, TypeVarIndex,
 };
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -65,13 +66,16 @@ impl<'db> Generics<'db, '_> {
                         if let PrimaryContent::Execution(details) = primary.second() {
                             let args = SimpleArguments::from_primary(reference.file, primary, None);
                             let init = cls.get_init_func(i_s, &args);
-                            let mut list = cls.new_unitialized_generic_parts(i_s);
+                            let type_vars = cls.get_type_vars(i_s);
+                            let list = TypeVarMatcher::calculate_and_return(
+                                i_s,
+                                &init,
+                                &args,
+                                true,
+                                type_vars,
+                                Specific::ClassTypeVar,
+                            );
                             todo!();
-                            let x =
-                                TypeVarMatcher::new(&init, &args, true, Some(list.as_mut_slice()))
-                                    .nth(i_s, n);
-                            dbg!(x);
-                            dbg!(init);
                         } else {
                             unreachable!()
                         }
@@ -162,9 +166,11 @@ impl<'db> GenericsIterator<'db> {
 pub struct TypeVarMatcher<'db, 'a> {
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
-    calculated_type_vars: Option<Vec<(&'db str, Inferred<'db>)>>,
     skip_first: bool,
-    class_foo_list: Option<&'a mut [GenericPart]>,
+    calculated_type_vars: Option<Box<[GenericPart]>>,
+    matches: bool,
+    type_vars: &'db [PointLink],
+    match_specific: Specific,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -172,24 +178,41 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
-        class_foo_list: Option<&'a mut [GenericPart]>,
+        type_vars: &'db [PointLink],
+        match_specific: Specific,
     ) -> Self {
         Self {
             function,
             args,
             calculated_type_vars: None,
             skip_first,
-            class_foo_list,
+            matches: true,
+            type_vars,
+            match_specific,
         }
     }
 
+    fn calculate_and_return(
+        i_s: &mut InferenceState<'db, '_>,
+        function: &'a Function<'db>,
+        args: &'a dyn Arguments<'db>,
+        skip_first: bool,
+        type_vars: &'db [PointLink],
+        match_specific: Specific,
+    ) -> Box<[GenericPart]> {
+        let mut self_ = Self::new(function, args, skip_first, type_vars, match_specific);
+        self_.calculate_type_vars(i_s);
+        self_.calculated_type_vars.unwrap()
+    }
+
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
-        self.calculated_type_vars = Some(vec![]);
+        self.calculated_type_vars = Some(Box::new([]));
         for p in self
             .function
             .iter_inferrable_params(self.args, self.skip_first)
         {
             if let Some(annotation) = p.param.annotation() {
+                /*
                 // TODO this should be cached
                 if let Some(class_foo_list) = self.class_foo_list.as_mut() {
                     let inferred = self
@@ -208,6 +231,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         todo!()
                     }
                 }
+                */
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     self.try_to_find(i_s, &part, &p)
                 }
@@ -227,10 +251,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if !self.already_in_calculated_type_vars(&name) {
                         let inferred = self.function.file.get_inference(i_s).infer_name(name);
                         if inferred.maybe_type_var(i_s).is_some() {
-                            self.calculated_type_vars
-                                .as_mut()
-                                .unwrap()
-                                .push((name.as_str(), inferrable.infer(i_s)));
+                            //self.calculated_type_vars
+                            //.push((name.as_str(), inferrable.infer(i_s)));
+                            todo!()
                         }
                     }
                 }
@@ -245,8 +268,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(cls) = inf.expect_class(i_s) {
                         let i = inferrable.infer(i_s);
                         //if !self.already_in_calculated_type_vars("foo")  {
-                        dbg!(cls.to_generic_part(i_s));
-                        dbg!(cls.infer_type_vars_foo(i_s, i));
+                        //dbg!(cls.to_generic_part(i_s));
+                        cls.infer_type_vars(
+                            i_s,
+                            i,
+                            self.calculated_type_vars.as_mut().unwrap(),
+                            self.match_specific,
+                        );
                         //}
                         todo!()
                     }
@@ -267,11 +295,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 
     fn already_in_calculated_type_vars(&self, name: &Name) -> bool {
+        todo!()
+        /*
         self.calculated_type_vars
             .as_ref()
             .unwrap()
             .iter()
             .any(|(n, _)| *n == name.as_str())
+        */
     }
 
     pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
@@ -305,6 +336,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
     */
 
+    /*
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
         if let Some(type_vars) = &self.calculated_type_vars {
             if !self.skip_first {
@@ -335,4 +367,5 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             self.lookup(i_s, name)
         }
     }
+    */
 }

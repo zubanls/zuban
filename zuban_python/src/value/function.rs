@@ -278,8 +278,8 @@ impl<'db> Value<'db> for Function<'db> {
                     }
                 }
                 // TODO use t
-                let mut finder =
-                    func_type_vars.map(|t| TypeVarMatcher::new(self, args, false, None));
+                let mut finder = func_type_vars
+                    .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
                 inferred.replace_type_vars(i_s, class.as_ref(), finder.as_mut())
             } else {
                 self.file

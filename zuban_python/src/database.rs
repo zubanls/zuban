@@ -312,7 +312,7 @@ pub enum PointType {
     NodeAnalysis,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum Specific {
     String,

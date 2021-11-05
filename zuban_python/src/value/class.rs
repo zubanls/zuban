@@ -85,14 +85,8 @@ impl<'db, 'a> Class<'db, 'a> {
             .collect()
     }
 
-    pub fn infer_type_vars_foo(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        value: Inferred<'db>,
-    ) -> GenericsList {
-        let mut list = self.new_unitialized_generic_parts(i_s);
-        self.infer_type_vars(i_s, value, list.as_mut_slice());
-        GenericsList::new(list.into_boxed_slice())
+    pub fn get_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
+        &self.get_class_infos(i_s).type_vars
     }
 
     pub fn infer_type_vars(
@@ -100,6 +94,7 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         value: Inferred<'db>,
         list: &mut [GenericPart],
+        match_specific: Specific,
     ) {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
@@ -109,9 +104,11 @@ impl<'db, 'a> Class<'db, 'a> {
         value.run(i_s, &mut |i_s, v| {
             let check_class = v.class(i_s);
             for class in check_class.mro(i_s) {
+                dbg!(class.get_name(), self.get_name());
                 if class.node_index == self.node_index
                     && class.file.get_file_index() == self.file.get_file_index()
                 {
+                    dbg!();
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
@@ -120,12 +117,12 @@ impl<'db, 'a> Class<'db, 'a> {
                         if generic.maybe_type_var(i_s).is_some() {
                             todo!("report pls: {:?} is {:?}", generic, v)
                         } else if let Some(cls) = generic.expect_class(i_s) {
-                            cls.infer_type_vars(i_s, v, list);
+                            cls.infer_type_vars(i_s, v, list, match_specific);
+                            todo!()
                         }
                     }
                     //break;
                 }
-                todo!()
             }
         });
     }
