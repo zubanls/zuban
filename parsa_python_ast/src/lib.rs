@@ -324,6 +324,7 @@ impl<'db> Name<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum NameParent<'db> {
     NameDefinition(NameDefinition<'db>),
     Atom,

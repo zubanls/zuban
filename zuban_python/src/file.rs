@@ -96,7 +96,8 @@ impl File for PythonFile {
 
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
         let line = self.get_lines().partition_point(|&l| l < byte as CodeIndex);
-        (line, byte as usize - line)
+        // TODO these might be off by one and - 1 is dangerous
+        (line, (byte - self.get_lines()[line - 1] + 1) as usize)
     }
 }
 
@@ -622,7 +623,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if let Some(primary) = name.maybe_primary_parent() {
                             return self.infer_primary(primary);
                         } else {
-                            todo!("star import {:?}", name);
+                            todo!(
+                                "star import {} {:?} {:?}",
+                                self.file.get_file_path(self.i_s.database),
+                                name,
+                                self.file.byte_to_line_column(name.start())
+                            )
                         }
                     } else {
                         self.cache_stmt_name(stmt);

@@ -4,7 +4,8 @@ use std::fmt;
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ClassInfos, ComplexPoint, Database, Execution, Locality, Point, PointLink, TypeVarIndex,
+    ClassInfos, ComplexPoint, Database, Execution, Locality, Point, PointLink, PointType, Specific,
+    TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -133,16 +134,25 @@ impl<'db> Function<'db> {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
-    fn ensure_calculated_generics(
+    fn get_calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) {
+    ) -> Option<&'db [PointLink]> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
         let def_node_index = self.node_index + 1;
-        if self.file.points.get(def_node_index).is_calculated() {
-            return;
+        let p = self.file.points.get(def_node_index);
+        if p.is_calculated() {
+            if p.get_type() == PointType::Complex {
+                if let ComplexPoint::FunctionTypeVars(vars) =
+                    self.file.complex_points.get(p.get_complex_index())
+                {
+                    return Some(vars);
+                } else {
+                    return None;
+                }
+            }
         }
         let mut class_infos = None;
         // TODO getting the class this way is a bad idea.
@@ -182,6 +192,7 @@ impl<'db> Function<'db> {
                 ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
             ),
         }
+        self.get_calculated_type_vars(i_s, args)
     }
 
     fn search_type_vars(
@@ -239,15 +250,25 @@ impl<'db> Value<'db> for Function<'db> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.get_node().annotation() {
-            self.ensure_calculated_generics(i_s, args);
+            let func_type_vars = self.get_calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
-            if let Some(inferred) = resolve_type_vars(
-                i_s,
-                self.file,
-                expr,
-                &mut FunctionTypeVarFinder::new(self, args, false, None),
-            ) {
-                inferred
+            if contains_type_vars(self.file, &expr) {
+                let inferred = self.file.get_inference(i_s).infer_expression(expr);
+                if inferred.maybe_type_var(i_s).is_some() {
+                    todo!("foo")
+                } else {
+                    todo!("bar")
+                }
+                /*
+                if let Some(inferred) = resolve_type_vars(
+                    i_s,
+                    self.file,
+                    expr,
+                    &mut FunctionTypeVarFinder::new(self, args, false, None),
+                ) {
+                    inferred
+                }
+                */
             } else {
                 self.file
                     .get_inference(i_s)
@@ -351,4 +372,17 @@ impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
             .map(|a| a.infer(i_s))
             .unwrap_or_else(|| todo!())
     }
+}
+
+#[inline]
+fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
+    for n in expr.search_names() {
+        if matches!(
+            file.points.get(n.index()).maybe_specific(),
+            Some(Specific::ClassTypeVar | Specific::FunctionTypeVar)
+        ) {
+            return true;
+        }
+    }
+    false
 }

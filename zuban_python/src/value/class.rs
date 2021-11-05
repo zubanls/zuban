@@ -184,15 +184,16 @@ impl<'db, 'a> Class<'db, 'a> {
                 type_vars.push(link);
             }
         };
+        let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
         if let Some(arguments) = self.get_node().arguments() {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
                         // TODO this probably causes certain problems with infer_annotation_expression
-                        let inf = self.file.get_inference(i_s).infer_named_expression(n);
-                        dbg!(inf.description(i_s));
-                        inf.run(i_s, &mut |i_s, v| {
+                        let inf = self.file.get_inference(&mut i_s).infer_named_expression(n);
+                        dbg!(inf.description(&mut i_s));
+                        inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
                                 let mut type_var_remap = vec![];
                                 let mut iterator = class.generics.iter();
@@ -200,7 +201,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if let Some(definition) = g.maybe_type_var(i_s) {
                                         maybe_add_type_var(&definition)
                                     } else {
-                                        dbg!(g.description(i_s));
+                                        dbg!(g.debug_info(i_s));
                                         todo!()
                                     }
                                 }

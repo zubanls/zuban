@@ -701,6 +701,27 @@ impl<'db> Inferred<'db> {
         )
     }
 
+    pub fn debug_info(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        let details = match &self.state {
+            InferredState::Saved(definition, point) => {
+                let file = definition.file;
+                format!(
+                    "{} (complex?: {:?})",
+                    file.get_file_path(i_s.database),
+                    file.complex_points
+                        .by_node_index(&file.points, definition.node_index)
+                )
+            }
+            _ => "".to_owned(),
+        };
+        format!(
+            "description = {}\ndebug = {:?}\ndetails = {}",
+            self.description(i_s),
+            self,
+            details
+        )
+    }
+
     pub fn as_any_link(&self, i_s: &InferenceState<'db, '_>) -> AnyLink {
         match &self.state {
             InferredState::Saved(definition, _) => AnyLink::Reference(definition.as_link()),

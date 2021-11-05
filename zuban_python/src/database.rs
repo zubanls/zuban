@@ -224,6 +224,14 @@ impl Point {
         self.node_index
     }
 
+    pub fn maybe_specific(self) -> Option<Specific> {
+        if self.get_type() == PointType::Specific {
+            Some(self.specific())
+        } else {
+            None
+        }
+    }
+
     pub fn specific(self) -> Specific {
         debug_assert!(self.get_type() == PointType::Specific);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
