@@ -4,7 +4,9 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{Argument, Arguments, SimpleArguments};
-use crate::database::{CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointType};
+use crate::database::{
+    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointType, TypeVarIndex,
+};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -449,6 +451,10 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             .unwrap()
             .iter()
             .any(|(n, _)| *n == name.as_str())
+    }
+
+    pub fn get_nth(&self, index: TypeVarIndex) -> Inferred<'db> {
+        todo!()
     }
 
     /*

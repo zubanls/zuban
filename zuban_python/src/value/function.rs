@@ -263,21 +263,10 @@ impl<'db> Value<'db> for Function<'db> {
             let expr = return_annotation.expression();
             if contains_type_vars(self.file, &expr) {
                 let inferred = self.file.get_inference(i_s).infer_expression(expr);
-                if inferred.maybe_type_var(i_s).is_some() {
-                    todo!("foo")
-                } else {
-                    todo!("bar")
-                }
-                /*
-                if let Some(inferred) = resolve_type_vars(
-                    i_s,
-                    self.file,
-                    expr,
-                    &mut FunctionTypeVarFinder::new(self, args, false, None),
-                ) {
-                    inferred
-                }
-                */
+                // TODO use t
+                let mut finder =
+                    func_type_vars.map(|t| FunctionTypeVarFinder::new(self, args, false, None));
+                inferred.replace_type_vars(i_s, None, finder.as_mut())
             } else {
                 self.file
                     .get_inference(i_s)

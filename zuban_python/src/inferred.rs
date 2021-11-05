@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::generics::{FunctionTypeVarFinder, Generics};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
@@ -431,6 +431,29 @@ impl<'db> Inferred<'db> {
             }
         }
         None
+    }
+
+    pub fn replace_type_vars(
+        self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class>,
+        func_finder: Option<&mut FunctionTypeVarFinder<'db, '_>>,
+    ) -> Self {
+        if let InferredState::Saved(definition, point) = self.state {
+            if point.get_type() == PointType::Specific {
+                match point.specific() {
+                    Specific::ClassTypeVar => {
+                        let index = point.type_var_index();
+                        todo!()
+                    }
+                    Specific::FunctionTypeVar => {
+                        return func_finder.unwrap().get_nth(point.type_var_index())
+                    }
+                    _ => (),
+                }
+            }
+        }
+        self
     }
 
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
