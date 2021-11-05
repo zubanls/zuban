@@ -12,7 +12,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{resolve_type_vars, FunctionTypeVarFinder};
+use crate::generics::FunctionTypeVarFinder;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
 
@@ -153,7 +153,7 @@ impl<'db> Function<'db> {
         None
     }
 
-    fn get_calculated_type_vars(
+    fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -206,7 +206,7 @@ impl<'db> Function<'db> {
             ),
         }
         debug_assert!(self.file.points.get(def_node_index).is_calculated());
-        self.get_calculated_type_vars(i_s, args)
+        self.calculated_type_vars(i_s, args)
     }
 
     fn search_type_vars(
@@ -267,7 +267,7 @@ impl<'db> Value<'db> for Function<'db> {
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.get_node().annotation() {
             let i_s = &mut i_s.with_annotation_instance();
-            let func_type_vars = self.get_calculated_type_vars(i_s, args);
+            let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.file, &expr) {
                 let inferred = self.file.get_inference(i_s).infer_expression(expr);

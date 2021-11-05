@@ -16,36 +16,6 @@ pub trait TypeVarFinder<'db, 'a> {
     fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
 }
 
-pub fn resolve_type_vars<'db, 'a>(
-    i_s: &mut InferenceState<'db, '_>,
-    file: &'db PythonFile,
-    expr: Expression<'db>,
-    type_var_finder: &mut impl TypeVarFinder<'db, 'a>,
-) -> Option<Inferred<'db>> {
-    let mut i_s = i_s.with_annotation_instance();
-    let inferred = file.get_inference(&mut i_s).infer_expression(expr);
-    if inferred.maybe_type_var(&mut i_s).is_some() {
-        type_var_finder
-            .lookup(&mut i_s, expr.get_legacy_node().get_code())
-            .or_else(|| todo!())
-    } else {
-        /*
-        if !node.is_leaf() {
-            for node in node.iter_children() {
-                if node.is_type(Terminal(TerminalType::Name)) {
-                    if let Some(resolved_type_var) =
-                        resolve_type_vars(&mut i_s, file, node, type_var_finder)
-                    {
-                        todo!()
-                    }
-                }
-            }
-        }
-        */
-        None
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
