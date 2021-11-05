@@ -211,6 +211,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     },
                                     type_var_remap: type_var_remap.into_boxed_slice(),
                                 });
+                                mro.extend(class.get_class_infos(i_s).mro.iter().cloned());
                             } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                 if t.specific == Specific::TypingProtocol {
                                     is_protocol = true;
