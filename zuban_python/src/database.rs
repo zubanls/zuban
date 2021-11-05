@@ -161,7 +161,7 @@ impl Point {
             locality,
         );
         Self {
-            flags: 0,
+            flags,
             node_index: 0,
         }
     }
@@ -173,7 +173,7 @@ impl Point {
             locality,
         );
         Self {
-            flags: 0,
+            flags,
             node_index: 0,
         }
     }

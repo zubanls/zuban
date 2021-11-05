@@ -31,6 +31,9 @@ impl<'db> fmt::Debug for Function<'db> {
 }
 
 impl<'db> Function<'db> {
+    // Functions use the following points:
+    // - "def" to redirect to the first return/yield
+    // - "(" to redirect to save calculated type vars
     pub fn new(file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self { file, node_index }
     }
@@ -143,7 +146,8 @@ impl<'db> Function<'db> {
     ) -> Option<&'db [PointLink]> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
-        let def_node_index = self.node_index + 1;
+        // + 1 for def; + 2 for name + 1 for (
+        let def_node_index = self.node_index + 4;
         let p = self.file.points.get(def_node_index);
         if p.is_calculated() {
             if p.get_type() == PointType::Complex {
@@ -254,6 +258,7 @@ impl<'db> Value<'db> for Function<'db> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.get_node().annotation() {
+            let i_s = &mut i_s.with_annotation_instance();
             let func_type_vars = self.get_calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.file, &expr) {
