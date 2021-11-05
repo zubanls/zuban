@@ -8,6 +8,7 @@ use crate::database::{
     CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointLink, PointType,
     Specific, TypeVarIndex,
 };
+use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -67,6 +68,7 @@ impl<'db> Generics<'db, '_> {
                             let args = SimpleArguments::from_primary(reference.file, primary, None);
                             let init = cls.get_init_func(i_s, &args);
                             let type_vars = cls.get_type_vars(i_s);
+                            debug!("Inferring instance generics for {}", primary.short_debug());
                             let list = TypeVarMatcher::calculate_and_return(
                                 i_s,
                                 &init,
@@ -75,6 +77,7 @@ impl<'db> Generics<'db, '_> {
                                 type_vars,
                                 Specific::ClassTypeVar,
                             );
+                            dbg!(list);
                             todo!();
                         } else {
                             unreachable!()
@@ -276,7 +279,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             self.match_specific,
                         );
                         //}
-                        todo!()
                     }
                 }
                 PrimaryContent::Attribute(name) => {

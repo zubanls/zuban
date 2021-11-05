@@ -108,7 +108,6 @@ impl<'db, 'a> Class<'db, 'a> {
                 if class.node_index == self.node_index
                     && class.file.get_file_index() == self.file.get_file_index()
                 {
-                    dbg!();
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
