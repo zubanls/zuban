@@ -1,4 +1,6 @@
-use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
+use parsa_python_ast::{
+    Expression, FunctionDef, NameParent, NodeIndex, Param, ParamIterator, ReturnOrYield,
+};
 use std::fmt;
 
 use super::{Value, ValueKind};
@@ -203,28 +205,30 @@ impl<'db> Function<'db> {
         found_type_vars: &mut Vec<PointLink>,
     ) {
         for n in expression.search_names() {
-            let inferred = self.file.get_inference(i_s).infer_name_reference(n);
-            if let Some(definition) = inferred.maybe_type_var(i_s) {
-                let link = definition.as_link();
-                if let Some(class_infos) = class_infos {
-                    if let Some(index) = class_infos.find_type_var_index(link) {
-                        // Overwrite with a better type var definition.
-                        self.file
-                            .points
-                            .set(n.index(), Point::new_class_type_var(index, Locality::Stmt));
-                        continue;
+            if matches!(n.parent(), NameParent::Atom) {
+                let inferred = self.file.get_inference(i_s).infer_name_reference(n);
+                if let Some(definition) = inferred.maybe_type_var(i_s) {
+                    let link = definition.as_link();
+                    if let Some(class_infos) = class_infos {
+                        if let Some(index) = class_infos.find_type_var_index(link) {
+                            // Overwrite with a better type var definition.
+                            self.file
+                                .points
+                                .set(n.index(), Point::new_class_type_var(index, Locality::Stmt));
+                            continue;
+                        }
                     }
-                }
 
-                let i = found_type_vars.iter().position(|&r| r == link);
-                if i.is_none() {
-                    found_type_vars.push(link);
-                };
-                let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
-                self.file.points.set(
-                    n.index(),
-                    Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
-                );
+                    let i = found_type_vars.iter().position(|&r| r == link);
+                    if i.is_none() {
+                        found_type_vars.push(link);
+                    };
+                    let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
+                    self.file.points.set(
+                        n.index(),
+                        Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
+                    );
+                }
             }
         }
     }
