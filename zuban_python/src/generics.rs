@@ -12,10 +12,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::Function;
 
-pub trait TypeVarFinder<'db, 'a> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>>;
-}
-
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
@@ -175,39 +171,6 @@ pub struct FunctionTypeVarFinder<'db, 'a> {
     class_foo_list: Option<&'a mut [GenericPart]>,
 }
 
-impl<'db, 'a> TypeVarFinder<'db, 'a> for FunctionTypeVarFinder<'db, 'a> {
-    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
-        if let Some(type_vars) = &self.calculated_type_vars {
-            if !self.skip_first {
-                if let Some(p) = self
-                    .function
-                    .iter_inferrable_params(self.args, self.skip_first)
-                    .next()
-                {
-                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                        if let Some(inf) = instance
-                            .as_instance()
-                            .unwrap_or_else(|| todo!())
-                            .lookup_type_var(i_s, name)
-                        {
-                            return Some(inf);
-                        }
-                    }
-                }
-            }
-            for (type_var, result) in type_vars {
-                if *type_var == name {
-                    return Some(result.clone());
-                }
-            }
-            None
-        } else {
-            self.calculate_type_vars(i_s);
-            self.lookup(i_s, name)
-        }
-    }
-}
-
 impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
     pub fn new(
         function: &'a Function<'db>,
@@ -340,4 +303,35 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
         };
     }
     */
+
+    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
+        if let Some(type_vars) = &self.calculated_type_vars {
+            if !self.skip_first {
+                if let Some(p) = self
+                    .function
+                    .iter_inferrable_params(self.args, self.skip_first)
+                    .next()
+                {
+                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                        if let Some(inf) = instance
+                            .as_instance()
+                            .unwrap_or_else(|| todo!())
+                            .lookup_type_var(i_s, name)
+                        {
+                            return Some(inf);
+                        }
+                    }
+                }
+            }
+            for (type_var, result) in type_vars {
+                if *type_var == name {
+                    return Some(result.clone());
+                }
+            }
+            None
+        } else {
+            self.calculate_type_vars(i_s);
+            self.lookup(i_s, name)
+        }
+    }
 }
