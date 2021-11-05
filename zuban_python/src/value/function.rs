@@ -139,6 +139,20 @@ impl<'db> Function<'db> {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
+    fn class_infos(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Option<&'db ClassInfos> {
+        // TODO getting the class this way is a bad idea.
+        if let Some(p) = self.iter_inferrable_params(args, false).next() {
+            if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                return Some(instance.class(i_s).get_class_infos(i_s));
+            }
+        }
+        None
+    }
+
     fn get_calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -159,13 +173,7 @@ impl<'db> Function<'db> {
             }
             return None;
         }
-        let mut class_infos = None;
-        // TODO getting the class this way is a bad idea.
-        if let Some(p) = self.iter_inferrable_params(args, false).next() {
-            if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                class_infos = Some(instance.class(i_s).get_class_infos(i_s));
-            }
-        }
+        let class_infos = self.class_infos(i_s, args);
         let mut found_type_vars = vec![];
         let func_node = self.get_node();
         for param in func_node.params().iter() {
@@ -263,10 +271,16 @@ impl<'db> Value<'db> for Function<'db> {
             let expr = return_annotation.expression();
             if contains_type_vars(self.file, &expr) {
                 let inferred = self.file.get_inference(i_s).infer_expression(expr);
+                let mut class = None;
+                if let Some(p) = self.iter_inferrable_params(args, false).next() {
+                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
+                        class = Some(instance.class(i_s));
+                    }
+                }
                 // TODO use t
                 let mut finder =
                     func_type_vars.map(|t| FunctionTypeVarFinder::new(self, args, false, None));
-                inferred.replace_type_vars(i_s, None, finder.as_mut())
+                inferred.replace_type_vars(i_s, class.as_ref(), finder.as_mut())
             } else {
                 self.file
                     .get_inference(i_s)

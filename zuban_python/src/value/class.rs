@@ -20,7 +20,7 @@ pub struct Class<'db, 'a> {
     pub(super) file: &'db PythonFile,
     pub(super) symbol_table: &'db SymbolTable,
     node_index: NodeIndex,
-    generics: Generics<'db, 'a>,
+    pub generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
@@ -144,7 +144,8 @@ impl<'db, 'a> Class<'db, 'a> {
                 if inferred.maybe_type_var(i_s).is_some() {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
-                        return self.generics.get_nth(i_s, index, name);
+                        todo!();
+                        //return self.generics.nth(i_s, index);
                     }
                     if !found_type_vars.contains(&n.as_str()) {
                         found_type_vars.push(n.as_str());

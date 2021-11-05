@@ -26,6 +26,10 @@ impl TypeVarIndex {
     pub fn new(i: usize) -> Self {
         Self(i as u32)
     }
+
+    pub fn is_zero(&self) -> bool {
+        self.0 == 0
+    }
 }
 
 impl fmt::Display for FileIndex {
@@ -467,8 +471,8 @@ impl GenericsList {
         Self(parts)
     }
 
-    pub fn nth(&self, index: usize) -> Option<&GenericPart> {
-        self.0.get(index)
+    pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {
+        self.0.get(index.0 as usize)
     }
 }
 

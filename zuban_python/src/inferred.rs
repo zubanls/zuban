@@ -436,18 +436,18 @@ impl<'db> Inferred<'db> {
     pub fn replace_type_vars(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class>,
+        class: Option<&Class<'db, '_>>,
         func_finder: Option<&mut FunctionTypeVarFinder<'db, '_>>,
     ) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::Specific {
                 match point.specific() {
                     Specific::ClassTypeVar => {
-                        let index = point.type_var_index();
+                        dbg!(class.unwrap().generics.nth(i_s, point.type_var_index()));
                         todo!()
                     }
                     Specific::FunctionTypeVar => {
-                        return func_finder.unwrap().get_nth(point.type_var_index())
+                        return func_finder.unwrap().nth(i_s, point.type_var_index())
                     }
                     _ => (),
                 }

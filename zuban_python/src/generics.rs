@@ -65,15 +65,10 @@ impl<'db> Generics<'db, '_> {
         }
     }
 
-    pub fn get_nth(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        n: usize,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Option<Inferred<'db>> {
         match self {
             Self::Expression(file, expr) => {
-                if n == 0 {
+                if n.is_zero() {
                     Some(file.get_inference(i_s).infer_annotation_expression(*expr))
                 } else {
                     None
@@ -105,13 +100,14 @@ impl<'db> Generics<'db, '_> {
                             let args = SimpleArguments::from_primary(reference.file, primary, None);
                             let init = cls.get_init_func(i_s, &args);
                             let mut list = cls.new_unitialized_generic_parts(i_s);
+                            todo!();
                             let x = FunctionTypeVarFinder::new(
                                 &init,
                                 &args,
                                 true,
                                 Some(list.as_mut_slice()),
                             )
-                            .lookup(i_s, name);
+                            .nth(i_s, n);
                             dbg!(x);
                             dbg!(init);
                         }
@@ -453,7 +449,7 @@ impl<'db, 'a> FunctionTypeVarFinder<'db, 'a> {
             .any(|(n, _)| *n == name.as_str())
     }
 
-    pub fn get_nth(&self, index: TypeVarIndex) -> Inferred<'db> {
+    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
         todo!()
     }
 
