@@ -149,10 +149,9 @@ impl<'db> Function<'db> {
                     self.file.complex_points.get(p.get_complex_index())
                 {
                     return Some(vars);
-                } else {
-                    return None;
                 }
             }
+            return None;
         }
         let mut class_infos = None;
         // TODO getting the class this way is a bad idea.
@@ -192,6 +191,7 @@ impl<'db> Function<'db> {
                 ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
             ),
         }
+        debug_assert!(self.file.points.get(def_node_index).is_calculated());
         self.get_calculated_type_vars(i_s, args)
     }
 
@@ -203,7 +203,7 @@ impl<'db> Function<'db> {
         found_type_vars: &mut Vec<PointLink>,
     ) {
         for n in expression.search_names() {
-            let inferred = self.file.get_inference(i_s).infer_name(n);
+            let inferred = self.file.get_inference(i_s).infer_name_reference(n);
             if let Some(definition) = inferred.maybe_type_var(i_s) {
                 let link = definition.as_link();
                 if let Some(class_infos) = class_infos {

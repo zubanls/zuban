@@ -493,7 +493,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    check_point_cache_with!(infer_name_reference, Self::_infer_name_reference, Name);
+    check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
