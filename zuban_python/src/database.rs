@@ -474,6 +474,10 @@ impl GenericsList {
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {
         self.0.get(index.0 as usize)
     }
+
+    pub fn iter(&self) -> std::slice::Iter<GenericPart> {
+        self.0.iter()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

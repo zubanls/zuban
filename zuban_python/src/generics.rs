@@ -24,7 +24,7 @@ pub enum Generics<'db, 'a> {
     None,
 }
 
-impl<'db> Generics<'db, '_> {
+impl<'db, 'a> Generics<'db, 'a> {
     pub fn new_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
         match slice_type {
             SliceType::NamedExpression(named) => Self::Expression(file, named.expression()),
@@ -96,13 +96,13 @@ impl<'db> Generics<'db, '_> {
         }
     }
 
-    pub fn iter(&self) -> GenericsIterator<'db> {
+    pub fn iter(&self) -> GenericsIterator<'db, 'a> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(slices) => todo!(),
             Self::InstanceWithArguments(_) => todo!(),
             Self::OnceCell(_) => todo!(),
-            Self::List(_) => todo!(),
+            Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::None => GenericsIterator::None,
         }
     }
@@ -148,12 +148,13 @@ impl<'db> Generics<'db, '_> {
     }
 }
 
-pub enum GenericsIterator<'db> {
+pub enum GenericsIterator<'db, 'a> {
+    GenericsList(std::slice::Iter<'a, GenericPart>),
     Expression(&'db PythonFile, Expression<'db>),
     None,
 }
 
-impl<'db> GenericsIterator<'db> {
+impl<'db> GenericsIterator<'db, '_> {
     pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
             Self::Expression(file, expr) => {
@@ -161,6 +162,9 @@ impl<'db> GenericsIterator<'db> {
                 *self = GenericsIterator::None;
                 Some(result)
             }
+            Self::GenericsList(iterator) => iterator
+                .next()
+                .map(|g| Inferred::from_generic_class(i_s.database, g)),
             GenericsIterator::None => None,
         }
     }
@@ -210,6 +214,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
         self.calculated_type_vars = Some(Box::new([]));
+        self.function.calculated_type_vars(i_s, self.args);
         for p in self
             .function
             .iter_inferrable_params(self.args, self.skip_first)
@@ -236,7 +241,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
                 */
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
-                    self.try_to_find(i_s, &part, &p)
+                    self.function
+                        .file
+                        .get_inference(i_s)
+                        .infer_annotation_expression(annotation.expression())
+                        .run(i_s, &mut |i_s, v| {
+                            let value = p.infer(i_s);
+                            v.class(i_s).infer_type_vars(
+                                i_s,
+                                value,
+                                self.calculated_type_vars.as_mut().unwrap(),
+                                self.match_specific,
+                            );
+                            todo!()
+                        });
+                    //self.try_to_find(i_s, &part, &p)
                 }
             }
         }

@@ -111,11 +111,10 @@ impl<'db, 'a> Class<'db, 'a> {
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
-                        dbg!(&generic);
-                        let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                        if generic.maybe_type_var(i_s).is_some() {
+                        if let Some(index) = generic.replace_type_vars(i_s, Some(&class), None) {
                             todo!("report pls: {:?} is {:?}", generic, v)
                         } else if let Some(cls) = generic.expect_class(i_s) {
+                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
                             cls.infer_type_vars(i_s, v, list, match_specific);
                             todo!()
                         }
@@ -240,6 +239,7 @@ impl<'db, 'a> Class<'db, 'a> {
         MroIterator {
             database: i_s.database,
             generics: &self.generics,
+            class: Some(self),
             iterator: class_infos.mro.iter(),
         }
     }
@@ -357,6 +357,7 @@ impl<'db> BasesIterator<'db> {
 struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: &'a Generics<'db, 'a>,
+    class: Option<&'a Class<'db, 'a>>,
     iterator: std::slice::Iter<'db, ClassWithTypeVarIndex>,
 }
 
@@ -364,12 +365,15 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
     type Item = Class<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
+        if self.class.is_some() {
+            return Some(std::mem::replace(&mut self.class, None).unwrap().clone());
+        }
         self.iterator.next().map(|c| {
             let file = self.database.get_loaded_python_file(c.class.file);
             Class::from_position(
                 file,
                 c.class.node_index,
-                Generics::None,
+                self.generics.clone(),
                 Some(&c.type_var_remap),
             )
             .unwrap()

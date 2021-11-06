@@ -116,7 +116,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn from_generic_class(db: &'db Database, generic: &'db GenericPart) -> Self {
+    pub fn from_generic_class(db: &'db Database, generic: &GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) => {
                 let node_reference = NodeReference::from_link(db, *link);
@@ -434,11 +434,11 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn replace_type_vars(
-        self,
+        &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         func_finder: Option<&mut TypeVarMatcher<'db, '_>>,
-    ) -> Self {
+    ) -> Option<Self> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::Specific {
                 match point.specific() {
@@ -447,13 +447,13 @@ impl<'db> Inferred<'db> {
                         todo!()
                     }
                     Specific::FunctionTypeVar => {
-                        return func_finder.unwrap().nth(i_s, point.type_var_index())
+                        return func_finder.map(|f| f.nth(i_s, point.type_var_index()))
                     }
                     _ => (),
                 }
             }
         }
-        self
+        None
     }
 
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
@@ -555,7 +555,7 @@ impl<'db> Inferred<'db> {
         let mut generics = Generics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.get_type() == PointType::Specific {
-                generics = self.expect_generics().unwrap();
+                generics = self.expect_generics().unwrap_or(Generics::None);
             }
         }
         self.expect_class_internal(i_s, generics)
@@ -581,7 +581,7 @@ impl<'db> Inferred<'db> {
                     }
                     _ => todo!("{:?}", point),
                 },
-                _ => unreachable!(),
+                _ => todo!(),
             },
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)

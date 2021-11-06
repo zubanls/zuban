@@ -153,7 +153,7 @@ impl<'db> Function<'db> {
         None
     }
 
-    fn calculated_type_vars(
+    pub fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -281,7 +281,9 @@ impl<'db> Value<'db> for Function<'db> {
                 debug!("Inferring generics for {:?}", self.get_node().short_debug());
                 let mut finder = func_type_vars
                     .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
-                inferred.replace_type_vars(i_s, class.as_ref(), finder.as_mut())
+                inferred
+                    .replace_type_vars(i_s, class.as_ref(), finder.as_mut())
+                    .unwrap_or(inferred)
             } else {
                 self.file
                     .get_inference(i_s)
