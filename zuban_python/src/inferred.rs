@@ -715,7 +715,7 @@ impl<'db> Inferred<'db> {
             InferredState::Saved(definition, point) => {
                 format!(
                     "{} (complex?: {:?})",
-                    definition.file.get_file_path(i_s.database),
+                    definition.file.file_path(i_s.database),
                     definition.get_complex(),
                 )
             }

@@ -100,7 +100,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 
     fn file_path(&self) -> &str {
-        self.database.get_file_path(self.file.file_index())
+        self.database.file_path(self.file.file_index())
     }
 
     fn start_position(&self) -> TreePosition<'db> {
@@ -170,17 +170,17 @@ impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
 
     fn file_path(&self) -> &str {
         todo!()
-        //self.value.get_file().get_path()
+        //self.value.file().get_path()
     }
 
     fn start_position(&self) -> TreePosition<'db> {
         todo!()
-        //TreePosition {file: self.value.get_file(), position: todo!()}
+        //TreePosition {file: self.value.file(), position: todo!()}
     }
 
     fn end_position(&self) -> TreePosition<'db> {
         todo!()
-        //TreePosition {file: self.value.get_file(), position: todo!()}
+        //TreePosition {file: self.value.file(), position: todo!()}
     }
 
     fn documentation(&self) -> String {

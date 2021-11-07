@@ -619,7 +619,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         } else {
                             todo!(
                                 "star import {} {:?} {:?}",
-                                self.file.get_file_path(self.i_s.database),
+                                self.file.file_path(self.i_s.database),
                                 name,
                                 self.file.byte_to_line_column(name.start())
                             )

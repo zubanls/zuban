@@ -61,7 +61,7 @@ pub enum ValueKind {
 pub trait Value<'db>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
-    //fn get_file(&self) -> &'db dyn File;
+    //fn file(&self) -> &'db dyn File;
 
     fn name(&self) -> &'db str;
 

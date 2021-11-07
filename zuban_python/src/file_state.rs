@@ -115,14 +115,14 @@ pub trait File: std::fmt::Debug + AsAny {
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 
-    fn get_file_path<'db>(&self, database: &'db Database) -> &'db str {
-        database.get_file_path(self.file_index())
+    fn file_path<'db>(&self, database: &'db Database) -> &'db str {
+        database.file_path(self.file_index())
     }
 }
 
 pub trait FileState: fmt::Debug {
     fn get_path(&self) -> &str;
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
+    fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
 }
 
@@ -131,7 +131,7 @@ impl<F: File> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn get_file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
+    fn file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
         match unsafe { &*self.state.get() } {
             InternalFileExistence::Missing => None,
             InternalFileExistence::Parsed(f) => Some(f),
@@ -145,7 +145,7 @@ impl<F: File> FileState for LanguageFileState<F> {
                     unsafe { *self.state.get() = InternalFileExistence::Missing };
                 }
 
-                let file = self.get_file(database);
+                let file = self.file(database);
                 file.unwrap().set_file_index(file_index);
                 file
             }

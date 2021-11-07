@@ -87,7 +87,7 @@ impl<'a> Script<'a> {
         let database = &mut project.database;
         database.acquire();
         let path = path.unwrap();
-        let file_index = database.get_file_state_index_by_path(&path);
+        let file_index = database.file_state_index_by_path(&path);
         let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
         Self {
             project,
@@ -98,25 +98,22 @@ impl<'a> Script<'a> {
     fn to_byte_position(&self, position: Position) -> CodeIndex {
         match position {
             Position::Byte(pos) => pos as u32,
-            Position::LineColumn(line, column) => self.get_file().line_column_to_byte(line, column),
+            Position::LineColumn(line, column) => self.file().line_column_to_byte(line, column),
         }
     }
 
-    fn get_file(&self) -> &dyn file_state::File {
+    fn file(&self) -> &dyn file_state::File {
         self.project
             .database
-            .get_file_state(self.file_index)
-            .get_file(&self.project.database)
+            .file_state(self.file_index)
+            .file(&self.project.database)
             .unwrap()
     }
 
     fn leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        let leaf = self.get_file().leaf(&self.project.database, pos);
-        debug!(
-            "File {}",
-            self.get_file().get_file_path(&self.project.database)
-        );
+        let leaf = self.file().leaf(&self.project.database, pos);
+        debug!("File {}", self.file().file_path(&self.project.database));
         debug!("Position {:?} is on leaf {:?}", position, leaf);
         leaf
     }
@@ -133,7 +130,7 @@ impl<'a> Script<'a> {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => self
-                .get_file()
+                .file()
                 .infer_operator_leaf(&self.project.database, keyword),
             Leaf::None | Leaf::String => todo!(),
         }
@@ -159,7 +156,7 @@ impl<'a> Script<'a> {
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
         let names = self.goto_definition(position, follow_imports);
-        self.get_file().get_implementation(names)
+        self.file().get_implementation(names)
     }
 
     pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
