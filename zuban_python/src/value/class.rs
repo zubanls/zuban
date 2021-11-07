@@ -64,7 +64,7 @@ impl<'db, 'a> Class<'db, 'a> {
         init.find_function_alternative()
     }
 
-    pub fn get_node(&self) -> ClassDef<'db> {
+    pub fn node(&self) -> ClassDef<'db> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
@@ -113,7 +113,7 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> Option<Inferred<'db>> {
         // TODO whyyy???
         let mut found_type_vars = vec![];
-        if let Some(arguments) = self.get_node().arguments() {
+        if let Some(arguments) = self.node().arguments() {
             // TODO search names will probably not be used anymore in the future
             for n in arguments.search_names() {
                 let inferred = self.reference.file.inference(i_s).infer_name(n);
@@ -158,7 +158,7 @@ impl<'db, 'a> Class<'db, 'a> {
         };
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
-        if let Some(arguments) = self.get_node().arguments() {
+        if let Some(arguments) = self.node().arguments() {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
@@ -245,7 +245,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
     }
 
     fn name(&self) -> &'db str {
-        self.get_node().name().as_str()
+        self.node().name().as_str()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

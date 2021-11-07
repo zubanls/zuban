@@ -23,7 +23,7 @@ impl<'db> fmt::Debug for Function<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Inferred")
             .field("file", self.reference.file)
-            .field("node", &self.get_node())
+            .field("node", &self.node())
             .finish()
     }
 }
@@ -44,7 +44,7 @@ impl<'db> Function<'db> {
         })
     }
 
-    fn get_node(&self) -> FunctionDef<'db> {
+    fn node(&self) -> FunctionDef<'db> {
         FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
@@ -53,7 +53,7 @@ impl<'db> Function<'db> {
         args: &'a dyn Arguments<'db>,
         skip_first_param: bool,
     ) -> InferrableParamIterator<'db, 'a> {
-        let mut params = self.get_node().params().iter();
+        let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
         }
@@ -162,7 +162,7 @@ impl<'db> Function<'db> {
         }
         let class_infos = args.class_of_method(i_s).map(|c| c.get_class_infos(i_s));
         let mut found_type_vars = vec![];
-        let func_node = self.get_node();
+        let func_node = self.node();
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 self.search_type_vars(
@@ -248,7 +248,7 @@ impl<'db> Value<'db> for Function<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        if let Some(return_annotation) = self.get_node().annotation() {
+        if let Some(return_annotation) = self.node().annotation() {
             let i_s = &mut i_s.with_annotation_instance();
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
@@ -256,7 +256,7 @@ impl<'db> Value<'db> for Function<'db> {
                 let inferred = self.reference.file.inference(i_s).infer_expression(expr);
                 let class = args.class_of_method(i_s);
                 // TODO use t
-                debug!("Inferring generics for {:?}", self.get_node().short_debug());
+                debug!("Inferring generics for {:?}", self.node().short_debug());
                 let finder = func_type_vars
                     .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
                 inferred
