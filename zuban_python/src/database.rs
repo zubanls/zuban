@@ -197,7 +197,7 @@ impl Point {
         (self.flags & IS_ANALIZED_MASK) != 0
     }
 
-    pub fn is_calculating(self) -> bool {
+    pub fn calculating(self) -> bool {
         self.flags == 1
     }
 
@@ -253,8 +253,8 @@ impl Point {
 impl fmt::Debug for Point {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("Point");
-        if self.is_calculating() {
-            s.field("is_calculating", &self.is_calculating());
+        if self.calculating() {
+            s.field("calculating", &self.calculating());
         } else if !self.calculated() {
             s.field("calculated", &self.calculated());
         } else {

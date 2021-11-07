@@ -584,7 +584,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             })
             .or_else(|| {
-                if point.is_calculating() {
+                if point.calculating() {
                     todo!("Set recursion error and return that");
                 }
                 None
