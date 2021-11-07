@@ -28,7 +28,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
             .infer_named_expression(named_expr)
     }
 
-    fn get_list(&self) -> List<'db> {
+    fn list_node(&self) -> List<'db> {
         List::by_index(
             &self.node_reference.file.tree,
             self.node_reference.node_index,
@@ -45,7 +45,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
         } else {
             let mut result = GenericPart::Unknown;
             let ptr = &mut result;
-            match self.get_list().unpack() {
+            match self.list_node().unpack() {
                 ListContent::Elements(elements) => {
                     for child in elements {
                         match child {
@@ -96,7 +96,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         match slice_type {
             SliceType::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
-                    match self.get_list().unpack() {
+                    match self.list_node().unpack() {
                         ListContent::Elements(elements) => {
                             for (i, child) in elements.enumerate() {
                                 match child {
@@ -117,7 +117,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
                         ListContent::None => todo!(),
                     };
                 }
-                match self.get_list().unpack() {
+                match self.list_node().unpack() {
                     ListContent::Elements(mut elements) => {
                         let mut inferred = match elements.next().unwrap() {
                             ListElement::NamedExpression(named_expr) => {
