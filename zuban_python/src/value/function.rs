@@ -11,20 +11,18 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::generics::TypeVarMatcher;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred};
+use crate::inferred::{Inferrable, Inferred, NodeReference};
 
 pub struct Function<'db> {
-    pub file: &'db PythonFile,
-    node_index: NodeIndex,
+    pub reference: NodeReference<'db>,
 }
 
 impl<'db> fmt::Debug for Function<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Inferred")
-            .field("file", self.file)
+            .field("file", self.reference.file)
             .field("node", &self.get_node())
             .finish()
     }
@@ -34,17 +32,20 @@ impl<'db> Function<'db> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        Self { file, node_index }
+    pub fn new(reference: NodeReference<'db>) -> Self {
+        Self { reference }
     }
 
     pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
         let f_func = database.get_loaded_python_file(execution.function.file);
-        Function::new(f_func, execution.function.node_index)
+        Function::new(NodeReference {
+            file: f_func,
+            node_index: execution.function.node_index,
+        })
     }
 
     fn get_node(&self) -> FunctionDef<'db> {
-        FunctionDef::by_index(&self.file.tree, self.node_index)
+        FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
     pub fn iter_inferrable_params<'a>(
@@ -65,10 +66,11 @@ impl<'db> Function<'db> {
         param_name_index: NodeIndex,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let func_node = FunctionDef::from_param_name_index(&self.file.tree, param_name_index);
+        let func_node =
+            FunctionDef::from_param_name_index(&self.reference.file.tree, param_name_index);
         let temporary_args;
         let temporary_func;
-        let (check_args, func) = if func_node.index() == self.node_index {
+        let (check_args, func) = if func_node.index() == self.reference.node_index {
             (args, self)
         } else {
             let mut execution = args.get_outer_execution();
@@ -106,6 +108,7 @@ impl<'db> Function<'db> {
                 // TODO multiple returns, this is an early exit
                 {
                     return self
+                        .reference
                         .file
                         .get_inference(&mut inner_i_s)
                         .infer_star_expressions(ret.star_expressions())
@@ -118,10 +121,14 @@ impl<'db> Function<'db> {
     }
 
     fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
-        let def_point = self.file.points.get(self.node_index + 1);
+        let def_point = self
+            .reference
+            .file
+            .points
+            .get(self.reference.node_index + 1);
         let first_return_or_yield = def_point.get_node_index();
         ReturnOrYieldIterator {
-            file: self.file,
+            file: self.reference.file,
             next_node_index: first_return_or_yield,
         }
     }
@@ -135,10 +142,6 @@ impl<'db> Function<'db> {
         false
     }
 
-    pub fn as_point_link(&self) -> PointLink {
-        PointLink::new(self.file.get_file_index(), self.node_index)
-    }
-
     pub fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -147,12 +150,15 @@ impl<'db> Function<'db> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
         // + 1 for def; + 2 for name + 1 for (
-        let def_node_index = self.node_index + 4;
-        let p = self.file.points.get(def_node_index);
+        let def_node_index = self.reference.node_index + 4;
+        let p = self.reference.file.points.get(def_node_index);
         if p.is_calculated() {
             if p.get_type() == PointType::Complex {
-                if let ComplexPoint::FunctionTypeVars(vars) =
-                    self.file.complex_points.get(p.get_complex_index())
+                if let ComplexPoint::FunctionTypeVars(vars) = self
+                    .reference
+                    .file
+                    .complex_points
+                    .get(p.get_complex_index())
                 {
                     return Some(vars);
                 }
@@ -182,16 +188,22 @@ impl<'db> Function<'db> {
         }
         match found_type_vars.len() {
             0 => self
+                .reference
                 .file
                 .points
                 .set(def_node_index, Point::new_node_analysis(Locality::Stmt)),
-            _ => self.file.complex_points.insert(
-                &self.file.points,
+            _ => self.reference.file.complex_points.insert(
+                &self.reference.file.points,
                 def_node_index,
                 ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
             ),
         }
-        debug_assert!(self.file.points.get(def_node_index).is_calculated());
+        debug_assert!(self
+            .reference
+            .file
+            .points
+            .get(def_node_index)
+            .is_calculated());
         self.calculated_type_vars(i_s, args)
     }
 
@@ -204,13 +216,18 @@ impl<'db> Function<'db> {
     ) {
         for n in expression.search_names() {
             if matches!(n.parent(), NameParent::Atom) {
-                let inferred = self.file.get_inference(i_s).infer_name_reference(n);
+                let inferred = self
+                    .reference
+                    .file
+                    .get_inference(i_s)
+                    .infer_name_reference(n);
                 if let Some(definition) = inferred.maybe_type_var(i_s) {
                     let link = definition.as_link();
                     if let Some(class_infos) = class_infos {
                         if let Some(index) = class_infos.find_type_var_index(link) {
                             // Overwrite with a better type var definition.
-                            self.file
+                            self.reference
+                                .file
                                 .points
                                 .set(n.index(), Point::new_class_type_var(index, Locality::Stmt));
                             continue;
@@ -222,7 +239,7 @@ impl<'db> Function<'db> {
                         found_type_vars.push(link);
                     };
                     let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
-                    self.file.points.set(
+                    self.reference.file.points.set(
                         n.index(),
                         Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
                     );
@@ -238,7 +255,7 @@ impl<'db> Value<'db> for Function<'db> {
     }
 
     fn get_name(&self) -> &'db str {
-        let func = FunctionDef::by_index(&self.file.tree, self.node_index);
+        let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
         func.name().as_str()
     }
 
@@ -255,8 +272,12 @@ impl<'db> Value<'db> for Function<'db> {
             let i_s = &mut i_s.with_annotation_instance();
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
-            if contains_type_vars(self.file, &expr) {
-                let inferred = self.file.get_inference(i_s).infer_expression(expr);
+            if contains_type_vars(self.reference.file, &expr) {
+                let inferred = self
+                    .reference
+                    .file
+                    .get_inference(i_s)
+                    .infer_expression(expr);
                 let class = args.class_of_method(i_s);
                 // TODO use t
                 debug!("Inferring generics for {:?}", self.get_node().short_debug());
@@ -277,7 +298,8 @@ impl<'db> Value<'db> for Function<'db> {
                     })
                     .unwrap_or(inferred)
             } else {
-                self.file
+                self.reference
+                    .file
                     .get_inference(i_s)
                     .infer_annotation_expression(expr)
             }

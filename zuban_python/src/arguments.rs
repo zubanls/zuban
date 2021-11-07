@@ -45,7 +45,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
     fn as_execution(&self, function: &Function) -> Execution {
         Execution::new(
-            function.as_point_link(),
+            function.reference.as_link(),
             PointLink::new(self.file.get_file_index(), self.primary_node.index()),
             self.in_,
         )

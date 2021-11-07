@@ -153,9 +153,7 @@ impl<'db> Inferred<'db> {
                 PointType::Specific => {
                     let specific = point.specific();
                     match specific {
-                        Specific::Function => {
-                            callable(i_s, &Function::new(definition.file, definition.node_index))
-                        }
+                        Specific::Function => callable(i_s, &Function::new(*definition)),
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
@@ -287,8 +285,7 @@ impl<'db> Inferred<'db> {
                 .reduce(reducer)
                 .unwrap(),
             ComplexPoint::BoundMethod(instance_link, func_link) => {
-                let file = i_s.database.get_loaded_python_file(func_link.file);
-                let func = Function::new(file, func_link.node_index);
+                let func = Function::new(NodeReference::from_link(i_s.database, *func_link));
                 callable(i_s, &BoundMethod::new(instance_link, &func))
             }
             ComplexPoint::Closure(function, execution) => {
@@ -297,16 +294,8 @@ impl<'db> Inferred<'db> {
                 let args = SimpleArguments::from_execution(i_s.database, execution);
                 callable(
                     &mut i_s.with_func_and_args(&func, &args),
-                    &Function::new(f, function.node_index),
+                    &Function::new(NodeReference::from_link(i_s.database, *function)),
                 )
-                /*
-                // TODO WHY IS THIS NOT WORKING???
-                i_s.run_with_execution(execution, |closure_i_s| {
-                    let x: () = closure_i_s;
-                    //callable(closure_i_s, &Function::new(f, function.node_index));
-                    todo!()
-                })
-                */
             }
             ComplexPoint::GenericClass(foo, bla) => {
                 todo!()
@@ -622,7 +611,7 @@ impl<'db> Inferred<'db> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let PointType::Specific = point.get_type() {
                 if let Specific::Function = point.specific() {
-                    return Function::new(definition.file, definition.node_index);
+                    return Function::new(*definition);
                 }
             }
         }

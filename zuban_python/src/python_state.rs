@@ -35,7 +35,7 @@ impl PythonState {
         let obj = Module::new(builtins).lookup(&mut i_s, "object");
         let init = obj.run_on_value(&mut i_s, &mut |i_s, v| v.lookup(i_s, "__init__"));
         let func = init.find_function_alternative();
-        let link = func.as_point_link();
+        let link = func.reference.as_link();
         assert_eq!(
             builtins.points.get(link.node_index).get_type(),
             PointType::Specific

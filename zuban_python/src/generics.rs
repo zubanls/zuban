@@ -231,6 +231,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(annotation) = p.param.annotation() {
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     self.function
+                        .reference
                         .file
                         .get_inference(i_s)
                         .infer_annotation_expression(annotation.expression())
