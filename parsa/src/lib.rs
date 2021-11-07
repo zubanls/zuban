@@ -172,7 +172,7 @@ macro_rules! __create_node {
             }
 
             pub fn get_code(&self) -> &'a str {
-                self.get_code_slice(self.internal_node.start_index, self.internal_node.length)
+                self.code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
             pub fn get_prefix(&self) -> &'a str {
@@ -182,7 +182,7 @@ macro_rules! __create_node {
                 } else {
                     start = self.internal_tree.nodes[self.index as usize - 1].start_index;
                 }
-                let string = self.get_code_slice(start, self.internal_node.start_index);
+                let string = self.code_slice(start, self.internal_node.start_index);
                 string
             }
 
@@ -193,7 +193,7 @@ macro_rules! __create_node {
                 } else {
                     end = self.internal_tree.nodes[self.index as usize + 1].start_index
                 }
-                let string = self.get_code_slice(
+                let string = self.code_slice(
                     self.internal_node.start_index + self.internal_node.length,
                     end
                 );
@@ -216,7 +216,7 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_leaf()
             }
 
-            fn get_code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {
+            fn code_slice(&self, index: $crate::CodeIndex, length: $crate::CodeLength) -> &'a str {
                 use std::str;
                 // Can be unsafe, because the input of the parse function is a
                 // String that is copied to the internal tree.
