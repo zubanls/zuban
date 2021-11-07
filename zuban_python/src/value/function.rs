@@ -151,7 +151,7 @@ impl<'db> Function<'db> {
         // storage.
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.reference.add_to_node_index(4);
-        if type_var_reference.get_point().is_calculated() {
+        if type_var_reference.get_point().calculated() {
             if let Some(complex) = type_var_reference.get_complex() {
                 match complex {
                     ComplexPoint::FunctionTypeVars(vars) => return Some(vars),
@@ -187,7 +187,7 @@ impl<'db> Function<'db> {
                 found_type_vars.into_boxed_slice(),
             )),
         }
-        debug_assert!(type_var_reference.get_point().is_calculated());
+        debug_assert!(type_var_reference.get_point().calculated());
         self.calculated_type_vars(i_s, args)
     }
 

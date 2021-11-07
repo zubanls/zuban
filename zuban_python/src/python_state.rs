@@ -87,7 +87,7 @@ fn typing_changes(typing: &PythonFile) {
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
-    debug_assert!(!typing.points.get(node_index).is_calculated());
+    debug_assert!(!typing.points.get(node_index).calculated());
     typing.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),

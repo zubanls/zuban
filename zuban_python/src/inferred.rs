@@ -596,7 +596,7 @@ impl<'db> Inferred<'db> {
         // TODO this locality should be calculated in a more correct way
         match &self.state {
             InferredState::Saved(definition, point) => {
-                if file.points.get(index).is_calculated() {
+                if file.points.get(index).calculated() {
                     todo!("{:?} {:?}", file.points.get(index), index);
                 }
                 file.points.set(

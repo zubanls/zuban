@@ -143,7 +143,7 @@ impl<'db> PythonFile {
     }
 
     pub fn calculate_global_definitions_and_references(&self) {
-        if self.points.get(0).is_calculated() {
+        if self.points.get(0).calculated() {
             // It was already done.
             return;
         }
@@ -344,7 +344,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());
-                if point.is_calculated() {
+                if point.calculated() {
                     // Save on name_definition
                     debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
                     value.clone().save_redirect(self.file, n.index() - 1);
@@ -505,14 +505,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_unknown(self.file_index, Locality::File)
         };
         self.file.points.set_on_name(&name, point);
-        debug_assert!(self.file.points.get(name.index()).is_calculated());
+        debug_assert!(self.file.points.get(name.index()).calculated());
         self.infer_name_reference(name)
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
         let point = self.file.points.get(node_index);
         point
-            .is_calculated()
+            .calculated()
             .then(|| match point.get_type() {
                 PointType::Redirect => {
                     let file_index = point.get_file_index();
@@ -547,7 +547,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let func = name.expect_function_def();
                         self.file.calculate_function_scope_definitions(func);
                         let point = self.file.points.get(node_index);
-                        debug_assert!(point.is_calculated());
+                        debug_assert!(point.calculated());
                         self.check_point_cache(node_index).unwrap()
                     }
                     Specific::LazyInferredClass => {
@@ -564,7 +564,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             name_index,
                             Point::new_redirect(self.file_index, class.index(), Locality::Stmt),
                         );
-                        debug_assert!(self.file.points.get(node_index).is_calculated());
+                        debug_assert!(self.file.points.get(node_index).calculated());
                         self.check_point_cache(node_index).unwrap()
                     }
                     _ => Inferred::new_saved(self.file, node_index, point),
@@ -608,7 +608,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
         let stmt_like = name.expect_stmt_like_ancestor();
 
-        if !self.file.points.get(stmt_like.index()).is_calculated() {
+        if !self.file.points.get(stmt_like.index()).calculated() {
             match stmt_like {
                 StmtLike::Stmt(stmt) => {
                     if name.is_reference() {
@@ -632,7 +632,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
         debug_assert!(
-            self.file.points.get(name.index()).is_calculated(),
+            self.file.points.get(name.index()).calculated(),
             "{:?}",
             name
         );

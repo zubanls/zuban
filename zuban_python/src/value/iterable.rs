@@ -37,7 +37,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
 
     fn get_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
         let reference = self.node_reference.add_to_node_index(1);
-        if reference.get_point().is_calculated() {
+        if reference.get_point().calculated() {
             match reference.get_complex().unwrap() {
                 ComplexPoint::GenericClass(_, list) => list,
                 _ => unreachable!(),

@@ -193,7 +193,7 @@ impl Point {
         unsafe { mem::transmute((self.flags & LOCALITY_MASK) >> LOCALITY_BIT_INDEX) }
     }
 
-    pub fn is_calculated(self) -> bool {
+    pub fn calculated(self) -> bool {
         (self.flags & IS_ANALIZED_MASK) != 0
     }
 
@@ -255,8 +255,8 @@ impl fmt::Debug for Point {
         let mut s = f.debug_struct("Point");
         if self.is_calculating() {
             s.field("is_calculating", &self.is_calculating());
-        } else if !self.is_calculated() {
-            s.field("is_calculated", &self.is_calculated());
+        } else if !self.calculated() {
+            s.field("calculated", &self.calculated());
         } else {
             s.field("type", &self.get_type())
                 .field("locality", &self.get_locality())
@@ -294,7 +294,7 @@ impl Points {
         debug_assert!(point.get_type() != PointType::MultiDefinition);
         let mut index = name.index();
         let current = self.get(index);
-        if current.is_calculated() && current.get_type() == PointType::MultiDefinition {
+        if current.calculated() && current.get_type() == PointType::MultiDefinition {
             index -= 1 // Set it on NameDefinition
         }
         self.set(index, point);
