@@ -103,7 +103,7 @@ pub trait File: std::fmt::Debug + AsAny {
     fn get_implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }
-    fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db>;
+    fn leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db>;
     fn infer_operator_leaf<'db>(
         &'db self,
         database: &'db Database,

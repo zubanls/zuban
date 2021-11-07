@@ -43,7 +43,7 @@ impl File for PythonFile {
         todo!()
     }
 
-    fn get_leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
+    fn leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
         match NameOrKeywordLookup::from_position(&self.tree, position) {
             NameOrKeywordLookup::Name(name) => {
                 Leaf::Name(Box::new(TreeName::new(database, self, name)))

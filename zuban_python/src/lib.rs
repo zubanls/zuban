@@ -110,9 +110,9 @@ impl<'a> Script<'a> {
             .unwrap()
     }
 
-    fn get_leaf(&self, position: Position) -> Leaf {
+    fn leaf(&self, position: Position) -> Leaf {
         let pos = self.to_byte_position(position);
-        let leaf = self.get_file().get_leaf(&self.project.database, pos);
+        let leaf = self.get_file().leaf(&self.project.database, pos);
         debug!(
             "File {}",
             self.get_file().get_file_path(&self.project.database)
@@ -129,7 +129,7 @@ impl<'a> Script<'a> {
         position: Position,
     ) -> impl Iterator<Item = T> {
         let mut i_s = InferenceState::new(&self.project.database);
-        match self.get_leaf(position) {
+        match self.leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => self
@@ -149,7 +149,7 @@ impl<'a> Script<'a> {
     */
 
     pub fn goto_definition(&self, position: Position, follow_imports: bool) -> Names {
-        match self.get_leaf(position) {
+        match self.leaf(position) {
             Leaf::Name(name) => name.goto(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => todo!(),

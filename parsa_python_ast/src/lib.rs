@@ -1789,7 +1789,7 @@ impl<'db> Iterator for TargetIterator<'db> {
 impl<'db> NameOrKeywordLookup<'db> {
     pub fn from_position(tree: &'db Tree, position: CodeIndex) -> Self {
         // First check the token left and right of the cursor
-        let mut left = tree.0.get_leaf_by_position(position);
+        let mut left = tree.0.leaf_by_position(position);
         let mut right = left;
         if left.start() == position {
             if let Some(n) = left.previous_leaf() {
