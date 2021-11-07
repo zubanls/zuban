@@ -36,21 +36,9 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
     }
 
     fn get_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
-        let class_node_index = self.node_reference.node_index + 1;
-        if self
-            .node_reference
-            .file
-            .points
-            .get(class_node_index)
-            .is_calculated()
-        {
-            match self
-                .node_reference
-                .file
-                .complex_points
-                .by_node_index(&self.node_reference.file.points, class_node_index)
-                .unwrap()
-            {
+        let reference = self.node_reference.add_to_node_index(1);
+        if reference.get_point().is_calculated() {
+            match reference.get_complex().unwrap() {
                 ComplexPoint::GenericClass(_, list) => list,
                 _ => unreachable!(),
             }
@@ -78,14 +66,10 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                 ListContent::Comprehension(_) => unreachable!(),
                 ListContent::None => todo!(),
             };
-            self.node_reference.file.complex_points.insert(
-                &self.node_reference.file.points,
-                class_node_index,
-                ComplexPoint::GenericClass(
-                    i_s.database.python_state.builtins_point_link("list"),
-                    GenericsList::new(Box::new([result])),
-                ),
-            );
+            reference.insert_complex(ComplexPoint::GenericClass(
+                i_s.database.python_state.builtins_point_link("list"),
+                GenericsList::new(Box::new([result])),
+            ));
             self.get_generic_part(i_s)
         }
     }

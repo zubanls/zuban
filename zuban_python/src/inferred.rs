@@ -48,17 +48,31 @@ impl<'db> NodeReference<'db> {
         }
     }
 
+    pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
+        Self::new(self.file, self.node_index + add)
+    }
+
     pub fn get_point(&self) -> Point {
         self.file.points.get(self.node_index)
     }
 
-    fn get_complex(&self) -> Option<&'db ComplexPoint> {
+    pub fn set_point(&self, point: Point) {
+        self.file.points.set(self.node_index, point)
+    }
+
+    pub fn get_complex(&self) -> Option<&'db ComplexPoint> {
         let point = self.get_point();
         if let PointType::Complex = point.get_type() {
             Some(self.file.complex_points.get(point.get_complex_index()))
         } else {
             None
         }
+    }
+
+    pub fn insert_complex(&self, complex: ComplexPoint) {
+        self.file
+            .complex_points
+            .insert(&self.file.points, self.node_index, complex);
     }
 
     pub fn as_link(&self) -> PointLink {
@@ -705,12 +719,10 @@ impl<'db> Inferred<'db> {
     pub fn debug_info(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         let details = match &self.state {
             InferredState::Saved(definition, point) => {
-                let file = definition.file;
                 format!(
                     "{} (complex?: {:?})",
-                    file.get_file_path(i_s.database),
-                    file.complex_points
-                        .by_node_index(&file.points, definition.node_index)
+                    definition.file.get_file_path(i_s.database),
+                    definition.get_complex(),
                 )
             }
             _ => "".to_owned(),

@@ -41,12 +41,12 @@ impl<'db, 'a> Generics<'db, 'a> {
             }
             Self::Slices(slices) => todo!(),
             Self::InstanceWithArguments(reference) => {
-                let class_node_index = reference.node_index + 1;
-                let point = reference.file.points.get(class_node_index);
+                let class_reference = reference.add_to_node_index(1);
+                let point = class_reference.get_point();
                 match point.get_type() {
                     PointType::Complex => {
                         if let ComplexPoint::GenericClass(_, generics) =
-                            reference.file.complex_points.get(point.get_complex_index())
+                            class_reference.get_complex().unwrap()
                         {
                             generics
                                 .nth(n)
@@ -83,11 +83,10 @@ impl<'db, 'a> Generics<'db, 'a> {
 
                             // After we know the generics we simply replace the old class of
                             // InstanceWithArguments with a complex value that includes generics.
-                            reference.file.complex_points.insert(
-                                &reference.file.points,
-                                class_node_index,
-                                ComplexPoint::GenericClass(cls.reference.as_link(), list),
-                            );
+                            class_reference.insert_complex(ComplexPoint::GenericClass(
+                                cls.reference.as_link(),
+                                list,
+                            ));
                             //ComplexPoint::Instance(PointLink, CalculableGenericsList, Box<Execution>),
                             self.nth(i_s, n)
                         } else {

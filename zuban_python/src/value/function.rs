@@ -150,17 +150,12 @@ impl<'db> Function<'db> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
         // + 1 for def; + 2 for name + 1 for (
-        let def_node_index = self.reference.node_index + 4;
-        let p = self.reference.file.points.get(def_node_index);
-        if p.is_calculated() {
-            if p.get_type() == PointType::Complex {
-                if let ComplexPoint::FunctionTypeVars(vars) = self
-                    .reference
-                    .file
-                    .complex_points
-                    .get(p.get_complex_index())
-                {
-                    return Some(vars);
+        let type_var_reference = self.reference.add_to_node_index(4);
+        if type_var_reference.get_point().is_calculated() {
+            if let Some(complex) = type_var_reference.get_complex() {
+                match complex {
+                    ComplexPoint::FunctionTypeVars(vars) => return Some(vars),
+                    _ => unreachable!(),
                 }
             }
             return None;
@@ -187,23 +182,12 @@ impl<'db> Function<'db> {
             );
         }
         match found_type_vars.len() {
-            0 => self
-                .reference
-                .file
-                .points
-                .set(def_node_index, Point::new_node_analysis(Locality::Stmt)),
-            _ => self.reference.file.complex_points.insert(
-                &self.reference.file.points,
-                def_node_index,
-                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
-            ),
+            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Stmt)),
+            _ => type_var_reference.insert_complex(ComplexPoint::FunctionTypeVars(
+                found_type_vars.into_boxed_slice(),
+            )),
         }
-        debug_assert!(self
-            .reference
-            .file
-            .points
-            .get(def_node_index)
-            .is_calculated());
+        debug_assert!(type_var_reference.get_point().is_calculated());
         self.calculated_type_vars(i_s, args)
     }
 

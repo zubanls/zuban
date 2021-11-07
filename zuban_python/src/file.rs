@@ -24,15 +24,6 @@ lazy_static::lazy_static! {
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
-    pub fn by_node_index(&self, points: &Points, node_index: NodeIndex) -> Option<&ComplexPoint> {
-        let point = points.get(node_index);
-        if let PointType::Complex = point.get_type() {
-            Some(self.get(point.get_complex_index()))
-        } else {
-            None
-        }
-    }
-
     pub fn get(&self, index: usize) -> &ComplexPoint {
         self.0.get(index).unwrap()
     }
