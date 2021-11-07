@@ -718,7 +718,7 @@ impl Workspace {
                     .last_mut()
                     .unwrap()
                     .1
-                    .get_directory_entries_mut()
+                    .directory_entries_mut()
                     .unwrap()
                     .push(n);
             }
@@ -736,7 +736,7 @@ impl Workspace {
                                 .last_mut()
                                 .unwrap()
                                 .1
-                                .get_directory_entries_mut()
+                                .directory_entries_mut()
                                 .unwrap()
                                 .push(DirectoryOrFile::File(
                                     name.to_owned(),
@@ -753,11 +753,7 @@ impl Workspace {
         }
         while let Some(current) = stack.pop() {
             if let Some(parent) = stack.last_mut() {
-                parent
-                    .1
-                    .get_directory_entries_mut()
-                    .unwrap()
-                    .push(current.1)
+                parent.1.directory_entries_mut().unwrap().push(current.1)
             } else {
                 return Self { root: current.1 };
             }
@@ -801,14 +797,14 @@ impl DirectoryOrFile {
         }
     }
 
-    pub fn get_directory_entries(&self) -> Option<&[DirectoryOrFile]> {
+    pub fn directory_entries(&self) -> Option<&[DirectoryOrFile]> {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,
         }
     }
 
-    pub fn get_directory_entries_mut(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
+    pub fn directory_entries_mut(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,

@@ -11,7 +11,7 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
         database.workspaces.iter().map(|x| {
             (
                 x.get_root().name(),
-                x.get_root().get_directory_entries().unwrap(),
+                x.get_root().directory_entries().unwrap(),
             )
         }),
         name,
