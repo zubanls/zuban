@@ -685,7 +685,7 @@ macro_rules! create_grammar {
                 ).collect()
             }
 
-            pub fn get_node_by_index(&self, index: $crate::NodeIndex) -> $Node {
+            pub fn node_by_index(&self, index: $crate::NodeIndex) -> $Node {
                 self.node(index, &self.internal_tree.nodes[index as usize])
             }
 

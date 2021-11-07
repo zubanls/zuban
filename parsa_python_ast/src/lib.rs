@@ -82,12 +82,12 @@ macro_rules! create_struct {
 
             #[inline]
             pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
-                Self::new(tree.0.get_node_by_index(index))
+                Self::new(tree.0.node_by_index(index))
             }
 
             #[inline]
             pub fn maybe_by_index(tree: &'db Tree, node_index: NodeIndex) -> Option<Self> {
-                let node = tree.0.get_node_by_index(node_index);
+                let node = tree.0.node_by_index(node_index);
                 node.is_type($type).then(|| Self::new(node))
             }
 
@@ -1045,7 +1045,7 @@ impl<'db> FunctionDef<'db> {
     pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
         Self::new(
             tree.0
-                .get_node_by_index(param_name_index)
+                .node_by_index(param_name_index)
                 .parent_until(&[Nonterminal(function_def)])
                 .unwrap(),
         )
@@ -1535,7 +1535,7 @@ pub enum ReturnOrYield<'db> {
 impl<'db> ReturnOrYield<'db> {
     #[inline]
     pub fn by_index(tree: &'db Tree, index: NodeIndex) -> Self {
-        let node = tree.0.get_node_by_index(index);
+        let node = tree.0.node_by_index(index);
         if node.is_type(Nonterminal(return_stmt)) {
             ReturnOrYield::Return(ReturnStmt::new(node))
         } else {
