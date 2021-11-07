@@ -240,7 +240,7 @@ macro_rules! __create_node {
                 }
             }
 
-            pub fn get_nth_child(&self, index: usize) -> $Node<'a> {
+            pub fn nth_child(&self, index: usize) -> $Node<'a> {
                 debug_assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.get_type());
                 self.iter_children().skip(index).next().expect("There is no child")
             }

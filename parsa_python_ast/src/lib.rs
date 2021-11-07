@@ -384,7 +384,7 @@ impl<'db> File<'db> {
 
 impl<'db> List<'db> {
     pub fn unpack(&self) -> ListContent<'db> {
-        let n = self.node.get_nth_child(1);
+        let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
             ListContent::Elements(ListElementIterator(n.iter_children().step_by(2)))
         } else if n.is_type(Nonterminal(comprehension)) {
@@ -512,11 +512,11 @@ impl<'db> NamedExpression<'db> {
     }
 
     pub fn unpack(self) -> NamedExpressionContent<'db> {
-        let node = self.node.get_nth_child(0);
+        let node = self.node.nth_child(0);
         if node.is_type(Nonterminal(expression)) {
             NamedExpressionContent::Expression(Expression::new(node))
         } else {
-            let expr = node.get_nth_child(2);
+            let expr = node.nth_child(2);
             NamedExpressionContent::Definition(NameDefinition::new(node), Expression::new(expr))
         }
     }
@@ -593,7 +593,7 @@ impl<'db> Iterator for StmtIterator<'db> {
 
 impl<'db> ElseBlock<'db> {
     pub fn block(&self) -> Block<'db> {
-        Block::new(self.node.get_nth_child(1))
+        Block::new(self.node.nth_child(1))
     }
 }
 
@@ -676,7 +676,7 @@ impl<'db> Iterator for IfBlockIterator<'db> {
                 let block_ = self.0.next().unwrap();
                 return Some(Self::Item::If(NamedExpression::new(n), Block::new(block_)));
             } else if n.is_type(Nonterminal(else_block)) {
-                return Some(Self::Item::Else(Block::new(n.get_nth_child(2))));
+                return Some(Self::Item::Else(Block::new(n.nth_child(2))));
             }
         }
         None
@@ -722,7 +722,7 @@ impl<'db> Iterator for TryBlockIterator<'db> {
 
 impl<'db> FinallyBlock<'db> {
     pub fn block(&self) -> Block<'db> {
-        Block::new(self.node.get_nth_child(2))
+        Block::new(self.node.nth_child(2))
     }
 }
 
@@ -749,7 +749,7 @@ impl<'db> ExceptBlock<'db> {
 
 impl<'db> Stmt<'db> {
     pub fn as_simple_stmts(&self) -> Option<SimpleStmts<'db>> {
-        let child = self.node.get_nth_child(0);
+        let child = self.node.nth_child(0);
         if child.is_type(Nonterminal(simple_stmts)) {
             Some(SimpleStmts::new(child))
         } else {
@@ -759,7 +759,7 @@ impl<'db> Stmt<'db> {
 
     #[inline]
     pub fn unpack(&self) -> StmtContent<'db> {
-        let child = self.node.get_nth_child(0);
+        let child = self.node.nth_child(0);
         if child.is_type(Nonterminal(simple_stmts)) {
             StmtContent::SimpleStmts(SimpleStmts::new(child))
         } else if child.is_type(Nonterminal(function_def)) {
@@ -806,14 +806,14 @@ pub enum StmtContent<'db> {
 
 impl<'db> Decorated<'db> {
     pub fn decoratee(&self) -> Decoratee<'db> {
-        let decoratee = self.node.get_nth_child(1);
+        let decoratee = self.node.nth_child(1);
         if decoratee.is_type(Nonterminal(function_def)) {
             Decoratee::FunctionDef(FunctionDef::new(decoratee))
         } else if decoratee.is_type(Nonterminal(class_def)) {
             Decoratee::ClassDef(ClassDef::new(decoratee))
         } else {
             debug_assert_eq!(decoratee.get_type(), Nonterminal(async_function_def));
-            Decoratee::AsyncFunctionDef(FunctionDef::new(decoratee.get_nth_child(1)))
+            Decoratee::AsyncFunctionDef(FunctionDef::new(decoratee.nth_child(1)))
         }
     }
 }
@@ -826,7 +826,7 @@ pub enum Decoratee<'db> {
 
 impl<'db> AsyncStmt<'db> {
     pub fn unpack(&self) -> AsyncStmtContent<'db> {
-        let child = self.node.get_nth_child(1);
+        let child = self.node.nth_child(1);
         if child.is_type(Nonterminal(function_def)) {
             AsyncStmtContent::FunctionDef(FunctionDef::new(child))
         } else if child.is_type(Nonterminal(for_stmt)) {
@@ -862,7 +862,7 @@ impl<'db> Iterator for SimpleStmtIterator<'db> {
 
 impl<'db> SimpleStmt<'db> {
     pub fn unpack(&self) -> SimpleStmtContent<'db> {
-        let simple_child = self.node.get_nth_child(0);
+        let simple_child = self.node.nth_child(0);
         if simple_child.is_type(Nonterminal(assignment)) {
             SimpleStmtContent::Assignment(Assignment::new(simple_child))
         } else if simple_child.is_type(Nonterminal(import_from)) {
@@ -947,7 +947,7 @@ impl<'db> Iterator for ForIfClauseIterator<'db> {
             if n.is_type(Nonterminal(sync_for_if_clause)) {
                 Self::Item::Sync(SyncForIfClause::new(n))
             } else {
-                Self::Item::Async(SyncForIfClause::new(n.get_nth_child(1)))
+                Self::Item::Async(SyncForIfClause::new(n.nth_child(1)))
             }
         })
     }
@@ -982,7 +982,7 @@ impl<'db> Iterator for CompIfIterator<'db> {
 
 impl<'db> ClassDef<'db> {
     pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.node.get_nth_child(1))
+        NameDefinition::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -990,7 +990,7 @@ impl<'db> ClassDef<'db> {
     }
 
     pub fn arguments(&self) -> Option<Arguments<'db>> {
-        let args = self.node.get_nth_child(3);
+        let args = self.node.nth_child(3);
         args.is_type(Nonterminal(arguments))
             .then(|| Arguments::new(args))
     }
@@ -1018,11 +1018,11 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
     type Item = (Name<'db>, Name<'db>);
     fn next(&mut self) -> Option<Self::Item> {
         for node in &mut self.0 {
-            let name_def = node.get_nth_child(2);
+            let name_def = node.nth_child(2);
             if name_def.is_type(Nonterminal(name_definition)) {
-                let atom_ = node.get_nth_child(0);
+                let atom_ = node.nth_child(0);
                 if atom_.is_type(Nonterminal(atom)) {
-                    let self_name = atom_.get_nth_child(0);
+                    let self_name = atom_.nth_child(0);
                     if self_name.is_type(Terminal(TerminalType::Name)) {
                         return Some((Name::new(self_name), NameDefinition::new(name_def).name()));
                     }
@@ -1035,7 +1035,7 @@ impl<'db> Iterator for PotentialSelfAssignments<'db> {
 
 impl<'db> FunctionDef<'db> {
     pub fn name_definition(&self) -> NameDefinition<'db> {
-        NameDefinition::new(self.node.get_nth_child(1))
+        NameDefinition::new(self.node.nth_child(1))
     }
 
     pub fn name(&self) -> Name<'db> {
@@ -1052,7 +1052,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn annotation(&self) -> Option<ReturnAnnotation<'db>> {
-        let ret = self.node.get_nth_child(3);
+        let ret = self.node.nth_child(3);
         if ret.is_type(Nonterminal(return_annotation)) {
             Some(ReturnAnnotation::new(ret))
         } else {
@@ -1061,7 +1061,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn params(&self) -> FunctionDefParameters<'db> {
-        FunctionDefParameters::new(self.node.get_nth_child(2))
+        FunctionDefParameters::new(self.node.nth_child(2))
     }
 
     pub fn parent(&self) -> FunctionParent<'db> {
@@ -1118,7 +1118,7 @@ pub enum FunctionParent<'db> {
 impl<'db> FunctionDefParameters<'db> {
     pub fn iter(&self) -> ParamIterator<'db> {
         // function_def_parameters: "(" [parameters] ")"
-        let params = self.node.get_nth_child(1);
+        let params = self.node.nth_child(1);
         if params.is_type(Nonterminal(parameters)) {
             let positional_only = params
                 .iter_children()
@@ -1234,13 +1234,13 @@ pub enum ParamType {
 
 impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
-        Expression::new(self.node.get_nth_child(1))
+        Expression::new(self.node.nth_child(1))
     }
 }
 
 impl<'db> ReturnAnnotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
-        Expression::new(self.node.get_nth_child(1))
+        Expression::new(self.node.nth_child(1))
     }
 }
 
@@ -1267,7 +1267,7 @@ impl<'db> Assignment<'db> {
                 iterator.next();
                 let right = iterator.next().map(Self::right_side);
                 return AssignmentContent::WithAnnotation(
-                    Target::new_single_target(self.node.get_nth_child(0)),
+                    Target::new_single_target(self.node.nth_child(0)),
                     Annotation::new(child),
                     right,
                 );
@@ -1275,7 +1275,7 @@ impl<'db> Assignment<'db> {
                 iterator.next();
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
-                    Target::new_single_target(self.node.get_nth_child(0)),
+                    Target::new_single_target(self.node.nth_child(0)),
                     AugAssign::new(child),
                     right,
                 );
@@ -1347,7 +1347,7 @@ impl<'db> ImportFrom<'db> {
         //     "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
         for node in self.node.iter_children().skip(3) {
             if node.is_type(Nonterminal(import_from_targets)) {
-                let first = node.get_nth_child(0);
+                let first = node.nth_child(0);
                 if first.is_leaf() && first.get_code() == "*" {
                     return ImportFromTargets::Star;
                 } else {
@@ -1384,18 +1384,18 @@ impl<'db> Iterator for ImportFromTargetsIterator<'db> {
 
 impl<'db> ImportFromAsName<'db> {
     pub fn name_definition(&self) -> NameDefinition {
-        let first = self.node.get_nth_child(0);
+        let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
             NameDefinition::new(first)
         } else {
-            NameDefinition::new(self.node.get_nth_child(2))
+            NameDefinition::new(self.node.nth_child(2))
         }
     }
 
     pub fn import_name(&self) -> Name {
-        let first = self.node.get_nth_child(0);
+        let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            Name::new(first.get_nth_child(0))
+            Name::new(first.nth_child(0))
         } else {
             Name::new(first)
         }
@@ -1422,7 +1422,7 @@ pub enum DottedNameContent<'db> {
 
 impl<'db> Primary<'db> {
     pub fn first(&self) -> PrimaryOrAtom<'db> {
-        let first = self.node.get_nth_child(0);
+        let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(atom)) {
             PrimaryOrAtom::Atom(Atom::new(first))
         } else {
@@ -1432,7 +1432,7 @@ impl<'db> Primary<'db> {
     }
 
     pub fn second(self) -> PrimaryContent<'db> {
-        let second = self.node.get_nth_child(2);
+        let second = self.node.nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {
             PrimaryContent::Attribute(Name::new(second))
         } else if second.is_type(Nonterminal(arguments)) {
@@ -1510,11 +1510,9 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
                 let arg = kwarg_iterator.next().unwrap();
                 return Some(Argument::Keyword(name, Expression::new(arg)));
             } else if node.is_type(Nonterminal(starred_expression)) {
-                return Some(Argument::Starred(Expression::new(node.get_nth_child(1))));
+                return Some(Argument::Starred(Expression::new(node.nth_child(1))));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
-                return Some(Argument::DoubleStarred(Expression::new(
-                    node.get_nth_child(1),
-                )));
+                return Some(Argument::DoubleStarred(Expression::new(node.nth_child(1))));
             }
         }
         None
@@ -1548,7 +1546,7 @@ impl<'db> ReturnOrYield<'db> {
 
 impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
-        StarExpressions::new(self.node.get_nth_child(1))
+        StarExpressions::new(self.node.nth_child(1))
     }
 }
 
@@ -1565,7 +1563,7 @@ impl<'db> Lambda<'db> {
     }
 
     pub fn params(&self) -> ParamIterator<'db> {
-        let n = self.node.get_nth_child(1);
+        let n = self.node.nth_child(1);
         Self::calculate_param_iterator(&n)
     }
 
@@ -1583,7 +1581,7 @@ impl<'db> Lambda<'db> {
 impl<'db> NameDefinition<'db> {
     #[inline]
     pub fn name(&self) -> Name<'db> {
-        Name::new(self.node.get_nth_child(0))
+        Name::new(self.node.nth_child(0))
     }
 
     pub fn is_not_primary(&self) -> bool {
@@ -1697,7 +1695,7 @@ pub enum AtomContent<'db> {
 
 impl<'db> StringsOrBytes<'db> {
     pub fn starts_with_string(&self) -> bool {
-        let code = self.node.get_nth_child(0).get_code();
+        let code = self.node.nth_child(0).get_code();
         for byte in code.bytes() {
             if byte == b'"' || byte == b'\'' {
                 break;
@@ -1731,13 +1729,13 @@ impl<'db> Target<'db> {
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
             if first.is_type(Nonterminal(name_definition)) {
-                Self::Name(Name::new(first.get_nth_child(0)))
+                Self::Name(Name::new(first.nth_child(0)))
             } else if first.is_type(Nonterminal(t_primary)) {
                 Self::new_t_primary(first)
             } else if first.is_type(Nonterminal(star_target_brackets)) {
                 todo!("star_target_brackets")
             } else if first.is_type(Nonterminal(star_target)) {
-                Self::Starred(StarTarget::new(first.get_nth_child(1)))
+                Self::Starred(StarTarget::new(first.nth_child(1)))
             } else {
                 unreachable!();
             }
@@ -1753,10 +1751,7 @@ impl<'db> Target<'db> {
             .iter_children()
             .find(|x| x.is_type(Nonterminal(name_definition)))
             .map(|name_def| {
-                Self::NameExpression(
-                    PrimaryTarget::new(t_prim),
-                    Name::new(name_def.get_nth_child(0)),
-                )
+                Self::NameExpression(PrimaryTarget::new(t_prim), Name::new(name_def.nth_child(0)))
             })
             .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(t_prim)))
     }
@@ -1765,14 +1760,14 @@ impl<'db> Target<'db> {
         debug_assert_eq!(node.get_type(), Nonterminal(single_target));
 
         // t_primary | name_definition | "(" single_target ")"
-        let first = node.get_nth_child(0);
+        let first = node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
             Self::Name(NameDefinition::new(first).name())
         } else if first.is_type(Nonterminal(primary)) {
             Self::new_t_primary(first)
         } else {
-            debug_assert_eq!(node.get_nth_child(0).get_code(), "(");
-            Self::new_single_target(first.get_nth_child(1))
+            debug_assert_eq!(node.nth_child(0).get_code(), "(");
+            Self::new_single_target(first.nth_child(1))
         }
     }
 }
