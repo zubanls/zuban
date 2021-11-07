@@ -40,7 +40,7 @@ pub struct InternalNode {
 }
 
 impl InternalNode {
-    fn get_end_index(&self) -> u32 {
+    fn end_index(&self) -> u32 {
         self.start_index + self.length
     }
 }
@@ -182,7 +182,7 @@ impl<'a, T: Token> Grammar<T> {
                 self.apply_transition(&mut stack, &mut backtracking_tokenizer, transition, &token);
             }
 
-            let tos = stack.get_tos();
+            let tos = stack.tos();
             let mode = tos.mode;
             if tos.dfa_state.is_final {
                 self.end_of_node(&mut stack, &mut backtracking_tokenizer, mode)
@@ -202,13 +202,13 @@ impl<'a, T: Token> Grammar<T> {
         token: &T,
     ) {
         loop {
-            let tos = stack.get_tos();
+            let tos = stack.tos();
             let is_final = tos.dfa_state.is_final;
             let mode = tos.mode;
             match tos.dfa_state.transition_to_plan.get(&transition) {
                 None => {
-                    //dbg!(stack.get_tos().dfa_state.from_rule);
-                    //dbg!(stack.get_tos().dfa_state.transition_to_plan.values()
+                    //dbg!(stack.tos().dfa_state.from_rule);
+                    //dbg!(stack.tos().dfa_state.transition_to_plan.values()
                     //     .map(|x| x.debug_text).collect::<Vec<_>>());
                     if is_final {
                         self.end_of_node(stack, backtracking_tokenizer, mode)
@@ -284,7 +284,7 @@ impl<'a, T: Token> Grammar<T> {
                     &t,
                     backtracking_tokenizer,
                 );
-                if !stack.get_tos().enabled_token_recording {
+                if !stack.tos().enabled_token_recording {
                     backtracking_tokenizer.stop();
                 }
                 // The token was not used, but the tokenizer backtracked.
@@ -319,7 +319,7 @@ impl<'a, T: Token> Grammar<T> {
         if let Some(transition) = transition {
             // If the first step did not work, we try to add the token as an error terminal to
             // the tree.
-            for nonterminal_id in stack.get_tos().dfa_state.nonterminal_transition_ids() {
+            for nonterminal_id in stack.tos().dfa_state.nonterminal_transition_ids() {
                 let automaton = &self.automatons[&nonterminal_id];
                 if automaton.does_error_recovery {
                     stack.calculate_previous_next_node();
@@ -349,7 +349,7 @@ impl<'a, T: Token> Grammar<T> {
             .iter()
             .map(|n| n.dfa_state.from_rule)
             .collect::<Vec<_>>());
-        //dbg!(self.get_tos());
+        //dbg!(self.tos());
         panic!("No error recovery function found");
     }
 
@@ -414,7 +414,7 @@ impl<'a, T: Token> Grammar<T> {
                 StackMode::Alternative(alternative_plan) => {
                     stack.push(
                         push.node_type,
-                        stack.get_tos().tree_node_index,
+                        stack.tos().tree_node_index,
                         push.next_dfa(),
                         start_index,
                         ModeData::Alternative(BacktrackingPoint {
@@ -460,7 +460,7 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
-    fn get_tos(&self) -> &StackNode<'a> {
+    fn tos(&self) -> &StackNode<'a> {
         self.stack_nodes.last().unwrap()
     }
 
@@ -618,5 +618,5 @@ impl<'a> StackNode<'a> {
 fn update_tree_node_position(tree_nodes: &mut Vec<InternalNode>, stack_node: &StackNode) {
     let last_tree_node = *tree_nodes.last().unwrap();
     let mut n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
-    n.length = last_tree_node.get_end_index() - n.start_index;
+    n.length = last_tree_node.end_index() - n.start_index;
 }
