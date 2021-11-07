@@ -76,7 +76,7 @@ impl<'db> NodeReference<'db> {
     }
 
     pub fn as_link(&self) -> PointLink {
-        PointLink::new(self.file.get_file_index(), self.node_index)
+        PointLink::new(self.file.file_index(), self.node_index)
     }
 
     fn as_expression(&self) -> Expression<'db> {
@@ -250,7 +250,7 @@ impl<'db> Inferred<'db> {
                 }
                 PointType::Unknown => on_missing(self.clone()),
                 PointType::FileReference => {
-                    let f = i_s.database.get_loaded_python_file(point.get_file_index());
+                    let f = i_s.database.get_loaded_python_file(point.file_index());
                     callable(i_s, &Module::new(f))
                 }
                 _ => unreachable!(),
@@ -412,7 +412,7 @@ impl<'db> Inferred<'db> {
         let node_index = builtins.lookup_global(name).unwrap().node_index;
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.get_type(), PointType::Redirect);
-        debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
+        debug_assert_eq!(v.file_index(), builtins.file_index());
         self.use_instance(
             NodeReference::new(builtins, v.get_node_index()),
             Generics::None,
@@ -428,8 +428,8 @@ impl<'db> Inferred<'db> {
                 // in python_state
                 let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
                 if let InferredState::Saved(cls_definition, _) = cls.state {
-                    if cls_definition.file.get_file_index()
-                        == i_s.database.python_state.get_typing().get_file_index()
+                    if cls_definition.file.file_index()
+                        == i_s.database.python_state.get_typing().file_index()
                         && cls_definition
                             .maybe_class()
                             .map(|cls| cls.name().as_str() == "TypeVar")
@@ -481,7 +481,7 @@ impl<'db> Inferred<'db> {
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(
-                            PointLink::new(definition.file.get_file_index(), definition.node_index),
+                            PointLink::new(definition.file.file_index(), definition.node_index),
                             Box::new(i_s.args_as_execution().unwrap()),
                         ));
                     }
@@ -602,7 +602,7 @@ impl<'db> Inferred<'db> {
                 file.points.set(
                     index,
                     Point::new_redirect(
-                        definition.file.get_file_index(),
+                        definition.file.file_index(),
                         definition.node_index,
                         Locality::Stmt,
                     ),
@@ -676,7 +676,7 @@ impl<'db> Inferred<'db> {
     pub fn as_file_index(&self) -> Option<FileIndex> {
         if let InferredState::Saved(reference, point) = self.state {
             if matches!(point.get_type(), PointType::FileReference) {
-                return Some(point.get_file_index());
+                return Some(point.file_index());
             }
         }
         None

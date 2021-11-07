@@ -206,7 +206,7 @@ impl Point {
         //self.flags & REST_MASK & 1 == 1
     }
 
-    pub fn get_file_index(self) -> FileIndex {
+    pub fn file_index(self) -> FileIndex {
         debug_assert!(
             self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
         );
@@ -266,7 +266,7 @@ impl fmt::Debug for Point {
             }
             if self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
             {
-                s.field("file_index", &self.get_file_index().0);
+                s.field("file_index", &self.file_index().0);
             }
         }
         s.finish()

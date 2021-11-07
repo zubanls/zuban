@@ -85,7 +85,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         /*
         Execution::new(
             function.as_point_link(),
-            PointLink::new(self.file.get_file_index(), self.primary_node.index()),
+            PointLink::new(self.file.file_index(), self.primary_node.index()),
             self.in_,
         )
         */

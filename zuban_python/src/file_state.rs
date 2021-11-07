@@ -109,14 +109,14 @@ pub trait File: std::fmt::Debug + AsAny {
         database: &'db Database,
         keyword: Keyword<'db>,
     ) -> Inferred<'db>;
-    fn get_file_index(&self) -> FileIndex;
+    fn file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 
     fn get_file_path<'db>(&self, database: &'db Database) -> &'db str {
-        database.get_file_path(self.get_file_index())
+        database.get_file_path(self.file_index())
     }
 }
 

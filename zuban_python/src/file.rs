@@ -70,7 +70,7 @@ impl File for PythonFile {
         todo!()
     }
 
-    fn get_file_index(&self) -> FileIndex {
+    fn file_index(&self) -> FileIndex {
         self.file_index.get().unwrap()
     }
 
@@ -179,7 +179,7 @@ impl<'db> PythonFile {
         self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
-            file_index: self.get_file_index(),
+            file_index: self.file_index(),
             i_s,
         }
     }
@@ -189,7 +189,7 @@ impl<'db> PythonFile {
         self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
-                file: self.get_file_index(),
+                file: self.file_index(),
                 node_index,
                 locality: Locality::DirectExtern,
             })
@@ -210,7 +210,7 @@ macro_rules! check_point_cache_with {
                     debug!(
                         "Infer {:?} ({}, {}) from cache: {}",
                         node.short_debug(),
-                        self.file.get_file_index(),
+                        self.file.file_index(),
                         node.index(),
                         {
                             let point = self.file.points.get(node.index());
@@ -234,7 +234,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_stmt_name(&mut self, stmt: Stmt<'db>) {
         debug!(
             "Infer stmt ({}, {}): {}",
-            self.file.get_file_index(),
+            self.file.file_index(),
             stmt.index(),
             stmt.short_debug().trim()
         );
@@ -283,7 +283,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         link.into_point_redirect()
                     } else {
                         // TODO star imports
-                        Point::new_unknown(import_file.get_file_index(), Locality::DirectExtern)
+                        Point::new_unknown(import_file.file_index(), Locality::DirectExtern)
                     };
                     self.file.points.set_on_name(&name, point);
                 }
@@ -405,7 +405,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let point = if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
-            Point::new_unknown(self.file.get_file_index(), Locality::Stmt)
+            Point::new_unknown(self.file.file_index(), Locality::Stmt)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
     }
@@ -515,7 +515,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .calculated()
             .then(|| match point.get_type() {
                 PointType::Redirect => {
-                    let file_index = point.get_file_index();
+                    let file_index = point.file_index();
                     let node_index = point.get_node_index();
                     let infer = |inference: &mut PythonInference<'db, '_, '_>| {
                         let point = inference.file.points.get(point.get_node_index());
@@ -524,7 +524,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             if let Some(name) = name {
                                 inference._infer_name(name)
                             } else {
-                                todo!("{:?}, {:?}", inference.file.get_file_index().0, node_index)
+                                todo!("{:?}, {:?}", inference.file.file_index().0, node_index)
                             }
                         })
                     };
