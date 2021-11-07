@@ -249,7 +249,7 @@ macro_rules! __create_node {
                 self.internal_node.type_.is_error_recovery()
             }
 
-            pub fn get_parent(&self) -> Option<$Node<'a>> {
+            pub fn parent(&self) -> Option<$Node<'a>> {
                 let mut sibling_i = 0;  // Note that i and sibling_i are reversed.
                 for (i, n) in self.internal_tree.nodes[..self.index as usize].iter().rev().enumerate() {
                     let i = i as $crate::NodeIndex + 1;
@@ -269,15 +269,15 @@ macro_rules! __create_node {
             }
 
             #[inline]
-            pub fn get_parent_until(&self, types: &'static [$NodeType]) -> Option<$Node<'a>> {
-                let mut node = self.get_parent();
+            pub fn parent_until(&self, types: &'static [$NodeType]) -> Option<$Node<'a>> {
+                let mut node = self.parent();
                 while let Some(n) = node {
                     for &t in types {
                         if n.is_type(t) {
                             return node
                         }
                     }
-                    node = n.get_parent();
+                    node = n.parent();
                 }
                 None
             }

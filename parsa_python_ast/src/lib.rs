@@ -246,13 +246,13 @@ impl<'db> Name<'db> {
     pub fn is_reference(&self) -> bool {
         !self
             .node
-            .get_parent()
+            .parent()
             .unwrap()
             .is_type(Nonterminal(name_definition))
     }
 
     pub fn name_definition(&self) -> Option<NameDefinition<'db>> {
-        let parent = self.node.get_parent().unwrap();
+        let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(name_definition)) {
             Some(NameDefinition::new(parent))
         } else {
@@ -261,7 +261,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
-        let parent = self.node.get_parent().unwrap();
+        let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
             Some(Primary::new(parent))
         } else {
@@ -270,17 +270,17 @@ impl<'db> Name<'db> {
     }
 
     pub fn expect_function_def(&self) -> FunctionDef<'db> {
-        FunctionDef::new(self.node.get_parent().unwrap().get_parent().unwrap())
+        FunctionDef::new(self.node.parent().unwrap().parent().unwrap())
     }
 
     pub fn expect_class_def(&self) -> ClassDef<'db> {
-        ClassDef::new(self.node.get_parent().unwrap().get_parent().unwrap())
+        ClassDef::new(self.node.parent().unwrap().parent().unwrap())
     }
 
     pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
         let stmt_node = self
             .node
-            .get_parent_until(&[
+            .parent_until(&[
                 Nonterminal(stmt),
                 Nonterminal(lambda),
                 Nonterminal(comprehension),
@@ -302,14 +302,14 @@ impl<'db> Name<'db> {
 
     pub fn has_self_param_position(&self) -> bool {
         // Parents are name_definition/param_no_default/parameters
-        let param = self.node.get_parent().unwrap().get_parent().unwrap();
-        let params = param.get_parent().unwrap();
+        let param = self.node.parent().unwrap().parent().unwrap();
+        let params = param.parent().unwrap();
         // Could also be a kwarg, which is never a self
         params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
     }
 
     pub fn parent(&self) -> NameParent<'db> {
-        let parent = self.node.get_parent().unwrap();
+        let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {
             NameParent::Atom
         } else if parent.is_type(Nonterminal(name_definition)) {
@@ -367,7 +367,7 @@ impl<'db> Keyword<'db> {
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
-        let parent = self.node.get_parent().unwrap();
+        let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
             Some(Primary::new(parent))
         } else {
@@ -1046,7 +1046,7 @@ impl<'db> FunctionDef<'db> {
         Self::new(
             tree.0
                 .get_node_by_index(param_name_index)
-                .get_parent_until(&[Nonterminal(function_def)])
+                .parent_until(&[Nonterminal(function_def)])
                 .unwrap(),
         )
     }
@@ -1065,7 +1065,7 @@ impl<'db> FunctionDef<'db> {
     }
 
     pub fn parent(&self) -> FunctionParent<'db> {
-        let parent = self.node.get_parent().unwrap();
+        let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(stmt)) {
             FunctionParent::Normal
         } else if parent.is_type(Nonterminal(decorated)) {
@@ -1585,11 +1585,7 @@ impl<'db> NameDefinition<'db> {
     }
 
     pub fn is_not_primary(&self) -> bool {
-        !self
-            .node
-            .get_parent()
-            .unwrap()
-            .is_type(Nonterminal(t_primary))
+        !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
     }
 }
 
