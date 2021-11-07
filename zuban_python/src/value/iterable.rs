@@ -35,7 +35,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
         )
     }
 
-    fn get_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+    fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
         let reference = self.node_reference.add_to_node_index(1);
         if reference.point().calculated() {
             match reference.get_complex().unwrap() {
@@ -70,7 +70,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                 i_s.database.python_state.builtins_point_link("list"),
                 GenericsList::new(Box::new([result])),
             ));
-            self.get_generic_part(i_s)
+            self.generic_part(i_s)
         }
     }
 }
@@ -158,11 +158,6 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
             i_s.database,
             i_s.database.python_state.builtins_point_link("list"),
         );
-        Class::from_position(
-            node_reference,
-            Generics::List(self.get_generic_part(i_s)),
-            None,
-        )
-        .unwrap()
+        Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None).unwrap()
     }
 }
