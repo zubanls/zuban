@@ -663,11 +663,11 @@ macro_rules! create_grammar {
             }
 
             pub fn root_node(&self) -> $Node {
-                self.get_node(0, &self.internal_tree.nodes[0])
+                self.node(0, &self.internal_tree.nodes[0])
             }
 
             #[inline]
-            fn get_node<'a>(&'a self, index: $crate::NodeIndex, internal_node: &'a $crate::InternalNode) -> $Node {
+            fn node<'a>(&'a self, index: $crate::NodeIndex, internal_node: &'a $crate::InternalNode) -> $Node {
                 $Node {
                     internal_tree: &self.internal_tree,
                     internal_node: internal_node,
@@ -681,12 +681,12 @@ macro_rules! create_grammar {
 
             pub fn get_nodes(&self) -> Vec<$Node> {
                 self.internal_tree.nodes.iter().enumerate().map(
-                    |(index, internal_node)| self.get_node(index as $crate::NodeIndex, internal_node)
+                    |(index, internal_node)| self.node(index as $crate::NodeIndex, internal_node)
                 ).collect()
             }
 
             pub fn get_node_by_index(&self, index: $crate::NodeIndex) -> $Node {
-                self.get_node(index, &self.internal_tree.nodes[index as usize])
+                self.node(index, &self.internal_tree.nodes[index as usize])
             }
 
             pub fn get_leaf_by_position(&self, position: $crate::CodeIndex) -> $Node {
@@ -698,7 +698,7 @@ macro_rules! create_grammar {
                 );
                 for (i, node) in self.internal_tree.nodes[..index].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
-                        return self.get_node(i as $crate::NodeIndex, node)
+                        return self.node(i as $crate::NodeIndex, node)
                     }
                 }
                 unreachable!();
