@@ -40,6 +40,7 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.class.symbol_table.lookup_symbol(name) {
             self.class
+                .reference
                 .file
                 .get_inference(i_s)
                 .infer_name_by_index(node_index)

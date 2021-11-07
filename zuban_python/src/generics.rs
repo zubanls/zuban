@@ -83,17 +83,10 @@ impl<'db, 'a> Generics<'db, 'a> {
 
                             // After we know the generics we simply replace the old class of
                             // InstanceWithArguments with a complex value that includes generics.
-                            use crate::file_state::File;
                             reference.file.complex_points.insert(
                                 &reference.file.points,
                                 class_node_index,
-                                ComplexPoint::GenericClass(
-                                    PointLink {
-                                        file: reference.file.get_file_index(),
-                                        node_index: cls.node_index,
-                                    },
-                                    list,
-                                ),
+                                ComplexPoint::GenericClass(cls.reference.as_link(), list),
                             );
                             //ComplexPoint::Instance(PointLink, CalculableGenericsList, Box<Execution>),
                             self.nth(i_s, n)

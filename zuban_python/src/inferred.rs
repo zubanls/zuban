@@ -222,8 +222,7 @@ impl<'db> Inferred<'db> {
                         .get(point.get_complex_index());
                     if let ComplexPoint::Class(cls_storage) = complex {
                         let class = Class::new(
-                            definition.file,
-                            definition.node_index,
+                            *definition,
                             &cls_storage.symbol_table,
                             Generics::None,
                             None,
@@ -263,8 +262,7 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
                     let class = Class::new(
-                        def.file,
-                        def.node_index,
+                        def,
                         &cls_storage.symbol_table,
                         Generics::OnceCell(generics),
                         None,

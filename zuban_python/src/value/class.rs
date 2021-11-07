@@ -8,7 +8,6 @@ use crate::database::{
     PointLink, PointType, Specific, TypeVarRemap,
 };
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::generics::{Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -17,24 +16,21 @@ use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone)]
 pub struct Class<'db, 'a> {
-    pub(super) file: &'db PythonFile,
+    pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
-    pub node_index: NodeIndex,
     pub generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
 impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
-        file: &'db PythonFile,
-        node_index: NodeIndex,
+        reference: NodeReference<'db>,
         symbol_table: &'db SymbolTable,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Self {
         Self {
-            file,
-            node_index,
+            reference,
             symbol_table,
             generics,
             type_var_remap,
@@ -53,8 +49,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let complex = file.complex_points.get(v.get_complex_index() as usize);
         match complex {
             ComplexPoint::Class(c) => Some(Self::new(
-                file,
-                node_index,
+                NodeReference { file, node_index },
                 &c.symbol_table,
                 generics,
                 type_var_remap,
@@ -73,7 +68,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn get_node(&self) -> ClassDef<'db> {
-        ClassDef::by_index(&self.file.tree, self.node_index)
+        ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
     pub fn get_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
@@ -94,9 +89,7 @@ impl<'db, 'a> Class<'db, 'a> {
         value.run(i_s, &mut |i_s, v| {
             let check_class = v.class(i_s);
             for class in check_class.mro(i_s) {
-                if class.node_index == self.node_index
-                    && class.file.get_file_index() == self.file.get_file_index()
-                {
+                if class.reference == self.reference {
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
@@ -126,7 +119,7 @@ impl<'db, 'a> Class<'db, 'a> {
         if let Some(arguments) = self.get_node().arguments() {
             // TODO search names will probably not be used anymore in the future
             for n in arguments.search_names() {
-                let inferred = self.file.get_inference(i_s).infer_name(n);
+                let inferred = self.reference.file.get_inference(i_s).infer_name(n);
                 if inferred.maybe_type_var(i_s).is_some() {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
@@ -143,21 +136,21 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
-        let node_index = self.node_index + 1;
-        let point = self.file.points.get(node_index);
+        let node_index = self.reference.node_index + 1;
+        let point = self.reference.file.points.get(node_index);
         if point.is_calculated() {
             let complex_index = point.get_complex_index();
-            match self.file.complex_points.get(complex_index) {
+            match self.reference.file.complex_points.get(complex_index) {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
                 _ => unreachable!(),
             }
         } else {
-            self.file.complex_points.insert(
-                &self.file.points,
+            self.reference.file.complex_points.insert(
+                &self.reference.file.points,
                 node_index,
                 ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
             );
-            debug_assert!(self.file.points.get(node_index).is_calculated());
+            debug_assert!(self.reference.file.points.get(node_index).is_calculated());
             self.get_class_infos(i_s)
         }
     }
@@ -178,7 +171,11 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         // TODO this probably causes certain problems with infer_annotation_expression
-                        let inf = self.file.get_inference(&mut i_s).infer_named_expression(n);
+                        let inf = self
+                            .reference
+                            .file
+                            .get_inference(&mut i_s)
+                            .infer_named_expression(n);
                         dbg!(inf.description(&mut i_s));
                         inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
@@ -194,10 +191,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 }
                                 // TODO remapping type var ids is not correct
                                 mro.push(ClassWithTypeVarIndex {
-                                    class: PointLink {
-                                        file: class.file.get_file_index(),
-                                        node_index: class.node_index,
-                                    },
+                                    class: class.reference.as_link(),
                                     type_var_remap: type_var_remap.into_boxed_slice(),
                                 });
                                 mro.extend(class.get_class_infos(i_s).mro.iter().cloned());
@@ -237,13 +231,9 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn to_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         let lst = self.generics.as_generics_list(i_s);
-        let link = self.to_point_link();
+        let link = self.reference.as_link();
         lst.map(|lst| GenericPart::GenericClass(link, lst))
             .unwrap_or_else(|| GenericPart::Class(link))
-    }
-
-    pub fn to_point_link(&self) -> PointLink {
-        PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
     pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
@@ -268,7 +258,10 @@ impl<'db> Value<'db> for Class<'db, '_> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.file.get_inference(i_s).infer_name_by_index(node_index)
+            self.reference
+                .file
+                .get_inference(i_s)
+                .infer_name_by_index(node_index)
         } else {
             // todo!("{:?}.{:?}", self.get_name(), name)
             // TODO inheritance
@@ -284,7 +277,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         // TODO locality!!!
         if args.get_outer_execution().is_some() {
             Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                PointLink::new(self.file.get_file_index(), self.node_index),
+                self.reference.as_link(),
                 OnceCell::new(),
                 Box::new(args.as_execution(&self.get_init_func(i_s, args))),
             ))
