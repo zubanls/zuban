@@ -159,7 +159,7 @@ impl<'db> Function<'db> {
             }
             return None;
         }
-        let class_infos = args.class_infos(i_s);
+        let class_infos = args.class_of_method(i_s).map(|c| c.get_class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.get_node();
         for param in func_node.params().iter() {
@@ -257,18 +257,13 @@ impl<'db> Value<'db> for Function<'db> {
             let expr = return_annotation.expression();
             if contains_type_vars(self.file, &expr) {
                 let inferred = self.file.get_inference(i_s).infer_expression(expr);
-                let mut class = None;
-                if let Some(p) = self.iter_inferrable_params(args, false).next() {
-                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                        class = Some(instance.class(i_s));
-                    }
-                }
+                let class = args.class_of_method(i_s);
                 // TODO use t
                 debug!("Inferring generics for {:?}", self.get_node().short_debug());
                 let mut finder = func_type_vars
                     .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
                 inferred
-                    .replace_type_vars(i_s, class.as_ref(), finder.as_mut())
+                    .replace_type_vars(i_s, class, finder.as_mut())
                     .unwrap_or(inferred)
             } else {
                 self.file

@@ -3,11 +3,11 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::{ClassInfos, Execution};
+use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::Function;
+use crate::value::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
 pub enum SliceType<'db> {
@@ -101,7 +101,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
         todo!()
     }
 }

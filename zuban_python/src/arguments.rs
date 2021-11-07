@@ -20,7 +20,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn get_outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn get_type(&self) -> ArgumentsType<'db>;
-    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos>;
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>>;
 }
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node: Primary<'db>,
     details: ArgumentsDetails<'db>,
     in_: Option<&'a Execution>,
-    in_class: Option<&'a Class<'db, 'a>>,
+    class_of_method: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
@@ -55,8 +55,8 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node)
     }
 
-    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
-        self.in_class.map(|c| c.get_class_infos(i_s))
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
+        self.class_of_method
     }
 }
 
@@ -66,14 +66,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         primary_node: Primary<'db>,
         details: ArgumentsDetails<'db>,
         in_: Option<&'a Execution>,
-        in_class: Option<&'a Class<'db, 'a>>,
+        class_of_method: Option<&'a Class<'db, 'a>>,
     ) -> Self {
         Self {
             file,
             primary_node,
             details,
             in_,
-            in_class,
+            class_of_method,
         }
     }
 
@@ -81,11 +81,11 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
-        in_class: Option<&'a Class<'db, 'a>>,
+        class_of_method: Option<&'a Class<'db, 'a>>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node, details, in_, in_class)
+                Self::new(file, primary_node, details, in_, class_of_method)
             }
             _ => unreachable!(),
         }
@@ -134,9 +134,9 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
         self.arguments.get_type()
     }
 
-    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
         // TODO getting the class this way is a bad idea.
-        Some(self.instance.class(i_s).get_class_infos(i_s))
+        Some(&self.instance.class)
     }
 }
 

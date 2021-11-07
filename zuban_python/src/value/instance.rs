@@ -6,7 +6,7 @@ use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct Instance<'db, 'a> {
-    class: Class<'db, 'a>,
+    pub class: Class<'db, 'a>,
     inferred: &'a Inferred<'db>,
 }
 
