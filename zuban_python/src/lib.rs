@@ -165,17 +165,17 @@ impl<'a> Script<'a> {
 
     pub fn help(&self, position: Position) {}
 
-    pub fn get_references(&self, position: Position /*, scope='project'*/) {}
+    pub fn references(&self, position: Position /*, scope='project'*/) {}
 
-    pub fn get_signatures(&self, position: Position) {}
+    pub fn signatures(&self, position: Position) {}
 
-    pub fn get_context(&self, position: Position) {}
+    pub fn context(&self, position: Position) {}
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn get_syntax_errors(&self) {}
+    pub fn syntax_errors(&self) {}
 
-    pub fn get_errors(&self) {}
+    pub fn errors(&self) {}
 
     pub fn rename(&self, position: Position, new_name: &str) {}
 
