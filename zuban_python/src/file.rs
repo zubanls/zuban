@@ -495,7 +495,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .i_s
             .database
             .python_state
-            .get_builtins()
+            .builtins()
             .lookup_global(name.as_str())
         {
             debug_assert!(link.file != self.file_index || link.node_index != name.index());

@@ -405,7 +405,7 @@ impl<'db> Inferred<'db> {
         database: &'db Database,
         name: &'static str,
     ) -> Instance<'db, '_> {
-        let builtins = database.python_state.get_builtins();
+        let builtins = database.python_state.builtins();
         let node_index = builtins.lookup_global(name).unwrap().node_index;
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.type_(), PointType::Redirect);
@@ -423,7 +423,7 @@ impl<'db> Inferred<'db> {
                 let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
                 if let InferredState::Saved(cls_definition, _) = cls.state {
                     if cls_definition.file.file_index()
-                        == i_s.database.python_state.get_typing().file_index()
+                        == i_s.database.python_state.typing().file_index()
                         && cls_definition
                             .maybe_class()
                             .map(|cls| cls.name().as_str() == "TypeVar")

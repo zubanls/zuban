@@ -31,7 +31,7 @@ impl PythonState {
         use crate::inference_state::InferenceState;
         use crate::value::{Module, Value};
         let mut i_s = InferenceState::new(database);
-        let builtins = database.python_state.get_builtins();
+        let builtins = database.python_state.builtins();
         let obj = Module::new(builtins).lookup(&mut i_s, "object");
         let init = obj.run_on_value(&mut i_s, &mut |i_s, v| v.lookup(i_s, "__init__"));
         let func = init.find_function_alternative();
@@ -46,23 +46,23 @@ impl PythonState {
         );
         database.python_state.object_init_method_node_index = link.node_index;
 
-        typing_changes(database.python_state.get_typing());
+        typing_changes(database.python_state.typing());
     }
 
     #[inline]
-    pub fn get_builtins(&self) -> &PythonFile {
+    pub fn builtins(&self) -> &PythonFile {
         debug_assert!(!self.builtins.is_null());
         unsafe { &*self.builtins }
     }
 
     #[inline]
-    pub fn get_typing(&self) -> &PythonFile {
+    pub fn typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
     }
 
     pub fn object_init_as_inferred(&self) -> Inferred {
-        let builtins = self.get_builtins();
+        let builtins = self.builtins();
         Inferred::new_saved(
             builtins,
             self.object_init_method_node_index,
@@ -71,7 +71,7 @@ impl PythonState {
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
-        let builtins = self.get_builtins();
+        let builtins = self.builtins();
         let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
         let point = builtins.points.get(node_index);
         debug_assert_eq!(point.type_(), PointType::Redirect);

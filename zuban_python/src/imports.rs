@@ -4,7 +4,7 @@ use crate::file_state::File;
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     if name == "typing" {
-        return Some(database.python_state.get_typing().file_index());
+        return Some(database.python_state.typing().file_index());
     }
     let result = python_import(
         database,
