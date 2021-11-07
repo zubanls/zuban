@@ -20,7 +20,7 @@ impl Tree {
     }
 
     pub fn code(&self) -> &str {
-        self.0.get_code()
+        self.0.as_code()
     }
 
     pub fn root(&self) -> File {
@@ -98,9 +98,9 @@ macro_rules! create_struct {
 
             pub fn short_debug(&self) -> &'db str {
                 self.node
-                    .get_code()
+                    .as_code()
                     .get(..20)
-                    .unwrap_or_else(|| self.node.get_code())
+                    .unwrap_or_else(|| self.node.as_code())
             }
 
             pub fn get_legacy_node(&self) -> PyNode<'db> {
@@ -232,7 +232,7 @@ create_struct!(Keyword: PyNodeType::Keyword);
 impl<'db> Name<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.node.get_code()
+        self.node.as_code()
     }
 
     pub fn start(&self) -> CodeIndex {
@@ -336,7 +336,7 @@ pub enum NameParent<'db> {
 impl<'db> Int<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.node.get_code()
+        self.node.as_code()
     }
 }
 
@@ -363,7 +363,7 @@ impl<'db> StmtLike<'db> {
 impl<'db> Keyword<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
-        self.node.get_code()
+        self.node.as_code()
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
@@ -913,7 +913,7 @@ impl<'db> Comprehension<'db> {
     }
 
     pub fn is_generator(&self) -> bool {
-        return self.node.next_leaf().unwrap().get_code() == ")";
+        return self.node.next_leaf().unwrap().as_code() == ")";
     }
 }
 
@@ -1122,7 +1122,7 @@ impl<'db> FunctionDefParameters<'db> {
         if params.is_type(Nonterminal(parameters)) {
             let positional_only = params
                 .iter_children()
-                .any(|n| n.is_leaf() && n.get_code() == "/");
+                .any(|n| n.is_leaf() && n.as_code() == "/");
             ParamIterator::Iterator(params.iter_children(), positional_only)
         } else {
             ParamIterator::Finished
@@ -1331,11 +1331,11 @@ impl<'db> ImportFrom<'db> {
         for node in self.node.iter_children().skip(1) {
             if node.is_type(Nonterminal(dotted_name)) {
                 return (level, Some(DottedName::new(node)));
-            } else if node.get_code() == "." {
+            } else if node.as_code() == "." {
                 level += 1;
-            } else if node.get_code() == "..." {
+            } else if node.as_code() == "..." {
                 level += 3;
-            } else if node.get_code() == "import" {
+            } else if node.as_code() == "import" {
                 break;
             }
         }
@@ -1348,7 +1348,7 @@ impl<'db> ImportFrom<'db> {
         for node in self.node.iter_children().skip(3) {
             if node.is_type(Nonterminal(import_from_targets)) {
                 let first = node.nth_child(0);
-                if first.is_leaf() && first.get_code() == "*" {
+                if first.is_leaf() && first.as_code() == "*" {
                     return ImportFromTargets::Star;
                 } else {
                     return ImportFromTargets::Iterator(ImportFromTargetsIterator(
@@ -1446,7 +1446,7 @@ impl<'db> Primary<'db> {
         } else if second.is_type(Nonterminal(slices)) {
             PrimaryContent::GetItem(SliceType::Slices(Slices::new(second)))
         } else {
-            debug_assert_eq!(second.get_code(), ")");
+            debug_assert_eq!(second.as_code(), ")");
             PrimaryContent::Execution(ArgumentsDetails::None)
         }
     }
@@ -1505,7 +1505,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
             } else if node.is_type(Nonterminal(kwarg)) {
                 // kwarg: Name "=" expression
                 let mut kwarg_iterator = node.iter_children();
-                let name = kwarg_iterator.next().unwrap().get_code();
+                let name = kwarg_iterator.next().unwrap().as_code();
                 kwarg_iterator.next();
                 let arg = kwarg_iterator.next().unwrap();
                 return Some(Argument::Keyword(name, Expression::new(arg)));
@@ -1555,7 +1555,7 @@ impl<'db> Lambda<'db> {
         if lambda_param_node.is_type(Nonterminal(lambda_parameters)) {
             let positional_only = lambda_param_node
                 .iter_children()
-                .any(|n| n.is_leaf() && n.get_code() == "/");
+                .any(|n| n.is_leaf() && n.as_code() == "/");
             ParamIterator::Iterator(lambda_param_node.iter_children(), positional_only)
         } else {
             ParamIterator::Finished
@@ -1602,7 +1602,7 @@ impl<'db> Atom<'db> {
         match first.get_type() {
             Terminal(TerminalType::Name) => AtomContent::Name(Name::new(first)),
             Terminal(TerminalType::Number) => {
-                let code = first.get_code();
+                let code = first.as_code();
                 if code.contains('j') {
                     AtomContent::Complex(Complex::new(first))
                 } else if code.contains('.') {
@@ -1612,7 +1612,7 @@ impl<'db> Atom<'db> {
                 }
             }
             Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes::new(first)),
-            PyNodeType::Keyword => match first.get_code() {
+            PyNodeType::Keyword => match first.as_code() {
                 "None" => AtomContent::None,
                 "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
                 "..." => AtomContent::Ellipsis,
@@ -1630,7 +1630,7 @@ impl<'db> Atom<'db> {
                             AtomContent::GeneratorComprehension(Comprehension::new(next_node))
                         }
                         PyNodeType::Keyword => {
-                            debug_assert_eq!(next_node.get_code(), ")");
+                            debug_assert_eq!(next_node.as_code(), ")");
                             AtomContent::Tuple(Tuple::new(self.node))
                         }
                         _ => unreachable!(),
@@ -1656,7 +1656,7 @@ impl<'db> Atom<'db> {
                             AtomContent::SetComprehension(Comprehension::new(next_node))
                         }
                         PyNodeType::Keyword => {
-                            debug_assert_eq!(next_node.get_code(), "}");
+                            debug_assert_eq!(next_node.as_code(), "}");
                             AtomContent::Dict(Dict::new(self.node))
                         }
                         _ => unreachable!(),
@@ -1695,7 +1695,7 @@ pub enum AtomContent<'db> {
 
 impl<'db> StringsOrBytes<'db> {
     pub fn starts_with_string(&self) -> bool {
-        let code = self.node.nth_child(0).get_code();
+        let code = self.node.nth_child(0).as_code();
         for byte in code.bytes() {
             if byte == b'"' || byte == b'\'' {
                 break;
@@ -1766,7 +1766,7 @@ impl<'db> Target<'db> {
         } else if first.is_type(Nonterminal(primary)) {
             Self::new_t_primary(first)
         } else {
-            debug_assert_eq!(node.nth_child(0).get_code(), "(");
+            debug_assert_eq!(node.nth_child(0).as_code(), "(");
             Self::new_single_target(first.nth_child(1))
         }
     }
@@ -1825,7 +1825,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                     match right.get_type() {
                         PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                             let is_alpha =
-                                |n: PyNode| n.get_code().chars().all(|x| x.is_alphanumeric());
+                                |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
                             if is_alpha(right) && !is_alpha(left) {
                                 // Prefer keywords to operators
                                 left = right;

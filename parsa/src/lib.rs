@@ -171,7 +171,7 @@ macro_rules! __create_node {
                 Self {internal_tree, index, internal_node}
             }
 
-            pub fn get_code(&self) -> &'a str {
+            pub fn as_code(&self) -> &'a str {
                 self.code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
@@ -367,7 +367,7 @@ macro_rules! __create_node {
 
         impl std::fmt::Debug for $Node<'_> {
             fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-                let mut code = self.get_code();
+                let mut code = self.as_code();
                 let x;
                 if code.len() > 40 {
                     x = code[..40].to_owned() + "...";
@@ -658,7 +658,7 @@ macro_rules! create_grammar {
         }
 
         impl $Tree {
-            pub fn get_code(&self) -> &str {
+            pub fn as_code(&self) -> &str {
                 &self.internal_tree.code
             }
 

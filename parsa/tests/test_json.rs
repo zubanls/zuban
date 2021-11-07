@@ -45,9 +45,9 @@ impl Iterator for JsonTokenizer<'_> {
             });
         };
         let code_bytes = &self.code.as_bytes();
-        let get_code = |index: usize| unsafe { str::from_utf8_unchecked(&code_bytes[index..]) };
+        let as_code = |index: usize| unsafe { str::from_utf8_unchecked(&code_bytes[index..]) };
 
-        let whitespace = WHITESPACE.find(get_code(self.index));
+        let whitespace = WHITESPACE.find(as_code(self.index));
         if let Some(match_) = whitespace {
             self.index += match_.end();
         }
@@ -74,7 +74,7 @@ impl Iterator for JsonTokenizer<'_> {
             (&*LABEL, JsonTerminalType::Label),
             (&*ERROR, JsonTerminalType::Error),
         ] {
-            if let Some(match_) = regex.find(get_code(index)) {
+            if let Some(match_) = regex.find(as_code(index)) {
                 self.index += match_.end();
                 return new_token(index, match_.end() - match_.start(), *type_, false);
             }

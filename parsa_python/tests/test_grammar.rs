@@ -35,7 +35,7 @@ fn tree_to_string(tree: PyTree) -> String {
             node.start(),
             node.end(),
             if node.is_leaf() {
-                format!(" {:?}", node.get_code())
+                format!(" {:?}", node.as_code())
             } else {
                 "".to_string()
             }
