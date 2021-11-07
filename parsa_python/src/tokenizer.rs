@@ -215,7 +215,7 @@ impl PythonTokenizer<'_> {
 
     #[inline]
     fn handle_fstring_stack(&mut self) -> Option<PyTerminal> {
-        let in_expr = self.get_f_string_tos().in_expr();
+        let in_expr = self.f_string_tos().in_expr();
         let mut iterator = code_from_start(self.code, self.index)
             .char_indices()
             .peekable();
@@ -224,7 +224,7 @@ impl PythonTokenizer<'_> {
                 if let Some((_, next)) = iterator.next() {
                     // If the bracket appears again, we can just continue,
                     // it's part of the string.
-                    if next != character || self.get_f_string_tos().in_format_spec() {
+                    if next != character || self.f_string_tos().in_format_spec() {
                         if let Some(t) = self.maybe_fstring_string(i) {
                             return Some(t);
                         }
@@ -258,7 +258,7 @@ impl PythonTokenizer<'_> {
                     }
                 }
             } else if character == ':' && in_expr {
-                let tos = self.get_f_string_tos();
+                let tos = self.f_string_tos();
                 if tos.parentheses_level - tos.format_spec_count == 1 {
                     tos.format_spec_count += 1;
                     self.index += i + 1;
@@ -330,7 +330,7 @@ impl PythonTokenizer<'_> {
     }
 
     #[inline]
-    fn get_f_string_tos(&mut self) -> &mut FStringNode {
+    fn f_string_tos(&mut self) -> &mut FStringNode {
         // tos = top of stack
         self.f_string_stack.last_mut().unwrap()
     }
@@ -355,7 +355,7 @@ impl PythonTokenizer<'_> {
             };
             node.new_tok(start, false, TerminalType::FStringEnd)
         };
-        if self.get_f_string_tos().in_expr() {
+        if self.f_string_tos().in_expr() {
             self.index += string_length;
             return end(self);
         }

@@ -27,7 +27,7 @@ impl TestFile {
             Some(self.path.to_str().unwrap().to_owned()),
             Some(self.code.clone()),
         );
-        let cases = self.get_test_cases();
+        let cases = self.test_cases();
         let count = cases.len();
         for case in cases {
             match case.type_ {
@@ -52,7 +52,7 @@ impl TestFile {
         count
     }
 
-    fn get_test_cases(&self) -> Vec<TestCase> {
+    fn test_cases(&self) -> Vec<TestCase> {
         let mut cases = vec![];
         let lines: Vec<_> = self.code.split('\n').collect();
         for (line_nr, line) in lines.iter().enumerate() {
