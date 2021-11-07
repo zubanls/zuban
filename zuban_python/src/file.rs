@@ -64,7 +64,7 @@ impl File for PythonFile {
         {
             if let Some(primary) = leaf.maybe_primary_parent() {
                 let mut i_s = InferenceState::new(database);
-                return self.get_inference(&mut i_s).infer_primary(primary);
+                return self.inference(&mut i_s).infer_primary(primary);
             }
         }
         todo!()
@@ -172,7 +172,7 @@ impl<'db> PythonFile {
         });
     }
 
-    pub fn get_inference<'a, 'b>(
+    pub fn inference<'a, 'b>(
         &'db self,
         i_s: &'b mut InferenceState<'db, 'a>,
     ) -> PythonInference<'db, 'a, 'b> {
@@ -399,7 +399,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // Make sure that we're not working "inside" of a function/closure. Annotations are always
         // considered global and should not use params or local state.
         let mut inf_state = self.i_s.with_annotation_instance();
-        let mut inference = self.file.get_inference(&mut inf_state);
+        let mut inference = self.file.inference(&mut inf_state);
         let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_class(inference.i_s) {
@@ -536,7 +536,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 .i_s
                                 .database
                                 .get_loaded_python_file(file_index)
-                                .get_inference(self.i_s),
+                                .inference(self.i_s),
                         )
                     }
                 }

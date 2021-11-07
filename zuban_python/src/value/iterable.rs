@@ -24,7 +24,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
     ) -> Inferred<'db> {
         self.node_reference
             .file
-            .get_inference(i_s)
+            .inference(i_s)
             .infer_named_expression(named_expr)
     }
 

@@ -110,7 +110,7 @@ impl<'db> Function<'db> {
                     return self
                         .reference
                         .file
-                        .get_inference(&mut inner_i_s)
+                        .inference(&mut inner_i_s)
                         .infer_star_expressions(ret.star_expressions())
                         .resolve_function_return(&mut inner_i_s)
                 }
@@ -200,11 +200,7 @@ impl<'db> Function<'db> {
     ) {
         for n in expression.search_names() {
             if matches!(n.parent(), NameParent::Atom) {
-                let inferred = self
-                    .reference
-                    .file
-                    .get_inference(i_s)
-                    .infer_name_reference(n);
+                let inferred = self.reference.file.inference(i_s).infer_name_reference(n);
                 if let Some(definition) = inferred.maybe_type_var(i_s) {
                     let link = definition.as_link();
                     if let Some(class_infos) = class_infos {
@@ -257,11 +253,7 @@ impl<'db> Value<'db> for Function<'db> {
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
-                let inferred = self
-                    .reference
-                    .file
-                    .get_inference(i_s)
-                    .infer_expression(expr);
+                let inferred = self.reference.file.inference(i_s).infer_expression(expr);
                 let class = args.class_of_method(i_s);
                 // TODO use t
                 debug!("Inferring generics for {:?}", self.get_node().short_debug());
@@ -284,7 +276,7 @@ impl<'db> Value<'db> for Function<'db> {
             } else {
                 self.reference
                     .file
-                    .get_inference(i_s)
+                    .inference(i_s)
                     .infer_annotation_expression(expr)
             }
         } else {

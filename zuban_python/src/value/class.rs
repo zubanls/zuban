@@ -116,7 +116,7 @@ impl<'db, 'a> Class<'db, 'a> {
         if let Some(arguments) = self.get_node().arguments() {
             // TODO search names will probably not be used anymore in the future
             for n in arguments.search_names() {
-                let inferred = self.reference.file.get_inference(i_s).infer_name(n);
+                let inferred = self.reference.file.inference(i_s).infer_name(n);
                 if inferred.maybe_type_var(i_s).is_some() {
                     if n.as_str() == name {
                         let index = found_type_vars.len();
@@ -166,7 +166,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let inf = self
                             .reference
                             .file
-                            .get_inference(&mut i_s)
+                            .inference(&mut i_s)
                             .infer_named_expression(n);
                         dbg!(inf.description(&mut i_s));
                         inf.run(&mut i_s, &mut |i_s, v| {
@@ -252,7 +252,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
             self.reference
                 .file
-                .get_inference(i_s)
+                .inference(i_s)
                 .infer_name_by_index(node_index)
         } else {
             // todo!("{:?}.{:?}", self.name(), name)
@@ -320,7 +320,7 @@ impl<'db> BasesIterator<'db> {
         if let Some(args) = self.args.as_mut() {
             match args.next() {
                 Some(Argument::Positional(p)) => {
-                    return Some(self.file.get_inference(i_s).infer_named_expression(p))
+                    return Some(self.file.inference(i_s).infer_named_expression(p))
                 }
                 None => (),
                 other => todo!("{:?}", other),

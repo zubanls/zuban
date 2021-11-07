@@ -42,7 +42,7 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
             self.class
                 .reference
                 .file
-                .get_inference(i_s)
+                .inference(i_s)
                 .infer_name_by_index(node_index)
                 .resolve_function_return(i_s)
                 .bind(i_s, self)

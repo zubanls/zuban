@@ -34,7 +34,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => {
                 if n.is_zero() {
-                    Some(file.get_inference(i_s).infer_annotation_expression(*expr))
+                    Some(file.inference(i_s).infer_annotation_expression(*expr))
                 } else {
                     None
                 }
@@ -59,7 +59,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         let primary = reference.as_primary();
                         let inferred = reference
                             .file
-                            .get_inference(i_s)
+                            .inference(i_s)
                             .infer_primary_or_atom(primary.first());
                         let cls = inferred.expect_class(i_s).unwrap();
                         if let PrimaryContent::Execution(details) = primary.second() {
@@ -166,7 +166,7 @@ impl<'db> GenericsIterator<'db, '_> {
     pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
             Self::Expression(file, expr) => {
-                let result = file.get_inference(i_s).infer_expression(*expr);
+                let result = file.inference(i_s).infer_expression(*expr);
                 *self = GenericsIterator::None;
                 Some(result)
             }
@@ -232,7 +232,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     self.function
                         .reference
                         .file
-                        .get_inference(i_s)
+                        .inference(i_s)
                         .infer_annotation_expression(annotation.expression())
                         .run(i_s, &mut |i_s, v| {
                             let value = p.infer(i_s);

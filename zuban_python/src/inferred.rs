@@ -175,7 +175,7 @@ impl<'db> Inferred<'db> {
                         Specific::AnnotationInstance => {
                             let inferred = definition
                                 .file
-                                .get_inference(i_s)
+                                .inference(i_s)
                                 .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
                             let generics = annotation_generics.unwrap_or(Generics::None);
@@ -217,7 +217,7 @@ impl<'db> Inferred<'db> {
                         Specific::TypingWithGenerics => {
                             let inf = definition
                                 .file
-                                .get_inference(i_s)
+                                .inference(i_s)
                                 .infer_primary_or_atom(definition.as_primary().first());
                             if let InferredState::Saved(_, p) = inf.state {
                                 callable(i_s, &TypingWithGenerics::new(*definition, p.specific()))
@@ -496,7 +496,7 @@ impl<'db> Inferred<'db> {
     ) -> Self {
         definition
             .file
-            .get_inference(i_s)
+            .inference(i_s)
             .infer_primary_or_atom(definition.as_primary().first())
     }
 
@@ -514,7 +514,7 @@ impl<'db> Inferred<'db> {
                         let p = Primary::by_index(&definition.file.tree, definition.node_index);
                         let cls = definition
                             .file
-                            .get_inference(i_s)
+                            .inference(i_s)
                             .infer_primary_or_atom(p.first());
                         cls.with_instance(i_s, instance, generics, callable)
                     } else {
@@ -561,7 +561,7 @@ impl<'db> Inferred<'db> {
                     Specific::SimpleGeneric => {
                         let inferred = definition
                             .file
-                            .get_inference(i_s)
+                            .inference(i_s)
                             .infer_primary_or_atom(definition.as_primary().first());
                         inferred.expect_class_internal(i_s, generics)
                     }

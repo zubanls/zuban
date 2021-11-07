@@ -177,7 +177,7 @@ impl<'db> Argument<'db, '_> {
                 reference
                     .file
                     // TODO this execution is wrong
-                    .get_inference(i_s)
+                    .inference(i_s)
                     .infer_named_expression(reference.as_named_expression())
             }
         }
