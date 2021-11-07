@@ -16,7 +16,7 @@ impl Tree {
     }
 
     pub fn length(&self) -> usize {
-        self.0.get_length()
+        self.0.length()
     }
 
     pub fn code(&self) -> &str {

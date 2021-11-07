@@ -15,7 +15,7 @@ pub type CodeLength = u32;
 
 pub trait Token: Copy + fmt::Debug {
     fn start_index(&self) -> u32;
-    fn get_length(&self) -> u32;
+    fn length(&self) -> u32;
     fn get_type(&self) -> InternalTerminalType;
     fn can_contain_syntax(&self) -> bool;
 }
@@ -170,7 +170,7 @@ impl<'a, T: Token> Grammar<T> {
                 let transition;
                 if token.can_contain_syntax() {
                     let start = token.start_index() as usize;
-                    let token_str = &code[start..start + token.get_length() as usize];
+                    let token_str = &code[start..start + token.length() as usize];
                     transition = self
                         .keywords
                         .get_squashed(token_str)
@@ -329,14 +329,14 @@ impl<'a, T: Token> Grammar<T> {
                         next_node_offset: 0,
                         type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
                         start_index: token.start_index(),
-                        length: token.get_length(),
+                        length: token.length(),
                     });
                     // And then add the terminal
                     stack.tree_nodes.push(InternalNode {
                         next_node_offset: 0,
                         type_: transition.set_error_recovery_bit(),
                         start_index: token.start_index(),
-                        length: token.get_length(),
+                        length: token.length(),
                     });
                     return; // Error recovery is done.
                 }
@@ -440,7 +440,7 @@ impl<'a, T: Token> Grammar<T> {
             next_node_offset: 0,
             type_: plan.type_,
             start_index,
-            length: token.get_length(),
+            length: token.length(),
         });
     }
 }

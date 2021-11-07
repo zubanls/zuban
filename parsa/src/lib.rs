@@ -105,7 +105,7 @@ macro_rules! create_terminals {
                 self.start_index
             }
 
-            fn get_length(&self) -> u32 {
+            fn length(&self) -> u32 {
                 self.length
             }
 
@@ -675,7 +675,7 @@ macro_rules! create_grammar {
                 }
             }
 
-            pub fn get_length(&self) -> usize {
+            pub fn length(&self) -> usize {
                 self.internal_tree.nodes.len()
             }
 
