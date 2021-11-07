@@ -32,7 +32,7 @@ enum Unresolved<'db> {
 
 pub struct NameBinder<'db, 'a> {
     tree: &'db Tree,
-    typ: NameBinderType,
+    type_: NameBinderType,
     symbol_table: &'a SymbolTable,
     points: &'db Points,
     complex_points: &'db ComplexValues,
@@ -47,7 +47,7 @@ pub struct NameBinder<'db, 'a> {
 impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
         tree: &'db Tree,
-        typ: NameBinderType,
+        type_: NameBinderType,
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
@@ -56,7 +56,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) -> Self {
         Self {
             tree,
-            typ,
+            type_,
             symbol_table,
             points,
             complex_points,
@@ -94,13 +94,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     pub fn with_nested(
         &mut self,
-        typ: NameBinderType,
+        type_: NameBinderType,
         symbol_table: &'_ SymbolTable,
         mut func: impl FnMut(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
             self.tree,
-            typ,
+            type_,
             symbol_table,
             self.points,
             self.complex_points,
@@ -605,7 +605,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         self.add_point_definition(
             name_def,
-            if matches!(self.typ, NameBinderType::Function) {
+            if matches!(self.type_, NameBinderType::Function) {
                 Specific::LazyInferredClosure
             } else {
                 Specific::LazyInferredFunction
@@ -644,7 +644,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.points.set(
             func_index,
             Point::new_simple_specific(
-                if matches!(self.parent.unwrap().typ, NameBinderType::Function) {
+                if matches!(self.parent.unwrap().type_, NameBinderType::Function) {
                     Specific::Closure
                 } else {
                     Specific::Function

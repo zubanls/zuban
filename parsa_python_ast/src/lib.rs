@@ -1839,8 +1839,9 @@ impl<'db> NameOrKeywordLookup<'db> {
                 Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
                     match right.type_() {
                         Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
-                            let order_func =
-                                |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
+                            let order_func = |type_| {
+                                order.iter().position(|&t| t == type_).unwrap_or(usize::MAX)
+                            };
                             let left_index = order_func(left_terminal);
                             let right_index = order_func(right_terminal);
                             // Both are terminals, prefer the one that is higher in the order
