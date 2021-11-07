@@ -37,7 +37,7 @@ impl<'db> Function<'db> {
     }
 
     pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
-        let f_func = database.get_loaded_python_file(execution.function.file);
+        let f_func = database.loaded_python_file(execution.function.file);
         Function::new(NodeReference {
             file: f_func,
             node_index: execution.function.node_index,

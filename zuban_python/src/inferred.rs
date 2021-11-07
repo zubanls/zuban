@@ -41,7 +41,7 @@ impl<'db> NodeReference<'db> {
     }
 
     pub fn from_link(database: &'db Database, point: PointLink) -> Self {
-        let file = database.get_loaded_python_file(point.file);
+        let file = database.loaded_python_file(point.file);
         Self {
             file,
             node_index: point.node_index,
@@ -247,7 +247,7 @@ impl<'db> Inferred<'db> {
                 }
                 PointType::Unknown => on_missing(self.clone()),
                 PointType::FileReference => {
-                    let f = i_s.database.get_loaded_python_file(point.file_index());
+                    let f = i_s.database.loaded_python_file(point.file_index());
                     callable(i_s, &Module::new(f))
                 }
                 _ => unreachable!(),
@@ -304,7 +304,7 @@ impl<'db> Inferred<'db> {
                 callable(i_s, &BoundMethod::new(instance_link, &func))
             }
             ComplexPoint::Closure(function, execution) => {
-                let f = i_s.database.get_loaded_python_file(function.file);
+                let f = i_s.database.loaded_python_file(function.file);
                 let func = Function::from_execution(i_s.database, execution);
                 let args = SimpleArguments::from_execution(i_s.database, execution);
                 callable(
@@ -739,7 +739,7 @@ impl<'db> Inferred<'db> {
     pub fn from_any_link(database: &'db Database, any: &AnyLink) -> Self {
         match any {
             AnyLink::Reference(def) => {
-                let file = database.get_loaded_python_file(def.file);
+                let file = database.loaded_python_file(def.file);
                 Self::new_saved(file, def.node_index, file.points.get(def.node_index))
             }
             AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),

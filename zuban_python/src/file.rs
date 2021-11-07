@@ -273,7 +273,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let import_file = self
                     .i_s
                     .database
-                    .get_loaded_python_file(inferred.unwrap().as_file_index().unwrap());
+                    .loaded_python_file(inferred.unwrap().as_file_index().unwrap());
                 for target in targets {
                     let name = target.import_name();
                     let point = if let Some(link) = import_file.lookup_global(name.as_str()) {
@@ -535,7 +535,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             &mut self
                                 .i_s
                                 .database
-                                .get_loaded_python_file(file_index)
+                                .loaded_python_file(file_index)
                                 .inference(self.i_s),
                         )
                     }

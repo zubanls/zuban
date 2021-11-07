@@ -620,11 +620,11 @@ impl Database {
         self.path_to_file.get(path).copied()
     }
 
-    pub fn get_loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
+    pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
         self.file_state(index).file(self).unwrap()
     }
 
-    fn get_loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
+    fn loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
         for loader in self.file_state_loaders.iter() {
             let extension = Path::new(path).extension().and_then(|e| e.to_str());
             if let Some(e) = extension {
@@ -645,13 +645,13 @@ impl Database {
 
     pub fn load_file(&self, path: String, code: String) -> FileIndex {
         // This is the explicit version where we know that there's a loader.
-        let loader = self.get_loader(&path).unwrap();
+        let loader = self.loader(&path).unwrap();
         self.add_file_state(loader.load_parsed(path, code))
     }
 
     pub fn load_file_from_workspace(&self, path: String, index: &WorkspaceFileIndex) {
         // A loader should be available for all files in the workspace.
-        let loader = self.get_loader(&path).unwrap();
+        let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(
             if let Some(code) = self.file_system_reader.read_file(&path) {
                 loader.load_parsed(path, code)
@@ -663,17 +663,17 @@ impl Database {
     }
 
     pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
-        self.get_loader(&path)
+        self.loader(&path)
             .map(|loader| self.add_file_state(loader.load_unparsed(path)))
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
         let file_index = self.load_unparsed(p.to_owned()).unwrap();
-        self.get_loaded_python_file(file_index)
+        self.loaded_python_file(file_index)
     }
 
-    pub fn get_loaded_python_file(&self, index: FileIndex) -> &PythonFile {
-        self.get_loaded_file(index).as_any().downcast_ref().unwrap()
+    pub fn loaded_python_file(&self, index: FileIndex) -> &PythonFile {
+        self.loaded_file(index).as_any().downcast_ref().unwrap()
     }
 
     fn initial_python_load(&mut self) {
