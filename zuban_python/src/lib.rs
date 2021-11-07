@@ -156,7 +156,7 @@ impl<'a> Script<'a> {
 
     pub fn goto_implementation(&self, position: Position, follow_imports: bool) -> Names {
         let names = self.goto_definition(position, follow_imports);
-        self.file().get_implementation(names)
+        self.file().implementation(names)
     }
 
     pub fn search(&self, text: String, all_scopes: bool, fuzzy: bool) {}
