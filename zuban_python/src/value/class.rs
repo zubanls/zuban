@@ -4,8 +4,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, GenericPart, GenericsList, Locality,
-    Point, PointLink, PointType, Specific, TypeVarRemap,
+    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, GenericPart, Locality, Point,
+    PointLink, PointType, Specific, TypeVarRemap,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -104,7 +104,6 @@ impl<'db, 'a> Class<'db, 'a> {
         value.run(i_s, &mut |i_s, v| {
             let check_class = v.class(i_s);
             for class in check_class.mro(i_s) {
-                dbg!(class.get_name(), self.get_name());
                 if class.node_index == self.node_index
                     && class.file.get_file_index() == self.file.get_file_index()
                 {

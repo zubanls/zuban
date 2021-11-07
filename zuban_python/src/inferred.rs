@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{Generics, TypeVarMatcher};
+use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
