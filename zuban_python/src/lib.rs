@@ -140,7 +140,7 @@ impl<'a> Script<'a> {
     /*
     pub fn infer_implementation(&self, position: Position) -> ValueNames {
         let names = self.infer_definition(position);
-        //self.file.get_implementation(names);
+        //self.file.implementation(names);
         todo!()
     }
     */

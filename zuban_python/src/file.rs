@@ -39,7 +39,7 @@ impl ComplexValues {
 }
 
 impl File for PythonFile {
-    fn get_implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
+    fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         todo!()
     }
 

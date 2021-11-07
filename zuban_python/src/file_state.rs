@@ -100,7 +100,7 @@ impl<T> AsAny for T {
 }
 
 pub trait File: std::fmt::Debug + AsAny {
-    fn get_implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
+    fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }
     fn leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db>;
