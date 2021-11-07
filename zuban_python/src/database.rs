@@ -613,7 +613,7 @@ impl Database {
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
-        self.file_state(index).get_path()
+        self.file_state(index).path()
     }
 
     pub fn file_state_index_by_path(&self, path: &str) -> Option<FileIndex> {

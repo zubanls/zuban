@@ -170,7 +170,7 @@ impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
 
     fn file_path(&self) -> &str {
         todo!()
-        //self.value.file().get_path()
+        //self.value.file().path()
     }
 
     fn start_position(&self) -> TreePosition<'db> {

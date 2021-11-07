@@ -121,13 +121,13 @@ pub trait File: std::fmt::Debug + AsAny {
 }
 
 pub trait FileState: fmt::Debug {
-    fn get_path(&self) -> &str;
+    fn path(&self) -> &str;
     fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
 }
 
 impl<F: File> FileState for LanguageFileState<F> {
-    fn get_path(&self) -> &str {
+    fn path(&self) -> &str {
         &self.path
     }
 
