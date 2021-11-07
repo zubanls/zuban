@@ -260,10 +260,21 @@ impl<'db> Value<'db> for Function<'db> {
                 let class = args.class_of_method(i_s);
                 // TODO use t
                 debug!("Inferring generics for {:?}", self.get_node().short_debug());
-                let mut finder = func_type_vars
+                let finder = func_type_vars
                     .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
                 inferred
-                    .replace_type_vars(i_s, class, finder.as_mut())
+                    .maybe_numbered_type_var()
+                    .map(|point| match point.specific() {
+                        Specific::ClassTypeVar => class
+                            .unwrap()
+                            .generics
+                            .nth(i_s, point.type_var_index())
+                            .unwrap(),
+                        Specific::FunctionTypeVar => {
+                            finder.unwrap().nth(i_s, point.type_var_index())
+                        }
+                        _ => unreachable!(),
+                    })
                     .unwrap_or(inferred)
             } else {
                 self.file

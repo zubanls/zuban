@@ -111,8 +111,10 @@ impl<'db, 'a> Class<'db, 'a> {
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
-                        if let Some(inf) = generic.replace_type_vars(i_s, Some(&class), None) {
-                            todo!("report pls: {:?} is {:?}", inf.description(i_s), v)
+                        if let Some(point) = generic.maybe_numbered_type_var() {
+                            if point.specific() == match_specific {
+                                todo!("report pls: {:?} is {:?}", point.type_var_index(), v)
+                            }
                         } else if let Some(cls) = generic.expect_class(i_s) {
                             let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
                             cls.infer_type_vars(i_s, v, list, match_specific);

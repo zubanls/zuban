@@ -435,22 +435,14 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    pub fn replace_type_vars(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
-        func_finder: Option<&mut TypeVarMatcher<'db, '_>>,
-    ) -> Option<Self> {
+    pub fn maybe_numbered_type_var(&self) -> Option<Point> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.get_type() == PointType::Specific {
-                match point.specific() {
-                    Specific::ClassTypeVar => {
-                        return class.unwrap().generics.nth(i_s, point.type_var_index())
-                    }
-                    Specific::FunctionTypeVar => {
-                        return func_finder.map(|f| f.nth(i_s, point.type_var_index()))
-                    }
-                    _ => (),
+                if matches!(
+                    point.specific(),
+                    Specific::FunctionTypeVar | Specific::ClassTypeVar
+                ) {
+                    return Some(point);
                 }
             }
         }
