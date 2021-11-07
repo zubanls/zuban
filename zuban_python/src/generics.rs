@@ -65,7 +65,12 @@ impl<'db, 'a> Generics<'db, 'a> {
                             .infer_primary_or_atom(primary.first());
                         let cls = inferred.expect_class(i_s).unwrap();
                         if let PrimaryContent::Execution(details) = primary.second() {
-                            let args = SimpleArguments::from_primary(reference.file, primary, None);
+                            let args = SimpleArguments::from_primary(
+                                reference.file,
+                                primary,
+                                None,
+                                Some(&cls),
+                            );
                             let init = cls.get_init_func(i_s, &args);
                             let type_vars = cls.get_type_vars(i_s);
                             debug!("Inferring instance generics for {}", primary.short_debug());
@@ -91,7 +96,9 @@ impl<'db, 'a> Generics<'db, 'a> {
                 }
             }
             Self::OnceCell(_) => todo!(),
-            Self::List(_) => todo!(),
+            Self::List(l) => l
+                .nth(n)
+                .map(|g| Inferred::from_generic_class(i_s.database, g)),
             Self::None => None,
         }
     }

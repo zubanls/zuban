@@ -168,14 +168,16 @@ impl<'db> Inferred<'db> {
                             })
                         }
                         Specific::InstanceWithArguments => {
-                            let cls = self.infer_instance_with_arguments_cls(i_s, definition);
+                            let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
+                            let class = inf_cls.expect_class(i_s).unwrap();
                             let args = SimpleArguments::from_primary(
                                 definition.file,
                                 definition.as_primary(),
                                 None,
+                                Some(&class),
                             );
-                            let init = cls.expect_class(i_s).unwrap().get_init_func(i_s, &args);
-                            cls.with_instance(
+                            let init = class.get_init_func(i_s, &args);
+                            inf_cls.with_instance(
                                 i_s,
                                 self,
                                 Generics::InstanceWithArguments(*definition),
@@ -443,8 +445,7 @@ impl<'db> Inferred<'db> {
             if point.get_type() == PointType::Specific {
                 match point.specific() {
                     Specific::ClassTypeVar => {
-                        dbg!(class.unwrap().generics.nth(i_s, point.type_var_index()));
-                        todo!()
+                        return class.unwrap().generics.nth(i_s, point.type_var_index())
                     }
                     Specific::FunctionTypeVar => {
                         return func_finder.map(|f| f.nth(i_s, point.type_var_index()))
@@ -461,17 +462,19 @@ impl<'db> Inferred<'db> {
             if point.get_type() == PointType::Specific {
                 match point.specific() {
                     Specific::InstanceWithArguments => {
-                        let cls = self
+                        let inf_cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
+                        let class = inf_cls.expect_class(i_s).unwrap();
                         let args = SimpleArguments::from_primary(
                             definition.file,
                             definition.as_primary(),
                             None,
+                            Some(&class),
                         );
-                        let init = cls.expect_class(i_s).unwrap().get_init_func(i_s, &args);
+                        let init = class.get_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                            cls.get_saved().unwrap().0.as_link(),
+                            inf_cls.get_saved().unwrap().0.as_link(),
                             OnceCell::new(),
                             Box::new(args.as_execution(&init)),
                         ));

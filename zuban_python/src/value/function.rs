@@ -139,20 +139,6 @@ impl<'db> Function<'db> {
         PointLink::new(self.file.get_file_index(), self.node_index)
     }
 
-    fn class_infos(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-    ) -> Option<&'db ClassInfos> {
-        // TODO getting the class this way is a bad idea.
-        if let Some(p) = self.iter_inferrable_params(args, false).next() {
-            if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                return Some(instance.class(i_s).get_class_infos(i_s));
-            }
-        }
-        None
-    }
-
     pub fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -173,7 +159,7 @@ impl<'db> Function<'db> {
             }
             return None;
         }
-        let class_infos = self.class_infos(i_s, args);
+        let class_infos = args.class_infos(i_s);
         let mut found_type_vars = vec![];
         let func_node = self.get_node();
         for param in func_node.params().iter() {

@@ -60,8 +60,8 @@ const TYPE_VAR_BIT_INDEX: usize = 8;
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const SPECIFIC_MASK: u32 = 0xFF; // 8 bits
-const MAX_TYPE_VAR_COUNT: u32 = 0xFF; // 256
-const TYPE_VAR_MASK: u32 = MAX_TYPE_VAR_COUNT << TYPE_VAR_BIT_INDEX; // 8 bits
+const MAX_TYPE_VAR: u32 = 0xFF; // 256
+const TYPE_VAR_MASK: u32 = MAX_TYPE_VAR << TYPE_VAR_BIT_INDEX; // 8 bits
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
@@ -159,9 +159,10 @@ impl Point {
     }
 
     pub fn new_class_type_var(index: TypeVarIndex, locality: Locality) -> Self {
+        assert!(index.0 <= MAX_TYPE_VAR);
         let flags = Self::calculate_flags(
             PointType::Specific,
-            Specific::ClassTypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
+            Specific::ClassTypeVar as u32 | index.0 << TYPE_VAR_BIT_INDEX,
             locality,
         );
         Self {
@@ -171,9 +172,10 @@ impl Point {
     }
 
     pub fn new_function_type_var(index: TypeVarIndex, locality: Locality) -> Self {
+        assert!(index.0 <= MAX_TYPE_VAR);
         let flags = Self::calculate_flags(
             PointType::Specific,
-            Specific::FunctionTypeVar as u32 | index.0 >> TYPE_VAR_BIT_INDEX,
+            Specific::FunctionTypeVar as u32 | index.0 << TYPE_VAR_BIT_INDEX,
             locality,
         );
         Self {
@@ -243,7 +245,7 @@ impl Point {
 
     pub fn type_var_index(self) -> TypeVarIndex {
         debug_assert!(self.get_type() == PointType::Specific);
-        TypeVarIndex(unsafe { mem::transmute(self.flags & TYPE_VAR_MASK >> TYPE_VAR_BIT_INDEX) })
+        TypeVarIndex(unsafe { mem::transmute((self.flags & TYPE_VAR_MASK) >> TYPE_VAR_BIT_INDEX) })
     }
 }
 

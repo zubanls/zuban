@@ -1,10 +1,10 @@
-use crate::database::{Database, Execution, PointLink};
+use crate::database::{ClassInfos, Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::{Function, Instance, Value};
+use crate::value::{Class, Function, Instance, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -20,6 +20,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn get_outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn get_type(&self) -> ArgumentsType<'db>;
+    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos>;
 }
 
 #[derive(Debug)]
@@ -30,6 +31,7 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node: Primary<'db>,
     details: ArgumentsDetails<'db>,
     in_: Option<&'a Execution>,
+    in_class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
@@ -52,6 +54,10 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn get_type(&self) -> ArgumentsType<'db> {
         ArgumentsType::Normal(self.file, self.primary_node)
     }
+
+    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
+        self.in_class.map(|c| c.get_class_infos(i_s))
+    }
 }
 
 impl<'db, 'a> SimpleArguments<'db, 'a> {
@@ -60,12 +66,14 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         primary_node: Primary<'db>,
         details: ArgumentsDetails<'db>,
         in_: Option<&'a Execution>,
+        in_class: Option<&'a Class<'db, 'a>>,
     ) -> Self {
         Self {
             file,
             primary_node,
             details,
             in_,
+            in_class,
         }
     }
 
@@ -73,9 +81,12 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
+        in_class: Option<&'a Class<'db, 'a>>,
     ) -> Self {
         match primary_node.second() {
-            PrimaryContent::Execution(details) => Self::new(file, primary_node, details, in_),
+            PrimaryContent::Execution(details) => {
+                Self::new(file, primary_node, details, in_, in_class)
+            }
             _ => unreachable!(),
         }
     }
@@ -83,7 +94,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
         let f = database.get_loaded_python_file(execution.argument_node.file);
         let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
-        Self::from_primary(f, primary, execution.in_.as_deref())
+        Self::from_primary(f, primary, execution.in_.as_deref(), None)
     }
 
     pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
@@ -121,6 +132,11 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
 
     fn get_type(&self) -> ArgumentsType<'db> {
         self.arguments.get_type()
+    }
+
+    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
+        // TODO getting the class this way is a bad idea.
+        Some(self.instance.class(i_s).get_class_infos(i_s))
     }
 }
 

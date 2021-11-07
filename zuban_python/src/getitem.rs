@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::Execution;
+use crate::database::{ClassInfos, Execution};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -98,6 +98,10 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
             ArgumentsType::Normal(self.file, self.primary_node)
         }
         */
+        todo!()
+    }
+
+    fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db ClassInfos> {
         todo!()
     }
 }

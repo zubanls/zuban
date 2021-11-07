@@ -439,7 +439,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Execute {}", value.get_name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
-                    value.execute(i_s, &SimpleArguments::new(f, primary, details, x.as_ref()))
+                    value.execute(
+                        i_s,
+                        &SimpleArguments::new(f, primary, details, x.as_ref(), None),
+                    )
                 })
             }
             PrimaryContent::GetItem(slice_type) => {
