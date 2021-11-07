@@ -1,9 +1,6 @@
-use parsa_python_ast::{
-    AtomContent, Expression, ExpressionContent, ExpressionPart, Name, PrimaryContent, SliceType,
-    Slices,
-};
+use parsa_python_ast::{Expression, ExpressionContent, PrimaryContent, SliceType, Slices};
 
-use crate::arguments::{Argument, Arguments, SimpleArguments};
+use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{
     CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointLink, PointType,
     Specific, TypeVarIndex,
@@ -227,26 +224,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             .iter_inferrable_params(self.args, self.skip_first)
         {
             if let Some(annotation) = p.param.annotation() {
-                /*
-                // TODO this should be cached
-                if let Some(class_foo_list) = self.class_foo_list.as_mut() {
-                    let inferred = self
-                        .function
-                        .file
-                        .get_inference(i_s)
-                        .infer_annotation_expression(annotation.expression());
-                    if inferred.maybe_type_var(i_s).is_some() {
-                        todo!()
-                    } else {
-                        inferred.run(i_s, &mut |i_s, v| {
-                            let value = p.infer(i_s);
-                            v.class(i_s).infer_type_vars(i_s, value, class_foo_list);
-                        });
-                        dbg!(class_foo_list);
-                        todo!()
-                    }
-                }
-                */
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     self.function
                         .file
@@ -262,75 +239,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             );
                             todo!()
                         });
-                    //self.try_to_find(i_s, &part, &p)
                 }
             }
         }
-    }
-
-    fn try_to_find(
-        &mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        content: &ExpressionPart<'db>,
-        inferrable: &dyn Inferrable<'db>,
-    ) {
-        match content {
-            ExpressionPart::Atom(atom) => {
-                if let AtomContent::Name(name) = atom.unpack() {
-                    if !self.already_in_calculated_type_vars(&name) {
-                        let inferred = self.function.file.get_inference(i_s).infer_name(name);
-                        if inferred.maybe_type_var(i_s).is_some() {
-                            //self.calculated_type_vars
-                            //.push((name.as_str(), inferrable.infer(i_s)));
-                            todo!()
-                        }
-                    }
-                }
-            }
-            ExpressionPart::Primary(primary) => match primary.second() {
-                PrimaryContent::GetItem(slice_type) => {
-                    let inf = self
-                        .function
-                        .file
-                        .get_inference(i_s)
-                        .infer_primary_or_atom(primary.first());
-                    if let Some(cls) = inf.expect_class(i_s) {
-                        let i = inferrable.infer(i_s);
-                        //if !self.already_in_calculated_type_vars("foo")  {
-                        //dbg!(cls.to_generic_part(i_s));
-                        cls.infer_type_vars(
-                            i_s,
-                            i,
-                            self.calculated_type_vars.as_mut().unwrap(),
-                            self.match_specific,
-                        );
-                        //}
-                    }
-                }
-                PrimaryContent::Attribute(name) => {
-                    let x = self
-                        .function
-                        .file
-                        .get_inference(i_s)
-                        .infer_primary(*primary);
-                    todo!()
-                }
-                PrimaryContent::Execution(_) => (),
-            },
-            ExpressionPart::BitwiseOr(bitwise_or) => todo!("unions"),
-            _ => (),
-        }
-    }
-
-    fn already_in_calculated_type_vars(&self, name: &Name) -> bool {
-        todo!()
-        /*
-        self.calculated_type_vars
-            .as_ref()
-            .unwrap()
-            .iter()
-            .any(|(n, _)| *n == name.as_str())
-        */
     }
 
     pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
@@ -341,59 +252,4 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             self.nth(i_s, index)
         }
     }
-
-    /*
-    fn x(&self) {
-        match slice_type {
-            SliceType::NamedExpression(named) => {
-                let inferred = self.function.file.get_inference(i_s).infer_named_expression(named);
-                if inferred.is_type_var(i_s) {
-                    todo!()
-                } else {
-                    todo!()
-                }
-            }
-            SliceType::Slices(slices) => {
-                dbg!(slices);
-                todo!()
-            }
-            SliceType::Slice(slice) => {
-                // This is an error, the annotation List[foo:bar] makes no sense.
-            }
-        };
-    }
-    */
-
-    /*
-    fn lookup(&mut self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Option<Inferred<'db>> {
-        if let Some(type_vars) = &self.calculated_type_vars {
-            if !self.skip_first {
-                if let Some(p) = self
-                    .function
-                    .iter_inferrable_params(self.args, self.skip_first)
-                    .next()
-                {
-                    if let Some(Argument::PositionalFirst(instance)) = p.argument {
-                        if let Some(inf) = instance
-                            .as_instance()
-                            .unwrap_or_else(|| todo!())
-                            .lookup_type_var(i_s, name)
-                        {
-                            return Some(inf);
-                        }
-                    }
-                }
-            }
-            for (type_var, result) in type_vars {
-                if *type_var == name {
-                    return Some(result.clone());
-                }
-            }
-            None
-        } else {
-            self.calculate_type_vars(i_s);
-            self.lookup(i_s, name)
-        }
-    }
-    */
 }

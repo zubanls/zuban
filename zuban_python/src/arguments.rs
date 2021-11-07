@@ -1,4 +1,4 @@
-use crate::database::{ClassInfos, Database, Execution, PointLink};
+use crate::database::{Database, Execution, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
