@@ -175,7 +175,7 @@ macro_rules! __create_node {
                 self.code_slice(self.internal_node.start_index, self.internal_node.length)
             }
 
-            pub fn get_prefix(&self) -> &'a str {
+            pub fn prefix(&self) -> &'a str {
                 let start;
                 if self.index == 0 {
                     start = 0;
@@ -186,7 +186,7 @@ macro_rules! __create_node {
                 string
             }
 
-            pub fn get_suffix(&self) -> &'a str {
+            pub fn suffix(&self) -> &'a str {
                 let end;
                 if self.index as usize == self.internal_tree.nodes.len() - 1 {
                     end = self.internal_tree.code.len() as u32
