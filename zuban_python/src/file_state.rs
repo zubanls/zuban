@@ -45,7 +45,7 @@ pub trait FileStateLoader {
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
 
-    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>>;
+    fn inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>>;
 }
 
 #[derive(Default)]
@@ -75,7 +75,7 @@ impl FileStateLoader for PythonFileLoader {
         Box::pin(LanguageFileState::new_unparsed(path, &PythonFile::new))
     }
 
-    fn get_inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
+    fn inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
         Box::pin(LanguageFileState::<PythonFile>::new_does_not_exist(path))
     }
 }

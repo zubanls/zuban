@@ -656,7 +656,7 @@ impl Database {
             if let Some(code) = self.file_system_reader.read_file(&path) {
                 loader.load_parsed(path, code)
             } else {
-                loader.get_inexistent_file_state(path)
+                loader.inexistent_file_state(path)
             },
         );
         index.set(file_index);
