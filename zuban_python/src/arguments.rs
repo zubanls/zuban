@@ -19,7 +19,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
     fn get_outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
-    fn get_type(&self) -> ArgumentsType<'db>;
+    fn type_(&self) -> ArgumentsType<'db>;
     fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>>;
 }
 
@@ -51,7 +51,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         )
     }
 
-    fn get_type(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType<'db> {
         ArgumentsType::Normal(self.file, self.primary_node)
     }
 
@@ -130,8 +130,8 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
         self.arguments.as_execution(function)
     }
 
-    fn get_type(&self) -> ArgumentsType<'db> {
-        self.arguments.get_type()
+    fn type_(&self) -> ArgumentsType<'db> {
+        self.arguments.type_()
     }
 
     fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {

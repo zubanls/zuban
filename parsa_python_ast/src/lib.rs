@@ -59,7 +59,7 @@ impl<'db> Iterator for InterestingNodes<'db> {
             } else if n.is_type(Nonterminal(comprehension)) {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else {
-                debug_assert_eq!(n.get_type(), Nonterminal(comprehension));
+                debug_assert_eq!(n.type_(), Nonterminal(comprehension));
                 InterestingNode::DictComprehension(DictComprehension::new(n))
             }
         })
@@ -76,7 +76,7 @@ macro_rules! create_struct {
         impl<'db> $name<'db> {
             #[inline]
             pub fn new(node: PyNode<'db>) -> Self {
-                debug_assert_eq!(node.get_type(), $type);
+                debug_assert_eq!(node.type_(), $type);
                 Self { node }
             }
 
@@ -581,7 +581,7 @@ impl<'db> Iterator for StmtIterator<'db> {
                     n.is_type(Terminal(TerminalType::Dedent))
                         || n.is_type(Terminal(TerminalType::Endmarker)),
                     "{:?}",
-                    n.get_type()
+                    n.type_()
                 );
                 None
             }
@@ -783,7 +783,7 @@ impl<'db> Stmt<'db> {
         } else if child.is_type(Nonterminal(async_stmt)) {
             StmtContent::AsyncStmt(AsyncStmt::new(child))
         } else {
-            debug_assert_eq!(child.get_type(), Terminal(TerminalType::Newline));
+            debug_assert_eq!(child.type_(), Terminal(TerminalType::Newline));
             StmtContent::Newline
         }
     }
@@ -812,7 +812,7 @@ impl<'db> Decorated<'db> {
         } else if decoratee.is_type(Nonterminal(class_def)) {
             Decoratee::ClassDef(ClassDef::new(decoratee))
         } else {
-            debug_assert_eq!(decoratee.get_type(), Nonterminal(async_function_def));
+            debug_assert_eq!(decoratee.type_(), Nonterminal(async_function_def));
             Decoratee::AsyncFunctionDef(FunctionDef::new(decoratee.nth_child(1)))
         }
     }
@@ -832,7 +832,7 @@ impl<'db> AsyncStmt<'db> {
         } else if child.is_type(Nonterminal(for_stmt)) {
             AsyncStmtContent::ForStmt(ForStmt::new(child))
         } else {
-            debug_assert_eq!(child.get_type(), Nonterminal(with_stmt));
+            debug_assert_eq!(child.type_(), Nonterminal(with_stmt));
             AsyncStmtContent::WithStmt(WithStmt::new(child))
         }
     }
@@ -1426,7 +1426,7 @@ impl<'db> Primary<'db> {
         if first.is_type(Nonterminal(atom)) {
             PrimaryOrAtom::Atom(Atom::new(first))
         } else {
-            debug_assert_eq!(first.get_type(), Nonterminal(primary));
+            debug_assert_eq!(first.type_(), Nonterminal(primary));
             PrimaryOrAtom::Primary(Primary::new(first))
         }
     }
@@ -1595,7 +1595,7 @@ impl<'db> Atom<'db> {
         let mut iter = self.node.iter_children();
         let first = iter.next().unwrap();
 
-        match first.get_type() {
+        match first.type_() {
             Terminal(TerminalType::Name) => AtomContent::Name(Name::new(first)),
             Terminal(TerminalType::Number) => {
                 let code = first.as_code();
@@ -1614,7 +1614,7 @@ impl<'db> Atom<'db> {
                 "..." => AtomContent::Ellipsis,
                 "(" => {
                     let next_node = iter.next().unwrap();
-                    match next_node.get_type() {
+                    match next_node.type_() {
                         Nonterminal(tuple_content) => AtomContent::Tuple(Tuple::new(self.node)),
                         Nonterminal(yield_expr) => {
                             AtomContent::YieldExpr(YieldExpr::new(next_node))
@@ -1642,7 +1642,7 @@ impl<'db> Atom<'db> {
                 }
                 "{" => {
                     let next_node = iter.next().unwrap();
-                    match next_node.get_type() {
+                    match next_node.type_() {
                         Nonterminal(dict_content) => AtomContent::Dict(Dict::new(self.node)),
                         Nonterminal(dict_comprehension) => {
                             AtomContent::DictComprehension(DictComprehension::new(next_node))
@@ -1753,7 +1753,7 @@ impl<'db> Target<'db> {
     }
 
     fn new_single_target(node: PyNode<'db>) -> Self {
-        debug_assert_eq!(node.get_type(), Nonterminal(single_target));
+        debug_assert_eq!(node.type_(), Nonterminal(single_target));
 
         // t_primary | name_definition | "(" single_target ")"
         let first = node.nth_child(0);
@@ -1816,9 +1816,9 @@ impl<'db> NameOrKeywordLookup<'db> {
                 FStringStart,
                 FStringEnd,
             ];
-            match left.get_type() {
+            match left.type_() {
                 PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
-                    match right.get_type() {
+                    match right.type_() {
                         PyNodeType::ErrorKeyword | PyNodeType::Keyword => {
                             let is_alpha =
                                 |n: PyNode| n.as_code().chars().all(|x| x.is_alphanumeric());
@@ -1837,7 +1837,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                     }
                 }
                 Terminal(left_terminal) | ErrorTerminal(left_terminal) => {
-                    match right.get_type() {
+                    match right.type_() {
                         Terminal(right_terminal) | ErrorTerminal(right_terminal) => {
                             let order_func =
                                 |typ| order.iter().position(|&t| t == typ).unwrap_or(usize::MAX);
@@ -1854,7 +1854,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                 Nonterminal(_) | ErrorNonterminal(_) => unreachable!(),
             }
         }
-        match left.get_type() {
+        match left.type_() {
             Terminal(t) | ErrorTerminal(t) => match t {
                 TerminalType::Name => Self::Name(Name::new(left)),
                 _ => Self::None,

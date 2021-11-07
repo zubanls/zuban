@@ -92,7 +92,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn get_type(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType<'db> {
         /*
         match {
             ArgumentsType::Normal(self.file, self.primary_node)

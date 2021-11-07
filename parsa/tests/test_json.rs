@@ -107,7 +107,7 @@ fn it_works() {
     use JsonTerminalType::*;
     let tree = JSON_GRAMMAR.parse("{foo: 1}".to_owned());
     let root_node = tree.root_node();
-    assert_eq!(root_node.get_type(), Nonterminal(document));
+    assert_eq!(root_node.type_(), Nonterminal(document));
 
     assert_eq!(tree.internal_tree.nodes.len(), 12);
     let expected_list = [
@@ -131,7 +131,7 @@ fn it_works() {
                 actual.internal_node.next_node_offset,
                 actual.start(),
                 actual.length(),
-                actual.get_type(),
+                actual.type_(),
             ),
             expected
         );

@@ -326,7 +326,7 @@ mod tests {
         let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n".to_owned());
         let root_node = tree.root_node();
         assert_eq!(
-            root_node.get_type(),
+            root_node.type_(),
             PyNodeType::Nonterminal(NonterminalType::file)
         );
     }

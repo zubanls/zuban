@@ -185,7 +185,7 @@ impl Point {
         }
     }
 
-    pub fn get_type(self) -> PointType {
+    pub fn type_(self) -> PointType {
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
 
@@ -208,14 +208,14 @@ impl Point {
 
     pub fn file_index(self) -> FileIndex {
         debug_assert!(
-            self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
+            self.type_() == PointType::Redirect || self.type_() == PointType::FileReference
         );
         FileIndex(self.flags & REST_MASK)
     }
 
     pub fn complex_index(self) -> usize {
         debug_assert!(
-            self.get_type() == PointType::Complex,
+            self.type_() == PointType::Complex,
             "Expected complex, got {:?}",
             self
         );
@@ -224,15 +224,15 @@ impl Point {
 
     pub fn node_index(self) -> NodeIndex {
         debug_assert!(
-            self.get_type() == PointType::Redirect
-                || self.get_type() == PointType::NodeAnalysis
-                || self.get_type() == PointType::MultiDefinition
+            self.type_() == PointType::Redirect
+                || self.type_() == PointType::NodeAnalysis
+                || self.type_() == PointType::MultiDefinition
         );
         self.node_index
     }
 
     pub fn maybe_specific(self) -> Option<Specific> {
-        if self.get_type() == PointType::Specific {
+        if self.type_() == PointType::Specific {
             Some(self.specific())
         } else {
             None
@@ -240,12 +240,12 @@ impl Point {
     }
 
     pub fn specific(self) -> Specific {
-        debug_assert!(self.get_type() == PointType::Specific);
+        debug_assert!(self.type_() == PointType::Specific);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
 
     pub fn type_var_index(self) -> TypeVarIndex {
-        debug_assert!(self.get_type() == PointType::Specific);
+        debug_assert!(self.type_() == PointType::Specific);
         TypeVarIndex(unsafe { mem::transmute((self.flags & TYPE_VAR_MASK) >> TYPE_VAR_BIT_INDEX) })
     }
 }
@@ -258,14 +258,13 @@ impl fmt::Debug for Point {
         } else if !self.calculated() {
             s.field("calculated", &self.calculated());
         } else {
-            s.field("type", &self.get_type())
+            s.field("type", &self.type_())
                 .field("locality", &self.locality())
                 .field("node_index", &self.node_index);
-            if self.get_type() == PointType::Specific {
+            if self.type_() == PointType::Specific {
                 s.field("specific", &self.specific());
             }
-            if self.get_type() == PointType::Redirect || self.get_type() == PointType::FileReference
-            {
+            if self.type_() == PointType::Redirect || self.type_() == PointType::FileReference {
                 s.field("file_index", &self.file_index().0);
             }
         }
@@ -291,10 +290,10 @@ impl Points {
     }
 
     pub fn set_on_name(&self, name: &Name, point: Point) {
-        debug_assert!(point.get_type() != PointType::MultiDefinition);
+        debug_assert!(point.type_() != PointType::MultiDefinition);
         let mut index = name.index();
         let current = self.get(index);
-        if current.calculated() && current.get_type() == PointType::MultiDefinition {
+        if current.calculated() && current.type_() == PointType::MultiDefinition {
             index -= 1 // Set it on NameDefinition
         }
         self.set(index, point);

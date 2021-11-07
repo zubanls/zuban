@@ -214,10 +214,10 @@ macro_rules! check_point_cache_with {
                         node.index(),
                         {
                             let point = self.file.points.get(node.index());
-                            if matches!(point.get_type(), PointType::Specific) {
+                            if matches!(point.type_(), PointType::Specific) {
                                 format!("{:?}", point.specific())
                             } else {
-                                format!("{:?}", point.get_type())
+                                format!("{:?}", point.type_())
                             }
                         },
                     );
@@ -346,7 +346,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let point = self.file.points.get(n.index());
                 if point.calculated() {
                     // Save on name_definition
-                    debug_assert_eq!(point.get_type(), PointType::MultiDefinition);
+                    debug_assert_eq!(point.type_(), PointType::MultiDefinition);
                     value.clone().save_redirect(self.file, n.index() - 1);
                 } else {
                     value.clone().save_redirect(self.file, n.index());
@@ -513,7 +513,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let point = self.file.points.get(node_index);
         point
             .calculated()
-            .then(|| match point.get_type() {
+            .then(|| match point.type_() {
                 PointType::Redirect => {
                     let file_index = point.file_index();
                     let node_index = point.node_index();
@@ -556,8 +556,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let class = name.expect_class_def();
                         // Avoid overwriting multi definitions
                         let mut name_index = name.index();
-                        if self.file.points.get(name_index).get_type() == PointType::MultiDefinition
-                        {
+                        if self.file.points.get(name_index).type_() == PointType::MultiDefinition {
                             name_index = name.name_definition().unwrap().index();
                         }
                         self.file.points.set(
@@ -636,7 +635,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             "{:?}",
             name
         );
-        if let PointType::MultiDefinition = self.file.points.get(name.index()).get_type() {
+        if let PointType::MultiDefinition = self.file.points.get(name.index()).type_() {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.
             self.infer_multi_definition(name.name_definition().unwrap())

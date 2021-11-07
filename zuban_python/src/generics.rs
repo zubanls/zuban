@@ -43,7 +43,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::InstanceWithArguments(reference) => {
                 let class_reference = reference.add_to_node_index(1);
                 let point = class_reference.get_point();
-                match point.get_type() {
+                match point.type_() {
                     PointType::Complex => {
                         if let ComplexPoint::GenericClass(_, generics) =
                             class_reference.get_complex().unwrap()
@@ -70,7 +70,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                                 Some(&cls),
                             );
                             let init = cls.get_init_func(i_s, &args);
-                            let type_vars = cls.get_type_vars(i_s);
+                            let type_vars = cls.type__vars(i_s);
                             debug!("Inferring instance generics for {}", primary.short_debug());
                             let list = TypeVarMatcher::calculate_and_return(
                                 i_s,

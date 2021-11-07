@@ -109,7 +109,7 @@ macro_rules! create_terminals {
                 self.length
             }
 
-            fn get_type(&self) -> $crate::InternalTerminalType {
+            fn type_(&self) -> $crate::InternalTerminalType {
                 $crate::InternalTerminalType(self.type_ as u16)
             }
 
@@ -241,7 +241,7 @@ macro_rules! __create_node {
             }
 
             pub fn nth_child(&self, index: usize) -> $Node<'a> {
-                debug_assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.get_type());
+                debug_assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.type_());
                 self.iter_children().skip(index).next().expect("There is no child")
             }
 
@@ -283,7 +283,7 @@ macro_rules! __create_node {
             }
 
             pub fn search(&self, types: &'static [$NodeType]) -> SearchIterator<'a> {
-                assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.get_type());
+                assert!(!self.is_leaf(), "Unexpected Leaf: {:?}", self.type_());
                 SearchIterator {
                     internal_tree: self.internal_tree,
                     next_index: self.index,
@@ -320,7 +320,7 @@ macro_rules! __create_node {
                 return None
             }
 
-            pub fn get_type(&self) -> $NodeType {
+            pub fn type_(&self) -> $NodeType {
                 let f = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 let g = |type_: $crate::InternalSquashedType| unsafe {$crate::mem::transmute(type_)};
                 if self.is_error_recovery_node() {
@@ -354,7 +354,7 @@ macro_rules! __create_node {
 
             pub fn type_str(&self) -> String {
                 // Not a fast API, should probably only be used for tests.
-                match self.get_type() {
+                match self.type_() {
                     $NodeType::Nonterminal(t) => $NonterminalType::as_str(t).to_owned(),
                     $NodeType::Terminal(t) => $TerminalType::as_str(t).to_owned(),
                     $NodeType::Keyword => "Keyword".to_owned(),

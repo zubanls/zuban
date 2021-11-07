@@ -434,10 +434,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn is_self_param(&self, name_index: NodeIndex) -> bool {
         let point = self.points.get(name_index);
-        if let Redirect = point.get_type() {
+        if let Redirect = point.type_() {
             let param_index = point.node_index();
             let param_point = self.points.get(param_index);
-            if let PointType::Specific = param_point.get_type() {
+            if let PointType::Specific = param_point.type_() {
                 if param_point.specific() == Specific::Param {
                     let name = Name::by_index(self.tree, param_index);
                     return name.has_self_param_position();
@@ -655,7 +655,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
         // Avoid overwriting multi definitions
         let mut name_index = name_def.name().index();
-        if self.points.get(name_index).get_type() == MultiDefinition {
+        if self.points.get(name_index).type_() == MultiDefinition {
             name_index = name_def.index();
         }
         self.points.set(

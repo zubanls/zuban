@@ -37,7 +37,7 @@ impl PythonState {
         let func = init.find_function_alternative();
         let link = func.reference.as_link();
         assert_eq!(
-            builtins.points.get(link.node_index).get_type(),
+            builtins.points.get(link.node_index).type_(),
             PointType::Specific
         );
         assert_eq!(
@@ -74,7 +74,7 @@ impl PythonState {
         let builtins = self.get_builtins();
         let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
         let point = builtins.points.get(node_index);
-        debug_assert_eq!(point.get_type(), PointType::Redirect);
+        debug_assert_eq!(point.type_(), PointType::Redirect);
         PointLink::new(builtins.file_index(), point.node_index())
     }
 }

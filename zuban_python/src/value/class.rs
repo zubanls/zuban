@@ -68,7 +68,7 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn get_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
+    pub fn type__vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
         &self.get_class_infos(i_s).type_vars
     }
 
@@ -275,7 +275,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
             ))
         } else {
             let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Stmt);
-            match args.get_type() {
+            match args.type_() {
                 ArgumentsType::Normal(file, primary_node) => {
                     Inferred::new_and_save(file, primary_node.index(), point)
                 }

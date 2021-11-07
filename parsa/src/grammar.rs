@@ -16,7 +16,7 @@ pub type CodeLength = u32;
 pub trait Token: Copy + fmt::Debug {
     fn start_index(&self) -> u32;
     fn length(&self) -> u32;
-    fn get_type(&self) -> InternalTerminalType;
+    fn type_(&self) -> InternalTerminalType;
     fn can_contain_syntax(&self) -> bool;
 }
 
@@ -174,9 +174,9 @@ impl<'a, T: Token> Grammar<T> {
                     transition = self
                         .keywords
                         .get_squashed(token_str)
-                        .unwrap_or_else(|| token.get_type().to_squashed());
+                        .unwrap_or_else(|| token.type_().to_squashed());
                 } else {
-                    transition = token.get_type().to_squashed();
+                    transition = token.type_().to_squashed();
                 }
 
                 self.apply_transition(&mut stack, &mut backtracking_tokenizer, transition, &token);
