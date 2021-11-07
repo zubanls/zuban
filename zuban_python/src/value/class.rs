@@ -1,11 +1,11 @@
 use once_cell::unsync::OnceCell;
-use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, NodeIndex};
+use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, GenericPart, Locality, Point,
-    PointLink, PointType, Specific, TypeVarRemap,
+    PointLink, Specific, TypeVarRemap,
 };
 use crate::file::PythonFile;
 use crate::generics::{Generics, TypeVarMatcher};
@@ -43,12 +43,7 @@ impl<'db, 'a> Class<'db, 'a> {
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Option<Self> {
-        let v = reference.get_point();
-        debug_assert_eq!(v.get_type(), PointType::Complex, "{:?}", v);
-        let complex = reference
-            .file
-            .complex_points
-            .get(v.get_complex_index() as usize);
+        let complex = reference.get_complex().unwrap();
         match complex {
             ComplexPoint::Class(c) => Some(Self::new(
                 reference,
