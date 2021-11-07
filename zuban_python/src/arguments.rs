@@ -36,7 +36,7 @@ pub struct SimpleArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::Normal(self.get_argument_iterator_base())
+        ArgumentIterator::Normal(self.argument_iterator_base())
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -97,7 +97,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         Self::from_primary(f, primary, execution.in_.as_deref(), None)
     }
 
-    pub fn get_argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
+    pub fn argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
         match self.details {
             ArgumentsDetails::Node(arguments) => {
                 ArgumentIteratorBase::Iterator(self.file, arguments.iter())
