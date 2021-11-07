@@ -292,7 +292,7 @@ macro_rules! __create_node {
                 }
             }
 
-            pub fn get_previous_leaf(&self) -> Option<$Node<'a>> {
+            pub fn previous_leaf(&self) -> Option<$Node<'a>> {
                 for (index, node) in self.internal_tree.nodes[..self.index as usize].iter().enumerate().rev() {
                     if node.type_.is_leaf() {
                         return Some($Node {

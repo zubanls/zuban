@@ -1796,7 +1796,7 @@ impl<'db> NameOrKeywordLookup<'db> {
         let mut left = tree.0.get_leaf_by_position(position);
         let mut right = left;
         if left.start() == position {
-            if let Some(n) = left.get_previous_leaf() {
+            if let Some(n) = left.previous_leaf() {
                 if n.end() == position {
                     left = n;
                 }
