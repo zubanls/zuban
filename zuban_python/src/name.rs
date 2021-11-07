@@ -27,7 +27,7 @@ impl TreePosition<'_> {
 }
 
 pub trait Name<'db>: fmt::Debug {
-    fn get_name(&self) -> &'db str;
+    fn name(&self) -> &'db str;
 
     fn file_path(&self) -> &str;
 
@@ -79,7 +79,7 @@ impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
             .field("file", &self.file_path())
-            .field("name", &self.get_name())
+            .field("name", &self.name())
             .finish()
     }
 }
@@ -95,7 +95,7 @@ impl<'db, F: File, N> TreeName<'db, F, N> {
 }
 
 impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         self.ast_name.as_str()
     }
 
@@ -164,8 +164,8 @@ impl<'db, 'a> fmt::Debug for WithValueName<'db, 'a> {
 }
 
 impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
-    fn get_name(&self) -> &'db str {
-        self.value.get_name()
+    fn name(&self) -> &'db str {
+        self.value.name()
     }
 
     fn file_path(&self) -> &str {

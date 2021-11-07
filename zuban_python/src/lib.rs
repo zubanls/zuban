@@ -174,7 +174,7 @@ impl<'a> Script<'a> {
 
     pub fn get_context(&self, position: Position) {}
 
-    pub fn get_names(&self /*all_scopes=False, definitions=True, references=False*/) {}
+    pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
     pub fn get_syntax_errors(&self) {}
 

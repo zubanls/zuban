@@ -27,7 +27,7 @@ impl<'db> Value<'db> for TypingClass<'db> {
         ValueKind::Class
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         Name::by_index(&self.reference.file.tree, self.reference.node_index).as_str()
     }
 
@@ -95,7 +95,7 @@ impl<'db> Value<'db> for TypingWithGenerics<'db> {
         ValueKind::Class
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
             Specific::TypingProtocol => "Protocol",

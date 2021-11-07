@@ -238,7 +238,7 @@ impl<'db> Value<'db> for Function<'db> {
         ValueKind::Function
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
         func.name().as_str()
     }

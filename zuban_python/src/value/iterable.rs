@@ -80,7 +80,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         ValueKind::Object
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         "list"
     }
 

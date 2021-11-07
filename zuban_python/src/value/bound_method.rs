@@ -21,8 +21,8 @@ impl<'db> Value<'db> for BoundMethod<'db, '_> {
         self.function.get_kind()
     }
 
-    fn get_name(&self) -> &'db str {
-        self.function.get_name()
+    fn name(&self) -> &'db str {
+        self.function.name()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

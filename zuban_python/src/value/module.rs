@@ -20,7 +20,7 @@ impl<'db> Value<'db> for Module<'db> {
         ValueKind::Object
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         todo!()
     }
 

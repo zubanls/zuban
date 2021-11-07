@@ -697,7 +697,7 @@ impl Workspace {
             DirectoryOrFile::Directory(root, vec![]),
         )];
         // TODO optimize if there are a lot of files
-        for entry in WalkDir::new(&stack[0].1.get_name())
+        for entry in WalkDir::new(&stack[0].1.name())
             .follow_links(true)
             .into_iter()
             .filter_entry(|entry| {
@@ -795,7 +795,7 @@ pub enum DirectoryOrFile {
 }
 
 impl DirectoryOrFile {
-    pub fn get_name(&self) -> &str {
+    pub fn name(&self) -> &str {
         match self {
             Self::Directory(name, _) => name,
             Self::File(name, _) => name,

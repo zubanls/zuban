@@ -82,7 +82,7 @@ impl<'db, 'a> Class<'db, 'a> {
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         // TODO use mro
-        dbg!(self.get_name(), self.type_var_remap);
+        dbg!(self.name(), self.type_var_remap);
         value.run(i_s, &mut |i_s, v| {
             let check_class = v.class(i_s);
             for class in check_class.mro(i_s) {
@@ -233,7 +233,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let has_type_vars = self.get_class_infos(i_s).type_vars.len() > 0;
         format!(
             "{}{}",
-            self.get_name(),
+            self.name(),
             if has_type_vars { &generics_str } else { "" }
         )
     }
@@ -244,7 +244,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         ValueKind::Class
     }
 
-    fn get_name(&self) -> &'db str {
+    fn name(&self) -> &'db str {
         self.get_node().name().as_str()
     }
 
@@ -255,7 +255,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
                 .get_inference(i_s)
                 .infer_name_by_index(node_index)
         } else {
-            // todo!("{:?}.{:?}", self.get_name(), name)
+            // todo!("{:?}.{:?}", self.name(), name)
             // TODO inheritance
             i_s.database.python_state.object_init_as_inferred()
         }

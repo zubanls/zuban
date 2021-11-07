@@ -33,8 +33,8 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
         ValueKind::Object
     }
 
-    fn get_name(&self) -> &'db str {
-        self.class.get_name()
+    fn name(&self) -> &'db str {
+        self.class.name()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

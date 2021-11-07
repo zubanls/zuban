@@ -10,7 +10,7 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
         database,
         database.workspaces.iter().map(|x| {
             (
-                x.get_root().get_name(),
+                x.get_root().name(),
                 x.get_root().get_directory_entries().unwrap(),
             )
         }),

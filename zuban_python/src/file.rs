@@ -422,13 +422,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let base = self.infer_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
-                debug!("Lookup {}.{}", value.get_name(), name.as_str());
+                debug!("Lookup {}.{}", value.name(), name.as_str());
                 value.lookup(i_s, name.as_str())
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Execute {}", value.get_name());
+                    debug!("Execute {}", value.name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.execute(
                         i_s,
@@ -439,7 +439,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Get Item {}", value.get_name());
+                    debug!("Get Item {}", value.name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
                 })

@@ -35,7 +35,7 @@ impl TestFile {
                     let actual: HashSet<_> = script
                         .infer_definition(
                             &|name| {
-                                name.get_name().to_owned()
+                                name.name().to_owned()
                                     + (if name.get_kind() == ValueKind::Object {
                                         "()"
                                     } else {

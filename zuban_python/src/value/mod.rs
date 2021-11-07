@@ -63,13 +63,13 @@ pub trait Value<'db>: std::fmt::Debug {
 
     //fn get_file(&self) -> &'db dyn File;
 
-    fn get_name(&self) -> &'db str;
+    fn name(&self) -> &'db str;
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.get_kind()).to_lowercase(),
-            self.get_name()
+            self.name()
         )
     }
 
