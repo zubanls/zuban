@@ -76,7 +76,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
 }
 
 impl<'db> Value<'db> for ListLiteral<'db, '_> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 

@@ -23,7 +23,7 @@ impl<'db> TypingClass<'db> {
 }
 
 impl<'db> Value<'db> for TypingClass<'db> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
@@ -91,7 +91,7 @@ impl<'db> TypingWithGenerics<'db> {
 }
 
 impl<'db> Value<'db> for TypingWithGenerics<'db> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 

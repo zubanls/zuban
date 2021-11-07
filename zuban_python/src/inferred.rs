@@ -769,7 +769,7 @@ impl<'db> Inferred<'db> {
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.get_kind() == ValueKind::Class,
+            &mut |i_s, v| v.kind() == ValueKind::Class,
             &|i1, i2| i1 & i2,
             &|inferred| false,
         )

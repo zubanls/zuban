@@ -234,7 +234,7 @@ impl<'db> Function<'db> {
 }
 
 impl<'db> Value<'db> for Function<'db> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
 

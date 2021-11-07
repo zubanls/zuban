@@ -59,7 +59,7 @@ pub enum ValueKind {
 }
 
 pub trait Value<'db>: std::fmt::Debug {
-    fn get_kind(&self) -> ValueKind;
+    fn kind(&self) -> ValueKind;
 
     //fn get_file(&self) -> &'db dyn File;
 
@@ -68,7 +68,7 @@ pub trait Value<'db>: std::fmt::Debug {
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",
-            format!("{:?}", self.get_kind()).to_lowercase(),
+            format!("{:?}", self.kind()).to_lowercase(),
             self.name()
         )
     }

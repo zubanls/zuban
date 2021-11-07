@@ -240,7 +240,7 @@ impl<'db, 'a> Class<'db, 'a> {
 }
 
 impl<'db> Value<'db> for Class<'db, '_> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
@@ -304,7 +304,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",
-            format!("{:?}", self.get_kind()).to_lowercase(),
+            format!("{:?}", self.kind()).to_lowercase(),
             self.as_str(i_s),
         )
     }

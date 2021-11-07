@@ -29,7 +29,7 @@ impl<'db, 'a> Instance<'db, 'a> {
 }
 
 impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
-    fn get_kind(&self) -> ValueKind {
+    fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 

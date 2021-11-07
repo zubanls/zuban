@@ -36,7 +36,7 @@ impl TestFile {
                         .infer_definition(
                             &|name| {
                                 name.name().to_owned()
-                                    + (if name.get_kind() == ValueKind::Object {
+                                    + (if name.kind() == ValueKind::Object {
                                         "()"
                                     } else {
                                         ""

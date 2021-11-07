@@ -66,7 +66,7 @@ pub trait Name<'db>: fmt::Debug {
 }
 
 pub trait ValueName<'db>: Name<'db> {
-    fn get_kind(&self) -> ValueKind;
+    fn kind(&self) -> ValueKind;
 }
 
 pub struct TreeName<'db, F: File, N> {
@@ -210,8 +210,8 @@ impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
 }
 
 impl<'db, 'a> ValueName<'db> for WithValueName<'db, 'a> {
-    fn get_kind(&self) -> ValueKind {
-        self.value.get_kind()
+    fn kind(&self) -> ValueKind {
+        self.value.kind()
     }
 }
 

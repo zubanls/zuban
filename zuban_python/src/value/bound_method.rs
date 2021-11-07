@@ -17,8 +17,8 @@ impl<'db, 'a> BoundMethod<'db, 'a> {
 }
 
 impl<'db> Value<'db> for BoundMethod<'db, '_> {
-    fn get_kind(&self) -> ValueKind {
-        self.function.get_kind()
+    fn kind(&self) -> ValueKind {
+        self.function.kind()
     }
 
     fn name(&self) -> &'db str {
