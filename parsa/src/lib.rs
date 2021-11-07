@@ -50,7 +50,7 @@ macro_rules! __create_type_set {
         }
 
         impl $EnumName {
-            pub fn get_map() -> &'static $Map {
+            pub fn map() -> &'static $Map {
                 #[macro_use]
                 $crate::lazy_static! {
                     static ref HASHMAP: $Map = {
@@ -326,7 +326,7 @@ macro_rules! __create_node {
                 if self.is_error_recovery_node() {
                     if self.is_leaf() {
                         let t = self.internal_node.type_.remove_error_recovery_bit();
-                        if t.0 as usize >= $TerminalType::get_map().len() {
+                        if t.0 as usize >= $TerminalType::map().len() {
                             $NodeType::ErrorKeyword
                         } else {
                             $NodeType::ErrorTerminal(f(t))
@@ -337,7 +337,7 @@ macro_rules! __create_node {
                 } else {
                     if self.is_leaf() {
                         // TODO this should probably be something like is keyword
-                        if self.internal_node.type_.0 as usize >= $TerminalType::get_map().len() {
+                        if self.internal_node.type_.0 as usize >= $TerminalType::map().len() {
                             $NodeType::Keyword
                         } else {
                             $NodeType::Terminal(f(self.internal_node.type_))
@@ -637,7 +637,7 @@ macro_rules! create_grammar {
                 $crate::__parse_rules!($NonterminalType, rules, $first_node $($rule)+);
                 let soft_keywords = $crate::__parse_soft_keywords!($TerminalType, $($soft_keywords)*);
                 Self {internal_grammar: Grammar::new(
-                    &rules, $NonterminalType::get_map(), $TerminalType::get_map(),
+                    &rules, $NonterminalType::map(), $TerminalType::map(),
                     soft_keywords
                 )}
             }
@@ -645,7 +645,7 @@ macro_rules! create_grammar {
             pub fn parse(&self, code: String) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
-                let start = $NonterminalType::get_map()[stringify!($first_node)];
+                let start = $NonterminalType::map()[stringify!($first_node)];
                 let nodes = self.internal_grammar.parse(&code, $Tokenizer::new(&code), start);
                 $Tree {
                     internal_tree: $crate::InternalTree::new(code, nodes)
