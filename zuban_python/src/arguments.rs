@@ -17,7 +17,7 @@ pub enum ArgumentsType<'db> {
 
 pub trait Arguments<'db>: std::fmt::Debug {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
-    fn get_outer_execution(&self) -> Option<&Execution>;
+    fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn type_(&self) -> ArgumentsType<'db>;
     fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>>;
@@ -39,7 +39,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentIterator::Normal(self.get_argument_iterator_base())
     }
 
-    fn get_outer_execution(&self) -> Option<&Execution> {
+    fn outer_execution(&self) -> Option<&Execution> {
         self.in_
     }
 
@@ -122,8 +122,8 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
         ArgumentIterator::Instance(self.instance, self.arguments)
     }
 
-    fn get_outer_execution(&self) -> Option<&Execution> {
-        self.arguments.get_outer_execution()
+    fn outer_execution(&self) -> Option<&Execution> {
+        self.arguments.outer_execution()
     }
 
     fn as_execution(&self, function: &Function) -> Execution {

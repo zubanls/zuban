@@ -192,7 +192,7 @@ impl<'db> Inferred<'db> {
                                 None,
                                 Some(&class),
                             );
-                            let init = class.get_init_func(i_s, &args);
+                            let init = class.init_func(i_s, &args);
                             inf_cls.with_instance(
                                 i_s,
                                 self,
@@ -466,7 +466,7 @@ impl<'db> Inferred<'db> {
                             None,
                             Some(&class),
                         );
-                        let init = class.get_init_func(i_s, &args);
+                        let init = class.init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             inf_cls.get_saved().unwrap().0.as_link(),
                             OnceCell::new(),

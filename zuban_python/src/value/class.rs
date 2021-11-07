@@ -55,7 +55,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn get_init_func(
+    pub fn init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -69,7 +69,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn type__vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
-        &self.get_class_infos(i_s).type_vars
+        &self.class_infos(i_s).type_vars
     }
 
     pub fn infer_type_vars(
@@ -132,7 +132,7 @@ impl<'db, 'a> Class<'db, 'a> {
         None
     }
 
-    pub fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let reference = self.reference.add_to_node_index(1);
         let point = reference.point();
         if point.calculated() {
@@ -143,7 +143,7 @@ impl<'db, 'a> Class<'db, 'a> {
         } else {
             reference.insert_complex(ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)));
             debug_assert!(reference.point().calculated());
-            self.get_class_infos(i_s)
+            self.class_infos(i_s)
         }
     }
 
@@ -186,7 +186,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     class: class.reference.as_link(),
                                     type_var_remap: type_var_remap.into_boxed_slice(),
                                 });
-                                mro.extend(class.get_class_infos(i_s).mro.iter().cloned());
+                                mro.extend(class.class_infos(i_s).mro.iter().cloned());
                             } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                 if t.specific == Specific::TypingProtocol {
                                     is_protocol = true;
@@ -212,7 +212,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
-        let class_infos = self.get_class_infos(i_s);
+        let class_infos = self.class_infos(i_s);
         MroIterator {
             database: i_s.database,
             generics: &self.generics,
@@ -230,7 +230,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         let generics_str = self.generics.as_str(i_s);
-        let has_type_vars = self.get_class_infos(i_s).type_vars.len() > 0;
+        let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
         format!(
             "{}{}",
             self.name(),
@@ -267,11 +267,11 @@ impl<'db> Value<'db> for Class<'db, '_> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        if args.get_outer_execution().is_some() {
+        if args.outer_execution().is_some() {
             Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 self.reference.as_link(),
                 OnceCell::new(),
-                Box::new(args.as_execution(&self.get_init_func(i_s, args))),
+                Box::new(args.as_execution(&self.init_func(i_s, args))),
             ))
         } else {
             let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Stmt);

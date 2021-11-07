@@ -73,7 +73,7 @@ impl<'db> Function<'db> {
         let (check_args, func) = if func_node.index() == self.reference.node_index {
             (args, self)
         } else {
-            let mut execution = args.get_outer_execution();
+            let mut execution = args.outer_execution();
             loop {
                 let exec = execution.unwrap();
                 if func_node.index() == exec.function.node_index {
@@ -160,7 +160,7 @@ impl<'db> Function<'db> {
             }
             return None;
         }
-        let class_infos = args.class_of_method(i_s).map(|c| c.get_class_infos(i_s));
+        let class_infos = args.class_of_method(i_s).map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
         for param in func_node.params().iter() {

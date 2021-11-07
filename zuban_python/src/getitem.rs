@@ -77,7 +77,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         ArgumentIterator::SliceType(*self.0)
     }
 
-    fn get_outer_execution(&self) -> Option<&Execution> {
+    fn outer_execution(&self) -> Option<&Execution> {
         todo!()
     }
 
