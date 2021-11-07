@@ -152,7 +152,7 @@ impl<'db> Function<'db> {
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.reference.add_to_node_index(4);
         if type_var_reference.point().calculated() {
-            if let Some(complex) = type_var_reference.get_complex() {
+            if let Some(complex) = type_var_reference.complex() {
                 match complex {
                     ComplexPoint::FunctionTypeVars(vars) => return Some(vars),
                     _ => unreachable!(),

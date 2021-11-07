@@ -46,7 +46,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 match point.type_() {
                     PointType::Complex => {
                         if let ComplexPoint::GenericClass(_, generics) =
-                            class_reference.get_complex().unwrap()
+                            class_reference.complex().unwrap()
                         {
                             generics
                                 .nth(n)

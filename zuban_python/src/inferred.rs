@@ -60,7 +60,7 @@ impl<'db> NodeReference<'db> {
         self.file.points.set(self.node_index, point)
     }
 
-    pub fn get_complex(&self) -> Option<&'db ComplexPoint> {
+    pub fn complex(&self) -> Option<&'db ComplexPoint> {
         let point = self.point();
         if let PointType::Complex = point.type_() {
             Some(self.file.complex_points.get(point.complex_index()))
@@ -271,7 +271,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Instance(cls_definition, generics, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let init = Function::from_execution(i_s.database, execution);
-                let complex = def.get_complex().unwrap();
+                let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
                     let class = Class::new(
@@ -716,7 +716,7 @@ impl<'db> Inferred<'db> {
                 format!(
                     "{} (complex?: {:?})",
                     definition.file.file_path(i_s.database),
-                    definition.get_complex(),
+                    definition.complex(),
                 )
             }
             _ => "".to_owned(),

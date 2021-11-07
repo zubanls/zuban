@@ -43,7 +43,7 @@ impl<'db, 'a> Class<'db, 'a> {
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Option<Self> {
-        let complex = reference.get_complex().unwrap();
+        let complex = reference.complex().unwrap();
         match complex {
             ComplexPoint::Class(c) => Some(Self::new(
                 reference,
@@ -136,7 +136,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let reference = self.reference.add_to_node_index(1);
         let point = reference.point();
         if point.calculated() {
-            match reference.get_complex().unwrap() {
+            match reference.complex().unwrap() {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
                 _ => unreachable!(),
             }
