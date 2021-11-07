@@ -173,7 +173,7 @@ impl<'a, T: Token> Grammar<T> {
                     let token_str = &code[start..start + token.length() as usize];
                     transition = self
                         .keywords
-                        .get_squashed(token_str)
+                        .squashed(token_str)
                         .unwrap_or_else(|| token.type_().to_squashed());
                 } else {
                     transition = token.type_().to_squashed();
@@ -225,7 +225,7 @@ impl<'a, T: Token> Grammar<T> {
                 Some(plan) => {
                     if plan.mode == PlanMode::PositivePeek {
                         let tos_mut = stack.stack_nodes.last_mut().unwrap();
-                        tos_mut.dfa_state = plan.get_next_dfa();
+                        tos_mut.dfa_state = plan.next_dfa();
                     } else {
                         self.apply_plan(stack, plan, token, backtracking_tokenizer);
                         break;
@@ -319,7 +319,7 @@ impl<'a, T: Token> Grammar<T> {
         if let Some(transition) = transition {
             // If the first step did not work, we try to add the token as an error terminal to
             // the tree.
-            for nonterminal_id in stack.get_tos().dfa_state.get_nonterminal_transition_ids() {
+            for nonterminal_id in stack.get_tos().dfa_state.nonterminal_transition_ids() {
                 let automaton = &self.automatons[&nonterminal_id];
                 if automaton.does_error_recovery {
                     stack.calculate_previous_next_node();
@@ -362,7 +362,7 @@ impl<'a, T: Token> Grammar<T> {
         backtracking_tokenizer: &mut BacktrackingTokenizer<T, I>,
     ) {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
-        tos_mut.dfa_state = plan.get_next_dfa();
+        tos_mut.dfa_state = plan.next_dfa();
 
         let start_index = token.start_index();
         // If we have left recursion we have to do something a bit weird: We push the same tree
@@ -404,7 +404,7 @@ impl<'a, T: Token> Grammar<T> {
                     stack.push(
                         push.node_type,
                         stack.tree_nodes.len(),
-                        push.get_next_dfa(),
+                        push.next_dfa(),
                         start_index,
                         ModeData::LL,
                         0,
@@ -415,7 +415,7 @@ impl<'a, T: Token> Grammar<T> {
                     stack.push(
                         push.node_type,
                         stack.get_tos().tree_node_index,
-                        push.get_next_dfa(),
+                        push.next_dfa(),
                         start_index,
                         ModeData::Alternative(BacktrackingPoint {
                             tree_node_count: stack.tree_nodes.len(),

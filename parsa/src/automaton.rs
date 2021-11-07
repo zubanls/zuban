@@ -151,7 +151,7 @@ impl std::fmt::Debug for StackMode {
         match self {
             Self::PositivePeek => write!(f, "PositivePeek"),
             Self::Alternative(plan) => {
-                let dfa = unsafe { &(**plan) }.get_next_dfa();
+                let dfa = unsafe { &(**plan) }.next_dfa();
                 write!(f, "Alternative({} #{})", dfa.from_rule, dfa.list_index.0)
             }
             Self::LL => write!(f, "LL"),
@@ -168,7 +168,7 @@ pub struct Push {
 
 impl std::fmt::Debug for Push {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dfa = self.get_next_dfa();
+        let dfa = self.next_dfa();
         f.debug_struct("Push")
             .field("node_type", &self.node_type.0)
             .field(
@@ -198,7 +198,7 @@ pub struct Plan {
 
 impl std::fmt::Debug for Plan {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dfa = self.get_next_dfa();
+        let dfa = self.next_dfa();
         f.debug_struct("Plan")
             .field("pushes", &self.pushes)
             .field(
@@ -240,7 +240,7 @@ impl Keywords {
         InternalSquashedType(number as u16)
     }
 
-    pub fn get_squashed(&self, keyword: &str) -> Option<InternalSquashedType> {
+    pub fn squashed(&self, keyword: &str) -> Option<InternalSquashedType> {
         self.keywords.get(keyword).copied()
     }
 }
@@ -351,11 +351,11 @@ impl RuleAutomaton {
         }
     }
 
-    fn get_nfa_state_mut(&mut self, id: NFAStateId) -> &mut NFAState {
+    fn nfa_state_mut(&mut self, id: NFAStateId) -> &mut NFAState {
         &mut self.nfa_states[id.0]
     }
 
-    fn get_nfa_state(&self, id: NFAStateId) -> &NFAState {
+    fn nfa_state(&self, id: NFAStateId) -> &NFAState {
         &self.nfa_states[id.0]
     }
 
@@ -370,7 +370,7 @@ impl RuleAutomaton {
     }
 
     fn add_transition(&mut self, start: NFAStateId, to: NFAStateId, type_: Option<TransitionType>) {
-        self.get_nfa_state_mut(start)
+        self.nfa_state_mut(start)
             .transitions
             .push(NFATransition { type_, to });
     }
@@ -383,7 +383,7 @@ impl RuleAutomaton {
         // Group all NFAs that are ε-moves (which are essentially transitions with None)
         let mut set: HashSet<_> = nfa_state_ids.iter().cloned().collect();
         for nfa_state_id in &nfa_state_ids {
-            for transition in &self.get_nfa_state(*nfa_state_id).transitions {
+            for transition in &self.nfa_state(*nfa_state_id).transitions {
                 // Mode changes need to have separate DFA states as well.
                 if transition.type_ == None {
                     set.insert(transition.to);
@@ -413,7 +413,7 @@ impl RuleAutomaton {
         let is_final = grouped_nfas.contains(&end)
             || grouped_nfas
                 .iter()
-                .any(|nfa_id| self.get_nfa_state(*nfa_id).is_lookahead_end());
+                .any(|nfa_id| self.nfa_state(*nfa_id).is_lookahead_end());
         self.dfa_states.push(Pin::new(Box::new(DFAState {
             nfa_set: grouped_nfas,
             is_final,
@@ -446,7 +446,7 @@ impl RuleAutomaton {
         // rules always generate NFAStates in order of priority.
         nfa_list.sort_by_key(|x| x.0);
         for nfa_state_id in nfa_list {
-            let n = &self.get_nfa_state(nfa_state_id);
+            let n = &self.nfa_state(nfa_state_id);
             for transition in &n.transitions {
                 // The nodes that have no proper type are only interesting if there's a mode
                 // change.
@@ -490,7 +490,7 @@ impl RuleAutomaton {
         // specific token does not appear, it will in fact be final.
         state.is_final |= state.transitions.iter().any(|t| {
             t.type_ == TransitionType::NegativeLookaheadStart && {
-                search_lookahead_end(t.get_next_dfa()).is_final
+                search_lookahead_end(t.next_dfa()).is_final
             }
         });
     }
@@ -543,7 +543,7 @@ impl RuleAutomaton {
             }
             for t in &dfa.transitions {
                 transition_list.push(Some((
-                    t.get_next_dfa().list_index,
+                    t.next_dfa().list_index,
                     match t.type_ {
                         TransitionType::Terminal(_, s) => s.to_owned(),
                         TransitionType::Nonterminal(t) => {
@@ -659,7 +659,7 @@ impl DFAState {
             .any(|t| t.type_ == TransitionType::LookaheadEnd)
     }
 
-    pub fn get_nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
+    pub fn nonterminal_transition_ids(&self) -> Vec<InternalNonterminalType> {
         let mut transition_ids = vec![];
         for transition in &self.transitions {
             if let TransitionType::Nonterminal(id) = transition.type_ {
@@ -684,19 +684,19 @@ impl NFATransition {
 }
 
 impl DFATransition {
-    pub fn get_next_dfa(&self) -> &DFAState {
+    pub fn next_dfa(&self) -> &DFAState {
         unsafe { &*self.to }
     }
 }
 
 impl Plan {
-    pub fn get_next_dfa(&self) -> &DFAState {
+    pub fn next_dfa(&self) -> &DFAState {
         unsafe { &*self.next_dfa }
     }
 }
 
 impl Push {
-    pub fn get_next_dfa(&self) -> &DFAState {
+    pub fn next_dfa(&self) -> &DFAState {
         unsafe { &*self.next_dfa }
     }
 }
@@ -865,7 +865,7 @@ fn plans_for_dfa(
                 );
                 if let Some(kws) = soft_keywords.get(&type_) {
                     for &kw in kws {
-                        let soft_keyword_type = keywords.get_squashed(kw).unwrap();
+                        let soft_keyword_type = keywords.squashed(kw).unwrap();
                         add_if_no_conflict(
                             &mut plans,
                             &mut conflict_transitions,
@@ -926,7 +926,7 @@ fn plans_for_dfa(
                 }
             }
             TransitionType::Keyword(keyword) => {
-                let t = keywords.get_squashed(keyword).unwrap();
+                let t = keywords.squashed(keyword).unwrap();
                 add_if_no_conflict(
                     &mut plans,
                     &mut conflict_transitions,
@@ -943,7 +943,7 @@ fn plans_for_dfa(
                 );
             }
             TransitionType::PositiveLookaheadStart => {
-                let (mut next_dfa, peek_terminals) = get_peek_dfa(keywords, &transition);
+                let (mut next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 for t in peek_terminals {
                     plans.insert(
                         t,
@@ -961,7 +961,7 @@ fn plans_for_dfa(
                 }
             }
             TransitionType::NegativeLookaheadStart => {
-                let (mut next_dfa, peek_terminals) = get_peek_dfa(keywords, &transition);
+                let (mut next_dfa, peek_terminals) = calculate_peek_dfa(keywords, &transition);
                 let (mut next_plans, _) = plans_for_dfa(
                     nonterminal_map,
                     keywords,
@@ -1103,7 +1103,7 @@ fn create_lookahead_plans(
                 nest_plan(
                     plan,
                     automaton_key,
-                    search_lookahead_end(plan.get_next_dfa()),
+                    search_lookahead_end(plan.next_dfa()),
                     mode,
                 ),
             )
@@ -1129,7 +1129,7 @@ fn create_left_recursion_plans(
                     for transition in &automaton.dfa_states[0].transitions {
                         if let TransitionType::Nonterminal(node_id) = transition.type_ {
                             if node_id == automaton.type_ {
-                                for (&t, p) in &transition.get_next_dfa().transition_to_plan {
+                                for (&t, p) in &transition.next_dfa().transition_to_plan {
                                     if plans.contains_key(&t) {
                                         panic!("ambigous: {} contains left recursion with alternatives!",
                                                dfa_state.from_rule);
@@ -1180,23 +1180,23 @@ fn nest_plan(
     }
 }
 
-fn get_peek_dfa<'a>(
+fn calculate_peek_dfa<'a>(
     keywords: &'a Keywords,
     transition: &'a DFATransition,
 ) -> (&'a DFAState, Vec<InternalSquashedType>) {
-    let dfa = transition.get_next_dfa();
-    let lookahead_end = dfa.transitions[0].get_next_dfa();
+    let dfa = transition.next_dfa();
+    let lookahead_end = dfa.transitions[0].next_dfa();
     assert!(lookahead_end.is_lookahead_end());
     assert_eq!(lookahead_end.transitions.len(), 1);
 
-    let next_dfa = lookahead_end.transitions[0].get_next_dfa();
+    let next_dfa = lookahead_end.transitions[0].next_dfa();
     // Only simple peeks are allowed at the moment.
     let terminals = dfa
         .transitions
         .iter()
         .map(|transition| match transition.type_ {
             TransitionType::Terminal(type_, debug_text) => type_.to_squashed(),
-            TransitionType::Keyword(keyword) => keywords.get_squashed(keyword).unwrap(),
+            TransitionType::Keyword(keyword) => keywords.squashed(keyword).unwrap(),
             _ => {
                 panic!("Only terminal lookaheads are allowed");
             }
@@ -1215,12 +1215,12 @@ fn search_lookahead_end(dfa_state: &DFAState) -> &DFAState {
     ) -> &'b DFAState {
         for transition in &dfa_state.transitions {
             match transition.type_ {
-                TransitionType::LookaheadEnd => return transition.get_next_dfa(),
+                TransitionType::LookaheadEnd => return transition.next_dfa(),
                 TransitionType::PositiveLookaheadStart | TransitionType::NegativeLookaheadStart => {
                     unimplemented!()
                 }
                 _ => {
-                    let to_dfa = transition.get_next_dfa();
+                    let to_dfa = transition.next_dfa();
                     if !already_checked.contains(&to_dfa.list_index) {
                         already_checked.insert(to_dfa.list_index);
                         // It is a bit weird that this return works. It probably works, but maybe
@@ -1333,11 +1333,11 @@ fn panic_if_unreachable_transition(original_dfa: &DFAState, split_dfa: &DFAState
             );
         }
         for t in split_dfa.transitions.iter() {
-            let dfa = t.get_next_dfa();
+            let dfa = t.next_dfa();
             if !already_checked.contains(&dfa.list_index) {
                 for t2 in original_dfa.transitions.iter() {
                     if t2.type_ == t.type_ {
-                        check(already_checked, t2.get_next_dfa(), dfa);
+                        check(already_checked, t2.next_dfa(), dfa);
                     }
                 }
             }
