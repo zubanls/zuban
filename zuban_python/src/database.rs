@@ -213,7 +213,7 @@ impl Point {
         FileIndex(self.flags & REST_MASK)
     }
 
-    pub fn get_complex_index(self) -> usize {
+    pub fn complex_index(self) -> usize {
         debug_assert!(
             self.get_type() == PointType::Complex,
             "Expected complex, got {:?}",

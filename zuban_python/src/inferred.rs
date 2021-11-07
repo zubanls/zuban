@@ -63,7 +63,7 @@ impl<'db> NodeReference<'db> {
     pub fn get_complex(&self) -> Option<&'db ComplexPoint> {
         let point = self.get_point();
         if let PointType::Complex = point.get_type() {
-            Some(self.file.complex_points.get(point.get_complex_index()))
+            Some(self.file.complex_points.get(point.complex_index()))
         } else {
             None
         }
@@ -232,10 +232,7 @@ impl<'db> Inferred<'db> {
                     }
                 }
                 PointType::Complex => {
-                    let complex = definition
-                        .file
-                        .complex_points
-                        .get(point.get_complex_index());
+                    let complex = definition.file.complex_points.get(point.complex_index());
                     if let ComplexPoint::Class(cls_storage) = complex {
                         let class = Class::new(
                             *definition,
