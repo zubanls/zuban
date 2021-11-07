@@ -125,7 +125,7 @@ fn it_works() {
         (0, 8, 0, Terminal(Endmarker)),
     ];
 
-    for (expected, actual) in expected_list.iter().zip(tree.get_nodes()) {
+    for (expected, actual) in expected_list.iter().zip(tree.nodes()) {
         assert_eq!(
             &(
                 actual.internal_node.next_node_offset,
