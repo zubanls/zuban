@@ -42,7 +42,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Slices(slices) => todo!(),
             Self::InstanceWithArguments(reference) => {
                 let class_reference = reference.add_to_node_index(1);
-                let point = class_reference.get_point();
+                let point = class_reference.point();
                 match point.type_() {
                     PointType::Complex => {
                         if let ComplexPoint::GenericClass(_, generics) =

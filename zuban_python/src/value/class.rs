@@ -134,7 +134,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn get_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let reference = self.reference.add_to_node_index(1);
-        let point = reference.get_point();
+        let point = reference.point();
         if point.calculated() {
             match reference.get_complex().unwrap() {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
@@ -142,7 +142,7 @@ impl<'db, 'a> Class<'db, 'a> {
             }
         } else {
             reference.insert_complex(ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)));
-            debug_assert!(reference.get_point().calculated());
+            debug_assert!(reference.point().calculated());
             self.get_class_infos(i_s)
         }
     }

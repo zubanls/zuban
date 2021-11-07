@@ -52,7 +52,7 @@ impl<'db> NodeReference<'db> {
         Self::new(self.file, self.node_index + add)
     }
 
-    pub fn get_point(&self) -> Point {
+    pub fn point(&self) -> Point {
         self.file.points.get(self.node_index)
     }
 
@@ -61,7 +61,7 @@ impl<'db> NodeReference<'db> {
     }
 
     pub fn get_complex(&self) -> Option<&'db ComplexPoint> {
-        let point = self.get_point();
+        let point = self.point();
         if let PointType::Complex = point.type_() {
             Some(self.file.complex_points.get(point.complex_index()))
         } else {
@@ -138,7 +138,7 @@ impl<'db> Inferred<'db> {
         let state = match generic {
             GenericPart::Class(link) => {
                 let node_reference = NodeReference::from_link(db, *link);
-                InferredState::Saved(node_reference, node_reference.get_point())
+                InferredState::Saved(node_reference, node_reference.point())
             }
             GenericPart::GenericClass(l, g) => {
                 InferredState::UnsavedComplex(ComplexPoint::GenericClass(*l, g.clone()))
@@ -291,7 +291,7 @@ impl<'db> Inferred<'db> {
                 .iter()
                 .map(|&p| {
                     let node_ref = NodeReference::from_link(i_s.database, p);
-                    let point = node_ref.get_point();
+                    let point = node_ref.point();
                     Inferred {
                         state: InferredState::Saved(node_ref, point),
                     }
