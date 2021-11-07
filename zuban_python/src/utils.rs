@@ -115,7 +115,7 @@ impl HashableRawStr {
         Self { ptr: string }
     }
 
-    fn get_str(&self) -> &str {
+    fn as_str(&self) -> &str {
         // This is REALLY unsafe. The user of HashableRawStr is responsible for
         // ensuring that the code part lives longer than this piece.
         unsafe { &*self.ptr }
@@ -124,13 +124,13 @@ impl HashableRawStr {
 
 impl Hash for HashableRawStr {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.get_str().hash(state);
+        self.as_str().hash(state);
     }
 }
 
 impl PartialEq for HashableRawStr {
     fn eq(&self, other: &Self) -> bool {
-        self.get_str() == other.get_str()
+        self.as_str() == other.as_str()
     }
 }
 
@@ -138,7 +138,7 @@ impl Eq for HashableRawStr {}
 
 impl fmt::Debug for HashableRawStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self.get_str())
+        write!(f, "{:?}", self.as_str())
     }
 }
 
