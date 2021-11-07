@@ -244,7 +244,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         if first != 0 && second != 0 {
             loop {
                 let point = self.points.get(second);
-                let node_index = point.get_node_index();
+                let node_index = point.node_index();
                 if node_index == 0 {
                     // Now that we have the first node in the chain of the second nodes, link that
                     // to the first one (like a linked list)
@@ -435,7 +435,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn is_self_param(&self, name_index: NodeIndex) -> bool {
         let point = self.points.get(name_index);
         if let Redirect = point.get_type() {
-            let param_index = point.get_node_index();
+            let param_index = point.node_index();
             let param_point = self.points.get(param_index);
             if let PointType::Specific = param_point.get_type() {
                 if param_point.specific() == Specific::Param {

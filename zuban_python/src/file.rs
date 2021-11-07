@@ -516,9 +516,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .then(|| match point.get_type() {
                 PointType::Redirect => {
                     let file_index = point.file_index();
-                    let node_index = point.get_node_index();
+                    let node_index = point.node_index();
                     let infer = |inference: &mut PythonInference<'db, '_, '_>| {
-                        let point = inference.file.points.get(point.get_node_index());
+                        let point = inference.file.points.get(point.node_index());
                         inference.check_point_cache(node_index).unwrap_or_else(|| {
                             let name = Name::maybe_by_index(&inference.file.tree, node_index);
                             if let Some(name) = name {
@@ -571,7 +571,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 },
                 PointType::MultiDefinition => {
                     let inferred =
-                        self.infer_name(Name::by_index(&self.file.tree, point.get_node_index()));
+                        self.infer_name(Name::by_index(&self.file.tree, point.node_index()));
                     // Check for the cache of name_definition
                     let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
                     inferred.union(self.infer_multi_definition(name_def))

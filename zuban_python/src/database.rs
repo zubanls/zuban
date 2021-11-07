@@ -222,7 +222,7 @@ impl Point {
         (self.flags & REST_MASK) as usize
     }
 
-    pub fn get_node_index(self) -> NodeIndex {
+    pub fn node_index(self) -> NodeIndex {
         debug_assert!(
             self.get_type() == PointType::Redirect
                 || self.get_type() == PointType::NodeAnalysis

@@ -410,10 +410,7 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.get_type(), PointType::Redirect);
         debug_assert_eq!(v.file_index(), builtins.file_index());
-        self.use_instance(
-            NodeReference::new(builtins, v.get_node_index()),
-            Generics::None,
-        )
+        self.use_instance(NodeReference::new(builtins, v.node_index()), Generics::None)
     }
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference<'db>> {
