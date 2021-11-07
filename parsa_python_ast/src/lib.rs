@@ -913,7 +913,7 @@ impl<'db> Comprehension<'db> {
     }
 
     pub fn is_generator(&self) -> bool {
-        return self.node.get_next_leaf().unwrap().get_code() == ")";
+        return self.node.next_leaf().unwrap().get_code() == ")";
     }
 }
 
@@ -1802,7 +1802,7 @@ impl<'db> NameOrKeywordLookup<'db> {
                 }
             }
         } else if left.end() == position {
-            if let Some(n) = left.get_next_leaf() {
+            if let Some(n) = left.next_leaf() {
                 if n.start() == position {
                     right = n;
                 }

@@ -305,7 +305,7 @@ macro_rules! __create_node {
                 return None
             }
 
-            pub fn get_next_leaf(&self) -> Option<$Node<'a>> {
+            pub fn next_leaf(&self) -> Option<$Node<'a>> {
                 if let Some(slice) = self.internal_tree.nodes.get(self.index as usize + 1..) {
                     for (index, node) in slice.iter().enumerate() {
                         if node.type_.is_leaf() {
