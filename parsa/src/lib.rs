@@ -662,7 +662,7 @@ macro_rules! create_grammar {
                 &self.internal_tree.code
             }
 
-            pub fn get_root_node(&self) -> $Node {
+            pub fn root_node(&self) -> $Node {
                 self.get_node(0, &self.internal_tree.nodes[0])
             }
 

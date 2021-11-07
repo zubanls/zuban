@@ -24,7 +24,7 @@ impl Tree {
     }
 
     pub fn root(&self) -> File {
-        File::new(self.0.get_root_node())
+        File::new(self.0.root_node())
     }
 }
 

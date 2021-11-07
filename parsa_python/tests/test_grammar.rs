@@ -46,7 +46,7 @@ fn tree_to_string(tree: PyTree) -> String {
         }
     }
 
-    let root = tree.get_root_node();
+    let root = tree.root_node();
     assert!(root.parent().is_none());
     let mut code = String::new();
     recurse(&mut code, &root, 0);
