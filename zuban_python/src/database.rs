@@ -3,6 +3,7 @@ use parsa_python_ast::{Name, NodeIndex};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
+use std::iter::repeat;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
@@ -473,6 +474,21 @@ impl GenericsList {
         Self(parts)
     }
 
+    pub fn new_unknown(length: usize) -> Self {
+        debug_assert!(length > 0);
+        let vec: Vec<_> = repeat(GenericPart::Unknown).take(length).collect();
+        Self(vec.into_boxed_slice())
+    }
+
+    pub fn set_generic<'db>(
+        &mut self,
+        index: TypeVarIndex,
+        i_s: &mut InferenceState<'db, '_>,
+        class: &Class<'db, '_>,
+    ) {
+        self.0[index.0 as usize].union_in_place(i_s, class);
+    }
+
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {
         self.0.get(index.0 as usize)
     }
@@ -536,7 +552,9 @@ impl GenericPart {
         }
     }
 
-    fn x(&self) {}
+    fn union_in_place<'db>(&mut self, i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) {
+        *self = mem::replace(self, Self::Unknown).union(i_s, class);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

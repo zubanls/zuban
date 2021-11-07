@@ -76,15 +76,6 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn new_unitialized_generic_parts(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Vec<GenericPart> {
-        std::iter::repeat(GenericPart::Unknown)
-            .take(self.get_class_infos(i_s).type_vars.len())
-            .collect()
-    }
-
     pub fn get_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
         &self.get_class_infos(i_s).type_vars
     }
@@ -109,12 +100,14 @@ impl<'db, 'a> Class<'db, 'a> {
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
-                        if let Some(point) = generic.maybe_numbered_type_var() {
-                            matcher.add_type_var(point)
-                        } else if let Some(cls) = generic.expect_class(i_s) {
-                            let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                            cls.infer_type_vars(i_s, v, matcher);
-                            todo!()
+                        let value_generic = value_generics.next(i_s);
+                        if let Some(inf) = value_generic {
+                            if let Some(point) = generic.maybe_numbered_type_var() {
+                                matcher.add_type_var(i_s, point, &inf)
+                            } else if let Some(cls) = generic.expect_class(i_s) {
+                                cls.infer_type_vars(i_s, inf, matcher);
+                                todo!()
+                            }
                         }
                     }
                     //break;

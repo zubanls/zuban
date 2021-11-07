@@ -79,14 +79,13 @@ impl<'db, 'a> Generics<'db, 'a> {
                                 type_vars,
                                 Specific::ClassTypeVar,
                             );
+
+                            // After we know the generics we simply replace the old
+                            // InstanceWithArguments with a complex value that includes generics.
                             dbg!(list);
-                            todo!();
                         } else {
                             unreachable!()
                         }
-                        dbg!(cls.description(i_s));
-                        dbg!(&i_s.current_execution);
-                        use crate::value::*;
                         todo!()
                     }
                     _ => unreachable!(),
@@ -178,7 +177,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
     skip_first: bool,
-    calculated_type_vars: Option<Box<[GenericPart]>>,
+    calculated_type_vars: Option<GenericsList>,
     matches: bool,
     type_vars: &'db [PointLink],
     match_specific: Specific,
@@ -210,14 +209,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first: bool,
         type_vars: &'db [PointLink],
         match_specific: Specific,
-    ) -> Box<[GenericPart]> {
+    ) -> GenericsList {
         let mut self_ = Self::new(function, args, skip_first, type_vars, match_specific);
         self_.calculate_type_vars(i_s);
         self_.calculated_type_vars.unwrap()
     }
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
-        self.calculated_type_vars = Some(Box::new([]));
+        self.calculated_type_vars = Some(GenericsList::new_unknown(self.type_vars.len()));
         self.function.calculated_type_vars(i_s, self.args);
         for p in self
             .function
@@ -232,7 +231,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .run(i_s, &mut |i_s, v| {
                             let value = p.infer(i_s);
                             v.class(i_s).infer_type_vars(i_s, value, self);
-                            todo!()
                         });
                 }
             }
@@ -248,13 +246,26 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub fn add_type_var(&mut self, point: Point) {
+    pub fn add_type_var(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        point: Point,
+        value: &Inferred<'db>,
+    ) {
         if point.specific() == self.match_specific {
-            todo!(
-                "report pls: {:?} is {:?}",
-                point.type_var_index(),
-                self.match_specific
-            )
+            if let Some(cls) = value.expect_class(i_s) {
+                let index = point.type_var_index();
+                self.calculated_type_vars
+                    .as_mut()
+                    .unwrap()
+                    .set_generic(index, i_s, &cls);
+            } else {
+                todo!(
+                    "report pls: {:?} is {:?}",
+                    point.type_var_index(),
+                    value.description(i_s)
+                )
+            }
         }
     }
 }
