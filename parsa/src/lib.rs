@@ -101,7 +101,7 @@ macro_rules! create_terminals {
         }
 
         impl $crate::Token for $Token {
-            fn get_start_index(&self) -> u32 {
+            fn start_index(&self) -> u32 {
                 self.start_index
             }
 

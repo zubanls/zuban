@@ -14,7 +14,7 @@ pub type CodeIndex = u32;
 pub type CodeLength = u32;
 
 pub trait Token: Copy + fmt::Debug {
-    fn get_start_index(&self) -> u32;
+    fn start_index(&self) -> u32;
     fn get_length(&self) -> u32;
     fn get_type(&self) -> InternalTerminalType;
     fn can_contain_syntax(&self) -> bool;
@@ -169,7 +169,7 @@ impl<'a, T: Token> Grammar<T> {
             while let Some(token) = backtracking_tokenizer.next() {
                 let transition;
                 if token.can_contain_syntax() {
-                    let start = token.get_start_index() as usize;
+                    let start = token.start_index() as usize;
                     let token_str = &code[start..start + token.get_length() as usize];
                     transition = self
                         .keywords
@@ -328,21 +328,21 @@ impl<'a, T: Token> Grammar<T> {
                     stack.tree_nodes.push(InternalNode {
                         next_node_offset: 0,
                         type_: nonterminal_id.to_squashed().set_error_recovery_bit(),
-                        start_index: token.get_start_index(),
+                        start_index: token.start_index(),
                         length: token.get_length(),
                     });
                     // And then add the terminal
                     stack.tree_nodes.push(InternalNode {
                         next_node_offset: 0,
                         type_: transition.set_error_recovery_bit(),
-                        start_index: token.get_start_index(),
+                        start_index: token.start_index(),
                         length: token.get_length(),
                     });
                     return; // Error recovery is done.
                 }
             }
         }
-        //let rest = &code[token.get_start_index() as usize..];
+        //let rest = &code[token.start_index() as usize..];
         //dbg!(token, rest);
         dbg!(stack
             .stack_nodes
@@ -364,7 +364,7 @@ impl<'a, T: Token> Grammar<T> {
         let tos_mut = stack.stack_nodes.last_mut().unwrap();
         tos_mut.dfa_state = plan.get_next_dfa();
 
-        let start_index = token.get_start_index();
+        let start_index = token.start_index();
         // If we have left recursion we have to do something a bit weird: We push the same tree
         // node in between, because we only handle direct recursion. This is kind of similar
         // how LR would work. So it's an interesting mixture of LL and LR.
