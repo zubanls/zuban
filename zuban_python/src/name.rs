@@ -17,11 +17,11 @@ pub struct TreePosition<'db> {
 }
 
 impl TreePosition<'_> {
-    fn get_byte_position(&self) -> CodeIndex {
+    fn byte_position(&self) -> CodeIndex {
         self.position
     }
 
-    fn get_line_and_column(&self) -> (CodeIndex, CodeIndex) {
+    fn line_and_column(&self) -> (CodeIndex, CodeIndex) {
         unimplemented!();
     }
 }
@@ -29,30 +29,30 @@ impl TreePosition<'_> {
 pub trait Name<'db>: fmt::Debug {
     fn get_name(&self) -> &'db str;
 
-    fn get_file_path(&self) -> &str;
+    fn file_path(&self) -> &str;
 
-    fn get_start_position(&self) -> TreePosition<'db>;
+    fn start_position(&self) -> TreePosition<'db>;
 
-    fn get_end_position(&self) -> TreePosition<'db>;
+    fn end_position(&self) -> TreePosition<'db>;
 
     // TODO
     //fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
 
-    fn get_documentation(&self) -> String;
+    fn documentation(&self) -> String;
 
-    fn get_description(&self) -> String;
+    fn description(&self) -> String;
 
-    fn get_qualified_names(&self) -> Option<Vec<String>>;
+    fn qualified_names(&self) -> Option<Vec<String>>;
 
     fn is_implementation(&self) -> bool {
         true
     }
 
-    fn get_type_hint(&self) -> Option<String> {
+    fn type_hint(&self) -> Option<String> {
         None
     }
 
-    fn get_signatures(&self) -> Signatures {
+    fn signatures(&self) -> Signatures {
         vec![]
     }
 
@@ -78,7 +78,7 @@ pub struct TreeName<'db, F: File, N> {
 impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TreeName")
-            .field("file", &self.get_file_path())
+            .field("file", &self.file_path())
             .field("name", &self.get_name())
             .finish()
     }
@@ -99,33 +99,33 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
         self.ast_name.as_str()
     }
 
-    fn get_file_path(&self) -> &str {
+    fn file_path(&self) -> &str {
         self.database.get_file_path(self.file.file_index())
     }
 
-    fn get_start_position(&self) -> TreePosition<'db> {
+    fn start_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
             position: self.ast_name.start(),
         }
     }
 
-    fn get_end_position(&self) -> TreePosition<'db> {
+    fn end_position(&self) -> TreePosition<'db> {
         TreePosition {
             file: self.file,
             position: self.ast_name.end(),
         }
     }
 
-    fn get_documentation(&self) -> String {
+    fn documentation(&self) -> String {
         todo!()
     }
 
-    fn get_description(&self) -> String {
+    fn description(&self) -> String {
         todo!()
     }
 
-    fn get_qualified_names(&self) -> Option<Vec<String>> {
+    fn qualified_names(&self) -> Option<Vec<String>> {
         todo!()
     }
 
@@ -168,30 +168,30 @@ impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
         self.value.get_name()
     }
 
-    fn get_file_path(&self) -> &str {
+    fn file_path(&self) -> &str {
         todo!()
         //self.value.get_file().get_path()
     }
 
-    fn get_start_position(&self) -> TreePosition<'db> {
+    fn start_position(&self) -> TreePosition<'db> {
         todo!()
         //TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
-    fn get_end_position(&self) -> TreePosition<'db> {
+    fn end_position(&self) -> TreePosition<'db> {
         todo!()
         //TreePosition {file: self.value.get_file(), position: todo!()}
     }
 
-    fn get_documentation(&self) -> String {
+    fn documentation(&self) -> String {
         todo!()
     }
 
-    fn get_description(&self) -> String {
+    fn description(&self) -> String {
         todo!()
     }
 
-    fn get_qualified_names(&self) -> Option<Vec<String>> {
+    fn qualified_names(&self) -> Option<Vec<String>> {
         todo!()
     }
 
