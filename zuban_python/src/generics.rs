@@ -2,7 +2,7 @@ use parsa_python_ast::{Expression, ExpressionContent, PrimaryContent, SliceType,
 
 use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{
-    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, PointLink, PointType,
+    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, Point, PointLink, PointType,
     Specific, TypeVarIndex,
 };
 use crate::debug;
@@ -231,12 +231,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .infer_annotation_expression(annotation.expression())
                         .run(i_s, &mut |i_s, v| {
                             let value = p.infer(i_s);
-                            v.class(i_s).infer_type_vars(
-                                i_s,
-                                value,
-                                self.calculated_type_vars.as_mut().unwrap(),
-                                self.match_specific,
-                            );
+                            v.class(i_s).infer_type_vars(i_s, value, self);
                             todo!()
                         });
                 }
@@ -250,6 +245,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         } else {
             self.calculate_type_vars(i_s);
             self.nth(i_s, index)
+        }
+    }
+
+    pub fn add_type_var(&mut self, point: Point) {
+        if point.specific() == self.match_specific {
+            todo!(
+                "report pls: {:?} is {:?}",
+                point.type_var_index(),
+                self.match_specific
+            )
         }
     }
 }

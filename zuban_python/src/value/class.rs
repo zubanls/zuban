@@ -9,7 +9,7 @@ use crate::database::{
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::generics::{Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -93,8 +93,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value: Inferred<'db>,
-        list: &mut [GenericPart],
-        match_specific: Specific,
+        matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
@@ -111,12 +110,10 @@ impl<'db, 'a> Class<'db, 'a> {
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
                         if let Some(point) = generic.maybe_numbered_type_var() {
-                            if point.specific() == match_specific {
-                                todo!("report pls: {:?} is {:?}", point.type_var_index(), v)
-                            }
+                            matcher.add_type_var(point)
                         } else if let Some(cls) = generic.expect_class(i_s) {
                             let v = value_generics.next(i_s).unwrap_or_else(|| todo!());
-                            cls.infer_type_vars(i_s, v, list, match_specific);
+                            cls.infer_type_vars(i_s, v, matcher);
                             todo!()
                         }
                     }
