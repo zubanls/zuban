@@ -36,7 +36,7 @@ pub trait Name<'db>: fmt::Debug {
     fn end_position(&self) -> TreePosition<'db>;
 
     // TODO
-    //fn get_definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
+    //fn definition_start_and_end_position(&self) -> (TreePosition, TreePosition);
 
     fn documentation(&self) -> String;
 

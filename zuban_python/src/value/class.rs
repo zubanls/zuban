@@ -191,7 +191,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 if t.specific == Specific::TypingProtocol {
                                     is_protocol = true;
                                 }
-                                for arg in t.get_generics().as_args().iter_arguments() {
+                                for arg in t.generics().as_args().iter_arguments() {
                                     if let Some(definition) = arg.infer(i_s).maybe_type_var(i_s) {
                                         maybe_add_type_var(&definition)
                                     }

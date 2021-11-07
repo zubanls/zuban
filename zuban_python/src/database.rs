@@ -761,7 +761,7 @@ impl Workspace {
         unreachable!()
     }
 
-    pub fn get_root(&self) -> &DirectoryOrFile {
+    pub fn root(&self) -> &DirectoryOrFile {
         &self.root
     }
 }

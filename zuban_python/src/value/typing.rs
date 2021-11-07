@@ -79,7 +79,7 @@ impl<'db> TypingWithGenerics<'db> {
         }
     }
 
-    pub fn get_generics(&self) -> SliceType<'db> {
+    pub fn generics(&self) -> SliceType<'db> {
         let primary = self.reference.as_primary();
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))

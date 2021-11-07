@@ -103,7 +103,7 @@ macro_rules! create_struct {
                     .unwrap_or_else(|| self.node.as_code())
             }
 
-            pub fn get_legacy_node(&self) -> PyNode<'db> {
+            pub fn legacy_node(&self) -> PyNode<'db> {
                 // TODO remove this
                 self.node
             }

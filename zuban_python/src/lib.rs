@@ -200,10 +200,10 @@ impl<'a> Script<'a> {
     pub fn inline(&self, position: Position) {}
 
     /*
-    pub fn get_selection_ranges() {
+    pub fn selection_ranges() {
     }
 
-    pub fn get_errors() {
+    pub fn errors() {
     }
     */
 }

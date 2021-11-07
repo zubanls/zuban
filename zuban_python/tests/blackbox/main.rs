@@ -19,7 +19,7 @@ fn main() {
         }
     }
 
-    let files = get_python_files();
+    let files = python_files();
     let start = Instant::now();
     let mut count = 0;
     let file_count = files.len();
@@ -44,7 +44,7 @@ fn main() {
     );
 }
 
-fn get_python_files() -> Vec<PathBuf> {
+fn python_files() -> Vec<PathBuf> {
     let mut p = PathBuf::from(file!().replace("zuban_python/", ""));
     assert!(p.pop());
     p.push("python_files");

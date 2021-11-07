@@ -8,12 +8,10 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     }
     let result = python_import(
         database,
-        database.workspaces.iter().map(|x| {
-            (
-                x.get_root().name(),
-                x.get_root().directory_entries().unwrap(),
-            )
-        }),
+        database
+            .workspaces
+            .iter()
+            .map(|x| (x.root().name(), x.root().directory_entries().unwrap())),
         name,
     );
     debug!("Global import {}: {:?}", name, result);
