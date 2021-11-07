@@ -224,7 +224,7 @@ impl<'a, T: Token> Grammar<T> {
                 }
                 Some(plan) => {
                     if plan.mode == PlanMode::PositivePeek {
-                        let tos_mut = stack.stack_nodes.last_mut().unwrap();
+                        let tos_mut = stack.tos_mut();
                         tos_mut.dfa_state = plan.next_dfa();
                     } else {
                         self.apply_plan(stack, plan, token, backtracking_tokenizer);
@@ -248,7 +248,7 @@ impl<'a, T: Token> Grammar<T> {
             }
             ModeData::Alternative(backtracking_point) => {
                 let old_tos = stack.stack_nodes.pop().unwrap();
-                let tos = stack.stack_nodes.last_mut().unwrap();
+                let tos = stack.tos_mut();
                 tos.children_count = old_tos.children_count;
                 tos.latest_child_node_index = old_tos.latest_child_node_index;
                 if !tos.enabled_token_recording {
@@ -274,7 +274,7 @@ impl<'a, T: Token> Grammar<T> {
                 stack
                     .tree_nodes
                     .truncate(backtracking_point.tree_node_count);
-                let tos = stack.stack_nodes.last_mut().unwrap();
+                let tos = stack.tos_mut();
                 tos.children_count = backtracking_point.children_count;
                 backtracking_tokenizer.reset(backtracking_point.token_index);
                 let t = backtracking_tokenizer.next().unwrap();
@@ -392,7 +392,7 @@ impl<'a, T: Token> Grammar<T> {
 
         for push in &plan.pushes {
             // Lookaheads need to be accounted for.
-            let tos = stack.stack_nodes.last_mut().unwrap();
+            let tos = stack.tos_mut();
             let children_count = tos.children_count;
             tos.children_count += 1;
             //dbg!(&automatons[&push.node_type].dfa_states[push.to_state.0]);
@@ -431,11 +431,10 @@ impl<'a, T: Token> Grammar<T> {
                     panic!("Pushing peeks is currently not supported")
                 }
             };
-            let tos_mut = stack.stack_nodes.last_mut().unwrap();
-            tos_mut.latest_child_node_index = stack.tree_nodes.len();
+            stack.tos_mut().latest_child_node_index = stack.tree_nodes.len();
         }
         // Once all the nodes are dealt with, add the token
-        stack.stack_nodes.last_mut().unwrap().children_count += 1;
+        stack.tos_mut().children_count += 1;
         stack.tree_nodes.push(InternalNode {
             next_node_offset: 0,
             type_: plan.type_,
@@ -462,6 +461,11 @@ impl<'a> Stack<'a> {
     #[inline]
     fn tos(&self) -> &StackNode<'a> {
         self.stack_nodes.last().unwrap()
+    }
+
+    #[inline]
+    fn tos_mut(&mut self) -> &mut StackNode<'a> {
+        self.stack_nodes.last_mut().unwrap()
     }
 
     #[inline]
