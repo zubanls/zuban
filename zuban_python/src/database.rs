@@ -189,7 +189,7 @@ impl Point {
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
 
-    pub fn get_locality(self) -> Locality {
+    pub fn locality(self) -> Locality {
         unsafe { mem::transmute((self.flags & LOCALITY_MASK) >> LOCALITY_BIT_INDEX) }
     }
 
@@ -259,7 +259,7 @@ impl fmt::Debug for Point {
             s.field("calculated", &self.calculated());
         } else {
             s.field("type", &self.get_type())
-                .field("locality", &self.get_locality())
+                .field("locality", &self.locality())
                 .field("node_index", &self.node_index);
             if self.get_type() == PointType::Specific {
                 s.field("specific", &self.specific());
