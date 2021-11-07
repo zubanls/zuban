@@ -175,8 +175,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
             i_s.database.python_state.builtins_point_link("list"),
         );
         Class::from_position(
-            node_reference.file,
-            node_reference.node_index,
+            node_reference,
             Generics::List(self.get_generic_part(i_s)),
             None,
         )

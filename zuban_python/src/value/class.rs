@@ -39,17 +39,19 @@ impl<'db, 'a> Class<'db, 'a> {
 
     #[inline]
     pub fn from_position(
-        file: &'db PythonFile,
-        node_index: NodeIndex,
+        reference: NodeReference<'db>,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
     ) -> Option<Self> {
-        let v = file.points.get(node_index);
+        let v = reference.get_point();
         debug_assert_eq!(v.get_type(), PointType::Complex, "{:?}", v);
-        let complex = file.complex_points.get(v.get_complex_index() as usize);
+        let complex = reference
+            .file
+            .complex_points
+            .get(v.get_complex_index() as usize);
         match complex {
             ComplexPoint::Class(c) => Some(Self::new(
-                NodeReference { file, node_index },
+                reference,
                 &c.symbol_table,
                 generics,
                 type_var_remap,
@@ -353,10 +355,8 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             return Some(std::mem::replace(&mut self.class, None).unwrap().clone());
         }
         self.iterator.next().map(|c| {
-            let file = self.database.get_loaded_python_file(c.class.file);
             Class::from_position(
-                file,
-                c.class.node_index,
+                NodeReference::from_link(self.database, c.class),
                 self.generics.clone(),
                 Some(&c.type_var_remap),
             )

@@ -36,6 +36,10 @@ impl<'db> std::cmp::PartialEq for NodeReference<'db> {
 }
 
 impl<'db> NodeReference<'db> {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex) -> Self {
+        Self { file, node_index }
+    }
+
     pub fn from_link(database: &'db Database, point: PointLink) -> Self {
         let file = database.get_loaded_python_file(point.file);
         Self {
@@ -44,7 +48,7 @@ impl<'db> NodeReference<'db> {
         }
     }
 
-    fn get_point(&self) -> Point {
+    pub fn get_point(&self) -> Point {
         self.file.points.get(self.node_index)
     }
 
@@ -395,7 +399,10 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.get_type(), PointType::Redirect);
         debug_assert_eq!(v.get_file_index(), builtins.get_file_index());
-        self.use_instance(builtins, v.get_node_index(), Generics::None)
+        self.use_instance(
+            NodeReference::new(builtins, v.get_node_index()),
+            Generics::None,
+        )
     }
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeReference<'db>> {
@@ -506,10 +513,7 @@ impl<'db> Inferred<'db> {
                         unreachable!("{:?}", point)
                     }
                 } else {
-                    callable(
-                        i_s,
-                        &instance.use_instance(definition.file, definition.node_index, generics),
-                    )
+                    callable(i_s, &instance.use_instance(*definition, generics))
                 }
             }
             InferredState::UnsavedComplex(complex) => {
@@ -520,17 +524,11 @@ impl<'db> Inferred<'db> {
 
     fn use_instance<'a>(
         &'a self,
-        file: &'db PythonFile,
-        node_index: NodeIndex,
+        reference: NodeReference<'db>,
         generics: Generics<'db, 'a>,
     ) -> Instance<'db, 'a> {
-        let class = Class::from_position(file, node_index, generics, None).unwrap();
-        let point = file.points.get(node_index);
-        let complex = file.complex_points.get(point.get_complex_index() as usize);
-        match complex {
-            ComplexPoint::Class(c) => Instance::new(class, self),
-            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
-        }
+        let class = Class::from_position(reference, generics, None).unwrap();
+        Instance::new(class, self)
     }
 
     pub fn expect_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
@@ -550,9 +548,7 @@ impl<'db> Inferred<'db> {
     ) -> Option<Class<'db, 'a>> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.get_type() {
-                PointType::Complex => {
-                    Class::from_position(definition.file, definition.node_index, generics, None)
-                }
+                PointType::Complex => Class::from_position(*definition, generics, None),
                 PointType::Specific => match point.specific() {
                     Specific::SimpleGeneric => {
                         let inferred = definition
