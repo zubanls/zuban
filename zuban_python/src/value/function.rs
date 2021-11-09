@@ -266,7 +266,8 @@ impl<'db> Value<'db> for Function<'db> {
                             .unwrap()
                             .generics
                             .nth(i_s, point.type_var_index())
-                            .unwrap(),
+                            .unwrap()
+                            .execute_annotation_class(i_s),
                         Specific::FunctionTypeVar => {
                             finder.unwrap().nth(i_s, point.type_var_index())
                         }

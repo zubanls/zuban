@@ -425,6 +425,7 @@ pub enum ComplexPoint {
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
+    GenericInstance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
 }

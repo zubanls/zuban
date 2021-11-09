@@ -312,8 +312,17 @@ impl<'db> Inferred<'db> {
                     &Function::new(NodeReference::from_link(i_s.database, *function)),
                 )
             }
-            ComplexPoint::GenericClass(foo, bla) => {
+            ComplexPoint::GenericClass(cls, bla) => {
                 todo!()
+            }
+            ComplexPoint::GenericInstance(cls, generics_list) => {
+                let generics = generics_list
+                    .as_ref()
+                    .map(|l| Generics::List(l))
+                    .unwrap_or(Generics::None);
+                let instance =
+                    self.use_instance(NodeReference::from_link(i_s.database, *cls), generics);
+                callable(i_s, &instance)
             }
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
@@ -771,6 +780,42 @@ impl<'db> Inferred<'db> {
             &|i1, i2| i1 & i2,
             &|inferred| false,
         )
+    }
+
+    pub fn execute_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Self {
+        match &self.state {
+            InferredState::Saved(definition, point) => match point.type_() {
+                PointType::Specific => {
+                    let specific = point.specific();
+                    match specific {
+                        Specific::SimpleGeneric => {
+                            let class = self.expect_class(i_s).unwrap();
+                            class.reference.as_link();
+                            todo!()
+                        }
+                        _ => {
+                            todo!()
+                        }
+                    }
+                }
+                PointType::Complex => {
+                    let complex = definition.file.complex_points.get(point.complex_index());
+                    match complex {
+                        ComplexPoint::Class(_) => Inferred::new_unsaved_complex(
+                            ComplexPoint::GenericInstance(definition.as_link(), None),
+                        ),
+                        ComplexPoint::GenericClass(foo, bla) => {
+                            todo!()
+                        }
+                        _ => todo!(),
+                    }
+                }
+                _ => todo!("{}", self.debug_info(i_s)),
+            },
+            InferredState::UnsavedComplex(complex) => {
+                todo!("{}", self.debug_info(i_s))
+            }
+        }
     }
 }
 
