@@ -68,7 +68,7 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn type__vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
         &self.class_infos(i_s).type_vars
     }
 

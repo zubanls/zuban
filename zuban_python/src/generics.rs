@@ -70,7 +70,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                                 Some(&cls),
                             );
                             let init = cls.init_func(i_s, &args);
-                            let type_vars = cls.type__vars(i_s);
+                            let type_vars = cls.type_vars(i_s);
                             debug!("Inferring instance generics for {}", primary.short_debug());
                             let list = TypeVarMatcher::calculate_and_return(
                                 i_s,
