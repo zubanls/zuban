@@ -9,7 +9,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
-use crate::value::Function;
+use crate::value::{Class, Function};
 
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
@@ -230,15 +230,24 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         {
             if let Some(annotation) = p.param.annotation() {
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
-                    self.function
+                    let inferred = self
+                        .function
                         .reference
                         .file
                         .inference(i_s)
-                        .infer_annotation_expression(annotation.expression())
-                        .run(i_s, &mut |i_s, v| {
+                        .infer_annotation_expression(annotation.expression());
+                    if let Some(point) = inferred.maybe_numbered_type_var() {
+                        let value = p.infer(i_s);
+                        value.run(i_s, &mut |i_s, v| {
+                            let cls = v.class(i_s);
+                            self.add_type_var_class(i_s, point, &cls);
+                        });
+                    } else {
+                        inferred.run(i_s, &mut |i_s, v| {
                             let value = p.infer(i_s);
                             v.class(i_s).infer_type_vars(i_s, value, self);
                         });
+                    }
                 }
             }
         }
@@ -246,10 +255,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
         if let Some(type_vars) = &self.calculated_type_vars {
-            todo!()
+            self.calculated_type_vars
+                .as_ref()
+                .unwrap()
+                .nth(index)
+                .map(|g| Inferred::from_generic_class(i_s.database, g))
+                .unwrap_or_else(|| todo!())
         } else {
             self.calculate_type_vars(i_s);
-            self.nth(i_s, index)
+            self.nth(i_s, index).execute_annotation_class(i_s)
         }
     }
 
@@ -261,11 +275,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     ) {
         if point.specific() == self.match_specific {
             if let Some(cls) = value.expect_class(i_s) {
-                let index = point.type_var_index();
-                self.calculated_type_vars
-                    .as_mut()
-                    .unwrap()
-                    .set_generic(index, i_s, &cls);
+                self.add_type_var_class(i_s, point, &cls);
             } else {
                 todo!(
                     "report pls: {:?} is {:?}",
@@ -274,5 +284,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 )
             }
         }
+    }
+
+    fn add_type_var_class(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        point: Point,
+        class: &Class<'db, '_>,
+    ) {
+        let index = point.type_var_index();
+        self.calculated_type_vars
+            .as_mut()
+            .unwrap()
+            .set_generic(index, i_s, class);
     }
 }

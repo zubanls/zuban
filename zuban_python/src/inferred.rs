@@ -225,6 +225,10 @@ impl<'db> Inferred<'db> {
                                 unreachable!()
                             }
                         }
+                        Specific::ClassTypeVar | Specific::FunctionTypeVar => {
+                            //on_missing(self.clone())
+                            todo!()
+                        }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)

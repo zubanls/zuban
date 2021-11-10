@@ -402,7 +402,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let mut inference = self.file.inference(&mut inf_state);
         let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
-        let point = if inferred.is_class(inference.i_s) {
+        let point = if let Some(p) = inferred.maybe_numbered_type_var() {
+            p
+        } else if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
             Point::new_unknown(self.file.file_index(), Locality::Stmt)
