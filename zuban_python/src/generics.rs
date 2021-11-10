@@ -48,9 +48,10 @@ impl<'db, 'a> Generics<'db, 'a> {
                         if let ComplexPoint::GenericClass(_, generics) =
                             class_reference.complex().unwrap()
                         {
-                            generics
-                                .nth(n)
-                                .map(|c| Inferred::from_generic_class(i_s.database, c))
+                            generics.nth(n).map(|c| {
+                                Inferred::from_generic_class(i_s.database, c)
+                                    .execute_annotation_class(i_s)
+                            })
                         } else {
                             unreachable!()
                         }
@@ -97,9 +98,9 @@ impl<'db, 'a> Generics<'db, 'a> {
                 }
             }
             Self::OnceCell(_) => todo!(),
-            Self::List(l) => l
-                .nth(n)
-                .map(|g| Inferred::from_generic_class(i_s.database, g)),
+            Self::List(l) => l.nth(n).map(|g| {
+                Inferred::from_generic_class(i_s.database, g).execute_annotation_class(i_s)
+            }),
             Self::None => None,
         }
     }

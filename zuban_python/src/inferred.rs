@@ -794,7 +794,7 @@ impl<'db> Inferred<'db> {
                             todo!()
                         }
                         _ => {
-                            todo!()
+                            todo!("{:?}", self)
                         }
                     }
                 }

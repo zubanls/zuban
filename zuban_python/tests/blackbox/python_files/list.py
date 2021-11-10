@@ -20,3 +20,7 @@ bar = list([1])
 
 #? list()
 bar
+
+foo = list([1, 2])
+#? int()
+foo[0]
