@@ -450,7 +450,7 @@ impl Execution {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
-    pub mro: Box<[ClassWithTypeVarIndex]>, // Does never include `object`
+    pub mro: Box<[MroClass]>, // Does never include `object`
     pub is_protocol: bool,
 }
 
@@ -558,7 +558,7 @@ impl GenericPart {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClassWithTypeVarIndex {
+pub struct MroClass {
     pub class: PointLink,
     pub type_var_remap: Box<[Option<TypeVarRemap>]>,
 }
@@ -566,8 +566,7 @@ pub struct ClassWithTypeVarIndex {
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeVarRemap {
     TypeVar(TypeVarIndex),
-    ClassWithTypeVarIndex(Box<ClassWithTypeVarIndex>),
-    Class(PointLink),
+    MroClass(MroClass),
 }
 
 pub struct Database {

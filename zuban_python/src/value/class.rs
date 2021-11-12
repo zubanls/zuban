@@ -4,9 +4,10 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ClassWithTypeVarIndex, ComplexPoint, Database, GenericPart, Locality, Point,
-    PointLink, Specific, TypeVarRemap,
+    ClassInfos, ComplexPoint, Database, GenericPart, Locality, MroClass, Point, PointLink,
+    Specific, TypeVarIndex, TypeVarRemap,
 };
+use crate::debug;
 use crate::file::PythonFile;
 use crate::generics::{Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
@@ -148,14 +149,9 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
+        debug!("Calculate class infos for {}", self.name());
         let mut mro = vec![];
-        let mut type_vars = vec![];
-        let mut maybe_add_type_var = |definition: &NodeReference| {
-            let link = definition.as_link();
-            if !type_vars.contains(&link) {
-                type_vars.push(link);
-            }
-        };
+        let mut type_var_finder = TypeVarFinder(vec![]);
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
         if let Some(arguments) = self.node().arguments() {
@@ -168,24 +164,11 @@ impl<'db, 'a> Class<'db, 'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_named_expression(n);
-                        dbg!(inf.description(&mut i_s));
                         inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
-                                let mut type_var_remap = vec![];
-                                let mut iterator = class.generics.iter();
-                                while let Some(g) = iterator.next(i_s) {
-                                    if let Some(definition) = g.maybe_type_var(i_s) {
-                                        maybe_add_type_var(&definition)
-                                    } else {
-                                        dbg!(g.debug_info(i_s));
-                                        todo!()
-                                    }
-                                }
-                                // TODO remapping type var ids is not correct
-                                mro.push(ClassWithTypeVarIndex {
-                                    class: class.reference.as_link(),
-                                    type_var_remap: type_var_remap.into_boxed_slice(),
-                                });
+                                mro.push(create_mro_class(i_s, &mut type_var_finder, class));
+                                // TODO remapping type var ids for mro are not recalculated (which
+                                // they should)
                                 mro.extend(class.class_infos(i_s).mro.iter().cloned());
                             } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                 if t.specific == Specific::TypingProtocol {
@@ -193,7 +176,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 }
                                 for arg in t.generics().as_args().iter_arguments() {
                                     if let Some(definition) = arg.infer(i_s).maybe_type_var(i_s) {
-                                        maybe_add_type_var(&definition)
+                                        type_var_finder.add(&definition);
                                     }
                                 }
                             }
@@ -205,7 +188,7 @@ impl<'db, 'a> Class<'db, 'a> {
             }
         }
         Box::new(ClassInfos {
-            type_vars: type_vars.into_boxed_slice(),
+            type_vars: type_var_finder.0.into_boxed_slice(),
             mro: mro.into_boxed_slice(),
             is_protocol,
         })
@@ -334,7 +317,7 @@ struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: &'a Generics<'db, 'a>,
     class: Option<&'a Class<'db, 'a>>,
-    iterator: std::slice::Iter<'db, ClassWithTypeVarIndex>,
+    iterator: std::slice::Iter<'db, MroClass>,
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
@@ -352,5 +335,54 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             )
             .unwrap()
         })
+    }
+}
+
+fn create_type_var_remap<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    type_var_finder: &mut TypeVarFinder,
+    generic: Inferred<'db>,
+) -> Option<TypeVarRemap> {
+    if let Some(definition) = generic.maybe_type_var(i_s) {
+        Some(TypeVarRemap::TypeVar(type_var_finder.add(&definition)))
+    } else {
+        generic.expect_class(i_s).map(|base_cls| {
+            TypeVarRemap::MroClass(create_mro_class(i_s, type_var_finder, &base_cls))
+        })
+    }
+}
+
+fn create_mro_class<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    type_var_finder: &mut TypeVarFinder,
+    class: &Class<'db, '_>,
+) -> MroClass {
+    let type_vars = class.type_vars(i_s);
+    let mut iterator = class.generics.iter();
+    let mut type_var_remap = Vec::with_capacity(type_vars.len());
+    for type_var in type_vars {
+        if let Some(generic) = iterator.next(i_s) {
+            type_var_remap.push(create_type_var_remap(i_s, type_var_finder, generic));
+        } else {
+            type_var_remap.push(None);
+        }
+    }
+    MroClass {
+        class: class.reference.as_link(),
+        type_var_remap: type_var_remap.into_boxed_slice(),
+    }
+}
+
+struct TypeVarFinder(Vec<PointLink>);
+
+impl TypeVarFinder {
+    fn add(&mut self, definition: &NodeReference<'_>) -> TypeVarIndex {
+        let link = definition.as_link();
+        if let Some(index) = self.0.iter().position(|type_var| type_var == &link) {
+            TypeVarIndex::new(index)
+        } else {
+            self.0.push(link);
+            TypeVarIndex::new(self.0.len())
+        }
     }
 }
