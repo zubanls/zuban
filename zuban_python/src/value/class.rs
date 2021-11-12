@@ -152,10 +152,11 @@ impl<'db, 'a> Class<'db, 'a> {
                             .infer_named_expression(n);
                         inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
+                                let mro_index = mro.len();
                                 mro.push(create_mro_class(i_s, self.reference, &type_vars, class));
-                                // TODO remapping type var ids for mro are not recalculated (which
-                                // they should)
-                                mro.extend(class.class_infos(i_s).mro.iter().cloned());
+                                for base in class.class_infos(i_s).mro.iter() {
+                                    mro.push(base.remap_with_sub_class(&mro[mro_index]));
+                                }
                             } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                 if t.specific == Specific::TypingProtocol {
                                     is_protocol = true;

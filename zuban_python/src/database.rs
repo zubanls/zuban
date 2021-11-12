@@ -564,6 +564,26 @@ pub enum TypeVarRemap {
     MroClass(MroClass),
 }
 
+impl MroClass {
+    pub fn remap_with_sub_class(&self, sub_class: &MroClass) -> Self {
+        Self {
+            class: self.class,
+            type_var_remap: self
+                .type_var_remap
+                .iter()
+                .map(|t| {
+                    t.as_ref().and_then(|t| match &t {
+                        TypeVarRemap::TypeVar(i) => sub_class.type_var_remap[i.0 as usize].clone(),
+                        TypeVarRemap::MroClass(c) => {
+                            Some(TypeVarRemap::MroClass(c.remap_with_sub_class(sub_class)))
+                        }
+                    })
+                })
+                .collect(),
+        }
+    }
+}
+
 pub struct Database {
     in_use: bool,
     pub file_system_reader: Box<dyn VirtualFileSystemReader>,
