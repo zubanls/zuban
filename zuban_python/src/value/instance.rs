@@ -18,14 +18,6 @@ impl<'db, 'a> Instance<'db, 'a> {
     pub fn as_inferred(&self) -> &'a Inferred<'db> {
         self.inferred
     }
-
-    pub fn lookup_type_var(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        self.class.lookup_type_var(i_s, name)
-    }
 }
 
 impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
