@@ -348,17 +348,3 @@ fn create_mro_class<'db>(i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '
         type_var_remap: type_var_remap.into_boxed_slice(),
     }
 }
-
-struct TypeVarFinder(Vec<PointLink>);
-
-impl TypeVarFinder {
-    fn add(&mut self, definition: &NodeReference<'_>) -> TypeVarIndex {
-        let link = definition.as_link();
-        if let Some(index) = self.0.iter().position(|type_var| type_var == &link) {
-            TypeVarIndex::new(index)
-        } else {
-            self.0.push(link);
-            TypeVarIndex::new(self.0.len())
-        }
-    }
-}
