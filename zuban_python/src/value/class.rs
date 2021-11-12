@@ -5,7 +5,7 @@ use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ComplexPoint, Database, GenericPart, Locality, MroClass, Point, PointLink,
-    Specific, TypeVarIndex, TypeVarRemap,
+    Specific, TypeVarRemap,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -152,7 +152,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             .infer_named_expression(n);
                         inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
-                                mro.push(create_mro_class(i_s, class));
+                                mro.push(create_mro_class(i_s, self.reference, &type_vars, class));
                                 // TODO remapping type var ids for mro are not recalculated (which
                                 // they should)
                                 mro.extend(class.class_infos(i_s).mro.iter().cloned());
@@ -321,24 +321,48 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
 
 fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
+    original_class: NodeReference<'db>,
+    original_type_vars: &[PointLink],
     generic: Inferred<'db>,
 ) -> Option<TypeVarRemap> {
     if let Some(point) = generic.maybe_numbered_type_var() {
         Some(TypeVarRemap::TypeVar(point.type_var_index()))
     } else {
-        generic
-            .expect_class(i_s)
-            .map(|base_cls| TypeVarRemap::MroClass(create_mro_class(i_s, &base_cls)))
+        generic.expect_class(i_s).map(|base_cls| {
+            TypeVarRemap::MroClass(create_mro_class(
+                i_s,
+                original_class,
+                original_type_vars,
+                &base_cls,
+            ))
+        })
     }
 }
 
-fn create_mro_class<'db>(i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) -> MroClass {
-    let type_vars = class.type_vars(i_s);
+fn create_mro_class<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    original_class: NodeReference<'db>,
+    original_type_vars: &[PointLink],
+    class: &Class<'db, '_>,
+) -> MroClass {
+    let type_vars = if class.reference == original_class {
+        // We need to use the original type vars here, because there can be a recursion in there,
+        // like `class str(Sequence[str])`, which means that the class info must not be fetched,
+        // because it does not exist yet, i.e. it would lead to a stack overflow.
+        original_type_vars
+    } else {
+        class.type_vars(i_s)
+    };
     let mut iterator = class.generics.iter();
     let mut type_var_remap = Vec::with_capacity(type_vars.len());
     for type_var in type_vars {
         if let Some(generic) = iterator.next(i_s) {
-            type_var_remap.push(create_type_var_remap(i_s, generic));
+            type_var_remap.push(create_type_var_remap(
+                i_s,
+                original_class,
+                original_type_vars,
+                generic,
+            ));
         } else {
             type_var_remap.push(None);
         }
