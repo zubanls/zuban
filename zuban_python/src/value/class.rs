@@ -9,7 +9,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{Generics, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -125,14 +125,26 @@ impl<'db, 'a> Class<'db, 'a> {
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         let mut mro = vec![];
-        let mut type_var_finder = TypeVarFinder(vec![]);
+        let mut type_vars = vec![];
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
         if let Some(arguments) = self.node().arguments() {
+            // First search for type vars
+            for argument in arguments.iter() {
+                if let Argument::Positional(n) = argument {
+                    search_type_vars(
+                        &mut i_s,
+                        self.reference.file,
+                        &n.expression(),
+                        &mut |_, _| Some(Specific::ClassTypeVar),
+                        &mut type_vars,
+                    );
+                }
+            }
+            // Then calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        // TODO this probably causes certain problems with infer_annotation_expression
                         let inf = self
                             .reference
                             .file
@@ -140,18 +152,13 @@ impl<'db, 'a> Class<'db, 'a> {
                             .infer_named_expression(n);
                         inf.run(&mut i_s, &mut |i_s, v| {
                             if let Some(class) = v.as_class() {
-                                mro.push(create_mro_class(i_s, &mut type_var_finder, class));
+                                mro.push(create_mro_class(i_s, class));
                                 // TODO remapping type var ids for mro are not recalculated (which
                                 // they should)
                                 mro.extend(class.class_infos(i_s).mro.iter().cloned());
                             } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                 if t.specific == Specific::TypingProtocol {
                                     is_protocol = true;
-                                }
-                                for arg in t.generics().as_args().iter_arguments() {
-                                    if let Some(definition) = arg.infer(i_s).maybe_type_var(i_s) {
-                                        type_var_finder.add(&definition);
-                                    }
                                 }
                             }
                         })
@@ -162,7 +169,7 @@ impl<'db, 'a> Class<'db, 'a> {
             }
         }
         Box::new(ClassInfos {
-            type_vars: type_var_finder.0.into_boxed_slice(),
+            type_vars: type_vars.into_boxed_slice(),
             mro: mro.into_boxed_slice(),
             is_protocol,
         })
@@ -314,29 +321,24 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
 
 fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    type_var_finder: &mut TypeVarFinder,
     generic: Inferred<'db>,
 ) -> Option<TypeVarRemap> {
-    if let Some(definition) = generic.maybe_type_var(i_s) {
-        Some(TypeVarRemap::TypeVar(type_var_finder.add(&definition)))
+    if let Some(point) = generic.maybe_numbered_type_var() {
+        Some(TypeVarRemap::TypeVar(point.type_var_index()))
     } else {
-        generic.expect_class(i_s).map(|base_cls| {
-            TypeVarRemap::MroClass(create_mro_class(i_s, type_var_finder, &base_cls))
-        })
+        generic
+            .expect_class(i_s)
+            .map(|base_cls| TypeVarRemap::MroClass(create_mro_class(i_s, &base_cls)))
     }
 }
 
-fn create_mro_class<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    type_var_finder: &mut TypeVarFinder,
-    class: &Class<'db, '_>,
-) -> MroClass {
+fn create_mro_class<'db>(i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) -> MroClass {
     let type_vars = class.type_vars(i_s);
     let mut iterator = class.generics.iter();
     let mut type_var_remap = Vec::with_capacity(type_vars.len());
     for type_var in type_vars {
         if let Some(generic) = iterator.next(i_s) {
-            type_var_remap.push(create_type_var_remap(i_s, type_var_finder, generic));
+            type_var_remap.push(create_type_var_remap(i_s, generic));
         } else {
             type_var_remap.push(None);
         }
