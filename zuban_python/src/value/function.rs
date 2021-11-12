@@ -228,7 +228,6 @@ impl<'db> Value<'db> for Function<'db> {
             if contains_type_vars(self.reference.file, &expr) {
                 let inferred = self.reference.file.inference(i_s).infer_expression(expr);
                 let class = args.class_of_method(i_s);
-                // TODO use t
                 debug!("Inferring generics for {:?}", self.node().short_debug());
                 let finder = func_type_vars
                     .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
