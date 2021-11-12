@@ -159,24 +159,19 @@ impl Point {
         }
     }
 
-    pub fn new_class_type_var(index: TypeVarIndex, locality: Locality) -> Self {
+    pub fn new_numbered_type_var(
+        specific: Specific,
+        index: TypeVarIndex,
+        locality: Locality,
+    ) -> Self {
         assert!(index.0 <= MAX_TYPE_VAR);
+        debug_assert!(matches!(
+            specific,
+            Specific::ClassTypeVar | Specific::FunctionTypeVar
+        ));
         let flags = Self::calculate_flags(
             PointType::Specific,
-            Specific::ClassTypeVar as u32 | index.0 << TYPE_VAR_BIT_INDEX,
-            locality,
-        );
-        Self {
-            flags,
-            node_index: 0,
-        }
-    }
-
-    pub fn new_function_type_var(index: TypeVarIndex, locality: Locality) -> Self {
-        assert!(index.0 <= MAX_TYPE_VAR);
-        let flags = Self::calculate_flags(
-            PointType::Specific,
-            Specific::FunctionTypeVar as u32 | index.0 << TYPE_VAR_BIT_INDEX,
+            specific as u32 | index.0 << TYPE_VAR_BIT_INDEX,
             locality,
         );
         Self {

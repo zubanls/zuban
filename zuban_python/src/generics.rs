@@ -1,9 +1,11 @@
-use parsa_python_ast::{Expression, ExpressionContent, PrimaryContent, SliceType, Slices};
+use parsa_python_ast::{
+    Expression, ExpressionContent, NameParent, NodeIndex, PrimaryContent, SliceType, Slices,
+};
 
 use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{
-    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, Point, PointLink, PointType,
-    Specific, TypeVarIndex,
+    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, Locality, Point, PointLink,
+    PointType, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -297,5 +299,38 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             .as_mut()
             .unwrap()
             .set_generic(index, i_s, class);
+    }
+}
+
+pub fn search_type_vars<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    file: &'db PythonFile,
+    expression: &Expression<'db>,
+    found_callback: &mut dyn FnMut(NodeIndex, PointLink) -> Option<Specific>,
+    found_type_vars: &mut Vec<PointLink>,
+) {
+    for n in expression.search_names() {
+        if matches!(n.parent(), NameParent::Atom) {
+            let inferred = file.inference(i_s).infer_name_reference(n);
+            if let Some(definition) = inferred.maybe_type_var(i_s) {
+                let link = definition.as_link();
+
+                if let Some(point_type) = found_callback(n.index(), link) {
+                    let i = found_type_vars.iter().position(|&r| r == link);
+                    if i.is_none() {
+                        found_type_vars.push(link);
+                    };
+                    let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
+                    file.points.set(
+                        n.index(),
+                        Point::new_numbered_type_var(
+                            point_type,
+                            TypeVarIndex::new(i),
+                            Locality::Stmt,
+                        ),
+                    );
+                }
+            }
+        }
     }
 }

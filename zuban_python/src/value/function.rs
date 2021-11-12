@@ -1,17 +1,12 @@
-use parsa_python_ast::{
-    Expression, FunctionDef, NameParent, NodeIndex, Param, ParamIterator, ReturnOrYield,
-};
+use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{
-    ClassInfos, ComplexPoint, Database, Execution, Locality, Point, PointLink, PointType, Specific,
-    TypeVarIndex,
-};
+use crate::database::{ComplexPoint, Database, Execution, Locality, Point, PointLink, Specific};
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::TypeVarMatcher;
+use crate::generics::{search_type_vars, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 
@@ -163,21 +158,36 @@ impl<'db> Function<'db> {
         let class_infos = args.class_of_method(i_s).map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
+        let mut add = |n: NodeIndex, type_var_link: PointLink| {
+            if let Some(class_infos) = class_infos {
+                if let Some(index) = class_infos.find_type_var_index(type_var_link) {
+                    // Overwrite with a better type var definition.
+                    self.reference.file.points.set(
+                        n,
+                        Point::new_numbered_type_var(Specific::ClassTypeVar, index, Locality::Stmt),
+                    );
+                    return None;
+                }
+            }
+            Some(Specific::FunctionTypeVar)
+        };
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                self.search_type_vars(
+                search_type_vars(
                     i_s,
+                    self.reference.file,
                     &annotation.expression(),
-                    class_infos,
+                    &mut add,
                     &mut found_type_vars,
                 );
             }
         }
         if let Some(return_annot) = func_node.annotation() {
-            self.search_type_vars(
+            search_type_vars(
                 i_s,
+                self.reference.file,
                 &return_annot.expression(),
-                class_infos,
+                &mut add,
                 &mut found_type_vars,
             );
         }
@@ -189,43 +199,6 @@ impl<'db> Function<'db> {
         }
         debug_assert!(type_var_reference.point().calculated());
         self.calculated_type_vars(i_s, args)
-    }
-
-    fn search_type_vars(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        expression: &Expression<'db>,
-        class_infos: Option<&'db ClassInfos>,
-        found_type_vars: &mut Vec<PointLink>,
-    ) {
-        for n in expression.search_names() {
-            if matches!(n.parent(), NameParent::Atom) {
-                let inferred = self.reference.file.inference(i_s).infer_name_reference(n);
-                if let Some(definition) = inferred.maybe_type_var(i_s) {
-                    let link = definition.as_link();
-                    if let Some(class_infos) = class_infos {
-                        if let Some(index) = class_infos.find_type_var_index(link) {
-                            // Overwrite with a better type var definition.
-                            self.reference
-                                .file
-                                .points
-                                .set(n.index(), Point::new_class_type_var(index, Locality::Stmt));
-                            continue;
-                        }
-                    }
-
-                    let i = found_type_vars.iter().position(|&r| r == link);
-                    if i.is_none() {
-                        found_type_vars.push(link);
-                    };
-                    let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
-                    self.reference.file.points.set(
-                        n.index(),
-                        Point::new_function_type_var(TypeVarIndex::new(i), Locality::Stmt),
-                    );
-                }
-            }
-        }
     }
 }
 
