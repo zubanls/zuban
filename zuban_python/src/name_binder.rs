@@ -1,16 +1,18 @@
 use crate::database::{
-    ClassStorage, ComplexPoint, FileIndex, Locality, Point, PointType,
+    ClassStorage, ComplexPoint, FileIndex, FunctionType, Locality, Overload, Point, PointLink,
+    PointType,
     PointType::{MultiDefinition, Redirect},
     Points, Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
-    AsyncStmtContent, Block, BlockContent, ClassDef, CommonComprehensionExpression, Comprehension,
-    Decoratee, DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt,
-    FunctionDef, FunctionParent, IfBlockType, IfStmt, InterestingNode, InterestingNodeSearcher,
-    Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex, StmtContent, StmtIterator,
-    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    AsyncStmtContent, AtomContent, Block, BlockContent, ClassDef, CommonComprehensionExpression,
+    Comprehension, Decoratee, Decorators, DictComprehension, Expression, ExpressionContent,
+    ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent,
+    IfBlockType, IfStmt, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name,
+    NameDefinition, NameParent, NodeIndex, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt,
+    WhileStmt, WithStmt,
 };
 
 pub enum NameBinderType {
@@ -190,7 +192,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     self.index_non_block_node(&simple, ordered, in_base_scope)
                 }
                 StmtContent::FunctionDef(func) => {
-                    self.index_function_name_and_param_defaults(func, ordered, in_base_scope);
+                    self.index_function_name_and_param_defaults(
+                        func,
+                        ordered,
+                        in_base_scope,
+                        None,  // decorators
+                        false, // is_async
+                    );
                     0
                 }
                 StmtContent::ClassDef(class) => {
@@ -199,11 +207,22 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
                 StmtContent::Decorated(decorated) => {
                     match decorated.decoratee() {
-                        Decoratee::FunctionDef(func) | Decoratee::AsyncFunctionDef(func) => {
+                        Decoratee::FunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
                                 func,
                                 ordered,
                                 in_base_scope,
+                                Some(decorated.decorators()),
+                                false, // is_async
+                            );
+                        }
+                        Decoratee::AsyncFunctionDef(func) => {
+                            self.index_function_name_and_param_defaults(
+                                func,
+                                ordered,
+                                in_base_scope,
+                                Some(decorated.decorators()),
+                                true, // is_async
                             );
                         }
                         Decoratee::ClassDef(cls) => {
@@ -224,6 +243,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             function_def,
                             ordered,
                             in_base_scope,
+                            None, // decorators
+                            true,
                         );
                         0
                     }
@@ -578,6 +599,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func: FunctionDef<'db>,
         ordered: bool,
         in_base_scope: bool,
+        decorators: Option<Decorators>,
+        is_async: bool,
     ) {
         // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
         if self.parent.is_some() {
@@ -603,15 +626,53 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.unresolved_nodes
                 .push(Unresolved::Expression(return_annotation.expression()));
         }
-        self.add_point_definition(
-            name_def,
-            if matches!(self.type_, NameBinderType::Function) {
-                Specific::LazyInferredClosure
-            } else {
-                Specific::LazyInferredFunction
-            },
-            in_base_scope,
-        );
+
+        let mut is_overload = false;
+        let mut function_type = FunctionType::Function;
+        if let Some(decorators) = decorators {
+            for decorator in decorators.iter() {
+                let expression = decorator.named_expression().expression();
+                if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                    expression.unpack()
+                {
+                    if let AtomContent::Name(name) = atom.unpack() {
+                        match name.as_str() {
+                            "property" => function_type = FunctionType::Property,
+                            "classmethod" => function_type = FunctionType::ClassMethod,
+                            "staticmethod" => function_type = FunctionType::StaticMethod,
+                            "overload" => is_overload = true,
+                            _ => (),
+                        }
+                    }
+                }
+            }
+        }
+        if is_overload {
+            let name = name_def.name();
+            dbg!(name.as_str());
+            self.complex_points.insert(
+                self.points,
+                name.index(),
+                ComplexPoint::FunctionOverload(Box::new(Overload {
+                    functions: Box::new([]),
+                    function_type,
+                    implementation_function: is_overload
+                        .then(|| PointLink::new(self.file_index, func.index())),
+                    is_async,
+                })),
+            );
+            self.symbol_table.add_or_replace_symbol(name);
+        } else {
+            self.add_point_definition(
+                name_def,
+                if matches!(self.type_, NameBinderType::Function) {
+                    Specific::LazyInferredClosure
+                } else {
+                    Specific::LazyInferredFunction
+                },
+                in_base_scope,
+            );
+        }
     }
 
     pub fn index_function_body(&mut self, func: FunctionDef<'db>) {

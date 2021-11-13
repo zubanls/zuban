@@ -203,6 +203,8 @@ create_nonterminal_structs!(
     Slice: slice
 
     Decorated: decorated
+    Decorators: decorators
+    Decorator: decorator
     ClassDef: class_def
 
     FunctionDef: function_def
@@ -811,12 +813,38 @@ impl<'db> Decorated<'db> {
             Decoratee::AsyncFunctionDef(FunctionDef::new(decoratee.nth_child(1)))
         }
     }
+
+    pub fn decorators(&self) -> Decorators<'db> {
+        Decorators::new(self.node.nth_child(0))
+    }
 }
 
 pub enum Decoratee<'db> {
     ClassDef(ClassDef<'db>),
     FunctionDef(FunctionDef<'db>),
     AsyncFunctionDef(FunctionDef<'db>),
+}
+
+impl<'db> Decorators<'db> {
+    pub fn iter(&self) -> DecoratorIterator<'db> {
+        DecoratorIterator(self.node.iter_children())
+    }
+}
+
+pub struct DecoratorIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for DecoratorIterator<'db> {
+    type Item = Decorator<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(Self::Item::new)
+    }
+}
+
+impl<'db> Decorator<'db> {
+    pub fn named_expression(&self) -> NamedExpression<'db> {
+        NamedExpression::new(self.node.nth_child(1))
+    }
 }
 
 impl<'db> AsyncStmt<'db> {

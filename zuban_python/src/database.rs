@@ -423,6 +423,7 @@ pub enum ComplexPoint {
     Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
+    FunctionOverload(Box<Overload>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -580,6 +581,22 @@ impl MroClass {
                 .collect(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionType {
+    Function,
+    Property,
+    ClassMethod,
+    StaticMethod,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Overload {
+    pub implementation_function: Option<PointLink>,
+    pub functions: Box<[PointLink]>,
+    pub function_type: FunctionType,
+    pub is_async: bool,
 }
 
 pub struct Database {
