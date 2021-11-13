@@ -1,4 +1,3 @@
-use once_cell::unsync::OnceCell;
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
 };
@@ -109,6 +108,7 @@ impl<'db> NodeReference<'db> {
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
     UnsavedComplex(ComplexPoint),
+    Unknown,
 }
 
 #[derive(Clone)]
@@ -151,9 +151,7 @@ impl<'db> Inferred<'db> {
                 }
                 return inferred;
             }
-            GenericPart::Unknown => {
-                todo!()
-            }
+            GenericPart::Unknown => InferredState::Unknown,
         };
         Self { state }
     }
@@ -192,16 +190,12 @@ impl<'db> Inferred<'db> {
                                 None,
                                 Some(&class),
                             );
-                            let init = class.init_func(i_s, &args);
-                            inf_cls.with_instance(
-                                i_s,
-                                self,
-                                Generics::InstanceWithArguments(*definition),
-                                |i_s, instance| {
-                                    let args = InstanceArguments::new(instance, &args);
-                                    callable(&mut i_s.with_func_and_args(&init, &args), instance)
-                                },
-                            )
+                            let (init, generics) = class.init_func(i_s, &args);
+                            debug_assert!(generics.is_none());
+                            inf_cls.with_instance(i_s, self, Generics::None, |i_s, instance| {
+                                let args = InstanceArguments::new(instance, &args);
+                                callable(&mut i_s.with_func_and_args(&init, &args), instance)
+                            })
                         }
                         Specific::SimpleGeneric => {
                             let class = self.expect_class(i_s).unwrap();
@@ -259,6 +253,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 self.run_on_complex(i_s, complex, None, callable, reducer)
             }
+            InferredState::Unknown => on_missing(self.clone()),
         }
     }
 
@@ -272,18 +267,14 @@ impl<'db> Inferred<'db> {
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
-            ComplexPoint::ExecutionInstance(cls_definition, generics, execution) => {
+            ComplexPoint::ExecutionInstance(cls_definition, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let init = Function::from_execution(i_s.database, execution);
                 let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let class = Class::new(
-                        def,
-                        &cls_storage.symbol_table,
-                        Generics::OnceCell(generics),
-                        None,
-                    );
+                    let class = Class::new(def, &cls_storage.symbol_table, Generics::None, None);
+                    debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
                     let args = InstanceArguments::new(&instance, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
@@ -473,16 +464,17 @@ impl<'db> Inferred<'db> {
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
                         let class = inf_cls.expect_class(i_s).unwrap();
+                        debug_assert!(class.type_vars(i_s).is_empty());
                         let args = SimpleArguments::from_primary(
                             definition.file,
                             definition.as_primary(),
                             None,
                             Some(&class),
                         );
-                        let init = class.init_func(i_s, &args);
+                        let (init, generics) = class.init_func(i_s, &args);
+                        debug_assert!(generics.is_none());
                         return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                             inf_cls.get_saved().unwrap().0.as_link(),
-                            OnceCell::new(),
                             Box::new(args.as_execution(&init)),
                         ));
                     }
@@ -540,6 +532,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }
+            InferredState::Unknown => unreachable!(),
         }
     }
 
@@ -585,6 +578,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!("{:?}", complex)
             }
+            InferredState::Unknown => unreachable!(),
         }
     }
 
@@ -621,6 +615,7 @@ impl<'db> Inferred<'db> {
                     .insert(&file.points, index, complex.clone());
                 Self::new_saved(file, index, file.points.get(index))
             }
+            InferredState::Unknown => todo!(),
         }
     }
 
@@ -658,6 +653,7 @@ impl<'db> Inferred<'db> {
                         }
                         _ => todo!("{:?}", complex),
                     },
+                    InferredState::Unknown => todo!(),
                 };
             };
             insert(&mut list, self.state);
@@ -710,6 +706,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!()
             }
+            InferredState::Unknown => (),
         }
         self
     }
@@ -746,6 +743,7 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, _) => AnyLink::Reference(definition.as_link()),
             InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
+            InferredState::Unknown => todo!(),
         }
     }
 
@@ -805,9 +803,22 @@ impl<'db> Inferred<'db> {
                 PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
                     match complex {
-                        ComplexPoint::Class(_) => Inferred::new_unsaved_complex(
-                            ComplexPoint::Instance(definition.as_link(), todo!("generics")),
-                        ),
+                        ComplexPoint::Class(cls_storage) => {
+                            let class = Class::new(
+                                *definition,
+                                &cls_storage.symbol_table,
+                                Generics::None,
+                                None,
+                            );
+                            if class.type_vars(i_s).is_empty() {
+                                Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                    definition.as_link(),
+                                    None,
+                                ))
+                            } else {
+                                todo!();
+                            }
+                        }
                         ComplexPoint::GenericClass(foo, bla) => {
                             todo!()
                         }
@@ -819,6 +830,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!("{}", self.debug_info(i_s))
             }
+            InferredState::Unknown => self.clone(),
         }
     }
 }
@@ -831,6 +843,7 @@ impl fmt::Debug for Inferred<'_> {
                 s.field("definition", &definition).field("point", &point)
             }
             InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
+            InferredState::Unknown => s.field("unknown", &true),
         }
         .finish()
     }

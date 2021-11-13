@@ -416,7 +416,7 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    ExecutionInstance(PointLink, CalculableGenericsList, Box<Execution>),
+    ExecutionInstance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
@@ -457,8 +457,6 @@ impl ClassInfos {
             .map(|i| TypeVarIndex(i as u32))
     }
 }
-
-pub type CalculableGenericsList = OnceCell<Box<GenericsList>>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericsList(Box<[GenericPart]>);

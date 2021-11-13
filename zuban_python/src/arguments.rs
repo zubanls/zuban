@@ -108,6 +108,17 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
             ArgumentsDetails::None => ArgumentIteratorBase::Finished,
         }
     }
+
+    fn with_class_method(&self, class: &'a Class<'db, 'a>) -> Self {
+        debug_assert!(self.class_of_method.is_none());
+        Self::new(
+            self.file,
+            self.primary_node,
+            self.details,
+            self.in_,
+            Some(class),
+        )
+    }
 }
 
 #[derive(Debug)]

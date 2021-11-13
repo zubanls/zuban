@@ -2,6 +2,7 @@ use parsa_python_ast::{List, ListContent, ListElement, NamedExpression};
 
 use super::{Class, Value, ValueKind};
 use crate::database::{ComplexPoint, GenericPart, GenericsList};
+use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -70,6 +71,11 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                 i_s.database.python_state.builtins_point_link("list"),
                 GenericsList::new(Box::new([result])),
             ));
+            debug!(
+                "Calculated generics for {}: {}",
+                self.list_node().short_debug(),
+                &self.class(i_s).generics.as_str(i_s),
+            );
             self.generic_part(i_s)
         }
     }

@@ -1,24 +1,18 @@
-use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, PrimaryContent, SliceType, Slices,
-};
+use parsa_python_ast::{Expression, ExpressionContent, NameParent, NodeIndex, SliceType, Slices};
 
-use crate::arguments::{Arguments, SimpleArguments};
+use crate::arguments::Arguments;
 use crate::database::{
-    CalculableGenericsList, ComplexPoint, GenericPart, GenericsList, Locality, Point, PointLink,
-    PointType, Specific, TypeVarIndex,
+    GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
-use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred, NodeReference};
+use crate::inferred::{Inferrable, Inferred};
 use crate::value::{Class, Function};
 
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(Slices<'db>),
-    InstanceWithArguments(NodeReference<'db>),
-    OnceCell(&'a CalculableGenericsList),
     List(&'a GenericsList),
     None,
 }
@@ -42,64 +36,6 @@ impl<'db, 'a> Generics<'db, 'a> {
                 }
             }
             Self::Slices(slices) => todo!(),
-            Self::InstanceWithArguments(reference) => {
-                let class_reference = reference.add_to_node_index(1);
-                let point = class_reference.point();
-                match point.type_() {
-                    PointType::Complex => {
-                        if let ComplexPoint::GenericClass(_, generics) =
-                            class_reference.complex().unwrap()
-                        {
-                            generics.nth(n).map(|c| {
-                                Inferred::from_generic_class(i_s.database, c)
-                                    .execute_annotation_class(i_s)
-                            })
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    PointType::Redirect => {
-                        let primary = reference.as_primary();
-                        let inferred = reference
-                            .file
-                            .inference(i_s)
-                            .infer_primary_or_atom(primary.first());
-                        let cls = inferred.expect_class(i_s).unwrap();
-                        if let PrimaryContent::Execution(details) = primary.second() {
-                            let args = SimpleArguments::from_primary(
-                                reference.file,
-                                primary,
-                                None,
-                                Some(&cls),
-                            );
-                            let init = cls.init_func(i_s, &args);
-                            let type_vars = cls.type_vars(i_s);
-                            debug!("Inferring instance generics for {}", primary.short_debug());
-                            let list = TypeVarMatcher::calculate_and_return(
-                                i_s,
-                                &init,
-                                &args,
-                                true,
-                                type_vars,
-                                Specific::ClassTypeVar,
-                            );
-
-                            // After we know the generics we simply replace the old class of
-                            // InstanceWithArguments with a complex value that includes generics.
-                            class_reference.insert_complex(ComplexPoint::GenericClass(
-                                cls.reference.as_link(),
-                                list,
-                            ));
-                            //ComplexPoint::Instance(PointLink, CalculableGenericsList, Box<Execution>),
-                            self.nth(i_s, n)
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            Self::OnceCell(_) => todo!(),
             Self::List(l) => l.nth(n).map(|g| {
                 Inferred::from_generic_class(i_s.database, g).execute_annotation_class(i_s)
             }),
@@ -111,8 +47,6 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(slices) => todo!(),
-            Self::InstanceWithArguments(_) => todo!(),
-            Self::OnceCell(_) => todo!(),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::None => GenericsIterator::None,
         }
@@ -124,12 +58,6 @@ impl<'db, 'a> Generics<'db, 'a> {
                 todo!()
             }
             Self::Slices(slices) => {
-                todo!()
-            }
-            Self::InstanceWithArguments(node_ref) => {
-                todo!()
-            }
-            Self::OnceCell(calculable_list) => {
                 todo!()
             }
             Self::List(_) => {
@@ -210,21 +138,23 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn calculate_and_return(
+    pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
         type_vars: &'db [PointLink],
         match_specific: Specific,
-    ) -> GenericsList {
+    ) -> Option<GenericsList> {
         let mut self_ = Self::new(function, args, skip_first, type_vars, match_specific);
         self_.calculate_type_vars(i_s);
-        self_.calculated_type_vars.unwrap()
+        self_.calculated_type_vars
     }
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
-        self.calculated_type_vars = Some(GenericsList::new_unknown(self.type_vars.len()));
+        if !self.type_vars.is_empty() {
+            self.calculated_type_vars = Some(GenericsList::new_unknown(self.type_vars.len()));
+        }
         self.function.calculated_type_vars(i_s, self.args);
         for p in self
             .function

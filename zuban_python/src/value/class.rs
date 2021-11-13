@@ -1,11 +1,10 @@
-use once_cell::unsync::OnceCell;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{Function, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ComplexPoint, Database, GenericPart, Locality, MroClass, Point, PointLink,
-    Specific, TypeVarRemap,
+    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroClass, Point,
+    PointLink, Specific, TypeVarRemap,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -60,9 +59,19 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> Function<'db> {
+    ) -> (Function<'db>, Option<GenericsList>) {
         let init = self.lookup(i_s, "__init__");
-        init.find_function_alternative()
+        let init_func = init.find_function_alternative();
+        let type_vars = self.type_vars(i_s);
+        let list = TypeVarMatcher::calculate_and_return(
+            i_s,
+            &init_func,
+            args,
+            true,
+            type_vars,
+            Specific::ClassTypeVar,
+        );
+        (init_func, list)
     }
 
     pub fn node(&self) -> ClassDef<'db> {
@@ -232,12 +241,28 @@ impl<'db> Value<'db> for Class<'db, '_> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        if args.outer_execution().is_some() {
-            Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
-                self.reference.as_link(),
-                OnceCell::new(),
-                Box::new(args.as_execution(&self.init_func(i_s, args))),
-            ))
+        if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() {
+            if !matches!(self.generics, Generics::None) {
+                todo!()
+            }
+            let (func, generics_list) = self.init_func(i_s, args);
+            debug!(
+                "Class execute: {}{}",
+                self.name(),
+                match generics_list.as_ref() {
+                    Some(generics_list) => Generics::List(generics_list).as_str(i_s),
+                    None => "".to_owned(),
+                }
+            );
+            Inferred::new_unsaved_complex(match generics_list {
+                None => ComplexPoint::ExecutionInstance(
+                    self.reference.as_link(),
+                    Box::new(args.as_execution(&func)),
+                ),
+                Some(generics_list) => {
+                    ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
+                }
+            })
         } else {
             let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Stmt);
             match args.type_() {
