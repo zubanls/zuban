@@ -102,11 +102,6 @@ macro_rules! create_struct {
                     .get(..20)
                     .unwrap_or_else(|| self.node.as_code())
             }
-
-            pub fn legacy_node(&self) -> PyNode<'db> {
-                // TODO remove this
-                self.node
-            }
         }
 
         impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
