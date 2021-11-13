@@ -233,7 +233,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
     ) -> Inferred<'db> {
         // TODO locality!!!
         if args.outer_execution().is_some() {
-            Inferred::new_unsaved_complex(ComplexPoint::Instance(
+            Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                 self.reference.as_link(),
                 OnceCell::new(),
                 Box::new(args.as_execution(&self.init_func(i_s, args))),

@@ -416,11 +416,11 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[PointLink]>),
-    Instance(PointLink, CalculableGenericsList, Box<Execution>),
+    ExecutionInstance(PointLink, CalculableGenericsList, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
-    GenericInstance(PointLink, Option<GenericsList>),
+    Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
 }

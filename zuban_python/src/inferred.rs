@@ -272,7 +272,7 @@ impl<'db> Inferred<'db> {
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
-            ComplexPoint::Instance(cls_definition, generics, execution) => {
+            ComplexPoint::ExecutionInstance(cls_definition, generics, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
                 let init = Function::from_execution(i_s.database, execution);
                 let complex = def.complex().unwrap();
@@ -319,7 +319,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::GenericClass(cls, bla) => {
                 todo!()
             }
-            ComplexPoint::GenericInstance(cls, generics_list) => {
+            ComplexPoint::Instance(cls, generics_list) => {
                 let generics = generics_list
                     .as_ref()
                     .map(|l| Generics::List(l))
@@ -480,7 +480,7 @@ impl<'db> Inferred<'db> {
                             Some(&class),
                         );
                         let init = class.init_func(i_s, &args);
-                        return Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                        return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                             inf_cls.get_saved().unwrap().0.as_link(),
                             OnceCell::new(),
                             Box::new(args.as_execution(&init)),
@@ -806,7 +806,7 @@ impl<'db> Inferred<'db> {
                     let complex = definition.file.complex_points.get(point.complex_index());
                     match complex {
                         ComplexPoint::Class(_) => Inferred::new_unsaved_complex(
-                            ComplexPoint::GenericInstance(definition.as_link(), None),
+                            ComplexPoint::Instance(definition.as_link(), todo!("generics")),
                         ),
                         ComplexPoint::GenericClass(foo, bla) => {
                             todo!()
