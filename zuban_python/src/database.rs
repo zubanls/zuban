@@ -360,7 +360,6 @@ pub enum Specific {
     //TypingAliasClass,
     //TypingAliasInstance,
     //TypingAny,
-    //TypingOverload
     //TypedDict,
     ClassTypeVar,
     FunctionTypeVar,

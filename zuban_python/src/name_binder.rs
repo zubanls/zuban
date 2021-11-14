@@ -1,18 +1,16 @@
 use crate::database::{
     ClassStorage, ComplexPoint, FileIndex, FunctionType, Locality, Overload, Point, PointLink,
-    PointType,
-    PointType::{MultiDefinition, Redirect},
-    Points, Specific,
+    PointType, Points, Specific,
 };
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AsyncStmtContent, AtomContent, Block, BlockContent, ClassDef, CommonComprehensionExpression,
     Comprehension, Decoratee, Decorators, DictComprehension, Expression, ExpressionContent,
-    ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, FunctionParent,
-    IfBlockType, IfStmt, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name,
-    NameDefinition, NameParent, NodeIndex, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt,
-    WhileStmt, WithStmt,
+    ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType,
+    IfStmt, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition,
+    NameParent, NodeIndex, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt,
+    WithStmt,
 };
 
 pub enum NameBinderType {
@@ -455,7 +453,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn is_self_param(&self, name_index: NodeIndex) -> bool {
         let point = self.points.get(name_index);
-        if let Redirect = point.type_() {
+        if let PointType::Redirect = point.type_() {
             let param_index = point.node_index();
             let param_point = self.points.get(param_index);
             if let PointType::Specific = param_point.type_() {
@@ -602,12 +600,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         decorators: Option<Decorators>,
         is_async: bool,
     ) {
-        // function_def: "def" name_definition function_def_parameters return_annotation? ":" block
-        if self.parent.is_some() {
-            // Has to be resolved, because we otherwise have no knowledge about the symbol
-            // tables in parents.
-            self.unresolved_nodes.push(Unresolved::FunctionDef(func));
-        }
+        // If there is no parent, this does not have to be resolved immediately in theory, but for
+        // now we just do.
+        self.unresolved_nodes.push(Unresolved::FunctionDef(func));
 
         let (name_def, params, return_annotation, _) = func.unpack();
         for param in params.iter() {
@@ -647,9 +642,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             }
         }
+        is_overload = false;
         if is_overload {
             let name = name_def.name();
-            dbg!(name.as_str());
             self.complex_points.insert(
                 self.points,
                 name.index(),
@@ -663,23 +658,28 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             );
             self.symbol_table.add_or_replace_symbol(name);
         } else {
-            self.add_point_definition(
+            self.add_new_definition(
                 name_def,
-                if matches!(self.type_, NameBinderType::Function) {
-                    Specific::LazyInferredClosure
-                } else {
-                    Specific::LazyInferredFunction
-                },
-                in_base_scope,
+                Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
+                true,
             );
         }
+        self.points.set(
+            func.index(),
+            Point::new_simple_specific(
+                if is_overload || !matches!(self.type_, NameBinderType::Function) {
+                    Specific::Function
+                } else {
+                    Specific::Closure
+                },
+                Locality::Stmt,
+            ),
+        );
     }
 
     pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
-        let func_index = func.index();
-
         // Function name was indexed already.
-        let (name_def, params, _, block) = func.unpack();
+        let (_, params, _, block) = func.unpack();
 
         for param in params.iter() {
             // defaults and annotations are already indexed
@@ -689,39 +689,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let latest_return_index = self.index_block(block, true, true);
         // It's kind of hard to know where to store the latest reference statement.
         self.points.set(
-            func_index + 1,
+            func.index() + 1,
             Point::new_node_analysis_with_node_index(
                 Locality::ClassOrFunction,
                 latest_return_index,
             ),
-        );
-
-        if matches!(
-            func.parent(),
-            FunctionParent::Async | FunctionParent::DecoratedAsync(_)
-        ) {
-            todo!()
-        }
-        self.points.set(
-            func_index,
-            Point::new_simple_specific(
-                if matches!(self.parent.unwrap().type_, NameBinderType::Function) {
-                    Specific::Closure
-                } else {
-                    Specific::Function
-                },
-                Locality::Stmt,
-            ),
-        );
-
-        // Avoid overwriting multi definitions
-        let mut name_index = name_def.name().index();
-        if self.points.get(name_index).type_() == MultiDefinition {
-            name_index = name_def.index();
-        }
-        self.points.set(
-            name_index,
-            Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
         );
     }
 

@@ -170,6 +170,7 @@ impl<'db> PythonFile {
                 b.index_function_body(func)
             })
         });
+        todo!("This function is currently unused, but might be useful again later")
     }
 
     pub fn inference<'a, 'b>(
@@ -283,6 +284,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         link.into_point_redirect()
                     } else {
                         // TODO star imports
+                        debug!("Unknown potential star name {}", name.as_str());
                         Point::new_unknown(import_file.file_index(), Locality::DirectExtern)
                     };
                     self.file.points.set_on_name(&name, point);
@@ -407,6 +409,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
+            debug!("Unknown annotation expression {}", expr.short_debug());
             Point::new_unknown(self.file.file_index(), Locality::Stmt)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
@@ -504,6 +507,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             link.into_point_redirect()
         } else {
             // TODO star imports
+            debug!("Unknown potential star import name {}", name.as_str());
             Point::new_unknown(self.file_index, Locality::File)
         };
         self.file.points.set_on_name(&name, point);
@@ -513,7 +517,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
         let point = self.file.points.get(node_index);
-        point
+        let result = point
             .calculated()
             .then(|| match point.type_() {
                 PointType::Redirect => {
@@ -543,14 +547,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 PointType::Specific => match point.specific() {
-                    Specific::LazyInferredFunction => {
-                        // TODO this does not analyze decorators
-                        let name = Name::by_index(&self.file.tree, node_index);
-                        let func = name.expect_function_def();
-                        self.file.calculate_function_scope_definitions(func);
-                        let point = self.file.points.get(node_index);
-                        debug_assert!(point.calculated());
-                        self.check_point_cache(node_index).unwrap()
+                    Specific::LazyInferredFunction | Specific::LazyInferredClosure => {
+                        todo!("Resolve decorators")
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
@@ -589,7 +587,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     todo!("Set recursion error and return that");
                 }
                 None
-            })
+            });
+        if cfg!(feature = "zuban_debug") {
+            if let Some(inferred) = result.as_ref() {
+                if inferred.is_unknown() {
+                    debug!("Found unknown cache result: {}", node_index);
+                }
+            }
+        }
+        result
     }
 
     check_point_cache_with!(

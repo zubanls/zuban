@@ -784,6 +784,14 @@ impl<'db> Inferred<'db> {
         )
     }
 
+    pub fn is_unknown(&self) -> bool {
+        match &self.state {
+            InferredState::Saved(_, point) => matches!(point.type_(), PointType::Unknown),
+            InferredState::Unknown => true,
+            _ => false,
+        }
+    }
+
     pub fn execute_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Self {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
