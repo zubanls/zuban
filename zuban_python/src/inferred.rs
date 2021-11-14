@@ -621,9 +621,12 @@ impl<'db> Inferred<'db> {
 
     pub fn find_function_alternative(&self) -> Function<'db> {
         if let InferredState::Saved(definition, point) = &self.state {
-            if let PointType::Specific = point.type_() {
-                if let Specific::Function = point.specific() {
-                    return Function::new(*definition);
+            if let Some(Specific::Function) = point.maybe_specific() {
+                return Function::new(*definition);
+            }
+            if let Some(ComplexPoint::FunctionOverload(overload)) = definition.complex() {
+                for func in overload.as_ref().functions.iter() {
+                    dbg!(func);
                 }
             }
         }
@@ -699,7 +702,17 @@ impl<'db> Inferred<'db> {
                     }
                 }
                 PointType::Complex => {
-                    todo!()
+                    if let ComplexPoint::FunctionOverload(o) =
+                        definition.file.complex_points.get(point.complex_index())
+                    {
+                        let complex = ComplexPoint::BoundMethod(
+                            instance.as_inferred().as_any_link(i_s),
+                            definition.as_link(),
+                        );
+                        return Self::new_unsaved_complex(complex);
+                    } else {
+                        todo!()
+                    }
                 }
                 _ => (),
             },

@@ -217,6 +217,13 @@ impl Point {
         (self.flags & REST_MASK) as usize
     }
 
+    pub fn maybe_complex_index(self) -> Option<usize> {
+        if self.type_() == PointType::Complex {
+            return Some(self.complex_index());
+        }
+        None
+    }
+
     pub fn node_index(self) -> NodeIndex {
         debug_assert!(
             self.type_() == PointType::Redirect
@@ -582,7 +589,7 @@ impl MroClass {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FunctionType {
     Function,
     Property,
@@ -592,10 +599,25 @@ pub enum FunctionType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Overload {
-    pub implementation_function: Option<PointLink>,
+    pub implementing_function: Option<PointLink>,
     pub functions: Box<[PointLink]>,
     pub function_type: FunctionType,
     pub is_async: bool,
+}
+
+impl Overload {
+    pub fn add_another_overload(&self, function: PointLink) -> Self {
+        debug_assert!(self.implementing_function.is_none());
+        let mut functions = Vec::with_capacity(self.functions.len() + 1);
+        functions.extend_from_slice(self.functions.as_ref());
+        functions.push(function);
+        Self {
+            implementing_function: None,
+            functions: functions.into_boxed_slice(),
+            function_type: self.function_type,
+            is_async: self.is_async,
+        }
+    }
 }
 
 pub struct Database {

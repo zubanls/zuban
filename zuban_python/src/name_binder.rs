@@ -642,19 +642,25 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             }
         }
-        is_overload = false;
         if is_overload {
+            // TODO this whole thing should work with an implementing function as well.
+            let current_link = PointLink::new(self.file_index, func.index());
             let name = name_def.name();
+
+            let new_overload = if let Some(overload) = self.maybe_overload(name.as_str()) {
+                overload.add_another_overload(current_link)
+            } else {
+                Overload {
+                    functions: Box::new([current_link]),
+                    function_type,
+                    implementing_function: (!is_overload).then(|| current_link),
+                    is_async,
+                }
+            };
             self.complex_points.insert(
                 self.points,
                 name.index(),
-                ComplexPoint::FunctionOverload(Box::new(Overload {
-                    functions: Box::new([]),
-                    function_type,
-                    implementation_function: is_overload
-                        .then(|| PointLink::new(self.file_index, func.index())),
-                    is_async,
-                })),
+                ComplexPoint::FunctionOverload(Box::new(new_overload)),
             );
             self.symbol_table.add_or_replace_symbol(name);
         } else {
@@ -675,6 +681,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 Locality::Stmt,
             ),
         );
+    }
+
+    fn maybe_overload(&self, name: &str) -> Option<&Overload> {
+        if let Some(index) = self.symbol_table.lookup_symbol(name) {
+            let point = self.points.get(index);
+            if let Some(complex_index) = point.maybe_complex_index() {
+                if let ComplexPoint::FunctionOverload(o) = self.complex_points.get(complex_index) {
+                    return Some(o);
+                }
+            }
+        }
+        None
     }
 
     pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
