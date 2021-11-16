@@ -162,7 +162,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
-        on_missing: &impl Fn(Inferred<'db>) -> T,
+        on_missing: &impl Fn(Self) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -329,8 +329,8 @@ impl<'db> Inferred<'db> {
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Inferred<'db>,
-    ) -> Inferred<'db> {
+        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Self,
+    ) -> Self {
         self.internal_run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
     }
 
@@ -455,7 +455,7 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {
