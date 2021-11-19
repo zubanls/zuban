@@ -231,7 +231,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         } else {
             // todo!("{:?}.{:?}", self.name(), name)
             // TODO inheritance
-            i_s.database.python_state.object_init_as_inferred()
+            todo!()
         }
     }
 

@@ -9,7 +9,7 @@ use crate::inferred::Inferred;
 pub struct PythonState {
     builtins: *const PythonFile,
     typing: *const PythonFile,
-    object_init_method_node_index: NodeIndex,
+    object_node_index: NodeIndex,
 }
 
 impl PythonState {
@@ -17,7 +17,7 @@ impl PythonState {
         Self {
             builtins: null(),
             typing: null(),
-            object_init_method_node_index: 0,
+            object_node_index: 0,
         }
     }
 
@@ -28,23 +28,10 @@ impl PythonState {
     ) {
         database.python_state.builtins = builtins;
         database.python_state.typing = typing;
-        use crate::inference_state::InferenceState;
-        use crate::value::{Module, Value};
-        let mut i_s = InferenceState::new(database);
         let builtins = database.python_state.builtins();
-        let obj = Module::new(builtins).lookup(&mut i_s, "object");
-        let init = obj.run_on_value(&mut i_s, &mut |i_s, v| v.lookup(i_s, "__init__"));
-        let func = init.find_function_alternative();
-        let link = func.reference.as_link();
-        assert_eq!(
-            builtins.points.get(link.node_index).type_(),
-            PointType::Specific
-        );
-        assert_eq!(
-            builtins.points.get(link.node_index).specific(),
-            Specific::Function
-        );
-        database.python_state.object_init_method_node_index = link.node_index;
+        builtins.calculate_global_definitions_and_references();
+        database.python_state.object_node_index =
+            builtins.symbol_table.lookup_symbol("object").unwrap();
 
         typing_changes(database.python_state.typing());
     }
@@ -59,15 +46,6 @@ impl PythonState {
     pub fn typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
-    }
-
-    pub fn object_init_as_inferred(&self) -> Inferred {
-        let builtins = self.builtins();
-        Inferred::new_saved(
-            builtins,
-            self.object_init_method_node_index,
-            builtins.points.get(self.object_init_method_node_index),
-        )
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
