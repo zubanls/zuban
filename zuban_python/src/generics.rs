@@ -113,7 +113,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     function: &'a Function<'db>,
     args: &'a dyn Arguments<'db>,
     skip_first: bool,
-    calculated_type_vars: Option<GenericsList>,
+    pub calculated_type_vars: Option<GenericsList>,
     matches: bool,
     type_vars: Option<&'a [PointLink]>,
     match_specific: Specific,

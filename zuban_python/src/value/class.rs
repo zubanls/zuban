@@ -77,10 +77,13 @@ impl<'db, 'a> Class<'db, 'a> {
                 }
                 Some(FunctionOrOverload::Overload(overloaded_function)) => {
                     let type_vars = self.type_vars(i_s);
-                    let func =
-                        overloaded_function.find_matching_function(i_s, args, Some(type_vars));
-                    dbg!(func);
-                    todo!()
+                    if let Some((func, list)) =
+                        overloaded_function.find_matching_function(i_s, args, Some(type_vars))
+                    {
+                        return (func, list);
+                    } else {
+                        todo!()
+                    }
                 }
                 None => (),
             };

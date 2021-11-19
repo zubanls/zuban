@@ -4,7 +4,7 @@ use std::fmt;
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, Execution, Locality, Overload, Point, PointLink, Specific,
+    ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -396,7 +396,7 @@ impl<'db> OverloadedFunction<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         from_class_init_type_vars: Option<&[PointLink]>,
-    ) -> Option<Function<'db>> {
+    ) -> Option<(Function<'db>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeReference::from_link(i_s.database, *link));
             let mut finder = match from_class_init_type_vars {
@@ -415,7 +415,8 @@ impl<'db> OverloadedFunction<'db> {
                 }
             };
             if finder.matches_signature(i_s) {
-                return Some(function);
+                let calculated = finder.calculated_type_vars;
+                return Some((function, calculated));
             }
         }
         None
@@ -443,7 +444,7 @@ impl<'db> Value<'db> for OverloadedFunction<'db> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         self.find_matching_function(i_s, args, None)
-            .map(|function| function.execute(i_s, args))
+            .map(|(function, _)| function.execute(i_s, args))
             .unwrap_or_else(|| todo!())
     }
 }
