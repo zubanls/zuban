@@ -14,8 +14,8 @@ use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, Function, Instance, ListLiteral, Module, TypingClass, TypingWithGenerics,
-    Value, ValueKind,
+    BoundMethod, Class, Function, Instance, ListLiteral, Module, OverloadedFunction, TypingClass,
+    TypingWithGenerics, Value, ValueKind,
 };
 
 pub trait Inferrable<'db> {
@@ -295,8 +295,15 @@ impl<'db> Inferred<'db> {
                 .reduce(reducer)
                 .unwrap(),
             ComplexPoint::BoundMethod(instance_link, func_link) => {
-                let func = Function::new(NodeReference::from_link(i_s.database, *func_link));
-                callable(i_s, &BoundMethod::new(instance_link, &func))
+                let reference = NodeReference::from_link(i_s.database, *func_link);
+
+                if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
+                    let func = OverloadedFunction::new(reference, overload);
+                    callable(i_s, &BoundMethod::new(instance_link, &func))
+                } else {
+                    let func = Function::new(reference);
+                    callable(i_s, &BoundMethod::new(instance_link, &func))
+                }
             }
             ComplexPoint::Closure(function, execution) => {
                 let f = i_s.database.loaded_python_file(function.file);

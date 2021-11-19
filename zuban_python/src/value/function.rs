@@ -3,7 +3,9 @@ use std::fmt;
 
 use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
-use crate::database::{ComplexPoint, Database, Execution, Locality, Point, PointLink, Specific};
+use crate::database::{
+    ComplexPoint, Database, Execution, Locality, Overload, Point, PointLink, Specific,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::generics::{search_type_vars, TypeVarMatcher};
@@ -16,7 +18,7 @@ pub struct Function<'db> {
 
 impl<'db> fmt::Debug for Function<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Inferred")
+        f.debug_struct("Function")
             .field("file", self.reference.file)
             .field("node", &self.node())
             .finish()
@@ -372,4 +374,47 @@ fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
         }
     }
     false
+}
+
+#[derive(Debug)]
+pub struct OverloadedFunction<'db> {
+    reference: NodeReference<'db>,
+    overload: &'db Overload,
+}
+
+impl<'db> OverloadedFunction<'db> {
+    pub fn new(reference: NodeReference<'db>, overload: &'db Overload) -> Self {
+        Self {
+            reference,
+            overload,
+        }
+    }
+}
+
+impl<'db> Value<'db> for OverloadedFunction<'db> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Function
+    }
+
+    fn name(&self) -> &'db str {
+        //let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
+        //func.name().as_str()
+        todo!()
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        for link in self.overload.functions.iter() {
+            let function = Function::new(NodeReference::from_link(i_s.database, *link));
+            let func_type_vars = function.calculated_type_vars(i_s, args);
+        }
+        todo!()
+    }
 }

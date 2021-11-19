@@ -12,7 +12,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use bound_method::BoundMethod;
 pub use class::Class;
-pub use function::Function;
+pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::ListLiteral;
 pub use module::Module;
