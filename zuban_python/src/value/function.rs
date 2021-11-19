@@ -414,6 +414,21 @@ impl<'db> Value<'db> for OverloadedFunction<'db> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeReference::from_link(i_s.database, *link));
             let func_type_vars = function.calculated_type_vars(i_s, args);
+            let no_type_vars = vec![];
+            let mut finder = func_type_vars
+                .map(|t| TypeVarMatcher::new(&function, args, false, t, Specific::FunctionTypeVar))
+                .unwrap_or_else(|| {
+                    TypeVarMatcher::new(
+                        &function,
+                        args,
+                        false,
+                        &no_type_vars,
+                        Specific::FunctionTypeVar,
+                    )
+                });
+            if finder.matches_signature(i_s) {
+                return function.execute(i_s, args);
+            }
         }
         todo!()
     }
