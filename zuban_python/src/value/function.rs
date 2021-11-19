@@ -241,8 +241,9 @@ impl<'db> Value<'db> for Function<'db> {
                     self.name()
                 );
 
-                let finder = func_type_vars
-                    .map(|t| TypeVarMatcher::new(self, args, false, t, Specific::FunctionTypeVar));
+                let finder = func_type_vars.map(|t| {
+                    TypeVarMatcher::new(self, args, false, Some(t), Specific::FunctionTypeVar)
+                });
                 inferred
                     .maybe_numbered_type_var()
                     .map(|point| match point.specific() {
@@ -389,6 +390,36 @@ impl<'db> OverloadedFunction<'db> {
             overload,
         }
     }
+
+    pub fn find_matching_function(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        from_class_init_type_vars: Option<&[PointLink]>,
+    ) -> Option<Function<'db>> {
+        for link in self.overload.functions.iter() {
+            let function = Function::new(NodeReference::from_link(i_s.database, *link));
+            let mut finder = match from_class_init_type_vars {
+                Some(c) => {
+                    TypeVarMatcher::new(&function, args, true, Some(c), Specific::ClassTypeVar)
+                }
+                None => {
+                    let func_type_vars = function.calculated_type_vars(i_s, args);
+                    TypeVarMatcher::new(
+                        &function,
+                        args,
+                        false,
+                        func_type_vars,
+                        Specific::FunctionTypeVar,
+                    )
+                }
+            };
+            if finder.matches_signature(i_s) {
+                return Some(function);
+            }
+        }
+        None
+    }
 }
 
 impl<'db> Value<'db> for OverloadedFunction<'db> {
@@ -411,25 +442,8 @@ impl<'db> Value<'db> for OverloadedFunction<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        for link in self.overload.functions.iter() {
-            let function = Function::new(NodeReference::from_link(i_s.database, *link));
-            let func_type_vars = function.calculated_type_vars(i_s, args);
-            let no_type_vars = vec![];
-            let mut finder = func_type_vars
-                .map(|t| TypeVarMatcher::new(&function, args, false, t, Specific::FunctionTypeVar))
-                .unwrap_or_else(|| {
-                    TypeVarMatcher::new(
-                        &function,
-                        args,
-                        false,
-                        &no_type_vars,
-                        Specific::FunctionTypeVar,
-                    )
-                });
-            if finder.matches_signature(i_s) {
-                return function.execute(i_s, args);
-            }
-        }
-        todo!()
+        self.find_matching_function(i_s, args, None)
+            .map(|function| function.execute(i_s, args))
+            .unwrap_or_else(|| todo!())
     }
 }

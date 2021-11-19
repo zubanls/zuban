@@ -104,6 +104,11 @@ impl<'db> NodeReference<'db> {
     }
 }
 
+pub enum FunctionOrOverload<'db> {
+    Function(Function<'db>),
+    Overload(OverloadedFunction<'db>),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
@@ -626,18 +631,19 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn find_function_alternative(&self) -> Function<'db> {
+    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db>> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let Some(Specific::Function) = point.maybe_specific() {
-                return Function::new(*definition);
+                return Some(FunctionOrOverload::Function(Function::new(*definition)));
             }
             if let Some(ComplexPoint::FunctionOverload(overload)) = definition.complex() {
-                for func in overload.as_ref().functions.iter() {
-                    dbg!(func);
-                }
+                return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
+                    *definition,
+                    overload,
+                )));
             }
         }
-        todo!("In general this function should probably not be here")
+        None
     }
 
     fn get_saved(&self) -> Option<(NodeReference<'db>, Point)> {

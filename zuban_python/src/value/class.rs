@@ -11,7 +11,7 @@ use crate::file::PythonFile;
 use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone)]
@@ -60,18 +60,32 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> (Function<'db>, Option<GenericsList>) {
-        let init = self.lookup(i_s, "__init__");
-        let init_func = init.find_function_alternative();
-        let type_vars = self.type_vars(i_s);
-        let list = TypeVarMatcher::calculate_and_return(
-            i_s,
-            &init_func,
-            args,
-            true,
-            type_vars,
-            Specific::ClassTypeVar,
-        );
-        (init_func, list)
+        for class in self.mro(i_s) {
+            let init = class.lookup(i_s, "__init__");
+            match init.init_as_function() {
+                Some(FunctionOrOverload::Function(func)) => {
+                    let type_vars = self.type_vars(i_s);
+                    let list = TypeVarMatcher::calculate_and_return(
+                        i_s,
+                        &func,
+                        args,
+                        true,
+                        Some(type_vars),
+                        Specific::ClassTypeVar,
+                    );
+                    return (func, list);
+                }
+                Some(FunctionOrOverload::Overload(overloaded_function)) => {
+                    let type_vars = self.type_vars(i_s);
+                    let func =
+                        overloaded_function.find_matching_function(i_s, args, Some(type_vars));
+                    dbg!(func);
+                    todo!()
+                }
+                None => (),
+            };
+        }
+        unreachable!("Should never happen, because there's always object.__init__")
     }
 
     pub fn node(&self) -> ClassDef<'db> {

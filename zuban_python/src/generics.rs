@@ -115,7 +115,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     skip_first: bool,
     calculated_type_vars: Option<GenericsList>,
     matches: bool,
-    type_vars: &'a [PointLink],
+    type_vars: Option<&'a [PointLink]>,
     match_specific: Specific,
 }
 
@@ -124,7 +124,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
-        type_vars: &'a [PointLink],
+        type_vars: Option<&'a [PointLink]>,
         match_specific: Specific,
     ) -> Self {
         Self {
@@ -144,7 +144,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         function: &'a Function<'db>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
-        type_vars: &'db [PointLink],
+        type_vars: Option<&'db [PointLink]>,
         match_specific: Specific,
     ) -> Option<GenericsList> {
         let mut self_ = Self::new(function, args, skip_first, type_vars, match_specific);
@@ -154,8 +154,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
         // TODO this can be calculated multiple times from different places
-        if !self.type_vars.is_empty() {
-            self.calculated_type_vars = Some(GenericsList::new_unknown(self.type_vars.len()));
+        if let Some(type_vars) = self.type_vars {
+            if !type_vars.is_empty() {
+                self.calculated_type_vars = Some(GenericsList::new_unknown(type_vars.len()));
+            }
         }
         self.function.calculated_type_vars(i_s, self.args);
         for p in self

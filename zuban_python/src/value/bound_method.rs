@@ -1,4 +1,4 @@
-use super::{Class, Value, ValueKind};
+use super::{Value, ValueKind};
 use crate::arguments::{Arguments, InstanceArguments};
 use crate::database::AnyLink;
 use crate::inference_state::InferenceState;
