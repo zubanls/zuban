@@ -99,7 +99,7 @@ macro_rules! create_struct {
             pub fn short_debug(&self) -> &'db str {
                 self.node
                     .as_code()
-                    .get(..20)
+                    .get(..40)
                     .unwrap_or_else(|| self.node.as_code())
             }
         }

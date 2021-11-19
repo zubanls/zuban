@@ -415,10 +415,16 @@ impl<'db> OverloadedFunction<'db> {
                 }
             };
             if finder.matches_signature(i_s) {
+                debug!(
+                    "Decided for overload for {}: {:?}",
+                    self.name(),
+                    function.node().short_debug()
+                );
                 let calculated = finder.calculated_type_vars;
                 return Some((function, calculated));
             }
         }
+        debug!("Could not decide overload for {}", self.name());
         None
     }
 }
@@ -431,7 +437,7 @@ impl<'db> Value<'db> for OverloadedFunction<'db> {
     fn name(&self) -> &'db str {
         //let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
         //func.name().as_str()
-        todo!()
+        self.reference.as_name().as_str()
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {

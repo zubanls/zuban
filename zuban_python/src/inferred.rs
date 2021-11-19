@@ -1,5 +1,6 @@
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, NamedExpression, NodeIndex, Primary, PrimaryContent,
+    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
+    PrimaryContent,
 };
 use std::fmt;
 
@@ -84,6 +85,10 @@ impl<'db> NodeReference<'db> {
 
     pub fn as_primary(&self) -> Primary<'db> {
         Primary::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn as_name(&self) -> Name<'db> {
+        Name::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn infer_int(&self) -> Option<i64> {
