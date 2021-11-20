@@ -34,9 +34,11 @@ impl TestFile<'_> {
         let mut ran_count = 0;
         for case in cases {
             let file_name = self.path.file_name().unwrap().to_str().unwrap();
-            if self.filters.len() != 0
-                && (!self.filters.iter().any(|f| f.allowed(file_name, case.line))
-                    || self.filters.iter().any(|f| f.denied(file_name, case.line)))
+            if self.filters.iter().any(|f| f.denied(file_name, case.line)) {
+                continue;
+            }
+            if self.filters.iter().filter(|f| !f.negative).count() != 0
+                && !self.filters.iter().any(|f| f.allowed(file_name, case.line))
             {
                 continue;
             }
