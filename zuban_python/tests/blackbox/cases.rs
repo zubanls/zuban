@@ -2,9 +2,12 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use zuban_python::{Position, Script, ValueKind};
 
-pub struct TestFile {
+use crate::Filter;
+
+pub struct TestFile<'a> {
     pub path: PathBuf,
     pub code: String,
+    pub filters: &'a [Filter],
 }
 
 #[derive(Debug)]
@@ -19,7 +22,7 @@ enum CaseType {
     Infer(HashSet<String>),
 }
 
-impl TestFile {
+impl TestFile<'_> {
     pub fn test(&self) -> usize {
         let mut project = zuban_python::Project::new("foo".to_owned());
         let script = Script::new(
@@ -30,6 +33,13 @@ impl TestFile {
         let cases = self.test_cases();
         let count = cases.len();
         for case in cases {
+            let file_name = self.path.file_name().unwrap().to_str().unwrap();
+            if self.filters.len() != 0
+                && (!self.filters.iter().any(|f| f.allowed(file_name, case.line))
+                    || self.filters.iter().any(|f| f.denied(file_name, case.line)))
+            {
+                continue;
+            }
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = script
@@ -79,7 +89,7 @@ impl TestFile {
     }
 }
 
-impl std::fmt::Debug for TestFile {
+impl std::fmt::Debug for TestFile<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("TestFile")
             .field("path", &self.path)
