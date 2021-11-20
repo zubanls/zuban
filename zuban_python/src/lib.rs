@@ -1,5 +1,6 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(clippy::while_let_on_iterator)] // This is simply wrong in some cases
 #![allow(clippy::collapsible_if)]
 #![allow(mutable_borrow_reservation_conflict)]
 

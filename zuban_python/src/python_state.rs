@@ -4,7 +4,6 @@ use std::ptr::null;
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::inferred::Inferred;
 
 pub struct PythonState {
     builtins: *const PythonFile,

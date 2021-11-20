@@ -160,10 +160,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         }
         self.function.calculated_type_vars(i_s, self.args);
-        for p in self
+        let mut iter = self
             .function
-            .iter_inferrable_params(self.args, self.skip_first)
-        {
+            .iter_inferrable_params(self.args, self.skip_first);
+        while let Some(p) = iter.next() {
             if let Some(annotation) = p.param.annotation() {
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     let inferred = self
@@ -188,6 +188,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             } else if !p.has_argument() {
                 self.matches = false;
             }
+        }
+        if iter.has_unused_argument() {
+            self.matches = false
         }
     }
 
