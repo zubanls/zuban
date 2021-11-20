@@ -23,10 +23,9 @@ enum CaseType {
 }
 
 impl TestFile<'_> {
-    pub fn test(&self) -> (usize, usize) {
-        let mut project = zuban_python::Project::new("foo".to_owned());
+    pub fn test(&self, project: &mut zuban_python::Project) -> (usize, usize) {
         let script = Script::new(
-            &mut project,
+            project,
             Some(self.path.to_str().unwrap().to_owned()),
             Some(self.code.clone()),
         );

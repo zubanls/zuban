@@ -60,6 +60,8 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
 
+    let mut project = zuban_python::Project::new("foo".to_owned());
+
     let files = python_files();
     let start = Instant::now();
     let mut full_count = 0;
@@ -72,7 +74,7 @@ fn main() {
             code,
             filters: &filters,
         };
-        let (ran, full) = f.test();
+        let (ran, full) = f.test(&mut project);
         ran_count += ran;
         full_count += full;
     }
