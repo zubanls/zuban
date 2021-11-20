@@ -23,15 +23,16 @@ enum CaseType {
 }
 
 impl TestFile<'_> {
-    pub fn test(&self) -> usize {
+    pub fn test(&self) -> (usize, usize) {
         let mut project = zuban_python::Project::new("foo".to_owned());
         let script = Script::new(
             &mut project,
             Some(self.path.to_str().unwrap().to_owned()),
             Some(self.code.clone()),
         );
-        let cases = self.test_cases();
-        let count = cases.len();
+        let cases = self.find_test_cases();
+        let full_count = cases.len();
+        let mut ran_count = 0;
         for case in cases {
             let file_name = self.path.file_name().unwrap().to_str().unwrap();
             if self.filters.len() != 0
@@ -40,6 +41,7 @@ impl TestFile<'_> {
             {
                 continue;
             }
+            ran_count += 1;
             match case.type_ {
                 CaseType::Infer(expected) => {
                     let actual: HashSet<_> = script
@@ -59,10 +61,10 @@ impl TestFile<'_> {
                 }
             }
         }
-        count
+        (ran_count, full_count)
     }
 
-    fn test_cases(&self) -> Vec<TestCase> {
+    fn find_test_cases(&self) -> Vec<TestCase> {
         let mut cases = vec![];
         let lines: Vec<_> = self.code.split('\n').collect();
         for (line_nr, line) in lines.iter().enumerate() {

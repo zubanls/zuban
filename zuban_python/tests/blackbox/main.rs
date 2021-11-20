@@ -62,7 +62,8 @@ fn main() {
 
     let files = python_files();
     let start = Instant::now();
-    let mut count = 0;
+    let mut full_count = 0;
+    let mut ran_count = 0;
     let file_count = files.len();
     for python_file in files {
         let code = read_to_string(&python_file).unwrap();
@@ -71,11 +72,14 @@ fn main() {
             code,
             filters: &filters,
         };
-        count += f.test();
+        let (ran, full) = f.test();
+        ran_count += ran;
+        full_count += full;
     }
     println!(
-        "Run {} integration tests in {} files; finished in {:.2}s",
-        count,
+        "Ran {} of {} integration tests in {} files; finished in {:.2}s",
+        ran_count,
+        full_count,
         file_count,
         start.elapsed().as_secs_f32(),
     );
