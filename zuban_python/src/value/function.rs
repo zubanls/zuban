@@ -349,6 +349,10 @@ impl<'db> InferrableParam<'db, '_> {
     fn is_at(&self, index: NodeIndex) -> bool {
         self.param.name_definition().name().index() == index
     }
+
+    pub fn has_argument(&self) -> bool {
+        self.argument.is_some()
+    }
 }
 
 impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
@@ -416,7 +420,7 @@ impl<'db> OverloadedFunction<'db> {
             };
             if finder.matches_signature(i_s) {
                 debug!(
-                    "Decided for overload for {}: {:?}",
+                    "Decided overload for {}: {:?}",
                     self.name(),
                     function.node().short_debug()
                 );

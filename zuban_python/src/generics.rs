@@ -185,6 +185,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         });
                     }
                 }
+            } else if !p.has_argument() {
+                self.matches = false;
             }
         }
     }
