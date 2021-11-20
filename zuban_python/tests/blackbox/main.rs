@@ -88,14 +88,20 @@ fn main() {
 }
 
 fn python_files() -> Vec<PathBuf> {
-    let mut p = PathBuf::from(file!().replace("zuban_python/", ""));
-    assert!(p.pop());
-    p.push("python_files");
+    let mut base = PathBuf::from(file!().replace("zuban_python/", ""));
+    assert!(base.pop());
 
-    let mut entries: Vec<_> = read_dir(p)
-        .unwrap()
-        .map(|res| res.map(|e| e.path()).unwrap())
-        .collect();
+    let mut entries = vec![];
+    for p in ["python_files", "from_jedi_python_files"] {
+        let mut path = base.clone();
+        path.push(p);
+
+        entries.extend(
+            read_dir(path)
+                .unwrap()
+                .map(|res| res.map(|e| e.path()).unwrap()),
+        );
+    }
     entries.sort();
     entries
 }
