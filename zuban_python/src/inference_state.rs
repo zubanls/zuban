@@ -45,6 +45,9 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn infer_param(&mut self, definition: &NodeReference<'db>) -> Inferred<'db> {
+        if let Some(inferred) = definition.maybe_infer_param_annotation(self) {
+            return inferred;
+        }
         if let Some((function, args)) = self.current_execution {
             function
                 .infer_param(self, definition.node_index, args)

@@ -245,6 +245,18 @@ macro_rules! __create_node {
                 self.iter_children().skip(index).next().expect("There is no child")
             }
 
+            pub fn next_sibling(&self) -> Option<$Node<'a>> {
+                (self.internal_node.next_node_offset != 0).then(|| {
+                    let index = self.index + self.internal_node.next_node_offset;
+                    let n = &self.internal_tree.nodes[index as usize];
+                    Self {
+                        internal_tree: self.internal_tree,
+                        index,
+                        internal_node: n
+                    }
+                })
+            }
+
             pub fn is_error_recovery_node(&self) -> bool {
                 self.internal_node.type_.is_error_recovery()
             }

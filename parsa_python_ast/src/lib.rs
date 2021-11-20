@@ -319,6 +319,15 @@ impl<'db> Name<'db> {
             NameParent::Other
         }
     }
+
+    pub fn maybe_param_annotation(&self) -> Option<Annotation<'db>> {
+        if let Some(next) = self.node.parent().unwrap().next_sibling() {
+            if next.is_type(Nonterminal(annotation)) {
+                return Some(Annotation::new(next));
+            }
+        }
+        None
+    }
 }
 
 #[derive(Debug)]

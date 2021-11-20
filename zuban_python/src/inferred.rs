@@ -107,6 +107,17 @@ impl<'db> NodeReference<'db> {
     pub fn as_named_expression(&self) -> NamedExpression<'db> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
     }
+
+    pub fn maybe_infer_param_annotation(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<Inferred<'db>> {
+        self.as_name().maybe_param_annotation().map(|annotation| {
+            self.file
+                .inference(i_s)
+                .infer_annotation_expression(annotation.expression())
+        })
+    }
 }
 
 pub enum FunctionOrOverload<'db> {
