@@ -508,7 +508,7 @@ pub enum GenericPart {
 
 impl GenericPart {
     pub fn union<'db>(self, i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) -> Self {
-        let other = class.to_generic_part(i_s);
+        let other = class.as_generic_part(i_s);
         match self {
             Self::Union(list) => {
                 let mut vec = list.into_vec();

@@ -212,7 +212,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn to_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         let lst = self.generics.as_generics_list(i_s);
         let link = self.reference.as_link();
         lst.map(|lst| GenericPart::GenericClass(link, lst))

@@ -328,6 +328,21 @@ impl<'db> Name<'db> {
         }
         None
     }
+
+    pub fn simple_param_type(&self) -> SimpleParamType {
+        let param = self.node.parent().unwrap().parent().unwrap();
+        if param.is_type(Nonterminal(starred_param))
+            || param.is_type(Nonterminal(lambda_starred_param))
+        {
+            SimpleParamType::MultiArgs
+        } else if param.is_type(Nonterminal(double_starred_param))
+            || param.is_type(Nonterminal(lambda_double_starred_param))
+        {
+            SimpleParamType::MultiKwargs
+        } else {
+            SimpleParamType::Normal
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1262,6 +1277,12 @@ pub enum ParamType {
     MultiArgs,
     MultiKwargs,
     KeywordOnly,
+}
+
+pub enum SimpleParamType {
+    Normal,
+    MultiArgs,
+    MultiKwargs,
 }
 
 impl<'db> Annotation<'db> {

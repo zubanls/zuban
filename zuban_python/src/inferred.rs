@@ -1,13 +1,13 @@
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
-    PrimaryContent,
+    PrimaryContent, SimpleParamType,
 };
 use std::fmt;
 
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, Locality, Point, PointLink, PointType,
-    Specific,
+    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
+    PointLink, PointType, Specific,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -112,10 +112,21 @@ impl<'db> NodeReference<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
     ) -> Option<Inferred<'db>> {
-        self.as_name().maybe_param_annotation().map(|annotation| {
-            self.file
-                .inference(i_s)
-                .infer_annotation_expression(annotation.expression())
+        let name = self.as_name();
+        name.maybe_param_annotation().map(|annotation| {
+            let expression = annotation.expression();
+            let mut inference = self.file.inference(i_s);
+            match name.simple_param_type() {
+                SimpleParamType::Normal => inference.infer_annotation_expression(expression),
+                SimpleParamType::MultiArgs => {
+                    let inf = inference.infer_expression(expression);
+                    Inferred::create_instance(
+                        i_s.database.python_state.builtins_point_link("tuple"),
+                        Some(&[inf.as_generic_part(i_s)]),
+                    )
+                }
+                SimpleParamType::MultiKwargs => todo!(),
+            }
         })
     }
 }
@@ -175,6 +186,19 @@ impl<'db> Inferred<'db> {
             GenericPart::Unknown => InferredState::Unknown,
         };
         Self { state }
+    }
+
+    pub fn create_instance(class: PointLink, generics: Option<&[GenericPart]>) -> Self {
+        Self::new_unsaved_complex(ComplexPoint::Instance(
+            class,
+            generics.map(|lst| GenericsList::new(lst.to_vec().into_boxed_slice())),
+        ))
+    }
+
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        self.expect_class(i_s)
+            .map(|c| c.as_generic_part(i_s))
+            .unwrap_or(GenericPart::Unknown)
     }
 
     #[inline]
