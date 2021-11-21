@@ -1523,6 +1523,35 @@ pub enum SliceType<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
+impl<'db> Slices<'db> {
+    pub fn iter(&self) -> SliceIterator<'db> {
+        SliceIterator(self.node.iter_children())
+    }
+}
+
+pub enum SlicesContent<'db> {
+    Slice(Slice<'db>),
+    NamedExpression(NamedExpression<'db>),
+}
+
+pub struct SliceIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for SliceIterator<'db> {
+    type Item = SlicesContent<'db>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.0.next().map(|n| {
+            if n.is_type(Nonterminal(slices)) {
+                SlicesContent::Slice(Slice::new(n))
+            } else {
+                SlicesContent::NamedExpression(NamedExpression::new(n))
+            }
+        });
+        self.0.next();
+        result
+    }
+}
+
 impl<'db> Arguments<'db> {
     pub fn iter(&self) -> ArgumentsIterator<'db> {
         ArgumentsIterator(self.node.iter_children())

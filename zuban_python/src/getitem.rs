@@ -24,13 +24,35 @@ impl<'db> SliceType<'db> {
                 primary_index,
                 named_expr,
             }),
-            ASTSliceType::Slice(slice) => Self::Slice(Slice { file, slice }),
-            ASTSliceType::Slices(slices) => Self::Slices(Slices { file, slices }),
+            ASTSliceType::Slice(slice) => Self::Slice(Slice {
+                file,
+                primary_index,
+                slice,
+            }),
+            ASTSliceType::Slices(slices) => Self::Slices(Slices {
+                file,
+                primary_index,
+                slices,
+            }),
         }
     }
-}
 
-impl<'db> SliceType<'db> {
+    pub fn file(&self) -> &'db PythonFile {
+        match self {
+            Self::Simple(simple) => simple.file,
+            Self::Slice(slice) => slice.file,
+            Self::Slices(slices) => slices.file,
+        }
+    }
+
+    pub fn primary_index(&self) -> NodeIndex {
+        match self {
+            Self::Simple(simple) => simple.primary_index,
+            Self::Slice(slice) => slice.primary_index,
+            Self::Slices(slices) => slices.primary_index,
+        }
+    }
+
     pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
         SliceArguments(self)
     }
@@ -60,12 +82,14 @@ impl<'db> Simple<'db> {
 #[derive(Debug, Copy, Clone)]
 pub struct Slice<'db> {
     file: &'db PythonFile,
+    primary_index: NodeIndex,
     slice: ASTSlice<'db>,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Slices<'db> {
     file: &'db PythonFile,
+    primary_index: NodeIndex,
     slices: ASTSlices<'db>,
 }
 

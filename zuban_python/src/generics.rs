@@ -1,4 +1,7 @@
-use parsa_python_ast::{Expression, ExpressionContent, NameParent, NodeIndex, SliceType, Slices};
+use parsa_python_ast::{
+    Expression, ExpressionContent, NameParent, NodeIndex, SliceIterator, SliceType, Slices,
+    SlicesContent,
+};
 
 use crate::arguments::Arguments;
 use crate::database::{
@@ -12,7 +15,7 @@ use crate::value::{Class, Function};
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
-    Slices(Slices<'db>),
+    Slices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList),
     None,
 }
@@ -22,7 +25,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         match slice_type {
             SliceType::NamedExpression(named) => Self::Expression(file, named.expression()),
             SliceType::Slice(_) => Self::None,
-            SliceType::Slices(slices) => Self::Slices(slices),
+            SliceType::Slices(slices) => Self::Slices(file, slices),
         }
     }
 
@@ -35,7 +38,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     None
                 }
             }
-            Self::Slices(slices) => todo!(),
+            Self::Slices(file, slices) => todo!(),
             Self::List(l) => l.nth(n).map(|g| {
                 Inferred::from_generic_class(i_s.database, g).execute_annotation_class(i_s)
             }),
@@ -46,7 +49,7 @@ impl<'db, 'a> Generics<'db, 'a> {
     pub fn iter(&self) -> GenericsIterator<'db, 'a> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
-            Self::Slices(slices) => todo!(),
+            Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::None => GenericsIterator::None,
         }
@@ -57,7 +60,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Expression(file, expr) => {
                 todo!()
             }
-            Self::Slices(slices) => {
+            Self::Slices(file, slices) => {
                 todo!()
             }
             Self::List(_) => {
@@ -88,6 +91,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 }
 
 pub enum GenericsIterator<'db, 'a> {
+    SliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, GenericPart>),
     Expression(&'db PythonFile, Expression<'db>),
     None,
@@ -100,6 +104,13 @@ impl<'db> GenericsIterator<'db, '_> {
                 let result = file.inference(i_s).infer_expression(*expr);
                 *self = GenericsIterator::None;
                 Some(result)
+            }
+            Self::SliceIterator(file, iter) => {
+                if let Some(SlicesContent::NamedExpression(s)) = iter.next() {
+                    Some(file.inference(i_s).infer_named_expression(s))
+                } else {
+                    None
+                }
             }
             Self::GenericsList(iterator) => iterator
                 .next()

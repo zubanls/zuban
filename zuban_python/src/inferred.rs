@@ -128,7 +128,7 @@ impl<'db> NodeReference<'db> {
                 SimpleParamType::MultiKwargs => {
                     let inf = inference.infer_expression(expression);
                     Inferred::create_instance(
-                        i_s.database.python_state.builtins_point_link("tuple"),
+                        i_s.database.python_state.builtins_point_link("dict"),
                         Some(&[
                             GenericPart::Class(
                                 i_s.database.python_state.builtins_point_link("str"),
