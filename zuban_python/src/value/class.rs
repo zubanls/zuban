@@ -209,6 +209,7 @@ impl<'db, 'a> Class<'db, 'a> {
             generics: &self.generics,
             class: Some(self),
             iterator: class_infos.mro.iter(),
+            returned_object: false,
         }
     }
 
@@ -240,16 +241,16 @@ impl<'db> Value<'db> for Class<'db, '_> {
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        if let Some(node_index) = self.symbol_table.lookup_symbol(name) {
-            self.reference
-                .file
-                .inference(i_s)
-                .infer_name_by_index(node_index)
-        } else {
-            // todo!("{:?}.{:?}", self.name(), name)
-            // TODO inheritance
-            todo!()
+        for c in self.mro(i_s) {
+            if let Some(node_index) = c.symbol_table.lookup_symbol(name) {
+                return c
+                    .reference
+                    .file
+                    .inference(i_s)
+                    .infer_name_by_index(node_index);
+            }
         }
+        todo!("{:?}.{:?}", self.name(), name)
     }
 
     fn execute(
@@ -337,6 +338,7 @@ struct MroIterator<'db, 'a> {
     generics: &'a Generics<'db, 'a>,
     class: Option<&'a Class<'db, 'a>>,
     iterator: std::slice::Iter<'db, MroClass>,
+    returned_object: bool,
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
@@ -346,14 +348,21 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
         if self.class.is_some() {
             return Some(std::mem::replace(&mut self.class, None).unwrap().clone());
         }
-        self.iterator.next().map(|c| {
-            Class::from_position(
-                NodeReference::from_link(self.database, c.class),
-                self.generics.clone(),
-                Some(&c.type_var_remap),
+        if let Some(c) = self.iterator.next() {
+            Some(
+                Class::from_position(
+                    NodeReference::from_link(self.database, c.class),
+                    self.generics.clone(),
+                    Some(&c.type_var_remap),
+                )
+                .unwrap(),
             )
-            .unwrap()
-        })
+        } else if !self.returned_object {
+            self.returned_object = true;
+            Class::from_position(self.database.python_state.object(), Generics::None, None)
+        } else {
+            None
+        }
     }
 }
 

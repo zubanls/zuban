@@ -76,7 +76,7 @@ macro_rules! create_struct {
         impl<'db> $name<'db> {
             #[inline]
             pub fn new(node: PyNode<'db>) -> Self {
-                debug_assert_eq!(node.type_(), $type);
+                debug_assert_eq!(node.type_(), $type, "{:?} {:?}", node, node.parent());
                 Self { node }
             }
 

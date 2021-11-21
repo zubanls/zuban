@@ -4,6 +4,7 @@ use std::ptr::null;
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inferred::NodeReference;
 
 pub struct PythonState {
     builtins: *const PythonFile,
@@ -29,8 +30,15 @@ impl PythonState {
         database.python_state.typing = typing;
         let builtins = database.python_state.builtins();
         builtins.calculate_global_definitions_and_references();
-        database.python_state.object_node_index =
-            builtins.symbol_table.lookup_symbol("object").unwrap();
+
+        let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
+
+        database.python_state.object_node_index = database
+            .python_state
+            .builtins()
+            .points
+            .get(object_name_index)
+            .node_index();
 
         typing_changes(database.python_state.typing());
     }
@@ -45,6 +53,12 @@ impl PythonState {
     pub fn typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
+    }
+
+    #[inline]
+    pub fn object(&self) -> NodeReference {
+        debug_assert!(self.object_node_index != 0);
+        NodeReference::new(self.builtins(), self.object_node_index)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
