@@ -110,10 +110,12 @@ impl<'db, 'a> Class<'db, 'a> {
         // them back in a set afterwards.
         // TODO use mro
         dbg!(self.name(), self.type_var_remap);
+        let mut some_class_matches = false;
         value.run(i_s, &mut |i_s, v| {
             let check_class = v.class(i_s);
             for class in check_class.mro(i_s) {
                 if class.reference == self.reference {
+                    some_class_matches = true;
                     let mut value_generics = class.generics.iter();
                     let mut generics = self.generics.iter();
                     while let Some(generic) = generics.next(i_s) {
@@ -131,6 +133,9 @@ impl<'db, 'a> Class<'db, 'a> {
                 }
             }
         });
+        if !some_class_matches {
+            matcher.does_not_match();
+        }
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {

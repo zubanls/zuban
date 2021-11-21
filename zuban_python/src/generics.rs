@@ -251,6 +251,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             .set_generic(index, i_s, class);
     }
 
+    pub fn does_not_match(&mut self) {
+        self.matches = false;
+    }
+
     pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.calculate_type_vars(i_s);
         self.matches
