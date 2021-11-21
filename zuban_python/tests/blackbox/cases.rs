@@ -20,6 +20,7 @@ struct TestCase {
 #[derive(Debug)]
 enum CaseType {
     Infer(HashSet<String>),
+    Complete(Vec<String>),
 }
 
 impl TestFile<'_> {
@@ -60,6 +61,10 @@ impl TestFile<'_> {
                         .collect();
                     assert_eq!(actual, expected);
                 }
+                CaseType::Complete(expected) => {
+                    ran_count -= 1;
+                    // TODO implement complete tests
+                }
             }
         }
         (ran_count, full_count)
@@ -72,19 +77,36 @@ impl TestFile<'_> {
             let trimmed = line.trim_start();
             if trimmed.starts_with("#?") {
                 let mut names: Vec<_> = trimmed[2..].trim_start().split(" ").collect();
+                let rest;
                 let column = {
                     if let Ok(c) = names[0].parse() {
                         names.remove(0);
+                        rest = names.join(" ");
                         c
                     } else {
+                        rest = trimmed[2..].trim().to_owned();
                         lines[line_nr + 1].len()
                     }
+                };
+                let type_ = if trimmed.ends_with("]") {
+                    CaseType::Complete(
+                        rest[1..rest.len() - 1]
+                            .split(",")
+                            .map(|quoted| {
+                                let quoted = quoted.trim();
+                                // Strip quotes
+                                quoted[1..quoted.len() - 1].to_owned()
+                            })
+                            .collect(),
+                    )
+                } else {
+                    CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect())
                 };
                 cases.push(TestCase {
                     // We need to add one, because we're evaluating the next line
                     line: line_nr + 1,
                     column,
-                    type_: CaseType::Infer(names.iter().cloned().map(|x| x.to_owned()).collect()),
+                    type_,
                 });
             }
         }
