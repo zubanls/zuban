@@ -125,7 +125,18 @@ impl<'db> NodeReference<'db> {
                         Some(&[inf.as_generic_part(i_s)]),
                     )
                 }
-                SimpleParamType::MultiKwargs => todo!(),
+                SimpleParamType::MultiKwargs => {
+                    let inf = inference.infer_expression(expression);
+                    Inferred::create_instance(
+                        i_s.database.python_state.builtins_point_link("tuple"),
+                        Some(&[
+                            GenericPart::Class(
+                                i_s.database.python_state.builtins_point_link("str"),
+                            ),
+                            inf.as_generic_part(i_s),
+                        ]),
+                    )
+                }
             }
         })
     }
