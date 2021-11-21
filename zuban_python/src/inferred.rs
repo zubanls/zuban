@@ -142,9 +142,9 @@ impl<'db> NodeReference<'db> {
     }
 }
 
-pub enum FunctionOrOverload<'db> {
+pub enum FunctionOrOverload<'db, 'a> {
     Function(Function<'db>),
-    Overload(OverloadedFunction<'db>),
+    Overload(OverloadedFunction<'db, 'a>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -370,9 +370,6 @@ impl<'db> Inferred<'db> {
                     &Function::new(NodeReference::from_link(i_s.database, *function)),
                 )
             }
-            ComplexPoint::GenericClass(cls, bla) => {
-                todo!()
-            }
             ComplexPoint::Instance(cls, generics_list) => {
                 let generics = generics_list
                     .as_ref()
@@ -381,6 +378,13 @@ impl<'db> Inferred<'db> {
                 let instance =
                     self.use_instance(NodeReference::from_link(i_s.database, *cls), generics);
                 callable(i_s, &instance)
+            }
+            ComplexPoint::FunctionOverload(overload) => callable(
+                i_s,
+                &OverloadedFunction::new(*definition.unwrap(), overload),
+            ),
+            ComplexPoint::GenericClass(cls, bla) => {
+                todo!()
             }
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
@@ -682,7 +686,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db>> {
+    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db, '_>> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let Some(Specific::Function) = point.maybe_specific() {
                 return Some(FunctionOrOverload::Function(Function::new(*definition)));

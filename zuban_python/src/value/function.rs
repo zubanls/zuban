@@ -386,13 +386,13 @@ fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
 }
 
 #[derive(Debug)]
-pub struct OverloadedFunction<'db> {
+pub struct OverloadedFunction<'db, 'a> {
     reference: NodeReference<'db>,
-    overload: &'db Overload,
+    overload: &'a Overload,
 }
 
-impl<'db> OverloadedFunction<'db> {
-    pub fn new(reference: NodeReference<'db>, overload: &'db Overload) -> Self {
+impl<'db, 'a> OverloadedFunction<'db, 'a> {
+    pub fn new(reference: NodeReference<'db>, overload: &'a Overload) -> Self {
         Self {
             reference,
             overload,
@@ -437,7 +437,7 @@ impl<'db> OverloadedFunction<'db> {
     }
 }
 
-impl<'db> Value<'db> for OverloadedFunction<'db> {
+impl<'db> Value<'db> for OverloadedFunction<'db, '_> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
