@@ -15,8 +15,8 @@ use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, Function, Instance, ListLiteral, Module, OverloadedFunction, TypingClass,
-    TypingWithGenerics, Value, ValueKind,
+    BoundMethod, Class, DictLiteral, Function, Instance, ListLiteral, Module, OverloadedFunction,
+    TypingClass, TypingWithGenerics, Value, ValueKind,
 };
 
 pub trait Inferrable<'db> {
@@ -261,6 +261,7 @@ impl<'db> Inferred<'db> {
                             .infer_param(definition)
                             .internal_run(i_s, callable, reducer, on_missing),
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
+                        Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
                         Specific::TypingProtocol | Specific::TypingGeneric => {
                             callable(i_s, &TypingClass::new(*definition, specific))
                         }

@@ -479,7 +479,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Ellipsis => Specific::Ellipsis,
             List(_) => Specific::List,
             ListComprehension(_) => Specific::List,
-            Dict(_) => todo!(),
+            Dict(_) => Specific::Dict,
             DictComprehension(_) => todo!(),
             Set(_) => todo!(),
             SetComprehension(_) => todo!(),

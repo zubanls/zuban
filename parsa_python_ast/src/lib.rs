@@ -194,6 +194,7 @@ create_nonterminal_structs!(
     Tuple: atom
     Dict: atom
     DictKeyValue: dict_key_value
+    DictStarred: dict_starred
     Comprehension: comprehension
     DictComprehension: dict_comprehension
     ForIfClauses: for_if_clauses
@@ -440,6 +441,53 @@ impl<'db> Iterator for ListElementIterator<'db> {
 pub enum ListElement<'db> {
     NamedExpression(NamedExpression<'db>),
     StarNamedExpression(StarNamedExpression<'db>),
+}
+
+impl<'db> Dict<'db> {
+    pub fn iter_elements(&self) -> DictElementIterator<'db> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(dict_content)) {
+            DictElementIterator::Elements(n.iter_children().step_by(2))
+        } else {
+            DictElementIterator::Empty
+        }
+    }
+}
+
+pub enum DictElementIterator<'db> {
+    Elements(StepBy<SiblingIterator<'db>>),
+    Empty,
+}
+
+impl<'db> Iterator for DictElementIterator<'db> {
+    type Item = DictElement<'db>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            DictElementIterator::Elements(iterator) => iterator.next().map(|node| {
+                if node.is_type(Nonterminal(dict_key_value)) {
+                    DictElement::KeyValue(DictKeyValue::new(node))
+                } else {
+                    DictElement::DictStarred(DictStarred::new(node))
+                }
+            }),
+            DictElementIterator::Empty => None,
+        }
+    }
+}
+
+pub enum DictElement<'db> {
+    KeyValue(DictKeyValue<'db>),
+    DictStarred(DictStarred<'db>),
+}
+
+impl<'db> DictKeyValue<'db> {
+    pub fn key(self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(0))
+    }
+
+    pub fn value(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(2))
+    }
 }
 
 impl<'db> Expression<'db> {

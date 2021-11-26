@@ -14,7 +14,7 @@ pub use bound_method::BoundMethod;
 pub use class::Class;
 pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
-pub use iterable::ListLiteral;
+pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use typing::{TypingClass, TypingWithGenerics};
 

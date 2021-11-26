@@ -332,6 +332,7 @@ pub enum Specific {
     GeneratorComprehension,
     List,
     ListComprehension,
+    Dict,
 
     // SelfParam, TODO Use maybe?
     Param,
