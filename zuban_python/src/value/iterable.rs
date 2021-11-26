@@ -1,4 +1,6 @@
-use parsa_python_ast::{Dict, DictElement, List, ListContent, ListElement, NamedExpression};
+use parsa_python_ast::{
+    Dict, DictElement, Expression, List, ListContent, ListElement, NamedExpression,
+};
 
 use super::{Class, Value, ValueKind};
 use crate::database::{ComplexPoint, GenericPart, GenericsList};
@@ -45,7 +47,6 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
             }
         } else {
             let mut result = GenericPart::Unknown;
-            let ptr = &mut result;
             match self.list_node().unpack() {
                 ListContent::Elements(elements) => {
                     for child in elements {
@@ -54,8 +55,9 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                                 self.infer_named_expr(i_s, named_expr)
                                     .run(i_s, &mut |i_s, v| {
                                         let cls = v.class(i_s);
-                                        *ptr = std::mem::replace(ptr, GenericPart::Unknown)
-                                            .union(i_s, &cls);
+                                        result =
+                                            std::mem::replace(&mut result, GenericPart::Unknown)
+                                                .union(i_s, &cls);
                                     });
                             }
                             ListElement::StarNamedExpression(_) => {
@@ -178,15 +180,15 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
         Self { node_reference }
     }
 
-    fn infer_named_expr(
+    fn infer_expr(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        named_expr: NamedExpression<'db>,
+        expr: Expression<'db>,
     ) -> Inferred<'db> {
         self.node_reference
             .file
             .inference(i_s)
-            .infer_named_expression(named_expr)
+            .infer_expression(expr)
     }
 
     fn dict_node(&self) -> Dict<'db> {
@@ -204,16 +206,21 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                 _ => unreachable!(),
             }
         } else {
-            let mut result = GenericPart::Unknown;
-            let ptr = &mut result;
+            let mut keys = GenericPart::Unknown;
+            let mut values = GenericPart::Unknown;
             for child in self.dict_node().iter_elements() {
-                /*
                 match child {
                     DictElement::KeyValue(key_value) => {
-                        self.infer_named_expr(i_s, named_expr)
+                        self.infer_expr(i_s, key_value.key())
                             .run(i_s, &mut |i_s, v| {
                                 let cls = v.class(i_s);
-                                *ptr = std::mem::replace(ptr, GenericPart::Unknown)
+                                keys = std::mem::replace(&mut keys, GenericPart::Unknown)
+                                    .union(i_s, &cls);
+                            });
+                        self.infer_expr(i_s, key_value.value())
+                            .run(i_s, &mut |i_s, v| {
+                                let cls = v.class(i_s);
+                                values = std::mem::replace(&mut values, GenericPart::Unknown)
                                     .union(i_s, &cls);
                             });
                     }
@@ -221,11 +228,10 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                         todo!()
                     }
                 }
-                */
             }
             reference.insert_complex(ComplexPoint::GenericClass(
                 i_s.database.python_state.builtins_point_link("list"),
-                GenericsList::new(Box::new([result])),
+                GenericsList::new(Box::new([keys, values])),
             ));
             debug!(
                 "Calculated generics for {}: {}",
@@ -263,7 +269,7 @@ impl<'db> Value<'db> for DictLiteral<'db, '_> {
                         match child {
                             DictElement::KeyValue(named_expr) => {
                                 if i as i64 == wanted {
-                                    return self.infer_named_expr(i_s, named_expr);
+                                    return self.infer_expr(i_s, named_expr);
                                 }
                             }
                             DictElement::DictStarred(_) => {
@@ -279,7 +285,7 @@ impl<'db> Value<'db> for DictLiteral<'db, '_> {
                 for child in elements {
                     match child {
                         DictElement::KeyValue(key_value) => {
-                            let new_inferred = self.infer_named_expr(i_s, key_value);
+                            let new_inferred = self.infer_expr(i_s, key_value);
                             if let Some(current) = inferred {
                                 inferred = Some(current.union(new_inferred));
                             } else {
