@@ -2,7 +2,7 @@ use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{Locality, Point, Specific};
+use crate::database::{ComplexPoint, GenericsList, Locality, Point, Specific, TupleContent};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -40,14 +40,36 @@ impl<'db> Value<'db> for TypingClass<'db> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        if matches!(
-            self.specific,
-            Specific::TypingGeneric | Specific::TypingProtocol
-        ) {
-            let point = Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Stmt);
-            Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
-        } else {
-            unreachable!()
+        match self.specific {
+            Specific::TypingGeneric | Specific::TypingProtocol => {
+                let point =
+                    Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Stmt);
+                Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
+            }
+            Specific::TypingTuple => {
+                let content = match slice_type {
+                    SliceType::Simple(simple) => {
+                        // TODO if it is a (), it's am empty tuple
+                        TupleContent {
+                            generics: Some(GenericsList::new(Box::new([simple
+                                .infer_annotation(i_s)
+                                .as_generic_part(i_s)]))),
+                            arbitrary_length: true,
+                        }
+                    }
+                    SliceType::Slice(x) => {
+                        todo!()
+                    }
+                    SliceType::Slices(x) => {
+                        todo!()
+                    }
+                };
+                Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
+            }
+            Specific::TypingCallable => {
+                todo!()
+            }
+            _ => unreachable!("{:?}", self.specific),
         }
     }
 

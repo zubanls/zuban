@@ -352,9 +352,10 @@ pub enum Specific {
 
     TypingProtocol,
     TypingGeneric,
-    //TypingTuple,
-    //TypingCallable,
+    TypingTuple,
+    TypingCallable,
 
+    // TODO reactivate these or remove
     //TypingClassVar,
     //TypingFinal,
     //TypingType,
@@ -431,6 +432,9 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
+    TupleClass(TupleContent),
+    Tuple(TupleContent),
+    Callable(GenericsList),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -619,6 +623,12 @@ impl Overload {
             is_async: self.is_async,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TupleContent {
+    pub generics: Option<GenericsList>,
+    pub arbitrary_length: bool, // Is also homogenous
 }
 
 pub struct Database {

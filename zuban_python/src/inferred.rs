@@ -206,7 +206,7 @@ impl<'db> Inferred<'db> {
         ))
     }
 
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         self.expect_class(i_s)
             .map(|c| c.as_generic_part(i_s))
             .unwrap_or(GenericPart::Unknown)
@@ -262,7 +262,10 @@ impl<'db> Inferred<'db> {
                             .internal_run(i_s, callable, reducer, on_missing),
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
-                        Specific::TypingProtocol | Specific::TypingGeneric => {
+                        Specific::TypingProtocol
+                        | Specific::TypingGeneric
+                        | Specific::TypingTuple
+                        | Specific::TypingCallable => {
                             callable(i_s, &TypingClass::new(*definition, specific))
                         }
                         Specific::TypingWithGenerics => {

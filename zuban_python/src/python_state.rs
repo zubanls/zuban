@@ -74,6 +74,8 @@ fn typing_changes(typing: &PythonFile) {
     typing.calculate_global_definitions_and_references();
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
+    set_typing_inference(typing, "Tuple", Specific::TypingTuple);
+    set_typing_inference(typing, "Callable", Specific::TypingCallable);
 }
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
