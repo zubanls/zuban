@@ -218,7 +218,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
-        on_missing: &impl Fn(Self) -> T,
+        on_missing: &mut impl FnMut(Self) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -347,7 +347,12 @@ impl<'db> Inferred<'db> {
                     Inferred {
                         state: InferredState::Saved(node_ref, point),
                     }
-                    .internal_run(i_s, callable, reducer, &|i| unreachable!())
+                    .internal_run(
+                        i_s,
+                        callable,
+                        reducer,
+                        &mut |i| unreachable!(),
+                    )
                 })
                 .reduce(reducer)
                 .unwrap(),
@@ -399,7 +404,9 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Self,
     ) -> Self {
-        self.internal_run(i_s, callable, &|i1, i2| i1.union(i2), &|inferred| inferred)
+        self.internal_run(i_s, callable, &|i1, i2| i1.union(i2), &mut |inferred| {
+            inferred
+        })
     }
 
     #[inline]
@@ -443,7 +450,7 @@ impl<'db> Inferred<'db> {
                     ValueNameIterator::Finished => iter2,
                 }
             },
-            &|inferred| ValueNameIterator::Finished,
+            &mut |inferred| ValueNameIterator::Finished,
         )
     }
 
@@ -452,8 +459,9 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),
+        mut on_missing: impl FnMut(),
     ) {
-        self.internal_run(i_s, callable, &|i1, i2| (), &|inferred| ())
+        self.internal_run(i_s, callable, &|i1, i2| (), &mut |inferred| on_missing())
     }
 
     fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
@@ -798,7 +806,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
-            &|inferred| "Unknown".to_owned(),
+            &mut |inferred| "Unknown".to_owned(),
         )
     }
 
@@ -862,7 +870,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.kind() == ValueKind::Class,
             &|i1, i2| i1 & i2,
-            &|inferred| false,
+            &mut |inferred| false,
         )
     }
 

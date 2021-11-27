@@ -111,28 +111,32 @@ impl<'db, 'a> Class<'db, 'a> {
         // TODO use mro
         dbg!(self.name(), self.type_var_remap);
         let mut some_class_matches = false;
-        value.run(i_s, &mut |i_s, v| {
-            let check_class = v.class(i_s);
-            for class in check_class.mro(i_s) {
-                if class.reference == self.reference {
-                    some_class_matches = true;
-                    let mut value_generics = class.generics.iter();
-                    let mut generics = self.generics.iter();
-                    while let Some(generic) = generics.next(i_s) {
-                        let value_generic = value_generics.next(i_s);
-                        if let Some(inf) = value_generic {
-                            if let Some(point) = generic.maybe_numbered_type_var() {
-                                matcher.add_type_var(i_s, point, &inf)
-                            } else if let Some(cls) = generic.expect_class(i_s) {
-                                cls.infer_type_vars(i_s, inf, matcher);
-                                todo!()
+        value.run(
+            i_s,
+            &mut |i_s, v| {
+                let check_class = v.class(i_s);
+                for class in check_class.mro(i_s) {
+                    if class.reference == self.reference {
+                        some_class_matches = true;
+                        let mut value_generics = class.generics.iter();
+                        let mut generics = self.generics.iter();
+                        while let Some(generic) = generics.next(i_s) {
+                            let value_generic = value_generics.next(i_s);
+                            if let Some(inf) = value_generic {
+                                if let Some(point) = generic.maybe_numbered_type_var() {
+                                    matcher.add_type_var(i_s, point, &inf)
+                                } else if let Some(cls) = generic.expect_class(i_s) {
+                                    cls.infer_type_vars(i_s, inf, matcher);
+                                    todo!()
+                                }
                             }
                         }
+                        //break;
                     }
-                    //break;
                 }
-            }
-        });
+            },
+            || todo!(),
+        );
         if !some_class_matches {
             matcher.does_not_match();
         }
@@ -181,19 +185,28 @@ impl<'db, 'a> Class<'db, 'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_named_expression(n);
-                        inf.run(&mut i_s, &mut |i_s, v| {
-                            if let Some(class) = v.as_class() {
-                                let mro_index = mro.len();
-                                mro.push(create_mro_class(i_s, self.reference, &type_vars, class));
-                                for base in class.class_infos(i_s).mro.iter() {
-                                    mro.push(base.remap_with_sub_class(&mro[mro_index]));
+                        inf.run(
+                            &mut i_s,
+                            &mut |i_s, v| {
+                                if let Some(class) = v.as_class() {
+                                    let mro_index = mro.len();
+                                    mro.push(create_mro_class(
+                                        i_s,
+                                        self.reference,
+                                        &type_vars,
+                                        class,
+                                    ));
+                                    for base in class.class_infos(i_s).mro.iter() {
+                                        mro.push(base.remap_with_sub_class(&mro[mro_index]));
+                                    }
+                                } else if let Some(t) = v.as_typing_with_generics(i_s) {
+                                    if t.specific == Specific::TypingProtocol {
+                                        is_protocol = true;
+                                    }
                                 }
-                            } else if let Some(t) = v.as_typing_with_generics(i_s) {
-                                if t.specific == Specific::TypingProtocol {
-                                    is_protocol = true;
-                                }
-                            }
-                        })
+                            },
+                            || todo!(),
+                        )
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this

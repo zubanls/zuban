@@ -83,7 +83,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         .unwrap_or_else(|| "Unknown".to_owned())
                 },
                 &|i1, i2| format!("{}|{}", i1, i2),
-                &|inferred| "Unknown".to_owned(),
+                &mut |inferred| "Unknown".to_owned(),
             ));
         }
         format!("[{}]", strings.join(", "))
@@ -185,16 +185,28 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .infer_annotation_expression(annotation.expression());
                     if let Some(point) = inferred.maybe_numbered_type_var() {
                         let value = p.infer(i_s);
-                        value.run(i_s, &mut |i_s, v| {
-                            let cls = v.class(i_s);
-                            self.add_type_var_class(i_s, point, &cls);
-                        });
+                        value.run(
+                            i_s,
+                            &mut |i_s, v| {
+                                let cls = v.class(i_s);
+                                self.add_type_var_class(i_s, point, &cls);
+                            },
+                            || todo!(),
+                        );
                     } else {
-                        inferred.run(i_s, &mut |i_s, v| {
-                            let value = p.infer(i_s);
-                            v.class(i_s).infer_type_vars(i_s, value, self);
-                        });
+                        let mut maybe_matches = true;
+                        inferred.run(
+                            i_s,
+                            &mut |i_s, v| {
+                                let value = p.infer(i_s);
+                                v.class(i_s).infer_type_vars(i_s, value, self);
+                            },
+                            || maybe_matches = false,
+                        );
+                        self.matches &= maybe_matches;
                     }
+                } else {
+                    self.matches = false;
                 }
             } else if !p.has_argument() {
                 self.matches = false;

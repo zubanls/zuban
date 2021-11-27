@@ -52,13 +52,16 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                     for child in elements {
                         match child {
                             ListElement::NamedExpression(named_expr) => {
-                                self.infer_named_expr(i_s, named_expr)
-                                    .run(i_s, &mut |i_s, v| {
+                                self.infer_named_expr(i_s, named_expr).run(
+                                    i_s,
+                                    &mut |i_s, v| {
                                         let cls = v.class(i_s);
                                         result =
                                             std::mem::replace(&mut result, GenericPart::Unknown)
                                                 .union(i_s, &cls);
-                                    });
+                                    },
+                                    || todo!(),
+                                );
                             }
                             ListElement::StarNamedExpression(_) => {
                                 todo!()
@@ -211,18 +214,24 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {
-                        self.infer_expr(i_s, key_value.key())
-                            .run(i_s, &mut |i_s, v| {
+                        self.infer_expr(i_s, key_value.key()).run(
+                            i_s,
+                            &mut |i_s, v| {
                                 let cls = v.class(i_s);
                                 keys = std::mem::replace(&mut keys, GenericPart::Unknown)
                                     .union(i_s, &cls);
-                            });
-                        self.infer_expr(i_s, key_value.value())
-                            .run(i_s, &mut |i_s, v| {
+                            },
+                            || todo!(),
+                        );
+                        self.infer_expr(i_s, key_value.value()).run(
+                            i_s,
+                            &mut |i_s, v| {
                                 let cls = v.class(i_s);
                                 values = std::mem::replace(&mut values, GenericPart::Unknown)
                                     .union(i_s, &cls);
-                            });
+                            },
+                            || todo!(),
+                        );
                     }
                     DictElement::DictStarred(_) => {
                         todo!()
