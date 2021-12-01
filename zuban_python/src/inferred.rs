@@ -7,7 +7,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
-    PointLink, PointType, Specific,
+    PointLink, PointType, Specific, TupleContent,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
     BoundMethod, Class, DictLiteral, Function, Instance, ListLiteral, Module, OverloadedFunction,
-    TypingClass, TypingWithGenerics, Value, ValueKind,
+    TupleClass, TypingClass, TypingWithGenerics, Value, ValueKind,
 };
 
 pub trait Inferrable<'db> {
@@ -194,7 +194,16 @@ impl<'db> Inferred<'db> {
                 }
                 return inferred;
             }
-            GenericPart::Unknown => InferredState::Unknown,
+            GenericPart::Tuple(content) => {
+                todo!()
+            }
+            GenericPart::Callable(content) => {
+                todo!()
+            }
+            GenericPart::Type(_) => {
+                todo!()
+            }
+            GenericPart::Unknown | GenericPart::TypeVar(_) => InferredState::Unknown,
         };
         Self { state }
     }
@@ -207,9 +216,21 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        self.expect_class(i_s)
-            .map(|c| c.as_generic_part(i_s))
-            .unwrap_or(GenericPart::Unknown)
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| {
+                v.as_class()
+                    .map(|c| c.as_generic_part(i_s))
+                    .or_else(|| {
+                        self.maybe_numbered_type_var()
+                            .map(|p| GenericPart::TypeVar(p.type_var_index()))
+                    })
+                    .or_else(|| self.maybe_tuple_class().map(GenericPart::Tuple))
+                    .unwrap_or(GenericPart::Unknown)
+            },
+            &|g1, g2| g1.union(g2),
+            &mut |_| GenericPart::Unknown,
+        )
     }
 
     #[inline]
@@ -280,8 +301,7 @@ impl<'db> Inferred<'db> {
                             }
                         }
                         Specific::ClassTypeVar | Specific::FunctionTypeVar => {
-                            //on_missing(self.clone())
-                            todo!()
+                            on_missing(self.clone())
                         }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
@@ -395,6 +415,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::GenericClass(cls, bla) => {
                 todo!()
             }
+            ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }
@@ -534,6 +555,11 @@ impl<'db> Inferred<'db> {
         None
     }
 
+    fn maybe_tuple_class(&self) -> Option<TupleContent> {
+        dbg!(self);
+        None
+    }
+
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
@@ -650,11 +676,14 @@ impl<'db> Inferred<'db> {
                             .infer_primary_or_atom(definition.as_primary().first());
                         inferred.expect_class_internal(i_s, generics)
                     }
-                    _ => todo!("{:?}", point),
+                    _ => None,
                 },
                 _ => todo!(),
             },
             InferredState::UnsavedComplex(complex) => {
+                if let ComplexPoint::TupleClass(_) = complex {
+                    return None;
+                }
                 todo!("{:?}", complex)
             }
             InferredState::Unknown => unreachable!(),
@@ -871,7 +900,7 @@ impl<'db> Inferred<'db> {
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.kind() == ValueKind::Class,
+            &mut |i_s, v| v.as_class().is_some(),
             &|i1, i2| i1 & i2,
             &mut |inferred| false,
         )

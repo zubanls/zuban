@@ -16,7 +16,7 @@ pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
-pub use typing::{TypingClass, TypingWithGenerics};
+pub use typing::{TupleClass, TypingClass, TypingWithGenerics};
 
 enum ArrayType {
     None,

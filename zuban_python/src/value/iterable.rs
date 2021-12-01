@@ -58,7 +58,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                                         let cls = v.class(i_s);
                                         result =
                                             std::mem::replace(&mut result, GenericPart::Unknown)
-                                                .union(i_s, &cls);
+                                                .union(cls.as_generic_part(i_s));
                                     },
                                     || todo!(),
                                 );
@@ -219,7 +219,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                             &mut |i_s, v| {
                                 let cls = v.class(i_s);
                                 keys = std::mem::replace(&mut keys, GenericPart::Unknown)
-                                    .union(i_s, &cls);
+                                    .union(cls.as_generic_part(i_s));
                             },
                             || todo!(),
                         );
@@ -228,7 +228,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                             &mut |i_s, v| {
                                 let cls = v.class(i_s);
                                 values = std::mem::replace(&mut values, GenericPart::Unknown)
-                                    .union(i_s, &cls);
+                                    .union(cls.as_generic_part(i_s));
                             },
                             || todo!(),
                         );

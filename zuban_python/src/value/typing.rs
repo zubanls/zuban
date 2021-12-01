@@ -3,6 +3,7 @@ use parsa_python_ast::{Name, PrimaryContent};
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, GenericsList, Locality, Point, Specific, TupleContent};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -125,5 +126,30 @@ impl<'db> Value<'db> for TypingWithGenerics<'db> {
     }
     fn as_typing_with_generics(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&Self> {
         Some(self)
+    }
+}
+
+#[derive(Debug)]
+pub struct TupleClass<'a> {
+    content: &'a TupleContent,
+}
+
+impl<'a> TupleClass<'a> {
+    pub fn new(content: &'a TupleContent) -> Self {
+        Self { content }
+    }
+}
+
+impl<'db> Value<'db> for TupleClass<'_> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &'db str {
+        "Tuple"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
     }
 }

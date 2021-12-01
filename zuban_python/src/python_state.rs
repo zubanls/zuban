@@ -76,6 +76,7 @@ fn typing_changes(typing: &PythonFile) {
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
     set_typing_inference(typing, "Tuple", Specific::TypingTuple);
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
+    set_typing_inference(typing, "Type", Specific::TypingType);
 }
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {

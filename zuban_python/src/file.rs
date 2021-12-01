@@ -1,6 +1,7 @@
 use crate::arguments::SimpleArguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Points, Specific,
+    ComplexPoint, Database, FileIndex, GenericPart, Locality, LocalityLink, Point, PointType,
+    Points, Specific,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -409,6 +410,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
+            let generic = inferred.as_generic_part(self.i_s);
+            dbg!(&generic);
+            if generic != GenericPart::Unknown {
+                dbg!(generic);
+                //let complex = Inferred::new_unsaved_complex(ComplexPoint::());
+                //return complex.save_redirect()
+                todo!()
+            }
             debug!("Unknown annotation expression {}", expr.short_debug());
             Point::new_unknown(self.file.file_index(), Locality::Stmt)
         };

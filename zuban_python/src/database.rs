@@ -354,11 +354,11 @@ pub enum Specific {
     TypingGeneric,
     TypingTuple,
     TypingCallable,
+    TypingType,
 
     // TODO reactivate these or remove
     //TypingClassVar,
     //TypingFinal,
-    //TypingType,
     //TypingLiteral,
     //TypingTypeAlias,
     //TypingConcatenate,
@@ -433,7 +433,7 @@ pub enum ComplexPoint {
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
     TupleClass(TupleContent),
-    Tuple(TupleContent),
+    Tuple(CallableContent),
     Callable(GenericsList),
 }
 
@@ -491,7 +491,7 @@ impl GenericsList {
         i_s: &mut InferenceState<'db, '_>,
         class: &Class<'db, '_>,
     ) {
-        self.0[index.0 as usize].union_in_place(i_s, class);
+        self.0[index.0 as usize].union_in_place(class.as_generic_part(i_s));
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {
@@ -508,12 +508,15 @@ pub enum GenericPart {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(Box<[GenericPart]>),
+    TypeVar(TypeVarIndex),
+    Type(Box<[GenericPart]>),
+    Tuple(TupleContent),
+    Callable(CallableContent),
     Unknown,
 }
 
 impl GenericPart {
-    pub fn union<'db>(self, i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) -> Self {
-        let other = class.as_generic_part(i_s);
+    pub fn union<'db>(self, other: GenericPart) -> Self {
         match self {
             Self::Union(list) => {
                 let mut vec = list.into_vec();
@@ -557,8 +560,8 @@ impl GenericPart {
         }
     }
 
-    fn union_in_place<'db>(&mut self, i_s: &mut InferenceState<'db, '_>, class: &Class<'db, '_>) {
-        *self = mem::replace(self, Self::Unknown).union(i_s, class);
+    fn union_in_place<'db>(&mut self, other: GenericPart) {
+        *self = mem::replace(self, Self::Unknown).union(other);
     }
 }
 
@@ -630,6 +633,9 @@ pub struct TupleContent {
     pub generics: Option<GenericsList>,
     pub arbitrary_length: bool, // Is also homogenous
 }
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CallableContent {}
 
 pub struct Database {
     in_use: bool,
