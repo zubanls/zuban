@@ -411,15 +411,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
             let generic = inferred.as_generic_part(self.i_s);
-            dbg!(&generic);
-            if generic != GenericPart::Unknown {
-                dbg!(generic);
-                //let complex = Inferred::new_unsaved_complex(ComplexPoint::());
-                //return complex.save_redirect()
-                todo!()
+            match generic {
+                GenericPart::Class(_)
+                | GenericPart::GenericClass(_, _)
+                | GenericPart::TypeVar(_) => unreachable!(),
+                GenericPart::Union(_) => todo!(),
+                GenericPart::Type(_) => todo!(),
+                GenericPart::Tuple(content) => {
+                    let complex = Inferred::new_unsaved_complex(ComplexPoint::Tuple(content));
+                    return complex.save_redirect(self.file, expr.index());
+                }
+                GenericPart::Callable(_) => todo!(),
+                GenericPart::Unknown => {
+                    debug!("Unknown annotation expression {}", expr.short_debug());
+                    Point::new_unknown(self.file.file_index(), Locality::Stmt)
+                }
             }
-            debug!("Unknown annotation expression {}", expr.short_debug());
-            Point::new_unknown(self.file.file_index(), Locality::Stmt)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
     }

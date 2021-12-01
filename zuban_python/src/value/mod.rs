@@ -16,7 +16,7 @@ pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
-pub use typing::{TupleClass, TypingClass, TypingWithGenerics};
+pub use typing::{Tuple, TupleClass, TypingClass, TypingWithGenerics};
 
 enum ArrayType {
     None,
@@ -101,6 +101,10 @@ pub trait Value<'db>: std::fmt::Debug {
     ) -> Option<&TypingWithGenerics<'db>> {
         None
     }
+    fn as_tuple_class(&self) -> Option<&TupleClass> {
+        None
+    }
+
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
         todo!("{:?}", self)
     }

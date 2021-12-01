@@ -2,8 +2,9 @@ use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, GenericsList, Locality, Point, Specific, TupleContent};
-use crate::generics::Generics;
+use crate::database::{
+    ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent,
+};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -138,11 +139,48 @@ impl<'a> TupleClass<'a> {
     pub fn new(content: &'a TupleContent) -> Self {
         Self { content }
     }
+
+    pub fn as_generic_part(&self) -> GenericPart {
+        GenericPart::Tuple(self.content.clone())
+    }
 }
 
 impl<'db> Value<'db> for TupleClass<'_> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
+    }
+
+    fn name(&self) -> &'db str {
+        "Tuple"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn as_tuple_class(&self) -> Option<&TupleClass> {
+        Some(self)
+    }
+}
+
+#[derive(Debug)]
+pub struct Tuple<'a> {
+    content: &'a TupleContent,
+}
+
+impl<'a> Tuple<'a> {
+    pub fn new(content: &'a TupleContent) -> Self {
+        Self { content }
+    }
+
+    pub fn as_generic_part(&self) -> GenericPart {
+        GenericPart::Tuple(self.content.clone())
+    }
+}
+
+impl<'db> Value<'db> for Tuple<'_> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
     }
 
     fn name(&self) -> &'db str {

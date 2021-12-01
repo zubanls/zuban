@@ -7,7 +7,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
-    PointLink, PointType, Specific, TupleContent,
+    PointLink, PointType, Specific,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
     BoundMethod, Class, DictLiteral, Function, Instance, ListLiteral, Module, OverloadedFunction,
-    TupleClass, TypingClass, TypingWithGenerics, Value, ValueKind,
+    Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -216,21 +216,21 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| {
-                v.as_class()
-                    .map(|c| c.as_generic_part(i_s))
-                    .or_else(|| {
-                        self.maybe_numbered_type_var()
-                            .map(|p| GenericPart::TypeVar(p.type_var_index()))
-                    })
-                    .or_else(|| self.maybe_tuple_class().map(GenericPart::Tuple))
-                    .unwrap_or(GenericPart::Unknown)
-            },
-            &|g1, g2| g1.union(g2),
-            &mut |_| GenericPart::Unknown,
-        )
+        self.maybe_numbered_type_var()
+            .map(|p| GenericPart::TypeVar(p.type_var_index()))
+            .unwrap_or_else(|| {
+                self.internal_run(
+                    i_s,
+                    &mut |i_s, v| {
+                        v.as_class()
+                            .map(|c| c.as_generic_part(i_s))
+                            .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
+                            .unwrap_or(GenericPart::Unknown)
+                    },
+                    &|g1, g2| g1.union(g2),
+                    &mut |_| GenericPart::Unknown,
+                )
+            })
     }
 
     #[inline]
@@ -416,6 +416,7 @@ impl<'db> Inferred<'db> {
                 todo!()
             }
             ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
+            ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }
@@ -552,11 +553,6 @@ impl<'db> Inferred<'db> {
                 }
             }
         }
-        None
-    }
-
-    fn maybe_tuple_class(&self) -> Option<TupleContent> {
-        dbg!(self);
         None
     }
 
