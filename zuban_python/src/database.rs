@@ -16,7 +16,7 @@ use crate::file_state::{
 use crate::inference_state::InferenceState;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::value::Class;
+use crate::value::ClassLike;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -489,7 +489,7 @@ impl GenericsList {
         &mut self,
         index: TypeVarIndex,
         i_s: &mut InferenceState<'db, '_>,
-        class: &Class<'db, '_>,
+        class: &dyn ClassLike<'db>,
     ) {
         self.0[index.0 as usize].union_in_place(class.as_generic_part(i_s));
     }

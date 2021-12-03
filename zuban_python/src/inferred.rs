@@ -15,8 +15,8 @@ use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, DictLiteral, Function, Instance, ListLiteral, Module, OverloadedFunction,
-    Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
+    BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, ListLiteral, Module,
+    OverloadedFunction, Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {

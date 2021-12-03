@@ -11,7 +11,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use bound_method::BoundMethod;
-pub use class::Class;
+pub use class::{Class, ClassLike};
 pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
@@ -105,7 +105,7 @@ pub trait Value<'db>: std::fmt::Debug {
         None
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> &dyn ClassLike<'db> {
         todo!("{:?}", self)
     }
 }

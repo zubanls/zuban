@@ -2,7 +2,7 @@ use parsa_python_ast::{
     Dict, DictElement, Expression, List, ListContent, ListElement, NamedExpression,
 };
 
-use super::{Class, Value, ValueKind};
+use super::{Class, ClassLike, Value, ValueKind};
 use crate::database::{ComplexPoint, GenericPart, GenericsList};
 use crate::debug;
 use crate::generics::Generics;
@@ -79,7 +79,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.class(i_s).generics.as_str(i_s),
+                &self.class(i_s).generics().as_str(i_s),
             );
             self.generic_part(i_s)
         }
@@ -164,12 +164,13 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> &dyn ClassLike<'db> {
         let node_reference = NodeReference::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("list"),
         );
-        Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None).unwrap()
+        //Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None).unwrap()
+        todo!()
     }
 }
 
@@ -245,7 +246,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.class(i_s).generics.as_str(i_s),
+                &self.class(i_s).generics().as_str(i_s),
             );
             self.generic_part(i_s)
         }
@@ -319,11 +320,12 @@ impl<'db> Value<'db> for DictLiteral<'db, '_> {
         todo!()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> &dyn ClassLike<'db> {
         let node_reference = NodeReference::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("dict"),
         );
-        Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None).unwrap()
+        //Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None).unwrap()
+        todo!()
     }
 }

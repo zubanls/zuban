@@ -10,7 +10,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
-use crate::value::{Class, Function};
+use crate::value::{Class, ClassLike, Function};
 
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
@@ -189,7 +189,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             i_s,
                             &mut |i_s, v| {
                                 let cls = v.class(i_s);
-                                self.add_type_var_class(i_s, point, &cls);
+                                self.add_type_var_class(i_s, point, cls);
                             },
                             || todo!(),
                         );
@@ -254,7 +254,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         point: Point,
-        class: &Class<'db, '_>,
+        class: &dyn ClassLike<'db>,
     ) {
         let index = point.type_var_index();
         self.calculated_type_vars

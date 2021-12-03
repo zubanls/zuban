@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{Value, ValueKind};
+use super::{ClassLike, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
@@ -249,7 +249,7 @@ impl<'db> Value<'db> for Function<'db> {
                     .map(|point| match point.specific() {
                         Specific::ClassTypeVar => class
                             .unwrap()
-                            .generics
+                            .generics()
                             .nth(i_s, point.type_var_index())
                             .unwrap(),
                         Specific::FunctionTypeVar => {

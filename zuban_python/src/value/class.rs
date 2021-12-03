@@ -14,11 +14,24 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
+pub trait ClassLike<'db>: Value<'db> {
+    fn infer_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: Inferred<'db>,
+        matcher: &mut TypeVarMatcher<'db, '_>,
+    );
+
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart;
+
+    fn generics(&self) -> &Generics<'db, '_>;
+}
+
 #[derive(Debug, Clone)]
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
-    pub generics: Generics<'db, 'a>,
+    generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
@@ -97,49 +110,6 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
         &self.class_infos(i_s).type_vars
-    }
-
-    pub fn infer_type_vars(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        value: Inferred<'db>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
-    ) {
-        // Note: we need to handle the MRO _in order_, so we need to extract
-        // the elements from the set first, then handle them, even if we put
-        // them back in a set afterwards.
-        // TODO use mro
-        dbg!(self.name(), self.type_var_remap);
-        let mut some_class_matches = false;
-        value.run(
-            i_s,
-            &mut |i_s, v| {
-                let check_class = v.class(i_s);
-                for class in check_class.mro(i_s) {
-                    if class.reference == self.reference {
-                        some_class_matches = true;
-                        let mut value_generics = class.generics.iter();
-                        let mut generics = self.generics.iter();
-                        while let Some(generic) = generics.next(i_s) {
-                            let value_generic = value_generics.next(i_s);
-                            if let Some(inf) = value_generic {
-                                if let Some(point) = generic.maybe_numbered_type_var() {
-                                    matcher.add_type_var(i_s, point, &inf)
-                                } else if let Some(cls) = generic.expect_class(i_s) {
-                                    cls.infer_type_vars(i_s, inf, matcher);
-                                    todo!()
-                                }
-                            }
-                        }
-                        //break;
-                    }
-                }
-            },
-            || todo!(),
-        );
-        if !some_class_matches {
-            matcher.does_not_match();
-        }
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
@@ -231,13 +201,6 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        let lst = self.generics.as_generics_list(i_s);
-        let link = self.reference.as_link();
-        lst.map(|lst| GenericPart::GenericClass(link, lst))
-            .unwrap_or_else(|| GenericPart::Class(link))
-    }
-
     pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         let generics_str = self.generics.as_str(i_s);
         let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
@@ -246,6 +209,62 @@ impl<'db, 'a> Class<'db, 'a> {
             self.name(),
             if has_type_vars { &generics_str } else { "" }
         )
+    }
+}
+
+impl<'db> ClassLike<'db> for Class<'db, '_> {
+    fn infer_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: Inferred<'db>,
+        matcher: &mut TypeVarMatcher<'db, '_>,
+    ) {
+        // Note: we need to handle the MRO _in order_, so we need to extract
+        // the elements from the set first, then handle them, even if we put
+        // them back in a set afterwards.
+        // TODO use mro
+        dbg!(self.name(), self.type_var_remap);
+        let mut some_class_matches = false;
+        value.run(
+            i_s,
+            &mut |i_s, v| {
+                let check_class = v.class(i_s);
+                for class in check_class.mro(i_s) {
+                    if class.reference == self.reference {
+                        some_class_matches = true;
+                        let mut value_generics = class.generics().iter();
+                        let mut generics = self.generics.iter();
+                        while let Some(generic) = generics.next(i_s) {
+                            let value_generic = value_generics.next(i_s);
+                            if let Some(inf) = value_generic {
+                                if let Some(point) = generic.maybe_numbered_type_var() {
+                                    matcher.add_type_var(i_s, point, &inf)
+                                } else if let Some(cls) = generic.expect_class(i_s) {
+                                    cls.infer_type_vars(i_s, inf, matcher);
+                                    todo!()
+                                }
+                            }
+                        }
+                        //break;
+                    }
+                }
+            },
+            || todo!(),
+        );
+        if !some_class_matches {
+            matcher.does_not_match();
+        }
+    }
+
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        let lst = self.generics.as_generics_list(i_s);
+        let link = self.reference.as_link();
+        lst.map(|lst| GenericPart::GenericClass(link, lst))
+            .unwrap_or_else(|| GenericPart::Class(link))
+    }
+
+    fn generics(&self) -> &Generics<'db, '_> {
+        &self.generics
     }
 }
 

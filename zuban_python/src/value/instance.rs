@@ -1,4 +1,4 @@
-use super::{Class, Value, ValueKind};
+use super::{Class, ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -64,7 +64,7 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
         Some(self)
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> Class<'db, '_> {
-        self.class.clone()
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> &dyn ClassLike<'db> {
+        &self.class
     }
 }
