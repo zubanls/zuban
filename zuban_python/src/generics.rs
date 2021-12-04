@@ -10,7 +10,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
-use crate::value::{Class, ClassLike, Function};
+use crate::value::{ClassLike, Function};
 
 #[derive(Debug, Clone)]
 pub enum Generics<'db, 'a> {
@@ -184,15 +184,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .inference(i_s)
                         .infer_annotation_expression(annotation.expression());
                     if let Some(point) = inferred.maybe_numbered_type_var() {
-                        let value = p.infer(i_s);
-                        value.run(
-                            i_s,
-                            &mut |i_s, v| {
-                                let cls = v.class(i_s);
-                                self.add_type_var_class(i_s, point, cls);
-                            },
-                            || todo!(),
-                        );
+                        self.add_type_var_class(i_s, point, p.infer(i_s).as_generic_part(i_s));
                     } else {
                         let mut maybe_matches = true;
                         inferred.run(
@@ -239,7 +231,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     ) {
         if point.specific() == self.match_specific {
             if let Some(cls) = value.expect_class(i_s) {
-                self.add_type_var_class(i_s, point, &cls);
+                self.add_type_var_class(i_s, point, cls.as_annotation_generic_part(i_s));
             } else {
                 todo!(
                     "report pls: {:?} is {:?}",
@@ -254,13 +246,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         point: Point,
-        class: &dyn ClassLike<'db>,
+        class: GenericPart,
     ) {
         let index = point.type_var_index();
         self.calculated_type_vars
             .as_mut()
             .unwrap()
-            .set_generic(index, i_s, class);
+            .set_generic(index, class);
     }
 
     pub fn does_not_match(&mut self) {

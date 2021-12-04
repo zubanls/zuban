@@ -55,10 +55,9 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                                 self.infer_named_expr(i_s, named_expr).run(
                                     i_s,
                                     &mut |i_s, v| {
-                                        let cls = v.class(i_s);
                                         result =
                                             std::mem::replace(&mut result, GenericPart::Unknown)
-                                                .union(cls.as_generic_part(i_s));
+                                                .union(v.as_generic_part(i_s));
                                     },
                                     || todo!(),
                                 );
@@ -218,18 +217,16 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                         self.infer_expr(i_s, key_value.key()).run(
                             i_s,
                             &mut |i_s, v| {
-                                let cls = v.class(i_s);
                                 keys = std::mem::replace(&mut keys, GenericPart::Unknown)
-                                    .union(cls.as_generic_part(i_s));
+                                    .union(v.as_generic_part(i_s));
                             },
                             || todo!(),
                         );
                         self.infer_expr(i_s, key_value.value()).run(
                             i_s,
                             &mut |i_s, v| {
-                                let cls = v.class(i_s);
                                 values = std::mem::replace(&mut values, GenericPart::Unknown)
-                                    .union(cls.as_generic_part(i_s));
+                                    .union(v.as_generic_part(i_s));
                             },
                             || todo!(),
                         );

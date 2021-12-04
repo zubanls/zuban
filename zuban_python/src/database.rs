@@ -13,10 +13,8 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
-use crate::inference_state::InferenceState;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::value::ClassLike;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -485,13 +483,8 @@ impl GenericsList {
         Self(vec.into_boxed_slice())
     }
 
-    pub fn set_generic<'db>(
-        &mut self,
-        index: TypeVarIndex,
-        i_s: &mut InferenceState<'db, '_>,
-        class: &dyn ClassLike<'db>,
-    ) {
-        self.0[index.0 as usize].union_in_place(class.as_generic_part(i_s));
+    pub fn set_generic(&mut self, index: TypeVarIndex, generic: GenericPart) {
+        self.0[index.0 as usize].union_in_place(generic);
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {

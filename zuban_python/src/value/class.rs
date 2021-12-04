@@ -14,15 +14,13 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
-pub trait ClassLike<'db>: Value<'db> {
+pub trait ClassLike<'db> {
     fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value: Inferred<'db>,
         matcher: &mut TypeVarMatcher<'db, '_>,
     );
-
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart;
 
     fn generics(&self) -> &Generics<'db, '_>;
 }
@@ -190,6 +188,13 @@ impl<'db, 'a> Class<'db, 'a> {
         })
     }
 
+    pub fn as_annotation_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        let lst = self.generics.as_generics_list(i_s);
+        let link = self.reference.as_link();
+        lst.map(|lst| GenericPart::GenericClass(link, lst))
+            .unwrap_or_else(|| GenericPart::Class(link))
+    }
+
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
@@ -254,13 +259,6 @@ impl<'db> ClassLike<'db> for Class<'db, '_> {
         if !some_class_matches {
             matcher.does_not_match();
         }
-    }
-
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        let lst = self.generics.as_generics_list(i_s);
-        let link = self.reference.as_link();
-        lst.map(|lst| GenericPart::GenericClass(link, lst))
-            .unwrap_or_else(|| GenericPart::Class(link))
     }
 
     fn generics(&self) -> &Generics<'db, '_> {
