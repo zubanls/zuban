@@ -106,7 +106,7 @@ pub trait Value<'db>: std::fmt::Debug {
         None
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> &dyn ClassLike<'db> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
         todo!("{:?}", self)
     }
 

@@ -502,7 +502,7 @@ pub enum GenericPart {
     GenericClass(PointLink, GenericsList),
     Union(Box<[GenericPart]>),
     TypeVar(TypeVarIndex),
-    Type(Box<[GenericPart]>),
+    Type(Box<GenericPart>),
     Tuple(TupleContent),
     Callable(CallableContent),
     Unknown,

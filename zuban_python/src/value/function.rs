@@ -249,7 +249,7 @@ impl<'db> Value<'db> for Function<'db> {
                     .map(|point| match point.specific() {
                         Specific::ClassTypeVar => class
                             .unwrap()
-                            .generics()
+                            .generics
                             .nth(i_s, point.type_var_index())
                             .unwrap(),
                         Specific::FunctionTypeVar => {

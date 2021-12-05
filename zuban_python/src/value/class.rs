@@ -14,22 +14,37 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
-pub trait ClassLike<'db> {
-    fn infer_type_vars(
+pub enum ClassLike<'db, 'a> {
+    ClassRef(&'a Class<'db, 'a>),
+    Class(Class<'db, 'a>),
+}
+
+impl<'db, 'a> ClassLike<'db, 'a> {
+    pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value: Inferred<'db>,
         matcher: &mut TypeVarMatcher<'db, '_>,
-    );
+    ) {
+        match self {
+            Self::ClassRef(c) => c.infer_type_vars(i_s, value, matcher),
+            Self::Class(c) => c.infer_type_vars(i_s, value, matcher),
+        }
+    }
 
-    fn generics(&self) -> &Generics<'db, '_>;
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        match self {
+            Self::ClassRef(c) => c.as_str(i_s),
+            Self::Class(c) => c.as_str(i_s),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
-    generics: Generics<'db, 'a>,
+    pub(super) generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
@@ -195,30 +210,7 @@ impl<'db, 'a> Class<'db, 'a> {
             .unwrap_or_else(|| GenericPart::Class(link))
     }
 
-    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
-        let class_infos = self.class_infos(i_s);
-        MroIterator {
-            database: i_s.database,
-            generics: &self.generics,
-            class: Some(self),
-            iterator: class_infos.mro.iter(),
-            returned_object: false,
-        }
-    }
-
-    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        let generics_str = self.generics.as_str(i_s);
-        let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
-        format!(
-            "{}{}",
-            self.name(),
-            if has_type_vars { &generics_str } else { "" }
-        )
-    }
-}
-
-impl<'db> ClassLike<'db> for Class<'db, '_> {
-    fn infer_type_vars(
+    pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value: Inferred<'db>,
@@ -227,7 +219,6 @@ impl<'db> ClassLike<'db> for Class<'db, '_> {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        // TODO use mro
         dbg!(self.name(), self.type_var_remap);
         let mut some_class_matches = false;
         value.run(
@@ -261,8 +252,25 @@ impl<'db> ClassLike<'db> for Class<'db, '_> {
         }
     }
 
-    fn generics(&self) -> &Generics<'db, '_> {
-        &self.generics
+    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+        let class_infos = self.class_infos(i_s);
+        MroIterator {
+            database: i_s.database,
+            generics: &self.generics,
+            class: Some(self),
+            iterator: class_infos.mro.iter(),
+            returned_object: false,
+        }
+    }
+
+    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        let generics_str = self.generics.as_str(i_s);
+        let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
+        format!(
+            "{}{}",
+            self.name(),
+            if has_type_vars { &generics_str } else { "" }
+        )
     }
 }
 
@@ -345,6 +353,10 @@ impl<'db> Value<'db> for Class<'db, '_> {
             format!("{:?}", self.kind()).to_lowercase(),
             self.as_str(i_s),
         )
+    }
+
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        GenericPart::Type(Box::new(self.as_annotation_generic_part(i_s)))
     }
 }
 
