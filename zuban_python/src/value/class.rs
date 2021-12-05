@@ -26,9 +26,59 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         value: Inferred<'db>,
         matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
+        // Note: we need to handle the MRO _in order_, so we need to extract
+        // the elements from the set first, then handle them, even if we put
+        // them back in a set afterwards.
+        let mut some_class_matches = false;
+        // TODO use type_var_remap
+        value.run(
+            i_s,
+            &mut |i_s, v| {
+                let check_class = v.class(i_s);
+                for class_like in check_class.mro(i_s) {
+                    if self.matches_without_generics(&class_like) {
+                        some_class_matches = true;
+                        let mut value_generics = class_like.generics().iter();
+                        let mut generics = self.generics().iter();
+                        while let Some(generic) = generics.next(i_s) {
+                            let value_generic = value_generics.next(i_s);
+                            if let Some(inf) = value_generic {
+                                if let Some(point) = generic.maybe_numbered_type_var() {
+                                    matcher.add_type_var(i_s, point, &inf)
+                                } else if let Some(cls) = generic.expect_class(i_s) {
+                                    cls.infer_type_vars(i_s, inf, matcher);
+                                    todo!()
+                                }
+                            }
+                        }
+                        //break;
+                    }
+                }
+            },
+            || todo!(),
+        );
+        if !some_class_matches {
+            matcher.does_not_match();
+        }
+    }
+
+    fn matches_without_generics(&self, other: &Self) -> bool {
         match self {
-            Self::ClassRef(c) => c.infer_type_vars(i_s, value, matcher),
-            Self::Class(c) => c.infer_type_vars(i_s, value, matcher),
+            Self::ClassRef(c1) => match other {
+                Self::ClassRef(c2) => c1.reference == c2.reference,
+                Self::Class(c2) => c1.reference == c2.reference,
+            },
+            Self::Class(c1) => match other {
+                Self::ClassRef(c2) => c1.reference == c2.reference,
+                Self::Class(c2) => c1.reference == c2.reference,
+            },
+        }
+    }
+
+    fn generics(&self) -> &Generics {
+        match self {
+            Self::ClassRef(c) => &c.generics,
+            Self::Class(c) => &c.generics,
         }
     }
 
@@ -36,6 +86,24 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::ClassRef(c) => c.as_str(i_s),
             Self::Class(c) => c.as_str(i_s),
+        }
+    }
+
+    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+        match self {
+            Self::ClassRef(c) => c.mro(i_s),
+            Self::Class(c) => c.mro(i_s),
+        }
+    }
+
+    fn lookup_symbol(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        match self {
+            Self::ClassRef(c) => c.lookup_symbol(i_s, name),
+            Self::Class(c) => c.lookup_symbol(i_s, name),
         }
     }
 }
@@ -86,34 +154,32 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> (Function<'db>, Option<GenericsList>) {
-        for class in self.mro(i_s) {
-            let init = class.lookup(i_s, "__init__");
-            match init.init_as_function() {
-                Some(FunctionOrOverload::Function(func)) => {
-                    let type_vars = self.type_vars(i_s);
-                    let list = TypeVarMatcher::calculate_and_return(
-                        i_s,
-                        &func,
-                        args,
-                        true,
-                        Some(type_vars),
-                        Specific::ClassTypeVar,
-                    );
+        let init = self.lookup(i_s, "__init__");
+        match init.init_as_function() {
+            Some(FunctionOrOverload::Function(func)) => {
+                let type_vars = self.type_vars(i_s);
+                let list = TypeVarMatcher::calculate_and_return(
+                    i_s,
+                    &func,
+                    args,
+                    true,
+                    Some(type_vars),
+                    Specific::ClassTypeVar,
+                );
+                return (func, list);
+            }
+            Some(FunctionOrOverload::Overload(overloaded_function)) => {
+                let type_vars = self.type_vars(i_s);
+                if let Some((func, list)) =
+                    overloaded_function.find_matching_function(i_s, args, Some(type_vars))
+                {
                     return (func, list);
+                } else {
+                    todo!()
                 }
-                Some(FunctionOrOverload::Overload(overloaded_function)) => {
-                    let type_vars = self.type_vars(i_s);
-                    if let Some((func, list)) =
-                        overloaded_function.find_matching_function(i_s, args, Some(type_vars))
-                    {
-                        return (func, list);
-                    } else {
-                        todo!()
-                    }
-                }
-                None => (),
-            };
-        }
+            }
+            None => (),
+        };
         unreachable!("Should never happen, because there's always object.__init__")
     }
 
@@ -210,46 +276,17 @@ impl<'db, 'a> Class<'db, 'a> {
             .unwrap_or_else(|| GenericPart::Class(link))
     }
 
-    pub fn infer_type_vars(
+    fn lookup_symbol(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value: Inferred<'db>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
-    ) {
-        // Note: we need to handle the MRO _in order_, so we need to extract
-        // the elements from the set first, then handle them, even if we put
-        // them back in a set afterwards.
-        dbg!(self.name(), self.type_var_remap);
-        let mut some_class_matches = false;
-        value.run(
-            i_s,
-            &mut |i_s, v| {
-                let check_class = v.class(i_s);
-                for class in check_class.mro(i_s) {
-                    if class.reference == self.reference {
-                        some_class_matches = true;
-                        let mut value_generics = class.generics().iter();
-                        let mut generics = self.generics.iter();
-                        while let Some(generic) = generics.next(i_s) {
-                            let value_generic = value_generics.next(i_s);
-                            if let Some(inf) = value_generic {
-                                if let Some(point) = generic.maybe_numbered_type_var() {
-                                    matcher.add_type_var(i_s, point, &inf)
-                                } else if let Some(cls) = generic.expect_class(i_s) {
-                                    cls.infer_type_vars(i_s, inf, matcher);
-                                    todo!()
-                                }
-                            }
-                        }
-                        //break;
-                    }
-                }
-            },
-            || todo!(),
-        );
-        if !some_class_matches {
-            matcher.does_not_match();
-        }
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        self.symbol_table.lookup_symbol(name).map(|node_index| {
+            self.reference
+                .file
+                .inference(i_s)
+                .infer_name_by_index(node_index)
+        })
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
@@ -257,7 +294,7 @@ impl<'db, 'a> Class<'db, 'a> {
         MroIterator {
             database: i_s.database,
             generics: &self.generics,
-            class: Some(self),
+            class: Some(ClassLike::ClassRef(self)),
             iterator: class_infos.mro.iter(),
             returned_object: false,
         }
@@ -285,12 +322,8 @@ impl<'db> Value<'db> for Class<'db, '_> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         for c in self.mro(i_s) {
-            if let Some(node_index) = c.symbol_table.lookup_symbol(name) {
-                return c
-                    .reference
-                    .file
-                    .inference(i_s)
-                    .infer_name_by_index(node_index);
+            if let Some(inf) = c.lookup_symbol(i_s, name) {
+                return inf;
             }
         }
         todo!("{:?}.{:?}", self.name(), name)
@@ -383,30 +416,31 @@ impl<'db> BasesIterator<'db> {
 struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: &'a Generics<'db, 'a>,
-    class: Option<&'a Class<'db, 'a>>,
+    class: Option<ClassLike<'db, 'a>>,
     iterator: std::slice::Iter<'db, MroClass>,
     returned_object: bool,
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = Class<'db, 'a>;
+    type Item = ClassLike<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
-            return Some(std::mem::replace(&mut self.class, None).unwrap().clone());
+            return Some(std::mem::replace(&mut self.class, None).unwrap());
         }
         if let Some(c) = self.iterator.next() {
-            Some(
+            Some(ClassLike::Class(
                 Class::from_position(
                     NodeReference::from_link(self.database, c.class),
                     self.generics.clone(),
                     Some(&c.type_var_remap),
                 )
                 .unwrap(),
-            )
+            ))
         } else if !self.returned_object {
             self.returned_object = true;
             Class::from_position(self.database.python_state.object(), Generics::None, None)
+                .map(ClassLike::Class)
         } else {
             None
         }

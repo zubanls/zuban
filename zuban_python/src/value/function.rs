@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{ClassLike, Value, ValueKind};
+use super::{Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
