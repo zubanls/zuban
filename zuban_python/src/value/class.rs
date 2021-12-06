@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, GenericsIterator, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
@@ -46,7 +46,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 if let Some(point) = generic.maybe_numbered_type_var() {
                                     matcher.add_type_var(i_s, point, &inf)
                                 } else if let Some(cls) = generic.expect_class(i_s) {
-                                    cls.infer_type_vars(i_s, inf, matcher);
+                                    ClassLike::ClassRef(&cls).infer_type_vars(i_s, inf, matcher);
                                     todo!()
                                 }
                             }
@@ -75,7 +75,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn generics(&self) -> &Generics {
+    fn generics(&self) -> &Generics<'db, '_> {
         match self {
             Self::ClassRef(c) => &c.generics,
             Self::Class(c) => &c.generics,
