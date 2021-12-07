@@ -226,11 +226,14 @@ impl<'db> Inferred<'db> {
                         v.as_class()
                             .map(|c| c.as_generic_part(i_s))
                             .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
-                            .unwrap_or_else(|| GenericPart::Unknown)
+                            .unwrap_or_else(|| {
+                                debug!("Generic part not resolvable: {}", v.description(i_s));
+                                GenericPart::Unknown
+                            })
                     },
                     &|g1, g2| g1.union(g2),
-                    &mut |inf| {
-                        //debug!("Generic part not found: {}", inf.description(i_s));
+                    &mut |i_s, inf| {
+                        debug!("Generic part not found: {}", inf.description(i_s));
                         GenericPart::Unknown
                     },
                 )
@@ -243,7 +246,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
-        on_missing: &mut impl FnMut(Self) -> T,
+        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -305,7 +308,7 @@ impl<'db> Inferred<'db> {
                             }
                         }
                         Specific::ClassTypeVar | Specific::FunctionTypeVar => {
-                            on_missing(self.clone())
+                            on_missing(i_s, self.clone())
                         }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
@@ -327,7 +330,7 @@ impl<'db> Inferred<'db> {
                         self.run_on_complex(i_s, complex, Some(definition), callable, reducer)
                     }
                 }
-                PointType::Unknown => on_missing(self.clone()),
+                PointType::Unknown => on_missing(i_s, self.clone()),
                 PointType::FileReference => {
                     let f = i_s.database.loaded_python_file(point.file_index());
                     callable(i_s, &Module::new(f))
@@ -337,7 +340,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 self.run_on_complex(i_s, complex, None, callable, reducer)
             }
-            InferredState::Unknown => on_missing(self.clone()),
+            InferredState::Unknown => on_missing(i_s, self.clone()),
         }
     }
 
@@ -378,7 +381,7 @@ impl<'db> Inferred<'db> {
                         i_s,
                         callable,
                         reducer,
-                        &mut |i| unreachable!(),
+                        &mut |i_s, i| unreachable!(),
                     )
                 })
                 .reduce(reducer)
@@ -433,9 +436,12 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Self,
     ) -> Self {
-        self.internal_run(i_s, callable, &|i1, i2| i1.union(i2), &mut |inferred| {
-            inferred
-        })
+        self.internal_run(
+            i_s,
+            callable,
+            &|i1, i2| i1.union(i2),
+            &mut |i_s, inferred| inferred,
+        )
     }
 
     #[inline]
@@ -479,7 +485,7 @@ impl<'db> Inferred<'db> {
                     ValueNameIterator::Finished => iter2,
                 }
             },
-            &mut |inferred| ValueNameIterator::Finished,
+            &mut |i_s, inferred| ValueNameIterator::Finished,
         )
     }
 
@@ -490,7 +496,9 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),
         mut on_missing: impl FnMut(),
     ) {
-        self.internal_run(i_s, callable, &|i1, i2| (), &mut |inferred| on_missing())
+        self.internal_run(i_s, callable, &|i1, i2| (), &mut |i_s, inferred| {
+            on_missing()
+        })
     }
 
     fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
@@ -873,7 +881,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
-            &mut |inferred| "Unknown".to_owned(),
+            &mut |i_s, inferred| "Unknown".to_owned(),
         )
     }
 
@@ -937,7 +945,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.as_class().is_some(),
             &|i1, i2| i1 & i2,
-            &mut |inferred| false,
+            &mut |i_s, inferred| false,
         )
     }
 

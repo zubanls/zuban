@@ -83,7 +83,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         .unwrap_or_else(|| "Unknown".to_owned())
                 },
                 &|i1, i2| format!("{}|{}", i1, i2),
-                &mut |inferred| "Unknown".to_owned(),
+                &mut |i_s, inferred| "Unknown".to_owned(),
             ));
         }
         format!("[{}]", strings.join(", "))
