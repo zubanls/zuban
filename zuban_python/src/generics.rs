@@ -12,7 +12,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
 use crate::value::Function;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),

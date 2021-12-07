@@ -1,10 +1,11 @@
 use parsa_python_ast::{Name, PrimaryContent};
 
-use super::{Value, ValueKind};
+use super::{ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent,
 };
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -130,7 +131,7 @@ impl<'db> Value<'db> for TypingWithGenerics<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TupleClass<'a> {
     content: &'a TupleContent,
 }
@@ -142,6 +143,14 @@ impl<'a> TupleClass<'a> {
 
     pub fn as_generic_part(&self) -> GenericPart {
         GenericPart::Tuple(self.content.clone())
+    }
+
+    pub(super) fn generics(&self) -> Generics<'static, 'a> {
+        self.content
+            .generics
+            .as_ref()
+            .map(|c| Generics::List(c))
+            .unwrap_or(Generics::None)
     }
 }
 
@@ -189,5 +198,9 @@ impl<'db> Value<'db> for Tuple<'_> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
+        ClassLike::Tuple(TupleClass::new(self.content))
     }
 }

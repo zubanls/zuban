@@ -1,6 +1,6 @@
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::{Function, Value, ValueKind};
+use super::{Function, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroClass, Point,
@@ -8,15 +8,17 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, GenericsIterator, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
+#[derive(Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     ClassRef(&'a Class<'db, 'a>),
     Class(Class<'db, 'a>),
+    Tuple(TupleClass<'a>),
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -67,18 +69,22 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::ClassRef(c1) => match other {
                 Self::ClassRef(c2) => c1.reference == c2.reference,
                 Self::Class(c2) => c1.reference == c2.reference,
+                _ => false,
             },
             Self::Class(c1) => match other {
                 Self::ClassRef(c2) => c1.reference == c2.reference,
                 Self::Class(c2) => c1.reference == c2.reference,
+                _ => false,
             },
+            Self::Tuple(_) => matches!(other, Self::Tuple(_)),
         }
     }
 
-    fn generics(&self) -> &Generics<'db, '_> {
+    fn generics(&self) -> Generics<'db, '_> {
         match self {
-            Self::ClassRef(c) => &c.generics,
-            Self::Class(c) => &c.generics,
+            Self::ClassRef(c) => c.generics,
+            Self::Class(c) => c.generics,
+            Self::Tuple(c) => c.generics(),
         }
     }
 
@@ -86,6 +92,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::ClassRef(c) => c.as_str(i_s),
             Self::Class(c) => c.as_str(i_s),
+            Self::Tuple(c) => format!("Tuple{}", self.generics().as_str(i_s)),
         }
     }
 
@@ -93,6 +100,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::ClassRef(c) => c.mro(i_s),
             Self::Class(c) => c.mro(i_s),
+            Self::Tuple(c) => MroIterator {
+                database: i_s.database,
+                generics: self.generics(),
+                class: Some(*self),
+                iterator: [].iter(),
+                returned_object: false,
+            },
         }
     }
 
@@ -104,11 +118,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::ClassRef(c) => c.lookup_symbol(i_s, name),
             Self::Class(c) => c.lookup_symbol(i_s, name),
+            Self::Tuple(c) => todo!(),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
@@ -293,7 +308,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
             database: i_s.database,
-            generics: &self.generics,
+            generics: self.generics,
             class: Some(ClassLike::ClassRef(self)),
             iterator: class_infos.mro.iter(),
             returned_object: false,
@@ -415,7 +430,7 @@ impl<'db> BasesIterator<'db> {
 
 struct MroIterator<'db, 'a> {
     database: &'db Database,
-    generics: &'a Generics<'db, 'a>,
+    generics: Generics<'db, 'a>,
     class: Option<ClassLike<'db, 'a>>,
     iterator: std::slice::Iter<'db, MroClass>,
     returned_object: bool,
@@ -432,7 +447,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             Some(ClassLike::Class(
                 Class::from_position(
                     NodeReference::from_link(self.database, c.class),
-                    self.generics.clone(),
+                    self.generics,
                     Some(&c.type_var_remap),
                 )
                 .unwrap(),
