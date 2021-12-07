@@ -9,14 +9,15 @@ use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
     PointLink, PointType, Specific,
 };
+use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::Generics;
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, DictLiteral, Function, Instance, ListLiteral, Module, OverloadedFunction,
-    Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
+    BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, ListLiteral, Module,
+    OverloadedFunction, Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -225,10 +226,13 @@ impl<'db> Inferred<'db> {
                         v.as_class()
                             .map(|c| c.as_generic_part(i_s))
                             .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
-                            .unwrap_or(GenericPart::Unknown)
+                            .unwrap_or_else(|| GenericPart::Unknown)
                     },
                     &|g1, g2| g1.union(g2),
-                    &mut |_| GenericPart::Unknown,
+                    &mut |inf| {
+                        //debug!("Generic part not found: {}", inf.description(i_s));
+                        GenericPart::Unknown
+                    },
                 )
             })
     }
@@ -656,6 +660,34 @@ impl<'db> Inferred<'db> {
         self.expect_class_internal(i_s, generics)
     }
 
+    pub fn expect_class_like(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<ClassLike<'db, '_>> {
+        let mut generics = Generics::None;
+        if let InferredState::Saved(definition, point) = &self.state {
+            if point.type_() == PointType::Specific {
+                generics = self.expect_generics().unwrap_or(Generics::None);
+            }
+        }
+        self.expect_class_internal(i_s, generics)
+            .map(ClassLike::Class)
+            .or_else(|| match &self.state {
+                InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
+                    let complex = definition.file.complex_points.get(point.complex_index());
+                    if let ComplexPoint::TupleClass(content) = complex {
+                        Some(ClassLike::Tuple(TupleClass::new(content)))
+                    } else {
+                        None
+                    }
+                }
+                InferredState::UnsavedComplex(ComplexPoint::Tuple(content)) => {
+                    Some(ClassLike::Tuple(TupleClass::new(content)))
+                }
+                _ => None,
+            })
+    }
+
     fn expect_class_internal<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -663,7 +695,14 @@ impl<'db> Inferred<'db> {
     ) -> Option<Class<'db, 'a>> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Complex => Class::from_position(*definition, generics, None),
+                PointType::Complex => {
+                    let complex = definition.file.complex_points.get(point.complex_index());
+                    if let ComplexPoint::Class(c) = complex {
+                        Some(Class::new(*definition, &c.symbol_table, generics, None))
+                    } else {
+                        None
+                    }
+                }
                 PointType::Specific => match point.specific() {
                     Specific::SimpleGeneric => {
                         let inferred = definition

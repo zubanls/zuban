@@ -61,7 +61,7 @@ impl TestFile<'_> {
                         .collect();
                     assert_eq!(actual, expected);
                 }
-                CaseType::Complete(expected) => {
+                CaseType::Complete(_) => {
                     ran_count -= 1;
                     // TODO implement complete tests
                 }

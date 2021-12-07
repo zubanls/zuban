@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     ClassRef(&'a Class<'db, 'a>),
     Class(Class<'db, 'a>),
@@ -47,8 +47,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             if let Some(inf) = value_generic {
                                 if let Some(point) = generic.maybe_numbered_type_var() {
                                     matcher.add_type_var(i_s, point, &inf)
-                                } else if let Some(cls) = generic.expect_class(i_s) {
-                                    ClassLike::ClassRef(&cls).infer_type_vars(i_s, inf, matcher);
+                                } else if let Some(c) = generic.expect_class_like(i_s) {
+                                    c.infer_type_vars(i_s, inf, matcher);
                                     todo!()
                                 }
                             }
@@ -254,6 +254,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             &mut |i_s, v| {
                                 if let Some(class) = v.as_class() {
                                     let mro_index = mro.len();
+                                    // TODO handle Tuple and other ClassLike's here
                                     mro.push(create_mro_class(
                                         i_s,
                                         self.reference,
