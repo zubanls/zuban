@@ -665,10 +665,10 @@ impl<'db> Inferred<'db> {
                 generics = self.expect_generics().unwrap_or(Generics::None);
             }
         }
-        self.expect_class_internal(i_s, generics)
+        self.maybe_class_internal(i_s, generics)
     }
 
-    pub fn expect_class_like(
+    pub fn maybe_class_like(
         &self,
         i_s: &mut InferenceState<'db, '_>,
     ) -> Option<ClassLike<'db, '_>> {
@@ -678,7 +678,7 @@ impl<'db> Inferred<'db> {
                 generics = self.expect_generics().unwrap_or(Generics::None);
             }
         }
-        self.expect_class_internal(i_s, generics)
+        self.maybe_class_internal(i_s, generics)
             .map(ClassLike::Class)
             .or_else(|| match &self.state {
                 InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
@@ -696,7 +696,7 @@ impl<'db> Inferred<'db> {
             })
     }
 
-    fn expect_class_internal<'a>(
+    fn maybe_class_internal<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         generics: Generics<'db, 'a>,
@@ -717,7 +717,7 @@ impl<'db> Inferred<'db> {
                             .file
                             .inference(i_s)
                             .infer_primary_or_atom(definition.as_primary().first());
-                        inferred.expect_class_internal(i_s, generics)
+                        inferred.maybe_class_internal(i_s, generics)
                     }
                     _ => None,
                 },

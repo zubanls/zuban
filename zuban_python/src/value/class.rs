@@ -47,7 +47,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             if let Some(inf) = value_generic {
                                 if let Some(point) = generic.maybe_numbered_type_var() {
                                     matcher.add_type_var(i_s, point, &inf)
-                                } else if let Some(c) = generic.expect_class_like(i_s) {
+                                } else if let Some(c) = generic.maybe_class_like(i_s) {
                                     c.infer_type_vars(i_s, inf, matcher);
                                     todo!()
                                 }
