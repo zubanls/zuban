@@ -472,7 +472,7 @@ fn create_type_var_remap<'db>(
     if let Some(point) = generic.maybe_numbered_type_var() {
         Some(TypeVarRemap::TypeVar(point.type_var_index()))
     } else {
-        generic.expect_class(i_s).map(|base_cls| {
+        generic.maybe_class(i_s).map(|base_cls| {
             TypeVarRemap::MroClass(create_mro_class(
                 i_s,
                 original_class,

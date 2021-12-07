@@ -231,7 +231,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         value: &Inferred<'db>,
     ) {
         if point.specific() == self.match_specific {
-            if let Some(cls) = value.expect_class(i_s) {
+            if let Some(cls) = value.maybe_class(i_s) {
                 let generic = cls.as_annotation_generic_part(i_s);
                 self.add_type_var_class(i_s, point, generic);
             } else {

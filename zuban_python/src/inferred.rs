@@ -267,7 +267,7 @@ impl<'db> Inferred<'db> {
                         }
                         Specific::InstanceWithArguments => {
                             let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
-                            let class = inf_cls.expect_class(i_s).unwrap();
+                            let class = inf_cls.maybe_class(i_s).unwrap();
                             let args = SimpleArguments::from_primary(
                                 definition.file,
                                 definition.as_primary(),
@@ -282,7 +282,7 @@ impl<'db> Inferred<'db> {
                             })
                         }
                         Specific::SimpleGeneric => {
-                            let class = self.expect_class(i_s).unwrap();
+                            let class = self.maybe_class(i_s).unwrap();
                             callable(i_s, &class)
                         }
                         Specific::Param => i_s
@@ -576,7 +576,7 @@ impl<'db> Inferred<'db> {
                         let inf_cls = self
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
-                        let class = inf_cls.expect_class(i_s).unwrap();
+                        let class = inf_cls.maybe_class(i_s).unwrap();
                         debug_assert!(class.type_vars(i_s).is_empty());
                         let args = SimpleArguments::from_primary(
                             definition.file,
@@ -658,7 +658,7 @@ impl<'db> Inferred<'db> {
         Instance::new(class, self)
     }
 
-    pub fn expect_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
+    pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         let mut generics = Generics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
@@ -729,7 +729,7 @@ impl<'db> Inferred<'db> {
                 }
                 todo!("{:?}", complex)
             }
-            InferredState::Unknown => unreachable!(),
+            InferredState::Unknown => None,
         }
     }
 
@@ -964,7 +964,7 @@ impl<'db> Inferred<'db> {
                     let specific = point.specific();
                     match specific {
                         Specific::SimpleGeneric => {
-                            let class = self.expect_class(i_s).unwrap();
+                            let class = self.maybe_class(i_s).unwrap();
                             class.reference.as_link();
                             todo!()
                         }
