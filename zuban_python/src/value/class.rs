@@ -121,6 +121,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => todo!(),
         }
     }
+
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        match self {
+            Self::ClassRef(c) => c.as_generic_part(i_s),
+            Self::Class(c) => c.as_generic_part(i_s),
+            Self::Tuple(c) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

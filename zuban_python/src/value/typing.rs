@@ -57,7 +57,7 @@ impl<'db> Value<'db> for TypingClass<'db> {
                             generics: Some(GenericsList::new(Box::new([simple
                                 .infer_annotation(i_s)
                                 .as_generic_part(i_s)]))),
-                            arbitrary_length: true,
+                            arbitrary_length: false,
                         }
                     }
                     SliceType::Slice(x) => {
