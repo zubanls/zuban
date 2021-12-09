@@ -78,8 +78,8 @@ impl<'db, 'a> Generics<'db, 'a> {
             strings.push(inf.internal_run(
                 i_s,
                 &mut |i_s, v| {
-                    v.as_class()
-                        .map(|c| c.as_str(i_s))
+                    v.as_class_like()
+                        .map(|c| c.as_string(i_s))
                         .unwrap_or_else(|| "Unknown".to_owned())
                 },
                 &|i1, i2| format!("{}|{}", i1, i2),

@@ -404,6 +404,10 @@ impl<'db> Value<'db> for Class<'db, '_> {
         Some(self)
     }
 
+    fn as_class_like(&self) -> Option<ClassLike<'db, '_>> {
+        Some(ClassLike::ClassRef(self))
+    }
+
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",

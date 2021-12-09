@@ -223,7 +223,7 @@ impl<'db> Inferred<'db> {
                 self.internal_run(
                     i_s,
                     &mut |i_s, v| {
-                        v.as_class()
+                        v.as_class_like()
                             .map(|c| c.as_generic_part(i_s))
                             .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
                             .unwrap_or_else(|| {
@@ -943,7 +943,7 @@ impl<'db> Inferred<'db> {
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.as_class().is_some(),
+            &mut |i_s, v| v.as_class_like().is_some(),
             &|i1, i2| i1 & i2,
             &mut |i_s, inferred| false,
         )

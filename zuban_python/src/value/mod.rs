@@ -94,6 +94,10 @@ pub trait Value<'db>: std::fmt::Debug {
         None
     }
     fn as_class(&self) -> Option<&Class<'db, '_>> {
+        // TODO is this really needed anymore next to as_class_like?
+        None
+    }
+    fn as_class_like(&self) -> Option<ClassLike<'db, '_>> {
         None
     }
     fn as_typing_with_generics(
