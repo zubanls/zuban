@@ -498,7 +498,7 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn run(
+    pub fn run_mut(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),

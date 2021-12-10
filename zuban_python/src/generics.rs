@@ -189,7 +189,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         self.add_type_var_class(i_s, point, generic);
                     } else {
                         let mut maybe_matches = true;
-                        inferred.run(
+                        inferred.run_mut(
                             i_s,
                             &mut |i_s, v| {
                                 let value = p.infer(i_s);

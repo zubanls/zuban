@@ -53,7 +53,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                         match child {
                             ListElement::NamedExpression(named_expr) => {
                                 todo!("generic parts are wrong here probably");
-                                self.infer_named_expr(i_s, named_expr).run(
+                                self.infer_named_expr(i_s, named_expr).run_mut(
                                     i_s,
                                     &mut |i_s, v| {
                                         result =
@@ -218,7 +218,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                 match child {
                     DictElement::KeyValue(key_value) => {
                         todo!("generic parts are wrong here probably");
-                        self.infer_expr(i_s, key_value.key()).run(
+                        self.infer_expr(i_s, key_value.key()).run_mut(
                             i_s,
                             &mut |i_s, v| {
                                 keys = std::mem::replace(&mut keys, GenericPart::Unknown)
@@ -226,7 +226,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                             },
                             || todo!(),
                         );
-                        self.infer_expr(i_s, key_value.value()).run(
+                        self.infer_expr(i_s, key_value.value()).run_mut(
                             i_s,
                             &mut |i_s, v| {
                                 values = std::mem::replace(&mut values, GenericPart::Unknown)

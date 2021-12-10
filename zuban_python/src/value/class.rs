@@ -33,7 +33,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // them back in a set afterwards.
         let mut some_class_matches = false;
         // TODO use type_var_remap
-        value.run(
+        value.run_mut(
             i_s,
             &mut |i_s, v| {
                 let check_class = v.class(i_s);
@@ -257,7 +257,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_named_expression(n);
-                        inf.run(
+                        inf.run_mut(
                             &mut i_s,
                             &mut |i_s, v| {
                                 if let Some(class) = v.as_class() {
