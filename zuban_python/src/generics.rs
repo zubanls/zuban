@@ -70,7 +70,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut iterator = self.iter();
         let mut strings = vec![];

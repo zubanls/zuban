@@ -90,9 +90,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
-            Self::ClassRef(c) => c.as_str(i_s),
-            Self::Class(c) => c.as_str(i_s),
-            Self::Tuple(c) => format!("Tuple{}", self.generics().as_str(i_s)),
+            Self::ClassRef(c) => c.as_string(i_s),
+            Self::Class(c) => c.as_string(i_s),
+            Self::Tuple(c) => format!("Tuple{}", self.generics().as_string(i_s)),
         }
     }
 
@@ -317,8 +317,8 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn as_str(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        let generics_str = self.generics.as_str(i_s);
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        let generics_str = self.generics.as_string(i_s);
         let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
         format!(
             "{}{}",
@@ -361,7 +361,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) => Generics::List(generics_list).as_str(i_s),
+                    Some(generics_list) => Generics::List(generics_list).as_string(i_s),
                     None => "".to_owned(),
                 }
             );
@@ -405,7 +405,7 @@ impl<'db> Value<'db> for Class<'db, '_> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.as_str(i_s),
+            self.as_string(i_s),
         )
     }
 

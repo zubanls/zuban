@@ -239,7 +239,7 @@ impl<'db> Value<'db> for Function<'db> {
                     format!(
                         "{}.",
                         class
-                            .map(|c| c.as_str(i_s))
+                            .map(|c| c.as_string(i_s))
                             .unwrap_or_else(|| "".to_owned())
                     ),
                     self.name()
