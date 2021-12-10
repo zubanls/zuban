@@ -441,7 +441,6 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    #[inline]
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -455,7 +454,6 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    #[inline]
     pub fn run_on_value_names<C, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -500,7 +498,6 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    #[inline]
     pub fn run(
         &self,
         i_s: &mut InferenceState<'db, '_>,
