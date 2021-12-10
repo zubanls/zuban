@@ -84,6 +84,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 },
                 &|i1, i2| format!("{}|{}", i1, i2),
                 &mut |i_s, inferred| "Unknown".to_owned(),
+                &mut |point| format!("Weird {:?}", point),
             ));
         }
         format!("[{}]", strings.join(", "))

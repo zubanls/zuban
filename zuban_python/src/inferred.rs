@@ -222,33 +222,31 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        self.maybe_numbered_type_var()
-            .map(|p| {
-                if p.specific() == Specific::ClassTypeVar {
-                    GenericPart::ClassTypeVar(p.type_var_index())
-                } else {
-                    GenericPart::FunctionTypeVar(p.type_var_index())
-                }
-            })
-            .unwrap_or_else(|| {
-                self.internal_run(
-                    i_s,
-                    &mut |i_s, v| {
-                        v.as_class_like()
-                            .map(|c| c.as_generic_part(i_s))
-                            .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
-                            .unwrap_or_else(|| {
-                                debug!("Generic part not resolvable: {}", v.description(i_s));
-                                GenericPart::Unknown
-                            })
-                    },
-                    &|g1, g2| g1.union(g2),
-                    &mut |i_s, inf| {
-                        debug!("Generic part not found: {}", inf.description(i_s));
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| {
+                v.as_class_like()
+                    .map(|c| c.as_generic_part(i_s))
+                    .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
+                    .unwrap_or_else(|| {
+                        debug!("Generic part not resolvable: {}", v.description(i_s));
                         GenericPart::Unknown
-                    },
-                )
-            })
+                    })
+            },
+            &|g1, g2| g1.union(g2),
+            &mut |i_s, inf| {
+                debug!("Generic part not found: {}", inf.description(i_s));
+                GenericPart::Unknown
+            },
+            &mut |point| {
+                if point.specific() == Specific::ClassTypeVar {
+                    GenericPart::ClassTypeVar(point.type_var_index())
+                } else {
+                    debug_assert_eq!(point.specific(), Specific::FunctionTypeVar);
+                    GenericPart::FunctionTypeVar(point.type_var_index())
+                }
+            },
+        )
     }
 
     #[inline]
@@ -258,6 +256,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
+        on_type_var: &mut impl FnMut(&Point) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -296,9 +295,13 @@ impl<'db> Inferred<'db> {
                             let class = self.maybe_class(i_s).unwrap();
                             callable(i_s, &class)
                         }
-                        Specific::Param => i_s
-                            .infer_param(definition)
-                            .internal_run(i_s, callable, reducer, on_missing),
+                        Specific::Param => i_s.infer_param(definition).internal_run(
+                            i_s,
+                            callable,
+                            reducer,
+                            on_missing,
+                            on_type_var,
+                        ),
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
                         Specific::TypingProtocol
@@ -318,9 +321,7 @@ impl<'db> Inferred<'db> {
                                 unreachable!()
                             }
                         }
-                        Specific::ClassTypeVar | Specific::FunctionTypeVar => {
-                            on_missing(i_s, self.clone())
-                        }
+                        Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(point),
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)
@@ -393,6 +394,7 @@ impl<'db> Inferred<'db> {
                         callable,
                         reducer,
                         &mut |i_s, i| unreachable!(),
+                        &mut |p| todo!(),
                     )
                 })
                 .reduce(reducer)
@@ -451,6 +453,7 @@ impl<'db> Inferred<'db> {
             callable,
             &|i1, i2| i1.union(i2),
             &mut |i_s, inferred| inferred,
+            &mut |point| todo!(),
         )
     }
 
@@ -495,6 +498,7 @@ impl<'db> Inferred<'db> {
                 }
             },
             &mut |i_s, inferred| ValueNameIterator::Finished,
+            &mut |p| todo!(),
         )
     }
 
@@ -504,9 +508,13 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),
         mut on_missing: impl FnMut(),
     ) {
-        self.internal_run(i_s, callable, &|i1, i2| (), &mut |i_s, inferred| {
-            on_missing()
-        })
+        self.internal_run(
+            i_s,
+            callable,
+            &|i1, i2| (),
+            &mut |i_s, inferred| on_missing(),
+            &mut |p| todo!(),
+        )
     }
 
     fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
@@ -890,6 +898,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
             &mut |i_s, inferred| "Unknown".to_owned(),
+            &mut |p| format!("{:?} {:?}", p.specific(), p.type_var_index()),
         )
     }
 
@@ -954,6 +963,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.as_class_like().is_some(),
             &|i1, i2| i1 & i2,
             &mut |i_s, inferred| false,
+            &mut |p| false,
         )
     }
 
