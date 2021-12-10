@@ -120,21 +120,25 @@ impl<'db> NodeReference<'db> {
             match name.simple_param_type() {
                 SimpleParamType::Normal => inference.infer_annotation_expression(expression),
                 SimpleParamType::MultiArgs => {
-                    let inf = inference.infer_expression(expression);
+                    let p = inference
+                        .infer_annotation_expression_class(expression)
+                        .as_generic_part(i_s);
                     Inferred::create_instance(
                         i_s.database.python_state.builtins_point_link("tuple"),
-                        Some(&[inf.as_generic_part(i_s)]),
+                        Some(&[p]),
                     )
                 }
                 SimpleParamType::MultiKwargs => {
-                    let inf = inference.infer_expression(expression);
+                    let p = inference
+                        .infer_annotation_expression_class(expression)
+                        .as_generic_part(i_s);
                     Inferred::create_instance(
                         i_s.database.python_state.builtins_point_link("dict"),
                         Some(&[
                             GenericPart::Class(
                                 i_s.database.python_state.builtins_point_link("str"),
                             ),
-                            inf.as_generic_part(i_s),
+                            p,
                         ]),
                     )
                 }
@@ -201,10 +205,11 @@ impl<'db> Inferred<'db> {
             GenericPart::Callable(content) => {
                 todo!()
             }
-            GenericPart::Type(_) => {
-                todo!()
+            GenericPart::Type(c) => {
+                todo!("{:?}", c);
             }
-            GenericPart::Unknown | GenericPart::TypeVar(_) => InferredState::Unknown,
+            GenericPart::Unknown => InferredState::Unknown,
+            GenericPart::ClassTypeVar(_) | GenericPart::FunctionTypeVar(_) => unreachable!(),
         };
         Self { state }
     }
@@ -218,7 +223,13 @@ impl<'db> Inferred<'db> {
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         self.maybe_numbered_type_var()
-            .map(|p| GenericPart::TypeVar(p.type_var_index()))
+            .map(|p| {
+                if p.specific() == Specific::ClassTypeVar {
+                    GenericPart::ClassTypeVar(p.type_var_index())
+                } else {
+                    GenericPart::FunctionTypeVar(p.type_var_index())
+                }
+            })
             .unwrap_or_else(|| {
                 self.internal_run(
                     i_s,

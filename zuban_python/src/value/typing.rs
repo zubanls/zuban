@@ -54,9 +54,9 @@ impl<'db> Value<'db> for TypingClass<'db> {
                     SliceType::Simple(simple) => {
                         // TODO if it is a (), it's am empty tuple
                         TupleContent {
-                            generics: Some(GenericsList::new(Box::new([simple
-                                .infer_annotation(i_s)
-                                .as_generic_part(i_s)]))),
+                            generics: Some(GenericsList::new(Box::new([
+                                simple.infer_annotation_generic_part(i_s)
+                            ]))),
                             arbitrary_length: false,
                         }
                     }

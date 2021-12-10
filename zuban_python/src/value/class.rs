@@ -293,13 +293,6 @@ impl<'db, 'a> Class<'db, 'a> {
         })
     }
 
-    pub fn as_annotation_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        let lst = self.generics.as_generics_list(i_s);
-        let link = self.reference.as_link();
-        lst.map(|lst| GenericPart::GenericClass(link, lst))
-            .unwrap_or_else(|| GenericPart::Class(link))
-    }
-
     fn lookup_symbol(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -417,7 +410,10 @@ impl<'db> Value<'db> for Class<'db, '_> {
     }
 
     fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        GenericPart::Type(Box::new(self.as_annotation_generic_part(i_s)))
+        let lst = self.generics.as_generics_list(i_s);
+        let link = self.reference.as_link();
+        lst.map(|lst| GenericPart::GenericClass(link, lst))
+            .unwrap_or_else(|| GenericPart::Class(link))
     }
 }
 

@@ -52,6 +52,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                     for child in elements {
                         match child {
                             ListElement::NamedExpression(named_expr) => {
+                                todo!("generic parts are wrong here probably");
                                 self.infer_named_expr(i_s, named_expr).run(
                                     i_s,
                                     &mut |i_s, v| {
@@ -216,6 +217,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {
+                        todo!("generic parts are wrong here probably");
                         self.infer_expr(i_s, key_value.key()).run(
                             i_s,
                             &mut |i_s, v| {

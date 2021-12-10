@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::Execution;
+use crate::database::{Execution, GenericPart};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -72,10 +72,11 @@ impl<'db> Simple<'db> {
             .infer_named_expression(self.named_expr)
     }
 
-    pub fn infer_annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer_annotation_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         self.file
             .inference(i_s)
-            .infer_annotation_expression(self.named_expr.expression())
+            .infer_annotation_expression_class(self.named_expr.expression())
+            .as_generic_part(i_s)
     }
 }
 

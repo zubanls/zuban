@@ -228,7 +228,11 @@ impl<'db> Value<'db> for Function<'db> {
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
-                let inferred = self.reference.file.inference(i_s).infer_expression(expr);
+                let inferred = self
+                    .reference
+                    .file
+                    .inference(i_s)
+                    .infer_annotation_expression_class(expr);
                 let class = args.class_of_method(i_s);
                 debug!(
                     "Inferring generics for {}{}",
@@ -362,7 +366,7 @@ impl<'db> InferrableParam<'db, '_> {
 impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
     fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!(
-            "Infer param {}",
+            "Infer param {:?}",
             self.param.name_definition().name().as_str()
         );
         self.argument
@@ -457,6 +461,7 @@ impl<'db> Value<'db> for OverloadedFunction<'db, '_> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
+        debug!("Execute Overload {}", self.name());
         self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args))
             .unwrap_or_else(|| todo!())

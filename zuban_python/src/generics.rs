@@ -10,7 +10,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
-use crate::value::Function;
+use crate::value::{Function, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
@@ -184,6 +184,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .inference(i_s)
                         .infer_annotation_expression(annotation.expression());
                     if let Some(point) = inferred.maybe_numbered_type_var() {
+                        todo!("generic parts are wrong here probably");
                         let generic = p.infer(i_s).as_generic_part(i_s);
                         self.add_type_var_class(i_s, point, generic);
                     } else {
@@ -232,7 +233,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     ) {
         if point.specific() == self.match_specific {
             if let Some(cls) = value.maybe_class(i_s) {
-                let generic = cls.as_annotation_generic_part(i_s);
+                let generic = cls.as_generic_part(i_s);
                 self.add_type_var_class(i_s, point, generic);
             } else {
                 todo!(

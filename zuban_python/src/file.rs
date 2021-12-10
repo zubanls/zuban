@@ -398,6 +398,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+        let mut inf_state = self.i_s.with_annotation_instance();
+        let mut inference = self.file.inference(&mut inf_state);
+        // Since the expression is reserved for instantiating the expression, just do not
+        // save the result.
+        inference.infer_expression_no_save(expr)
+    }
+
     pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
         // Make sure that we're not working "inside" of a function/closure. Annotations are always
         // considered global and should not use params or local state.
@@ -406,7 +414,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let inferred = inference.infer_expression_no_save(expr);
         // TODO locality is wrong!!!!!1
         let point = if let Some(p) = inferred.maybe_numbered_type_var() {
-            p
+            todo!("Probably just remove this if, it should be unreachable")
         } else if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else {
@@ -414,7 +422,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match generic {
                 GenericPart::Class(_)
                 | GenericPart::GenericClass(_, _)
-                | GenericPart::TypeVar(_) => unreachable!(),
+                | GenericPart::FunctionTypeVar(_) => unreachable!(),
+                GenericPart::ClassTypeVar(_) => unreachable!(),
                 GenericPart::Union(_) => todo!(),
                 GenericPart::Type(_) => todo!(),
                 GenericPart::Tuple(content) => {
