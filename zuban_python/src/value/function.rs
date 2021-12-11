@@ -228,6 +228,7 @@ impl<'db> Value<'db> for Function<'db> {
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
+                todo!();
                 let inferred = self
                     .reference
                     .file

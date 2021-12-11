@@ -249,6 +249,30 @@ impl<'db> Inferred<'db> {
         )
     }
 
+    pub fn as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> GenericOption<'db, '_> {
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| {
+                /*
+                v.as_class_like()
+                    .map(|c| c.as_generic_part(i_s))
+                    .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
+                    .unwrap_or_else(|| {
+                        debug!("Generic part not resolvable: {}", v.description(i_s));
+                        GenericPart::Unknown
+                    })
+                */
+                GenericOption::Invalid
+            },
+            &|g1, g2| g1.union(g2),
+            &mut |i_s, inf| {
+                debug!("Generic part is invalid: {}", inf.description(i_s));
+                GenericOption::Invalid
+            },
+            &mut |point| GenericOption::TypeVar(point),
+        )
+    }
+
     #[inline]
     pub fn internal_run<T>(
         &self,
@@ -256,7 +280,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(&Point) -> T,
+        on_type_var: &mut impl FnMut(Point) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -321,7 +345,7 @@ impl<'db> Inferred<'db> {
                                 unreachable!()
                             }
                         }
-                        Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(point),
+                        Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(*point),
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)
@@ -1047,4 +1071,28 @@ enum Exact<'db> {
     Bool(bool),
     Bytes(&'db str),
     Float(f64),
+}
+
+pub enum GenericOption<'db, 'a> {
+    ClassLike(ClassLike<'db, 'a>),
+    TypeVar(Point),
+    Union(Vec<GenericOption<'db, 'a>>),
+    Invalid,
+}
+
+impl<'db, 'a> GenericOption<'db, 'a> {
+    fn union(self, other: Self) -> Self {
+        if let Self::Union(mut list1) = self {
+            if let Self::Union(list2) = other {
+                list1.extend(list2);
+            } else {
+                list1.push(other);
+            }
+            Self::Union(list1)
+        } else if let Self::Union(_) = other {
+            other.union(self)
+        } else {
+            GenericOption::Union(vec![self, other])
+        }
+    }
 }
