@@ -12,7 +12,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::generics::{GenericOption, Generics};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
@@ -253,16 +253,12 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
-                /*
                 v.as_class_like()
-                    .map(|c| c.as_generic_part(i_s))
-                    .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
+                    .map(GenericOption::ClassLike)
                     .unwrap_or_else(|| {
                         debug!("Generic part not resolvable: {}", v.description(i_s));
-                        GenericPart::Unknown
+                        GenericOption::Invalid
                     })
-                */
-                GenericOption::Invalid
             },
             &|g1, g2| g1.union(g2),
             &mut |i_s, inf| {
@@ -1071,28 +1067,4 @@ enum Exact<'db> {
     Bool(bool),
     Bytes(&'db str),
     Float(f64),
-}
-
-pub enum GenericOption<'db, 'a> {
-    ClassLike(ClassLike<'db, 'a>),
-    TypeVar(Point),
-    Union(Vec<GenericOption<'db, 'a>>),
-    Invalid,
-}
-
-impl<'db, 'a> GenericOption<'db, 'a> {
-    fn union(self, other: Self) -> Self {
-        if let Self::Union(mut list1) = self {
-            if let Self::Union(list2) = other {
-                list1.extend(list2);
-            } else {
-                list1.push(other);
-            }
-            Self::Union(list1)
-        } else if let Self::Union(_) = other {
-            other.union(self)
-        } else {
-            GenericOption::Union(vec![self, other])
-        }
-    }
 }

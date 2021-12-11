@@ -7,10 +7,11 @@ use crate::arguments::Arguments;
 use crate::database::{
     GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
+use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred};
-use crate::value::{Function, Value};
+use crate::value::{ClassLike, Function, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
@@ -178,33 +179,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         while let Some(p) = iter.next() {
             if let Some(annotation) = p.param.annotation() {
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
-                    let inferred = self
-                        .function
+                    let value = p.infer(i_s);
+                    self.function
                         .reference
                         .file
                         .inference(i_s)
-                        .infer_annotation_expression(annotation.expression());
-                    if let Some(point) = inferred.maybe_numbered_type_var() {
-                        todo!("generic parts are wrong here probably");
-                        let generic = p.infer(i_s).as_generic_part(i_s);
-                        self.add_type_var_class(i_s, point, generic);
-                    } else {
-                        let mut maybe_matches = true;
-                        inferred.run_mut(
-                            i_s,
-                            &mut |i_s, v| {
-                                let value = p.infer(i_s);
-                                v.class(i_s).infer_type_vars(i_s, value, self);
-                            },
-                            || maybe_matches = false,
-                        );
-                        self.matches &= maybe_matches;
-                    }
+                        .infer_annotation_expression_class(annotation.expression())
+                        .as_generic_option(i_s)
+                        .infer_type_vars(i_s, value, self);
                 } else {
                     self.matches = false;
+                    todo!();
                 }
             } else if !p.has_argument() {
                 self.matches = false;
+                debug!("Not enough arguments: {:?}", p);
             }
         }
         if iter.has_unused_argument() {
@@ -298,6 +287,51 @@ pub fn search_type_vars<'db>(
                     );
                 }
             }
+        }
+    }
+}
+
+pub enum GenericOption<'db, 'a> {
+    ClassLike(ClassLike<'db, 'a>),
+    TypeVar(Point),
+    Union(Vec<GenericOption<'db, 'a>>),
+    Invalid,
+}
+
+impl<'db, 'a> GenericOption<'db, 'a> {
+    pub fn union(self, other: Self) -> Self {
+        if let Self::Union(mut list1) = self {
+            if let Self::Union(list2) = other {
+                list1.extend(list2);
+            } else {
+                list1.push(other);
+            }
+            Self::Union(list1)
+        } else if let Self::Union(_) = other {
+            other.union(self)
+        } else {
+            GenericOption::Union(vec![self, other])
+        }
+    }
+
+    pub fn infer_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: Inferred<'db>,
+        matcher: &mut TypeVarMatcher<'db, '_>,
+    ) {
+        match self {
+            Self::ClassLike(class) => {
+                todo!()
+            }
+            Self::TypeVar(point) => {
+                let generic = value.as_generic_part(i_s);
+                matcher.add_type_var_class(i_s, *point, generic);
+            }
+            Self::Union(list) => {
+                todo!()
+            }
+            Self::Invalid => matcher.does_not_match(),
         }
     }
 }
