@@ -59,7 +59,7 @@ pub enum ValueKind {
     TypeParameter = 26,
 }
 
-pub trait Value<'db>: std::fmt::Debug {
+pub trait Value<'db, 'a>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
     //fn file(&self) -> &'db dyn File;
@@ -90,17 +90,14 @@ pub trait Value<'db>: std::fmt::Debug {
         todo!()
     }
 
-    fn as_instance(&self) -> Option<&Instance<'db, '_>> {
+    fn as_instance(&self) -> Option<&Instance<'db, 'a>> {
         None
     }
-    fn as_class(&self) -> Option<&Class<'db, '_>> {
+    fn as_class(&self) -> Option<&Class<'db, 'a>> {
         // TODO is this really needed anymore next to as_class_like?
         None
     }
-    fn as_class_like(&self) -> Option<ClassLike<'db, '_>> {
-        None
-    }
-    fn as_class_like_from_db_only(&self) -> Option<ClassLike<'db, 'db>> {
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
         None
     }
     fn as_typing_with_generics(
@@ -113,7 +110,7 @@ pub trait Value<'db>: std::fmt::Debug {
         None
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         todo!("{:?}", self)
     }
 

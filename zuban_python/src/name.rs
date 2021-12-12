@@ -144,18 +144,18 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 }
 
-pub struct WithValueName<'db, 'a> {
+pub struct WithValueName<'db, 'a, 'b> {
     database: &'db Database,
-    value: &'a dyn Value<'db>,
+    value: &'b dyn Value<'db, 'a>,
 }
 
-impl<'db, 'a> WithValueName<'db, 'a> {
-    pub fn new(database: &'db Database, value: &'a dyn Value<'db>) -> Self {
+impl<'db, 'a, 'b> WithValueName<'db, 'a, 'b> {
+    pub fn new(database: &'db Database, value: &'b dyn Value<'db, 'a>) -> Self {
         Self { database, value }
     }
 }
 
-impl<'db, 'a> fmt::Debug for WithValueName<'db, 'a> {
+impl fmt::Debug for WithValueName<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("WithValueName")
             .field("value", &self.value)
@@ -163,7 +163,7 @@ impl<'db, 'a> fmt::Debug for WithValueName<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
+impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     fn name(&self) -> &'db str {
         self.value.name()
     }
@@ -209,7 +209,7 @@ impl<'db, 'a> Name<'db> for WithValueName<'db, 'a> {
     */
 }
 
-impl<'db, 'a> ValueName<'db> for WithValueName<'db, 'a> {
+impl<'db> ValueName<'db> for WithValueName<'db, '_, '_> {
     fn kind(&self) -> ValueKind {
         self.value.kind()
     }

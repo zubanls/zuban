@@ -25,7 +25,7 @@ impl<'db> TypingClass<'db> {
     }
 }
 
-impl<'db> Value<'db> for TypingClass<'db> {
+impl<'db> Value<'db, '_> for TypingClass<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -110,7 +110,7 @@ impl<'db> TypingWithGenerics<'db> {
     }
 }
 
-impl<'db> Value<'db> for TypingWithGenerics<'db> {
+impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -154,7 +154,7 @@ impl<'a> TupleClass<'a> {
     }
 }
 
-impl<'db> Value<'db> for TupleClass<'_> {
+impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -187,7 +187,7 @@ impl<'a> Tuple<'a> {
     }
 }
 
-impl<'db> Value<'db> for Tuple<'_> {
+impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -200,7 +200,7 @@ impl<'db> Value<'db> for Tuple<'_> {
         todo!()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::Tuple(TupleClass::new(self.content))
     }
 }

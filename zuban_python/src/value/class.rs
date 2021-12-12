@@ -16,7 +16,6 @@ use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
-    ClassRef(&'a Class<'db, 'a>),
     Class(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
 }
@@ -66,13 +65,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     fn matches_without_generics(&self, other: &Self) -> bool {
         match self {
-            Self::ClassRef(c1) => match other {
-                Self::ClassRef(c2) => c1.reference == c2.reference,
-                Self::Class(c2) => c1.reference == c2.reference,
-                _ => false,
-            },
             Self::Class(c1) => match other {
-                Self::ClassRef(c2) => c1.reference == c2.reference,
                 Self::Class(c2) => c1.reference == c2.reference,
                 _ => false,
             },
@@ -82,7 +75,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     fn generics(&self) -> Generics<'db, '_> {
         match self {
-            Self::ClassRef(c) => c.generics,
             Self::Class(c) => c.generics,
             Self::Tuple(c) => c.generics(),
         }
@@ -90,7 +82,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
-            Self::ClassRef(c) => c.as_string(i_s),
             Self::Class(c) => c.as_string(i_s),
             Self::Tuple(c) => format!("Tuple{}", self.generics().as_string(i_s)),
         }
@@ -98,7 +89,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
-            Self::ClassRef(c) => c.mro(i_s),
             Self::Class(c) => c.mro(i_s),
             Self::Tuple(c) => MroIterator {
                 database: i_s.database,
@@ -116,7 +106,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         name: &str,
     ) -> Option<Inferred<'db>> {
         match self {
-            Self::ClassRef(c) => c.lookup_symbol(i_s, name),
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Tuple(c) => todo!(),
         }
@@ -124,7 +113,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
-            Self::ClassRef(c) => c.as_generic_part(i_s),
             Self::Class(c) => c.as_generic_part(i_s),
             Self::Tuple(c) => todo!(),
         }
@@ -311,7 +299,7 @@ impl<'db, 'a> Class<'db, 'a> {
         MroIterator {
             database: i_s.database,
             generics: self.generics,
-            class: Some(ClassLike::ClassRef(self)),
+            class: Some(ClassLike::Class(*self)),
             iterator: class_infos.mro.iter(),
             returned_object: false,
         }
@@ -328,7 +316,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 }
 
-impl<'db> Value<'db> for Class<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -397,8 +385,8 @@ impl<'db> Value<'db> for Class<'db, '_> {
         Some(self)
     }
 
-    fn as_class_like(&self) -> Option<ClassLike<'db, '_>> {
-        Some(ClassLike::ClassRef(self))
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        Some(ClassLike::Class(*self))
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {

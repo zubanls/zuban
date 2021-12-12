@@ -7,16 +7,16 @@ use crate::inferred::Inferred;
 #[derive(Debug)]
 pub struct BoundMethod<'db, 'a> {
     instance: &'a AnyLink,
-    function: &'a dyn Value<'db>,
+    function: &'a dyn Value<'db, 'a>,
 }
 
 impl<'db, 'a> BoundMethod<'db, 'a> {
-    pub fn new(instance: &'a AnyLink, function: &'a dyn Value<'db>) -> Self {
+    pub fn new(instance: &'a AnyLink, function: &'a dyn Value<'db, 'a>) -> Self {
         Self { instance, function }
     }
 }
 
-impl<'db> Value<'db> for BoundMethod<'db, '_> {
+impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
     fn kind(&self) -> ValueKind {
         self.function.kind()
     }
@@ -36,11 +36,14 @@ impl<'db> Value<'db> for BoundMethod<'db, '_> {
     ) -> Inferred<'db> {
         let inferred = Inferred::from_any_link(i_s.database, self.instance);
         // TODO wtf why is this annotation necessary
-        let func: &dyn Value<'_> = self.function;
+        /*
+        let func: &dyn Value<'_, '_> = self.function;
         inferred.run_on_value(i_s, &mut |i_s, value| {
             let instance = value.as_instance().unwrap();
             let args = InstanceArguments::new(instance, args);
             func.execute(i_s, &args)
         })
+        */
+        todo!()
     }
 }

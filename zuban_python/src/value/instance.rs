@@ -20,7 +20,7 @@ impl<'db, 'a> Instance<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
+impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -60,11 +60,11 @@ impl<'db, 'a> Value<'db> for Instance<'db, 'a> {
             .run_on_value(i_s, &mut |i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
 
-    fn as_instance(&self) -> Option<&Instance<'db, '_>> {
+    fn as_instance(&self) -> Option<&Instance<'db, 'a>> {
         Some(self)
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
-        ClassLike::ClassRef(&self.class)
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::Class(self.class)
     }
 }

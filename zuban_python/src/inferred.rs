@@ -270,10 +270,10 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn internal_run<T>(
-        &self,
+    pub fn internal_run<'a, T>(
+        &'a self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
         on_type_var: &mut impl FnMut(Point) -> T,
@@ -291,9 +291,12 @@ impl<'db> Inferred<'db> {
                                 .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
                             let generics = annotation_generics.unwrap_or(Generics::None);
+                            /*
                             inferred.with_instance(i_s, self, generics, |i_s, instance| {
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
+                            */
+                            todo!()
                         }
                         Specific::InstanceWithArguments => {
                             let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
@@ -315,13 +318,9 @@ impl<'db> Inferred<'db> {
                             let class = self.maybe_class(i_s).unwrap();
                             callable(i_s, &class)
                         }
-                        Specific::Param => i_s.infer_param(definition).internal_run(
-                            i_s,
-                            callable,
-                            reducer,
-                            on_missing,
-                            on_type_var,
-                        ),
+                        Specific::Param => {
+                            todo!()
+                        }
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
                         Specific::TypingProtocol
@@ -377,12 +376,12 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    fn run_on_complex<T>(
-        &self,
+    fn run_on_complex<'a, T>(
+        &'a self,
         i_s: &mut InferenceState<'db, '_>,
-        complex: &ComplexPoint,
+        complex: &'a ComplexPoint,
         definition: Option<&NodeReference<'db>>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
     ) -> T {
         match complex {
@@ -401,24 +400,7 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
-            ComplexPoint::Union(lst) => lst
-                .iter()
-                .map(|&p| {
-                    let node_ref = NodeReference::from_link(i_s.database, p);
-                    let point = node_ref.point();
-                    Inferred {
-                        state: InferredState::Saved(node_ref, point),
-                    }
-                    .internal_run(
-                        i_s,
-                        callable,
-                        reducer,
-                        &mut |i_s, i| unreachable!(),
-                        &mut |p| todo!(),
-                    )
-                })
-                .reduce(reducer)
-                .unwrap(),
+            ComplexPoint::Union(lst) => lst.iter().map(|&p| todo!()).reduce(reducer).unwrap(),
             ComplexPoint::BoundMethod(instance_link, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
@@ -463,10 +445,10 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn run_on_value(
+    pub fn run_on_value<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> Self,
+        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db, '_>) -> Self,
     ) -> Self {
         self.internal_run(
             i_s,
@@ -525,7 +507,7 @@ impl<'db> Inferred<'db> {
     pub fn run_mut(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>),
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, '_>),
         mut on_missing: impl FnMut(),
     ) {
         self.internal_run(
@@ -654,12 +636,12 @@ impl<'db> Inferred<'db> {
             .infer_primary_or_atom(definition.as_primary().first())
     }
 
-    fn with_instance<T>(
+    fn with_instance<'a, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        instance: &Self,
-        generics: Generics<'db, '_>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, '_>) -> T,
+        instance: &'a Self,
+        generics: Generics<'db, 'a>,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {

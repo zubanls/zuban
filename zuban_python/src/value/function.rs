@@ -204,7 +204,10 @@ impl<'db> Function<'db> {
     }
 }
 
-impl<'db> Value<'db> for Function<'db> {
+impl<'db, 'a> Value<'db, 'a> for Function<'db>
+where
+    'db: 'a,
+{
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -442,7 +445,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
     }
 }
 
-impl<'db> Value<'db> for OverloadedFunction<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }

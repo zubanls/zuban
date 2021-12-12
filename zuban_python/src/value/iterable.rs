@@ -86,7 +86,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
     }
 }
 
-impl<'db> Value<'db> for ListLiteral<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for ListLiteral<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -164,7 +164,7 @@ impl<'db> Value<'db> for ListLiteral<'db, '_> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         let node_reference = NodeReference::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("list"),
@@ -254,7 +254,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
     }
 }
 
-impl<'db> Value<'db> for DictLiteral<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for DictLiteral<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -321,7 +321,7 @@ impl<'db> Value<'db> for DictLiteral<'db, '_> {
         todo!()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, '_> {
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         let node_reference = NodeReference::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("dict"),

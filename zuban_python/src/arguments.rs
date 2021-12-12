@@ -128,9 +128,10 @@ pub struct InstanceArguments<'db, 'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, 'a> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         let args = self.arguments.iter_arguments();
-        ArgumentIterator::Instance(self.instance, self.arguments)
+        //ArgumentIterator::Instance(self.instance, self.arguments)
+        todo!()
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -163,7 +164,7 @@ impl<'db, 'a> InstanceArguments<'db, 'a> {
 #[derive(Debug)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    PositionalFirst(&'a dyn Value<'db>),
+    PositionalFirst(&'a dyn Value<'db, 'a>),
     Keyword(&'db str, NodeReference<'db>),
     Positional(NodeReference<'db>),
 }
@@ -203,7 +204,7 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(&'a dyn Value<'db>, &'a dyn Arguments<'db>),
+    Instance(&'a dyn Value<'db, 'a>, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 

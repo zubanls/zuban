@@ -15,7 +15,7 @@ impl<'db> Module<'db> {
     }
 }
 
-impl<'db> Value<'db> for Module<'db> {
+impl<'db> Value<'db, '_> for Module<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
