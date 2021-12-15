@@ -106,9 +106,6 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
     ) -> Option<&TypingWithGenerics<'db>> {
         None
     }
-    fn as_tuple_class(&self) -> Option<&TupleClass> {
-        None
-    }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         todo!("{:?}", self)

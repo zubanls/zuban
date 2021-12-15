@@ -166,10 +166,6 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
     }
-
-    fn as_tuple_class(&self) -> Option<&TupleClass> {
-        Some(self)
-    }
 }
 
 #[derive(Debug)]

@@ -227,7 +227,6 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| {
                 v.as_class_like()
                     .map(|c| c.as_generic_part(i_s))
-                    .or_else(|| v.as_tuple_class().map(|c| c.as_generic_part()))
                     .unwrap_or_else(|| {
                         debug!("Generic part not resolvable: {}", v.description(i_s));
                         GenericPart::Unknown

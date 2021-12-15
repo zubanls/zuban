@@ -465,7 +465,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        debug!("Execute Overload {}", self.name());
+        debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args))
             .unwrap_or_else(|| todo!())
