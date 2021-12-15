@@ -321,9 +321,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
         match self {
-            Self::ClassLike(class) => {
-                todo!()
-            }
+            Self::ClassLike(class) => class.infer_type_vars(i_s, value, matcher),
             Self::TypeVar(point) => {
                 let generic = value.as_generic_part(i_s);
                 matcher.add_type_var_class(i_s, *point, generic);

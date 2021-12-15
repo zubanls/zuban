@@ -166,6 +166,10 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
     }
+
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        Some(ClassLike::Tuple(*self))
+    }
 }
 
 #[derive(Debug)]
