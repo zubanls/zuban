@@ -126,7 +126,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         todo!()
     }
 }

@@ -4,7 +4,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::{Class, Function, Instance, Value};
+use crate::value::{Class, ClassLike, Function, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -20,7 +20,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn type_(&self) -> ArgumentsType<'db>;
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>>;
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>>;
 }
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node: Primary<'db>,
     details: ArgumentsDetails<'db>,
     in_: Option<&'a Execution>,
-    class_of_method: Option<&'a Class<'db, 'a>>,
+    class_of_method: Option<Class<'db, 'a>>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
@@ -55,7 +55,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node)
     }
 
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         self.class_of_method
     }
 }
@@ -66,7 +66,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         primary_node: Primary<'db>,
         details: ArgumentsDetails<'db>,
         in_: Option<&'a Execution>,
-        class_of_method: Option<&'a Class<'db, 'a>>,
+        class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
         Self {
             file,
@@ -81,7 +81,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
-        class_of_method: Option<&'a Class<'db, 'a>>,
+        class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
@@ -109,7 +109,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         }
     }
 
-    fn with_class_method(&self, class: &'a Class<'db, 'a>) -> Self {
+    fn with_class_method(&self, class: Class<'db, 'a>) -> Self {
         debug_assert!(self.class_of_method.is_none());
         Self::new(
             self.file,
@@ -123,7 +123,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a> {
-    instance: &'a Instance<'db, 'a>,
+    instance: &'a dyn Value<'db, 'a>,
     arguments: &'a dyn Arguments<'db>,
 }
 
@@ -146,14 +146,18 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
         self.arguments.type_()
     }
 
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'_ Class<'db, '_>> {
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         // TODO getting the class this way is a bad idea.
-        Some(&self.instance.class)
+        if let ClassLike::Class(c) = self.instance.class(i_s) {
+            Some(c)
+        } else {
+            None
+        }
     }
 }
 
 impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(instance: &'a Instance<'db, 'a>, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(instance: &'a dyn Value<'db, 'a>, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
             instance,

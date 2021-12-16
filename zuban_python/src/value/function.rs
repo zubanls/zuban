@@ -237,6 +237,7 @@ where
                     .file
                     .inference(i_s)
                     .infer_annotation_expression_class(expr);
+                // TODO this could also be a tuple...
                 let class = args.class_of_method(i_s);
                 debug!(
                     "Inferring generics for {}{}",

@@ -462,7 +462,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.execute(
                         i_s,
-                        &SimpleArguments::new(f, primary, details, x.as_ref(), value.as_class()),
+                        &SimpleArguments::new(
+                            f,
+                            primary,
+                            details,
+                            x.as_ref(),
+                            value.as_class().cloned(),
+                        ),
                     )
                 })
             }

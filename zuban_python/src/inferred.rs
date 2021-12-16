@@ -290,28 +290,28 @@ impl<'db> Inferred<'db> {
                                 .infer_expression_no_save(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
                             let generics = annotation_generics.unwrap_or(Generics::None);
-                            /*
-                            inferred.with_instance(i_s, self, generics, |i_s, instance| {
+                            inferred.with_instance(i_s, self, Generics::None, |i_s, instance| {
+                                // TODO generics????
                                 callable(&mut i_s.with_annotation_instance(), instance)
                             })
-                            */
-                            todo!()
                         }
                         Specific::InstanceWithArguments => {
                             let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
+                            /*
                             let class = inf_cls.maybe_class(i_s).unwrap();
                             let args = SimpleArguments::from_primary(
                                 definition.file,
                                 definition.as_primary(),
                                 None,
-                                Some(&class),
+                                Some(class),
                             );
                             let (init, generics) = class.init_func(i_s, &args);
                             debug_assert!(generics.is_none());
-                            inf_cls.with_instance(i_s, self, Generics::None, |i_s, instance| {
-                                let args = InstanceArguments::new(instance, &args);
-                                callable(&mut i_s.with_func_and_args(&init, &args), instance)
-                            })
+                            let instance = Instance::new(class, self);
+                            let args = InstanceArguments::new(&instance, &args);
+                            callable(&mut i_s.with_func_and_args(&init, &args), &instance)
+                            */
+                            todo!()
                         }
                         Specific::SimpleGeneric => {
                             let class = self.maybe_class(i_s).unwrap();
@@ -599,7 +599,7 @@ impl<'db> Inferred<'db> {
                             definition.file,
                             definition.as_primary(),
                             None,
-                            Some(&class),
+                            Some(class),
                         );
                         let (init, generics) = class.init_func(i_s, &args);
                         debug_assert!(generics.is_none());
@@ -640,7 +640,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         instance: &'a Self,
         generics: Generics<'db, 'a>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
@@ -659,10 +659,7 @@ impl<'db> Inferred<'db> {
                     callable(i_s, &instance.use_instance(*definition, generics))
                 }
             }
-            InferredState::UnsavedComplex(complex) => {
-                todo!("{:?}", complex)
-            }
-            InferredState::Unknown => unreachable!(),
+            _ => unreachable!("{:?}", self.state),
         }
     }
 
