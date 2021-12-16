@@ -114,7 +114,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
             Self::Class(c) => c.as_generic_part(i_s),
-            Self::Tuple(c) => todo!(),
+            Self::Tuple(t) => t.as_generic_part(),
         }
     }
 }

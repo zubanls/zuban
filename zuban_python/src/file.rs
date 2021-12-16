@@ -386,32 +386,42 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(pub infer_expression, Self::_infer_expression, Expression);
     fn _infer_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        let inferred = self.infer_expression_no_save(expr);
-        inferred.save_redirect(self.file, expr.index())
-    }
-
-    pub fn infer_expression_no_save(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        match expr.unpack() {
+        let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(_) => todo!(),
-        }
+        };
+        inferred.save_redirect(self.file, expr.index())
     }
 
     pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        let mut inf_state = self.i_s.with_annotation_instance();
-        let mut inference = self.file.inference(&mut inf_state);
+        let expr_part_index = expr.index() + 1;
+        let mut i_s = self.i_s.with_annotation_instance();
+        let mut inference = self.file.inference(&mut i_s);
+        if let Some(inferred) = self.check_point_cache(expr_part_index) {
+            return inferred;
+        }
         // Since the expression is reserved for instantiating the expression, just do not
         // save the result.
-        inference.infer_expression_no_save(expr)
+        match expr.unpack() {
+            ExpressionContent::ExpressionPart(n) => {
+                let inferred = inference.infer_expression_part(n);
+                if self.file.points.get(expr_part_index).calculated() {
+                    inferred
+                } else {
+                    inferred.save_redirect(self.file, expr_part_index)
+                }
+            }
+            ExpressionContent::Lambda(_) | ExpressionContent::Ternary(_) => Inferred::new_unknown(),
+        }
     }
 
     pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
         // Make sure that we're not working "inside" of a function/closure. Annotations are always
         // considered global and should not use params or local state.
-        let mut inf_state = self.i_s.with_annotation_instance();
-        let mut inference = self.file.inference(&mut inf_state);
-        let inferred = inference.infer_expression_no_save(expr);
+        let mut i_s = self.i_s.with_annotation_instance();
+        let mut inference = self.file.inference(&mut i_s);
+        let inferred = inference.infer_annotation_expression_class(expr);
         // TODO locality is wrong!!!!!1
         let point = if let Some(p) = inferred.maybe_numbered_type_var() {
             todo!("Probably just remove this if, it should be unreachable")

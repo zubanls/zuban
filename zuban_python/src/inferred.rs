@@ -182,6 +182,12 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn new_unknown() -> Self {
+        Self {
+            state: InferredState::Unknown,
+        }
+    }
+
     pub fn from_generic_class(db: &'db Database, generic: &GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) => {
@@ -287,7 +293,7 @@ impl<'db> Inferred<'db> {
                             let inferred = definition
                                 .file
                                 .inference(i_s)
-                                .infer_expression_no_save(definition.as_expression());
+                                .infer_annotation_expression_class(definition.as_expression());
                             let annotation_generics = inferred.expect_generics();
                             let generics = annotation_generics.unwrap_or(Generics::None);
                             inferred.with_instance(i_s, self, Generics::None, |i_s, instance| {
@@ -444,7 +450,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn run_on_value<'a>(
+    pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db, '_>) -> Self,
@@ -958,7 +964,7 @@ impl<'db> Inferred<'db> {
     pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.as_class_like().is_some(),
+            &mut |i_s, v| v.as_class().is_some(),
             &|i1, i2| i1 & i2,
             &mut |i_s, inferred| false,
             &mut |p| false,
