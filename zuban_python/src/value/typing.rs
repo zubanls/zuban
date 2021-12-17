@@ -3,7 +3,7 @@ use parsa_python_ast::{Name, PrimaryContent};
 use super::{ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent,
+    ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent, TypeVarIndex,
 };
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -202,5 +202,36 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::Tuple(TupleClass::new(self.content))
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        match slice_type {
+            SliceType::Simple(simple) => {
+                if let Some(wanted) = simple.infer(i_s).expect_int() {
+                    let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                    self.content
+                        .generics
+                        .as_ref()
+                        .and_then(|generics| {
+                            generics.nth(TypeVarIndex::new(index)).map(|generic_part| {
+                                Inferred::from_generic_class(i_s.database, generic_part.clone())
+                            })
+                        })
+                        .unwrap_or_else(Inferred::new_unknown)
+                } else {
+                    todo!()
+                }
+            }
+            SliceType::Slice(simple) => {
+                todo!()
+            }
+            SliceType::Slices(simple) => {
+                todo!()
+            }
+        }
     }
 }

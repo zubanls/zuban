@@ -188,25 +188,25 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn from_generic_class(db: &'db Database, generic: &GenericPart) -> Self {
+    pub fn from_generic_class(db: &'db Database, generic: GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) | GenericPart::TypeVar(link) => {
-                let node_reference = NodeReference::from_link(db, *link);
+                let node_reference = NodeReference::from_link(db, link);
                 InferredState::Saved(node_reference, node_reference.point())
             }
             GenericPart::GenericClass(l, g) => {
-                InferredState::UnsavedComplex(ComplexPoint::GenericClass(*l, g.clone()))
+                InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
             }
             GenericPart::Union(multiple) => {
                 let mut multiple = multiple.iter();
-                let mut inferred = Self::from_generic_class(db, multiple.next().unwrap());
+                let mut inferred = Self::from_generic_class(db, multiple.next().unwrap().clone());
                 for m in multiple {
-                    inferred = inferred.union(Self::from_generic_class(db, m));
+                    inferred = inferred.union(Self::from_generic_class(db, m.clone()));
                 }
                 return inferred;
             }
             GenericPart::Tuple(content) => {
-                todo!()
+                InferredState::UnsavedComplex(ComplexPoint::Tuple(content))
             }
             GenericPart::Callable(content) => {
                 todo!()

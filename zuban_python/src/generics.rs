@@ -41,7 +41,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             }
             Self::Slices(file, slices) => todo!(),
             Self::List(l) => l.nth(n).map(|g| {
-                Inferred::from_generic_class(i_s.database, g).execute_annotation_class(i_s)
+                Inferred::from_generic_class(i_s.database, g.clone()).execute_annotation_class(i_s)
             }),
             Self::None => None,
         }
@@ -116,7 +116,7 @@ impl<'db> GenericsIterator<'db, '_> {
             }
             Self::GenericsList(iterator) => iterator
                 .next()
-                .map(|g| Inferred::from_generic_class(i_s.database, g)),
+                .map(|g| Inferred::from_generic_class(i_s.database, g.clone())),
             GenericsIterator::None => None,
         }
     }
@@ -144,7 +144,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 }
                 Self::GenericsList(iterator) => {
                     if let Some(g) = iterator.next() {
-                        Inferred::from_generic_class(i_s.database, g)
+                        Inferred::from_generic_class(i_s.database, g.clone())
                     } else {
                         return;
                     }
@@ -242,7 +242,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 .as_ref()
                 .unwrap()
                 .nth(index)
-                .map(|g| Inferred::from_generic_class(i_s.database, g))
+                .map(|g| Inferred::from_generic_class(i_s.database, g.clone()))
                 .unwrap_or_else(|| todo!())
         } else {
             self.calculate_type_vars(i_s);
@@ -372,8 +372,43 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<Class<'db, '_>>,
-        function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
     ) -> Inferred<'db> {
-        todo!()
+        let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
+        Inferred::from_generic_class(i_s.database, generic_part)
+    }
+
+    fn internal_resolve_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<Class<'db, '_>>,
+        function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+    ) -> GenericPart {
+        match self {
+            Self::ClassLike(class) => class.as_generic_part(i_s),
+            Self::TypeVar(node_ref) => {
+                let point = node_ref.point();
+                match point.specific() {
+                    Specific::ClassTypeVar => class
+                        .unwrap()
+                        .generics
+                        .nth(i_s, point.type_var_index())
+                        .unwrap()
+                        .as_generic_part(i_s),
+                    Specific::FunctionTypeVar => function_matcher
+                        .as_mut()
+                        .unwrap()
+                        .nth(i_s, point.type_var_index())
+                        .as_generic_part(i_s),
+                    _ => unreachable!(),
+                }
+            }
+            Self::Union(list) => GenericPart::Union(
+                list.iter()
+                    .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))
+                    .collect(),
+            ),
+            Self::Invalid => GenericPart::Unknown,
+        }
     }
 }

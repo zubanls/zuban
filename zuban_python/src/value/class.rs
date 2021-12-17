@@ -119,7 +119,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
-    pub(super) generics: Generics<'db, 'a>,
+    pub generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
