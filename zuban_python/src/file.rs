@@ -432,8 +432,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match generic {
                 GenericPart::Class(_)
                 | GenericPart::GenericClass(_, _)
-                | GenericPart::FunctionTypeVar(_) => unreachable!(),
-                GenericPart::ClassTypeVar(_) => unreachable!(),
+                | GenericPart::TypeVar(_) => unreachable!(),
                 GenericPart::Union(_) => todo!(),
                 GenericPart::Type(_) => todo!(),
                 GenericPart::Tuple(content) => {

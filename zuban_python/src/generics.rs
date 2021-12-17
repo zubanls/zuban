@@ -10,7 +10,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred};
+use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::{ClassLike, Function, Value};
 
 #[derive(Debug, Clone, Copy)]
@@ -328,7 +328,7 @@ pub fn search_type_vars<'db>(
 
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    TypeVar(Point),
+    TypeVar(NodeReference<'db>),
     Union(Vec<GenericOption<'db, 'a>>),
     Invalid,
 }
@@ -357,9 +357,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     ) {
         match self {
             Self::ClassLike(class) => class.infer_type_vars(i_s, value, matcher),
-            Self::TypeVar(point) => {
+            Self::TypeVar(node_ref) => {
                 let generic = value.as_generic_part(i_s);
-                matcher.add_type_var_class(i_s, *point, generic);
+                matcher.add_type_var_class(i_s, node_ref.point(), generic);
             }
             Self::Union(list) => {
                 todo!()

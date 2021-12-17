@@ -190,7 +190,7 @@ impl<'db> Inferred<'db> {
 
     pub fn from_generic_class(db: &'db Database, generic: &GenericPart) -> Self {
         let state = match generic {
-            GenericPart::Class(link) => {
+            GenericPart::Class(link) | GenericPart::TypeVar(link) => {
                 let node_reference = NodeReference::from_link(db, *link);
                 InferredState::Saved(node_reference, node_reference.point())
             }
@@ -215,7 +215,6 @@ impl<'db> Inferred<'db> {
                 todo!("{:?}", c);
             }
             GenericPart::Unknown => InferredState::Unknown,
-            GenericPart::ClassTypeVar(_) | GenericPart::FunctionTypeVar(_) => unreachable!(),
         };
         Self { state }
     }
@@ -243,14 +242,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic part not found: {}", inf.description(i_s));
                 GenericPart::Unknown
             },
-            &mut |point| {
-                if point.specific() == Specific::ClassTypeVar {
-                    GenericPart::ClassTypeVar(point.type_var_index())
-                } else {
-                    debug_assert_eq!(point.specific(), Specific::FunctionTypeVar);
-                    GenericPart::FunctionTypeVar(point.type_var_index())
-                }
-            },
+            &mut |node_ref| GenericPart::TypeVar(node_ref.as_link()),
         )
     }
 
@@ -270,7 +262,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic part is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
             },
-            &mut |point| GenericOption::TypeVar(point),
+            &mut |node_ref| GenericOption::TypeVar(node_ref),
         )
     }
 
@@ -281,7 +273,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(Point) -> T,
+        on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
@@ -345,7 +337,9 @@ impl<'db> Inferred<'db> {
                                 unreachable!()
                             }
                         }
-                        Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(*point),
+                        Specific::ClassTypeVar | Specific::FunctionTypeVar => {
+                            on_type_var(*definition)
+                        }
                         _ => {
                             let instance = self.resolve_specific(i_s.database, specific);
                             callable(i_s, &instance)
@@ -902,7 +896,13 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
             &mut |i_s, inferred| "Unknown".to_owned(),
-            &mut |p| format!("{:?} {:?}", p.specific(), p.type_var_index()),
+            &mut |node_ref| {
+                format!(
+                    "{:?} {:?}",
+                    node_ref.point().specific(),
+                    node_ref.point().type_var_index()
+                )
+            },
         )
     }
 
