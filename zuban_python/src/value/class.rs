@@ -40,19 +40,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     if self.matches_without_generics(&class_like) {
                         some_class_matches = true;
                         let mut value_generics = class_like.generics().iter();
-                        let mut generics = self.generics().iter();
-                        while let Some(generic) = generics.next(i_s) {
-                            let value_generic = value_generics.next(i_s);
-                            if let Some(inf) = value_generic {
-                                if let Some(point) = generic.maybe_numbered_type_var() {
-                                    matcher.add_type_var(i_s, point, &inf)
-                                } else if let Some(c) = generic.maybe_class_like(i_s) {
-                                    c.infer_type_vars(i_s, inf, matcher);
-                                    todo!()
+                        self.generics().iter().run_on_all_generic_options(
+                            i_s,
+                            |i_s, generic_option| {
+                                let value_generic = value_generics.next(i_s);
+                                if let Some(inf) = value_generic {
+                                    generic_option.infer_type_vars(i_s, inf, matcher);
                                 }
-                            }
-                        }
-                        //break;
+                            },
+                        );
                     }
                 }
             },

@@ -120,6 +120,41 @@ impl<'db> GenericsIterator<'db, '_> {
             GenericsIterator::None => None,
         }
     }
+
+    pub fn run_on_all_generic_options(
+        mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut callable: impl FnMut(&mut InferenceState<'db, '_>, &GenericOption<'db, '_>),
+    ) {
+        loop {
+            let inferred = match &mut self {
+                Self::Expression(file, expr) => {
+                    let result = file.inference(i_s).infer_annotation_expression_class(*expr);
+                    let g = result.as_generic_option(i_s);
+                    callable(i_s, &g);
+                    return;
+                }
+                Self::SliceIterator(file, iter) => {
+                    if let Some(SlicesContent::NamedExpression(s)) = iter.next() {
+                        file.inference(i_s)
+                            .infer_annotation_expression_class(s.expression())
+                    } else {
+                        return;
+                    }
+                }
+                Self::GenericsList(iterator) => {
+                    if let Some(g) = iterator.next() {
+                        Inferred::from_generic_class(i_s.database, g)
+                    } else {
+                        return;
+                    }
+                }
+                GenericsIterator::None => return,
+            };
+            let generic_option = inferred.as_generic_option(i_s);
+            callable(i_s, &generic_option);
+        }
+    }
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
