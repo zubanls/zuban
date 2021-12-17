@@ -231,42 +231,24 @@ where
             let func_type_vars = self.calculated_type_vars(i_s, args);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
-                todo!();
-                let inferred = self
-                    .reference
-                    .file
-                    .inference(i_s)
-                    .infer_annotation_expression_class(expr);
-                // TODO this could also be a tuple...
                 let class = args.class_of_method(i_s);
-                debug!(
-                    "Inferring generics for {}{}",
-                    format!(
-                        "{}.",
-                        class
-                            .map(|c| c.as_string(i_s))
-                            .unwrap_or_else(|| "".to_owned())
-                    ),
-                    self.name()
-                );
-
-                let finder = func_type_vars.map(|t| {
+                // TODO this could also be a tuple...
+                let mut finder = func_type_vars.map(|t| {
                     TypeVarMatcher::new(self, args, false, Some(t), Specific::FunctionTypeVar)
                 });
-                inferred
-                    .maybe_numbered_type_var()
-                    .map(|point| match point.specific() {
-                        Specific::ClassTypeVar => class
-                            .unwrap()
-                            .generics
-                            .nth(i_s, point.type_var_index())
-                            .unwrap(),
-                        Specific::FunctionTypeVar => {
-                            finder.unwrap().nth(i_s, point.type_var_index())
-                        }
-                        _ => unreachable!(),
-                    })
-                    .unwrap_or(inferred)
+                debug!(
+                    "Inferring generics for {}{}",
+                    class
+                        .map(|c| format!("{}.", c.as_string(i_s)))
+                        .unwrap_or_else(|| "".to_owned()),
+                    self.name()
+                );
+                self.reference
+                    .file
+                    .inference(i_s)
+                    .infer_annotation_expression_class(expr)
+                    .as_generic_option(i_s)
+                    .resolve_type_vars(i_s, class, finder.as_mut())
             } else {
                 self.reference
                     .file

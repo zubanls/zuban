@@ -11,7 +11,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
-use crate::value::{ClassLike, Function, Value};
+use crate::value::{Class, ClassLike, Function, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
@@ -366,5 +366,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }
             Self::Invalid => matcher.does_not_match(),
         }
+    }
+
+    pub fn resolve_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<Class<'db, '_>>,
+        function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+    ) -> Inferred<'db> {
+        todo!()
     }
 }
