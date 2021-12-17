@@ -375,6 +375,10 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
     ) -> Inferred<'db> {
         let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
+        debug!(
+            "Resolved type vars: {}",
+            generic_part.as_type_string(i_s.database)
+        );
         Inferred::from_generic_class(i_s.database, generic_part)
     }
 
@@ -384,25 +388,32 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         class: Option<Class<'db, '_>>,
         function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
     ) -> GenericPart {
-        match self {
-            Self::ClassLike(class) => class.as_generic_part(i_s),
-            Self::TypeVar(node_ref) => {
-                let point = node_ref.point();
-                match point.specific() {
-                    Specific::ClassTypeVar => class
-                        .unwrap()
-                        .generics
-                        .nth(i_s, point.type_var_index())
-                        .unwrap()
-                        .as_generic_part(i_s),
-                    Specific::FunctionTypeVar => function_matcher
-                        .as_mut()
-                        .unwrap()
-                        .nth(i_s, point.type_var_index())
-                        .as_generic_part(i_s),
-                    _ => unreachable!(),
-                }
+        let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
+                                function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+                                node_ref: &NodeReference| {
+            let point = node_ref.point();
+            match point.specific() {
+                Specific::ClassTypeVar => class
+                    .unwrap()
+                    .generics
+                    .nth(i_s, point.type_var_index())
+                    .unwrap()
+                    .as_generic_part(i_s),
+                Specific::FunctionTypeVar => function_matcher
+                    .as_mut()
+                    .unwrap()
+                    .nth(i_s, point.type_var_index())
+                    .as_generic_part(i_s),
+                _ => unreachable!(),
             }
+        };
+
+        match self {
+            Self::ClassLike(c) => c.as_generic_part(i_s).replace_type_vars(&mut |link| {
+                let node_ref = NodeReference::from_link(i_s.database, link);
+                resolve_type_var(i_s, function_matcher, &node_ref)
+            }),
+            Self::TypeVar(node_ref) => resolve_type_var(i_s, function_matcher, node_ref),
             Self::Union(list) => GenericPart::Union(
                 list.iter()
                     .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))

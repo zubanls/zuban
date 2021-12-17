@@ -13,6 +13,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
+use crate::inferred::NodeReference;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 
@@ -509,7 +510,7 @@ pub enum GenericPart {
 }
 
 impl GenericPart {
-    pub fn union<'db>(self, other: GenericPart) -> Self {
+    pub fn union(self, other: GenericPart) -> Self {
         match self {
             Self::Union(list) => {
                 let mut vec = list.into_vec();
@@ -553,8 +554,81 @@ impl GenericPart {
         }
     }
 
-    fn union_in_place<'db>(&mut self, other: GenericPart) {
+    fn union_in_place(&mut self, other: GenericPart) {
         *self = mem::replace(self, Self::Unknown).union(other);
+    }
+
+    pub fn as_type_string(&self, db: &Database) -> String {
+        let class_name = |link| {
+            NodeReference::from_link(db, link)
+                .maybe_class()
+                .unwrap()
+                .name()
+                .as_str()
+        };
+        match self {
+            Self::Class(link) => class_name(*link).to_owned(),
+            Self::GenericClass(link, generics) => {
+                format!(
+                    "{}[{}]",
+                    class_name(*link),
+                    Self::generics_as_string(db, &generics.0)
+                )
+            }
+            Self::Union(list) => {
+                format!("Union[{}]", Self::generics_as_string(db, list))
+            }
+            Self::TypeVar(link) => NodeReference::from_link(db, *link)
+                .as_name()
+                .as_str()
+                .to_owned(),
+            Self::Type(generic_part) => format!("Type[{}]", generic_part.as_type_string(db)),
+            Self::Tuple(content) => format!(
+                "Tuple[{}]",
+                content
+                    .generics
+                    .as_ref()
+                    .map(|list| Self::generics_as_string(db, &list.0))
+                    .unwrap_or_else(|| "Tuple".to_owned())
+            ),
+            Self::Callable(content) => todo!(),
+            Self::Unknown => "Unknown".to_owned(),
+        }
+    }
+
+    fn generics_as_string(db: &Database, list: &[GenericPart]) -> String {
+        list.iter()
+            .map(|g| g.as_type_string(db))
+            .fold(String::new(), |a, b| a + &b + ",")
+    }
+
+    pub fn replace_type_vars<C: FnMut(PointLink) -> Self>(self, callable: &mut C) -> Self {
+        let replace_list = |list: &mut Box<[GenericPart]>, callable: &mut C| {
+            for item in list.iter_mut() {
+                let g = std::mem::replace(&mut *item, GenericPart::Unknown);
+                *item = g.replace_type_vars(callable);
+            }
+        };
+        match self {
+            Self::Class(_) | Self::Unknown => self,
+            Self::GenericClass(link, generics) => Self::GenericClass(link, generics),
+            Self::Union(list) => {
+                todo!()
+            }
+            Self::TypeVar(link) => callable(link),
+            Self::Type(mut generic_part) => {
+                let g = std::mem::replace(&mut *generic_part, GenericPart::Unknown);
+                *generic_part = g.replace_type_vars(callable);
+                Self::Type(generic_part)
+            }
+            Self::Tuple(mut content) => {
+                if let Some(generics) = content.generics.as_mut() {
+                    replace_list(&mut generics.0, callable)
+                }
+                Self::Tuple(content)
+            }
+            Self::Callable(content) => todo!(),
+        }
     }
 }
 
