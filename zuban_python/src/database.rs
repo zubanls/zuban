@@ -495,13 +495,23 @@ impl GenericsList {
     pub fn iter(&self) -> std::slice::Iter<GenericPart> {
         self.0.iter()
     }
+
+    pub fn as_string(&self, db: &Database) -> String {
+        Self::generics_as_string(db, &self.0)
+    }
+
+    fn generics_as_string(db: &Database, list: &[GenericPart]) -> String {
+        list.iter()
+            .map(|g| g.as_type_string(db))
+            .fold(String::new(), |a, b| a + &b + ",")
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum GenericPart {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
-    Union(Box<[GenericPart]>),
+    Union(GenericsList),
     TypeVar(PointLink),
     Type(Box<GenericPart>),
     Tuple(TupleContent),
@@ -513,10 +523,10 @@ impl GenericPart {
     pub fn union(self, other: GenericPart) -> Self {
         match self {
             Self::Union(list) => {
-                let mut vec = list.into_vec();
+                let mut vec = list.0.into_vec();
                 match other {
                     Self::Union(other_list) => {
-                        for o in other_list.into_vec().into_iter() {
+                        for o in other_list.0.into_vec().into_iter() {
                             if !vec.contains(&o) {
                                 vec.push(o);
                             }
@@ -529,17 +539,17 @@ impl GenericPart {
                         }
                     }
                 };
-                Self::Union(vec.into_boxed_slice())
+                Self::Union(GenericsList::new(vec.into_boxed_slice()))
             }
             Self::Unknown => other,
             _ => match other {
                 Self::Union(list) => {
-                    if list.contains(&self) {
+                    if list.0.contains(&self) {
                         Self::Union(list)
                     } else {
-                        let mut vec = list.into_vec();
+                        let mut vec = list.0.into_vec();
                         vec.push(self);
-                        Self::Union(vec.into_boxed_slice())
+                        Self::Union(GenericsList::new(vec.into_boxed_slice()))
                     }
                 }
                 Self::Unknown => self,
@@ -547,7 +557,7 @@ impl GenericPart {
                     if self == other {
                         self
                     } else {
-                        Self::Union(Box::new([self, other]))
+                        Self::Union(GenericsList::new(Box::new([self, other])))
                     }
                 }
             },
@@ -569,14 +579,10 @@ impl GenericPart {
         match self {
             Self::Class(link) => class_name(*link).to_owned(),
             Self::GenericClass(link, generics) => {
-                format!(
-                    "{}[{}]",
-                    class_name(*link),
-                    Self::generics_as_string(db, &generics.0)
-                )
+                format!("{}[{}]", class_name(*link), generics.as_string(db))
             }
             Self::Union(list) => {
-                format!("Union[{}]", Self::generics_as_string(db, list))
+                format!("Union[{}]", list.as_string(db))
             }
             Self::TypeVar(link) => NodeReference::from_link(db, *link)
                 .as_name()
@@ -588,18 +594,12 @@ impl GenericPart {
                 content
                     .generics
                     .as_ref()
-                    .map(|list| Self::generics_as_string(db, &list.0))
+                    .map(|list| list.as_string(db))
                     .unwrap_or_else(|| "Tuple".to_owned())
             ),
             Self::Callable(content) => todo!(),
             Self::Unknown => "Unknown".to_owned(),
         }
-    }
-
-    fn generics_as_string(db: &Database, list: &[GenericPart]) -> String {
-        list.iter()
-            .map(|g| g.as_type_string(db))
-            .fold(String::new(), |a, b| a + &b + ",")
     }
 
     pub fn replace_type_vars<C: FnMut(PointLink) -> Self>(self, callable: &mut C) -> Self {

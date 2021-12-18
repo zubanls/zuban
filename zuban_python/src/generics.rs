@@ -234,6 +234,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if iter.has_unused_argument() {
             self.matches = false
         }
+        if let Some(calculated) = &self.calculated_type_vars {
+            debug!(
+                "Calculated type vars {} for {}",
+                calculated.as_string(i_s.database),
+                self.function.name()
+            );
+        }
     }
 
     pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
@@ -414,11 +421,11 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 resolve_type_var(i_s, function_matcher, &node_ref)
             }),
             Self::TypeVar(node_ref) => resolve_type_var(i_s, function_matcher, node_ref),
-            Self::Union(list) => GenericPart::Union(
+            Self::Union(list) => GenericPart::Union(GenericsList::new(
                 list.iter()
                     .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))
                     .collect(),
-            ),
+            )),
             Self::Invalid => GenericPart::Unknown,
         }
     }
