@@ -30,19 +30,19 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Option<Inferred<'db>> {
+    fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Option<Inferred<'db>> {
         match self {
             Self::Expression(file, expr) => {
                 if n.is_zero() {
-                    Some(file.inference(i_s).infer_annotation_expression(*expr))
+                    Some(file.inference(i_s).infer_annotation_expression_class(*expr))
                 } else {
                     None
                 }
             }
             Self::Slices(file, slices) => todo!(),
-            Self::List(l) => l.nth(n).map(|g| {
-                Inferred::from_generic_class(i_s.database, g.clone()).execute_annotation_class(i_s)
-            }),
+            Self::List(l) => l
+                .nth(n)
+                .map(|g| Inferred::from_generic_class(i_s.database, g.clone())),
             Self::None => None,
         }
     }
@@ -243,7 +243,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
+    fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
         if let Some(type_vars) = &self.calculated_type_vars {
             self.calculated_type_vars
                 .as_ref()
@@ -253,7 +253,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 .unwrap_or_else(|| todo!())
         } else {
             self.calculate_type_vars(i_s);
-            self.nth(i_s, index).execute_annotation_class(i_s)
+            self.nth(i_s, index)
         }
     }
 
