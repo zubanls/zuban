@@ -119,6 +119,6 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
     }
 
     fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        todo!()
+        todo!("{}", self.description(i_s))
     }
 }

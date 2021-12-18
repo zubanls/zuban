@@ -52,13 +52,12 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
                     for child in elements {
                         match child {
                             ListElement::NamedExpression(named_expr) => {
-                                todo!("generic parts are wrong here probably");
                                 self.infer_named_expr(i_s, named_expr).run_mut(
                                     i_s,
                                     &mut |i_s, v| {
                                         result =
                                             std::mem::replace(&mut result, GenericPart::Unknown)
-                                                .union(v.as_generic_part(i_s));
+                                                .union(v.class(i_s).as_generic_part(i_s));
                                     },
                                     || todo!(),
                                 );
@@ -217,12 +216,11 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {
-                        todo!("generic parts are wrong here probably");
                         self.infer_expr(i_s, key_value.key()).run_mut(
                             i_s,
                             &mut |i_s, v| {
                                 keys = std::mem::replace(&mut keys, GenericPart::Unknown)
-                                    .union(v.as_generic_part(i_s));
+                                    .union(v.class(i_s).as_generic_part(i_s));
                             },
                             || todo!(),
                         );
@@ -230,7 +228,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
                             i_s,
                             &mut |i_s, v| {
                                 values = std::mem::replace(&mut values, GenericPart::Unknown)
-                                    .union(v.as_generic_part(i_s));
+                                    .union(v.class(i_s).as_generic_part(i_s));
                             },
                             || todo!(),
                         );
