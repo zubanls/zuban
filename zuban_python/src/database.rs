@@ -503,7 +503,13 @@ impl GenericsList {
     fn generics_as_string(db: &Database, list: &[GenericPart]) -> String {
         list.iter()
             .map(|g| g.as_type_string(db))
-            .fold(String::new(), |a, b| a + &b + ",")
+            .fold(String::new(), |a, b| {
+                if a.is_empty() {
+                    a + &b
+                } else {
+                    a + &b + ","
+                }
+            })
     }
 }
 

@@ -236,9 +236,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         if let Some(calculated) = &self.calculated_type_vars {
             debug!(
-                "Calculated type vars {} for {}",
+                "Calculated type vars: {}[{}]",
+                self.function.name(),
                 calculated.as_string(i_s.database),
-                self.function.name()
             );
         }
     }
@@ -333,6 +333,7 @@ pub fn search_type_vars<'db>(
     }
 }
 
+#[derive(Debug)]
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(NodeReference<'db>),
