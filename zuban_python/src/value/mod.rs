@@ -59,6 +59,17 @@ pub enum ValueKind {
     TypeParameter = 26,
 }
 
+#[macro_export]
+macro_rules! base_description {
+    ($value:ident) => {
+        format!(
+            "{} {}",
+            format!("{:?}", $value.kind()).to_lowercase(),
+            $value.name()
+        )
+    };
+}
+
 pub trait Value<'db, 'a>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
@@ -67,11 +78,7 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
     fn name(&self) -> &'db str;
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        format!(
-            "{} {}",
-            format!("{:?}", self.kind()).to_lowercase(),
-            self.name()
-        )
+        base_description!(self)
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;

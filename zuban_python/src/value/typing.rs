@@ -2,6 +2,7 @@ use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
+use crate::base_description;
 use crate::database::{
     ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent, TypeVarIndex,
 };
@@ -185,6 +186,14 @@ impl<'a> Tuple<'a> {
     pub fn as_generic_part(&self) -> GenericPart {
         GenericPart::Tuple(self.content.clone())
     }
+
+    fn description(&self, i_s: &mut InferenceState) -> String {
+        let base = base_description!(self);
+        if let Some(generics) = &self.content.generics {
+            return base + "[" + &generics.as_string(i_s.database) + "]";
+        }
+        base
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
@@ -233,5 +242,13 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 todo!()
             }
         }
+    }
+
+    fn description(&self, i_s: &mut InferenceState) -> String {
+        let base = base_description!(self);
+        if let Some(generics) = &self.content.generics {
+            return base + "[" + &generics.as_string(i_s.database) + "]";
+        }
+        base
     }
 }
