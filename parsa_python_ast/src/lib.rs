@@ -1551,6 +1551,11 @@ impl<'db> Primary<'db> {
             PrimaryContent::Execution(ArgumentsDetails::None)
         }
     }
+
+    pub fn expect_slice(&self) -> SliceType<'db> {
+        let second = self.node.nth_child(2);
+        SliceType::NamedExpression(NamedExpression::new(second))
+    }
 }
 
 pub enum PrimaryOrAtom<'db> {

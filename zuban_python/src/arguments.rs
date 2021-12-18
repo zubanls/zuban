@@ -122,12 +122,12 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct InstanceArguments<'db, 'a> {
-    instance: &'a dyn Value<'db, 'a>,
+pub struct InstanceArguments<'db, 'a, 'b> {
+    instance: &'a dyn Value<'db, 'b>,
     arguments: &'a dyn Arguments<'db>,
 }
 
-impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
+impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         let args = self.arguments.iter_arguments();
         //ArgumentIterator::Instance(self.instance, self.arguments)
@@ -156,8 +156,8 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a> {
     }
 }
 
-impl<'db, 'a> InstanceArguments<'db, 'a> {
-    pub fn new(instance: &'a dyn Value<'db, 'a>, arguments: &'a dyn Arguments<'db>) -> Self {
+impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
+    pub fn new(instance: &'a dyn Value<'db, 'b>, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
             instance,
