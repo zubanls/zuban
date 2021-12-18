@@ -8,7 +8,7 @@ use crate::file_state::{File, Issue, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, NodeReference};
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
@@ -570,7 +570,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             if let Some(name) = name {
                                 inference._infer_name(name)
                             } else {
-                                todo!("{:?}, {:?}", inference.file.file_index().0, node_index)
+                                todo!(
+                                    "{}",
+                                    NodeReference::new(inference.file, node_index)
+                                        .debug_info(self.i_s.database)
+                                )
                             }
                         })
                     };

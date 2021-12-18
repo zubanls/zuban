@@ -28,6 +28,10 @@ impl Tree {
     }
 }
 
+pub fn debug_info(tree: &Tree, index: NodeIndex) -> String {
+    format!("{:?}", tree.0.node_by_index(index))
+}
+
 pub trait InterestingNodeSearcher<'db> {
     fn search_interesting_nodes(&self) -> InterestingNodes<'db>;
 }

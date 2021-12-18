@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
+    debug_info, Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
     PrimaryContent, SimpleParamType,
 };
 use std::fmt;
@@ -144,6 +144,14 @@ impl<'db> NodeReference<'db> {
                 }
             }
         })
+    }
+
+    pub fn debug_info(&self, db: &Database) -> String {
+        format!(
+            "{}: {}",
+            self.file.file_path(db),
+            debug_info(&self.file.tree, self.node_index)
+        )
     }
 }
 
