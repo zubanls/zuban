@@ -9,6 +9,7 @@ use crate::inferred::NodeReference;
 pub struct PythonState {
     builtins: *const PythonFile,
     typing: *const PythonFile,
+    collections: *const PythonFile,
     object_node_index: NodeIndex,
 }
 
@@ -17,6 +18,7 @@ impl PythonState {
         Self {
             builtins: null(),
             typing: null(),
+            collections: null(),
             object_node_index: 0,
         }
     }
@@ -25,9 +27,11 @@ impl PythonState {
         database: &mut Database,
         builtins: *const PythonFile,
         typing: *const PythonFile,
+        collections: *const PythonFile,
     ) {
         database.python_state.builtins = builtins;
         database.python_state.typing = typing;
+        database.python_state.collections = collections;
         let builtins = database.python_state.builtins();
         builtins.calculate_global_definitions_and_references();
 
@@ -40,7 +44,8 @@ impl PythonState {
             .get(object_name_index)
             .node_index();
 
-        typing_changes(database.python_state.typing());
+        let s = &database.python_state;
+        typing_changes(s.typing(), s.builtins(), s.collections());
     }
 
     #[inline]
@@ -51,6 +56,12 @@ impl PythonState {
 
     #[inline]
     pub fn typing(&self) -> &PythonFile {
+        debug_assert!(!self.typing.is_null());
+        unsafe { &*self.typing }
+    }
+
+    #[inline]
+    pub fn collections(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
     }
@@ -70,13 +81,23 @@ impl PythonState {
     }
 }
 
-fn typing_changes(typing: &PythonFile) {
+fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &PythonFile) {
     typing.calculate_global_definitions_and_references();
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
     set_typing_inference(typing, "Tuple", Specific::TypingTuple);
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
+
+    setup_type_alias(typing, "List", builtins, "list");
+    setup_type_alias(typing, "Dict", builtins, "dict");
+    setup_type_alias(typing, "Set", builtins, "set");
+    setup_type_alias(typing, "FrozenSet", builtins, "frozenset");
+
+    setup_type_alias(typing, "ChainMap", collections, "ChainMap");
+    setup_type_alias(typing, "Counter", collections, "Counter");
+    setup_type_alias(typing, "DefaultDict", collections, "DefaultDict");
+    setup_type_alias(typing, "Deque", collections, "deque");
 }
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
@@ -85,5 +106,16 @@ fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
     typing.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
+    );
+}
+
+fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
+    let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
+    debug_assert!(!typing.points.get(node_index).calculated());
+    let target_node_index = typing.symbol_table.lookup_symbol(name).unwrap();
+    debug_assert!(!target_file.points.get(target_node_index).calculated());
+    typing.points.set(
+        node_index,
+        Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
     );
 }

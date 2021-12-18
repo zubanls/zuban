@@ -820,7 +820,9 @@ impl Database {
     fn initial_python_load(&mut self) {
         let builtins = self.py_load_tmp("../typeshed/stdlib/3/builtins.pyi") as *const _;
         let typing = self.py_load_tmp("../typeshed/stdlib/3/typing.pyi") as *const _;
-        PythonState::initialize(self, builtins, typing);
+        let collections =
+            self.py_load_tmp("../typeshed/stdlib/3/collections/__init__.pyi") as *const _;
+        PythonState::initialize(self, builtins, typing, collections);
     }
 }
 
