@@ -11,12 +11,12 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
 #[derive(Debug)]
-pub struct ListLiteral<'db, 'a> {
-    node_reference: &'a NodeReference<'db>,
+pub struct ListLiteral<'db> {
+    node_reference: NodeReference<'db>,
 }
 
-impl<'db, 'a> ListLiteral<'db, 'a> {
-    pub fn new(node_reference: &'a NodeReference<'db>) -> Self {
+impl<'db> ListLiteral<'db> {
+    pub fn new(node_reference: NodeReference<'db>) -> Self {
         Self { node_reference }
     }
 
@@ -85,7 +85,7 @@ impl<'db, 'a> ListLiteral<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for ListLiteral<'db, 'a> {
+impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -176,12 +176,12 @@ impl<'db, 'a> Value<'db, 'a> for ListLiteral<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct DictLiteral<'db, 'a> {
-    node_reference: &'a NodeReference<'db>,
+pub struct DictLiteral<'db> {
+    node_reference: NodeReference<'db>,
 }
 
-impl<'db, 'a> DictLiteral<'db, 'a> {
-    pub fn new(node_reference: &'a NodeReference<'db>) -> Self {
+impl<'db> DictLiteral<'db> {
+    pub fn new(node_reference: NodeReference<'db>) -> Self {
         Self { node_reference }
     }
 
@@ -252,7 +252,7 @@ impl<'db, 'a> DictLiteral<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for DictLiteral<'db, 'a> {
+impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
