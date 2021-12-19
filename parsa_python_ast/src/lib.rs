@@ -1558,7 +1558,13 @@ impl<'db> Primary<'db> {
 
     pub fn expect_slice(&self) -> SliceType<'db> {
         let second = self.node.nth_child(2);
-        SliceType::NamedExpression(NamedExpression::new(second))
+        if second.is_type(Nonterminal(named_expression)) {
+            SliceType::NamedExpression(NamedExpression::new(second))
+        } else if second.is_type(Nonterminal(slice)) {
+            SliceType::Slice(Slice::new(second))
+        } else {
+            SliceType::Slices(Slices::new(second))
+        }
     }
 }
 
@@ -1567,13 +1573,14 @@ pub enum PrimaryOrAtom<'db> {
     Atom(Atom<'db>),
 }
 
+#[derive(Debug)]
 pub enum PrimaryContent<'db> {
     Attribute(Name<'db>),
     Execution(ArgumentsDetails<'db>),
     GetItem(SliceType<'db>),
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum SliceType<'db> {
     Slices(Slices<'db>),
     Slice(Slice<'db>),
