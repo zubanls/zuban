@@ -990,5 +990,6 @@ mod tests {
         assert_eq!(size_of::<AnyLink>(), 16);
         assert_eq!(size_of::<Execution>(), 24);
         assert_eq!(size_of::<ComplexPoint>(), 32);
+        assert_eq!(size_of::<GenericPart>(), 32);
     }
 }
