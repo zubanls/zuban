@@ -642,18 +642,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             }
         }
-        if is_overload {
-            // TODO this whole thing should work with an implementing function as well.
-            let current_link = PointLink::new(self.file_index, func.index());
-            let name = name_def.name();
 
-            let new_overload = if let Some(overload) = self.maybe_overload(name.as_str()) {
+        let name = name_def.name();
+        let maybe_overload = self.maybe_overload(name.as_str());
+        if is_overload {
+            let current_link = PointLink::new(self.file_index, func.index());
+
+            let new_overload = if let Some(overload) = maybe_overload {
                 overload.add_another_overload(current_link)
             } else {
                 Overload {
                     functions: Box::new([current_link]),
                     function_type,
-                    implementing_function: (!is_overload).then(|| current_link),
+                    implementing_function: None,
                     is_async,
                 }
             };
@@ -664,11 +665,23 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             );
             self.symbol_table.add_or_replace_symbol(name);
         } else {
-            self.add_new_definition(
-                name_def,
-                Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
-                true,
-            );
+            // Check for implementing functions of overloads
+            if let Some(o) = maybe_overload {
+                if o.implementing_function.is_none() {
+                    is_overload = true;
+                    let mut overload = o.clone();
+                    overload.implementing_function =
+                        Some(PointLink::new(self.file_index, func.index()));
+                }
+            }
+
+            if !is_overload {
+                self.add_new_definition(
+                    name_def,
+                    Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
+                    true,
+                );
+            }
         }
         self.points.set(
             func.index(),
