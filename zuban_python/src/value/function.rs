@@ -451,6 +451,6 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args))
-            .unwrap_or_else(|| todo!())
+            .unwrap_or_else(Inferred::new_unknown)
     }
 }

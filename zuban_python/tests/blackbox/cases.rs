@@ -88,6 +88,10 @@ impl TestFile<'_> {
                         lines[line_nr + 1].len()
                     }
                 };
+                if *names.last().unwrap() == "" {
+                    // Splittling leaves an empty string if nothing is provided
+                    names.pop();
+                }
                 let type_ = if trimmed.ends_with("]") {
                     CaseType::Complete(
                         rest[1..rest.len() - 1]
