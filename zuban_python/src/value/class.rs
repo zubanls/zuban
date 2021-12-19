@@ -17,6 +17,7 @@ use crate::utils::SymbolTable;
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
+    Type(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
 }
 
@@ -65,6 +66,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c2) => c1.reference == c2.reference,
                 _ => false,
             },
+            Self::Type(c) => todo!(),
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
         }
     }
@@ -72,6 +74,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     fn generics(&self) -> Generics<'db, '_> {
         match self {
             Self::Class(c) => c.generics,
+            Self::Type(c) => todo!(),
             Self::Tuple(c) => c.generics(),
         }
     }
@@ -79,13 +82,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
             Self::Class(c) => c.as_string(i_s),
-            Self::Tuple(c) => format!("Tuple{}", self.generics().as_string(i_s)),
+            Self::Type(c) => format!("Type[{}]", c.as_string(i_s)),
+            Self::Tuple(c) => format!("Tuple[{}]", self.generics().as_string(i_s)),
         }
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
+            Self::Type(c) => c.mro(i_s), // TODO this does not make sense?
             Self::Tuple(c) => MroIterator {
                 database: i_s.database,
                 generics: self.generics(),
@@ -103,6 +108,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     ) -> Option<Inferred<'db>> {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
+            Self::Type(c) => todo!(),
             Self::Tuple(c) => todo!(),
         }
     }
@@ -110,6 +116,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
             Self::Class(c) => c.as_generic_part(i_s),
+            Self::Type(c) => GenericPart::Type(Box::new(c.as_generic_part(i_s))),
             Self::Tuple(t) => t.as_generic_part(),
         }
     }
@@ -398,6 +405,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         let link = self.reference.as_link();
         lst.map(|lst| GenericPart::GenericClass(link, lst))
             .unwrap_or_else(|| GenericPart::Class(link))
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::Type(*self)
     }
 }
 
