@@ -109,7 +109,6 @@ fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
 fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, target_name: &str) {
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
     debug_assert!(!typing.points.get(node_index).calculated());
-    dbg!(&target_file.symbol_table);
     let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();
     typing.points.set(
         node_index,
