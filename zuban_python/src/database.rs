@@ -422,7 +422,7 @@ pub enum AnyLink {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
-    Union(Box<[PointLink]>),
+    Union(Box<[AnyLink]>),
     ExecutionInstance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, PointLink),
     Closure(PointLink, Box<Execution>),

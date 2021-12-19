@@ -1,6 +1,6 @@
 use parsa_python_ast::{
     debug_info, Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
-    PrimaryContent, SimpleParamType,
+    PrimaryContent,
 };
 use std::fmt;
 
@@ -362,7 +362,17 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
-            ComplexPoint::Union(lst) => lst.iter().map(|&p| todo!()).reduce(reducer).unwrap(),
+            ComplexPoint::Union(lst) => lst
+                .iter()
+                .map(|l| match l {
+                    AnyLink::Reference(r) => todo!(),
+                    AnyLink::Complex(c) => {
+                        self.run_on_complex(i_s, c, definition, callable, reducer)
+                    }
+                    AnyLink::Specific(s) => todo!(),
+                })
+                .reduce(reducer)
+                .unwrap(),
             ComplexPoint::BoundMethod(instance_link, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
@@ -783,14 +793,14 @@ impl<'db> Inferred<'db> {
             self
         } else {
             let mut list = vec![];
-            let insert = |list: &mut Vec<PointLink>, state| {
+            let insert = |list: &mut Vec<AnyLink>, state| {
                 match state {
                     InferredState::Saved(definition, _) => {
-                        list.push(definition.as_link());
+                        list.push(AnyLink::Reference(definition.as_link()));
                     }
                     InferredState::UnsavedComplex(complex) => match complex {
                         ComplexPoint::Union(lst) => {
-                            list.extend(lst.iter());
+                            list.extend(lst.iter().cloned());
                         }
                         _ => todo!("{:?}", complex),
                     },
