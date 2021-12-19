@@ -109,43 +109,6 @@ impl<'db> NodeReference<'db> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_infer_param_annotation(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Inferred<'db>> {
-        let name = self.as_name();
-        name.maybe_param_annotation().map(|annotation| {
-            let expression = annotation.expression();
-            let mut inference = self.file.inference(i_s);
-            match name.simple_param_type() {
-                SimpleParamType::Normal => inference.infer_annotation_expression(expression),
-                SimpleParamType::MultiArgs => {
-                    let p = inference
-                        .infer_annotation_expression_class(expression)
-                        .as_generic_part(i_s);
-                    Inferred::create_instance(
-                        i_s.database.python_state.builtins_point_link("tuple"),
-                        Some(&[p]),
-                    )
-                }
-                SimpleParamType::MultiKwargs => {
-                    let p = inference
-                        .infer_annotation_expression_class(expression)
-                        .as_generic_part(i_s);
-                    Inferred::create_instance(
-                        i_s.database.python_state.builtins_point_link("dict"),
-                        Some(&[
-                            GenericPart::Class(
-                                i_s.database.python_state.builtins_point_link("str"),
-                            ),
-                            p,
-                        ]),
-                    )
-                }
-            }
-        })
-    }
-
     pub fn debug_info(&self, db: &Database) -> String {
         format!(
             "{}: {}",
@@ -317,9 +280,6 @@ impl<'db> Inferred<'db> {
                         Specific::SimpleGeneric => {
                             let class = self.maybe_class(i_s).unwrap();
                             callable(i_s, &class)
-                        }
-                        Specific::Param => {
-                            todo!()
                         }
                         Specific::List => callable(i_s, &ListLiteral::new(definition)),
                         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
@@ -618,7 +578,8 @@ impl<'db> Inferred<'db> {
                         ));
                     }
                     Specific::Param => {
-                        return i_s.infer_param(&definition);
+                        todo!("might not even happen - remove")
+                        //return i_s.infer_param(&definition);
                     }
                     _ => (),
                 }

@@ -377,6 +377,39 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    fn maybe_infer_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
+        name.maybe_param_annotation().map(|annotation| {
+            let expression = annotation.expression();
+            let mut inference = self.file.inference(self.i_s);
+            match name.simple_param_type() {
+                SimpleParamType::Normal => inference.infer_annotation_expression(expression),
+                SimpleParamType::MultiArgs => {
+                    let p = inference
+                        .infer_annotation_expression_class(expression)
+                        .as_generic_part(self.i_s);
+                    Inferred::create_instance(
+                        self.i_s.database.python_state.builtins_point_link("tuple"),
+                        Some(&[p]),
+                    )
+                }
+                SimpleParamType::MultiKwargs => {
+                    let p = inference
+                        .infer_annotation_expression_class(expression)
+                        .as_generic_part(self.i_s);
+                    Inferred::create_instance(
+                        self.i_s.database.python_state.builtins_point_link("dict"),
+                        Some(&[
+                            GenericPart::Class(
+                                self.i_s.database.python_state.builtins_point_link("str"),
+                            ),
+                            p,
+                        ]),
+                    )
+                }
+            }
+        })
+    }
+
     pub fn infer_named_expression(&mut self, named_expr: NamedExpression<'db>) -> Inferred<'db> {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
@@ -591,6 +624,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 PointType::Specific => match point.specific() {
+                    Specific::Param => {
+                        let name = Name::by_index(&self.file.tree, node_index);
+                        if let Some(inferred) = self.maybe_infer_param_annotation(name) {
+                            return inferred;
+                        }
+                        if let Some((function, args)) = self.i_s.current_execution {
+                            function
+                                .infer_param(self.i_s, node_index, args)
+                                .resolve_function_return(self.i_s)
+                        } else {
+                            todo!()
+                        }
+                    }
                     Specific::LazyInferredFunction | Specific::LazyInferredClosure => {
                         todo!("Resolve decorators")
                     }
