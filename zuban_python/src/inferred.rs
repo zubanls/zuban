@@ -662,7 +662,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         instance: &'a Self,
         generics: Option<Generics<'db, 'a>>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
