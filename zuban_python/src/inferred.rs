@@ -224,13 +224,13 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
                     .unwrap_or_else(|| {
-                        debug!("Generic part not resolvable: {}", v.description(i_s));
+                        debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid
                     })
             },
             &|g1, g2| g1.union(g2),
             &mut |i_s, inf| {
-                debug!("Generic part is invalid: {}", inf.description(i_s));
+                debug!("Generic option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
             },
             &mut |node_ref| GenericOption::TypeVar(node_ref),
