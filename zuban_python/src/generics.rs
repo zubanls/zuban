@@ -58,9 +58,10 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         match self {
-            Self::Expression(file, expr) => {
-                todo!()
-            }
+            Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file
+                .inference(i_s)
+                .infer_annotation_expression_class(*expr)
+                .as_generic_part(i_s)]))),
             Self::Slices(file, slices) => {
                 todo!()
             }
@@ -366,14 +367,18 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     ) {
         match self {
             Self::ClassLike(class) => class.infer_type_vars(i_s, value_class, matcher),
-            Self::TypeVar(node_ref) => {
-                if let GenericOption::ClassLike(class) = value_class {
+            Self::TypeVar(node_ref) => match value_class {
+                GenericOption::ClassLike(class) => {
                     let generic = class.as_generic_part(i_s);
                     matcher.add_type_var_class(i_s, node_ref.point(), generic);
-                } else {
+                }
+                GenericOption::TypeVar(_) | GenericOption::Invalid => {
+                    todo!("{:?}", value_class)
+                }
+                GenericOption::Union(list) => {
                     todo!()
                 }
-            }
+            },
             Self::Union(list) => {
                 todo!()
             }

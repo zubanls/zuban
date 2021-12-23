@@ -470,8 +470,14 @@ impl<'db> Inferred<'db> {
                 i_s,
                 &OverloadedFunction::new(*definition.unwrap(), overload),
             ),
-            ComplexPoint::GenericClass(cls, bla) => {
-                todo!()
+            ComplexPoint::GenericClass(link, generics) => {
+                let class = Class::from_position(
+                    NodeReference::from_link(i_s.database, *link),
+                    Generics::List(generics),
+                    None,
+                )
+                .unwrap();
+                callable(i_s, &class)
             }
             ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
             ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
@@ -1071,6 +1077,9 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => match complex {
                 ComplexPoint::TupleClass(content) => {
                     Self::new_unsaved_complex(ComplexPoint::Tuple(content.clone()))
+                }
+                ComplexPoint::GenericClass(link, generics) => {
+                    Self::new_unsaved_complex(ComplexPoint::Instance(*link, Some(generics.clone())))
                 }
                 _ => todo!("{}", self.debug_info(i_s)),
             },
