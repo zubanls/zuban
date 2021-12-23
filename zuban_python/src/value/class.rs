@@ -42,12 +42,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         self.generics().iter().run_on_all_generic_options(
                             i_s,
                             |i_s, generic_option| {
-                                if value_generics
-                                    .run_on_next(i_s, |i_s, g| {
-                                        generic_option.infer_type_vars(i_s, &g, matcher)
-                                    })
-                                    .is_none()
-                                {
+                                let appeared = value_generics.run_on_next(i_s, |i_s, g| {
+                                    generic_option.infer_type_vars(i_s, g, matcher)
+                                });
+                                if appeared.is_none() {
                                     todo!()
                                 }
                             },
@@ -483,7 +481,7 @@ fn create_type_var_remap<'db>(
                     i_s,
                     original_class,
                     original_type_vars,
-                    &class,
+                    class,
                 )))
             } else {
                 todo!()
