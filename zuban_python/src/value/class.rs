@@ -46,7 +46,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                     generic_option.infer_type_vars(i_s, g, matcher)
                                 });
                                 if appeared.is_none() {
-                                    todo!()
+                                    debug!("Generic not found for: {:?}", generic_option);
                                 }
                             },
                         );
