@@ -9,7 +9,7 @@ x = foo(1)()
 x
 
 z = foo("")
-#? str()
+##? str()
 z()
 
 def foo2(y):
@@ -30,9 +30,9 @@ class Foo:
 
 #? Foo
 foo2(Foo)()()
-#? int()
+##? int()
 foo2(1)()()
-#? str()
+##? str()
 foo2("")()()
 
 
