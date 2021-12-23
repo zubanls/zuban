@@ -177,7 +177,7 @@ impl<'db> Inferred<'db> {
                 return inferred;
             }
             GenericPart::Tuple(content) => {
-                InferredState::UnsavedComplex(ComplexPoint::Tuple(content))
+                InferredState::UnsavedComplex(ComplexPoint::TupleClass(content))
             }
             GenericPart::Callable(content) => {
                 todo!()
@@ -1068,9 +1068,12 @@ impl<'db> Inferred<'db> {
                 }
                 _ => todo!("{}", self.debug_info(i_s)),
             },
-            InferredState::UnsavedComplex(complex) => {
-                todo!("{}", self.debug_info(i_s))
-            }
+            InferredState::UnsavedComplex(complex) => match complex {
+                ComplexPoint::TupleClass(content) => {
+                    Self::new_unsaved_complex(ComplexPoint::Tuple(content.clone()))
+                }
+                _ => todo!("{}", self.debug_info(i_s)),
+            },
             InferredState::Unknown => self.clone(),
         }
     }
