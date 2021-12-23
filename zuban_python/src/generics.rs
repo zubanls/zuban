@@ -73,21 +73,9 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
-        let mut iterator = self.iter();
         let mut strings = vec![];
-        while let Some(inf) = iterator.next(i_s) {
-            strings.push(inf.internal_run(
-                i_s,
-                &mut |i_s, v| {
-                    v.as_class_like()
-                        .map(|c| c.as_string(i_s))
-                        .unwrap_or_else(|| "Unknown".to_owned())
-                },
-                &|i1, i2| format!("{}|{}", i1, i2),
-                &mut |i_s, inferred| "Unknown".to_owned(),
-                &mut |point| format!("Weird {:?}", point),
-            ));
-        }
+        self.iter()
+            .run_on_all_generic_options(i_s, |i_s, g| strings.push(g.as_string(i_s)));
         format!("[{}]", strings.join(", "))
     }
 }
@@ -100,23 +88,35 @@ pub enum GenericsIterator<'db, 'a> {
 }
 
 impl<'db> GenericsIterator<'db, '_> {
-    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+    pub fn run_on_next<T>(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut callable: impl FnMut(&mut InferenceState<'db, '_>, &GenericOption<'db, '_>) -> T,
+    ) -> Option<T> {
         match self {
             Self::Expression(file, expr) => {
-                let result = file.inference(i_s).infer_expression(*expr);
+                let inferred = file.inference(i_s).infer_annotation_expression_class(*expr);
+                let g = inferred.as_generic_option(i_s);
+                let result = callable(i_s, &g);
                 *self = GenericsIterator::None;
                 Some(result)
             }
             Self::SliceIterator(file, iter) => {
                 if let Some(SlicesContent::NamedExpression(s)) = iter.next() {
-                    Some(file.inference(i_s).infer_named_expression(s))
+                    let inferred = file
+                        .inference(i_s)
+                        .infer_annotation_expression_class(s.expression());
+                    let g = inferred.as_generic_option(i_s);
+                    Some(callable(i_s, &g))
                 } else {
                     None
                 }
             }
-            Self::GenericsList(iterator) => iterator
-                .next()
-                .map(|g| Inferred::from_generic_class(i_s.database, g.clone())),
+            Self::GenericsList(iterator) => iterator.next().map(|g| {
+                let inferred = Inferred::from_generic_class(i_s.database, g.clone());
+                let g = inferred.as_generic_option(i_s);
+                callable(i_s, &g)
+            }),
             GenericsIterator::None => None,
         }
     }
@@ -215,13 +215,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(annotation) = p.param.annotation() {
                 if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
                     let value = p.infer(i_s);
+                    let value_class = value.class_as_generic_option(i_s);
                     self.function
                         .reference
                         .file
                         .inference(i_s)
                         .infer_annotation_expression_class(annotation.expression())
                         .as_generic_option(i_s)
-                        .infer_type_vars(i_s, value, self);
+                        .infer_type_vars(i_s, &value_class, self);
                 } else {
                     self.matches = false;
                     todo!();
@@ -360,14 +361,18 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value: Inferred<'db>,
+        value_class: &GenericOption<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
         match self {
-            Self::ClassLike(class) => class.infer_type_vars(i_s, value, matcher),
+            Self::ClassLike(class) => class.infer_type_vars(i_s, value_class, matcher),
             Self::TypeVar(node_ref) => {
-                let generic = value.as_generic_part(i_s);
-                matcher.add_type_var_class(i_s, node_ref.point(), generic);
+                if let GenericOption::ClassLike(class) = value_class {
+                    let generic = class.as_generic_part(i_s);
+                    matcher.add_type_var_class(i_s, node_ref.point(), generic);
+                } else {
+                    todo!()
+                }
             }
             Self::Union(list) => {
                 todo!()
@@ -428,6 +433,21 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .collect(),
             )),
             Self::Invalid => GenericPart::Unknown,
+        }
+    }
+
+    fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        match self {
+            Self::ClassLike(c) => c.as_string(i_s),
+            Self::TypeVar(node_ref) => node_ref.as_name().as_str().to_owned(),
+            Self::Union(list) => list.iter().fold(String::new(), |a, b| {
+                if a.is_empty() {
+                    a + &b.as_string(i_s)
+                } else {
+                    a + &b.as_string(i_s) + ","
+                }
+            }),
+            Self::Invalid => "Unknown".to_owned(),
         }
     }
 }

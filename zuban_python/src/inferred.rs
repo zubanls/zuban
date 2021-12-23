@@ -237,6 +237,22 @@ impl<'db> Inferred<'db> {
         )
     }
 
+    pub fn class_as_generic_option(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> GenericOption<'db, '_> {
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| GenericOption::ClassLike(v.class(i_s)),
+            &|g1, g2| g1.union(g2),
+            &mut |i_s, inf| {
+                debug!("Generic option is invalid: {}", inf.description(i_s));
+                GenericOption::Invalid
+            },
+            &mut |node_ref| GenericOption::TypeVar(node_ref),
+        )
+    }
+
     #[inline]
     pub fn internal_run<'a, T>(
         &'a self,

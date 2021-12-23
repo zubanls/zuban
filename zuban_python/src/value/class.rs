@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
+use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
@@ -25,7 +25,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value: Inferred<'db>,
+        value_class: &GenericOption<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
         // Note: we need to handle the MRO _in order_, so we need to extract
@@ -33,30 +33,34 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // them back in a set afterwards.
         let mut some_class_matches = false;
         // TODO use type_var_remap
-        value.run_mut(
-            i_s,
-            &mut |i_s, v| {
-                let check_class = v.class(i_s);
-                for class_like in check_class.mro(i_s) {
+        match value_class {
+            GenericOption::ClassLike(c) => {
+                for class_like in c.mro(i_s) {
                     if self.matches_without_generics(&class_like) {
                         some_class_matches = true;
                         let mut value_generics = class_like.generics().iter();
                         self.generics().iter().run_on_all_generic_options(
                             i_s,
                             |i_s, generic_option| {
-                                let value_generic = value_generics.next(i_s);
-                                if let Some(inf) = value_generic {
-                                    generic_option.infer_type_vars(i_s, inf, matcher);
+                                if value_generics
+                                    .run_on_next(i_s, |i_s, g| {
+                                        generic_option.infer_type_vars(i_s, &g, matcher)
+                                    })
+                                    .is_none()
+                                {
+                                    todo!()
                                 }
                             },
                         );
                     }
                 }
-            },
-            || todo!(),
-        );
-        if !some_class_matches {
-            matcher.does_not_match();
+                if !some_class_matches {
+                    matcher.does_not_match();
+                }
+            }
+            GenericOption::TypeVar(node_ref) => todo!(),
+            GenericOption::Union(list) => todo!(),
+            GenericOption::Invalid => (),
         }
     }
 
@@ -470,19 +474,26 @@ fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
     original_class: NodeReference<'db>,
     original_type_vars: &[PointLink],
-    generic: Inferred<'db>,
+    generic: &GenericOption<'db, '_>,
 ) -> Option<TypeVarRemap> {
-    if let Some(point) = generic.maybe_numbered_type_var() {
-        Some(TypeVarRemap::TypeVar(point.type_var_index()))
-    } else {
-        generic.maybe_class(i_s).map(|base_cls| {
-            TypeVarRemap::MroClass(create_mro_class(
-                i_s,
-                original_class,
-                original_type_vars,
-                &base_cls,
-            ))
-        })
+    match generic {
+        GenericOption::ClassLike(class) => {
+            if let ClassLike::Class(class) = class {
+                Some(TypeVarRemap::MroClass(create_mro_class(
+                    i_s,
+                    original_class,
+                    original_type_vars,
+                    &class,
+                )))
+            } else {
+                todo!()
+            }
+        }
+        GenericOption::TypeVar(reference) => {
+            Some(TypeVarRemap::TypeVar(reference.point().type_var_index()))
+        }
+        GenericOption::Union(list) => todo!(),
+        GenericOption::Invalid => todo!(),
     }
 }
 
@@ -503,13 +514,10 @@ fn create_mro_class<'db>(
     let mut iterator = class.generics.iter();
     let mut type_var_remap = Vec::with_capacity(type_vars.len());
     for type_var in type_vars {
-        if let Some(generic) = iterator.next(i_s) {
-            type_var_remap.push(create_type_var_remap(
-                i_s,
-                original_class,
-                original_type_vars,
-                generic,
-            ));
+        if let Some(remap) = iterator.run_on_next(i_s, |i_s, generic_option| {
+            create_type_var_remap(i_s, original_class, original_type_vars, generic_option)
+        }) {
+            type_var_remap.push(remap);
         } else {
             type_var_remap.push(None);
         }
