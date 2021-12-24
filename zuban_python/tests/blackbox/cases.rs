@@ -96,6 +96,7 @@ impl TestFile<'_> {
                     CaseType::Complete(
                         rest[1..rest.len() - 1]
                             .split(",")
+                            .filter(|x| !x.is_empty())
                             .map(|quoted| {
                                 let quoted = quoted.trim();
                                 // Strip quotes
