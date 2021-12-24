@@ -340,6 +340,7 @@ pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(NodeReference<'db>),
     Union(Vec<GenericOption<'db, 'a>>),
+    None,
     Invalid,
 }
 
@@ -378,8 +379,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 GenericOption::Union(list) => {
                     todo!()
                 }
+                GenericOption::None => {
+                    todo!()
+                }
             },
             Self::Union(list) => {
+                todo!()
+            }
+            Self::None => {
                 todo!()
             }
             Self::Invalid => matcher.does_not_match(),
@@ -437,6 +444,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))
                     .collect(),
             )),
+            Self::None => todo!(),
             Self::Invalid => GenericPart::Unknown,
         }
     }
@@ -452,6 +460,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     a + &b.as_string(i_s) + ","
                 }
             }),
+            Self::None => "None".to_owned(),
             Self::Invalid => "Unknown".to_owned(),
         }
     }

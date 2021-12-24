@@ -17,7 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
     BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, ListLiteral, Module,
-    OverloadedFunction, Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
+    NoneInstance, OverloadedFunction, Tuple, TupleClass, TypingClass, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -223,6 +223,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
+                    .or_else(|| v.is_none().then(|| GenericOption::None))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid
@@ -246,7 +247,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| GenericOption::ClassLike(v.class(i_s)),
             &|g1, g2| g1.union(g2),
             &mut |i_s, inf| {
-                debug!("Generic option is invalid: {}", inf.description(i_s));
+                debug!("Generic class option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
             },
             &mut |node_ref| GenericOption::TypeVar(node_ref),
@@ -350,6 +351,7 @@ impl<'db> Inferred<'db> {
                         }
                     }
                     Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(*definition),
+                    Specific::None => callable(i_s, &NoneInstance()),
                     _ => {
                         let instance = self.resolve_specific(i_s.database, specific);
                         callable(i_s, &instance)

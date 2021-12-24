@@ -4,6 +4,7 @@ mod function;
 mod instance;
 mod iterable;
 mod module;
+mod none;
 mod typing;
 
 use crate::arguments::Arguments;
@@ -17,6 +18,7 @@ pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
+pub use none::NoneInstance;
 pub use typing::{Tuple, TupleClass, TypingClass, TypingWithGenerics};
 
 enum ArrayType {
@@ -112,6 +114,9 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
         i_s: &mut InferenceState<'db, '_>,
     ) -> Option<&TypingWithGenerics<'db>> {
         None
+    }
+    fn is_none(&self) -> bool {
+        false
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
