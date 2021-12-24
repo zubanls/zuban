@@ -127,6 +127,7 @@ pub enum FunctionOrOverload<'db, 'a> {
 enum InferredState<'db> {
     Saved(NodeReference<'db>, Point),
     UnsavedComplex(ComplexPoint),
+    UnsavedSpecific(Specific),
     Unknown,
 }
 
@@ -150,6 +151,12 @@ impl<'db> Inferred<'db> {
     pub fn new_unsaved_complex(complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
+        }
+    }
+
+    pub fn new_unsaved_specific(specific: Specific) -> Self {
+        Self {
+            state: InferredState::UnsavedSpecific(specific),
         }
     }
 
@@ -282,6 +289,7 @@ impl<'db> Inferred<'db> {
                 on_missing,
                 on_type_var,
             ),
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => on_missing(i_s, self.clone()),
         }
     }
@@ -797,6 +805,7 @@ impl<'db> Inferred<'db> {
                 }
                 todo!("{:?}", complex)
             }
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => None,
         }
     }
@@ -833,6 +842,11 @@ impl<'db> Inferred<'db> {
                 file.complex_points
                     .insert(&file.points, index, complex.clone());
                 Self::new_saved(file, index, file.points.get(index))
+            }
+            InferredState::UnsavedSpecific(specific) => {
+                let point = Point::new_simple_specific(*specific, Locality::Stmt);
+                file.points.set(index, point);
+                Self::new_saved(file, index, point)
             }
             InferredState::Unknown => todo!(),
         }
@@ -876,6 +890,7 @@ impl<'db> Inferred<'db> {
                         }
                         _ => todo!("{:?}", complex),
                     },
+                    InferredState::UnsavedSpecific(specific) => todo!(),
                     InferredState::Unknown => todo!(),
                 };
             };
@@ -939,6 +954,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 todo!()
             }
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => (),
         }
         self
@@ -983,6 +999,7 @@ impl<'db> Inferred<'db> {
         match &self.state {
             InferredState::Saved(definition, _) => AnyLink::Reference(definition.as_link()),
             InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => todo!(),
         }
     }
@@ -1085,6 +1102,7 @@ impl<'db> Inferred<'db> {
                 }
                 _ => todo!("{}", self.debug_info(i_s)),
             },
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => self.clone(),
         }
     }
@@ -1098,6 +1116,7 @@ impl fmt::Debug for Inferred<'_> {
                 s.field("definition", &definition).field("point", &point)
             }
             InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
+            InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => s.field("unknown", &true),
         }
         .finish()

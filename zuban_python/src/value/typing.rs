@@ -134,7 +134,7 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct TupleClass<'a> {
-    content: &'a TupleContent,
+    pub content: &'a TupleContent,
 }
 
 impl<'a> TupleClass<'a> {

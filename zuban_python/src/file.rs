@@ -5,6 +5,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
+use crate::generics::GenericOption;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -12,6 +13,7 @@ use crate::inferred::{Inferred, NodeReference};
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
+use crate::value::ClassLike;
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
@@ -460,24 +462,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             todo!("Probably just remove this if, it should be unreachable")
         } else if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
+        } else if let Some(i) = inferred
+            .as_generic_option(self.i_s)
+            .maybe_unsaved_inferred()
+        {
+            return i.save_redirect(self.file, expr.index());
         } else {
-            let generic = inferred.as_generic_part(self.i_s);
-            match generic {
-                GenericPart::Class(_)
-                | GenericPart::GenericClass(_, _)
-                | GenericPart::TypeVar(_) => unreachable!(),
-                GenericPart::Union(_) => todo!(),
-                GenericPart::Type(_) => todo!(),
-                GenericPart::Tuple(content) => {
-                    let complex = Inferred::new_unsaved_complex(ComplexPoint::Tuple(content));
-                    return complex.save_redirect(self.file, expr.index());
-                }
-                GenericPart::Callable(_) => todo!(),
-                GenericPart::Unknown => {
-                    debug!("Unknown annotation expression {}", expr.short_debug());
-                    Point::new_unknown(self.file.file_index(), Locality::Stmt)
-                }
-            }
+            debug!("Unknown annotation expression {}", expr.short_debug());
+            Point::new_unknown(self.file.file_index(), Locality::Stmt)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
     }

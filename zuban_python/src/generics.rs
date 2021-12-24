@@ -5,7 +5,7 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
+    ComplexPoint, GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -462,6 +462,19 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }),
             Self::None => "None".to_owned(),
             Self::Invalid => "Unknown".to_owned(),
+        }
+    }
+
+    pub fn maybe_unsaved_inferred(&self) -> Option<Inferred<'db>> {
+        match self {
+            Self::ClassLike(ClassLike::Tuple(t)) => Some(Inferred::new_unsaved_complex(
+                ComplexPoint::Tuple(t.content.clone()),
+            )),
+            Self::ClassLike(_) => todo!(),
+            Self::Union(_) => todo!(),
+            Self::TypeVar(_) => todo!("return unknown"),
+            Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
+            Self::Invalid => None,
         }
     }
 }
