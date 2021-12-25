@@ -354,9 +354,9 @@ pub enum Specific {
     TypingTuple,
     TypingCallable,
     TypingType,
+    TypingClassVar,
 
     // TODO reactivate these or remove
-    //TypingClassVar,
     //TypingFinal,
     //TypingLiteral,
     //TypingTypeAlias,

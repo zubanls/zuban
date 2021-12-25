@@ -253,3 +253,39 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         base
     }
 }
+
+#[derive(Debug)]
+pub struct TypingClassVar();
+
+impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &'db str {
+        "ClassVar"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        match slice_type {
+            SliceType::Simple(simple) => {
+                // TODO if it is a (), it's am empty tuple
+                simple.infer(i_s)
+            }
+            SliceType::Slice(x) => {
+                todo!()
+            }
+            SliceType::Slices(x) => {
+                todo!()
+            }
+        }
+    }
+}

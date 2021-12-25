@@ -19,7 +19,7 @@ pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
-pub use typing::{Tuple, TupleClass, TypingClass, TypingWithGenerics};
+pub use typing::{Tuple, TupleClass, TypingClass, TypingClassVar, TypingWithGenerics};
 
 enum ArrayType {
     None,
