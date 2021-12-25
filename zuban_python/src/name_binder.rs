@@ -40,6 +40,7 @@ pub struct NameBinder<'db, 'a> {
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     unresolved_names: Vec<Name<'db>>,
+    unresolved_self_vars: Vec<ClassDef<'db>>,
     file_index: FileIndex,
     parent_lookup_not_finished: bool,
     parent: Option<&'a NameBinder<'db, 'a>>,
@@ -64,6 +65,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             unordered_references: vec![],
             unresolved_nodes: vec![],
             unresolved_names: vec![],
+            unresolved_self_vars: vec![],
             file_index,
             parent_lookup_not_finished: false,
             parent,
@@ -91,6 +93,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         func(&mut binder);
         binder.close();
+        while let Some(class_def) = binder.unresolved_self_vars.pop() {
+            binder.index_self_vars(class_def);
+        }
     }
 
     pub fn with_nested(
@@ -112,6 +117,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         name_binder.close();
         let unresolved_nodes = name_binder.unresolved_nodes;
         let unresolved_names = name_binder.unresolved_names;
+        self.unresolved_self_vars
+            .extend(name_binder.unresolved_self_vars);
         self.unresolved_nodes
             .extend(unresolved_names.into_iter().map(Unresolved::Name));
         self.unresolved_nodes.extend(unresolved_nodes);
@@ -431,7 +438,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
             binder.index_block(block, true, true);
         });
-        self.index_self_vars(class, &symbol_table);
+        self.unresolved_self_vars.push(class);
         self.complex_points.insert(
             self.points,
             class.index(),
@@ -450,7 +457,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    fn index_self_vars(&mut self, class: ClassDef<'db>, symbol_table: &SymbolTable) {
+    fn index_self_vars(&mut self, class: ClassDef<'db>) {
+        let symbol_table = match self
+            .complex_points
+            .get(self.points.get(class.index()).complex_index())
+        {
+            ComplexPoint::Class(storage) => &storage.symbol_table,
+            _ => unreachable!(),
+        };
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name.index()) {
                 symbol_table.add_or_replace_symbol(name);
