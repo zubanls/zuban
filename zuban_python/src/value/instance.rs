@@ -67,4 +67,12 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::Class(self.class)
     }
+
+    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        format!(
+            "{} {}",
+            format!("{:?}", self.kind()).to_lowercase(),
+            self.class.as_string(i_s),
+        )
+    }
 }
