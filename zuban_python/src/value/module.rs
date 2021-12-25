@@ -37,6 +37,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
     }
 
     fn name(&self) -> &'db str {
+        // TODO this is not correct...
         self.file.file_path(self.database)
     }
 
