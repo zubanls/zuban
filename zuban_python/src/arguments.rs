@@ -268,3 +268,28 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct NoArguments();
+
+impl<'db> Arguments<'db> for NoArguments {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
+        ArgumentIterator::Normal(ArgumentIteratorBase::Finished)
+    }
+
+    fn outer_execution(&self) -> Option<&Execution> {
+        None
+    }
+
+    fn as_execution(&self, function: &Function) -> Execution {
+        todo!()
+    }
+
+    fn type_(&self) -> ArgumentsType<'db> {
+        todo!()
+    }
+
+    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
+        todo!()
+    }
+}

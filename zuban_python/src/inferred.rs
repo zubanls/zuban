@@ -4,7 +4,7 @@ use parsa_python_ast::{
 };
 use std::fmt;
 
-use crate::arguments::{Arguments, InstanceArguments, SimpleArguments};
+use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
     PointLink, PointType, Specific,
@@ -1089,6 +1089,11 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::Unknown => self.clone(),
         }
+    }
+
+    pub fn execute_function(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        self.run_on_value(i_s, &mut |i_s, value| value.lookup(i_s, name))
+            .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
     }
 }
 

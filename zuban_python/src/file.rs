@@ -240,23 +240,32 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             stmt.index(),
             stmt.short_debug().trim()
         );
-        if let Some(simple_stmts) = stmt.as_simple_stmts() {
-            for simple_stmt in simple_stmts.iter() {
-                match simple_stmt.unpack() {
-                    SimpleStmtContent::Assignment(assignment) => {
-                        self.cache_assignment_nodes(assignment);
+        match stmt.unpack() {
+            StmtContent::SimpleStmts(simple_stmts) => {
+                for simple_stmt in simple_stmts.iter() {
+                    match simple_stmt.unpack() {
+                        SimpleStmtContent::Assignment(assignment) => {
+                            self.cache_assignment_nodes(assignment);
+                        }
+                        SimpleStmtContent::ImportFrom(import_from) => {
+                            self.cache_import_from(import_from);
+                        }
+                        SimpleStmtContent::ImportName(import_name) => {
+                            self.cache_import_name(import_name);
+                        }
+                        _ => unreachable!("Found {:?}", simple_stmt),
                     }
-                    SimpleStmtContent::ImportFrom(import_from) => {
-                        self.cache_import_from(import_from);
-                    }
-                    SimpleStmtContent::ImportName(import_name) => {
-                        self.cache_import_name(import_name);
-                    }
-                    _ => unreachable!("Found {:?}", simple_stmt),
                 }
             }
-        } else {
-            unreachable!("Found type {:?}", stmt.short_debug());
+            StmtContent::ForStmt(for_stmt) => {
+                let (star_targets, star_exprs, _, _) = for_stmt.unpack();
+                let input = self
+                    .infer_star_expressions(star_exprs)
+                    .execute_function(self.i_s, "__iter__")
+                    .execute_function(self.i_s, "__next__");
+                self.assign_targets(star_targets.as_target(), &input)
+            }
+            _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
     }
 
@@ -364,6 +373,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match target {
             Target::Tuple(target_iterator) => {
                 todo!("Tuple unpack");
+            }
+            Target::StarredTuple(target_iterator) => {
+                todo!()
             }
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());
