@@ -13,6 +13,7 @@ use parsa_python_ast::{
     WithStmt,
 };
 
+#[derive(PartialEq)]
 pub enum NameBinderType {
     Global,
     Function,
@@ -109,9 +110,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         func(&mut name_binder);
         name_binder.close();
+        let unresolved_nodes = name_binder.unresolved_nodes;
         let unresolved_names = name_binder.unresolved_names;
         self.unresolved_nodes
             .extend(unresolved_names.into_iter().map(Unresolved::Name));
+        self.unresolved_nodes.extend(unresolved_nodes);
     }
 
     fn add_new_definition(
@@ -289,27 +292,31 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.index_unordered_references();
 
         self.parent_lookup_not_finished = true;
-        while let Some(n) = self.unresolved_nodes.pop() {
-            match n {
-                Unresolved::Name(name) => self.maybe_add_reference(name, true),
-                Unresolved::Expression(expr) => {
-                    self.index_non_block_node(&expr, true, false);
-                }
-                Unresolved::FunctionDef(func) => {
-                    let symbol_table = SymbolTable::default();
-                    self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
-                        binder.index_function_body(func)
-                    });
-                }
-                Unresolved::Lambda(lambda) => {
-                    let symbol_table = SymbolTable::default();
-                    self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
-                        binder.index_lambda(lambda)
-                    });
-                }
-                Unresolved::Comprehension(comp) => self.index_comprehension(comp, true),
-                Unresolved::DictComprehension(comp) => self.index_dict_comprehension(comp, true),
-            };
+        if self.type_ != NameBinderType::Class {
+            while let Some(n) = self.unresolved_nodes.pop() {
+                match n {
+                    Unresolved::Name(name) => self.maybe_add_reference(name, true),
+                    Unresolved::Expression(expr) => {
+                        self.index_non_block_node(&expr, true, false);
+                    }
+                    Unresolved::FunctionDef(func) => {
+                        let symbol_table = SymbolTable::default();
+                        self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
+                            binder.index_function_body(func)
+                        });
+                    }
+                    Unresolved::Lambda(lambda) => {
+                        let symbol_table = SymbolTable::default();
+                        self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
+                            binder.index_lambda(lambda)
+                        });
+                    }
+                    Unresolved::Comprehension(comp) => self.index_comprehension(comp, true),
+                    Unresolved::DictComprehension(comp) => {
+                        self.index_dict_comprehension(comp, true)
+                    }
+                };
+            }
         }
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
