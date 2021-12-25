@@ -626,20 +626,6 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    pub fn maybe_numbered_type_var(&self) -> Option<Point> {
-        if let InferredState::Saved(definition, point) = self.state {
-            if point.type_() == PointType::Specific {
-                if matches!(
-                    point.specific(),
-                    Specific::FunctionTypeVar | Specific::ClassTypeVar
-                ) {
-                    return Some(point);
-                }
-            }
-        }
-        None
-    }
-
     pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {

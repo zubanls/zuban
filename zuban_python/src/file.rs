@@ -476,9 +476,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let mut inference = self.file.inference(&mut i_s);
         let inferred = inference.infer_annotation_expression_class(expr);
         // TODO locality is wrong!!!!!1
-        let point = if let Some(p) = inferred.maybe_numbered_type_var() {
-            todo!("Probably just remove this if, it should be unreachable")
-        } else if inferred.is_class(inference.i_s) {
+        let point = if inferred.is_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else if let Some(i) = inferred
             .as_generic_option(self.i_s)
