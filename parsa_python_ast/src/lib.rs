@@ -167,6 +167,7 @@ create_nonterminal_structs!(
     ImportFrom: import_from
     ImportName: import_name
     DottedName: dotted_name
+    DottedAsName: dotted_as_name
     ImportFromAsName: import_from_as_name
 
     Disjunction: disjunction
@@ -1523,6 +1524,50 @@ impl<'db> DottedName<'db> {
 pub enum DottedNameContent<'db> {
     DottedName(DottedName<'db>, Name<'db>),
     Name(Name<'db>),
+}
+
+impl<'db> ImportName<'db> {
+    pub fn iter_dotted_as_names(&self) -> DottedAsNameIterator<'db> {
+        DottedAsNameIterator(self.node.nth_child(1).iter_children())
+    }
+}
+
+pub struct DottedAsNameIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for DottedAsNameIterator<'db> {
+    type Item = DottedAsName<'db>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = self.0.next();
+        if result.is_some() {
+            self.0.next();
+        }
+        result.map(Self::Item::new)
+    }
+}
+
+pub enum DottedAsNameContent<'db> {
+    Simple(NameDefinition<'db>, Option<DottedName<'db>>),
+    WithAs(DottedName<'db>, NameDefinition<'db>),
+}
+
+impl<'db> DottedAsName<'db> {
+    #[inline]
+    pub fn unpack(&self) -> DottedAsNameContent {
+        let first = self.node.nth_child(0);
+        let maybe_second = first.next_sibling();
+        if first.is_type(Nonterminal(name_definition)) {
+            DottedAsNameContent::Simple(
+                NameDefinition::new(first),
+                maybe_second.map(|s| DottedName::new(s.next_sibling().unwrap())),
+            )
+        } else {
+            DottedAsNameContent::WithAs(
+                DottedName::new(first),
+                NameDefinition::new(maybe_second.unwrap().next_sibling().unwrap()),
+            )
+        }
+    }
 }
 
 impl<'db> Primary<'db> {

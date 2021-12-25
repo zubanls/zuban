@@ -1,6 +1,5 @@
 use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
-use crate::inferred::{Inferred, NodeReference};
 use crate::value::Function;
 
 pub struct InferenceState<'db, 'a> {

@@ -5,7 +5,6 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
-use crate::generics::GenericOption;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -13,7 +12,6 @@ use crate::inferred::{Inferred, NodeReference};
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::ClassLike;
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
@@ -251,14 +249,34 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     SimpleStmtContent::ImportFrom(import_from) => {
                         self.cache_import_from(import_from);
                     }
-                    SimpleStmtContent::ImportName(import_from) => {
-                        todo!()
+                    SimpleStmtContent::ImportName(import_name) => {
+                        self.cache_import_name(import_name);
                     }
                     _ => unreachable!("Found {:?}", simple_stmt),
                 }
             }
         } else {
             unreachable!("Found type {:?}", stmt.short_debug());
+        }
+    }
+
+    fn cache_import_name(&mut self, imp: ImportName<'db>) {
+        for dotted_as_name in imp.iter_dotted_as_names() {
+            match dotted_as_name.unpack() {
+                DottedAsNameContent::Simple(name_def, _) => {
+                    let name = name_def.name();
+                    let file_index = global_import(self.i_s.database, name.as_str());
+                    let point = if let Some(file_index) = file_index {
+                        Point::new_file_reference(file_index, Locality::DirectExtern)
+                    } else {
+                        Point::new_missing_file()
+                    };
+                    self.file.points.set(name.index(), point);
+                }
+                DottedAsNameContent::WithAs(dotted_as_name, _) => {
+                    todo!()
+                }
+            }
         }
     }
 

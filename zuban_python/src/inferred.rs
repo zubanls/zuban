@@ -387,7 +387,7 @@ impl<'db> Inferred<'db> {
             PointType::Unknown => on_missing(i_s, self.clone()),
             PointType::FileReference => {
                 let f = i_s.database.loaded_python_file(point.file_index());
-                callable(i_s, &Module::new(f))
+                callable(i_s, &Module::new(i_s.database, f))
             }
             _ => unreachable!(),
         }
