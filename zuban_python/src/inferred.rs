@@ -1064,14 +1064,10 @@ impl<'db> Inferred<'db> {
                                 Generics::None,
                                 None,
                             );
-                            if class.type_vars(i_s).is_empty() {
-                                Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                    definition.as_link(),
-                                    None,
-                                ))
-                            } else {
-                                todo!();
-                            }
+                            Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                definition.as_link(),
+                                None,
+                            ))
                         }
                         ComplexPoint::GenericClass(foo, bla) => {
                             todo!()
