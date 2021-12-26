@@ -345,6 +345,8 @@ impl<'db> Inferred<'db> {
                     Specific::TypingProtocol
                     | Specific::TypingGeneric
                     | Specific::TypingTuple
+                    | Specific::TypingUnion
+                    | Specific::TypingOptional
                     | Specific::TypingCallable => {
                         callable(i_s, &TypingClass::new(*definition, specific))
                     }

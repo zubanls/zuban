@@ -355,6 +355,8 @@ pub enum Specific {
     TypingCallable,
     TypingType,
     TypingClassVar,
+    TypingUnion,
+    TypingOptional,
 
     // TODO reactivate these or remove
     //TypingFinal,
@@ -362,8 +364,6 @@ pub enum Specific {
     //TypingTypeAlias,
     //TypingConcatenate,
     //TypingAnnotated,
-    //TypingUnion,
-    //TypingOptional,
 
     //TypingAliasClass,
     //TypingAliasInstance,

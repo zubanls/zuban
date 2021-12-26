@@ -73,11 +73,10 @@ impl<'db> Simple<'db> {
             .infer_named_expression(self.named_expr)
     }
 
-    pub fn infer_annotation_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn infer_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         self.file
             .inference(i_s)
             .infer_annotation_expression_class(self.named_expr.expression())
-            .as_generic_part(i_s)
     }
 }
 

@@ -86,6 +86,8 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
+    set_typing_inference(typing, "Union", Specific::TypingUnion);
+    set_typing_inference(typing, "Optional", Specific::TypingOptional);
 
     setup_type_alias(typing, "List", builtins, "list");
     setup_type_alias(typing, "Dict", builtins, "dict");

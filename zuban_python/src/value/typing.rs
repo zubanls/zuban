@@ -55,9 +55,9 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     SliceType::Simple(simple) => {
                         // TODO if it is a (), it's an empty tuple
                         TupleContent {
-                            generics: Some(GenericsList::new(Box::new([
-                                simple.infer_annotation_generic_part(i_s)
-                            ]))),
+                            generics: Some(GenericsList::new(Box::new([simple
+                                .infer_annotation_class(i_s)
+                                .as_generic_part(i_s)]))),
                             arbitrary_length: false,
                         }
                     }
@@ -72,7 +72,8 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                                     .iter()
                                     .filter_map(|slice_content| match slice_content {
                                         SliceOrSimple::Simple(n) => {
-                                            let result = n.infer_annotation_generic_part(i_s);
+                                            let result =
+                                                n.infer_annotation_class(i_s).as_generic_part(i_s);
                                             if let GenericPart::Unknown = result {
                                                 if n.named_expr.is_ellipsis_literal() {
                                                     arbitrary_length = true;
@@ -92,6 +93,22 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                 Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
             }
             Specific::TypingCallable => {
+                todo!()
+            }
+            Specific::TypingUnion => match slice_type {
+                SliceType::Simple(simple) => simple.infer_annotation_class(i_s),
+                SliceType::Slice(x) => {
+                    todo!()
+                }
+                SliceType::Slices(slices) => Inferred::gather_union(|callable| {
+                    for slice_content in slices.iter() {
+                        if let SliceOrSimple::Simple(n) = slice_content {
+                            callable(n.infer_annotation_class(i_s));
+                        }
+                    }
+                }),
+            },
+            Specific::TypingOptional => {
                 todo!()
             }
             _ => unreachable!("{:?}", self.specific),
