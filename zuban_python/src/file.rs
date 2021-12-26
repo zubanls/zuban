@@ -88,8 +88,11 @@ impl File for PythonFile {
 
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
         let line = self.lines().partition_point(|&l| l < byte as CodeIndex);
-        // TODO these might be off by one and - 1 is dangerous
-        (line, (byte - self.lines()[line - 1] + 1) as usize)
+        if line == 0 {
+            (line, byte as usize)
+        } else {
+            (line, (byte - self.lines()[line - 1] + 1) as usize)
+        }
     }
 }
 
