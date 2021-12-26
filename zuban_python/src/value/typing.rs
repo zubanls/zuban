@@ -7,7 +7,7 @@ use crate::database::{
     ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent, TypeVarIndex,
 };
 use crate::generics::Generics;
-use crate::getitem::SliceType;
+use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
@@ -64,9 +64,20 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     SliceType::Slice(x) => {
                         todo!()
                     }
-                    SliceType::Slices(x) => {
-                        todo!()
-                    }
+                    SliceType::Slices(slices) => TupleContent {
+                        generics: Some(GenericsList::new(
+                            slices
+                                .iter()
+                                .map(|slice_content| match slice_content {
+                                    SliceOrSimple::Simple(n) => {
+                                        n.infer_annotation_generic_part(i_s)
+                                    }
+                                    SliceOrSimple::Slice(s) => todo!(),
+                                })
+                                .collect(),
+                        )),
+                        arbitrary_length: false,
+                    },
                 };
                 Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
             }

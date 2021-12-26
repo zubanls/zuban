@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, SliceIterator, SliceType, Slices,
-    SlicesContent,
+    Expression, ExpressionContent, NameParent, NodeIndex, SliceContent, SliceIterator, SliceType,
+    Slices,
 };
 
 use crate::arguments::Arguments;
@@ -103,7 +103,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 Some(result)
             }
             Self::SliceIterator(file, iter) => {
-                if let Some(SlicesContent::NamedExpression(s)) = iter.next() {
+                if let Some(SliceContent::NamedExpression(s)) = iter.next() {
                     let inferred = file
                         .inference(i_s)
                         .infer_annotation_expression_class(s.expression());
@@ -136,7 +136,7 @@ impl<'db> GenericsIterator<'db, '_> {
                     return;
                 }
                 Self::SliceIterator(file, iter) => {
-                    if let Some(SlicesContent::NamedExpression(s)) = iter.next() {
+                    if let Some(SliceContent::NamedExpression(s)) = iter.next() {
                         file.inference(i_s)
                             .infer_annotation_expression_class(s.expression())
                     } else {

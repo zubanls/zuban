@@ -1,5 +1,6 @@
 use parsa_python_ast::{
-    NamedExpression, NodeIndex, Slice as ASTSlice, SliceType as ASTSliceType, Slices as ASTSlices,
+    NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
+    SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
@@ -93,6 +94,40 @@ pub struct Slices<'db> {
     primary_index: NodeIndex,
     slices: ASTSlices<'db>,
 }
+
+impl<'db> Slices<'db> {
+    pub fn iter(&self) -> SliceIterator<'db> {
+        SliceIterator(self.file, self.primary_index, self.slices.iter())
+    }
+}
+
+pub enum SliceOrSimple<'db> {
+    Simple(Simple<'db>),
+    Slice(Slice<'db>),
+}
+pub struct SliceIterator<'db>(&'db PythonFile, NodeIndex, ASTSliceIterator<'db>);
+
+impl<'db> Iterator for SliceIterator<'db> {
+    type Item = SliceOrSimple<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO it's actually a bad idea to pass primary_index here
+        self.2.next().map(|content| match content {
+            SliceContent::NamedExpression(n) => SliceOrSimple::Simple(Simple {
+                file: self.0,
+                primary_index: self.1,
+                named_expr: n,
+            }),
+            SliceContent::Slice(s) => SliceOrSimple::Slice(Slice {
+                file: self.0,
+                primary_index: self.1,
+                slice: s,
+            }),
+        })
+    }
+}
+
+impl<'db> SliceIterator<'db> {}
 
 #[derive(Debug)]
 pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);

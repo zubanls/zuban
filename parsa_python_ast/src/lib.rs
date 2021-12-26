@@ -1650,7 +1650,7 @@ impl<'db> Slices<'db> {
     }
 }
 
-pub enum SlicesContent<'db> {
+pub enum SliceContent<'db> {
     Slice(Slice<'db>),
     NamedExpression(NamedExpression<'db>),
 }
@@ -1658,14 +1658,14 @@ pub enum SlicesContent<'db> {
 pub struct SliceIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> Iterator for SliceIterator<'db> {
-    type Item = SlicesContent<'db>;
+    type Item = SliceContent<'db>;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.0.next().map(|n| {
             if n.is_type(Nonterminal(slices)) {
-                SlicesContent::Slice(Slice::new(n))
+                SliceContent::Slice(Slice::new(n))
             } else {
-                SlicesContent::NamedExpression(NamedExpression::new(n))
+                SliceContent::NamedExpression(NamedExpression::new(n))
             }
         });
         self.0.next();
