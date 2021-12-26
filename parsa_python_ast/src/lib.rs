@@ -100,6 +100,11 @@ macro_rules! create_struct {
                 self.node.index
             }
 
+            #[inline]
+            pub fn start(&self) -> CodeIndex {
+                self.node.start()
+            }
+
             pub fn short_debug(&self) -> &'db str {
                 self.node
                     .as_code()
@@ -236,10 +241,6 @@ impl<'db> Name<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
         self.node.as_code()
-    }
-
-    pub fn start(&self) -> CodeIndex {
-        self.node.start()
     }
 
     pub fn end(&self) -> CodeIndex {

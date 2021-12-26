@@ -235,7 +235,8 @@ macro_rules! check_point_cache_with {
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_stmt_name(&mut self, stmt: Stmt<'db>) {
         debug!(
-            "Infer stmt ({}, {}): {:?}",
+            "Infer stmt (#{}: {}, {}): {:?}",
+            self.file.byte_to_line_column(stmt.start()).0,
             self.file.file_index(),
             stmt.index(),
             stmt.short_debug().trim()
