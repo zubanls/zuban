@@ -33,13 +33,23 @@ impl<'db, 'a> Generics<'db, 'a> {
     fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Option<Inferred<'db>> {
         match self {
             Self::Expression(file, expr) => {
-                if n.is_zero() {
+                if n.as_usize() == 0 {
                     Some(file.inference(i_s).infer_annotation_expression_class(*expr))
                 } else {
                     None
                 }
             }
-            Self::Slices(file, slices) => todo!(),
+            Self::Slices(file, slices) => {
+                slices
+                    .iter()
+                    .nth(n.as_usize())
+                    .map(|slice_content| match slice_content {
+                        SliceContent::NamedExpression(n) => file
+                            .inference(i_s)
+                            .infer_annotation_expression_class(n.expression()),
+                        SliceContent::Slice(s) => todo!(),
+                    })
+            }
             Self::List(l) => l
                 .nth(n)
                 .map(|g| Inferred::from_generic_class(i_s.database, g.clone())),

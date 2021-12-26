@@ -27,8 +27,8 @@ impl TypeVarIndex {
         Self(i as u32)
     }
 
-    pub fn is_zero(&self) -> bool {
-        self.0 == 0
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
     }
 }
 
