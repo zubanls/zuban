@@ -53,7 +53,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
             Specific::TypingTuple => {
                 let content = match slice_type {
                     SliceType::Simple(simple) => {
-                        // TODO if it is a (), it's am empty tuple
+                        // TODO if it is a (), it's an empty tuple
                         TupleContent {
                             generics: Some(GenericsList::new(Box::new([
                                 simple.infer_annotation_generic_part(i_s)
@@ -64,20 +64,30 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     SliceType::Slice(x) => {
                         todo!()
                     }
-                    SliceType::Slices(slices) => TupleContent {
-                        generics: Some(GenericsList::new(
-                            slices
-                                .iter()
-                                .map(|slice_content| match slice_content {
-                                    SliceOrSimple::Simple(n) => {
-                                        n.infer_annotation_generic_part(i_s)
-                                    }
-                                    SliceOrSimple::Slice(s) => todo!(),
-                                })
-                                .collect(),
-                        )),
-                        arbitrary_length: false,
-                    },
+                    SliceType::Slices(slices) => {
+                        let mut arbitrary_length = false;
+                        TupleContent {
+                            generics: Some(GenericsList::new(
+                                slices
+                                    .iter()
+                                    .filter_map(|slice_content| match slice_content {
+                                        SliceOrSimple::Simple(n) => {
+                                            let result = n.infer_annotation_generic_part(i_s);
+                                            if let GenericPart::Unknown = result {
+                                                if n.named_expr.is_ellipsis_literal() {
+                                                    arbitrary_length = true;
+                                                    return None;
+                                                }
+                                            }
+                                            Some(result)
+                                        }
+                                        SliceOrSimple::Slice(s) => todo!(),
+                                    })
+                                    .collect(),
+                            )),
+                            arbitrary_length,
+                        }
+                    }
                 };
                 Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
             }
@@ -231,8 +241,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     ) -> Inferred<'db> {
         match slice_type {
             SliceType::Simple(simple) => {
-                if let Some(wanted) = simple.infer(i_s).expect_int() {
-                    let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                let by_index = |i_s: &mut InferenceState<'db, '_>, index| {
                     self.content
                         .generics
                         .as_ref()
@@ -243,6 +252,11 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                             })
                         })
                         .unwrap_or_else(Inferred::new_unknown)
+                };
+                if self.content.arbitrary_length {
+                    by_index(i_s, 0)
+                } else if let Some(wanted) = simple.infer(i_s).expect_int() {
+                    by_index(i_s, usize::try_from(wanted).ok().unwrap_or_else(|| todo!()))
                 } else {
                     todo!()
                 }

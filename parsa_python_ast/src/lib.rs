@@ -594,6 +594,17 @@ impl<'db> NamedExpression<'db> {
             NamedExpressionContent::Definition(NameDefinition::new(node), Expression::new(expr))
         }
     }
+
+    pub fn is_ellipsis_literal(&self) -> bool {
+        if let NamedExpressionContent::Expression(e) = self.unpack() {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
+                if let AtomContent::Ellipsis = a.unpack() {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 pub enum NamedExpressionContent<'db> {
