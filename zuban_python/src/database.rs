@@ -617,7 +617,10 @@ impl GenericPart {
         };
         match self {
             Self::Class(_) | Self::Unknown => self,
-            Self::GenericClass(link, generics) => Self::GenericClass(link, generics),
+            Self::GenericClass(link, mut generics) => {
+                replace_list(&mut generics.0, callable);
+                Self::GenericClass(link, generics)
+            }
             Self::Union(list) => {
                 todo!()
             }
