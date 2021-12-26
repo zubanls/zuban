@@ -104,7 +104,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn lookup_symbol(
+    pub fn lookup_symbol(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
@@ -300,7 +300,7 @@ impl<'db, 'a> Class<'db, 'a> {
         })
     }
 
-    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
             database: i_s.database,
@@ -435,7 +435,7 @@ impl<'db> BasesIterator<'db> {
     }
 }
 
-struct MroIterator<'db, 'a> {
+pub struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: Generics<'db, 'a>,
     class: Option<ClassLike<'db, 'a>>,

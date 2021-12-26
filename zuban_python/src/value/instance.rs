@@ -30,17 +30,12 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        if let Some(node_index) = self.class.symbol_table.lookup_symbol(name) {
-            self.class
-                .reference
-                .file
-                .inference(i_s)
-                .infer_name_by_index(node_index)
-                .resolve_function_return(i_s)
-                .bind(i_s, self)
-        } else {
-            todo!("{:?}", name)
+        for class in self.class.mro(i_s) {
+            if let Some(inf) = class.lookup_symbol(i_s, name) {
+                return inf.resolve_function_return(i_s).bind(i_s, self);
+            }
         }
+        todo!("{:?}.{:?}", self.name(), name)
     }
 
     fn execute(
