@@ -878,9 +878,11 @@ impl<'db> Inferred<'db> {
                         ComplexPoint::Union(lst) => {
                             list.extend(lst.iter().cloned());
                         }
-                        _ => todo!("{:?}", complex),
+                        _ => list.push(AnyLink::Complex(Box::new(complex))),
                     },
-                    InferredState::UnsavedSpecific(specific) => todo!(),
+                    InferredState::UnsavedSpecific(specific) => {
+                        list.push(AnyLink::Specific(specific))
+                    }
                     InferredState::Unknown => todo!(),
                 };
             };
@@ -892,7 +894,6 @@ impl<'db> Inferred<'db> {
 
     #[inline]
     pub fn gather_union(mut callable: impl FnMut(&mut dyn FnMut(Self))) -> Self {
-        // TODO currently unused?!
         let mut result: Option<Self> = None;
         let r = &mut result;
         callable(&mut |inferred| {

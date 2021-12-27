@@ -5,7 +5,7 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    ComplexPoint, GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
+    GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -475,13 +475,16 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn maybe_unsaved_inferred(&self) -> Option<Inferred<'db>> {
+    pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
-            Self::ClassLike(ClassLike::Tuple(t)) => Some(Inferred::new_unsaved_complex(
-                ComplexPoint::Tuple(t.content.clone()),
-            )),
-            Self::ClassLike(_) => todo!(),
-            Self::Union(_) => todo!(),
+            Self::ClassLike(c) => Some(c.execute_annotation(i_s)),
+            Self::Union(list) => Some(Inferred::gather_union(|callable| {
+                for generic_option in list.iter() {
+                    if let Some(i) = generic_option.maybe_execute(i_s) {
+                        callable(i)
+                    }
+                }
+            })),
             Self::TypeVar(_) => todo!("return unknown"),
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Invalid => None,
