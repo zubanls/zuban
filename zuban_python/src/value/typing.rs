@@ -108,9 +108,12 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     }
                 }),
             },
-            Specific::TypingOptional => {
-                todo!()
-            }
+            Specific::TypingOptional => match slice_type {
+                SliceType::Simple(simple) => simple
+                    .infer_annotation_class(i_s)
+                    .union(Inferred::new_unsaved_specific(Specific::None)),
+                _ => todo!(),
+            },
             _ => unreachable!("{:?}", self.specific),
         }
     }
