@@ -27,34 +27,38 @@ impl<'db> fmt::Debug for Function<'db, '_> {
     }
 }
 
-impl<'db> Function<'db, '_> {
+impl<'db, 'a> Function<'db, 'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(reference: NodeReference<'db>) -> Self {
-        Self {
-            reference,
-            class: None,
-        }
+    pub fn new(reference: NodeReference<'db>, class: Option<&'a Class<'db, 'a>>) -> Self {
+        Self { reference, class }
     }
 
-    pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
+    pub fn from_execution(
+        database: &'db Database,
+        execution: &Execution,
+        class: Option<&'a Class<'db, 'a>>,
+    ) -> Self {
         let f_func = database.loaded_python_file(execution.function.file);
-        Function::new(NodeReference {
-            file: f_func,
-            node_index: execution.function.node_index,
-        })
+        Function::new(
+            NodeReference {
+                file: f_func,
+                node_index: execution.function.node_index,
+            },
+            class,
+        )
     }
 
     fn node(&self) -> FunctionDef<'db> {
         FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn iter_inferrable_params<'a>(
+    pub fn iter_inferrable_params<'b>(
         &self,
-        args: &'a dyn Arguments<'db>,
+        args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator<'db, 'a> {
+    ) -> InferrableParamIterator<'db, 'b> {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
@@ -80,8 +84,9 @@ impl<'db> Function<'db, '_> {
                 let exec = execution.unwrap();
                 if func_node.index() == exec.function.node_index {
                     // TODO this could be an instance as well
+                    // TODO in general check if this code still makes sense
                     temporary_args = SimpleArguments::from_execution(i_s.database, exec);
-                    temporary_func = Function::from_execution(i_s.database, exec);
+                    temporary_func = Function::from_execution(i_s.database, exec, None);
                     break (&temporary_args as &dyn Arguments, &temporary_func);
                 }
                 execution = exec.in_.as_deref();
@@ -147,7 +152,6 @@ impl<'db> Function<'db, '_> {
     pub fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
     ) -> Option<&'db [PointLink]> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
@@ -162,7 +166,7 @@ impl<'db> Function<'db, '_> {
             }
             return None;
         }
-        let class_infos = class.map(|c| c.class_infos(i_s));
+        let class_infos = self.class.map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
         let mut add = |n: NodeIndex, type_var_link: PointLink| {
@@ -205,7 +209,7 @@ impl<'db> Function<'db, '_> {
             )),
         }
         debug_assert!(type_var_reference.point().calculated());
-        self.calculated_type_vars(i_s, class)
+        self.calculated_type_vars(i_s)
     }
 }
 
@@ -233,7 +237,7 @@ where
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.node().annotation() {
             let i_s = &mut i_s.with_annotation_instance();
-            let func_type_vars = self.calculated_type_vars(i_s, self.class);
+            let func_type_vars = self.calculated_type_vars(i_s);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
                 let class = self.class;
@@ -386,13 +390,19 @@ fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
 pub struct OverloadedFunction<'db, 'a> {
     reference: NodeReference<'db>,
     overload: &'a Overload,
+    class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db, 'a> OverloadedFunction<'db, 'a> {
-    pub fn new(reference: NodeReference<'db>, overload: &'a Overload) -> Self {
+    pub fn new(
+        reference: NodeReference<'db>,
+        overload: &'a Overload,
+        class: Option<&'a Class<'db, 'a>>,
+    ) -> Self {
         Self {
             reference,
             overload,
+            class,
         }
     }
 
@@ -401,9 +411,9 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
-    ) -> Option<(Function<'db, 'db>, Option<GenericsList>)> {
+    ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
-            let function = Function::new(NodeReference::from_link(i_s.database, *link));
+            let function = Function::new(NodeReference::from_link(i_s.database, *link), self.class);
             let mut finder = match class {
                 Some(c) => TypeVarMatcher::new(
                     &function,
@@ -413,7 +423,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     Specific::ClassTypeVar,
                 ),
                 None => {
-                    let func_type_vars = function.calculated_type_vars(i_s, class);
+                    let func_type_vars = function.calculated_type_vars(i_s);
                     TypeVarMatcher::new(
                         &function,
                         args,

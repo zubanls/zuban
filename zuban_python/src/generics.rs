@@ -218,8 +218,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 self.calculated_type_vars = Some(GenericsList::new_unknown(type_vars.len()));
             }
         }
-        let class = self.function.class;
-        self.function.calculated_type_vars(i_s, class);
+        self.function.calculated_type_vars(i_s);
         let mut iter = self
             .function
             .iter_inferrable_params(self.args, self.skip_first);

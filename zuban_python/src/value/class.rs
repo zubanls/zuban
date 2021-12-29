@@ -187,9 +187,9 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> (Function<'db, 'db>, Option<GenericsList>) {
+    ) -> (Function<'db, '_>, Option<GenericsList>) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        match init.init_as_function() {
+        match init.init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);

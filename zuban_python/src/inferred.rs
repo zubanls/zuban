@@ -119,9 +119,9 @@ impl<'db> NodeReference<'db> {
     }
 }
 
-pub enum FunctionOrOverload<'db> {
-    Function(Function<'db, 'db>),
-    Overload(OverloadedFunction<'db, 'db>),
+pub enum FunctionOrOverload<'db, 'a> {
+    Function(Function<'db, 'a>),
+    Overload(OverloadedFunction<'db, 'a>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -355,7 +355,7 @@ impl<'db> Inferred<'db> {
         on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
     ) -> T {
         match specific {
-            Specific::Function => callable(i_s, &Function::new(*definition)),
+            Specific::Function => callable(i_s, &Function::new(*definition, None)),
             Specific::AnnotationInstance => {
                 let inferred = definition
                     .file
@@ -428,7 +428,7 @@ impl<'db> Inferred<'db> {
         match complex {
             ComplexPoint::ExecutionInstance(cls_definition, execution) => {
                 let def = NodeReference::from_link(i_s.database, *cls_definition);
-                let init = Function::from_execution(i_s.database, execution);
+                let init = Function::from_execution(i_s.database, execution, None);
                 let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
@@ -481,21 +481,22 @@ impl<'db> Inferred<'db> {
             ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
+                let class = None;
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
-                    let func = OverloadedFunction::new(reference, overload);
+                    let func = OverloadedFunction::new(reference, overload, class);
                     callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
                 } else {
-                    let func = Function::new(reference);
+                    let func = Function::new(reference, class);
                     callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
                 }
             }
             ComplexPoint::Closure(function, execution) => {
                 let f = i_s.database.loaded_python_file(function.file);
-                let func = Function::from_execution(i_s.database, execution);
+                let func = Function::from_execution(i_s.database, execution, None);
                 let args = SimpleArguments::from_execution(i_s.database, execution);
                 callable(
                     &mut i_s.with_func_and_args(&func, &args),
-                    &Function::new(NodeReference::from_link(i_s.database, *function)),
+                    &Function::new(NodeReference::from_link(i_s.database, *function), None),
                 )
             }
             ComplexPoint::Instance(cls, generics_list) => {
@@ -509,7 +510,7 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::FunctionOverload(overload) => callable(
                 i_s,
-                &OverloadedFunction::new(*definition.unwrap(), overload),
+                &OverloadedFunction::new(*definition.unwrap(), overload, None),
             ),
             ComplexPoint::GenericClass(link, generics) => {
                 let class = Class::from_position(
@@ -869,15 +870,22 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db>> {
+    pub fn init_as_function<'a>(
+        &self,
+        class: &'a Class<'db, 'a>,
+    ) -> Option<FunctionOrOverload<'db, 'a>> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let Some(Specific::Function) = point.maybe_specific() {
-                return Some(FunctionOrOverload::Function(Function::new(*definition)));
+                return Some(FunctionOrOverload::Function(Function::new(
+                    *definition,
+                    Some(class),
+                )));
             }
             if let Some(ComplexPoint::FunctionOverload(overload)) = definition.complex() {
                 return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
                     *definition,
                     overload,
+                    Some(class),
                 )));
             }
         }

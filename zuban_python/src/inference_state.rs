@@ -38,7 +38,8 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         execution: &Execution,
         callable: impl FnOnce(&mut InferenceState<'db, '_>) -> T,
     ) -> T {
-        let func = Function::from_execution(self.database, execution);
+        // TODO this is unused?!
+        let func = Function::from_execution(self.database, execution, None);
         let args = SimpleArguments::from_execution(self.database, execution);
         callable(&mut self.with_func_and_args(&func, &args))
     }
