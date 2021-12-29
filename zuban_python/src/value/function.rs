@@ -240,14 +240,13 @@ where
             let func_type_vars = self.calculated_type_vars(i_s);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
-                let class = self.class;
                 // TODO this could also be a tuple...
                 let mut finder = func_type_vars.map(|t| {
                     TypeVarMatcher::new(self, args, false, Some(t), Specific::FunctionTypeVar)
                 });
                 debug!(
                     "Inferring generics for {}{}",
-                    class
+                    self.class
                         .map(|c| format!("{}.", c.as_string(i_s)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
@@ -257,7 +256,7 @@ where
                     .inference(i_s)
                     .infer_annotation_expression_class(expr)
                     .as_generic_option(i_s)
-                    .resolve_type_vars(i_s, class, &mut finder)
+                    .resolve_type_vars(i_s, self.class, &mut finder)
                     .execute_annotation_class(i_s)
             } else {
                 self.reference
