@@ -8,7 +8,7 @@ use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Class, Function};
+use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
 pub enum SliceType<'db> {
@@ -157,10 +157,6 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
             ArgumentsType::Normal(self.file, self.primary_node)
         }
         */
-        todo!()
-    }
-
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         todo!()
     }
 }

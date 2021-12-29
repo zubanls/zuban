@@ -20,7 +20,6 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn type_(&self) -> ArgumentsType<'db>;
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>>;
 }
 
 #[derive(Debug)]
@@ -53,10 +52,6 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
     fn type_(&self) -> ArgumentsType<'db> {
         ArgumentsType::Normal(self.file, self.primary_node)
-    }
-
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
-        self.class_of_method
     }
 }
 
@@ -149,18 +144,6 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
 
     fn type_(&self) -> ArgumentsType<'db> {
         self.arguments.type_()
-    }
-
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
-        /*
-        let class_like = self.instance.class(i_s);
-        if let ClassLike::Class(c) = class_like.mro(i_s).nth(self.mro_index.0 as usize).map(|(_, c)| c).unwrap() {
-            Some(c)
-        } else {
-            None
-        }
-        */
-        todo!()
     }
 }
 
@@ -295,10 +278,6 @@ impl<'db> Arguments<'db> for NoArguments {
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
-        todo!()
-    }
-
-    fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
         todo!()
     }
 }

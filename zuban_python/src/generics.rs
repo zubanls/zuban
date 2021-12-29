@@ -218,8 +218,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 self.calculated_type_vars = Some(GenericsList::new_unknown(type_vars.len()));
             }
         }
-        let class = self.args.class_of_method(i_s);
-        self.function.calculated_type_vars(i_s, class.as_ref());
+        let class = self.function.class;
+        self.function.calculated_type_vars(i_s, class);
         let mut iter = self
             .function
             .iter_inferrable_params(self.args, self.skip_first);
@@ -407,7 +407,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     pub fn resolve_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<Class<'db, '_>>,
+        class: Option<&Class<'db, '_>>,
         function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
     ) -> Inferred<'db> {
         let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
@@ -421,7 +421,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     fn internal_resolve_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<Class<'db, '_>>,
+        class: Option<&Class<'db, '_>>,
         function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
     ) -> GenericPart {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,

@@ -15,7 +15,7 @@ use crate::value::Class;
 
 pub struct Function<'db, 'a> {
     pub reference: NodeReference<'db>,
-    class: Option<&'a Class<'db, 'a>>,
+    pub class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db> fmt::Debug for Function<'db, '_> {
@@ -233,11 +233,10 @@ where
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.node().annotation() {
             let i_s = &mut i_s.with_annotation_instance();
-            let class = args.class_of_method(i_s);
-            let func_type_vars = self.calculated_type_vars(i_s, class.as_ref());
+            let func_type_vars = self.calculated_type_vars(i_s, self.class);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
-                let class = args.class_of_method(i_s);
+                let class = self.class;
                 // TODO this could also be a tuple...
                 let mut finder = func_type_vars.map(|t| {
                     TypeVarMatcher::new(self, args, false, Some(t), Specific::FunctionTypeVar)
