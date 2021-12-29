@@ -119,9 +119,9 @@ impl<'db> NodeReference<'db> {
     }
 }
 
-pub enum FunctionOrOverload<'db, 'a> {
-    Function(Function<'db>),
-    Overload(OverloadedFunction<'db, 'a>),
+pub enum FunctionOrOverload<'db> {
+    Function(Function<'db, 'db>),
+    Overload(OverloadedFunction<'db, 'db>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -869,7 +869,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db, '_>> {
+    pub fn init_as_function(&self) -> Option<FunctionOrOverload<'db>> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let Some(Specific::Function) = point.maybe_specific() {
                 return Some(FunctionOrOverload::Function(Function::new(*definition)));

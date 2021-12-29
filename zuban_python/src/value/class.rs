@@ -187,7 +187,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> (Function<'db>, Option<GenericsList>) {
+    ) -> (Function<'db, 'db>, Option<GenericsList>) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         match init.init_as_function() {
             Some(FunctionOrOverload::Function(func)) => {

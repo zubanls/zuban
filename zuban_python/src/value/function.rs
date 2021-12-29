@@ -13,26 +13,29 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::Class;
 
-pub struct Function<'db> {
+pub struct Function<'db, 'a> {
     pub reference: NodeReference<'db>,
-    //class: Option<&'a Class<'db, 'a>>,
+    class: Option<&'a Class<'db, 'a>>,
 }
 
-impl<'db> fmt::Debug for Function<'db> {
+impl<'db> fmt::Debug for Function<'db, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("file", self.reference.file)
-            .field("node", &self.node())
+            .field("name", &self.name())
             .finish()
     }
 }
 
-impl<'db> Function<'db> {
+impl<'db> Function<'db, '_> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
     pub fn new(reference: NodeReference<'db>) -> Self {
-        Self { reference }
+        Self {
+            reference,
+            class: None,
+        }
     }
 
     pub fn from_execution(database: &'db Database, execution: &Execution) -> Self {
@@ -206,7 +209,7 @@ impl<'db> Function<'db> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Function<'db>
+impl<'db, 'a> Value<'db, 'a> for Function<'db, '_>
 where
     'db: 'a,
 {
@@ -399,7 +402,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
-    ) -> Option<(Function<'db>, Option<GenericsList>)> {
+    ) -> Option<(Function<'db, 'db>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeReference::from_link(i_s.database, *link));
             let mut finder = match class {

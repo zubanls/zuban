@@ -169,7 +169,7 @@ impl<'db> GenericsIterator<'db, '_> {
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
-    function: &'a Function<'db>,
+    function: &'a Function<'db, 'a>,
     args: &'a dyn Arguments<'db>,
     skip_first: bool,
     pub calculated_type_vars: Option<GenericsList>,
@@ -180,7 +180,7 @@ pub struct TypeVarMatcher<'db, 'a> {
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
-        function: &'a Function<'db>,
+        function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
         type_vars: Option<&'a [PointLink]>,
@@ -200,7 +200,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
-        function: &'a Function<'db>,
+        function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
         type_vars: Option<&'db [PointLink]>,
