@@ -1,10 +1,10 @@
-use crate::database::{Database, Execution, PointLink};
+use crate::database::{Database, Execution, MroIndex, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::value::{Class, ClassLike, Function, Value};
+use crate::value::{Class, Function, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -124,6 +124,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 #[derive(Debug)]
 pub struct InstanceArguments<'db, 'a, 'b> {
     instance: &'a dyn Value<'db, 'b>,
+    mro_index: MroIndex,
     arguments: &'a dyn Arguments<'db>,
 }
 
@@ -151,20 +152,28 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
     }
 
     fn class_of_method(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
-        // TODO getting the class this way is a bad idea.
-        if let ClassLike::Class(c) = self.instance.class(i_s) {
+        /*
+        let class_like = self.instance.class(i_s);
+        if let ClassLike::Class(c) = class_like.mro(i_s).nth(self.mro_index.0 as usize).map(|(_, c)| c).unwrap() {
             Some(c)
         } else {
             None
         }
+        */
+        todo!()
     }
 }
 
 impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
-    pub fn new(instance: &'a dyn Value<'db, 'b>, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(
+        instance: &'a dyn Value<'db, 'b>,
+        mro_index: MroIndex,
+        arguments: &'a dyn Arguments<'db>,
+    ) -> Self {
         Self {
             arguments,
             instance,
+            mro_index,
         }
     }
 }

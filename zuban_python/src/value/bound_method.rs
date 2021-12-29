@@ -1,6 +1,6 @@
-use super::{Value, ValueKind};
+use super::{Class, Value, ValueKind};
 use crate::arguments::{Arguments, InstanceArguments};
-use crate::database::AnyLink;
+use crate::database::{AnyLink, MroIndex};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -8,11 +8,20 @@ use crate::inferred::Inferred;
 pub struct BoundMethod<'db, 'a> {
     instance: &'a AnyLink,
     function: &'a dyn Value<'db, 'a>,
+    mro_index: MroIndex,
 }
 
 impl<'db, 'a> BoundMethod<'db, 'a> {
-    pub fn new(instance: &'a AnyLink, function: &'a dyn Value<'db, 'a>) -> Self {
-        Self { instance, function }
+    pub fn new(
+        instance: &'a AnyLink,
+        mro_index: MroIndex,
+        function: &'a dyn Value<'db, 'a>,
+    ) -> Self {
+        Self {
+            instance,
+            mro_index,
+            function,
+        }
     }
 }
 
@@ -41,7 +50,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         inferred.run_on_value(i_s, &mut |i_s, value| {
             let value: &dyn Value = unsafe { std::mem::transmute(value) };
             let instance = value.as_instance().unwrap();
-            let args = InstanceArguments::new(instance, args);
+            let args = InstanceArguments::new(instance, self.mro_index, args);
             let func: &dyn Value = unsafe { std::mem::transmute(self.function) };
             func.execute(i_s, &args)
         })

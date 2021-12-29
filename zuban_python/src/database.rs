@@ -21,6 +21,8 @@ use crate::utils::{InsertOnlyVec, SymbolTable};
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TypeVarIndex(u32);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MroIndex(pub u32);
 
 impl TypeVarIndex {
     pub fn new(i: usize) -> Self {
@@ -424,7 +426,7 @@ pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     Union(Box<[AnyLink]>),
     ExecutionInstance(PointLink, Box<Execution>),
-    BoundMethod(AnyLink, PointLink),
+    BoundMethod(AnyLink, MroIndex, PointLink),
     Closure(PointLink, Box<Execution>),
     GenericClass(PointLink, GenericsList),
     Instance(PointLink, Option<GenericsList>),

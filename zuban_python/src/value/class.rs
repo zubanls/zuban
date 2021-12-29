@@ -3,8 +3,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{Function, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroClass, Point,
-    PointLink, Specific, TypeVarRemap,
+    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroClass, MroIndex,
+    Point, PointLink, Specific, TypeVarRemap,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -35,7 +35,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // TODO use type_var_remap
         match value_class {
             GenericOption::ClassLike(c) => {
-                for class_like in c.mro(i_s) {
+                for (mro_index, class_like) in c.mro(i_s) {
                     if self.matches_without_generics(&class_like) {
                         some_class_matches = true;
                         let mut value_generics = class_like.generics().iter();
@@ -90,7 +90,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
             Self::Type(c) => c.mro(i_s), // TODO this does not make sense?
@@ -99,6 +99,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 generics: self.generics(),
                 class: Some(*self),
                 iterator: [].iter(),
+                mro_index: 0,
                 returned_object: false,
             },
         }
@@ -187,9 +188,10 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> (Function<'db>, Option<GenericsList>) {
-        let init = self.lookup(i_s, "__init__");
+        let (init, class) = self.lookup_and_class(i_s, "__init__");
         match init.init_as_function() {
             Some(FunctionOrOverload::Function(func)) => {
+                // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
                 let list = TypeVarMatcher::calculate_and_return(
                     i_s,
@@ -202,9 +204,8 @@ impl<'db, 'a> Class<'db, 'a> {
                 return (func, list);
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => {
-                let type_vars = self.type_vars(i_s);
                 if let Some((func, list)) =
-                    overloaded_function.find_matching_function(i_s, args, Some(type_vars))
+                    overloaded_function.find_matching_function(i_s, args, class.as_ref())
                 {
                     return (func, list);
                 } else {
@@ -316,12 +317,30 @@ impl<'db, 'a> Class<'db, 'a> {
         })
     }
 
+    fn lookup_and_class(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> (Inferred<'db>, Option<Class<'db, '_>>) {
+        for (mro_index, c) in self.mro(i_s) {
+            if let Some(inf) = c.lookup_symbol(i_s, name) {
+                if let ClassLike::Class(c) = c {
+                    return (inf, Some(c));
+                } else {
+                    return (inf, None);
+                }
+            }
+        }
+        todo!("{:?}.{:?}", self.name(), name)
+    }
+
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
             database: i_s.database,
             generics: self.generics,
             class: Some(ClassLike::Class(*self)),
+            mro_index: 0,
             iterator: class_infos.mro.iter(),
             returned_object: false,
         }
@@ -348,12 +367,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        for c in self.mro(i_s) {
-            if let Some(inf) = c.lookup_symbol(i_s, name) {
-                return inf;
-            }
-        }
-        todo!("{:?}.{:?}", self.name(), name)
+        self.lookup_and_class(i_s, name).0
     }
 
     fn execute(
@@ -456,29 +470,38 @@ pub struct MroIterator<'db, 'a> {
     generics: Generics<'db, 'a>,
     class: Option<ClassLike<'db, 'a>>,
     iterator: std::slice::Iter<'db, MroClass>,
+    mro_index: u32,
     returned_object: bool,
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = ClassLike<'db, 'a>;
+    type Item = (MroIndex, ClassLike<'db, 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
-            return Some(std::mem::replace(&mut self.class, None).unwrap());
-        }
-        if let Some(c) = self.iterator.next() {
-            Some(ClassLike::Class(
-                Class::from_position(
-                    NodeReference::from_link(self.database, c.class),
-                    self.generics,
-                    Some(&c.type_var_remap),
-                )
-                .unwrap(),
+            self.mro_index += 1;
+            Some((
+                MroIndex(0),
+                std::mem::replace(&mut self.class, None).unwrap(),
             ))
+        } else if let Some(c) = self.iterator.next() {
+            let r = Some((
+                MroIndex(self.mro_index),
+                ClassLike::Class(
+                    Class::from_position(
+                        NodeReference::from_link(self.database, c.class),
+                        self.generics,
+                        Some(&c.type_var_remap),
+                    )
+                    .unwrap(),
+                ),
+            ));
+            self.mro_index += 1;
+            r
         } else if !self.returned_object {
             self.returned_object = true;
             Class::from_position(self.database.python_state.object(), Generics::None, None)
-                .map(ClassLike::Class)
+                .map(|c| (MroIndex(self.mro_index), ClassLike::Class(c)))
         } else {
             None
         }

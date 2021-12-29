@@ -6,8 +6,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, Point,
-    PointLink, PointType, Specific,
+    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, MroIndex,
+    Point, PointLink, PointType, Specific,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -377,7 +377,8 @@ impl<'db> Inferred<'db> {
                 let (init, generics) = class.init_func(i_s, &args);
                 debug_assert!(generics.is_none());
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
-                    let args = InstanceArguments::new(instance, &args);
+                    // TODO is this MroIndex correct?
+                    let args = InstanceArguments::new(instance, MroIndex(0), &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
                 })
             }
@@ -434,7 +435,8 @@ impl<'db> Inferred<'db> {
                     let class = Class::new(def, &cls_storage.symbol_table, Generics::None, None);
                     debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
-                    let args = InstanceArguments::new(&instance, &args);
+                    // TODO is this MroIndex fine? probably not!
+                    let args = InstanceArguments::new(&instance, MroIndex(0), &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()
@@ -476,15 +478,15 @@ impl<'db> Inferred<'db> {
                 })
                 .reduce(reducer)
                 .unwrap(),
-            ComplexPoint::BoundMethod(instance_link, func_link) => {
+            ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload);
-                    callable(i_s, &BoundMethod::new(instance_link, &func))
+                    callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
                 } else {
                     let func = Function::new(reference);
-                    callable(i_s, &BoundMethod::new(instance_link, &func))
+                    callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
                 }
             }
             ComplexPoint::Closure(function, execution) => {
@@ -940,13 +942,19 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn bind(self, i_s: &InferenceState<'db, '_>, instance: &Instance<'db, '_>) -> Self {
+    pub fn bind(
+        self,
+        i_s: &InferenceState<'db, '_>,
+        instance: &Instance<'db, '_>,
+        mro_index: MroIndex,
+    ) -> Self {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => {
                     if point.specific() == Specific::Function {
                         let complex = ComplexPoint::BoundMethod(
                             instance.as_inferred().as_any_link(i_s),
+                            mro_index,
                             definition.as_link(),
                         );
                         return Self::new_unsaved_complex(complex);
@@ -958,6 +966,7 @@ impl<'db> Inferred<'db> {
                     {
                         let complex = ComplexPoint::BoundMethod(
                             instance.as_inferred().as_any_link(i_s),
+                            mro_index,
                             definition.as_link(),
                         );
                         return Self::new_unsaved_complex(complex);

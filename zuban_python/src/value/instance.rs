@@ -30,9 +30,9 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        for class in self.class.mro(i_s) {
+        for (mro_index, class) in self.class.mro(i_s) {
             if let Some(inf) = class.lookup_symbol(i_s, name) {
-                return inf.resolve_function_return(i_s).bind(i_s, self);
+                return inf.resolve_function_return(i_s).bind(i_s, self, mro_index);
             }
         }
         todo!("{:?}.{:?}", self.name(), name)

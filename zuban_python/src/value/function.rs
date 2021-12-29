@@ -11,9 +11,11 @@ use crate::file::PythonFile;
 use crate::generics::{search_type_vars, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
+use crate::value::Class;
 
 pub struct Function<'db> {
     pub reference: NodeReference<'db>,
+    //class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db> fmt::Debug for Function<'db> {
@@ -142,7 +144,7 @@ impl<'db> Function<'db> {
     pub fn calculated_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
+        class: Option<&Class<'db, '_>>,
     ) -> Option<&'db [PointLink]> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
@@ -157,7 +159,7 @@ impl<'db> Function<'db> {
             }
             return None;
         }
-        let class_infos = args.class_of_method(i_s).map(|c| c.class_infos(i_s));
+        let class_infos = class.map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
         let mut add = |n: NodeIndex, type_var_link: PointLink| {
@@ -200,7 +202,7 @@ impl<'db> Function<'db> {
             )),
         }
         debug_assert!(type_var_reference.point().calculated());
-        self.calculated_type_vars(i_s, args)
+        self.calculated_type_vars(i_s, class)
     }
 }
 
@@ -228,7 +230,8 @@ where
     ) -> Inferred<'db> {
         if let Some(return_annotation) = self.node().annotation() {
             let i_s = &mut i_s.with_annotation_instance();
-            let func_type_vars = self.calculated_type_vars(i_s, args);
+            let class = args.class_of_method(i_s);
+            let func_type_vars = self.calculated_type_vars(i_s, class.as_ref());
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
                 let class = args.class_of_method(i_s);
@@ -395,16 +398,20 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        from_class_init_type_vars: Option<&[PointLink]>,
+        class: Option<&Class<'db, '_>>,
     ) -> Option<(Function<'db>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeReference::from_link(i_s.database, *link));
-            let mut finder = match from_class_init_type_vars {
-                Some(c) => {
-                    TypeVarMatcher::new(&function, args, true, Some(c), Specific::ClassTypeVar)
-                }
+            let mut finder = match class {
+                Some(c) => TypeVarMatcher::new(
+                    &function,
+                    args,
+                    true,
+                    Some(c.type_vars(i_s)),
+                    Specific::ClassTypeVar,
+                ),
                 None => {
-                    let func_type_vars = function.calculated_type_vars(i_s, args);
+                    let func_type_vars = function.calculated_type_vars(i_s, class);
                     TypeVarMatcher::new(
                         &function,
                         args,
