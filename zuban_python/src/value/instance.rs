@@ -4,7 +4,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Instance<'db, 'a> {
     pub class: Class<'db, 'a>,
     inferred: &'a Inferred<'db>,

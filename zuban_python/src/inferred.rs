@@ -481,13 +481,18 @@ impl<'db> Inferred<'db> {
             ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
-                let class = None;
+                // TODO this is potentially not needed, a class could lazily be fetched with a
+                // closure
+                let inf = Inferred::from_any_link(i_s.database, instance_link);
+                let instance = inf.expect_instance(i_s);
+
+                let class = Some(&instance.class);
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, class);
-                    callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
+                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
                 } else {
                     let func = Function::new(reference, class);
-                    callable(i_s, &BoundMethod::new(instance_link, *mro_index, &func))
+                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
                 }
             }
             ComplexPoint::Closure(function, execution) => {
@@ -741,6 +746,25 @@ impl<'db> Inferred<'db> {
             }
             _ => unreachable!("{:?}", self.state),
         }
+    }
+
+    fn expect_instance(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db, '_> {
+        let mut instance = None;
+        self.run_mut(
+            i_s,
+            &mut |i_s, v| {
+                // TODO executing func.execute outside of the closure works, weird...
+                // https://github.com/rust-lang/rust/issues/91942
+                let v: &dyn Value = unsafe { std::mem::transmute(v) };
+                if let Some(i) = v.as_instance() {
+                    instance = Some(*i);
+                } else {
+                    unreachable!()
+                }
+            },
+            || unreachable!(),
+        );
+        instance.unwrap()
     }
 
     fn use_instance<'a>(
@@ -1037,7 +1061,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn from_any_link(database: &'db Database, any: &AnyLink) -> Self {
+    fn from_any_link(database: &'db Database, any: &AnyLink) -> Self {
         match any {
             AnyLink::Reference(def) => {
                 let file = database.loaded_python_file(def.file);
