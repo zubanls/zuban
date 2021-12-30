@@ -147,7 +147,7 @@ pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
     pub generics: Generics<'db, 'a>,
-    type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
+    pub type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
 }
 
 impl<'db, 'a> Class<'db, 'a> {

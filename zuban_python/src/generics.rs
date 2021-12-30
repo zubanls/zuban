@@ -428,12 +428,26 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                                 node_ref: &NodeReference| {
             let point = node_ref.point();
             match point.specific() {
-                Specific::ClassTypeVar => class
-                    .unwrap()
-                    .generics
-                    .nth(i_s, point.type_var_index())
-                    .unwrap()
-                    .as_generic_part(i_s),
+                Specific::ClassTypeVar => {
+                    let class = class.unwrap();
+                    let mut generic = |type_var_index| {
+                        class
+                            .generics
+                            .nth(i_s, type_var_index)
+                            .unwrap()
+                            .as_generic_part(i_s)
+                    };
+                    class
+                        .type_var_remap
+                        .map(|remaps| {
+                            remaps[point.type_var_index().as_usize()]
+                                .as_ref()
+                                .map(|x| GenericPart::Unknown)
+                                // This means that no generic was provided
+                                .unwrap_or(GenericPart::Unknown)
+                        })
+                        .unwrap_or_else(|| generic(point.type_var_index()))
+                }
                 Specific::FunctionTypeVar => function_matcher
                     .as_mut()
                     .unwrap()
