@@ -169,7 +169,7 @@ impl<'db> Inferred<'db> {
 
     pub fn from_generic_class(db: &'db Database, generic: GenericPart) -> Self {
         let state = match generic {
-            GenericPart::Class(link) | GenericPart::TypeVar(link) => {
+            GenericPart::Class(link) | GenericPart::TypeVar(_, link) => {
                 let node_reference = NodeReference::from_link(db, link);
                 InferredState::Saved(node_reference, node_reference.point())
             }
@@ -221,7 +221,9 @@ impl<'db> Inferred<'db> {
                 debug!("Generic part not found: {}", inf.description(i_s));
                 GenericPart::Unknown
             },
-            &mut |node_ref| GenericPart::TypeVar(node_ref.as_link()),
+            &mut |node_ref| {
+                GenericPart::TypeVar(node_ref.point().type_var_index(), node_ref.as_link())
+            },
         )
     }
 
@@ -242,7 +244,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
             },
-            &mut |node_ref| GenericOption::TypeVar(node_ref),
+            &mut GenericOption::TypeVar,
         )
     }
 
@@ -258,7 +260,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic class option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
             },
-            &mut |node_ref| GenericOption::TypeVar(node_ref),
+            &mut GenericOption::TypeVar,
         )
     }
 
@@ -511,7 +513,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Instance(cls, generics_list) => {
                 let generics = generics_list
                     .as_ref()
-                    .map(|l| Generics::List(l))
+                    .map(Generics::List)
                     .unwrap_or(Generics::None);
                 let instance =
                     self.use_instance(NodeReference::from_link(i_s.database, *cls), generics);
@@ -1142,7 +1144,7 @@ impl<'db> Inferred<'db> {
                                 None,
                             ))
                         }
-                        ComplexPoint::GenericClass(foo, bla) => {
+                        ComplexPoint::GenericClass(fizz, buzz) => {
                             todo!()
                         }
                         _ => todo!(),

@@ -266,6 +266,12 @@ impl fmt::Debug for Point {
                 .field("node_index", &self.node_index);
             if self.type_() == PointType::Specific {
                 s.field("specific", &self.specific());
+                if matches!(
+                    self.specific(),
+                    Specific::ClassTypeVar | Specific::FunctionTypeVar
+                ) {
+                    s.field("type_var_index", &self.type_var_index());
+                }
             }
             if self.type_() == PointType::Redirect || self.type_() == PointType::FileReference {
                 s.field("file_index", &self.file_index().0);
@@ -520,7 +526,7 @@ pub enum GenericPart {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(GenericsList),
-    TypeVar(PointLink),
+    TypeVar(TypeVarIndex, PointLink),
     Type(Box<GenericPart>),
     Tuple(TupleContent),
     Callable(CallableContent),
@@ -592,7 +598,7 @@ impl GenericPart {
             Self::Union(list) => {
                 format!("Union[{}]", list.as_string(db))
             }
-            Self::TypeVar(link) => NodeReference::from_link(db, *link)
+            Self::TypeVar(_, link) => NodeReference::from_link(db, *link)
                 .as_name()
                 .as_str()
                 .to_owned(),
@@ -626,7 +632,7 @@ impl GenericPart {
             Self::Union(list) => {
                 todo!()
             }
-            Self::TypeVar(link) => callable(link),
+            Self::TypeVar(_, link) => callable(link),
             Self::Type(mut generic_part) => {
                 let g = std::mem::replace(&mut *generic_part, GenericPart::Unknown);
                 *generic_part = g.replace_type_vars(callable);
