@@ -395,6 +395,7 @@ impl<'db> Inferred<'db> {
             | Specific::TypingTuple
             | Specific::TypingUnion
             | Specific::TypingOptional
+            | Specific::TypingType
             | Specific::TypingCallable => callable(i_s, &TypingClass::new(*definition, specific)),
             Specific::TypingWithGenerics => {
                 let inf = definition

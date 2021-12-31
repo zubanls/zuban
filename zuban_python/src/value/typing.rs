@@ -114,6 +114,10 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     .union(Inferred::new_unsaved_specific(Specific::None)),
                 _ => todo!(),
             },
+            Specific::TypingType => match slice_type {
+                SliceType::Simple(simple) => simple.infer_annotation_class(i_s),
+                _ => todo!(),
+            },
             _ => unreachable!("{:?}", self.specific),
         }
     }

@@ -442,7 +442,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         .map(|remaps| {
                             remaps
                                 .nth(point.type_var_index())
-                                .map(|x| x.remap_type_vars(&mut |i| generic(i)))
+                                .map(|x| x.remap_type_vars(&mut generic))
                                 // This means that no generic was provided
                                 .unwrap_or(GenericPart::Unknown)
                         })
