@@ -424,7 +424,7 @@ impl LocalityLink {
 pub enum AnyLink {
     Reference(PointLink),
     Complex(Box<ComplexPoint>),
-    Specific(Specific),
+    SimpleSpecific(Specific),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -468,15 +468,10 @@ impl<'db> Inferred<'db> {
                         on_missing,
                         on_type_var,
                     ),
-                    AnyLink::Specific(specific) => self.run_on_specific(
-                        i_s,
-                        definition.unwrap(),
-                        *specific,
-                        callable,
-                        reducer,
-                        on_missing,
-                        on_type_var,
-                    ),
+                    AnyLink::SimpleSpecific(specific) => match specific {
+                        Specific::None => callable(i_s, &NoneInstance()),
+                        _ => todo!("not even sure if this should be a separate class"),
+                    },
                 })
                 .reduce(reducer)
                 .unwrap(),
@@ -946,7 +941,7 @@ impl<'db> Inferred<'db> {
                         _ => list.push(AnyLink::Complex(Box::new(complex))),
                     },
                     InferredState::UnsavedSpecific(specific) => {
-                        list.push(AnyLink::Specific(specific))
+                        list.push(AnyLink::SimpleSpecific(specific))
                     }
                     InferredState::Unknown => todo!(),
                 };
@@ -1074,7 +1069,7 @@ impl<'db> Inferred<'db> {
                 Self::new_saved(file, def.node_index, file.points.get(def.node_index))
             }
             AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
-            AnyLink::Specific(_) => todo!(),
+            AnyLink::SimpleSpecific(_) => todo!(),
         }
     }
 
