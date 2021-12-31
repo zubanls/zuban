@@ -403,7 +403,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn resolve_type_vars(
+    pub fn execute_and_resolve_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
@@ -414,7 +414,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             "Resolved type vars: {}",
             generic_part.as_type_string(i_s.database)
         );
-        Inferred::from_generic_class(i_s.database, generic_part)
+        Inferred::execute_generic_part(i_s.database, generic_part)
     }
 
     fn internal_resolve_type_vars(

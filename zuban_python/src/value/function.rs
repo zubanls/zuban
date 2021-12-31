@@ -256,8 +256,7 @@ where
                     .inference(i_s)
                     .infer_annotation_expression_class(expr)
                     .as_generic_option(i_s)
-                    .resolve_type_vars(i_s, self.class, &mut finder)
-                    .execute_annotation_class(i_s)
+                    .execute_and_resolve_type_vars(i_s, self.class, &mut finder)
             } else {
                 self.reference
                     .file

@@ -198,6 +198,50 @@ impl<'db> Inferred<'db> {
         Self { state }
     }
 
+    pub fn execute_generic_part(db: &'db Database, generic: GenericPart) -> Self {
+        let state = match generic {
+            GenericPart::Class(link) => {
+                InferredState::UnsavedComplex(ComplexPoint::Instance(link, None))
+            }
+            GenericPart::GenericClass(l, g) => {
+                InferredState::UnsavedComplex(ComplexPoint::Instance(l, Some(g)))
+            }
+            GenericPart::Union(multiple) => {
+                let mut multiple = multiple.iter();
+                let mut inferred = Self::execute_generic_part(db, multiple.next().unwrap().clone());
+                for m in multiple {
+                    inferred = inferred.union(Self::execute_generic_part(db, m.clone()));
+                }
+                return inferred;
+            }
+            GenericPart::Tuple(content) => {
+                InferredState::UnsavedComplex(ComplexPoint::Tuple(content))
+            }
+            GenericPart::Callable(content) => {
+                todo!()
+            }
+            GenericPart::Type(c) => match *c {
+                GenericPart::Class(link) => {
+                    let node_reference = NodeReference::from_link(db, link);
+                    InferredState::Saved(node_reference, node_reference.point())
+                }
+                GenericPart::GenericClass(l, g) => {
+                    InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
+                }
+                GenericPart::Union(multiple) => {
+                    todo!()
+                }
+                GenericPart::Tuple(content) => {
+                    todo!()
+                }
+                _ => todo!(),
+            },
+            GenericPart::TypeVar(_, link) => todo!("might be unreachable"),
+            GenericPart::Unknown => InferredState::Unknown,
+        };
+        Self { state }
+    }
+
     pub fn create_instance(class: PointLink, generics: Option<&[GenericPart]>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::Instance(
             class,
@@ -1106,59 +1150,6 @@ impl<'db> Inferred<'db> {
             InferredState::Saved(_, point) => matches!(point.type_(), PointType::Unknown),
             InferredState::Unknown => true,
             _ => false,
-        }
-    }
-
-    pub fn execute_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Self {
-        match &self.state {
-            InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Specific => {
-                    let specific = point.specific();
-                    match specific {
-                        Specific::SimpleGeneric => {
-                            let class = self.maybe_class(i_s).unwrap();
-                            class.reference.as_link();
-                            todo!()
-                        }
-                        _ => {
-                            todo!("{:?}", self)
-                        }
-                    }
-                }
-                PointType::Complex => {
-                    let complex = definition.file.complex_points.get(point.complex_index());
-                    match complex {
-                        ComplexPoint::Class(cls_storage) => {
-                            let class = Class::new(
-                                *definition,
-                                &cls_storage.symbol_table,
-                                Generics::None,
-                                None,
-                            );
-                            Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                definition.as_link(),
-                                None,
-                            ))
-                        }
-                        ComplexPoint::GenericClass(fizz, buzz) => {
-                            todo!()
-                        }
-                        _ => todo!(),
-                    }
-                }
-                _ => todo!("{}", self.debug_info(i_s)),
-            },
-            InferredState::UnsavedComplex(complex) => match complex {
-                ComplexPoint::TupleClass(content) => {
-                    Self::new_unsaved_complex(ComplexPoint::Tuple(content.clone()))
-                }
-                ComplexPoint::GenericClass(link, generics) => {
-                    Self::new_unsaved_complex(ComplexPoint::Instance(*link, Some(generics.clone())))
-                }
-                _ => todo!("{}", self.debug_info(i_s)),
-            },
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::Unknown => self.clone(),
         }
     }
 

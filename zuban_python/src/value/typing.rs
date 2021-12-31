@@ -271,8 +271,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         .as_ref()
                         .and_then(|generics| {
                             generics.nth(TypeVarIndex::new(index)).map(|generic_part| {
-                                Inferred::from_generic_class(i_s.database, generic_part.clone())
-                                    .execute_annotation_class(i_s)
+                                Inferred::execute_generic_part(i_s.database, generic_part.clone())
                             })
                         })
                         .unwrap_or_else(Inferred::new_unknown)
