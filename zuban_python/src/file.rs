@@ -316,7 +316,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .database
                     .loaded_python_file(inferred.unwrap().as_file_index().unwrap());
                 for target in targets {
-                    let name = target.import_name();
+                    let (import_name, name_def) = target.unpack();
+                    let name = import_name.unwrap_or_else(|| name_def.name());
                     let point = if let Some(link) = import_file.lookup_global(name.as_str()) {
                         debug_assert!(
                             link.file != self.file_index || link.node_index != name.index()
@@ -327,7 +328,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         debug!("Unknown potential star name {}", name.as_str());
                         Point::new_unknown(import_file.file_index(), Locality::DirectExtern)
                     };
-                    self.file.points.set_on_name(&name, point);
+                    if let Some(import_name) = import_name {
+                        self.file.points.set_on_name(&import_name, point);
+                    }
+                    self.file.points.set_on_name(&name_def.name(), point);
                 }
             }
         }

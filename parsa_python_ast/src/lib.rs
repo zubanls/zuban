@@ -1522,15 +1522,17 @@ impl<'db> ImportFromAsName<'db> {
         }
     }
 
-    pub fn import_name(&self) -> Name {
+    pub fn unpack(&self) -> (Option<Name<'db>>, NameDefinition<'db>) {
         let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            Name::new(first.nth_child(0))
+            (None, NameDefinition::new(first))
         } else {
-            Name::new(first)
+            let def = first.next_sibling().unwrap().next_sibling().unwrap();
+            (Some(Name::new(first)), NameDefinition::new(def))
         }
     }
 }
+
 impl<'db> DottedName<'db> {
     pub fn unpack(&self) -> DottedNameContent<'db> {
         let mut children = self.node.iter_children();
