@@ -195,7 +195,7 @@ impl<'a> TupleClass<'a> {
         self.content
             .generics
             .as_ref()
-            .map(|c| Generics::List(c))
+            .map(Generics::List)
             .unwrap_or(Generics::None)
     }
 }
