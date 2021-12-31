@@ -368,7 +368,7 @@ impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
         self.argument
             .as_ref()
             .map(|a| a.infer(i_s))
-            .unwrap_or_else(|| todo!())
+            .unwrap_or_else(Inferred::new_unknown)
     }
 }
 

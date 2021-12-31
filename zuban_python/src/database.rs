@@ -661,12 +661,15 @@ impl GenericPart {
         }
     }
 
-    pub fn remap_with_super_class(&self, super_class: &GenericPart) -> Self {
-        let remap_generics = |generics: &GenericsList| {
+    pub fn remap_type_vars(
+        &self,
+        resolve_type_var: &mut impl FnMut(TypeVarIndex) -> GenericPart,
+    ) -> Self {
+        let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new(
                 generics
                     .iter()
-                    .map(|g| g.remap_with_super_class(super_class))
+                    .map(|g| g.remap_type_vars(resolve_type_var))
                     .collect::<Vec<_>>()
                     .into_boxed_slice(),
             )
@@ -678,9 +681,9 @@ impl GenericPart {
                 Self::GenericClass(*link, remap_generics(generics))
             }
             Self::Union(list) => Self::Union(remap_generics(list)),
-            Self::TypeVar(index, _) => super_class.expect_generics().nth(*index).unwrap().clone(),
+            Self::TypeVar(index, _) => resolve_type_var(*index),
             Self::Type(generic_part) => {
-                Self::Type(Box::new(generic_part.remap_with_super_class(super_class)))
+                Self::Type(Box::new(generic_part.remap_type_vars(resolve_type_var)))
             }
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),

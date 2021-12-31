@@ -281,7 +281,9 @@ impl<'db, 'a> Class<'db, 'a> {
                                         class,
                                     ));
                                     for base in class.class_infos(i_s).mro.iter() {
-                                        mro.push(base.remap_with_super_class(&mro[mro_index]));
+                                        mro.push(base.remap_type_vars(&mut |i| {
+                                            mro[mro_index].expect_generics().nth(i).unwrap().clone()
+                                        }));
                                     }
                                 } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                     if t.specific == Specific::TypingProtocol {
