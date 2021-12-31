@@ -288,6 +288,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let inferred = self.infer_import_dotted_name(dotted_name);
+                    debug_assert!(!self
+                        .file
+                        .points
+                        .get(as_name_def.name().index())
+                        .calculated());
                     inferred.save_redirect(self.file, as_name_def.name().index());
                 }
             }
@@ -493,7 +498,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let mut inference = self.file.inference(&mut i_s);
         let inferred = inference.infer_annotation_expression_class(expr);
         // TODO locality is wrong!!!!!1
-        let point = if inferred.is_class(inference.i_s) {
+        let point = if inferred.is_simple_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());

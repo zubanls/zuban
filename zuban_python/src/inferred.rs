@@ -1095,11 +1095,11 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    pub fn is_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn is_simple_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.as_class().is_some(),
-            &|i1, i2| i1 & i2,
+            &|i1, i2| false,
             &mut |i_s, inferred| false,
             &mut |p| false,
         )
