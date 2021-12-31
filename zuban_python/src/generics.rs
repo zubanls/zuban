@@ -30,30 +30,30 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Option<Inferred<'db>> {
+    fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
         match self {
             Self::Expression(file, expr) => {
                 if n.as_usize() == 0 {
-                    Some(file.inference(i_s).infer_annotation_expression_class(*expr))
+                    file.inference(i_s)
+                        .infer_annotation_expression_class(*expr)
+                        .as_generic_part(i_s)
                 } else {
-                    None
+                    GenericPart::Unknown
                 }
             }
-            Self::Slices(file, slices) => {
-                slices
-                    .iter()
-                    .nth(n.as_usize())
-                    .map(|slice_content| match slice_content {
-                        SliceContent::NamedExpression(n) => file
-                            .inference(i_s)
-                            .infer_annotation_expression_class(n.expression()),
-                        SliceContent::Slice(s) => todo!(),
-                    })
-            }
-            Self::List(l) => l
-                .nth(n)
-                .map(|g| Inferred::from_generic_class(i_s.database, g.clone())),
-            Self::None => None,
+            Self::Slices(file, slices) => slices
+                .iter()
+                .nth(n.as_usize())
+                .map(|slice_content| match slice_content {
+                    SliceContent::NamedExpression(n) => file
+                        .inference(i_s)
+                        .infer_annotation_expression_class(n.expression())
+                        .as_generic_part(i_s),
+                    SliceContent::Slice(s) => todo!(),
+                })
+                .unwrap_or(GenericPart::Unknown),
+            Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
+            Self::None => GenericPart::Unknown,
         }
     }
 
@@ -430,13 +430,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             match point.specific() {
                 Specific::ClassTypeVar => {
                     let class = class.unwrap();
-                    let mut generic = |type_var_index| {
-                        class
-                            .generics
-                            .nth(i_s, type_var_index)
-                            .unwrap()
-                            .as_generic_part(i_s)
-                    };
+                    let mut generic = |type_var_index| class.generics.nth(i_s, type_var_index);
                     class
                         .type_var_remap
                         .map(|remaps| {
