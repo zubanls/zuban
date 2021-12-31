@@ -255,13 +255,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Inferred<'db> {
+    fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> GenericPart {
         if let Some(type_vars) = &self.calculated_type_vars {
             self.calculated_type_vars
                 .as_ref()
                 .unwrap()
                 .nth(index)
-                .map(|g| Inferred::from_generic_class(i_s.database, g.clone()))
+                .cloned()
                 .unwrap_or_else(|| todo!())
         } else {
             self.calculate_type_vars(i_s);
@@ -451,8 +451,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 Specific::FunctionTypeVar => function_matcher
                     .as_mut()
                     .unwrap()
-                    .nth(i_s, point.type_var_index())
-                    .as_generic_part(i_s),
+                    .nth(i_s, point.type_var_index()),
                 _ => unreachable!(),
             }
         };
