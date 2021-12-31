@@ -1577,7 +1577,7 @@ pub enum DottedAsNameContent<'db> {
 
 impl<'db> DottedAsName<'db> {
     #[inline]
-    pub fn unpack(&self) -> DottedAsNameContent {
+    pub fn unpack(&self) -> DottedAsNameContent<'db> {
         let first = self.node.nth_child(0);
         let maybe_second = first.next_sibling();
         if first.is_type(Nonterminal(name_definition)) {
