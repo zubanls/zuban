@@ -464,7 +464,7 @@ impl Execution {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
-    pub mro: Box<[MroClass]>, // Does never include `object`
+    pub mro: Box<[GenericPart]>, // Does never include `object`
     pub is_protocol: bool,
 }
 
@@ -647,36 +647,43 @@ impl GenericPart {
             Self::Callable(content) => todo!(),
         }
     }
-}
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct MroClass {
-    pub class: PointLink,
-    pub type_var_remap: Box<[Option<TypeVarRemap>]>,
-}
+    pub fn expect_generics(&self) -> &GenericsList {
+        match self {
+            Self::GenericClass(link, generics) => generics,
+            Self::Tuple(content) => todo!(),
+            Self::Callable(content) => todo!(),
+            Self::Class(_)
+            | Self::Unknown
+            | Self::Union(_)
+            | Self::TypeVar(_, _)
+            | Self::Type(_) => unreachable!(),
+        }
+    }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum TypeVarRemap {
-    TypeVar(TypeVarIndex),
-    MroClass(MroClass),
-}
-
-impl MroClass {
-    pub fn remap_with_sub_class(&self, sub_class: &MroClass) -> Self {
-        Self {
-            class: self.class,
-            type_var_remap: self
-                .type_var_remap
-                .iter()
-                .map(|t| {
-                    t.as_ref().and_then(|t| match &t {
-                        TypeVarRemap::TypeVar(i) => sub_class.type_var_remap[i.0 as usize].clone(),
-                        TypeVarRemap::MroClass(c) => {
-                            Some(TypeVarRemap::MroClass(c.remap_with_sub_class(sub_class)))
-                        }
-                    })
-                })
-                .collect(),
+    pub fn remap_with_super_class(&self, super_class: &GenericPart) -> Self {
+        let remap_generics = |generics: &GenericsList| {
+            GenericsList::new(
+                generics
+                    .iter()
+                    .map(|g| g.remap_with_super_class(super_class))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            )
+        };
+        match self {
+            Self::Class(c) => Self::Class(*c),
+            Self::Unknown => Self::Unknown,
+            Self::GenericClass(link, generics) => {
+                Self::GenericClass(*link, remap_generics(generics))
+            }
+            Self::Union(list) => Self::Union(remap_generics(list)),
+            Self::TypeVar(index, _) => super_class.expect_generics().nth(*index).unwrap().clone(),
+            Self::Type(generic_part) => {
+                Self::Type(Box::new(generic_part.remap_with_super_class(super_class)))
+            }
+            Self::Tuple(content) => todo!(),
+            Self::Callable(content) => todo!(),
         }
     }
 }

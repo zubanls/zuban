@@ -3,8 +3,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{Function, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroClass, MroIndex,
-    Point, PointLink, Specific, TypeVarRemap,
+    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroIndex, Point,
+    PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -147,7 +147,7 @@ pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) symbol_table: &'db SymbolTable,
     pub generics: Generics<'db, 'a>,
-    pub type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
+    pub type_var_remap: Option<&'db GenericsList>,
 }
 
 impl<'db, 'a> Class<'db, 'a> {
@@ -155,7 +155,7 @@ impl<'db, 'a> Class<'db, 'a> {
         reference: NodeReference<'db>,
         symbol_table: &'db SymbolTable,
         generics: Generics<'db, 'a>,
-        type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
+        type_var_remap: Option<&'db GenericsList>,
     ) -> Self {
         Self {
             reference,
@@ -169,7 +169,7 @@ impl<'db, 'a> Class<'db, 'a> {
     pub fn from_position(
         reference: NodeReference<'db>,
         generics: Generics<'db, 'a>,
-        type_var_remap: Option<&'db [Option<TypeVarRemap>]>,
+        type_var_remap: Option<&'db GenericsList>,
     ) -> Option<Self> {
         let complex = reference.complex().unwrap();
         match complex {
@@ -281,7 +281,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         class,
                                     ));
                                     for base in class.class_infos(i_s).mro.iter() {
-                                        mro.push(base.remap_with_sub_class(&mro[mro_index]));
+                                        mro.push(base.remap_with_super_class(&mro[mro_index]));
                                     }
                                 } else if let Some(t) = v.as_typing_with_generics(i_s) {
                                     if t.specific == Specific::TypingProtocol {
@@ -469,7 +469,7 @@ pub struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: Generics<'db, 'a>,
     class: Option<ClassLike<'db, 'a>>,
-    iterator: std::slice::Iter<'db, MroClass>,
+    iterator: std::slice::Iter<'db, GenericPart>,
     mro_index: u32,
     returned_object: bool,
 }
@@ -487,14 +487,25 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
-                ClassLike::Class(
-                    Class::from_position(
-                        NodeReference::from_link(self.database, c.class),
-                        self.generics,
-                        Some(&c.type_var_remap),
-                    )
-                    .unwrap(),
-                ),
+                match c {
+                    GenericPart::Class(c) => ClassLike::Class(
+                        Class::from_position(
+                            NodeReference::from_link(self.database, *c),
+                            self.generics,
+                            None,
+                        )
+                        .unwrap(),
+                    ),
+                    GenericPart::GenericClass(c, generics) => ClassLike::Class(
+                        Class::from_position(
+                            NodeReference::from_link(self.database, *c),
+                            self.generics,
+                            Some(generics),
+                        )
+                        .unwrap(),
+                    ),
+                    _ => todo!("{:?}", c),
+                },
             ));
             self.mro_index += 1;
             r
@@ -513,22 +524,19 @@ fn create_type_var_remap<'db>(
     original_class: NodeReference<'db>,
     original_type_vars: &[PointLink],
     generic: &GenericOption<'db, '_>,
-) -> Option<TypeVarRemap> {
+) -> GenericPart {
     match generic {
-        GenericOption::ClassLike(class) => {
-            if let ClassLike::Class(class) = class {
-                Some(TypeVarRemap::MroClass(create_mro_class(
-                    i_s,
-                    original_class,
-                    original_type_vars,
-                    class,
-                )))
-            } else {
-                todo!()
-            }
-        }
+        GenericOption::ClassLike(class) => create_mro_class(
+            i_s,
+            original_class,
+            original_type_vars,
+            match class {
+                ClassLike::Class(class) => class,
+                _ => todo!(),
+            },
+        ),
         GenericOption::TypeVar(reference) => {
-            Some(TypeVarRemap::TypeVar(reference.point().type_var_index()))
+            GenericPart::TypeVar(reference.point().type_var_index(), reference.as_link())
         }
         GenericOption::Union(list) => todo!(),
         GenericOption::Invalid | GenericOption::None => todo!(),
@@ -540,7 +548,7 @@ fn create_mro_class<'db>(
     original_class: NodeReference<'db>,
     original_type_vars: &[PointLink],
     class: &Class<'db, '_>,
-) -> MroClass {
+) -> GenericPart {
     let type_vars = if class.reference == original_class {
         // We need to use the original type vars here, because there can be a recursion in there,
         // like `class str(Sequence[str])`, which means that the class info must not be fetched,
@@ -549,19 +557,18 @@ fn create_mro_class<'db>(
     } else {
         class.type_vars(i_s)
     };
-    let mut iterator = class.generics.iter();
-    let mut type_var_remap = Vec::with_capacity(type_vars.len());
-    for type_var in type_vars {
-        if let Some(remap) = iterator.run_on_next(i_s, |i_s, generic_option| {
+    if type_vars.is_empty() {
+        GenericPart::Class(class.reference.as_link())
+    } else {
+        let mut iterator = class.generics.iter();
+        let mut type_var_remap = GenericsList::new_unknown(type_vars.len());
+        let mut i = 0;
+        while let Some(g) = iterator.run_on_next(i_s, |i_s, generic_option| {
             create_type_var_remap(i_s, original_class, original_type_vars, generic_option)
         }) {
-            type_var_remap.push(remap);
-        } else {
-            type_var_remap.push(None);
+            type_var_remap.set_generic(TypeVarIndex::new(i), g);
+            i += 1;
         }
-    }
-    MroClass {
-        class: class.reference.as_link(),
-        type_var_remap: type_var_remap.into_boxed_slice(),
+        GenericPart::GenericClass(class.reference.as_link(), type_var_remap)
     }
 }
