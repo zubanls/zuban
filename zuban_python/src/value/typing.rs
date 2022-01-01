@@ -1,10 +1,13 @@
+use std::fmt;
+
 use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{ClassLike, SimpleClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
-    ComplexPoint, GenericPart, GenericsList, Locality, Point, Specific, TupleContent, TypeVarIndex,
+    ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific, TupleContent,
+    TypeVarIndex,
 };
 use crate::generics::Generics;
 use crate::getitem::{SliceOrSimple, SliceType};
@@ -343,18 +346,21 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
     }
 }
 
-#[derive(Debug)]
-pub struct TypingType<'a> {
+pub struct TypingType<'db, 'a> {
+    database: &'db Database,
     pub generic_part: &'a GenericPart,
 }
 
-impl<'a> TypingType<'a> {
-    pub fn new(generic_part: &'a GenericPart) -> Self {
-        Self { generic_part }
+impl<'db, 'a> TypingType<'db, 'a> {
+    pub fn new(database: &'db Database, generic_part: &'a GenericPart) -> Self {
+        Self {
+            database,
+            generic_part,
+        }
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
+impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -372,7 +378,20 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        todo!()
-        //Some(ClassLike::Type(self))
+        Some(ClassLike::Type(SimpleClassLike::from_generic_part(
+            self.database,
+            self.generic_part,
+        )))
+    }
+}
+
+impl<'db> fmt::Debug for TypingType<'db, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TypingType")
+            .field(
+                "generic_part",
+                &self.generic_part.as_type_string(self.database),
+            )
+            .finish()
     }
 }

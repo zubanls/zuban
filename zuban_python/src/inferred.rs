@@ -543,7 +543,9 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
             ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
-            ComplexPoint::Type(generic_part) => callable(i_s, &TypingType::new(generic_part)),
+            ComplexPoint::Type(generic_part) => {
+                callable(i_s, &TypingType::new(i_s.database, generic_part))
+            }
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }
