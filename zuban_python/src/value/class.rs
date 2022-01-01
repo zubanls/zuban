@@ -57,6 +57,7 @@ impl<'db> SimpleClassLike<'db, '_> {
 pub enum ClassLike<'db, 'a> {
     Simple(SimpleClassLike<'db, 'a>),
     Type(SimpleClassLike<'db, 'a>),
+    TypeWithGenericPart(&'a GenericPart),
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -64,17 +65,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         Self::Simple(SimpleClassLike::Class(class))
     }
 
-    pub fn type_from_generic_part(database: &'db Database, generic_part: &GenericPart) -> Self {
-        match generic_part {
-            GenericPart::Class(l) => {
-                let node_ref = NodeReference::from_link(database, *l);
-                Self::Type(SimpleClassLike::Class(
-                    Class::from_position(node_ref, Generics::None, None).unwrap(),
-                ))
-            }
-            GenericPart::Tuple(t) => todo!(),
-            _ => todo!("{:?}", generic_part),
-        }
+    pub fn type_from_generic_part(database: &'db Database, generic_part: &'a GenericPart) -> Self {
+        Self::TypeWithGenericPart(generic_part)
     }
 
     pub fn infer_type_vars(
@@ -122,12 +114,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Simple(c1) => match other {
                 Self::Simple(c2) => c1.matches_without_generics(c2),
-                Self::Type(c2) => false,
+                _ => false,
             },
             Self::Type(c1) => match other {
                 Self::Simple(c2) => false,
                 Self::Type(c2) => c1.matches_without_generics(c2),
+                Self::TypeWithGenericPart(g2) => todo!(),
             },
+            Self::TypeWithGenericPart(g1) => todo!(),
         }
     }
 
@@ -135,6 +129,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Simple(s) => s.generics(),
             Self::Type(c) => todo!(),
+            Self::TypeWithGenericPart(g) => todo!(),
         }
     }
 
@@ -142,6 +137,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Simple(s) => s.as_string(i_s),
             Self::Type(s) => format!("Type[{}]", s.as_string(i_s)),
+            Self::TypeWithGenericPart(g) => todo!(),
         }
     }
 
@@ -156,7 +152,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 mro_index: 0,
                 returned_object: false,
             },
-            Self::Type(c) => todo!(), // c.mro(i_s), // TODO this does not make sense?
+            Self::Type(_) | Self::TypeWithGenericPart(_) => todo!(), // c.mro(i_s), // TODO this does not make sense?
         }
     }
 
@@ -176,6 +172,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Simple(s) => s.as_generic_part(i_s),
             Self::Type(c) => GenericPart::Type(Box::new(c.as_generic_part(i_s))),
+            Self::TypeWithGenericPart(g) => GenericPart::Type(Box::new((*g).clone())),
         }
     }
 
@@ -194,6 +191,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone()))
             }
             Self::Type(c) => todo!(),
+            Self::TypeWithGenericPart(g) => todo!(),
         }
     }
 }
