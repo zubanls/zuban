@@ -369,7 +369,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         todo!()
     }
 
-    fn as_typing_type(&self) -> Option<&TypingType<'a>> {
-        Some(self)
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        Some(ClassLike::Type(self))
     }
 }

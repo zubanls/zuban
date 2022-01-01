@@ -247,10 +247,6 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
                     .or_else(|| v.is_none().then(|| GenericOption::None))
-                    .or_else(|| {
-                        v.as_typing_type()
-                            .map(|t| GenericOption::GenericPart(t.generic_part))
-                    })
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid

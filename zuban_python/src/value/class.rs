@@ -31,10 +31,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        let mut some_class_matches = false;
         // TODO use type_var_remap
         match value_class {
             GenericOption::ClassLike(c) => {
+                let mut some_class_matches = false;
                 for (mro_index, class_like) in c.mro(i_s) {
                     if self.matches_without_generics(&class_like) {
                         some_class_matches = true;

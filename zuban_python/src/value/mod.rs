@@ -109,9 +109,6 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
         None
     }
-    fn as_typing_type(&self) -> Option<&TypingType<'a>> {
-        None
-    }
     fn as_typing_with_generics(
         &self,
         i_s: &mut InferenceState<'db, '_>,
