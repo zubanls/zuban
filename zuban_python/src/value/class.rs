@@ -56,6 +56,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     matcher.does_not_match();
                 }
             }
+            GenericOption::GenericPart(g) => todo!(),
             GenericOption::TypeVar(node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
             GenericOption::None => todo!(),
@@ -541,6 +542,7 @@ fn create_type_var_remap<'db>(
             GenericPart::TypeVar(reference.point().type_var_index(), reference.as_link())
         }
         GenericOption::Union(list) => todo!(),
+        GenericOption::GenericPart(g) => todo!(),
         GenericOption::Invalid | GenericOption::None => todo!(),
     }
 }

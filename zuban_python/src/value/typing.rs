@@ -343,7 +343,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
 #[derive(Debug)]
 pub struct TypingType<'a> {
-    generic_part: &'a GenericPart,
+    pub generic_part: &'a GenericPart,
 }
 
 impl<'a> TypingType<'a> {

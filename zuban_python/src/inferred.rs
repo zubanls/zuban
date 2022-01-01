@@ -167,37 +167,6 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn from_generic_class(db: &'db Database, generic: GenericPart) -> Self {
-        let state = match generic {
-            GenericPart::Class(link) | GenericPart::TypeVar(_, link) => {
-                let node_reference = NodeReference::from_link(db, link);
-                InferredState::Saved(node_reference, node_reference.point())
-            }
-            GenericPart::GenericClass(l, g) => {
-                InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
-            }
-            GenericPart::Union(multiple) => {
-                let mut multiple = multiple.iter();
-                let mut inferred = Self::from_generic_class(db, multiple.next().unwrap().clone());
-                for m in multiple {
-                    inferred = inferred.union(Self::from_generic_class(db, m.clone()));
-                }
-                return inferred;
-            }
-            GenericPart::Tuple(content) => {
-                InferredState::UnsavedComplex(ComplexPoint::TupleClass(content))
-            }
-            GenericPart::Callable(content) => {
-                todo!()
-            }
-            GenericPart::Type(c) => {
-                todo!("{:?}", c);
-            }
-            GenericPart::Unknown => InferredState::Unknown,
-        };
-        Self { state }
-    }
-
     pub fn execute_generic_part(db: &'db Database, generic: GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) => {
@@ -278,7 +247,10 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
                     .or_else(|| v.is_none().then(|| GenericOption::None))
-                    .or_else(|| v.as_typing_type().map(|t| todo!()))
+                    .or_else(|| {
+                        v.as_typing_type()
+                            .map(|t| GenericOption::GenericPart(t.generic_part))
+                    })
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid
