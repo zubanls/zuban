@@ -8,7 +8,6 @@ mod none;
 mod typing;
 
 use crate::arguments::Arguments;
-use crate::database::GenericPart;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -121,10 +120,5 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         todo!("{:?}", self)
-    }
-
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        // TODO it looks like this is probably NOT needed for everything.
-        todo!("{}", self.description(i_s))
     }
 }

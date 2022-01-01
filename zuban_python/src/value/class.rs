@@ -413,6 +413,13 @@ impl<'db, 'a> Class<'db, 'a> {
             if has_type_vars { &generics_str } else { "" }
         )
     }
+
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        let lst = self.generics.as_generics_list(i_s);
+        let link = self.reference.as_link();
+        lst.map(|lst| GenericPart::GenericClass(link, lst))
+            .unwrap_or_else(|| GenericPart::Class(link))
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
@@ -489,13 +496,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             format!("{:?}", self.kind()).to_lowercase(),
             self.as_string(i_s),
         )
-    }
-
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
-        let lst = self.generics.as_generics_list(i_s);
-        let link = self.reference.as_link();
-        lst.map(|lst| GenericPart::GenericClass(link, lst))
-            .unwrap_or_else(|| GenericPart::Class(link))
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
