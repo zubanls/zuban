@@ -15,13 +15,55 @@ use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
 use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone, Copy)]
-pub enum ClassLike<'db, 'a> {
+pub enum SimpleClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
-    Type(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
 }
 
+impl<'db> SimpleClassLike<'db, '_> {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+        match self {
+            Self::Class(c) => c.as_string(i_s),
+            Self::Tuple(c) => format!("Tuple[{}]", self.generics().as_string(i_s)),
+        }
+    }
+
+    fn generics(&self) -> Generics<'db, '_> {
+        match self {
+            Self::Class(c) => c.generics,
+            Self::Tuple(c) => c.generics(),
+        }
+    }
+
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        match self {
+            Self::Class(c) => c.as_generic_part(i_s),
+            Self::Tuple(t) => t.as_generic_part(),
+        }
+    }
+
+    fn matches_without_generics(&self, other: &Self) -> bool {
+        match self {
+            Self::Class(c1) => match other {
+                Self::Class(c2) => c1.reference == c2.reference,
+                _ => false,
+            },
+            Self::Tuple(_) => matches!(other, Self::Tuple(_)),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ClassLike<'db, 'a> {
+    Simple(SimpleClassLike<'db, 'a>),
+    Type(SimpleClassLike<'db, 'a>),
+}
+
 impl<'db, 'a> ClassLike<'db, 'a> {
+    pub fn new_class(class: Class<'db, 'a>) -> Self {
+        Self::Simple(SimpleClassLike::Class(class))
+    }
+
     pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -66,36 +108,35 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     fn matches_without_generics(&self, other: &Self) -> bool {
         match self {
-            Self::Class(c1) => match other {
-                Self::Class(c2) => c1.reference == c2.reference,
-                _ => false,
+            Self::Simple(c1) => match other {
+                Self::Simple(c2) => c1.matches_without_generics(c2),
+                Self::Type(c2) => false,
             },
-            Self::Type(c) => todo!(),
-            Self::Tuple(_) => matches!(other, Self::Tuple(_)),
+            Self::Type(c1) => match other {
+                Self::Simple(c2) => false,
+                Self::Type(c2) => c1.matches_without_generics(c2),
+            },
         }
     }
 
     fn generics(&self) -> Generics<'db, '_> {
         match self {
-            Self::Class(c) => c.generics,
+            Self::Simple(s) => s.generics(),
             Self::Type(c) => todo!(),
-            Self::Tuple(c) => c.generics(),
         }
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
-            Self::Class(c) => c.as_string(i_s),
-            Self::Type(c) => format!("Type[{}]", c.as_string(i_s)),
-            Self::Tuple(c) => format!("Tuple[{}]", self.generics().as_string(i_s)),
+            Self::Simple(s) => s.as_string(i_s),
+            Self::Type(s) => format!("Type[{}]", s.as_string(i_s)),
         }
     }
 
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
-            Self::Class(c) => c.mro(i_s),
-            Self::Type(c) => c.mro(i_s), // TODO this does not make sense?
-            Self::Tuple(c) => MroIterator {
+            Self::Simple(SimpleClassLike::Class(c)) => c.mro(i_s),
+            Self::Simple(SimpleClassLike::Tuple(c)) => MroIterator {
                 database: i_s.database,
                 generics: self.generics(),
                 class: Some(*self),
@@ -103,6 +144,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 mro_index: 0,
                 returned_object: false,
             },
+            Self::Type(c) => todo!(), // c.mro(i_s), // TODO this does not make sense?
         }
     }
 
@@ -112,23 +154,22 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         name: &str,
     ) -> Option<Inferred<'db>> {
         match self {
-            Self::Class(c) => c.lookup_symbol(i_s, name),
+            Self::Simple(SimpleClassLike::Class(c)) => c.lookup_symbol(i_s, name),
             Self::Type(c) => todo!(),
-            Self::Tuple(c) => todo!(),
+            _ => todo!(),
         }
     }
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
-            Self::Class(c) => c.as_generic_part(i_s),
+            Self::Simple(s) => s.as_generic_part(i_s),
             Self::Type(c) => GenericPart::Type(Box::new(c.as_generic_part(i_s))),
-            Self::Tuple(t) => t.as_generic_part(),
         }
     }
 
     pub fn execute_annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::Class(c) => match c.as_generic_part(i_s) {
+            Self::Simple(SimpleClassLike::Class(c)) => match c.as_generic_part(i_s) {
                 GenericPart::Class(p) => {
                     Inferred::new_unsaved_complex(ComplexPoint::Instance(p, None))
                 }
@@ -137,8 +178,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => unreachable!(),
             },
+            Self::Simple(SimpleClassLike::Tuple(t)) => {
+                Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone()))
+            }
             Self::Type(c) => todo!(),
-            Self::Tuple(t) => Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone())),
         }
     }
 }
@@ -327,7 +370,7 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> (Inferred<'db>, Option<Class<'db, '_>>) {
         for (mro_index, c) in self.mro(i_s) {
             if let Some(inf) = c.lookup_symbol(i_s, name) {
-                if let ClassLike::Class(c) = c {
+                if let ClassLike::Simple(SimpleClassLike::Class(c)) = c {
                     return (inf, Some(c));
                 } else {
                     return (inf, None);
@@ -342,7 +385,7 @@ impl<'db, 'a> Class<'db, 'a> {
         MroIterator {
             database: i_s.database,
             generics: self.generics,
-            class: Some(ClassLike::Class(*self)),
+            class: Some(ClassLike::new_class(*self)),
             mro_index: 0,
             iterator: class_infos.mro.iter(),
             returned_object: false,
@@ -425,7 +468,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Class(*self))
+        Some(ClassLike::new_class(*self))
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
@@ -444,7 +487,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Type(*self)
+        ClassLike::Type(SimpleClassLike::Class(*self))
     }
 }
 
@@ -491,7 +534,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    GenericPart::Class(c) => ClassLike::Class(
+                    GenericPart::Class(c) => ClassLike::new_class(
                         Class::from_position(
                             NodeReference::from_link(self.database, *c),
                             self.generics,
@@ -499,7 +542,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                         )
                         .unwrap(),
                     ),
-                    GenericPart::GenericClass(c, generics) => ClassLike::Class(
+                    GenericPart::GenericClass(c, generics) => ClassLike::new_class(
                         Class::from_position(
                             NodeReference::from_link(self.database, *c),
                             self.generics,
@@ -515,7 +558,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
         } else if !self.returned_object {
             self.returned_object = true;
             Class::from_position(self.database.python_state.object(), Generics::None, None)
-                .map(|c| (MroIndex(self.mro_index), ClassLike::Class(c)))
+                .map(|c| (MroIndex(self.mro_index), ClassLike::new_class(c)))
         } else {
             None
         }
@@ -534,7 +577,7 @@ fn create_type_var_remap<'db>(
             original_class,
             original_type_vars,
             match class {
-                ClassLike::Class(class) => class,
+                ClassLike::Simple(SimpleClassLike::Class(class)) => class,
                 _ => todo!(),
             },
         ),

@@ -13,7 +13,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 pub use bound_method::BoundMethod;
-pub use class::{Class, ClassLike};
+pub use class::{Class, ClassLike, SimpleClassLike};
 pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
