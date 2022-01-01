@@ -115,7 +115,10 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                 _ => todo!(),
             },
             Specific::TypingType => match slice_type {
-                SliceType::Simple(simple) => simple.infer_annotation_class(i_s),
+                SliceType::Simple(simple) => {
+                    let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
+                    Inferred::new_unsaved_complex(ComplexPoint::Type(Box::new(g)))
+                }
                 _ => todo!(),
             },
             _ => unreachable!("{:?}", self.specific),
@@ -335,5 +338,38 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
                 todo!()
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct TypingType<'a> {
+    generic_part: &'a GenericPart,
+}
+
+impl<'a> TypingType<'a> {
+    pub fn new(generic_part: &'a GenericPart) -> Self {
+        Self { generic_part }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
+    }
+
+    fn name(&self) -> &'db str {
+        "Type"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        todo!()
+    }
+
+    fn as_typing_type(&self) -> Option<&TypingType<'a>> {
+        Some(self)
     }
 }

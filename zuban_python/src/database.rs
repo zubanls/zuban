@@ -442,6 +442,7 @@ pub enum ComplexPoint {
     TupleClass(TupleContent),
     Tuple(TupleContent),
     Callable(CallableContent),
+    Type(Box<GenericPart>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

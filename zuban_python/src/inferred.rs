@@ -17,7 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
     BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, ListLiteral, Module,
-    NoneInstance, OverloadedFunction, Tuple, TupleClass, TypingClass, TypingClassVar,
+    NoneInstance, OverloadedFunction, Tuple, TupleClass, TypingClass, TypingClassVar, TypingType,
     TypingWithGenerics, Value,
 };
 
@@ -278,6 +278,7 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
                     .or_else(|| v.is_none().then(|| GenericOption::None))
+                    .or_else(|| v.as_typing_type().map(|t| todo!()))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid
@@ -574,6 +575,7 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
             ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
+            ComplexPoint::Type(generic_part) => callable(i_s, &TypingType::new(generic_part)),
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }

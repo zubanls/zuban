@@ -19,7 +19,7 @@ pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
-pub use typing::{Tuple, TupleClass, TypingClass, TypingClassVar, TypingWithGenerics};
+pub use typing::{Tuple, TupleClass, TypingClass, TypingClassVar, TypingType, TypingWithGenerics};
 
 enum ArrayType {
     None,
@@ -107,6 +107,9 @@ pub trait Value<'db, 'a>: std::fmt::Debug {
         None
     }
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        None
+    }
+    fn as_typing_type(&self) -> Option<&TypingType<'a>> {
         None
     }
     fn as_typing_with_generics(
