@@ -116,19 +116,17 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Simple(c2) => c1.matches_without_generics(c2),
                 _ => false,
             },
-            Self::Type(c1) => match other {
-                Self::Simple(c2) => false,
-                Self::Type(c2) => c1.matches_without_generics(c2),
-                Self::TypeWithGenericPart(g2) => todo!(),
+            Self::Type(_) | Self::TypeWithGenericPart(_) => match other {
+                Self::Simple(_) => false,
+                Self::Type(_) | Self::TypeWithGenericPart(_) => true,
             },
-            Self::TypeWithGenericPart(g1) => todo!(),
         }
     }
 
     fn generics(&self) -> Generics<'db, '_> {
         match self {
             Self::Simple(s) => s.generics(),
-            Self::Type(c) => todo!(),
+            Self::Type(c) => c.generics(),
             Self::TypeWithGenericPart(g) => todo!(),
         }
     }
@@ -144,15 +142,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Simple(SimpleClassLike::Class(c)) => c.mro(i_s),
-            Self::Simple(SimpleClassLike::Tuple(c)) => MroIterator {
+            _ => MroIterator {
                 database: i_s.database,
-                generics: self.generics(),
+                generics: None,
                 class: Some(*self),
                 iterator: [].iter(),
                 mro_index: 0,
                 returned_object: false,
             },
-            Self::Type(_) | Self::TypeWithGenericPart(_) => todo!(), // c.mro(i_s), // TODO this does not make sense?
         }
     }
 
@@ -394,7 +391,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
             database: i_s.database,
-            generics: self.generics,
+            generics: Some(self.generics),
             class: Some(ClassLike::new_class(*self)),
             mro_index: 0,
             iterator: class_infos.mro.iter(),
@@ -523,7 +520,7 @@ impl<'db> BasesIterator<'db> {
 
 pub struct MroIterator<'db, 'a> {
     database: &'db Database,
-    generics: Generics<'db, 'a>,
+    generics: Option<Generics<'db, 'a>>,
     class: Option<ClassLike<'db, 'a>>,
     iterator: std::slice::Iter<'db, GenericPart>,
     mro_index: u32,
@@ -547,7 +544,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                     GenericPart::Class(c) => ClassLike::new_class(
                         Class::from_position(
                             NodeReference::from_link(self.database, *c),
-                            self.generics,
+                            self.generics.unwrap(),
                             None,
                         )
                         .unwrap(),
@@ -555,7 +552,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                     GenericPart::GenericClass(c, generics) => ClassLike::new_class(
                         Class::from_position(
                             NodeReference::from_link(self.database, *c),
-                            self.generics,
+                            self.generics.unwrap(),
                             Some(generics),
                         )
                         .unwrap(),
