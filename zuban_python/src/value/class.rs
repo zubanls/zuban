@@ -35,17 +35,6 @@ impl<'db> SimpleClassLike<'db, '_> {
         }
     }
 
-    pub fn from_generic_part(database: &'db Database, generic_part: &GenericPart) -> Self {
-        match generic_part {
-            GenericPart::Class(l) => {
-                let node_ref = NodeReference::from_link(database, *l);
-                Self::Class(Class::from_position(node_ref, Generics::None, None).unwrap())
-            }
-            GenericPart::Tuple(t) => todo!(),
-            _ => todo!("{:?}", generic_part),
-        }
-    }
-
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
             Self::Class(c) => c.as_generic_part(i_s),
@@ -73,6 +62,19 @@ pub enum ClassLike<'db, 'a> {
 impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn new_class(class: Class<'db, 'a>) -> Self {
         Self::Simple(SimpleClassLike::Class(class))
+    }
+
+    pub fn type_from_generic_part(database: &'db Database, generic_part: &GenericPart) -> Self {
+        match generic_part {
+            GenericPart::Class(l) => {
+                let node_ref = NodeReference::from_link(database, *l);
+                Self::Type(SimpleClassLike::Class(
+                    Class::from_position(node_ref, Generics::None, None).unwrap(),
+                ))
+            }
+            GenericPart::Tuple(t) => todo!(),
+            _ => todo!("{:?}", generic_part),
+        }
     }
 
     pub fn infer_type_vars(

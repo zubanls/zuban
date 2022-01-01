@@ -356,14 +356,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         match generic_part {
             GenericPart::Class(link) => {
                 let node_ref = NodeReference::from_link(database, *link);
-                GenericOption::ClassLike(ClassLike::new_class(
+                Self::ClassLike(ClassLike::new_class(
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
             }
-            GenericPart::Unknown => GenericOption::Invalid,
+            GenericPart::Unknown => Self::Invalid,
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeReference::from_link(database, *link);
-                GenericOption::ClassLike(ClassLike::new_class(
+                Self::ClassLike(ClassLike::new_class(
                     Class::from_position(node_ref, Generics::List(generics), None).unwrap(),
                 ))
             }
@@ -376,10 +376,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 Self::TypeVar(NodeReference::from_link(database, *link))
             }
             GenericPart::Type(generic_part) => {
-                //ClassLike::Type()
-                todo!()
+                Self::ClassLike(ClassLike::type_from_generic_part(database, generic_part))
             }
-            GenericPart::Tuple(content) => GenericOption::ClassLike(ClassLike::Simple(
+            GenericPart::Tuple(content) => Self::ClassLike(ClassLike::Simple(
                 SimpleClassLike::Tuple(TupleClass::new(content)),
             )),
             GenericPart::Callable(content) => todo!(),

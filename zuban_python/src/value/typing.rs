@@ -378,10 +378,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Type(SimpleClassLike::from_generic_part(
+        Some(ClassLike::type_from_generic_part(
             self.database,
             self.generic_part,
-        )))
+        ))
     }
 }
 
