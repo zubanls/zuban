@@ -127,7 +127,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Simple(s) => s.generics(),
             Self::Type(c) => c.generics(),
-            Self::TypeWithGenericPart(g) => todo!(),
+            Self::TypeWithGenericPart(g) => Generics::GenericPart(g),
         }
     }
 

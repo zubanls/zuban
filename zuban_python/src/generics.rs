@@ -18,6 +18,12 @@ pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList),
+    // This is a bit of a special case, but we would want to give this lifetime &'a. This would
+    // imply 'db: 'a. This would then mean that Class<'db: 'a, 'a> and Value<'db: 'a, 'a>. This
+    // itself would be fine, but it breaks with HRTBs, where you cannot prove that 'db: 'a (which
+    // is definitely the case, but it's not possible to formulate this in the type system.
+    SimpleClassLike(*const SimpleClassLike<'db, 'a>),
+    GenericPart(&'a GenericPart),
     None,
 }
 
@@ -53,6 +59,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                 })
                 .unwrap_or(GenericPart::Unknown),
             Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
+            Self::GenericPart(g) => todo!(),
+            Self::SimpleClassLike(_) => todo!(),
             Self::None => GenericPart::Unknown,
         }
     }
@@ -62,6 +70,8 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
+            Self::GenericPart(g) => GenericsIterator::GenericPart(g),
+            Self::SimpleClassLike(_) => todo!(),
             Self::None => GenericsIterator::None,
         }
     }
@@ -75,6 +85,8 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Slices(file, slices) => {
                 todo!()
             }
+            Self::GenericPart(g) => todo!(),
+            Self::SimpleClassLike(_) => todo!(),
             Self::List(_) => {
                 todo!()
             }
@@ -94,6 +106,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 pub enum GenericsIterator<'db, 'a> {
     SliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, GenericPart>),
+    GenericPart(&'a GenericPart),
     Expression(&'db PythonFile, Expression<'db>),
     None,
 }
@@ -126,6 +139,14 @@ impl<'db> GenericsIterator<'db, '_> {
             Self::GenericsList(iterator) => iterator
                 .next()
                 .map(|g| callable(i_s, &GenericOption::from_generic_part(i_s.database, g))),
+            Self::GenericPart(g) => {
+                let result = Some(callable(
+                    i_s,
+                    &GenericOption::from_generic_part(i_s.database, g),
+                ));
+                *self = Self::None;
+                result
+            }
             GenericsIterator::None => None,
         }
     }
@@ -155,6 +176,10 @@ impl<'db> GenericsIterator<'db, '_> {
                     if let Some(g) = iterator.next() {
                         callable(i_s, &GenericOption::from_generic_part(i_s.database, g));
                     }
+                    return;
+                }
+                Self::GenericPart(g) => {
+                    callable(i_s, &GenericOption::from_generic_part(i_s.database, g));
                     return;
                 }
                 GenericsIterator::None => return,

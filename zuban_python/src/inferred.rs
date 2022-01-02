@@ -614,7 +614,7 @@ impl<'db> Inferred<'db> {
     pub fn run_mut(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, '_>),
+        callable: &mut impl for<'a, 'b, 'c> FnMut(&mut InferenceState<'db, 'c>, &'b dyn Value<'db, 'a>),
         mut on_missing: impl FnMut(),
     ) {
         self.internal_run(
