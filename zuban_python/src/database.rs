@@ -365,6 +365,7 @@ pub enum Specific {
     TypingClassVar,
     TypingUnion,
     TypingOptional,
+    TypingCast,
 
     // TODO reactivate these or remove
     //TypingFinal,

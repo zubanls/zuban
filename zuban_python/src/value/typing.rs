@@ -395,3 +395,37 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
             .finish()
     }
 }
+
+#[derive(Debug)]
+pub struct TypingCast();
+
+impl<'db, 'a> Value<'db, 'a> for TypingCast {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Function
+    }
+
+    fn name(&self) -> &'db str {
+        "cast"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        todo!()
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        args.iter_arguments()
+            .next()
+            .map(|arg| {
+                Inferred::execute_generic_part(i_s.database, arg.infer(i_s).as_generic_part(i_s))
+            })
+            .unwrap_or_else(|| todo!())
+    }
+}

@@ -88,6 +88,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
     set_typing_inference(typing, "Union", Specific::TypingUnion);
     set_typing_inference(typing, "Optional", Specific::TypingOptional);
+    set_typing_inference(typing, "cast", Specific::TypingCast);
 
     setup_type_alias(typing, "List", builtins, "list");
     setup_type_alias(typing, "Dict", builtins, "dict");
@@ -102,7 +103,9 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
     let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
-    debug_assert!(!typing.points.get(node_index).calculated());
+    if name != "cast" {
+        debug_assert!(!typing.points.get(node_index).calculated());
+    }
     typing.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
