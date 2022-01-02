@@ -36,6 +36,13 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
+    fn simple_class_like_to_safe(
+        s: *const SimpleClassLike<'db, 'a>,
+    ) -> &'a SimpleClassLike<'db, 'a> {
+        // For an explanation why: check out the comment in the struct definition
+        unsafe { &*s }
+    }
+
     fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
         match self {
             Self::Expression(file, expr) => {
@@ -60,7 +67,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 .unwrap_or(GenericPart::Unknown),
             Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
             Self::GenericPart(g) => todo!(),
-            Self::SimpleClassLike(_) => todo!(),
+            Self::SimpleClassLike(s) => todo!(),
             Self::None => GenericPart::Unknown,
         }
     }
@@ -71,7 +78,9 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::GenericPart(g) => GenericsIterator::GenericPart(g),
-            Self::SimpleClassLike(_) => todo!(),
+            Self::SimpleClassLike(s) => {
+                GenericsIterator::SimpleClassLike(Self::simple_class_like_to_safe(*s))
+            }
             Self::None => GenericsIterator::None,
         }
     }
@@ -107,6 +116,7 @@ pub enum GenericsIterator<'db, 'a> {
     SliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, GenericPart>),
     GenericPart(&'a GenericPart),
+    SimpleClassLike(&'a SimpleClassLike<'db, 'a>),
     Expression(&'db PythonFile, Expression<'db>),
     None,
 }
@@ -147,6 +157,11 @@ impl<'db> GenericsIterator<'db, '_> {
                 *self = Self::None;
                 result
             }
+            Self::SimpleClassLike(s) => {
+                let result = callable(i_s, &GenericOption::ClassLike(ClassLike::Simple(**s)));
+                *self = Self::None;
+                Some(result)
+            }
             GenericsIterator::None => None,
         }
     }
@@ -180,6 +195,10 @@ impl<'db> GenericsIterator<'db, '_> {
                 }
                 Self::GenericPart(g) => {
                     callable(i_s, &GenericOption::from_generic_part(i_s.database, g));
+                    return;
+                }
+                Self::SimpleClassLike(s) => {
+                    todo!();
                     return;
                 }
                 GenericsIterator::None => return,

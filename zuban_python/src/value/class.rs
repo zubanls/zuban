@@ -126,7 +126,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     fn generics(&self) -> Generics<'db, '_> {
         match self {
             Self::Simple(s) => s.generics(),
-            Self::Type(c) => c.generics(),
+            Self::Type(c) => Generics::SimpleClassLike(c),
             Self::TypeWithGenericPart(g) => Generics::GenericPart(g),
         }
     }
