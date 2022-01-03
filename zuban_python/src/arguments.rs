@@ -126,8 +126,9 @@ pub struct InstanceArguments<'db, 'a, 'b> {
 impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         let args = self.arguments.iter_arguments();
-        // TODO transmute should probably not be necessary here. see also:
+        // Transmute is necessary, because lifetimes in traits are invariant, see also:
         // https://stackoverflow.com/questions/70425773/why-does-lifetime-coercion-work-with-structs-but-not-with-traits/70427218#70427218
+        // But, we know that all Values only work with coariant 'b, so it's ok.
         ArgumentIterator::Instance(
             unsafe { std::mem::transmute(self.instance) },
             self.arguments,
