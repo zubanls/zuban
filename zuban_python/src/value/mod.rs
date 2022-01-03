@@ -73,7 +73,8 @@ macro_rules! base_description {
     };
 }
 
-pub trait Value<'db, 'a>: std::fmt::Debug {
+// Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
+pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
     //fn file(&self) -> &'db dyn File;

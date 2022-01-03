@@ -213,10 +213,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Function<'db, '_>
-where
-    'db: 'a,
-{
+impl<'db> Value<'db, '_> for Function<'db, '_> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }

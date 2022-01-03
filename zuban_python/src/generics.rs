@@ -18,11 +18,7 @@ pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList),
-    // This is a bit of a special case, but we would want to give this lifetime &'a. This would
-    // imply 'db: 'a. This would then mean that Class<'db: 'a, 'a> and Value<'db: 'a, 'a>. This
-    // itself would be fine, but it breaks with HRTBs, where you cannot prove that 'db: 'a (which
-    // is definitely the case, but it's not possible to formulate this in the type system.
-    SimpleClassLike(*const SimpleClassLike<'db, 'a>),
+    SimpleClassLike(&'a SimpleClassLike<'db, 'a>),
     GenericPart(&'a GenericPart),
     None,
 }
@@ -34,13 +30,6 @@ impl<'db, 'a> Generics<'db, 'a> {
             SliceType::Slice(_) => Self::None,
             SliceType::Slices(slices) => Self::Slices(file, slices),
         }
-    }
-
-    fn simple_class_like_to_safe(
-        s: *const SimpleClassLike<'db, 'a>,
-    ) -> &'a SimpleClassLike<'db, 'a> {
-        // For an explanation why: check out the comment in the struct definition
-        unsafe { &*s }
     }
 
     fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
@@ -78,9 +67,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::GenericPart(g) => GenericsIterator::GenericPart(g),
-            Self::SimpleClassLike(s) => {
-                GenericsIterator::SimpleClassLike(Self::simple_class_like_to_safe(*s))
-            }
+            Self::SimpleClassLike(s) => GenericsIterator::SimpleClassLike(*s),
             Self::None => GenericsIterator::None,
         }
     }
