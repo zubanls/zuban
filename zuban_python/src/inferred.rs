@@ -772,7 +772,7 @@ impl<'db> Inferred<'db> {
         self.run_mut(
             i_s,
             &mut |i_s, v| {
-                // TODO executing func.execute outside of the closure works, weird...
+                // TODO this is a weird issue, probably a compiler bug...
                 // https://github.com/rust-lang/rust/issues/91942
                 let v: &dyn Value = unsafe { std::mem::transmute(v) };
                 if let Some(i) = v.as_instance() {
