@@ -104,6 +104,16 @@ pub enum SliceOrSimple<'db> {
     Simple(Simple<'db>),
     Slice(Slice<'db>),
 }
+
+impl<'db> SliceOrSimple<'db> {
+    pub fn infer_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        match self {
+            Self::Simple(simple) => simple.infer_annotation_class(i_s),
+            Self::Slice(slice) => todo!(),
+        }
+    }
+}
+
 pub struct SliceIterator<'db>(&'db PythonFile, NodeIndex, ASTSliceIterator<'db>);
 
 impl<'db> Iterator for SliceIterator<'db> {

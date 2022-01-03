@@ -6,8 +6,8 @@ use super::{ClassLike, SimpleClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
-    ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific, TupleContent,
-    TypeVarIndex,
+    CallableContent, ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific,
+    TupleContent, TypeVarIndex,
 };
 use crate::generics::Generics;
 use crate::getitem::{SliceOrSimple, SliceType};
@@ -96,7 +96,33 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                 Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
             }
             Specific::TypingCallable => {
-                todo!()
+                let content = match slice_type {
+                    SliceType::Simple(simple) => {
+                        todo!()
+                    }
+                    SliceType::Slice(x) => {
+                        todo!()
+                    }
+                    SliceType::Slices(slices) => {
+                        let mut iterator = slices.iter();
+                        let param_node = iterator.next().map(|slice_content| match slice_content {
+                            SliceOrSimple::Simple(n) => {
+                                let list = n.infer(i_s);
+                                todo!()
+                            }
+                            SliceOrSimple::Slice(s) => todo!(),
+                        });
+                        let return_class = iterator
+                            .next()
+                            .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
+                            .unwrap_or(GenericPart::Unknown);
+                        CallableContent {
+                            params: Some(GenericsList::new(Box::new([]))),
+                            return_class: Box::new(return_class),
+                        }
+                    }
+                };
+                Inferred::new_unsaved_complex(ComplexPoint::CallableClass(content))
             }
             Specific::TypingUnion => match slice_type {
                 SliceType::Simple(simple) => simple.infer_annotation_class(i_s),

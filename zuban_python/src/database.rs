@@ -443,6 +443,7 @@ pub enum ComplexPoint {
     TupleClass(TupleContent),
     Tuple(TupleContent),
     Callable(CallableContent),
+    CallableClass(CallableContent),
     Type(Box<GenericPart>),
 }
 
@@ -731,7 +732,10 @@ pub struct TupleContent {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct CallableContent {}
+pub struct CallableContent {
+    pub params: Option<GenericsList>,
+    pub return_class: Box<GenericPart>,
+}
 
 pub struct Database {
     in_use: bool,

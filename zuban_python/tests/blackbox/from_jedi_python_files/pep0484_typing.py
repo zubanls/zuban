@@ -377,13 +377,13 @@ type_in_out2()
 type_in_out2(float)
 
 def ma(a: typing.Callable[[str], TYPE_VARX]) -> typing.Callable[[str], TYPE_VARX]:
-    ##? typing.Callable()
+    #? typing.Callable()
     return a
 
 def mf(s: str) -> int:
     return int(s)
 
-##? int()
+#? int()
 ma(mf)('2')
 
 def xxx(x: typing.Iterable[TYPE_VARX]) -> typing.Tuple[str, TYPE_VARX]: ...
@@ -396,22 +396,22 @@ xxx([0])[1]
 xxx([0])[2]
 
 def call_pls() -> typing.Callable[[TYPE_VARX], TYPE_VARX]: ...
-##? int()
+#? int()
 call_pls()(1)
 
 def call2_pls() -> typing.Callable[[str, typing.Callable[[int], TYPE_VARX]], TYPE_VARX]: ...
-##? float()
+#? float()
 call2_pls('')(1, lambda x: 3.0)
 
 def call3_pls() -> typing.Callable[[typing.Callable[[int], TYPE_VARX]], typing.List[TYPE_VARX]]: ...
 def the_callable() -> float: ...
-##? float()
+#? float()
 call3_pls()(the_callable)[0]
 
 def call4_pls(fn: typing.Callable[..., TYPE_VARX]) -> typing.Callable[..., TYPE_VARX]:
     return ""
 
-##? int()
+#? int()
 call4_pls(lambda x: 1)()
 
 # -------------------------
