@@ -270,11 +270,7 @@ impl<'a> Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        let base = base_description!(self);
-        if let Some(generics) = &self.content.generics {
-            return base + "[" + &generics.as_string(i_s.database) + "]";
-        }
-        base
+        base_description!(self) + &self.content.as_string(i_s.database)
     }
 }
 
@@ -331,11 +327,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        let base = base_description!(self);
-        if let Some(generics) = &self.content.generics {
-            return base + "[" + &generics.as_string(i_s.database) + "]";
-        }
-        base
+        base_description!(self) + &self.content.as_string(i_s.database)
     }
 }
 

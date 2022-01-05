@@ -606,14 +606,7 @@ impl GenericPart {
                 .as_str()
                 .to_owned(),
             Self::Type(generic_part) => format!("Type[{}]", generic_part.as_type_string(db)),
-            Self::Tuple(content) => format!(
-                "Tuple[{}]",
-                content
-                    .generics
-                    .as_ref()
-                    .map(|list| list.as_string(db))
-                    .unwrap_or_else(|| "Tuple".to_owned())
-            ),
+            Self::Tuple(content) => format!("Tuple{}", &content.as_string(db)),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db)),
             Self::Unknown => "Unknown".to_owned(),
         }
@@ -736,6 +729,21 @@ impl Overload {
 pub struct TupleContent {
     pub generics: Option<GenericsList>,
     pub arbitrary_length: bool, // Is also homogenous
+}
+
+impl TupleContent {
+    pub fn as_string(&self, db: &Database) -> String {
+        if let Some(generics) = self.generics.as_ref() {
+            let list = generics.as_string(db);
+            if self.arbitrary_length {
+                format!("[{}, ...]", list)
+            } else {
+                format!("[{}]", list)
+            }
+        } else {
+            "".to_owned()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
