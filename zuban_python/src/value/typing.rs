@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Name, PrimaryContent};
 
-use super::{ClassLike, SimpleClassLike, Value, ValueKind};
+use super::{ClassLike, IteratorContent, SimpleClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
@@ -104,11 +104,14 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                         todo!()
                     }
                     SliceType::Slices(slices) => {
+                        let mut params = vec![];
                         let mut iterator = slices.iter();
                         let param_node = iterator.next().map(|slice_content| match slice_content {
                             SliceOrSimple::Simple(n) => {
-                                let list = n.infer(i_s);
-                                todo!()
+                                let mut list = n.infer(i_s).iter(i_s);
+                                while let Some(next) = list.next(i_s) {
+                                    params.push(next.as_generic_part(i_s));
+                                }
                             }
                             SliceOrSimple::Slice(s) => todo!(),
                         });
@@ -117,7 +120,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                             .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
                             .unwrap_or(GenericPart::Unknown);
                         CallableContent {
-                            params: Some(GenericsList::new(Box::new([]))),
+                            params: Some(GenericsList::new(params.into_boxed_slice())),
                             return_class: Box::new(return_class),
                         }
                     }

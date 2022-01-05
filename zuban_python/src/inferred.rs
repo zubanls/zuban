@@ -16,9 +16,9 @@ use crate::generics::{GenericOption, Generics};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, ListLiteral, Module,
-    NoneInstance, OverloadedFunction, SimpleClassLike, Tuple, TupleClass, TypingCast, TypingClass,
-    TypingClassVar, TypingType, TypingWithGenerics, Value,
+    BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
+    Module, NoneInstance, OverloadedFunction, SimpleClassLike, Tuple, TupleClass, TypingCast,
+    TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -1131,6 +1131,16 @@ impl<'db> Inferred<'db> {
     pub fn execute_function(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         self.run_on_value(i_s, &mut |i_s, value| value.lookup(i_s, name))
             .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
+    }
+
+    pub fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| v.iter(i_s),
+            &|i1, i2| todo!(),
+            &mut |i_s, inferred| IteratorContent::Inferred(inferred),
+            &mut |p| IteratorContent::Inferred(Self::new_unknown()),
+        )
     }
 }
 

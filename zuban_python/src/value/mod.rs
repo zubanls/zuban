@@ -7,7 +7,9 @@ mod module;
 mod none;
 mod typing;
 
-use crate::arguments::Arguments;
+use parsa_python_ast::{ListElement, ListElementIterator};
+
+use crate::arguments::{Arguments, NoArguments};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -73,6 +75,37 @@ macro_rules! base_description {
     };
 }
 
+pub enum IteratorContent<'db> {
+    Inferred(Inferred<'db>),
+    ListLiteral(ListLiteral<'db>, ListElementIterator<'db>),
+    Empty,
+}
+
+impl<'db> IteratorContent<'db> {
+    pub fn infer(self) -> Inferred<'db> {
+        match self {
+            Self::Inferred(inferred) => inferred,
+            Self::ListLiteral(list, _) => todo!(), //list.generic_part(),
+            Self::Empty => todo!(),
+        }
+    }
+
+    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+        match self {
+            Self::Inferred(inferred) => None,
+            Self::ListLiteral(list, list_elements) => {
+                list_elements.next().map(|list_element| match list_element {
+                    ListElement::NamedExpression(named_expr) => {
+                        list.infer_named_expr(i_s, named_expr)
+                    }
+                    ListElement::StarNamedExpression(_) => todo!(),
+                })
+            }
+            Self::Empty => todo!(),
+        }
+    }
+}
+
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
@@ -99,6 +132,13 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         todo!()
+    }
+
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+        IteratorContent::Inferred(
+            self.lookup(i_s, "__iter__")
+                .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments())),
+        )
     }
 
     fn as_instance(&self) -> Option<&Instance<'db, 'a>> {

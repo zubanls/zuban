@@ -2,7 +2,7 @@ use parsa_python_ast::{
     Dict, DictElement, Expression, List, ListContent, ListElement, NamedExpression,
 };
 
-use super::{Class, ClassLike, Value, ValueKind};
+use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
 use crate::database::{ComplexPoint, GenericPart, GenericsList};
 use crate::debug;
 use crate::generics::Generics;
@@ -10,7 +10,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct ListLiteral<'db> {
     node_reference: NodeReference<'db>,
 }
@@ -20,7 +20,7 @@ impl<'db> ListLiteral<'db> {
         Self { node_reference }
     }
 
-    fn infer_named_expr(
+    pub fn infer_named_expr(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         named_expr: NamedExpression<'db>,
@@ -96,6 +96,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
+    }
+
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+        match self.list_node().unpack() {
+            ListContent::Elements(elements) => IteratorContent::ListLiteral(*self, elements),
+            ListContent::Comprehension(_) => unreachable!(),
+            ListContent::None => IteratorContent::Empty,
+        }
     }
 
     fn get_item(
