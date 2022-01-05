@@ -187,7 +187,7 @@ impl<'db> Inferred<'db> {
                 InferredState::UnsavedComplex(ComplexPoint::Tuple(content))
             }
             GenericPart::Callable(content) => {
-                todo!()
+                InferredState::UnsavedComplex(ComplexPoint::Callable(content))
             }
             GenericPart::Type(c) => match *c {
                 GenericPart::Class(link) => {

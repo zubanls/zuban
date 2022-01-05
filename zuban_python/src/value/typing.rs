@@ -522,22 +522,13 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         ClassLike::Simple(SimpleClassLike::Callable(CallableClass::new(self.content)))
     }
 
-    fn get_item(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        match slice_type {
-            SliceType::Simple(simple) => {
-                todo!()
-            }
-            SliceType::Slice(simple) => {
-                todo!()
-            }
-            SliceType::Slices(simple) => {
-                todo!()
-            }
-        }
+        dbg!(self.content);
+        todo!()
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
