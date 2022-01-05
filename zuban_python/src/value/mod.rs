@@ -21,7 +21,8 @@ pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
 pub use typing::{
-    Tuple, TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
+    Callable, CallableClass, Tuple, TupleClass, TypingCast, TypingClass, TypingClassVar,
+    TypingType, TypingWithGenerics,
 };
 
 enum ArrayType {

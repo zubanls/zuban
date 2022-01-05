@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Name, PrimaryContent};
 
-use super::{ClassLike, IteratorContent, SimpleClassLike, Value, ValueKind};
+use super::{ClassLike, SimpleClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
@@ -456,5 +456,121 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
                 Inferred::execute_generic_part(i_s.database, arg.infer(i_s).as_generic_part(i_s))
             })
             .unwrap_or_else(|| todo!())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CallableClass<'a> {
+    content: &'a CallableContent,
+}
+
+impl<'a> CallableClass<'a> {
+    pub fn new(content: &'a CallableContent) -> Self {
+        Self { content }
+    }
+
+    pub fn as_generic_part(&self) -> GenericPart {
+        GenericPart::Callable(self.content.clone())
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &'db str {
+        "Callable"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        Some(ClassLike::Simple(SimpleClassLike::Callable(
+            CallableClass::new(self.content),
+        )))
+    }
+}
+
+#[derive(Debug)]
+pub struct Callable<'a> {
+    content: &'a CallableContent,
+}
+
+impl<'a> Callable<'a> {
+    pub fn new(content: &'a CallableContent) -> Self {
+        Self { content }
+    }
+
+    pub fn as_generic_part(&self) -> GenericPart {
+        GenericPart::Callable(self.content.clone())
+    }
+
+    fn description(&self, i_s: &mut InferenceState) -> String {
+        let base = base_description!(self);
+        format!(
+            "{}[[{}], {}]",
+            base,
+            &self
+                .content
+                .params
+                .as_ref()
+                .map(|p| p.as_string(i_s.database))
+                .unwrap_or_else(|| "...".to_owned()),
+            self.content.return_class.as_type_string(i_s.database)
+        )
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
+    }
+
+    fn name(&self) -> &'db str {
+        "Callable"
+    }
+
+    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::Simple(SimpleClassLike::Callable(CallableClass::new(self.content)))
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        match slice_type {
+            SliceType::Simple(simple) => {
+                todo!()
+            }
+            SliceType::Slice(simple) => {
+                todo!()
+            }
+            SliceType::Slices(simple) => {
+                todo!()
+            }
+        }
+    }
+
+    fn description(&self, i_s: &mut InferenceState) -> String {
+        let base = base_description!(self);
+        format!(
+            "{}[[{}], {}]",
+            base,
+            &self
+                .content
+                .params
+                .as_ref()
+                .map(|p| p.as_string(i_s.database))
+                .unwrap_or_else(|| "...".to_owned()),
+            self.content.return_class.as_type_string(i_s.database)
+        )
     }
 }

@@ -1,6 +1,6 @@
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::{Function, TupleClass, Value, ValueKind};
+use super::{CallableClass, Function, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroIndex, Point,
@@ -18,6 +18,7 @@ use crate::utils::SymbolTable;
 pub enum SimpleClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
+    Callable(CallableClass<'a>),
 }
 
 impl<'db> SimpleClassLike<'db, '_> {
@@ -25,6 +26,7 @@ impl<'db> SimpleClassLike<'db, '_> {
         match self {
             Self::Class(c) => c.as_string(i_s),
             Self::Tuple(c) => format!("Tuple[{}]", self.generics().as_string(i_s)),
+            Self::Callable(c) => todo!(),
         }
     }
 
@@ -32,6 +34,7 @@ impl<'db> SimpleClassLike<'db, '_> {
         match self {
             Self::Class(c) => c.generics,
             Self::Tuple(c) => c.generics(),
+            Self::Callable(c) => todo!(),
         }
     }
 
@@ -39,6 +42,7 @@ impl<'db> SimpleClassLike<'db, '_> {
         match self {
             Self::Class(c) => c.as_generic_part(i_s),
             Self::Tuple(t) => t.as_generic_part(),
+            Self::Callable(c) => c.as_generic_part(),
         }
     }
 
@@ -49,6 +53,7 @@ impl<'db> SimpleClassLike<'db, '_> {
                 _ => false,
             },
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
+            Self::Callable(c) => todo!(),
         }
     }
 }
@@ -187,6 +192,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Simple(SimpleClassLike::Tuple(t)) => {
                 Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone()))
             }
+            Self::Simple(SimpleClassLike::Callable(c)) => todo!(),
             Self::Type(c) => todo!(),
             Self::TypeWithGenericPart(g) => todo!(),
         }
@@ -243,6 +249,7 @@ impl<'db, 'a> Class<'db, 'a> {
         match init.init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
+                dbg!(self.description(i_s));
                 let type_vars = self.type_vars(i_s);
                 let list = TypeVarMatcher::calculate_and_return(
                     i_s,

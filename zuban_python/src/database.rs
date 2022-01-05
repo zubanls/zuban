@@ -647,7 +647,14 @@ impl GenericPart {
                 }
                 Self::Tuple(content)
             }
-            Self::Callable(content) => todo!(),
+            Self::Callable(mut content) => {
+                if let Some(params) = content.params.as_mut() {
+                    replace_list(&mut params.0, callable)
+                }
+                let g = std::mem::replace(&mut *content.return_class, GenericPart::Unknown);
+                *content.return_class = g.replace_type_vars(callable);
+                Self::Callable(content)
+            }
         }
     }
 

@@ -16,9 +16,9 @@ use crate::generics::{GenericOption, Generics};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
-    BoundMethod, Class, ClassLike, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
-    Module, NoneInstance, OverloadedFunction, SimpleClassLike, Tuple, TupleClass, TypingCast,
-    TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
+    BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
+    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, SimpleClassLike, Tuple,
+    TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -544,6 +544,8 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
             ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
+            ComplexPoint::CallableClass(content) => callable(i_s, &CallableClass::new(content)),
+            ComplexPoint::Callable(content) => callable(i_s, &Callable::new(content)),
             ComplexPoint::Type(generic_part) => {
                 callable(i_s, &TypingType::new(i_s.database, generic_part))
             }
