@@ -614,7 +614,7 @@ impl GenericPart {
                     .map(|list| list.as_string(db))
                     .unwrap_or_else(|| "Tuple".to_owned())
             ),
-            Self::Callable(content) => todo!(),
+            Self::Callable(content) => format!("Callable{}", &content.as_string(db)),
             Self::Unknown => "Unknown".to_owned(),
         }
     }
@@ -742,6 +742,19 @@ pub struct TupleContent {
 pub struct CallableContent {
     pub params: Option<GenericsList>,
     pub return_class: Box<GenericPart>,
+}
+
+impl CallableContent {
+    pub fn as_string(&self, db: &Database) -> String {
+        format!(
+            "[{}, {}]",
+            self.params
+                .as_ref()
+                .map(|p| format!("[{}]", p.as_string(db)))
+                .unwrap_or_else(|| "...".to_owned()),
+            self.return_class.as_type_string(db)
+        )
+    }
 }
 
 pub struct Database {

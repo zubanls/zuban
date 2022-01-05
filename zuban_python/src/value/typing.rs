@@ -509,18 +509,7 @@ impl<'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        let base = base_description!(self);
-        format!(
-            "{}[[{}], {}]",
-            base,
-            &self
-                .content
-                .params
-                .as_ref()
-                .map(|p| p.as_string(i_s.database))
-                .unwrap_or_else(|| "...".to_owned()),
-            self.content.return_class.as_type_string(i_s.database)
-        )
+        base_description!(self) + &self.content.as_string(i_s.database)
     }
 }
 
@@ -560,17 +549,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        let base = base_description!(self);
-        format!(
-            "{}[[{}], {}]",
-            base,
-            &self
-                .content
-                .params
-                .as_ref()
-                .map(|p| p.as_string(i_s.database))
-                .unwrap_or_else(|| "...".to_owned()),
-            self.content.return_class.as_type_string(i_s.database)
-        )
+        base_description!(self) + &self.content.as_string(i_s.database)
     }
 }
