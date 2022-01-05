@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{Value, ValueKind};
+use super::{ClassLike, SimpleClassLike, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
@@ -13,6 +13,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::Class;
 
+#[derive(Clone, Copy)]
 pub struct Function<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub class: Option<&'a Class<'db, 'a>>,
@@ -213,7 +214,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 }
 
-impl<'db> Value<'db, '_> for Function<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -263,6 +264,10 @@ impl<'db> Value<'db, '_> for Function<'db, '_> {
         } else {
             self.execute_without_annotation(i_s, args)
         }
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::Simple(SimpleClassLike::FunctionType(*self))
     }
 }
 

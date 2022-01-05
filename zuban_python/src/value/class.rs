@@ -19,6 +19,7 @@ pub enum SimpleClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
     Callable(CallableClass<'a>),
+    FunctionType(Function<'db, 'a>),
 }
 
 impl<'db> SimpleClassLike<'db, '_> {
@@ -27,6 +28,7 @@ impl<'db> SimpleClassLike<'db, '_> {
             Self::Class(c) => c.as_string(i_s),
             Self::Tuple(c) => c.description(i_s),
             Self::Callable(c) => c.description(i_s),
+            Self::FunctionType(f) => todo!(),
         }
     }
 
@@ -35,6 +37,7 @@ impl<'db> SimpleClassLike<'db, '_> {
             Self::Class(c) => c.generics,
             Self::Tuple(c) => c.generics(),
             Self::Callable(c) => todo!(),
+            Self::FunctionType(f) => todo!(),
         }
     }
 
@@ -43,6 +46,7 @@ impl<'db> SimpleClassLike<'db, '_> {
             Self::Class(c) => c.as_generic_part(i_s),
             Self::Tuple(t) => t.as_generic_part(),
             Self::Callable(c) => c.as_generic_part(),
+            Self::FunctionType(f) => todo!(),
         }
     }
 
@@ -53,7 +57,8 @@ impl<'db> SimpleClassLike<'db, '_> {
                 _ => false,
             },
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
-            Self::Callable(c) => todo!(),
+            Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
+            Self::FunctionType(f) => unreachable!(),
         }
     }
 }
@@ -86,6 +91,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // TODO use type_var_remap
         match value_class {
             GenericOption::ClassLike(c) => {
+                dbg!(c);
                 let mut some_class_matches = false;
                 for (mro_index, class_like) in c.mro(i_s) {
                     if self.matches_without_generics(&class_like) {
@@ -193,6 +199,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone()))
             }
             Self::Simple(SimpleClassLike::Callable(c)) => todo!(),
+            Self::Simple(SimpleClassLike::FunctionType(f)) => todo!(),
             Self::Type(c) => todo!(),
             Self::TypeWithGenericPart(g) => todo!(),
         }

@@ -383,7 +383,7 @@ def ma(a: typing.Callable[[str], TYPE_VARX]) -> typing.Callable[[str], TYPE_VARX
 def mf(s: str) -> int:
     return int(s)
 
-##? int()
+#? int()
 ma(mf)('2')
 
 def xxx(x: typing.Iterable[TYPE_VARX]) -> typing.Tuple[str, TYPE_VARX]: ...
