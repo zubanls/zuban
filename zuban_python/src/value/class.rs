@@ -25,8 +25,8 @@ impl<'db> SimpleClassLike<'db, '_> {
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
             Self::Class(c) => c.as_string(i_s),
-            Self::Tuple(c) => format!("Tuple[{}]", self.generics().as_string(i_s)),
-            Self::Callable(c) => todo!(),
+            Self::Tuple(c) => c.description(i_s),
+            Self::Callable(c) => c.description(i_s),
         }
     }
 
