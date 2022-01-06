@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
             i_s.database,
             i_s.database.python_state.builtins_point_link("list"),
         );
-        ClassLike::new_class(
+        ClassLike::Class(
             Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None)
                 .unwrap(),
         )
@@ -332,7 +332,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
             i_s.database,
             i_s.database.python_state.builtins_point_link("dict"),
         );
-        ClassLike::new_class(
+        ClassLike::Class(
             Class::from_position(node_reference, Generics::List(self.generic_part(i_s)), None)
                 .unwrap(),
         )

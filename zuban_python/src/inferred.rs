@@ -17,8 +17,8 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::value::{
     BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, SimpleClassLike, Tuple,
-    TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
+    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, Tuple, TupleClass,
+    TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 pub trait Inferrable<'db> {
@@ -500,7 +500,7 @@ impl<'db> Inferred<'db> {
 
                 let class = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
                 let class = match class {
-                    ClassLike::Simple(SimpleClassLike::Class(c)) => c,
+                    ClassLike::Class(c) => c,
                     _ => unreachable!(),
                 };
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
@@ -818,21 +818,19 @@ impl<'db> Inferred<'db> {
             }
         }
         self.maybe_class_internal(i_s, generics)
-            .map(ClassLike::new_class)
+            .map(ClassLike::Class)
             .or_else(|| match &self.state {
                 InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
                     if let ComplexPoint::TupleClass(content) = complex {
-                        Some(ClassLike::Simple(SimpleClassLike::Tuple(TupleClass::new(
-                            content,
-                        ))))
+                        Some(ClassLike::Tuple(TupleClass::new(content)))
                     } else {
                         None
                     }
                 }
-                InferredState::UnsavedComplex(ComplexPoint::Tuple(content)) => Some(
-                    ClassLike::Simple(SimpleClassLike::Tuple(TupleClass::new(content))),
-                ),
+                InferredState::UnsavedComplex(ComplexPoint::Tuple(content)) => {
+                    Some(ClassLike::Tuple(TupleClass::new(content)))
+                }
                 _ => None,
             })
     }

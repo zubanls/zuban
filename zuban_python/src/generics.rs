@@ -11,14 +11,14 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
-use crate::value::{Class, ClassLike, Function, SimpleClassLike, TupleClass, Value};
+use crate::value::{Class, ClassLike, Function, TupleClass, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList),
-    SimpleClassLike(&'a SimpleClassLike<'db, 'a>),
+    Class(&'a Class<'db, 'a>),
     GenericPart(&'a GenericPart),
     None,
 }
@@ -56,7 +56,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 .unwrap_or(GenericPart::Unknown),
             Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
             Self::GenericPart(g) => todo!(),
-            Self::SimpleClassLike(s) => todo!(),
+            Self::Class(s) => todo!(),
             Self::None => GenericPart::Unknown,
         }
     }
@@ -67,7 +67,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::GenericPart(g) => GenericsIterator::GenericPart(g),
-            Self::SimpleClassLike(s) => GenericsIterator::SimpleClassLike(*s),
+            Self::Class(s) => GenericsIterator::Class(*s),
             Self::None => GenericsIterator::None,
         }
     }
@@ -82,7 +82,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 todo!()
             }
             Self::GenericPart(g) => todo!(),
-            Self::SimpleClassLike(_) => todo!(),
+            Self::Class(_) => todo!(),
             Self::List(_) => {
                 todo!()
             }
@@ -103,7 +103,7 @@ pub enum GenericsIterator<'db, 'a> {
     SliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, GenericPart>),
     GenericPart(&'a GenericPart),
-    SimpleClassLike(&'a SimpleClassLike<'db, 'a>),
+    Class(&'a Class<'db, 'a>),
     Expression(&'db PythonFile, Expression<'db>),
     None,
 }
@@ -144,8 +144,8 @@ impl<'db> GenericsIterator<'db, '_> {
                 *self = Self::None;
                 result
             }
-            Self::SimpleClassLike(s) => {
-                let result = callable(i_s, &GenericOption::ClassLike(ClassLike::Simple(**s)));
+            Self::Class(s) => {
+                let result = callable(i_s, &GenericOption::ClassLike(ClassLike::Class(**s)));
                 *self = Self::None;
                 Some(result)
             }
@@ -184,7 +184,7 @@ impl<'db> GenericsIterator<'db, '_> {
                     callable(i_s, &GenericOption::from_generic_part(i_s.database, g));
                     return;
                 }
-                Self::SimpleClassLike(s) => {
+                Self::Class(s) => {
                     todo!();
                     return;
                 }
@@ -387,14 +387,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         match generic_part {
             GenericPart::Class(link) => {
                 let node_ref = NodeReference::from_link(database, *link);
-                Self::ClassLike(ClassLike::new_class(
+                Self::ClassLike(ClassLike::Class(
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
             }
             GenericPart::Unknown => Self::Invalid,
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeReference::from_link(database, *link);
-                Self::ClassLike(ClassLike::new_class(
+                Self::ClassLike(ClassLike::Class(
                     Class::from_position(node_ref, Generics::List(generics), None).unwrap(),
                 ))
             }
@@ -407,11 +407,11 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 Self::TypeVar(NodeReference::from_link(database, *link))
             }
             GenericPart::Type(generic_part) => {
-                Self::ClassLike(ClassLike::type_from_generic_part(database, generic_part))
+                Self::ClassLike(ClassLike::TypeWithGenericPart(generic_part))
             }
-            GenericPart::Tuple(content) => Self::ClassLike(ClassLike::Simple(
-                SimpleClassLike::Tuple(TupleClass::new(content)),
-            )),
+            GenericPart::Tuple(content) => {
+                Self::ClassLike(ClassLike::Tuple(TupleClass::new(content)))
+            }
             GenericPart::Callable(content) => todo!(),
         }
     }

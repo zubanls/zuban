@@ -60,7 +60,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::new_class(self.class)
+        ClassLike::Class(self.class)
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {

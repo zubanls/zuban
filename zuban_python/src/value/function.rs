@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{ClassLike, SimpleClassLike, Value, ValueKind};
+use super::{ClassLike, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
@@ -267,7 +267,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Simple(SimpleClassLike::FunctionType(*self))
+        ClassLike::FunctionType(*self)
     }
 }
 

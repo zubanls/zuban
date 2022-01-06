@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Name, PrimaryContent};
 
-use super::{ClassLike, SimpleClassLike, Value, ValueKind};
+use super::{ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
@@ -249,9 +249,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Simple(SimpleClassLike::Tuple(TupleClass::new(
-            self.content,
-        ))))
+        Some(ClassLike::Tuple(TupleClass::new(self.content)))
     }
 }
 
@@ -288,7 +286,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Simple(SimpleClassLike::Tuple(TupleClass::new(self.content)))
+        ClassLike::Tuple(TupleClass::new(self.content))
     }
 
     fn get_item(
@@ -399,10 +397,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::type_from_generic_part(
-            self.database,
-            self.generic_part,
-        ))
+        Some(ClassLike::TypeWithGenericPart(self.generic_part))
     }
 }
 
@@ -480,9 +475,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Simple(SimpleClassLike::Callable(
-            CallableClass::new(self.content),
-        )))
+        Some(ClassLike::Callable(CallableClass::new(self.content)))
     }
 }
 
@@ -519,7 +512,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Simple(SimpleClassLike::Callable(CallableClass::new(self.content)))
+        ClassLike::Callable(CallableClass::new(self.content))
     }
 
     fn execute(
