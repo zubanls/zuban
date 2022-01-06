@@ -97,6 +97,24 @@ impl<'db, 'a> Generics<'db, 'a> {
             .run_on_all_generic_options(i_s, |i_s, g| strings.push(g.as_string(i_s)));
         format!("[{}]", strings.join(", "))
     }
+
+    pub fn infer_type_vars(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: &mut TypeVarMatcher<'db, '_>,
+        value_generics: Self,
+    ) {
+        let mut value_generics = value_generics.iter();
+        self.iter()
+            .run_on_all_generic_options(i_s, |i_s, generic_option| {
+                let appeared = value_generics.run_on_next(i_s, |i_s, g| {
+                    generic_option.infer_type_vars(i_s, g, matcher)
+                });
+                if appeared.is_none() {
+                    debug!("Generic not found for: {:?}", generic_option);
+                }
+            });
+    }
 }
 
 pub enum GenericsIterator<'db, 'a> {
@@ -153,7 +171,7 @@ impl<'db> GenericsIterator<'db, '_> {
         }
     }
 
-    pub fn run_on_all_generic_options(
+    fn run_on_all_generic_options(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
         mut callable: impl FnMut(&mut InferenceState<'db, '_>, &GenericOption<'db, '_>),

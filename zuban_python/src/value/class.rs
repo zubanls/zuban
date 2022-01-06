@@ -39,20 +39,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             GenericOption::ClassLike(c) => {
                 let mut some_class_matches = false;
                 for (mro_index, class_like) in c.mro(i_s) {
-                    if self.matches_without_generics(&class_like) {
+                    if self.check_match(i_s, matcher, &class_like) {
                         some_class_matches = true;
-                        let mut value_generics = class_like.generics().iter();
-                        self.generics().iter().run_on_all_generic_options(
-                            i_s,
-                            |i_s, generic_option| {
-                                let appeared = value_generics.run_on_next(i_s, |i_s, g| {
-                                    generic_option.infer_type_vars(i_s, g, matcher)
-                                });
-                                if appeared.is_none() {
-                                    debug!("Generic not found for: {:?}", generic_option);
-                                }
-                            },
-                        );
+                        break;
                     }
                 }
                 if !some_class_matches {
@@ -66,8 +55,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn matches_without_generics(&self, other: &Self) -> bool {
-        match self {
+    fn check_match(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: &mut TypeVarMatcher<'db, '_>,
+        other: &Self,
+    ) -> bool {
+        let matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => c1.reference == c2.reference,
                 _ => false,
@@ -78,15 +72,27 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
             Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
             Self::FunctionType(f) => unreachable!(),
+        };
+        if matches {
+            let (class_generics, class_result_generics) = self.generics();
+            let (value_generics, value_result_generics) = other.generics();
+
+            class_generics.infer_type_vars(i_s, matcher, value_generics);
+            if let Some(class_result_generics) = class_result_generics {
+                todo!();
+                //class_result_generics
+            }
         }
+        matches
     }
 
-    fn generics(&self) -> Generics<'db, '_> {
+    #[inline]
+    fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
         match self {
-            Self::Class(c) => c.generics,
-            Self::Type(c) => Generics::Class(c),
-            Self::TypeWithGenericPart(g) => Generics::GenericPart(g),
-            Self::Tuple(c) => c.generics(),
+            Self::Class(c) => (c.generics, None),
+            Self::Type(c) => (Generics::Class(c), None),
+            Self::TypeWithGenericPart(g) => (Generics::GenericPart(g), None),
+            Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => todo!(),
             Self::FunctionType(f) => todo!(),
         }
