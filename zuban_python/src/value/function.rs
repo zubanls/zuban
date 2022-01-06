@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::Class;
@@ -211,6 +211,18 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         debug_assert!(type_var_reference.point().calculated());
         self.calculated_type_vars(i_s)
+    }
+
+    pub fn iter_params(&self) -> ParamIterator<'db> {
+        //self.content.params.as_ref().map(Generics::List).unwrap_or(Generics::None)
+        self.node().params().iter()
+    }
+
+    pub fn result_generics(&self) -> Generics<'db, 'a> {
+        self.node()
+            .annotation()
+            .map(|a| Generics::Expression(self.reference.file, a.expression()))
+            .unwrap_or(Generics::None)
     }
 }
 

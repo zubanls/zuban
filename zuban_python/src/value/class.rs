@@ -78,9 +78,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (value_generics, value_result_generics) = other.generics();
 
             class_generics.infer_type_vars(i_s, matcher, value_generics);
+            // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
-                todo!();
-                //class_result_generics
+                class_result_generics.infer_type_vars(i_s, matcher, value_result_generics.unwrap());
             }
         }
         matches
@@ -93,8 +93,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(c) => (Generics::Class(c), None),
             Self::TypeWithGenericPart(g) => (Generics::GenericPart(g), None),
             Self::Tuple(c) => (c.generics(), None),
-            Self::Callable(c) => todo!(),
-            Self::FunctionType(f) => todo!(),
+            Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
+            Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
         }
     }
 

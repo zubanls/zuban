@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, SliceContent, SliceIterator, SliceType,
-    Slices,
+    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, SliceContent,
+    SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
@@ -20,6 +20,7 @@ pub enum Generics<'db, 'a> {
     List(&'a GenericsList),
     Class(&'a Class<'db, 'a>),
     GenericPart(&'a GenericPart),
+    FunctionParams(&'a Function<'db, 'a>),
     None,
 }
 
@@ -57,6 +58,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
             Self::GenericPart(g) => todo!(),
             Self::Class(s) => todo!(),
+            Self::FunctionParams(f) => todo!(),
             Self::None => GenericPart::Unknown,
         }
     }
@@ -68,6 +70,9 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::List(l) => GenericsIterator::GenericsList(l.iter()),
             Self::GenericPart(g) => GenericsIterator::GenericPart(g),
             Self::Class(s) => GenericsIterator::Class(*s),
+            Self::FunctionParams(f) => {
+                GenericsIterator::ParamIterator(f.reference.file, f.iter_params())
+            }
             Self::None => GenericsIterator::None,
         }
     }
@@ -83,6 +88,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             }
             Self::GenericPart(g) => todo!(),
             Self::Class(_) => todo!(),
+            Self::FunctionParams(f) => todo!(),
             Self::List(_) => {
                 todo!()
             }
@@ -122,6 +128,7 @@ pub enum GenericsIterator<'db, 'a> {
     GenericsList(std::slice::Iter<'a, GenericPart>),
     GenericPart(&'a GenericPart),
     Class(&'a Class<'db, 'a>),
+    ParamIterator(&'db PythonFile, ParamIterator<'db>),
     Expression(&'db PythonFile, Expression<'db>),
     None,
 }
@@ -167,6 +174,17 @@ impl<'db> GenericsIterator<'db, '_> {
                 *self = Self::None;
                 Some(result)
             }
+            Self::ParamIterator(f, params) => params.next().map(|p| {
+                p.annotation()
+                    .map(|a| {
+                        let inferred = f
+                            .inference(i_s)
+                            .infer_annotation_expression_class(a.expression());
+                        let g = inferred.as_generic_option(i_s);
+                        callable(i_s, &g)
+                    })
+                    .unwrap_or_else(|| callable(i_s, &GenericOption::None))
+            }),
             GenericsIterator::None => None,
         }
     }
@@ -204,6 +222,20 @@ impl<'db> GenericsIterator<'db, '_> {
                 }
                 Self::Class(s) => {
                     todo!();
+                    return;
+                }
+                Self::ParamIterator(f, params) => {
+                    for p in params {
+                        if let Some(annotation) = p.annotation() {
+                            let inferred = f
+                                .inference(i_s)
+                                .infer_annotation_expression_class(annotation.expression());
+                            let g = inferred.as_generic_option(i_s);
+                            callable(i_s, &g)
+                        } else {
+                            callable(i_s, &GenericOption::None)
+                        }
+                    }
                     return;
                 }
                 GenericsIterator::None => return,

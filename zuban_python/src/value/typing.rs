@@ -459,6 +459,18 @@ impl<'a> CallableClass<'a> {
     pub fn as_generic_part(&self) -> GenericPart {
         GenericPart::Callable(self.content.clone())
     }
+
+    pub fn param_generics<'db>(&self) -> Generics<'db, 'a> {
+        self.content
+            .params
+            .as_ref()
+            .map(Generics::List)
+            .unwrap_or(Generics::None)
+    }
+
+    pub fn result_generics<'db>(&self) -> Generics<'db, 'a> {
+        Generics::GenericPart(&self.content.return_class)
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
@@ -520,8 +532,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        dbg!(self.content);
-        todo!()
+        Inferred::execute_generic_part(i_s.database, *self.content.return_class.clone())
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
