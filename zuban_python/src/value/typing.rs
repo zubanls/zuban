@@ -448,7 +448,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
 
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
-    content: &'a CallableContent,
+    pub content: &'a CallableContent,
 }
 
 impl<'a> CallableClass<'a> {

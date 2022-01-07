@@ -423,7 +423,9 @@ impl<'db> Inferred<'db> {
             }
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
-            Specific::ClassTypeVar | Specific::FunctionTypeVar => on_type_var(*definition),
+            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::FreeTypeVar => {
+                on_type_var(*definition)
+            }
             Specific::None => callable(i_s, &NoneInstance()),
             _ => {
                 let instance = self.resolve_specific(i_s.database, specific);

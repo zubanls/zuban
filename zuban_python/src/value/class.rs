@@ -158,7 +158,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => unreachable!(),
             },
             Self::Tuple(t) => Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone())),
-            Self::Callable(c) => todo!(),
+            Self::Callable(c) => {
+                Inferred::new_unsaved_complex(ComplexPoint::Callable(c.content.clone()))
+            }
             Self::FunctionType(f) => todo!(),
             Self::Type(c) => todo!(),
             Self::TypeWithGenericPart(g) => todo!(),

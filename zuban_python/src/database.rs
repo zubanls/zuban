@@ -168,7 +168,7 @@ impl Point {
         assert!(index.0 <= MAX_TYPE_VAR);
         debug_assert!(matches!(
             specific,
-            Specific::ClassTypeVar | Specific::FunctionTypeVar
+            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::FreeTypeVar
         ));
         let flags = Self::calculate_flags(
             PointType::Specific,
@@ -268,7 +268,7 @@ impl fmt::Debug for Point {
                 s.field("specific", &self.specific());
                 if matches!(
                     self.specific(),
-                    Specific::ClassTypeVar | Specific::FunctionTypeVar
+                    Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::FreeTypeVar
                 ) {
                     s.field("type_var_index", &self.type_var_index());
                 }
@@ -380,6 +380,7 @@ pub enum Specific {
     //TypedDict,
     ClassTypeVar,
     FunctionTypeVar,
+    FreeTypeVar,
 }
 
 #[derive(Debug)]
