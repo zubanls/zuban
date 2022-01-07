@@ -216,7 +216,6 @@ impl<'db, 'a> Class<'db, 'a> {
         match init.init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
-                dbg!(self.description(i_s));
                 let type_vars = self.type_vars(i_s);
                 let list = TypeVarMatcher::calculate_and_return(
                     i_s,
@@ -281,6 +280,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         &n.expression(),
                         &mut |_, _| Some(Specific::ClassTypeVar),
                         &mut type_vars,
+                        false,
                     );
                 }
             }

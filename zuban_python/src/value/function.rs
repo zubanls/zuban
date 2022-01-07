@@ -191,6 +191,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     &annotation.expression(),
                     &mut add,
                     &mut found_type_vars,
+                    false,
                 );
             }
         }
@@ -201,6 +202,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 &return_annot.expression(),
                 &mut add,
                 &mut found_type_vars,
+                true,
             );
         }
         match found_type_vars.len() {

@@ -391,6 +391,7 @@ pub fn search_type_vars<'db>(
     expression: &Expression<'db>,
     found_callback: &mut dyn FnMut(NodeIndex, PointLink) -> Option<Specific>,
     found_type_vars: &mut Vec<PointLink>,
+    ignore_not_found: bool,
 ) {
     for n in expression.search_names() {
         if matches!(n.parent(), NameParent::Atom) {
@@ -401,6 +402,9 @@ pub fn search_type_vars<'db>(
                 if let Some(point_type) = found_callback(n.index(), link) {
                     let i = found_type_vars.iter().position(|&r| r == link);
                     if i.is_none() {
+                        if ignore_not_found {
+                            todo!()
+                        }
                         found_type_vars.push(link);
                     };
                     let i = i.unwrap_or_else(|| found_type_vars.len() - 1);
