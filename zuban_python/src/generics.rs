@@ -376,7 +376,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> GenericPart {
         if let Some(type_vars) = &self.calculated_type_vars {
-            type_vars.nth(index).cloned().unwrap_or_else(|| todo!())
+            type_vars
+                .nth(index)
+                .cloned()
+                .unwrap_or(GenericPart::Unknown)
         } else {
             self.calculate_type_vars(i_s);
             self.nth(i_s, index)
