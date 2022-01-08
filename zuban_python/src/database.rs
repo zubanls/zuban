@@ -519,7 +519,7 @@ impl GenericsList {
                 if a.is_empty() {
                     a + &b
                 } else {
-                    a + &b + ","
+                    a + ", " + &b
                 }
             })
     }
