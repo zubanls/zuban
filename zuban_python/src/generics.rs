@@ -350,15 +350,26 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
             FunctionOrCallable::Callable(callable) => {
-                todo!()
+                for param in callable.iter_params_with_args(self.args) {
+                    if let Some(argument) = param.argument {
+                        let value = argument.infer(i_s);
+                        let value_class = value.class_as_generic_option(i_s);
+                        GenericOption::from_generic_part(i_s.database, param.param_type)
+                            .infer_type_vars(i_s, &value_class, self)
+                    }
+                }
             }
         }
         if let Some(calculated) = &self.calculated_type_vars {
+            let callable_description: String;
             debug!(
                 "Calculated type vars: {}[{}]",
                 match self.func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
-                    FunctionOrCallable::Callable(function) => todo!(),
+                    FunctionOrCallable::Callable(callable) => {
+                        callable_description = callable.description(i_s);
+                        &callable_description
+                    }
                 },
                 calculated.as_string(i_s.database),
             );

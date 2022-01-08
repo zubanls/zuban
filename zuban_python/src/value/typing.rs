@@ -3,7 +3,7 @@ use std::fmt;
 use parsa_python_ast::{Name, PrimaryContent};
 
 use super::{ClassLike, Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
     CallableContent, ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific,
@@ -508,6 +508,16 @@ impl<'a> Callable<'a> {
     fn description(&self, i_s: &mut InferenceState) -> String {
         base_description!(self) + &self.content.as_string(i_s.database)
     }
+
+    pub fn iter_params_with_args<'db, 'b>(
+        &self,
+        args: &'b dyn Arguments<'db>,
+    ) -> CallableParamIterator<'db, 'a, 'b> {
+        CallableParamIterator {
+            params: self.content.params.as_ref().map(|params| params.iter()),
+            arguments: args.iter_arguments(),
+        }
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
@@ -544,5 +554,30 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn description(&self, i_s: &mut InferenceState) -> String {
         base_description!(self) + &self.content.as_string(i_s.database)
+    }
+}
+
+pub struct CallableParam<'db, 'a, 'b> {
+    pub param_type: &'a GenericPart,
+    pub argument: Option<Argument<'db, 'b>>,
+}
+
+pub struct CallableParamIterator<'db, 'a, 'b> {
+    params: Option<std::slice::Iter<'a, GenericPart>>,
+    arguments: ArgumentIterator<'db, 'b>,
+}
+
+impl<'db, 'a, 'b> Iterator for CallableParamIterator<'db, 'a, 'b> {
+    type Item = CallableParam<'db, 'a, 'b>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.params
+            .as_mut()
+            .map(|params| {
+                params.next().map(|param_type| Self::Item {
+                    param_type,
+                    argument: self.arguments.next(),
+                })
+            })
+            .flatten()
     }
 }
