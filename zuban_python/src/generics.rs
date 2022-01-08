@@ -609,10 +609,18 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         })
                         .unwrap_or_else(|| generic(point.type_var_index()))
                 }
-                Specific::FunctionTypeVar | Specific::FreeTypeVar => function_matcher
+                Specific::FunctionTypeVar => function_matcher
                     .as_mut()
                     .unwrap()
                     .nth(i_s, point.type_var_index()),
+                Specific::FreeTypeVar => {
+                    if let Some(function_matcher) = function_matcher {
+                        if function_matcher.match_specific == Specific::FreeTypeVar {
+                            return function_matcher.nth(i_s, point.type_var_index());
+                        }
+                    }
+                    GenericPart::TypeVar(point.type_var_index(), node_ref.as_link())
+                }
                 _ => unreachable!(),
             }
         };
