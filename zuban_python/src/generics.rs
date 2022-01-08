@@ -11,7 +11,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
-use crate::value::{Class, ClassLike, Function, TupleClass, Value};
+use crate::value::{Callable, Class, ClassLike, Function, TupleClass, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
@@ -246,8 +246,13 @@ impl<'db> GenericsIterator<'db, '_> {
     }
 }
 
+enum FunctionOrCallable<'db, 'a> {
+    Function(&'a Function<'db, 'a>),
+    Callable(&'a Callable<'a>),
+}
+
 pub struct TypeVarMatcher<'db, 'a> {
-    function: &'a Function<'db, 'a>,
+    func_or_callable: FunctionOrCallable<'db, 'a>,
     args: &'a dyn Arguments<'db>,
     skip_first: bool,
     pub calculated_type_vars: Option<GenericsList>,
@@ -265,7 +270,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         match_specific: Specific,
     ) -> Self {
         Self {
-            function,
+            func_or_callable: FunctionOrCallable::Function(function),
             args,
             calculated_type_vars: None,
             skip_first,
@@ -275,6 +280,23 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
     // TODO the structure of this impl looks very weird, strange funcs
+
+    pub fn from_callable(
+        callable: &'a Callable<'a>,
+        args: &'a dyn Arguments<'db>,
+        type_vars: Option<&'a [PointLink]>,
+        match_specific: Specific,
+    ) -> Self {
+        Self {
+            func_or_callable: FunctionOrCallable::Callable(callable),
+            args,
+            calculated_type_vars: None,
+            skip_first: false,
+            matches: true,
+            type_vars,
+            match_specific,
+        }
+    }
 
     pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
@@ -296,38 +318,48 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 self.calculated_type_vars = Some(GenericsList::new_unknown(type_vars.len()));
             }
         }
-        self.function.calculated_type_vars(i_s);
-        let mut iter = self
-            .function
-            .iter_inferrable_params(self.args, self.skip_first);
-        while let Some(p) = iter.next() {
-            if let Some(annotation) = p.param.annotation() {
-                if let ExpressionContent::ExpressionPart(part) = annotation.expression().unpack() {
-                    let value = p.infer(i_s);
-                    let value_class = value.class_as_generic_option(i_s);
-                    self.function
-                        .reference
-                        .file
-                        .inference(i_s)
-                        .infer_annotation_expression_class(annotation.expression())
-                        .as_generic_option(i_s)
-                        .infer_type_vars(i_s, &value_class, self);
-                } else {
-                    self.matches = false;
-                    todo!();
+        match self.func_or_callable {
+            FunctionOrCallable::Function(function) => {
+                function.calculated_type_vars(i_s);
+                let mut iter = function.iter_inferrable_params(self.args, self.skip_first);
+                while let Some(p) = iter.next() {
+                    if let Some(annotation) = p.param.annotation() {
+                        if let ExpressionContent::ExpressionPart(part) =
+                            annotation.expression().unpack()
+                        {
+                            let value = p.infer(i_s);
+                            let value_class = value.class_as_generic_option(i_s);
+                            function
+                                .reference
+                                .file
+                                .inference(i_s)
+                                .infer_annotation_expression_class(annotation.expression())
+                                .as_generic_option(i_s)
+                                .infer_type_vars(i_s, &value_class, self);
+                        } else {
+                            self.matches = false;
+                            todo!();
+                        }
+                    } else if !p.has_argument() {
+                        self.matches = false;
+                        debug!("Not enough arguments: {:?}", p);
+                    }
                 }
-            } else if !p.has_argument() {
-                self.matches = false;
-                debug!("Not enough arguments: {:?}", p);
+                if iter.has_unused_argument() {
+                    self.matches = false
+                }
             }
-        }
-        if iter.has_unused_argument() {
-            self.matches = false
+            FunctionOrCallable::Callable(callable) => {
+                todo!()
+            }
         }
         if let Some(calculated) = &self.calculated_type_vars {
             debug!(
                 "Calculated type vars: {}[{}]",
-                self.function.name(),
+                match self.func_or_callable {
+                    FunctionOrCallable::Function(function) => function.name(),
+                    FunctionOrCallable::Callable(function) => todo!(),
+                },
                 calculated.as_string(i_s.database),
             );
         }
@@ -566,11 +598,10 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         })
                         .unwrap_or_else(|| generic(point.type_var_index()))
                 }
-                Specific::FunctionTypeVar => function_matcher
+                Specific::FunctionTypeVar | Specific::FreeTypeVar => function_matcher
                     .as_mut()
                     .unwrap()
                     .nth(i_s, point.type_var_index()),
-                Specific::FreeTypeVar => todo!(),
                 _ => unreachable!(),
             }
         };

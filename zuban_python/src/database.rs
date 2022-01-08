@@ -523,6 +523,12 @@ impl GenericsList {
                 }
             })
     }
+
+    pub fn scan_for_free_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+        for g in self.0.iter() {
+            g.scan_for_free_type_vars(db, result)
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -691,6 +697,35 @@ impl GenericPart {
             }
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
+        }
+    }
+
+    fn scan_for_free_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+        match self {
+            Self::GenericClass(link, generics) => generics.scan_for_free_type_vars(db, result),
+            Self::Union(list) => list.scan_for_free_type_vars(db, result),
+            Self::TypeVar(index, link) => {
+                let i = result.iter().position(|r| r == link);
+                if i.is_none() {
+                    let node_ref = NodeReference::from_link(db, *link);
+                    if node_ref.point().specific() == Specific::FreeTypeVar {
+                        result.push(*link);
+                    }
+                }
+            }
+            Self::Type(generic_part) => generic_part.scan_for_free_type_vars(db, result),
+            Self::Tuple(content) => {
+                if let Some(generics) = &content.generics {
+                    generics.scan_for_free_type_vars(db, result)
+                }
+            }
+            Self::Callable(content) => {
+                if let Some(params) = &content.params {
+                    params.scan_for_free_type_vars(db, result)
+                }
+                content.return_class.scan_for_free_type_vars(db, result)
+            }
+            _ => (),
         }
     }
 }

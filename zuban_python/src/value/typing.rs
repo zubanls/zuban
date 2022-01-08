@@ -9,7 +9,7 @@ use crate::database::{
     CallableContent, ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific,
     TupleContent, TypeVarIndex,
 };
-use crate::generics::Generics;
+use crate::generics::{GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
@@ -532,7 +532,14 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        Inferred::execute_generic_part(i_s.database, *self.content.return_class.clone())
+        let mut type_vars = vec![]; // todo!()
+        if let Some(params) = &self.content.params {
+            params.scan_for_free_type_vars(i_s.database, &mut type_vars)
+        }
+        let finder =
+            TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::FreeTypeVar);
+        let g_o = GenericOption::from_generic_part(i_s.database, &self.content.return_class);
+        g_o.execute_and_resolve_type_vars(i_s, None, &mut Some(finder))
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
