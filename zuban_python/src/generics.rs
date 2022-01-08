@@ -11,7 +11,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
-use crate::value::{Callable, Class, ClassLike, Function, TupleClass, Value};
+use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
@@ -89,9 +89,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::GenericPart(g) => todo!(),
             Self::Class(_) => todo!(),
             Self::FunctionParams(f) => todo!(),
-            Self::List(_) => {
-                todo!()
-            }
+            Self::List(l) => Some((*l).clone()),
             Self::None => None,
         }
     }
@@ -518,7 +516,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             GenericPart::Tuple(content) => {
                 Self::ClassLike(ClassLike::Tuple(TupleClass::new(content)))
             }
-            GenericPart::Callable(content) => todo!(),
+            GenericPart::Callable(content) => {
+                Self::ClassLike(ClassLike::Callable(CallableClass::new(content)))
+            }
         }
     }
 

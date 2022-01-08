@@ -405,7 +405,7 @@ call2_pls('')(1, lambda x: 3.0)
 
 def call3_pls() -> typing.Callable[[typing.Callable[[int], TYPE_VARX]], typing.List[TYPE_VARX]]: ...
 def the_callable() -> float: ...
-##? float()
+#? float()
 call3_pls()(the_callable)[0]
 
 def call4_pls(fn: typing.Callable[..., TYPE_VARX]) -> typing.Callable[..., TYPE_VARX]:
