@@ -205,8 +205,7 @@ impl<'db> Inferred<'db> {
                 }
                 _ => todo!(),
             },
-            GenericPart::TypeVar(_, link) => todo!("might be unreachable"),
-            GenericPart::Unknown => InferredState::Unknown,
+            GenericPart::TypeVar(_, _) | GenericPart::Unknown => InferredState::Unknown,
         };
         Self { state }
     }

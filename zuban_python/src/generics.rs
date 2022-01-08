@@ -374,12 +374,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> GenericPart {
+    fn nth(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        index: TypeVarIndex,
+    ) -> Option<GenericPart> {
         if let Some(type_vars) = &self.calculated_type_vars {
-            type_vars
-                .nth(index)
-                .cloned()
-                .unwrap_or(GenericPart::Unknown)
+            type_vars.nth(index).cloned()
         } else {
             self.calculate_type_vars(i_s);
             self.nth(i_s, index)
@@ -597,6 +598,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                                 function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
                                 node_ref: &NodeReference| {
             let point = node_ref.point();
+            let type_var_index = point.type_var_index();
             match point.specific() {
                 Specific::ClassTypeVar => {
                     let class = class.unwrap();
@@ -605,24 +607,27 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         .type_var_remap
                         .map(|remaps| {
                             remaps
-                                .nth(point.type_var_index())
+                                .nth(type_var_index)
                                 .map(|x| x.remap_type_vars(&mut generic))
                                 // This means that no generic was provided
                                 .unwrap_or(GenericPart::Unknown)
                         })
-                        .unwrap_or_else(|| generic(point.type_var_index()))
+                        .unwrap_or_else(|| generic(type_var_index))
                 }
                 Specific::FunctionTypeVar => function_matcher
                     .as_mut()
                     .unwrap()
-                    .nth(i_s, point.type_var_index()),
+                    .nth(i_s, type_var_index)
+                    .unwrap_or(GenericPart::Unknown),
                 Specific::FreeTypeVar => {
                     if let Some(function_matcher) = function_matcher {
                         if function_matcher.match_specific == Specific::FreeTypeVar {
-                            return function_matcher.nth(i_s, point.type_var_index());
+                            if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
+                                return calculated;
+                            }
                         }
                     }
-                    GenericPart::TypeVar(point.type_var_index(), node_ref.as_link())
+                    GenericPart::TypeVar(type_var_index, node_ref.as_link())
                 }
                 _ => unreachable!(),
             }
