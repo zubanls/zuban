@@ -490,6 +490,10 @@ impl GenericsList {
         Self(parts)
     }
 
+    pub fn from_vec(parts: Vec<GenericPart>) -> Self {
+        Self::new(parts.into_boxed_slice())
+    }
+
     pub fn new_unknown(length: usize) -> Self {
         debug_assert!(length > 0);
         let vec: Vec<_> = repeat(GenericPart::Unknown).take(length).collect();
@@ -564,7 +568,7 @@ impl GenericPart {
                         }
                     }
                 };
-                Self::Union(GenericsList::new(vec.into_boxed_slice()))
+                Self::Union(GenericsList::from_vec(vec))
             }
             Self::Unknown => other,
             _ => match other {
@@ -574,7 +578,7 @@ impl GenericPart {
                     } else {
                         let mut vec = list.0.into_vec();
                         vec.push(self);
-                        Self::Union(GenericsList::new(vec.into_boxed_slice()))
+                        Self::Union(GenericsList::from_vec(vec))
                     }
                 }
                 Self::Unknown => self,
@@ -686,8 +690,7 @@ impl GenericPart {
                 generics
                     .iter()
                     .map(|g| g.remap_type_vars(resolve_type_var))
-                    .collect::<Vec<_>>()
-                    .into_boxed_slice(),
+                    .collect(),
             )
         };
         match self {

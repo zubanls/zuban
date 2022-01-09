@@ -546,7 +546,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     todo!("{:?}", value_class)
                 }
                 GenericOption::Union(list) => {
-                    let generic = GenericPart::Union(GenericsList::new(list.into_boxed_slice()));
+                    let generic = GenericPart::Union(GenericsList::from_vec(list));
                     matcher.add_type_var_class(i_s, *type_var_index, generic);
                 }
                 GenericOption::None => {
@@ -577,9 +577,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                                 GenericPart::Unknown
                             }
                             1 => unmatched.into_iter().next().unwrap(),
-                            _ => {
-                                GenericPart::Union(GenericsList::new(unmatched.into_boxed_slice()))
-                            }
+                            _ => GenericPart::Union(GenericsList::from_vec(unmatched)),
                         };
                         matcher.add_type_var_class(i_s, type_var_index, dbg!(g));
                         todo!()

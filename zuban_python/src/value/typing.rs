@@ -120,7 +120,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                             .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
                             .unwrap_or(GenericPart::Unknown);
                         CallableContent {
-                            params: Some(GenericsList::new(params.into_boxed_slice())),
+                            params: Some(GenericsList::from_vec(params)),
                             return_class: Box::new(return_class),
                         }
                     }
