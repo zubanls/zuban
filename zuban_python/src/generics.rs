@@ -83,9 +83,20 @@ impl<'db, 'a> Generics<'db, 'a> {
                 .inference(i_s)
                 .infer_annotation_expression_class(*expr)
                 .as_generic_part(i_s)]))),
-            Self::Slices(file, slices) => {
-                todo!()
-            }
+            Self::Slices(file, slices) => Some(GenericsList::new(
+                slices
+                    .iter()
+                    .map(|slice| {
+                        if let SliceContent::NamedExpression(n) = slice {
+                            file.inference(i_s)
+                                .infer_annotation_expression_class(n.expression())
+                                .as_generic_part(i_s)
+                        } else {
+                            todo!()
+                        }
+                    })
+                    .collect(),
+            )),
             Self::GenericPart(g) => todo!(),
             Self::Class(_) => todo!(),
             Self::FunctionParams(f) => todo!(),
