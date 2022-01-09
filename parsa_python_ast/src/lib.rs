@@ -666,6 +666,7 @@ pub enum StarTargetsContent<'db> {
     Tuple(StarTargetIterator<'db>),
 }
 
+#[derive(Debug)]
 pub struct StarTargetIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for StarTargetIterator<'db> {
@@ -1947,6 +1948,7 @@ pub enum NameOrKeywordLookup<'db> {
     None,
 }
 
+#[derive(Debug)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
     StarredTuple(StarTargetIterator<'db>),
@@ -2010,6 +2012,7 @@ impl<'db> Target<'db> {
     }
 }
 
+#[derive(Debug)]
 pub struct TargetIterator<'db> {
     siblings: SiblingIterator<'db>,
 }
