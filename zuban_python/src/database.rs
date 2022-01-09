@@ -754,6 +754,13 @@ impl GenericPart {
             _ => None,
         }
     }
+
+    pub fn todo_matches(&self, other: &Self) -> bool {
+        match self {
+            Self::None => matches!(other, Self::None),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

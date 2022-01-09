@@ -550,38 +550,44 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     matcher.add_type_var_class(i_s, *type_var_index, generic);
                 }
                 GenericOption::None => {
+                    //matcher.add_type_var_class(i_s, *type_var_index, GenericPart::None)
                     todo!()
                 }
             },
             Self::Union(list1) => match value_class {
-                Self::Union(list2) => {
+                Self::Union(mut list2) => {
                     let mut type_var_index = None;
-                    let unmatched = vec![];
                     for g1 in list1 {
                         if let Some(t) = g1.maybe_type_var_index() {
                             type_var_index = Some(t);
-                            continue;
                         }
-                        for g2 in list2.iter() {
-                            GenericOption::from_generic_part(i_s.database, g2).infer_type_vars(
-                                i_s,
-                                matcher,
-                                GenericOption::from_generic_part(i_s.database, g1),
-                            );
+                        for (i, g2) in list2.iter().enumerate() {
+                            dbg!(g1, g2);
+                            if g1.todo_matches(g2) {
+                                list2.remove(i);
+                                break;
+                            }
                         }
                     }
+                    /*
+                    if type_var_index.is_some() {
+                            GenericOption::from_generic_part(i_s.database, g1).infer_type_vars(
+                                i_s,
+                                matcher,
+                                GenericOption::from_generic_part(i_s.database, g2),
+                            );
+                    }*/
                     if let Some(type_var_index) = type_var_index {
-                        let g = match unmatched.len() {
+                        let g = match list2.len() {
                             0 => {
                                 matcher.does_not_match();
                                 GenericPart::Unknown
                             }
-                            1 => unmatched.into_iter().next().unwrap(),
-                            _ => GenericPart::Union(GenericsList::from_vec(unmatched)),
+                            1 => list2.into_iter().next().unwrap(),
+                            _ => GenericPart::Union(GenericsList::from_vec(list2)),
                         };
                         matcher.add_type_var_class(i_s, type_var_index, dbg!(g));
-                        todo!()
-                    } else if !unmatched.is_empty() {
+                    } else if !list2.is_empty() {
                         matcher.does_not_match()
                     }
                 }
