@@ -619,7 +619,10 @@ impl GenericPart {
         }
     }
 
-    pub fn replace_type_vars<C: FnMut(PointLink) -> Self>(self, callable: &mut C) -> Self {
+    pub fn replace_type_vars<C>(self, callable: &mut C) -> Self
+    where
+        C: FnMut(TypeVarIndex, PointLink) -> Self,
+    {
         let replace_list = |list: &mut Box<[GenericPart]>, callable: &mut C| {
             for item in list.iter_mut() {
                 let g = std::mem::replace(&mut *item, GenericPart::Unknown);
@@ -635,7 +638,7 @@ impl GenericPart {
             Self::Union(list) => {
                 todo!()
             }
-            Self::TypeVar(_, link) => callable(link),
+            Self::TypeVar(type_var_index, link) => callable(type_var_index, link),
             Self::Type(mut generic_part) => {
                 let g = std::mem::replace(&mut *generic_part, GenericPart::Unknown);
                 *generic_part = g.replace_type_vars(callable);

@@ -604,16 +604,15 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
                                 return calculated;
                             }
-                        }
-                        if let Some(type_vars) = function_matcher.type_vars {
-                            if type_var_index.as_usize() >= type_vars.len() {
-                                dbg!("x", type_vars.len());
-                                type_var_index =
-                                    TypeVarIndex::new(type_var_index.as_usize() - type_vars.len());
+                            if let Some(type_vars) = function_matcher.type_vars {
+                                if type_var_index.as_usize() >= type_vars.len() {
+                                    type_var_index = TypeVarIndex::new(
+                                        type_var_index.as_usize() - type_vars.len(),
+                                    );
+                                }
                             }
                         }
                     }
-                    dbg!(type_var_index);
                     GenericPart::TypeVar(type_var_index, node_ref.as_link())
                 }
                 _ => unreachable!(),
@@ -621,15 +620,13 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         };
 
         match self {
-            Self::ClassLike(c) => c.as_generic_part(i_s).replace_type_vars(&mut |link| {
-                let node_ref = NodeReference::from_link(i_s.database, link);
-                resolve_type_var(
-                    i_s,
-                    function_matcher,
-                    node_ref.point().type_var_index(),
-                    &node_ref,
-                )
-            }),
+            Self::ClassLike(c) => {
+                c.as_generic_part(i_s)
+                    .replace_type_vars(&mut |type_var_index, link| {
+                        let node_ref = NodeReference::from_link(i_s.database, link);
+                        resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
+                    })
+            }
             Self::TypeVar(type_var_index, node_ref) => {
                 resolve_type_var(i_s, function_matcher, *type_var_index, node_ref)
             }
