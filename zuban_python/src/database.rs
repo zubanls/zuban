@@ -540,6 +540,7 @@ pub enum GenericPart {
     Type(Box<GenericPart>),
     Tuple(TupleContent),
     Callable(CallableContent),
+    None,
     Unknown,
 }
 
@@ -615,6 +616,7 @@ impl GenericPart {
             Self::Type(generic_part) => format!("Type[{}]", generic_part.as_type_string(db)),
             Self::Tuple(content) => format!("Tuple{}", &content.as_string(db)),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db)),
+            Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
         }
     }
@@ -630,7 +632,7 @@ impl GenericPart {
             }
         };
         match self {
-            Self::Class(_) | Self::Unknown => self,
+            Self::Class(_) | Self::Unknown | Self::None => self,
             Self::GenericClass(link, mut generics) => {
                 replace_list(&mut generics.0, callable);
                 Self::GenericClass(link, generics)
@@ -668,6 +670,7 @@ impl GenericPart {
             Self::Callable(content) => todo!(),
             Self::Class(_)
             | Self::Unknown
+            | Self::None
             | Self::Union(_)
             | Self::TypeVar(_, _)
             | Self::Type(_) => unreachable!(),
@@ -690,6 +693,7 @@ impl GenericPart {
         match self {
             Self::Class(c) => Self::Class(*c),
             Self::Unknown => Self::Unknown,
+            Self::None => Self::None,
             Self::GenericClass(link, generics) => {
                 Self::GenericClass(*link, remap_generics(generics))
             }

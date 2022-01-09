@@ -167,6 +167,12 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn new_none() -> Self {
+        Self {
+            state: InferredState::UnsavedSpecific(Specific::None),
+        }
+    }
+
     pub fn execute_generic_part(db: &'db Database, generic: GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) => {
@@ -205,6 +211,7 @@ impl<'db> Inferred<'db> {
                 }
                 _ => todo!(),
             },
+            GenericPart::None => return Inferred::new_none(),
             GenericPart::TypeVar(_, _) | GenericPart::Unknown => InferredState::Unknown,
         };
         Self { state }
@@ -228,7 +235,7 @@ impl<'db> Inferred<'db> {
                         GenericPart::Unknown
                     })
             },
-            &|g1, g2| g1.union(g2),
+            &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
                 debug!("Generic part not found: {}", inf.description(i_s));
                 GenericPart::Unknown
@@ -251,7 +258,7 @@ impl<'db> Inferred<'db> {
                         GenericOption::Invalid
                     })
             },
-            &|g1, g2| g1.union(g2),
+            &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
@@ -267,7 +274,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| GenericOption::ClassLike(v.class(i_s)),
-            &|g1, g2| g1.union(g2),
+            &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic class option is invalid: {}", inf.description(i_s));
                 GenericOption::Invalid
@@ -281,7 +288,7 @@ impl<'db> Inferred<'db> {
         &'a self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(T, T) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
         on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
@@ -316,7 +323,7 @@ impl<'db> Inferred<'db> {
         definition: &NodeReference<'db>,
         point: Point,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(T, T) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
         on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
@@ -364,7 +371,7 @@ impl<'db> Inferred<'db> {
         definition: &NodeReference<'db>,
         specific: Specific,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(T, T) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
         on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
@@ -439,7 +446,7 @@ impl<'db> Inferred<'db> {
         complex: &'a ComplexPoint,
         definition: Option<&NodeReference<'db>>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(T, T) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
         on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
@@ -460,37 +467,44 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
-            ComplexPoint::Union(lst) => lst
-                .iter()
-                .map(|any_link| match any_link {
-                    AnyLink::Reference(link) => {
-                        let reference = NodeReference::from_link(i_s.database, *link);
-                        self.run_on_saved(
+            ComplexPoint::Union(lst) => {
+                let mut previous = None;
+                for any_link in lst.iter() {
+                    let result = match any_link {
+                        AnyLink::Reference(link) => {
+                            let reference = NodeReference::from_link(i_s.database, *link);
+                            self.run_on_saved(
+                                i_s,
+                                &reference,
+                                reference.point(),
+                                callable,
+                                reducer,
+                                on_missing,
+                                on_type_var,
+                            )
+                        }
+                        AnyLink::Complex(c) => self.run_on_complex(
                             i_s,
-                            &reference,
-                            reference.point(),
+                            c,
+                            definition,
                             callable,
                             reducer,
                             on_missing,
                             on_type_var,
-                        )
+                        ),
+                        AnyLink::SimpleSpecific(specific) => match specific {
+                            Specific::None => callable(i_s, &NoneInstance()),
+                            _ => todo!("not even sure if this should be a separate class"),
+                        },
+                    };
+                    if let Some(p) = previous {
+                        previous = Some(reducer(i_s, p, result))
+                    } else {
+                        previous = Some(result)
                     }
-                    AnyLink::Complex(c) => self.run_on_complex(
-                        i_s,
-                        c,
-                        definition,
-                        callable,
-                        reducer,
-                        on_missing,
-                        on_type_var,
-                    ),
-                    AnyLink::SimpleSpecific(specific) => match specific {
-                        Specific::None => callable(i_s, &NoneInstance()),
-                        _ => todo!("not even sure if this should be a separate class"),
-                    },
-                })
-                .reduce(reducer)
-                .unwrap(),
+                }
+                previous.unwrap()
+            }
             ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
                 let reference = NodeReference::from_link(i_s.database, *func_link);
 
@@ -564,7 +578,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             callable,
-            &|i1, i2| i1.union(i2),
+            &|i_s, i1, i2| i1.union(i2),
             &mut |i_s, inferred| inferred,
             &mut |_, point| todo!(),
         )
@@ -583,7 +597,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, value| {
                 ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
             },
-            &|iter1, iter2| {
+            &|_, iter1, iter2| {
                 // Reducer
                 match iter1 {
                     ValueNameIterator::Single(element1) => match iter2 {
@@ -624,7 +638,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             callable,
-            &|i1, i2| (),
+            &|_, i1, i2| (),
             &mut |i_s, inferred| on_missing(),
             &mut |_, p| todo!(),
         )
@@ -1043,7 +1057,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.description(i_s),
-            &|i1, i2| format!("{}|{}", i1, i2),
+            &|_, i1, i2| format!("{}|{}", i1, i2),
             &mut |i_s, inferred| "Unknown".to_owned(),
             &mut |_, node_ref| {
                 format!(
@@ -1115,7 +1129,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.as_class().is_some(),
-            &|i1, i2| false,
+            &|_, i1, i2| false,
             &mut |i_s, inferred| false,
             &mut |_, p| false,
         )
@@ -1138,7 +1152,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.iter(i_s),
-            &|i1, i2| todo!(),
+            &|_, i1, i2| todo!(),
             &mut |i_s, inferred| IteratorContent::Inferred(inferred),
             &mut |_, p| IteratorContent::Inferred(Self::new_unknown()),
         )

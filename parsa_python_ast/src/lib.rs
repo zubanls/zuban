@@ -63,7 +63,7 @@ impl<'db> Iterator for InterestingNodes<'db> {
             } else if n.is_type(Nonterminal(comprehension)) {
                 InterestingNode::Comprehension(Comprehension::new(n))
             } else {
-                debug_assert_eq!(n.type_(), Nonterminal(comprehension));
+                debug_assert_eq!(n.type_(), Nonterminal(dict_comprehension));
                 InterestingNode::DictComprehension(DictComprehension::new(n))
             }
         })

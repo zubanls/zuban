@@ -464,7 +464,7 @@ pub fn search_type_vars<'db>(
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(TypeVarIndex, NodeReference<'db>),
-    Union(Vec<GenericOption<'db, 'a>>),
+    Union(Vec<GenericPart>),
     None,
     Invalid,
 }
@@ -479,17 +479,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 ))
             }
             GenericPart::Unknown => Self::Invalid,
+            GenericPart::None => todo!(),
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeReference::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
                     Class::from_position(node_ref, Generics::List(generics), None).unwrap(),
                 ))
             }
-            GenericPart::Union(list) => Self::Union(
-                list.iter()
-                    .map(|g| Self::from_generic_part(database, g))
-                    .collect(),
-            ),
+            GenericPart::Union(list) => Self::Union(list.iter().cloned().collect()),
             GenericPart::TypeVar(index, link) => {
                 Self::TypeVar(*index, NodeReference::from_link(database, *link))
             }
@@ -505,18 +502,30 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn union(self, other: Self) -> Self {
+    pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         if let Self::Union(mut list1) = self {
             if let Self::Union(list2) = other {
                 list1.extend(list2);
             } else {
-                list1.push(other);
+                list1.push(other.as_generic_part(i_s));
             }
             Self::Union(list1)
         } else if let Self::Union(_) = other {
-            other.union(self)
+            other.union(i_s, self)
         } else {
-            GenericOption::Union(vec![self, other])
+            GenericOption::Union(vec![self.as_generic_part(i_s), other.as_generic_part(i_s)])
+        }
+    }
+
+    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        match self {
+            Self::ClassLike(class_like) => class_like.as_generic_part(i_s),
+            Self::TypeVar(type_var_index, node_ref) => {
+                GenericPart::TypeVar(*type_var_index, node_ref.as_link())
+            }
+            Self::Union(_) => unreachable!(),
+            Self::None => GenericPart::None,
+            Self::Invalid => todo!(),
         }
     }
 
@@ -537,7 +546,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     todo!("{:?}", value_class)
                 }
                 GenericOption::Union(list) => {
-                    todo!()
+                    let generic =
+                        GenericPart::Union(GenericsList::new(list.clone().into_boxed_slice()));
+                    matcher.add_type_var_class(i_s, *type_var_index, generic);
                 }
                 GenericOption::None => {
                     todo!()
@@ -627,7 +638,12 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }
             Self::Union(list) => GenericPart::Union(GenericsList::new(
                 list.iter()
-                    .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))
+                    .map(|g| {
+                        g.clone().replace_type_vars(&mut |type_var_index, link| {
+                            let node_ref = NodeReference::from_link(i_s.database, link);
+                            resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
+                        })
+                    })
                     .collect(),
             )),
             Self::None => todo!(),
@@ -641,9 +657,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
-                    a + &b.as_string(i_s)
+                    a + &b.as_type_string(i_s.database)
                 } else {
-                    a + &b.as_string(i_s) + ","
+                    a + &b.as_type_string(i_s.database) + ","
                 }
             }),
             Self::None => "None".to_owned(),
@@ -655,10 +671,11 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         match self {
             Self::ClassLike(c) => Some(c.execute_annotation(i_s)),
             Self::Union(list) => Some(Inferred::gather_union(|callable| {
-                for generic_option in list.iter() {
-                    if let Some(i) = generic_option.maybe_execute(i_s) {
-                        callable(i)
-                    }
+                for generic_part in list.iter() {
+                    callable(Inferred::execute_generic_part(
+                        i_s.database,
+                        generic_part.clone(),
+                    ))
                 }
             })),
             Self::TypeVar(_, _) => todo!("return unknown"),
