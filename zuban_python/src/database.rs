@@ -708,11 +708,16 @@ impl GenericPart {
             Self::GenericClass(link, generics) => generics.scan_for_free_type_vars(db, result),
             Self::Union(list) => list.scan_for_free_type_vars(db, result),
             Self::TypeVar(index, link) => {
-                let i = result.iter().position(|r| r == link);
-                if i.is_none() {
-                    let node_ref = NodeReference::from_link(db, *link);
-                    if node_ref.point().specific() == Specific::FreeTypeVar {
+                loop {
+                    if index.as_usize() == result.len() {
                         result.push(*link);
+                        break;
+                    } else {
+                        // This a bit special, because these are late-bound parameters that are not
+                        // part of the GenericPart anymore. This won't ever be accessed, but it's a
+                        // placeholder in the array so that type var indexes still work normally.
+                        // e.g. Tuple[Callable[[T], T], Callable[[U], U]] needs this.
+                        result.push(PointLink::new(FileIndex(0), u32::MAX));
                     }
                 }
             }

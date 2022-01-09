@@ -575,7 +575,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     ) -> GenericPart {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
                                 function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
-                                mut type_var_index: TypeVarIndex,
+                                type_var_index: TypeVarIndex,
                                 node_ref: &NodeReference| {
             let point = node_ref.point();
             match point.specific() {
@@ -603,13 +603,6 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         if function_matcher.match_specific == Specific::FreeTypeVar {
                             if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
                                 return calculated;
-                            }
-                            if let Some(type_vars) = function_matcher.type_vars {
-                                if type_var_index.as_usize() >= type_vars.len() {
-                                    type_var_index = TypeVarIndex::new(
-                                        type_var_index.as_usize() - type_vars.len(),
-                                    );
-                                }
                             }
                         }
                     }
