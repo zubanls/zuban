@@ -28,7 +28,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn infer_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value_class: &GenericOption<'db, '_>,
+        value_class: GenericOption<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
     ) {
         // Note: we need to handle the MRO _in order_, so we need to extract
@@ -50,8 +50,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             GenericOption::TypeVar(_, node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
-            GenericOption::None => todo!(),
-            GenericOption::Invalid => (),
+            GenericOption::None | GenericOption::Invalid => matcher.does_not_match(),
         }
     }
 
@@ -552,20 +551,20 @@ fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
     original_class: NodeReference<'db>,
     original_type_vars: &[PointLink],
-    generic: &GenericOption<'db, '_>,
+    generic: GenericOption<'db, '_>,
 ) -> GenericPart {
     match generic {
         GenericOption::ClassLike(class) => create_mro_class(
             i_s,
             original_class,
             original_type_vars,
-            match class {
+            match &class {
                 ClassLike::Class(class) => class,
                 _ => todo!(),
             },
         ),
         GenericOption::TypeVar(type_var_index, reference) => {
-            GenericPart::TypeVar(*type_var_index, reference.as_link())
+            GenericPart::TypeVar(type_var_index, reference.as_link())
         }
         GenericOption::Union(list) => todo!(),
         GenericOption::Invalid | GenericOption::None => todo!(),

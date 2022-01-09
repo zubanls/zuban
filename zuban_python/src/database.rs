@@ -744,6 +744,13 @@ impl GenericPart {
             _ => (),
         }
     }
+
+    pub fn maybe_type_var_index(&self) -> Option<TypeVarIndex> {
+        match self {
+            Self::TypeVar(index, _) => Some(*index),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
