@@ -422,7 +422,7 @@ impl<'db> Inferred<'db> {
             }
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
-            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::FreeTypeVar => {
+            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar => {
                 on_type_var(definition.point().type_var_index(), *definition)
             }
             Specific::None => callable(i_s, &NoneInstance()),

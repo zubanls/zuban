@@ -436,7 +436,7 @@ pub fn search_type_vars<'db>(
                             file.points.set(
                                 n.index(),
                                 Point::new_numbered_type_var(
-                                    Specific::FreeTypeVar,
+                                    Specific::LateBoundTypeVar,
                                     TypeVarIndex::new(i),
                                     Locality::Stmt,
                                 ),
@@ -598,9 +598,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .unwrap()
                     .nth(i_s, type_var_index)
                     .unwrap_or(GenericPart::Unknown),
-                Specific::FreeTypeVar => {
+                Specific::LateBoundTypeVar => {
                     if let Some(function_matcher) = function_matcher {
-                        if function_matcher.match_specific == Specific::FreeTypeVar {
+                        if function_matcher.match_specific == Specific::LateBoundTypeVar {
                             if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
                                 return calculated;
                             }

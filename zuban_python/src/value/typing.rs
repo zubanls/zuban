@@ -547,7 +547,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             params.scan_for_free_type_vars(i_s.database, &mut type_vars)
         }
         let finder =
-            TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::FreeTypeVar);
+            TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
         let g_o = GenericOption::from_generic_part(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, &mut Some(finder))
     }
