@@ -524,9 +524,9 @@ impl GenericsList {
             })
     }
 
-    pub fn scan_for_free_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
         for g in self.0.iter() {
-            g.scan_for_free_type_vars(db, result)
+            g.scan_for_late_bound_type_vars(db, result)
         }
     }
 }
@@ -703,10 +703,12 @@ impl GenericPart {
         }
     }
 
-    fn scan_for_free_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
         match self {
-            Self::GenericClass(link, generics) => generics.scan_for_free_type_vars(db, result),
-            Self::Union(list) => list.scan_for_free_type_vars(db, result),
+            Self::GenericClass(link, generics) => {
+                generics.scan_for_late_bound_type_vars(db, result)
+            }
+            Self::Union(list) => list.scan_for_late_bound_type_vars(db, result),
             Self::TypeVar(index, link) => {
                 loop {
                     if index.as_usize() == result.len() {
@@ -721,17 +723,19 @@ impl GenericPart {
                     }
                 }
             }
-            Self::Type(generic_part) => generic_part.scan_for_free_type_vars(db, result),
+            Self::Type(generic_part) => generic_part.scan_for_late_bound_type_vars(db, result),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
-                    generics.scan_for_free_type_vars(db, result)
+                    generics.scan_for_late_bound_type_vars(db, result)
                 }
             }
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
-                    params.scan_for_free_type_vars(db, result)
+                    params.scan_for_late_bound_type_vars(db, result)
                 }
-                content.return_class.scan_for_free_type_vars(db, result)
+                content
+                    .return_class
+                    .scan_for_late_bound_type_vars(db, result)
             }
             _ => (),
         }

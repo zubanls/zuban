@@ -544,7 +544,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> Inferred<'db> {
         let mut type_vars = vec![]; // todo!()
         if let Some(params) = &self.content.params {
-            params.scan_for_free_type_vars(i_s.database, &mut type_vars)
+            params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
         }
         let finder =
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
