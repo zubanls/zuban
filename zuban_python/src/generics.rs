@@ -573,7 +573,6 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             type_var_index = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
-                            dbg!(g1, g2);
                             if g1.todo_matches(g2) {
                                 list2.remove(i);
                                 break;
