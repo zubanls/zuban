@@ -119,7 +119,6 @@ macro_rules! create_struct {
                     Terminal(TerminalType::Name),
                     Nonterminal(lambda),
                     Nonterminal(comprehension),
-                    Nonterminal(dict_comprehension),
                     Nonterminal(yield_expr),
                     Nonterminal(return_stmt),
                     Nonterminal(dict_comprehension),
