@@ -273,7 +273,11 @@ impl<'db> Inferred<'db> {
     ) -> GenericOption<'db, '_> {
         self.internal_run(
             i_s,
-            &mut |i_s, v| GenericOption::ClassLike(v.class(i_s)),
+            // TODO is this is_none necessary? It was added because None class was not implemented
+            &mut |i_s, v| match v.is_none() {
+                true => GenericOption::None,
+                false => GenericOption::ClassLike(v.class(i_s)),
+            },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic class option is invalid: {}", inf.description(i_s));
