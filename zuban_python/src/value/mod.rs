@@ -83,7 +83,7 @@ pub enum IteratorContent<'db> {
 }
 
 impl<'db> IteratorContent<'db> {
-    pub fn infer(self) -> Inferred<'db> {
+    pub fn infer_all(self) -> Inferred<'db> {
         match self {
             Self::Inferred(inferred) => inferred,
             Self::ListLiteral(list, _) => todo!(), //list.generic_part(),
@@ -138,7 +138,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
         IteratorContent::Inferred(
             self.lookup(i_s, "__iter__")
-                .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments())),
+                .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
+                .execute_function(i_s, "__next__"),
         )
     }
 

@@ -50,7 +50,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             GenericOption::TypeVar(_, node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
-            GenericOption::None | GenericOption::Invalid => matcher.does_not_match(),
+            GenericOption::None | GenericOption::Invalid => (), // TODO should be matcher.does_not_match(),
         }
     }
 

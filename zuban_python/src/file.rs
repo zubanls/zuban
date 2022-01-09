@@ -263,11 +263,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             StmtContent::ForStmt(for_stmt) => {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
-                let input = self
+                let element = self
                     .infer_star_expressions(star_exprs)
-                    .execute_function(self.i_s, "__iter__")
-                    .execute_function(self.i_s, "__next__");
-                self.assign_targets(star_targets.as_target(), &input)
+                    .iter(self.i_s)
+                    .infer_all();
+                debug!("For loop input: {}", element.description(self.i_s));
+                self.assign_targets(star_targets.as_target(), &element)
             }
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
@@ -548,7 +549,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Get Item {}", value.name());
+                    debug!("Get Item on {}", value.name());
                     let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
                     value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
                 })

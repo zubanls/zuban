@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Name, PrimaryContent};
 
-use super::{ClassLike, Value, ValueKind};
+use super::{ClassLike, IteratorContent, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
@@ -283,6 +283,21 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         todo!()
+    }
+
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+        if let Some(generics) = self.content.generics.as_ref() {
+            if self.content.arbitrary_length {
+                IteratorContent::Inferred(Inferred::execute_generic_part(
+                    i_s.database,
+                    generics.nth(TypeVarIndex::new(0)).unwrap().clone(),
+                ))
+            } else {
+                todo!()
+            }
+        } else {
+            todo!()
+        }
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
