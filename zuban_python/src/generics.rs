@@ -606,6 +606,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             }
                         }
                     }
+                    // Just pass the type var again, because it might be resolved by a future
+                    // callable, that is late bound, like Callable[..., Callable[[T], T]]
                     GenericPart::TypeVar(type_var_index, node_ref.as_link())
                 }
                 _ => unreachable!(),
