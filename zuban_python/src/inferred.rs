@@ -7,7 +7,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, MroIndex,
-    Point, PointLink, PointType, Specific,
+    Point, PointLink, PointType, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -233,8 +233,8 @@ impl<'db> Inferred<'db> {
                 debug!("Generic part not found: {}", inf.description(i_s));
                 GenericPart::Unknown
             },
-            &mut |node_ref| {
-                GenericPart::TypeVar(node_ref.point().type_var_index(), node_ref.as_link())
+            &mut |type_var_index, node_ref| {
+                GenericPart::TypeVar(type_var_index, node_ref.as_link())
             },
         )
     }
@@ -283,7 +283,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
+        on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => self.run_on_saved(
@@ -318,7 +318,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
+        on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
         match point.type_() {
             PointType::Specific => self.run_on_specific(
@@ -366,7 +366,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
+        on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
         match specific {
             Specific::Function => callable(i_s, &Function::new(*definition, None)),
@@ -423,7 +423,7 @@ impl<'db> Inferred<'db> {
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
             Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::FreeTypeVar => {
-                on_type_var(*definition)
+                on_type_var(definition.point().type_var_index(), *definition)
             }
             Specific::None => callable(i_s, &NoneInstance()),
             _ => {
@@ -441,7 +441,7 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>, Self) -> T,
-        on_type_var: &mut impl FnMut(NodeReference<'db>) -> T,
+        on_type_var: &mut impl FnMut(TypeVarIndex, NodeReference<'db>) -> T,
     ) -> T {
         match complex {
             ComplexPoint::ExecutionInstance(cls_definition, execution) => {
@@ -566,7 +566,7 @@ impl<'db> Inferred<'db> {
             callable,
             &|i1, i2| i1.union(i2),
             &mut |i_s, inferred| inferred,
-            &mut |point| todo!(),
+            &mut |_, point| todo!(),
         )
     }
 
@@ -611,7 +611,7 @@ impl<'db> Inferred<'db> {
                 }
             },
             &mut |i_s, inferred| ValueNameIterator::Finished,
-            &mut |p| todo!(),
+            &mut |_, p| todo!(),
         )
     }
 
@@ -626,7 +626,7 @@ impl<'db> Inferred<'db> {
             callable,
             &|i1, i2| (),
             &mut |i_s, inferred| on_missing(),
-            &mut |p| todo!(),
+            &mut |_, p| todo!(),
         )
     }
 
@@ -1045,7 +1045,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.description(i_s),
             &|i1, i2| format!("{}|{}", i1, i2),
             &mut |i_s, inferred| "Unknown".to_owned(),
-            &mut |node_ref| {
+            &mut |_, node_ref| {
                 format!(
                     "{:?} {:?}",
                     node_ref.point().specific(),
@@ -1117,7 +1117,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.as_class().is_some(),
             &|i1, i2| false,
             &mut |i_s, inferred| false,
-            &mut |p| false,
+            &mut |_, p| false,
         )
     }
 
@@ -1140,7 +1140,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.iter(i_s),
             &|i1, i2| todo!(),
             &mut |i_s, inferred| IteratorContent::Inferred(inferred),
-            &mut |p| IteratorContent::Inferred(Self::new_unknown()),
+            &mut |_, p| IteratorContent::Inferred(Self::new_unknown()),
         )
     }
 }

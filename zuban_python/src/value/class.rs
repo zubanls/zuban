@@ -48,7 +48,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     matcher.does_not_match();
                 }
             }
-            GenericOption::TypeVar(node_ref) => todo!(),
+            GenericOption::TypeVar(_, node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
             GenericOption::None => todo!(),
             GenericOption::Invalid => (),
@@ -564,8 +564,8 @@ fn create_type_var_remap<'db>(
                 _ => todo!(),
             },
         ),
-        GenericOption::TypeVar(reference) => {
-            GenericPart::TypeVar(reference.point().type_var_index(), reference.as_link())
+        GenericOption::TypeVar(type_var_index, reference) => {
+            GenericPart::TypeVar(*type_var_index, reference.as_link())
         }
         GenericOption::Union(list) => todo!(),
         GenericOption::Invalid | GenericOption::None => todo!(),

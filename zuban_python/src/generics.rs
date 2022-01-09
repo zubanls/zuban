@@ -387,37 +387,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub fn add_type_var(
-        &mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        point: Point,
-        value: &Inferred<'db>,
-    ) {
-        if point.specific() == self.match_specific {
-            if let Some(cls) = value.maybe_class(i_s) {
-                let generic = cls.as_generic_part(i_s);
-                self.add_type_var_class(i_s, point, generic);
-            } else {
-                todo!(
-                    "report pls: {:?} is {:?}",
-                    point.type_var_index(),
-                    value.description(i_s)
-                )
-            }
-        }
-    }
-
     fn add_type_var_class(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        point: Point,
+        type_var_index: TypeVarIndex,
         class: GenericPart,
     ) {
-        let index = point.type_var_index();
         self.calculated_type_vars
             .as_mut()
             .unwrap()
-            .set_generic(index, class);
+            .set_generic(type_var_index, class);
     }
 
     pub fn does_not_match(&mut self) {
@@ -484,7 +463,7 @@ pub fn search_type_vars<'db>(
 #[derive(Debug)]
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    TypeVar(NodeReference<'db>),
+    TypeVar(TypeVarIndex, NodeReference<'db>),
     Union(Vec<GenericOption<'db, 'a>>),
     None,
     Invalid,
@@ -511,8 +490,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .map(|g| Self::from_generic_part(database, g))
                     .collect(),
             ),
-            GenericPart::TypeVar(_, link) => {
-                Self::TypeVar(NodeReference::from_link(database, *link))
+            GenericPart::TypeVar(index, link) => {
+                Self::TypeVar(*index, NodeReference::from_link(database, *link))
             }
             GenericPart::Type(generic_part) => {
                 Self::ClassLike(ClassLike::TypeWithGenericPart(generic_part))
@@ -549,12 +528,12 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     ) {
         match self {
             Self::ClassLike(class) => class.infer_type_vars(i_s, value_class, matcher),
-            Self::TypeVar(node_ref) => match value_class {
+            Self::TypeVar(type_var_index, node_ref) => match value_class {
                 GenericOption::ClassLike(class) => {
                     let generic = class.as_generic_part(i_s);
-                    matcher.add_type_var_class(i_s, node_ref.point(), generic);
+                    matcher.add_type_var_class(i_s, *type_var_index, generic);
                 }
-                GenericOption::TypeVar(_) | GenericOption::Invalid => {
+                GenericOption::TypeVar(_, _) | GenericOption::Invalid => {
                     todo!("{:?}", value_class)
                 }
                 GenericOption::Union(list) => {
@@ -596,9 +575,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     ) -> GenericPart {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
                                 function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+                                mut type_var_index: TypeVarIndex,
                                 node_ref: &NodeReference| {
             let point = node_ref.point();
-            let type_var_index = point.type_var_index();
             match point.specific() {
                 Specific::ClassTypeVar => {
                     let class = class.unwrap();
@@ -626,7 +605,15 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                                 return calculated;
                             }
                         }
+                        if let Some(type_vars) = function_matcher.type_vars {
+                            if type_var_index.as_usize() >= type_vars.len() {
+                                dbg!("x", type_vars.len());
+                                type_var_index =
+                                    TypeVarIndex::new(type_var_index.as_usize() - type_vars.len());
+                            }
+                        }
                     }
+                    dbg!(type_var_index);
                     GenericPart::TypeVar(type_var_index, node_ref.as_link())
                 }
                 _ => unreachable!(),
@@ -636,9 +623,16 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         match self {
             Self::ClassLike(c) => c.as_generic_part(i_s).replace_type_vars(&mut |link| {
                 let node_ref = NodeReference::from_link(i_s.database, link);
-                resolve_type_var(i_s, function_matcher, &node_ref)
+                resolve_type_var(
+                    i_s,
+                    function_matcher,
+                    node_ref.point().type_var_index(),
+                    &node_ref,
+                )
             }),
-            Self::TypeVar(node_ref) => resolve_type_var(i_s, function_matcher, node_ref),
+            Self::TypeVar(type_var_index, node_ref) => {
+                resolve_type_var(i_s, function_matcher, *type_var_index, node_ref)
+            }
             Self::Union(list) => GenericPart::Union(GenericsList::new(
                 list.iter()
                     .map(|g| g.internal_resolve_type_vars(i_s, class, function_matcher))
@@ -652,7 +646,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s),
-            Self::TypeVar(node_ref) => node_ref.as_name().as_str().to_owned(),
+            Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
                     a + &b.as_string(i_s)
@@ -675,7 +669,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }
                 }
             })),
-            Self::TypeVar(_) => todo!("return unknown"),
+            Self::TypeVar(_, _) => todo!("return unknown"),
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Invalid => None,
         }
