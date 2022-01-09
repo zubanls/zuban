@@ -578,6 +578,28 @@ impl<'db> ExpressionPart<'db> {
     }
 }
 
+impl<'db> InterestingNodeSearcher<'db> for ExpressionPart<'db> {
+    fn search_interesting_nodes(&self) -> InterestingNodes<'db> {
+        match self {
+            Self::Atom(n) => n.search_interesting_nodes(),
+            Self::Primary(n) => n.search_interesting_nodes(),
+            Self::AwaitPrimary(n) => n.search_interesting_nodes(),
+            Self::Power(n) => n.search_interesting_nodes(),
+            Self::Factor(n) => n.search_interesting_nodes(),
+            Self::Term(n) => n.search_interesting_nodes(),
+            Self::Sum(n) => n.search_interesting_nodes(),
+            Self::ShiftExpr(n) => n.search_interesting_nodes(),
+            Self::BitwiseAnd(n) => n.search_interesting_nodes(),
+            Self::BitwiseXor(n) => n.search_interesting_nodes(),
+            Self::BitwiseOr(n) => n.search_interesting_nodes(),
+            Self::Comparison(n) => n.search_interesting_nodes(),
+            Self::Inversion(n) => n.search_interesting_nodes(),
+            Self::Conjunction(n) => n.search_interesting_nodes(),
+            Self::Disjunction(n) => n.search_interesting_nodes(),
+        }
+    }
+}
+
 impl<'db> NamedExpression<'db> {
     pub fn expression(&self) -> Expression<'db> {
         match self.unpack() {
@@ -1083,13 +1105,13 @@ pub enum CommonComprehensionExpression<'db> {
 }
 
 impl<'db> SyncForIfClause<'db> {
-    pub fn unpack(&self) -> (StarTargets<'db>, Disjunction<'db>, CompIfIterator<'db>) {
+    pub fn unpack(&self) -> (StarTargets<'db>, ExpressionPart<'db>, CompIfIterator<'db>) {
         // "for" star_targets "in" disjunction comp_if*
         let mut iterator = self.node.iter_children();
         iterator.next();
         let star_targets_ = StarTargets::new(iterator.next().unwrap());
         iterator.next();
-        let disjunction_ = Disjunction::new(iterator.next().unwrap());
+        let disjunction_ = ExpressionPart::new(iterator.next().unwrap());
         (star_targets_, disjunction_, CompIfIterator(iterator))
     }
 }
