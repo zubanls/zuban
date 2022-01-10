@@ -213,8 +213,9 @@ macro_rules! check_point_cache_with {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
-                        "Infer {:?} ({}, {}) from cache: {}",
+                        "Infer {:?} (#{}, {}, {}) from cache: {}",
                         node.short_debug(),
+                        self.file.byte_to_line_column(node.start()).0,
                         self.file.file_index(),
                         node.index(),
                         {
@@ -228,6 +229,14 @@ macro_rules! check_point_cache_with {
                     );
                     inferred
                 } else {
+                    debug!(
+                        "{} {:?} (#{}, {}, {})",
+                        stringify!($name),
+                        node.short_debug(),
+                        self.file.byte_to_line_column(node.start()).0,
+                        self.file.file_index(),
+                        node.index(),
+                    );
                     $func(self, node)
                 }
             })
