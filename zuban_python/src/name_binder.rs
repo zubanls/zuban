@@ -431,6 +431,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {
         let symbol_table = SymbolTable::default();
+        let self_symbol_table = SymbolTable::default();
         self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
             let (arguments, block) = class.unpack();
             if let Some(arguments) = arguments {
@@ -442,7 +443,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.complex_points.insert(
             self.points,
             class.index(),
-            ComplexPoint::Class(Box::new(ClassStorage::new(symbol_table))),
+            ComplexPoint::Class(Box::new(ClassStorage::new(symbol_table, self_symbol_table))),
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
@@ -462,7 +463,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             .complex_points
             .get(self.points.get(class.index()).complex_index())
         {
-            ComplexPoint::Class(storage) => &storage.symbol_table,
+            ComplexPoint::Class(storage) => &storage.self_symbol_table,
             _ => unreachable!(),
         };
         for (self_name, name) in class.search_potential_self_assignments() {

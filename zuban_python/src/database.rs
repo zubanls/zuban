@@ -1081,12 +1081,16 @@ impl DirectoryOrFile {
 
 #[derive(Debug)]
 pub struct ClassStorage {
-    pub symbol_table: SymbolTable,
+    pub class_symbol_table: SymbolTable,
+    pub self_symbol_table: SymbolTable,
 }
 
 impl ClassStorage {
-    pub fn new(symbol_table: SymbolTable) -> Self {
-        Self { symbol_table }
+    pub fn new(class_symbol_table: SymbolTable, self_symbol_table: SymbolTable) -> Self {
+        Self {
+            class_symbol_table,
+            self_symbol_table,
+        }
     }
 }
 
@@ -1108,7 +1112,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<ClassStorage>(), 48);
+        assert_eq!(size_of::<ClassStorage>(), 96);
         assert_eq!(size_of::<ClassInfos>(), 40);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);

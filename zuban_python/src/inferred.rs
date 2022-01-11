@@ -344,8 +344,7 @@ impl<'db> Inferred<'db> {
             PointType::Complex => {
                 let complex = definition.file.complex_points.get(point.complex_index());
                 if let ComplexPoint::Class(cls_storage) = complex {
-                    let class =
-                        Class::new(*definition, &cls_storage.symbol_table, Generics::None, None);
+                    let class = Class::new(*definition, &cls_storage, Generics::None, None);
                     callable(i_s, &class)
                 } else {
                     self.run_on_complex(
@@ -461,7 +460,7 @@ impl<'db> Inferred<'db> {
                 let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.database, execution);
-                    let class = Class::new(def, &cls_storage.symbol_table, Generics::None, None);
+                    let class = Class::new(def, &cls_storage, Generics::None, None);
                     debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
                     // TODO is this MroIndex fine? probably not!
@@ -864,7 +863,7 @@ impl<'db> Inferred<'db> {
                 PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
                     if let ComplexPoint::Class(c) = complex {
-                        Some(Class::new(*definition, &c.symbol_table, generics, None))
+                        Some(Class::new(*definition, &c, generics, None))
                     } else {
                         None
                     }

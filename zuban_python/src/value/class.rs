@@ -3,8 +3,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{CallableClass, Function, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ComplexPoint, Database, GenericPart, GenericsList, Locality, MroIndex, Point,
-    PointLink, Specific, TypeVarIndex,
+    ClassInfos, ClassStorage, ComplexPoint, Database, GenericPart, GenericsList, Locality,
+    MroIndex, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -12,7 +12,6 @@ use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher}
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
-use crate::utils::SymbolTable;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
@@ -170,7 +169,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
-    pub(super) symbol_table: &'db SymbolTable,
+    pub(super) class_storage: &'db ClassStorage,
     pub generics: Generics<'db, 'a>,
     pub type_var_remap: Option<&'db GenericsList>,
 }
@@ -178,13 +177,13 @@ pub struct Class<'db, 'a> {
 impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
         reference: NodeReference<'db>,
-        symbol_table: &'db SymbolTable,
+        class_storage: &'db ClassStorage,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db GenericsList>,
     ) -> Self {
         Self {
             reference,
-            symbol_table,
+            class_storage,
             generics,
             type_var_remap,
         }
@@ -198,12 +197,7 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> Option<Self> {
         let complex = reference.complex().unwrap();
         match complex {
-            ComplexPoint::Class(c) => Some(Self::new(
-                reference,
-                &c.symbol_table,
-                generics,
-                type_var_remap,
-            )),
+            ComplexPoint::Class(c) => Some(Self::new(reference, &c, generics, type_var_remap)),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
@@ -337,12 +331,15 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
     ) -> Option<Inferred<'db>> {
-        self.symbol_table.lookup_symbol(name).map(|node_index| {
-            self.reference
-                .file
-                .inference(i_s)
-                .infer_name_by_index(node_index)
-        })
+        self.class_storage
+            .class_symbol_table
+            .lookup_symbol(name)
+            .map(|node_index| {
+                self.reference
+                    .file
+                    .inference(i_s)
+                    .infer_name_by_index(node_index)
+            })
     }
 
     fn lookup_and_class(
