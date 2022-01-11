@@ -31,6 +31,22 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
         for (mro_index, class) in self.class.mro(i_s) {
+            if let ClassLike::Class(c) = class {
+                let inf = c
+                    .class_storage
+                    .self_symbol_table
+                    .lookup_symbol(name)
+                    .map(|node_index| {
+                        self.class
+                            .reference
+                            .file
+                            .inference(i_s)
+                            .infer_name_by_index(node_index)
+                    });
+                if let Some(inf) = inf {
+                    return inf.resolve_function_return(i_s).bind(i_s, self, mro_index);
+                }
+            }
             if let Some(inf) = class.lookup_symbol(i_s, name) {
                 return inf.resolve_function_return(i_s).bind(i_s, self, mro_index);
             }
