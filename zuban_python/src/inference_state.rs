@@ -40,7 +40,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn with_class_context(&self, current_class: &'a Class<'db, 'a>) -> Self {
         Self {
             database: self.database,
-            current_execution: None,
+            current_execution: self.current_execution,
             current_class: Some(current_class),
         }
     }
