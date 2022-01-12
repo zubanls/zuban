@@ -1,10 +1,11 @@
 use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
-use crate::value::Function;
+use crate::value::{Class, Function};
 
 pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
     pub current_execution: Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)>,
+    pub current_class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -12,6 +13,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database,
             current_execution: None,
+            current_class: None,
         }
     }
 
@@ -23,6 +25,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
+            current_class: None,
         }
     }
 
@@ -30,6 +33,15 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database: self.database,
             current_execution: None,
+            current_class: None,
+        }
+    }
+
+    pub fn with_class_context(&self, current_class: &'a Class<'db, 'a>) -> Self {
+        Self {
+            database: self.database,
+            current_execution: None,
+            current_class: Some(current_class),
         }
     }
 

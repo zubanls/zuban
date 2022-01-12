@@ -173,7 +173,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn execute_generic_part(db: &'db Database, generic: GenericPart) -> Self {
+    pub fn execute_generic_part(i_s: &mut InferenceState<'db, '_>, generic: GenericPart) -> Self {
         let state = match generic {
             GenericPart::Class(link) => {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(link, None))
@@ -183,9 +183,10 @@ impl<'db> Inferred<'db> {
             }
             GenericPart::Union(multiple) => {
                 let mut multiple = multiple.iter();
-                let mut inferred = Self::execute_generic_part(db, multiple.next().unwrap().clone());
+                let mut inferred =
+                    Self::execute_generic_part(i_s, multiple.next().unwrap().clone());
                 for m in multiple {
-                    inferred = inferred.union(Self::execute_generic_part(db, m.clone()));
+                    inferred = inferred.union(Self::execute_generic_part(i_s, m.clone()));
                 }
                 return inferred;
             }
@@ -197,7 +198,7 @@ impl<'db> Inferred<'db> {
             }
             GenericPart::Type(c) => match *c {
                 GenericPart::Class(link) => {
-                    let node_reference = NodeReference::from_link(db, link);
+                    let node_reference = NodeReference::from_link(i_s.database, link);
                     InferredState::Saved(node_reference, node_reference.point())
                 }
                 GenericPart::GenericClass(l, g) => {
@@ -212,7 +213,21 @@ impl<'db> Inferred<'db> {
                 _ => todo!(),
             },
             GenericPart::None => return Inferred::new_none(),
-            GenericPart::TypeVar(_, _) | GenericPart::Unknown => InferredState::Unknown,
+            GenericPart::TypeVar(index, link) => {
+                let point = NodeReference::from_link(i_s.database, link).point();
+                if point.specific() == Specific::ClassTypeVar {
+                    return i_s
+                        .current_class
+                        .map(|c| {
+                            let g = c.generics.nth(i_s, index);
+                            Inferred::execute_generic_part(i_s, g)
+                        })
+                        .unwrap_or_else(|| todo!());
+                } else {
+                    InferredState::Unknown
+                }
+            }
+            GenericPart::Unknown => InferredState::Unknown,
         };
         Self { state }
     }

@@ -40,11 +40,11 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                         self.class
                             .reference
                             .file
-                            .inference(i_s)
+                            .inference(&mut i_s.with_class_context(&c))
                             .infer_name_by_index(node_index)
                     });
                 if let Some(inf) = inf {
-                    return inf.resolve_function_return(i_s).bind(i_s, self, mro_index);
+                    return inf.resolve_function_return(i_s);
                 }
             }
             if let Some(inf) = class.lookup_symbol(i_s, name) {

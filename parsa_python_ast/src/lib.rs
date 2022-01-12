@@ -303,6 +303,19 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn function_or_lambda_ancestor(&self) -> Option<FunctionOrLambda<'db>> {
+        self.node
+            .parent_until(&[Nonterminal(function_def), Nonterminal(lambda)])
+            .map(|node| {
+                if node.is_type(Nonterminal(function_def)) {
+                    FunctionOrLambda::Function(FunctionDef::new(node))
+                } else {
+                    debug_assert_eq!(node.type_(), Nonterminal(lambda));
+                    FunctionOrLambda::Lambda(Lambda::new(node))
+                }
+            })
+    }
+
     pub fn has_self_param_position(&self) -> bool {
         // Parents are name_definition/param_no_default/parameters
         let param = self.node.parent().unwrap().parent().unwrap();
@@ -358,6 +371,11 @@ pub enum NameParent<'db> {
     GlobalStmt,
     NonlocalStmt,
     Other,
+}
+
+pub enum FunctionOrLambda<'db> {
+    Function(FunctionDef<'db>),
+    Lambda(Lambda<'db>),
 }
 
 impl<'db> Int<'db> {

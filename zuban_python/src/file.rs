@@ -12,6 +12,7 @@ use crate::inferred::{Inferred, NodeReference};
 use crate::name::{Names, TreeName};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
+use crate::value::Function;
 use parsa_python_ast::*;
 use regex::Regex;
 use std::cell::{Cell, UnsafeCell};
@@ -667,6 +668,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 PointType::Specific => match point.specific() {
                     Specific::Param => {
                         let name = Name::by_index(&self.file.tree, node_index);
+                        // Performance: This could be improved by not needing to lookup all the
+                        // parents all the time.
+                        if let FunctionOrLambda::Function(func) =
+                            name.function_or_lambda_ancestor().unwrap()
+                        {
+                            let func = Function::new(
+                                NodeReference::new(self.file, func.index()),
+                                self.i_s.current_class,
+                            );
+                            func.calculated_type_vars(self.i_s);
+                        }
                         if let Some(inferred) = self.maybe_infer_param_annotation(name) {
                             return inferred;
                         }

@@ -289,7 +289,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_generic_part(
-                    i_s.database,
+                    i_s,
                     generics.nth(TypeVarIndex::new(0)).unwrap().clone(),
                 ))
             } else {
@@ -317,7 +317,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         .as_ref()
                         .and_then(|generics| {
                             generics.nth(TypeVarIndex::new(index)).map(|generic_part| {
-                                Inferred::execute_generic_part(i_s.database, generic_part.clone())
+                                Inferred::execute_generic_part(i_s, generic_part.clone())
                             })
                         })
                         .unwrap_or_else(Inferred::new_unknown)
@@ -455,7 +455,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         args.iter_arguments()
             .next()
             .map(|arg| {
-                Inferred::execute_generic_part(i_s.database, arg.infer(i_s).as_generic_part(i_s))
+                let g = arg.infer(i_s).as_generic_part(i_s);
+                Inferred::execute_generic_part(i_s, g)
             })
             .unwrap_or_else(|| todo!())
     }

@@ -33,7 +33,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
+    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
         match self {
             Self::Expression(file, expr) => {
                 if n.as_usize() == 0 {
@@ -231,7 +231,6 @@ impl<'db> GenericsIterator<'db, '_> {
                 }
                 Self::Class(s) => {
                     todo!();
-                    return;
                 }
                 Self::ParamIterator(f, params) => {
                     for p in params {
@@ -623,7 +622,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             "Resolved type vars: {}",
             generic_part.as_type_string(i_s.database)
         );
-        Inferred::execute_generic_part(i_s.database, generic_part)
+        Inferred::execute_generic_part(i_s, generic_part)
     }
 
     fn internal_resolve_type_vars(
@@ -717,16 +716,19 @@ impl<'db, 'a> GenericOption<'db, 'a> {
 
     pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
-            Self::ClassLike(c) => Some(c.execute_annotation(i_s)),
+            Self::ClassLike(c) => {
+                let g = c.as_generic_part(i_s);
+                Some(Inferred::execute_generic_part(i_s, g))
+            }
             Self::Union(list) => Some(Inferred::gather_union(|callable| {
                 for generic_part in list.iter() {
-                    callable(Inferred::execute_generic_part(
-                        i_s.database,
-                        generic_part.clone(),
-                    ))
+                    callable(Inferred::execute_generic_part(i_s, generic_part.clone()))
                 }
             })),
-            Self::TypeVar(_, _) => todo!("return unknown"),
+            Self::TypeVar(index, node_ref) => Some(Inferred::execute_generic_part(
+                i_s,
+                GenericPart::TypeVar(*index, node_ref.as_link()),
+            )),
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Invalid => None,
         }

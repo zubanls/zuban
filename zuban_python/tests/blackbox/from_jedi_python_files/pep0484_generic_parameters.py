@@ -262,15 +262,15 @@ x3
 def wrap_custom(iterable: Iterable[T]) -> List[CustomGeneric[T]]:
     return [CustomGeneric(x) for x in iterable]
 
-##? int()
+#? int()
 wrap_custom(list_ints)[0].val
 
 x4 = wrap_custom(list_ints)[0]
-##? int()
+#? int()
 x4.val
 
 for x5 in wrap_custom(list_ints):
-    ##? int()
+    #? int()
     x5.val
 
 

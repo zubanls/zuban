@@ -143,27 +143,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(f) => todo!(),
         }
     }
-
-    pub fn execute_annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        match self {
-            Self::Class(c) => match c.as_generic_part(i_s) {
-                GenericPart::Class(p) => {
-                    Inferred::new_unsaved_complex(ComplexPoint::Instance(p, None))
-                }
-                GenericPart::GenericClass(p, generics) => {
-                    Inferred::new_unsaved_complex(ComplexPoint::Instance(p, Some(generics)))
-                }
-                _ => unreachable!(),
-            },
-            Self::Tuple(t) => Inferred::new_unsaved_complex(ComplexPoint::Tuple(t.content.clone())),
-            Self::Callable(c) => {
-                Inferred::new_unsaved_complex(ComplexPoint::Callable(c.content.clone()))
-            }
-            Self::FunctionType(f) => todo!(),
-            Self::Type(c) => todo!(),
-            Self::TypeWithGenericPart(g) => todo!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
