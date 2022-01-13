@@ -207,11 +207,11 @@ def first(iterable: Iterable[T]) -> T:
 first(mapping_int_str)
 
 # Test inference of str as an iterable of str.
-##? str()
+#? str()
 first("abc")
 
 some_str: str = NotImplemented
-##? str()
+#? str()
 first(some_str)
 
 annotated: List[ Callable[[Sequence[float]], int] ] = [len]
@@ -331,7 +331,7 @@ specialised_instance: Specialised = NotImplemented
 #? int()
 first(specialised_instance)
 
-##? str()
+#? str()
 values(specialised_instance)[0]
 
 
@@ -343,10 +343,10 @@ class ChildOfSpecialised(Specialised):
 
 child_of_specialised_instance: ChildOfSpecialised = NotImplemented
 
-##? int()
+#? int()
 first(child_of_specialised_instance)
 
-##? str()
+#? str()
 values(child_of_specialised_instance)[0]
 
 
@@ -357,13 +357,13 @@ class CustomPartialGeneric1(Mapping[str, T]):
 
 custom_partial1_instance: CustomPartialGeneric1[int] = NotImplemented
 
-##? str()
+#? str()
 first(custom_partial1_instance)
 
 
 custom_partial1_unbound_instance: CustomPartialGeneric1 = NotImplemented
 
-##? str()
+#? str()
 first(custom_partial1_unbound_instance)
 
 
@@ -373,10 +373,10 @@ class CustomPartialGeneric2(Mapping[T, str]):
 
 custom_partial2_instance: CustomPartialGeneric2[int] = NotImplemented
 
-##? int()
+#? int()
 first(custom_partial2_instance)
 
-##? str()
+#? str()
 values(custom_partial2_instance)[0]
 
 
@@ -385,5 +385,5 @@ custom_partial2_unbound_instance: CustomPartialGeneric2 = NotImplemented
 #? []
 first(custom_partial2_unbound_instance)
 
-##? str()
+#? str()
 values(custom_partial2_unbound_instance)[0]
