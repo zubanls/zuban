@@ -13,6 +13,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
+use crate::generics::Generics;
 use crate::inferred::NodeReference;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
@@ -512,20 +513,35 @@ impl GenericsList {
         self.0.iter()
     }
 
-    pub fn as_string(&self, db: &Database) -> String {
-        Self::generics_as_string(db, &self.0)
-    }
-
-    fn generics_as_string(db: &Database, list: &[GenericPart]) -> String {
-        list.iter()
-            .map(|g| g.as_type_string(db))
-            .fold(String::new(), |a, b| {
-                if a.is_empty() {
-                    a + &b
-                } else {
-                    a + ", " + &b
-                }
-            })
+    pub fn as_string(
+        &self,
+        db: &Database,
+        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+    ) -> String {
+        if let Some(type_var_generics) = type_var_generics {
+            // TODO is there no better way than writing this twice???
+            self.0
+                .iter()
+                .map(|g| g.as_type_string(db, Some(type_var_generics)))
+                .fold(String::new(), |a, b| {
+                    if a.is_empty() {
+                        a + &b
+                    } else {
+                        a + ", " + &b
+                    }
+                })
+        } else {
+            self.0
+                .iter()
+                .map(|g| g.as_type_string(db, None))
+                .fold(String::new(), |a, b| {
+                    if a.is_empty() {
+                        a + &b
+                    } else {
+                        a + ", " + &b
+                    }
+                })
+        }
     }
 
     pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
@@ -597,7 +613,11 @@ impl GenericPart {
         *self = mem::replace(self, Self::Unknown).union(other);
     }
 
-    pub fn as_type_string(&self, db: &Database) -> String {
+    pub fn as_type_string(
+        &self,
+        db: &Database,
+        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+    ) -> String {
         let class_name = |link| {
             NodeReference::from_link(db, link)
                 .maybe_class()
@@ -607,17 +627,29 @@ impl GenericPart {
         };
         match self {
             Self::Class(link) => class_name(*link).to_owned(),
-            Self::GenericClass(link, generics) => {
-                format!("{}[{}]", class_name(*link), generics.as_string(db))
+            Self::GenericClass(link, generics_lst) => {
+                format!(
+                    "{}[{}]",
+                    class_name(*link),
+                    generics_lst.as_string(db, type_var_generics)
+                )
             }
             Self::Union(list) => {
-                format!("Union[{}]", list.as_string(db))
+                format!("Union[{}]", list.as_string(db, type_var_generics))
             }
-            Self::TypeVar(_, link) => NodeReference::from_link(db, *link)
-                .as_name()
-                .as_str()
-                .to_owned(),
-            Self::Type(generic_part) => format!("Type[{}]", generic_part.as_type_string(db)),
+            Self::TypeVar(index, link) => {
+                if let Some(type_var_generics) = type_var_generics {
+                    return type_var_generics(*index).as_type_string(db, None);
+                }
+                NodeReference::from_link(db, *link)
+                    .as_name()
+                    .as_str()
+                    .to_owned()
+            }
+            Self::Type(generic_part) => format!(
+                "Type[{}]",
+                generic_part.as_type_string(db, type_var_generics)
+            ),
             Self::Tuple(content) => format!("Tuple{}", &content.as_string(db)),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db)),
             Self::None => "None".to_owned(),
@@ -803,7 +835,7 @@ pub struct TupleContent {
 impl TupleContent {
     pub fn as_string(&self, db: &Database) -> String {
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.as_string(db);
+            let list = generics.as_string(db, None);
             if self.arbitrary_length {
                 format!("[{}, ...]", list)
             } else {
@@ -827,9 +859,9 @@ impl CallableContent {
             "[{}, {}]",
             self.params
                 .as_ref()
-                .map(|p| format!("[{}]", p.as_string(db)))
+                .map(|p| format!("[{}]", p.as_string(db, None)))
                 .unwrap_or_else(|| "...".to_owned()),
-            self.return_class.as_type_string(db)
+            self.return_class.as_type_string(db, None)
         )
     }
 }

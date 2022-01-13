@@ -328,7 +328,7 @@ class Specialised(Mapping[int, str]):
 
 specialised_instance: Specialised = NotImplemented
 
-##? int()
+#? int()
 first(specialised_instance)
 
 ##? str()

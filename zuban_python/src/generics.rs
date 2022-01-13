@@ -379,7 +379,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         &callable_description
                     }
                 },
-                calculated.as_string(i_s.database),
+                calculated.as_string(i_s.database, None),
             );
         }
     }
@@ -620,7 +620,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
             "Resolved type vars: {}",
-            generic_part.as_type_string(i_s.database)
+            generic_part.as_type_string(i_s.database, None)
         );
         Inferred::execute_generic_part(i_s, generic_part)
     }
@@ -704,9 +704,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
-                    a + &b.as_type_string(i_s.database)
+                    a + &b.as_type_string(i_s.database, None)
                 } else {
-                    a + &b.as_type_string(i_s.database) + ","
+                    a + &b.as_type_string(i_s.database, None) + ","
                 }
             }),
             Self::None => "None".to_owned(),

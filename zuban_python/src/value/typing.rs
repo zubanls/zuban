@@ -421,7 +421,7 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "generic_part",
-                &self.generic_part.as_type_string(self.database),
+                &self.generic_part.as_type_string(self.database, None),
             )
             .finish()
     }

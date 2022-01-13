@@ -100,7 +100,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_string(i_s),
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s)),
-            Self::TypeWithGenericPart(g) => todo!(),
+            Self::TypeWithGenericPart(g) => {
+                format!("Type[{}]", g.as_type_string(i_s.database, None))
+            }
             Self::Tuple(c) => c.description(i_s),
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => todo!(),
@@ -351,12 +353,21 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        let generics_str = self.generics.as_string(i_s);
+        let generics_string = match self.type_var_remap {
+            Some(type_var_remap) => format!(
+                "[{}]",
+                type_var_remap.as_string(
+                    i_s.database,
+                    Some(&mut |index| self.generics.nth(i_s, index))
+                )
+            ),
+            None => self.generics.as_string(i_s),
+        };
         let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
         format!(
             "{}{}",
             self.name(),
-            if has_type_vars { &generics_str } else { "" }
+            if has_type_vars { &generics_string } else { "" }
         )
     }
 
