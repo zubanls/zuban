@@ -87,7 +87,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     #[inline]
     fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
         match self {
-            Self::Class(c) => (c.generics, None),
+            Self::Class(c) => (c.generics(), None),
             Self::Type(c) => (Generics::Class(c), None),
             Self::TypeWithGenericPart(g) => (Generics::GenericPart(g), None),
             Self::Tuple(c) => (c.generics(), None),
@@ -151,7 +151,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 pub struct Class<'db, 'a> {
     pub reference: NodeReference<'db>,
     pub(super) class_storage: &'db ClassStorage,
-    pub generics: Generics<'db, 'a>,
+    generics: Generics<'db, 'a>,
     pub type_var_remap: Option<&'db GenericsList>,
 }
 
@@ -340,6 +340,14 @@ impl<'db, 'a> Class<'db, 'a> {
         todo!("{:?}.{:?}", self.name(), name)
     }
 
+    pub fn generics(&self) -> Generics<'db, '_> {
+        if let Some(type_var_remap) = self.type_var_remap {
+            Generics::List(type_var_remap, Some(&self.generics))
+        } else {
+            self.generics
+        }
+    }
+
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
@@ -407,7 +415,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) => Generics::List(generics_list).as_string(i_s),
+                    Some(generics_list) => Generics::new_list(generics_list).as_string(i_s),
                     None => "".to_owned(),
                 }
             );

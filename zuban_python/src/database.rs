@@ -13,7 +13,6 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
 };
-use crate::generics::Generics;
 use crate::inferred::NodeReference;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};

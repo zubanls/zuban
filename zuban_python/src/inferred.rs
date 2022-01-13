@@ -219,7 +219,7 @@ impl<'db> Inferred<'db> {
                     return i_s
                         .current_class
                         .map(|c| {
-                            let g = c.generics.nth(i_s, index);
+                            let g = c.generics().nth(i_s, index);
                             Inferred::execute_generic_part(i_s, g)
                         })
                         .unwrap_or_else(|| todo!());
@@ -556,7 +556,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::Instance(cls, generics_list) => {
                 let generics = generics_list
                     .as_ref()
-                    .map(Generics::List)
+                    .map(Generics::new_list)
                     .unwrap_or(Generics::None);
                 let instance =
                     self.use_instance(NodeReference::from_link(i_s.database, *cls), generics);
@@ -569,7 +569,7 @@ impl<'db> Inferred<'db> {
             ComplexPoint::GenericClass(link, generics) => {
                 let class = Class::from_position(
                     NodeReference::from_link(i_s.database, *link),
-                    Generics::List(generics),
+                    Generics::new_list(generics),
                     None,
                 )
                 .unwrap();

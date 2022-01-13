@@ -13,11 +13,26 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
 use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
 
+macro_rules! replace_class_vars {
+    ($i_s:ident, $g:ident, $type_var_generics:ident) => {
+        match $type_var_generics {
+            Some(type_var_generics) => $g.clone().replace_type_vars(&mut |type_var_index, link| {
+                let node_ref = NodeReference::from_link($i_s.database, link);
+                if node_ref.point().specific() != Specific::ClassTypeVar {
+                    return GenericPart::Unknown;
+                }
+                type_var_generics.nth($i_s, type_var_index)
+            }),
+            None => $g.clone(),
+        }
+    };
+}
+
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),
-    List(&'a GenericsList),
+    List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
     Class(&'a Class<'db, 'a>),
     GenericPart(&'a GenericPart),
     FunctionParams(&'a Function<'db, 'a>),
@@ -31,6 +46,10 @@ impl<'db, 'a> Generics<'db, 'a> {
             SliceType::Slice(_) => Self::None,
             SliceType::Slices(slices) => Self::Slices(file, slices),
         }
+    }
+
+    pub fn new_list(list: &'a GenericsList) -> Self {
+        Self::List(list, None)
     }
 
     pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> GenericPart {
@@ -55,7 +74,13 @@ impl<'db, 'a> Generics<'db, 'a> {
                     SliceContent::Slice(s) => todo!(),
                 })
                 .unwrap_or(GenericPart::Unknown),
-            Self::List(l) => l.nth(n).cloned().unwrap_or(GenericPart::Unknown),
+            Self::List(list, type_var_generics) => {
+                if let Some(g) = list.nth(n) {
+                    replace_class_vars!(i_s, g, type_var_generics)
+                } else {
+                    GenericPart::Unknown
+                }
+            }
             Self::GenericPart(g) => todo!(),
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
@@ -67,7 +92,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
             Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
-            Self::List(l) => GenericsIterator::GenericsList(l.iter()),
+            Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::GenericPart(g) => GenericsIterator::GenericPart(g),
             Self::Class(s) => GenericsIterator::Class(*s),
             Self::FunctionParams(f) => {
@@ -100,7 +125,11 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::GenericPart(g) => todo!(),
             Self::Class(_) => todo!(),
             Self::FunctionParams(f) => todo!(),
-            Self::List(l) => Some((*l).clone()),
+            Self::List(l, type_var_generics) => Some(GenericsList::new(
+                l.iter()
+                    .map(|c| replace_class_vars!(i_s, c, type_var_generics))
+                    .collect(),
+            )),
             Self::None => None,
         }
     }
@@ -134,7 +163,10 @@ impl<'db, 'a> Generics<'db, 'a> {
 
 pub enum GenericsIterator<'db, 'a> {
     SliceIterator(&'db PythonFile, SliceIterator<'db>),
-    GenericsList(std::slice::Iter<'a, GenericPart>),
+    GenericsList(
+        std::slice::Iter<'a, GenericPart>,
+        Option<&'a Generics<'db, 'a>>,
+    ),
     GenericPart(&'a GenericPart),
     Class(&'a Class<'db, 'a>),
     ParamIterator(&'db PythonFile, ParamIterator<'db>),
@@ -167,9 +199,10 @@ impl<'db> GenericsIterator<'db, '_> {
                     None
                 }
             }
-            Self::GenericsList(iterator) => iterator
-                .next()
-                .map(|g| callable(i_s, GenericOption::from_generic_part(i_s.database, g))),
+            Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
+                let g = replace_class_vars!(i_s, g, type_var_generics);
+                callable(i_s, GenericOption::from_generic_part(i_s.database, &g))
+            }),
             Self::GenericPart(g) => {
                 let result = Some(callable(
                     i_s,
@@ -219,9 +252,12 @@ impl<'db> GenericsIterator<'db, '_> {
                         return;
                     }
                 }
-                Self::GenericsList(iterator) => {
+                Self::GenericsList(iterator, type_var_generics) => {
                     if let Some(g) = iterator.next() {
-                        callable(i_s, GenericOption::from_generic_part(i_s.database, g));
+                        // TODO since this and run_on_next gets used for a lot of mro
+                        // comparisons, we should probably reduce cloning here!!
+                        let g = replace_class_vars!(i_s, g, type_var_generics);
+                        callable(i_s, GenericOption::from_generic_part(i_s.database, &g));
                     }
                     return;
                 }
@@ -493,7 +529,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeReference::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
-                    Class::from_position(node_ref, Generics::List(generics), None).unwrap(),
+                    Class::from_position(node_ref, Generics::new_list(generics), None).unwrap(),
                 ))
             }
             GenericPart::Union(list) => Self::Union(list.iter().cloned().collect()),
@@ -595,7 +631,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             1 => list2.into_iter().next().unwrap(),
                             _ => GenericPart::Union(GenericsList::from_vec(list2)),
                         };
-                        matcher.add_type_var_class(i_s, type_var_index, dbg!(g));
+                        matcher.add_type_var_class(i_s, type_var_index, g);
                     } else if !list2.is_empty() {
                         matcher.does_not_match()
                     }
@@ -639,7 +675,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             match point.specific() {
                 Specific::ClassTypeVar => {
                     let class = class.unwrap();
-                    let mut generic = |type_var_index| class.generics.nth(i_s, type_var_index);
+                    let mut generic = |type_var_index| class.generics().nth(i_s, type_var_index);
                     class
                         .type_var_remap
                         .map(|remaps| {

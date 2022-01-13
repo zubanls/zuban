@@ -230,7 +230,7 @@ impl<'a> TupleClass<'a> {
         self.content
             .generics
             .as_ref()
-            .map(Generics::List)
+            .map(Generics::new_list)
             .unwrap_or(Generics::None)
     }
 }
@@ -480,7 +480,7 @@ impl<'a> CallableClass<'a> {
         self.content
             .params
             .as_ref()
-            .map(Generics::List)
+            .map(Generics::new_list)
             .unwrap_or(Generics::None)
     }
 

@@ -216,7 +216,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn iter_params(&self) -> ParamIterator<'db> {
-        //self.content.params.as_ref().map(Generics::List).unwrap_or(Generics::None)
+        //self.content.params.as_ref().map(Generics::new_list).unwrap_or(Generics::None)
         self.node().params().iter()
     }
 
