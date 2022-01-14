@@ -178,7 +178,7 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> Option<Self> {
         let complex = reference.complex().unwrap();
         match complex {
-            ComplexPoint::Class(c) => Some(Self::new(reference, &c, generics, type_var_remap)),
+            ComplexPoint::Class(c) => Some(Self::new(reference, c, generics, type_var_remap)),
             _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
         }
     }
