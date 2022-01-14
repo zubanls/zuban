@@ -449,21 +449,58 @@ pub enum ListContent<'db> {
 pub struct ListElementIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for ListElementIterator<'db> {
-    type Item = ListElement<'db>;
+    type Item = StarLikeExpression<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|next| {
             if next.is_type(Nonterminal(named_expression)) {
-                ListElement::NamedExpression(NamedExpression::new(next))
+                StarLikeExpression::NamedExpression(NamedExpression::new(next))
             } else {
-                ListElement::StarNamedExpression(StarNamedExpression::new(next))
+                StarLikeExpression::StarNamedExpression(StarNamedExpression::new(next))
             }
         })
     }
 }
 
-pub enum ListElement<'db> {
+pub enum StarLikeExpression<'db> {
     NamedExpression(NamedExpression<'db>),
     StarNamedExpression(StarNamedExpression<'db>),
+}
+
+impl<'db> Tuple<'db> {
+    pub fn iter(&self) -> TupleLikeIterator<'db> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(tuple_content)) {
+            TupleLikeIterator::Elements(n.iter_children().step_by(2))
+        } else {
+            debug_assert_eq!(n.as_code(), "(");
+            TupleLikeIterator::Empty
+        }
+    }
+}
+
+pub enum TupleLikeIterator<'db> {
+    Elements(StepBy<SiblingIterator<'db>>),
+    Empty,
+}
+
+impl<'db> Iterator for TupleLikeIterator<'db> {
+    type Item = StarLikeExpression<'db>;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            TupleLikeIterator::Elements(iterator) => iterator.next().map(|node| {
+                if node.is_type(Nonterminal(named_expression)) {
+                    StarLikeExpression::NamedExpression(NamedExpression::new(node))
+                } else if node.is_type(Nonterminal(named_expression)) {
+                    StarLikeExpression::StarNamedExpression(StarNamedExpression::new(node))
+                } else {
+                    debug_assert_eq!(node.type_(), Nonterminal(star_named_expressions));
+                    *self = Self::Elements(node.iter_children().step_by(2));
+                    self.next().unwrap()
+                }
+            }),
+            TupleLikeIterator::Empty => None,
+        }
+    }
 }
 
 impl<'db> Dict<'db> {
@@ -1866,7 +1903,7 @@ impl<'db> Atom<'db> {
             }
             Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes::new(first)),
             PyNodeType::Keyword => match first.as_code() {
-                "None" => AtomContent::None,
+                "None" => AtomContent::NoneLiteral,
                 "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
                 "..." => AtomContent::Ellipsis,
                 "(" => {
@@ -1930,7 +1967,7 @@ pub enum AtomContent<'db> {
     Complex(Complex<'db>),
     StringsOrBytes(StringsOrBytes<'db>),
 
-    None,
+    NoneLiteral,
     Boolean(Keyword<'db>),
     Ellipsis,
 

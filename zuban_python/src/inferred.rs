@@ -302,6 +302,19 @@ impl<'db> Inferred<'db> {
         )
     }
 
+    pub fn as_class_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| v.class(i_s).as_generic_part(i_s),
+            &|_, g1, g2| g1.union(g2),
+            &mut |i_s, inf| {
+                debug!("Class generic part not found: {}", inf.description(i_s));
+                GenericPart::Unknown
+            },
+            &mut |_, _| unreachable!(),
+        )
+    }
+
     #[inline]
     pub fn internal_run<'a, T>(
         &'a self,

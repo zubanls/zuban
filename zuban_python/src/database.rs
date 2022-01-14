@@ -335,7 +335,6 @@ pub enum Specific {
     None,
 
     Ellipsis,
-    Tuple,
     GeneratorComprehension,
     List,
     ListComprehension,

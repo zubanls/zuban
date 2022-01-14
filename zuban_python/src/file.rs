@@ -1,7 +1,7 @@
 use crate::arguments::SimpleArguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, GenericPart, Locality, LocalityLink, Point, PointType,
-    Points, Specific,
+    ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, LocalityLink, Point,
+    PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::file_state::{File, Issue, Leaf};
@@ -589,7 +589,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::Bytes
                 }
             }
-            None => Specific::None,
+            NoneLiteral => Specific::None,
             Boolean(_) => Specific::Boolean,
             Ellipsis => Specific::Ellipsis,
             List(_) => Specific::List,
@@ -598,7 +598,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             DictComprehension(_) => todo!(),
             Set(_) => todo!(),
             SetComprehension(_) => todo!(),
-            Tuple(_) => Specific::Tuple,
+            Tuple(tuple) => {
+                let generics: Box<[GenericPart]> = tuple
+                    .iter()
+                    .map(|e| match e {
+                        StarLikeExpression::NamedExpression(e) => self
+                            .infer_named_expression(e)
+                            .as_class_generic_part(self.i_s),
+                        StarLikeExpression::StarNamedExpression(e) => todo!(),
+                    })
+                    .collect();
+                let content = TupleContent {
+                    generics: (generics.len() != 0).then(|| GenericsList::new(generics)),
+                    arbitrary_length: false,
+                };
+                debug!(
+                    "Inferred literal: Tuple{}",
+                    content.as_string(self.i_s.database)
+                );
+                return Inferred::new_unsaved_complex(ComplexPoint::Tuple(content))
+                    .save_redirect(self.file, atom.index());
+            }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
             NamedExpression(named_expression) => todo!(),

@@ -7,7 +7,7 @@ mod module;
 mod none;
 mod typing;
 
-use parsa_python_ast::{ListElement, ListElementIterator};
+use parsa_python_ast::{ListElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
 use crate::getitem::SliceType;
@@ -99,10 +99,10 @@ impl<'db> IteratorContent<'db> {
             Self::Inferred(inferred) => None,
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
-                    ListElement::NamedExpression(named_expr) => {
+                    StarLikeExpression::NamedExpression(named_expr) => {
                         list.infer_named_expr(i_s, named_expr)
                     }
-                    ListElement::StarNamedExpression(_) => todo!(),
+                    StarLikeExpression::StarNamedExpression(_) => todo!(),
                 })
             }
             Self::Empty => todo!(),

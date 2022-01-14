@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Dict, DictElement, Expression, List, ListContent, ListElement, NamedExpression,
+    Dict, DictElement, Expression, List, ListContent, NamedExpression, StarLikeExpression,
 };
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
@@ -55,7 +55,7 @@ impl<'db> ListLiteral<'db> {
                 ListContent::Elements(elements) => {
                     for child in elements {
                         match child {
-                            ListElement::NamedExpression(named_expr) => {
+                            StarLikeExpression::NamedExpression(named_expr) => {
                                 self.infer_named_expr(i_s, named_expr).run_mut(
                                     i_s,
                                     &mut |i_s, v| {
@@ -66,7 +66,7 @@ impl<'db> ListLiteral<'db> {
                                     || todo!(),
                                 );
                             }
-                            ListElement::StarNamedExpression(_) => {
+                            StarLikeExpression::StarNamedExpression(_) => {
                                 todo!()
                             }
                         }
@@ -122,12 +122,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                         ListContent::Elements(elements) => {
                             for (i, child) in elements.enumerate() {
                                 match child {
-                                    ListElement::NamedExpression(named_expr) => {
+                                    StarLikeExpression::NamedExpression(named_expr) => {
                                         if i as i64 == wanted {
                                             return self.infer_named_expr(i_s, named_expr);
                                         }
                                     }
-                                    ListElement::StarNamedExpression(_) => {
+                                    StarLikeExpression::StarNamedExpression(_) => {
                                         // It gets quite complicated to figure out the index here,
                                         // so just stop for now.
                                         break;
@@ -142,20 +142,20 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                 match self.list_node().unpack() {
                     ListContent::Elements(mut elements) => {
                         let mut inferred = match elements.next().unwrap() {
-                            ListElement::NamedExpression(named_expr) => {
+                            StarLikeExpression::NamedExpression(named_expr) => {
                                 self.infer_named_expr(i_s, named_expr)
                             }
-                            ListElement::StarNamedExpression(_) => {
+                            StarLikeExpression::StarNamedExpression(_) => {
                                 todo!()
                             }
                         };
                         for child in elements {
                             match child {
-                                ListElement::NamedExpression(named_expr) => {
+                                StarLikeExpression::NamedExpression(named_expr) => {
                                     inferred =
                                         inferred.union(self.infer_named_expr(i_s, named_expr));
                                 }
-                                ListElement::StarNamedExpression(_) => {
+                                StarLikeExpression::StarNamedExpression(_) => {
                                     todo!()
                                 }
                             }
