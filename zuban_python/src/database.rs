@@ -607,7 +607,7 @@ impl GenericPart {
         }
     }
 
-    fn union_in_place(&mut self, other: GenericPart) {
+    pub fn union_in_place(&mut self, other: GenericPart) {
         *self = mem::replace(self, Self::Unknown).union(other);
     }
 

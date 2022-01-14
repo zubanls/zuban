@@ -54,22 +54,14 @@ impl<'db> ListLiteral<'db> {
             match self.list_node().unpack() {
                 ListContent::Elements(elements) => {
                     for child in elements {
-                        match child {
-                            StarLikeExpression::NamedExpression(named_expr) => {
-                                self.infer_named_expr(i_s, named_expr).run_mut(
-                                    i_s,
-                                    &mut |i_s, v| {
-                                        result =
-                                            std::mem::replace(&mut result, GenericPart::Unknown)
-                                                .union(v.class(i_s).as_generic_part(i_s));
-                                    },
-                                    || todo!(),
-                                );
-                            }
+                        result.union_in_place(match child {
+                            StarLikeExpression::NamedExpression(named_expr) => self
+                                .infer_named_expr(i_s, named_expr)
+                                .as_class_generic_part(i_s),
                             StarLikeExpression::StarNamedExpression(_) => {
                                 todo!()
                             }
-                        }
+                        });
                     }
                 }
                 ListContent::Comprehension(_) => unreachable!(),
@@ -232,21 +224,13 @@ impl<'db> DictLiteral<'db> {
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {
-                        self.infer_expr(i_s, key_value.key()).run_mut(
-                            i_s,
-                            &mut |i_s, v| {
-                                keys = std::mem::replace(&mut keys, GenericPart::Unknown)
-                                    .union(v.class(i_s).as_generic_part(i_s));
-                            },
-                            || todo!(),
+                        keys.union_in_place(
+                            self.infer_expr(i_s, key_value.key())
+                                .as_class_generic_part(i_s),
                         );
-                        self.infer_expr(i_s, key_value.value()).run_mut(
-                            i_s,
-                            &mut |i_s, v| {
-                                values = std::mem::replace(&mut values, GenericPart::Unknown)
-                                    .union(v.class(i_s).as_generic_part(i_s));
-                            },
-                            || todo!(),
+                        values.union_in_place(
+                            self.infer_expr(i_s, key_value.value())
+                                .as_class_generic_part(i_s),
                         );
                     }
                     DictElement::DictStarred(_) => {
