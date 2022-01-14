@@ -83,10 +83,13 @@ pub enum IteratorContent<'db> {
 }
 
 impl<'db> IteratorContent<'db> {
-    pub fn infer_all(self) -> Inferred<'db> {
+    pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
             Self::Inferred(inferred) => inferred,
-            Self::ListLiteral(list, _) => todo!(), //list.generic_part(),
+            Self::ListLiteral(list, _) => {
+                let g = list.generic_part(i_s).clone();
+                Inferred::execute_generic_part(i_s, g)
+            }
             Self::Empty => todo!(),
         }
     }

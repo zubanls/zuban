@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
-use crate::database::{ComplexPoint, GenericPart, GenericsList};
+use crate::database::{ComplexPoint, GenericPart, GenericsList, TypeVarIndex};
 use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -38,7 +38,11 @@ impl<'db> ListLiteral<'db> {
         )
     }
 
-    fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+    pub fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericPart {
+        self.generic_list(i_s).nth(TypeVarIndex::new(0)).unwrap()
+    }
+
+    fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
         let reference = self.node_reference.add_to_node_index(1);
         if reference.point().calculated() {
             match reference.complex().unwrap() {
@@ -80,7 +84,7 @@ impl<'db> ListLiteral<'db> {
                 self.list_node().short_debug(),
                 &self.class(i_s).as_string(i_s),
             );
-            self.generic_part(i_s)
+            self.generic_list(i_s)
         }
     }
 }
@@ -179,7 +183,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         ClassLike::Class(
             Class::from_position(
                 node_reference,
-                Generics::new_list(self.generic_part(i_s)),
+                Generics::new_list(self.generic_list(i_s)),
                 None,
             )
             .unwrap(),

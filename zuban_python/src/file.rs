@@ -276,7 +276,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let element = self
                     .infer_star_expressions(star_exprs)
                     .iter(self.i_s)
-                    .infer_all();
+                    .infer_all(self.i_s);
                 debug!("For loop input: {}", element.description(self.i_s));
                 self.assign_targets(star_targets.as_target(), &element)
             }
