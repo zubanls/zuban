@@ -1179,7 +1179,7 @@ impl<'db> Inferred<'db> {
             .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
     }
 
-    pub fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+    pub fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, '_> {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.iter(i_s),

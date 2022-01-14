@@ -94,7 +94,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         todo!()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, 'a> {
         match self.list_node().unpack() {
             ListContent::Elements(elements) => IteratorContent::ListLiteral(*self, elements),
             ListContent::Comprehension(_) => unreachable!(),

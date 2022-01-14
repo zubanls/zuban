@@ -10,6 +10,7 @@ mod typing;
 use parsa_python_ast::{ListElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
+use crate::database::GenericPart;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -76,13 +77,14 @@ macro_rules! base_description {
     };
 }
 
-pub enum IteratorContent<'db> {
+pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
     ListLiteral(ListLiteral<'db>, ListElementIterator<'db>),
+    TupleGenerics(std::slice::Iter<'a, GenericPart>),
     Empty,
 }
 
-impl<'db> IteratorContent<'db> {
+impl<'db> IteratorContent<'db, '_> {
     pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
             Self::Inferred(inferred) => inferred,
@@ -90,6 +92,10 @@ impl<'db> IteratorContent<'db> {
                 let g = list.generic_part(i_s).clone();
                 Inferred::execute_generic_part(i_s, g)
             }
+            Self::TupleGenerics(generics) => Inferred::execute_generic_part(
+                i_s,
+                generics.fold(GenericPart::Unknown, |a, b| a.union(b.clone())),
+            ),
             Self::Empty => todo!(),
         }
     }
@@ -97,6 +103,9 @@ impl<'db> IteratorContent<'db> {
     pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
             Self::Inferred(inferred) => None,
+            Self::TupleGenerics(t) => t
+                .next()
+                .map(|g| Inferred::execute_generic_part(i_s, g.clone())),
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
                     StarLikeExpression::NamedExpression(named_expr) => {
@@ -138,7 +147,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         todo!()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
             self.lookup(i_s, "__iter__")
                 .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))

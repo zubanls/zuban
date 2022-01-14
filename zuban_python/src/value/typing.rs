@@ -108,7 +108,8 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                         let mut iterator = slices.iter();
                         let param_node = iterator.next().map(|slice_content| match slice_content {
                             SliceOrSimple::Simple(n) => {
-                                let mut list = n.infer(i_s).iter(i_s);
+                                let i = n.infer(i_s);
+                                let mut list = i.iter(i_s);
                                 while let Some(next) = list.next(i_s) {
                                     params.push(next.as_generic_part(i_s));
                                 }
@@ -285,7 +286,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         todo!()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, 'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_generic_part(
@@ -293,7 +294,10 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     generics.nth(TypeVarIndex::new(0)).unwrap().clone(),
                 ))
             } else {
-                todo!()
+                match &self.content.generics {
+                    Some(generics) => IteratorContent::TupleGenerics(generics.iter()),
+                    None => todo!(),
+                }
             }
         } else {
             todo!()
