@@ -60,6 +60,11 @@ impl<'db, 'a> Generics<'db, 'a> {
                         .infer_annotation_expression_class(*expr)
                         .as_generic_part(i_s)
                 } else {
+                    debug!(
+                        "Generic expr {:?} has one item, but {:?} was requested",
+                        expr.short_debug(),
+                        n
+                    );
                     GenericPart::Unknown
                 }
             }
@@ -78,13 +83,21 @@ impl<'db, 'a> Generics<'db, 'a> {
                 if let Some(g) = list.nth(n) {
                     replace_class_vars!(i_s, g, type_var_generics)
                 } else {
+                    debug!(
+                        "Generic list {} given, but item {:?} was requested",
+                        self.as_string(i_s),
+                        n
+                    );
                     GenericPart::Unknown
                 }
             }
             Self::GenericPart(g) => todo!(),
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
-            Self::None => GenericPart::Unknown,
+            Self::None => {
+                debug!("No generics given, but {:?} was requested", n);
+                GenericPart::Unknown
+            }
         }
     }
 
@@ -253,7 +266,7 @@ impl<'db> GenericsIterator<'db, '_> {
                     }
                 }
                 Self::GenericsList(iterator, type_var_generics) => {
-                    if let Some(g) = iterator.next() {
+                    for g in iterator {
                         // TODO since this and run_on_next gets used for a lot of mro
                         // comparisons, we should probably reduce cloning here!!
                         let g = replace_class_vars!(i_s, g, type_var_generics);
@@ -624,10 +637,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }*/
                     if let Some(type_var_index) = type_var_index {
                         let g = match list2.len() {
-                            0 => {
-                                matcher.does_not_match();
-                                GenericPart::Unknown
-                            }
+                            0 => unreachable!(),
                             1 => list2.into_iter().next().unwrap(),
                             _ => GenericPart::Union(GenericsList::from_vec(list2)),
                         };
@@ -691,7 +701,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .as_mut()
                     .unwrap()
                     .nth(i_s, type_var_index)
-                    .unwrap_or(GenericPart::Unknown),
+                    .unwrap_or_else(|| unreachable!()),
                 Specific::LateBoundTypeVar => {
                     if let Some(function_matcher) = function_matcher {
                         if function_matcher.match_specific == Specific::LateBoundTypeVar {

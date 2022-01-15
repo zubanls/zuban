@@ -106,14 +106,14 @@ for h in typed_tuple_generic_passthrough(typed_tuple_str):
 
 
 out_untyped = typed_multi_typed_tuple_generic_passthrough(untyped_tuple_str_int)
-##? int()
+#? int()
 out_untyped[0]
 #? str()
 out_untyped[1]
 
 
 out_typed = typed_multi_typed_tuple_generic_passthrough(typed_tuple_str_int)
-##? int()
+#? int()
 out_typed[0]
 #? str()
 out_typed[1]
