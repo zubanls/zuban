@@ -515,6 +515,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_simple_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
+        } else if let Some(python_string) = inferred.maybe_str() {
+            dbg!(python_string);
+            todo!()
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {

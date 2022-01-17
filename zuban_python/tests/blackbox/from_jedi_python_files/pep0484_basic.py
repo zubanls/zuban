@@ -153,7 +153,7 @@ X = str
 def function_with_assined_class_in_reference(x: X, y: "Y"):
     #? str()
     x
-    ##? int()
+    #? int()
     y
 Y = int
 

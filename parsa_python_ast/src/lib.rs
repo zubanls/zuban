@@ -1,3 +1,5 @@
+mod strings;
+
 use std::iter::StepBy;
 
 pub use parsa_python::{CodeIndex, NodeIndex};
@@ -7,6 +9,8 @@ use parsa_python::{
     PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
     PyTree, SearchIterator, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
 };
+use strings::starts_with_string;
+pub use strings::PythonString;
 
 pub struct Tree(PyTree);
 
@@ -1985,15 +1989,11 @@ pub enum AtomContent<'db> {
 
 impl<'db> StringsOrBytes<'db> {
     pub fn starts_with_string(&self) -> bool {
-        let code = self.node.nth_child(0).as_code();
-        for byte in code.bytes() {
-            if byte == b'"' || byte == b'\'' {
-                break;
-            } else if byte == b'b' || byte == b'B' {
-                return false;
-            }
-        }
-        true
+        starts_with_string(&self.node)
+    }
+
+    pub fn as_python_string(&self) -> Option<PythonString<'db>> {
+        PythonString::new(self.node.iter_children())
     }
 }
 

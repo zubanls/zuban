@@ -1,6 +1,6 @@
 use parsa_python_ast::{
     debug_info, Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
-    PrimaryContent,
+    PrimaryContent, PythonString, StringsOrBytes,
 };
 use std::fmt;
 
@@ -100,6 +100,11 @@ impl<'db> NodeReference<'db> {
                 _ => None,
             }
         })
+    }
+
+    pub fn infer_str(&self) -> Option<PythonString<'db>> {
+        StringsOrBytes::maybe_by_index(&self.file.tree, self.node_index)
+            .and_then(|s| s.as_python_string())
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'db>> {
@@ -923,6 +928,15 @@ impl<'db> Inferred<'db> {
         if let InferredState::Saved(definition, point) = self.state {
             if let Some(Specific::Integer) = point.maybe_specific() {
                 return definition.infer_int();
+            }
+        }
+        None
+    }
+
+    pub fn maybe_str(&self) -> Option<PythonString<'db>> {
+        if let InferredState::Saved(definition, point) = self.state {
+            if let Some(Specific::String) = point.maybe_specific() {
+                return definition.infer_str();
             }
         }
         None
