@@ -921,10 +921,8 @@ impl<'db> Inferred<'db> {
 
     pub fn expect_int(&self) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let PointType::Specific = point.type_() {
-                if let Specific::Integer = point.specific() {
-                    return definition.infer_int();
-                }
+            if let Some(Specific::Integer) = point.maybe_specific() {
+                return definition.infer_int();
             }
         }
         None
