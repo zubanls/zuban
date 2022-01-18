@@ -32,15 +32,6 @@ impl Tree {
     }
 
     pub fn maybe_expression(&self) -> Option<Expression> {
-        /*
-        let first = self.0.root_node().nth_child(0);
-        if !first.is_type(Nonterminal(stmt))
-            ||!first.next_sibling().unwrap().is_type(Terminal(TerminalType::Endmarker))
-        {
-            return None
-        }
-        simple = first.nth_child(0);
-        */
         let mut node = self.0.root_node();
         for (nonterminal, expected_node_count) in [
             (stmt, 2),
