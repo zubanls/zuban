@@ -56,9 +56,9 @@ impl<'db> PythonString<'db> {
         }
     }
 
-    pub fn as_str(&self) -> Option<&str> {
+    pub fn to_owned(self) -> Option<String> {
         match self {
-            Self::Ref(s) => Some(s),
+            Self::Ref(s) => Some(s.to_owned()),
             Self::String(s) => Some(s),
             Self::FString => None,
         }

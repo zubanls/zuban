@@ -106,6 +106,7 @@ pub struct PythonFile {
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
+    star_imports: Vec<FileIndex>,
 
     new_line_indices: UnsafeCell<Option<Vec<u32>>>,
 }
@@ -129,6 +130,7 @@ impl<'db> PythonFile {
             points: Points::new(length),
             complex_points: Default::default(),
             dependencies: vec![],
+            star_imports: vec![],
             issues: vec![],
             new_line_indices: UnsafeCell::new(None),
         }
@@ -516,8 +518,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let point = if inferred.is_simple_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else if let Some(python_string) = inferred.maybe_str() {
-            dbg!(python_string);
-            todo!()
+            if let Some(string) = python_string.to_owned() {
+                self.infer_annotation_string(string);
+                todo!()
+            } else {
+                Point::new_unknown(self.file.file_index(), Locality::Stmt)
+            }
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
@@ -821,5 +827,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
         self.check_point_cache(node_index)
             .unwrap_or_else(|| todo!())
+    }
+
+    fn infer_annotation_string(&mut self, string: String) -> GenericPart {
+        let mut file = PythonFile::new(string + "\n");
+        if let Some(expr) = file.tree.maybe_expression() {
+            file.star_imports.push(self.file.file_index());
+            dbg!(expr);
+            //self.file.inference(self.i_s).infer_annotation_expression(expr);
+        }
+        todo!()
     }
 }

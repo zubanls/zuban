@@ -30,6 +30,35 @@ impl Tree {
     pub fn root(&self) -> File {
         File::new(self.0.root_node())
     }
+
+    pub fn maybe_expression(&self) -> Option<Expression> {
+        /*
+        let first = self.0.root_node().nth_child(0);
+        if !first.is_type(Nonterminal(stmt))
+            ||!first.next_sibling().unwrap().is_type(Terminal(TerminalType::Endmarker))
+        {
+            return None
+        }
+        simple = first.nth_child(0);
+        */
+        let mut node = self.0.root_node();
+        for (nonterminal, expected_node_count) in [
+            (stmt, 2),
+            (simple_stmts, 1),
+            (simple_stmt, 2),
+            (star_expressions, 1),
+            (expression, 1),
+        ] {
+            if node.iter_children().count() != expected_node_count {
+                return None;
+            }
+            node = node.nth_child(0);
+            if !node.is_type(Nonterminal(nonterminal)) {
+                return None;
+            }
+        }
+        Some(Expression::new(node))
+    }
 }
 
 pub fn debug_info(tree: &Tree, index: NodeIndex) -> String {
