@@ -24,12 +24,19 @@ impl<'db> PythonString<'db> {
         result
     }
 
-    fn from_literal(node: PyNode<'db>) -> Self {
-        if node.is_type(Nonterminal(fstring)) {
+    fn from_literal(literal: PyNode<'db>) -> Self {
+        if literal.is_type(Nonterminal(fstring)) {
             Self::FString
         } else {
-            let code = node.nth_child(0).as_code();
-            Self::Ref(&code[1..code.len() - 1])
+            let code = literal.as_code();
+            if !code.starts_with(['"', '\''].as_slice()) {
+                todo!()
+            }
+            let c = &code[1..code.len() - 1];
+            if c.contains(['\'', '\\', '"'].as_slice()) {
+                todo!()
+            }
+            Self::Ref(c)
         }
     }
 
@@ -58,8 +65,8 @@ impl<'db> PythonString<'db> {
     }
 }
 
-pub fn starts_with_string(node: &PyNode) -> bool {
-    let code = node.nth_child(0).as_code();
+pub fn starts_with_string(literal: &PyNode) -> bool {
+    let code = literal.as_code();
     for byte in code.bytes() {
         if byte == b'"' || byte == b'\'' {
             break;

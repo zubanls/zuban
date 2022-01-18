@@ -103,8 +103,12 @@ impl<'db> NodeReference<'db> {
     }
 
     pub fn infer_str(&self) -> Option<PythonString<'db>> {
-        StringsOrBytes::maybe_by_index(&self.file.tree, self.node_index)
-            .and_then(|s| s.as_python_string())
+        Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
+            match atom.unpack() {
+                AtomContent::StringsOrBytes(s) => s.as_python_string(),
+                _ => None,
+            }
+        })
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'db>> {

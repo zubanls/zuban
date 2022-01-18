@@ -1989,7 +1989,7 @@ pub enum AtomContent<'db> {
 
 impl<'db> StringsOrBytes<'db> {
     pub fn starts_with_string(&self) -> bool {
-        starts_with_string(&self.node)
+        starts_with_string(&self.node.nth_child(0))
     }
 
     pub fn as_python_string(&self) -> Option<PythonString<'db>> {
