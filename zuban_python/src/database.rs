@@ -11,7 +11,7 @@ use walkdir::WalkDir;
 
 use crate::file::PythonFile;
 use crate::file_state::{
-    File, FileState, FileStateLoader, FileSystemReader, VirtualFileSystemReader,
+    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, VirtualFileSystemReader,
 };
 use crate::inferred::NodeReference;
 use crate::python_state::PythonState;
@@ -936,6 +936,16 @@ impl Database {
         let file_index = FileIndex(self.files.len() as u32 - 1);
         self.files.last().unwrap().set_file_index(file_index);
         file_index
+    }
+
+    pub fn load_annotation_file(&self, in_file: FileIndex, code: String) -> &PythonFile {
+        // TODO should probably not need a newline
+        let mut file = PythonFile::new(code + "\n");
+        file.star_imports.push(in_file);
+        // TODO just saving this in the cache and forgetting about it is a bad idea
+        let index =
+            self.add_file_state(Box::pin(LanguageFileState::new_parsed("".to_owned(), file)));
+        self.loaded_python_file(index)
     }
 
     pub fn load_file(&self, path: String, code: String) -> FileIndex {

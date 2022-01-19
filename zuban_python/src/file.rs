@@ -106,7 +106,7 @@ pub struct PythonFile {
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
     issues: Vec<Issue>,
-    star_imports: Vec<FileIndex>,
+    pub star_imports: Vec<FileIndex>,
 
     new_line_indices: UnsafeCell<Option<Vec<u32>>>,
 }
@@ -830,11 +830,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn infer_annotation_string(&mut self, string: String) -> GenericPart {
-        let mut file = PythonFile::new(string + "\n");
+        let file = self
+            .i_s
+            .database
+            .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            file.star_imports.push(self.file.file_index());
-            dbg!(expr);
-            //self.file.inference(self.i_s).infer_annotation_expression(expr);
+            dbg!(self
+                .file
+                .inference(self.i_s)
+                .infer_annotation_expression(expr));
+            todo!()
         }
         todo!()
     }

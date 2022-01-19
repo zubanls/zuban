@@ -181,7 +181,7 @@ impl<F> fmt::Debug for LanguageFileState<F> {
 }
 
 impl<F: File> LanguageFileState<F> {
-    fn new_parsed(path: String, file: F) -> Self {
+    pub fn new_parsed(path: String, file: F) -> Self {
         Self {
             path,
             state: UnsafeCell::new(InternalFileExistence::Parsed(file)),
