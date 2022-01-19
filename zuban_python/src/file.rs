@@ -519,8 +519,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
         } else if let Some(python_string) = inferred.maybe_str() {
             if let Some(string) = python_string.to_owned() {
-                self.infer_annotation_string(string);
-                todo!()
+                return self.infer_annotation_string(string);
             } else {
                 Point::new_unknown(self.file.file_index(), Locality::Stmt)
             }
@@ -650,6 +649,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             debug_assert!(link.file != self.file_index || link.node_index != name.index());
             link.into_point_redirect()
         } else {
+            for index in &self.file.star_imports {
+                let other_file = self.i_s.database.loaded_python_file(*index);
+                if let Some(i) = other_file
+                    .inference(self.i_s)
+                    .infer_module_name(name.as_str())
+                {
+                    return i;
+                }
+            }
             // TODO star imports
             debug!("Unknown potential star import name {}", name.as_str());
             Point::new_unknown(self.file_index, Locality::File)
@@ -829,18 +837,31 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .unwrap_or_else(|| todo!())
     }
 
-    fn infer_annotation_string(&mut self, string: String) -> GenericPart {
+    pub fn infer_module_name(&mut self, name: &str) -> Option<Inferred<'db>> {
+        if let Some(node_index) = self.file.symbol_table.lookup_symbol(name) {
+            Some(self.infer_name_by_index(node_index))
+        } else {
+            None
+        }
+    }
+
+    fn infer_annotation_string(&mut self, string: String) -> Inferred<'db> {
         let file = self
             .i_s
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            dbg!(self
+            let generic_part = self
                 .file
                 .inference(self.i_s)
-                .infer_annotation_expression(expr));
-            todo!()
+                .infer_annotation_expression(expr)
+                .as_generic_part(self.i_s);
+            debug!(
+                "Inferred annotation string as {}",
+                generic_part.as_type_string(self.i_s.database, None)
+            );
+            return Inferred::execute_generic_part(self.i_s, generic_part);
         }
-        todo!()
+        Inferred::new_unknown()
     }
 }

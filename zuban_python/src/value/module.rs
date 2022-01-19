@@ -42,12 +42,10 @@ impl<'db> Value<'db, '_> for Module<'db> {
     }
 
     fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        self.file.calculate_global_definitions_and_references();
-        if let Some(node_index) = self.file.symbol_table.lookup_symbol(name) {
-            self.file.inference(i_s).infer_name_by_index(node_index)
-        } else {
-            todo!()
-        }
+        self.file
+            .inference(i_s)
+            .infer_module_name(name)
+            .unwrap_or_else(|| todo!())
     }
 
     fn execute(
