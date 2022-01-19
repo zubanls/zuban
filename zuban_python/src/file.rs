@@ -658,7 +658,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     return i;
                 }
             }
-            // TODO star imports
             debug!("Unknown potential star import name {}", name.as_str());
             Point::new_unknown(self.file_index, Locality::File)
         };
@@ -838,11 +837,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_module_name(&mut self, name: &str) -> Option<Inferred<'db>> {
-        if let Some(node_index) = self.file.symbol_table.lookup_symbol(name) {
-            Some(self.infer_name_by_index(node_index))
-        } else {
-            None
-        }
+        self.file
+            .symbol_table
+            .lookup_symbol(name)
+            .map(|i| self.infer_name_by_index(i))
     }
 
     fn infer_annotation_string(&mut self, string: String) -> Inferred<'db> {
@@ -851,10 +849,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            let generic_part = self
-                .file
+            let generic_part = file
                 .inference(self.i_s)
-                .infer_annotation_expression(expr)
+                .infer_annotation_expression_class(expr)
                 .as_generic_part(self.i_s);
             debug!(
                 "Inferred annotation string as {}",

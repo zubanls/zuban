@@ -122,11 +122,11 @@ def function_with_non_pep_0484_annotation(
     x
     # infers int from function call
     # jedi-diff: #? int()
-    #?
+    ##?
     xx
     # infers int from function call
     # jedi-diff: #? int()
-    #?
+    ##?
     yy
     # infers str from function call
     # jedi-diff: #? int()
@@ -142,7 +142,7 @@ def function_forward_reference_dynamic(
         y: "return_str_type()") -> None:
     #? str()
     x
-    ##? str()
+    #? str()
     y
 
 def return_str_type():
