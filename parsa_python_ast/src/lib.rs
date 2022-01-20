@@ -849,12 +849,12 @@ impl<'db> Iterator for WithItemsIterator<'db> {
 }
 
 impl<'db> WithItem<'db> {
-    pub fn unpack(&self) -> (Expression<'db>, Option<StarTarget<'db>>) {
+    pub fn unpack(&self) -> (Expression<'db>, Option<Target<'db>>) {
         // expression ["as" star_target]
         let mut iterator = self.node.iter_children();
         let expr = iterator.next().unwrap();
         iterator.next();
-        (Expression::new(expr), iterator.next().map(StarTarget::new))
+        (Expression::new(expr), iterator.next().map(Target::new))
     }
 }
 

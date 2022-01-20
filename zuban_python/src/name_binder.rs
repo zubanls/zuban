@@ -373,13 +373,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         let (with_items, block) = with_stmt.unpack();
         for with_item in with_items.iter() {
-            let (expr, star_target) = with_item.unpack();
-            let latest = self.index_non_block_node(&expr, ordered, false);
-            latest_return_or_yield =
-                self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-            if let Some(star_target) = star_target {
-                let latest = self.index_non_block_node(&star_target, ordered, false);
-            }
+            let latest = self.index_non_block_node(&with_item, ordered, false);
             latest_return_or_yield =
                 self.merge_latest_return_or_yield(latest_return_or_yield, latest);
         }
