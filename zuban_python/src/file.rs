@@ -371,7 +371,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_assignment_nodes(&mut self, assignment: Assignment<'db>) {
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
-                let right = self.infer_assignment_right_side(right_side);
+                let suffix = assignment.suffix();
+                let right = if let Some(start) = suffix.find("# type: ") {
+                    self.infer_annotation_string(suffix[start + "# type: ".len()..].to_owned())
+                } else {
+                    self.infer_assignment_right_side(right_side)
+                };
                 for target in targets {
                     self.assign_targets(target, &right)
                 }

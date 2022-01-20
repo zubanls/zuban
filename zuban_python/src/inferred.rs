@@ -973,7 +973,11 @@ impl<'db> Inferred<'db> {
                 file.points.set(index, point);
                 Self::new_saved(file, index, point)
             }
-            InferredState::Unknown => todo!(),
+            InferredState::Unknown => {
+                let point = Point::new_unknown(file.file_index(), Locality::File);
+                file.points.set(index, point);
+                Self::new_saved(file, index, point)
+            }
         }
     }
 

@@ -187,17 +187,16 @@ macro_rules! __create_node {
             }
 
             pub fn suffix(&self) -> &'a str {
-                let end;
-                if self.index as usize == self.internal_tree.nodes.len() - 1 {
-                    end = self.internal_tree.code.len() as u32
-                } else {
-                    end = self.internal_tree.nodes[self.index as usize + 1].start_index
+                for node in &self.internal_tree.nodes[self.index as usize..] {
+                    if node.start_index >= self.internal_node.start_index + self.internal_node.length {
+                        let start = self.internal_node.start_index + self.internal_node.length;
+                        return self.code_slice(
+                            start,
+                            node.start_index - start,
+                        );
+                    }
                 }
-                let string = self.code_slice(
-                    self.internal_node.start_index + self.internal_node.length,
-                    end
-                );
-                string
+                return ""
             }
 
             pub fn start(&self) -> u32 {

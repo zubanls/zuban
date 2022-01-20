@@ -135,6 +135,10 @@ macro_rules! create_struct {
                     .get(..40)
                     .unwrap_or_else(|| self.node.as_code())
             }
+
+            pub fn suffix(&self) -> &'db str {
+                self.node.suffix()
+            }
         }
 
         impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
