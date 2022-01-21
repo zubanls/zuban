@@ -7,9 +7,10 @@ use std::time::Instant;
 use regex::{Captures, Regex};
 
 #[derive(Debug)]
-struct TestCase {
+struct TestCase<'code> {
     file_name: OsString,
     name: String,
+    code: &'code str,
 }
 
 fn main() {
@@ -21,7 +22,8 @@ fn main() {
     let mut ran_count = 0;
     let file_count = files.len();
     for file in files {
-        for case in mypy_style_cases(file.file_stem().unwrap(), read_to_string(&file).unwrap()) {
+        let code = read_to_string(&file).unwrap();
+        for case in mypy_style_cases(file.file_stem().unwrap(), &code) {
             println!("{}", case.name);
         }
         /*
@@ -44,26 +46,26 @@ fn main() {
     );
 }
 
-fn mypy_style_cases(file_name: &OsStr, code: String) -> Vec<TestCase> {
-    let case_regex = Regex::new(r"\n\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
+fn mypy_style_cases<'a>(file_name: &OsStr, code: &'a str) -> Vec<TestCase<'a>> {
+    let case_regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
-        //dbg!(&code[,start end]);
         cases.push(TestCase {
             file_name: file_name.to_owned(),
             name,
+            code: &code[start..end],
         });
     };
 
     let mut start = None;
     let mut next_name = None;
     for capture in case_regex.captures_iter(&code) {
-        if let Some(end) = start {
+        if let Some(start) = start {
             add(
                 next_name.take().unwrap(),
+                start,
                 capture.get(0).unwrap().start(),
-                end,
             );
         }
         next_name = Some(capture.get(1).unwrap().as_str().to_owned());
