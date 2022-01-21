@@ -22,7 +22,7 @@ fn main() {
     let file_count = files.len();
     for file in files {
         for case in mypy_style_cases(file.file_stem().unwrap(), read_to_string(&file).unwrap()) {
-            dbg!(case);
+            println!("{}", case.name);
         }
         /*
         let f = cases::TestFile {
