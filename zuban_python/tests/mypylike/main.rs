@@ -4,7 +4,7 @@ use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use regex::Regex;
+use regex::{Captures, Regex};
 
 #[derive(Debug)]
 struct TestCase {
@@ -48,17 +48,33 @@ fn mypy_style_cases(file_name: &OsStr, code: String) -> Vec<TestCase> {
     let case_regex = Regex::new(r"\n\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
     let mut cases = vec![];
 
+    let mut add = |name, start, end| {
+        //dbg!(&code[,start end]);
+        cases.push(TestCase {
+            file_name: file_name.to_owned(),
+            name,
+        });
+    };
+
     let mut start = None;
+    let mut next_name = None;
     for capture in case_regex.captures_iter(&code) {
         if let Some(end) = start {
-            // capture.get(0).unwrap().start() - 1, end
-            cases.push(TestCase {
-                file_name: file_name.to_owned(),
-                name: capture.get(1).unwrap().as_str().to_owned(),
-            });
+            add(
+                next_name.take().unwrap(),
+                capture.get(0).unwrap().start(),
+                end,
+            );
         }
+        next_name = Some(capture.get(1).unwrap().as_str().to_owned());
         start = Some(capture.get(0).unwrap().end())
     }
+
+    add(
+        next_name.unwrap_or_else(|| panic!("File without test cases: {:?}", file_name)),
+        start.unwrap(),
+        code.len(),
+    );
     cases
 }
 
