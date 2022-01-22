@@ -1,16 +1,102 @@
-use std::env;
+use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use regex::{Captures, Regex};
+use regex::Regex;
+
+lazy_static::lazy_static! {
+    static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
+    // This is how I found out about possible "commands in mypy, executed in
+    // mypy/test-data/unit:
+    // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
+    static ref CASE_PART: Regex = Regex::new(concat!(
+        r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets|delete)",
+        r"(?: ([^\]]*))?\][ \t]*\n"
+    )).unwrap();
+}
+
+#[derive(Default, Clone, Debug)]
+struct Step<'code> {
+    files: HashMap<&'code str, &'code str>,
+    out: &'code str,
+}
 
 #[derive(Debug)]
 struct TestCase<'code> {
     file_name: OsString,
     name: String,
     code: &'code str,
+}
+
+impl<'code> TestCase<'code> {
+    fn run(&self, project: &mut zuban_python::Project) {
+        for step in self.calculate_steps() {}
+    }
+
+    fn calculate_steps(&self) -> Vec<Step<'code>> {
+        let mut steps = HashMap::<usize, Step>::new();
+        steps.insert(0, Default::default());
+        let mut current_step = steps.get_mut(&0).unwrap();
+        let mut current_type = "file";
+        let mut current_rest = "main";
+        let mut current_step_start = 0;
+
+        let process_step =
+            |current_step: &mut Step<'code>, current_type, current_step_start, current_step_end| {
+                let in_between = &self.code[current_step_start..current_step_end];
+                if current_type == "file" {
+                    current_step.files.insert(current_rest, in_between);
+                } else if current_type == "out" {
+                    current_step.out = in_between;
+                }
+            };
+
+        for capture in CASE_PART.captures_iter(&self.code) {
+            process_step(
+                current_step,
+                current_type,
+                current_step_start,
+                capture.get(0).unwrap().start(),
+            );
+
+            current_type = capture.get(1).unwrap().as_str();
+            current_rest = capture.get(2).map(|x| x.as_str()).unwrap_or("");
+            current_step_start = capture.get(0).unwrap().end();
+
+            let mut start = 0;
+            if current_type == "file" {
+                let last = current_rest.chars().last().unwrap();
+                if let Some(digit) = last.to_digit(10) {
+                    start = digit as usize;
+                    current_rest = &current_rest[..current_rest.len() - 2];
+                }
+            } else if current_type.starts_with("out") && current_type.len() > 3 {
+                todo!()
+            }
+
+            let s = steps.get_mut(&start);
+            current_step = if let Some(s) = s {
+                s
+            } else {
+                steps.insert(start, Default::default());
+                steps.get_mut(&start).unwrap()
+            };
+        }
+        process_step(
+            current_step,
+            current_type,
+            current_step_start,
+            self.code.len(),
+        );
+
+        let mut result_steps = vec![];
+        for i in 0..steps.len() {
+            result_steps.push(steps[&i].clone());
+        }
+        result_steps
+    }
 }
 
 fn main() {
@@ -24,18 +110,10 @@ fn main() {
     for file in files {
         let code = read_to_string(&file).unwrap();
         for case in mypy_style_cases(file.file_stem().unwrap(), &code) {
-            println!("{}", case.name);
+            case.run(&mut project);
+            ran_count += 1;
+            full_count += 1;
         }
-        /*
-        let f = cases::TestFile {
-            path: file,
-            code,
-            filters: &filters,
-        };
-        let (ran, full) = f.test(&mut project);
-        ran_count += ran;
-        full_count += full;
-        */
     }
     println!(
         "Ran {} of {} mypy-like tests in {} files; finished in {:.2}s",
@@ -47,7 +125,6 @@ fn main() {
 }
 
 fn mypy_style_cases<'a>(file_name: &OsStr, code: &'a str) -> Vec<TestCase<'a>> {
-    let case_regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
@@ -60,7 +137,7 @@ fn mypy_style_cases<'a>(file_name: &OsStr, code: &'a str) -> Vec<TestCase<'a>> {
 
     let mut start = None;
     let mut next_name = None;
-    for capture in case_regex.captures_iter(&code) {
+    for capture in CASE.captures_iter(&code) {
         if let Some(start) = start {
             add(
                 next_name.take().unwrap(),
