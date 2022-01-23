@@ -32,7 +32,10 @@ struct TestCase<'code> {
 
 impl<'code> TestCase<'code> {
     fn run(&self, project: &mut zuban_python::Project) {
-        for step in self.calculate_steps() {}
+        for step in self.calculate_steps() {
+            dbg!(step);
+            todo!();
+        }
     }
 
     fn calculate_steps(&self) -> Vec<Step<'code>> {
@@ -76,8 +79,7 @@ impl<'code> TestCase<'code> {
                 todo!()
             }
 
-            let s = steps.get_mut(&start);
-            current_step = if let Some(s) = s {
+            current_step = if let Some(s) = steps.get_mut(&start) {
                 s
             } else {
                 steps.insert(start, Default::default());
