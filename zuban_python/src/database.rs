@@ -871,7 +871,7 @@ pub struct Database {
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
     pub workspaces: Vec<Workspace>,
-    files_managed_by_client: HashMap<PathBuf, FileIndex>,
+    pub in_memory_files: HashMap<String, FileIndex>,
 
     pub python_state: PythonState,
 }
@@ -885,7 +885,7 @@ impl Database {
             files: Default::default(),
             path_to_file: Default::default(),
             workspaces,
-            files_managed_by_client: Default::default(),
+            in_memory_files: Default::default(),
             python_state: PythonState::reserve(),
         };
         this.initial_python_load();
@@ -970,6 +970,11 @@ impl Database {
     pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
         self.loader(&path)
             .map(|loader| self.add_file_state(loader.load_unparsed(path)))
+    }
+
+    pub fn unload_file(&mut self, file_index: FileIndex) {
+        let f = &mut self.files[file_index.0 as usize];
+        f.unload();
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {

@@ -64,6 +64,26 @@ impl Project {
     pub fn search(&self, string: &str, all_scopes: bool) {}
 
     pub fn complete_search(&self, string: &str, all_scopes: bool) {}
+
+    pub fn add_in_memory_file(&mut self, path: String, code: String) {
+        let file_index = self.database.load_file(path.clone(), code);
+        self.database.in_memory_files.insert(path, file_index);
+    }
+
+    pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
+        if let Some(file_index) = self.database.in_memory_files.get(path) {
+            self.database.in_memory_files.remove(path);
+            Ok(())
+        } else {
+            Err("The path is not known to be an in memory file")
+        }
+    }
+
+    pub fn unload_all_in_memory_files(&mut self) {
+        // Mostly used for testing
+        for (path, file_index) in &self.database.in_memory_files {}
+        self.database.in_memory_files.clear();
+    }
 }
 
 pub struct PythonProject {

@@ -120,13 +120,14 @@ pub trait File: std::fmt::Debug + AsAny {
     }
 }
 
-pub trait FileState: fmt::Debug {
+pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
     fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
+    fn unload(&mut self);
 }
 
-impl<F: File> FileState for LanguageFileState<F> {
+impl<F: File + Unpin> FileState for LanguageFileState<F> {
     fn path(&self) -> &str {
         &self.path
     }
@@ -160,6 +161,11 @@ impl<F: File> FileState for LanguageFileState<F> {
                 file_index_cell.set(Some(index))
             }
         }
+    }
+
+    fn unload(&mut self) {
+        // TODO invalidate
+        self.state = UnsafeCell::new(InternalFileExistence::Missing)
     }
 }
 
