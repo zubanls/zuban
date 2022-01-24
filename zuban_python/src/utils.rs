@@ -80,10 +80,7 @@ impl<T: ?Sized> std::ops::Index<usize> for InsertOnlyVec<T> {
 
 impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
     fn index_mut(&mut self, index: usize) -> &mut T {
-        use std::ops::DerefMut;
-        let x: &mut Vec<_> = self.vec.get_mut();
-        let y = x.index_mut(index);
-        y.deref_mut()
+        &mut self.vec.get_mut()[index]
     }
 }
 
