@@ -4,8 +4,8 @@ use crate::database::{
     PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
-use crate::diagnostics::Diagnostic;
-use crate::file_state::{File, Issue, Leaf};
+use crate::diagnostics::{Diagnostic, Issue};
+use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -97,8 +97,11 @@ impl File for PythonFile {
         }
     }
 
-    fn diagnostics<'db>(&self, database: &'db Database) -> Box<[Diagnostic]> {
-        Box::new([Diagnostic {}])
+    fn diagnostics<'db>(&'db self, database: &'db Database) -> Box<[Diagnostic<'db>]> {
+        self.issues
+            .iter()
+            .map(|i| Diagnostic::new(database, i))
+            .collect()
     }
 }
 

@@ -202,7 +202,7 @@ impl<'a> Script<'a> {
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic]> {
+    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic<'_>]> {
         self.file().diagnostics(&self.project.database)
     }
 

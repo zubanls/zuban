@@ -1,9 +1,9 @@
-use crate::database::{Database, FileIndex, Locality};
+use crate::database::{Database, FileIndex};
 use crate::diagnostics::Diagnostic;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names};
-use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
+use parsa_python_ast::{CodeIndex, Keyword};
 use std::any::Any;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
@@ -120,7 +120,7 @@ pub trait File: std::fmt::Debug + AsAny {
         database.file_path(self.file_index())
     }
 
-    fn diagnostics<'db>(&self, database: &'db Database) -> Box<[Diagnostic]>;
+    fn diagnostics<'db>(&'db self, database: &'db Database) -> Box<[Diagnostic<'db>]>;
 }
 
 pub trait FileState: fmt::Debug + Unpin {
@@ -233,11 +233,4 @@ impl<F> fmt::Debug for InternalFileExistence<F> {
             Self::Parsed(_) => write!(f, "Parsed(_)"),
         }
     }
-}
-
-#[derive(Debug)]
-pub struct Issue {
-    issue_id: u32,
-    tree_node: NodeIndex,
-    locality: Locality,
 }
