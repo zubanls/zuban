@@ -105,9 +105,14 @@ impl<'a> Script<'a> {
                 if let Some(code) = code {
                     database.load_in_memory_file(path, code)
                 } else {
-                    let file_index = database.file_state_index_by_path(&path);
-                    file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
-                    todo!()
+                    database
+                        .in_memory_file(&path)
+                        .or_else(|| {
+                            let file_index = database.file_state_index_by_path(&path);
+                            file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
+                            todo!()
+                        })
+                        .unwrap()
                 }
             }
             None => todo!(),
@@ -196,7 +201,7 @@ impl<'a> Script<'a> {
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn syntax_errors(&self) {}
+    pub fn diagnostics(&self) {}
 
     pub fn errors(&self) {}
 

@@ -32,9 +32,20 @@ struct TestCase<'code> {
 
 impl<'code> TestCase<'code> {
     fn run(&self, project: &mut zuban_python::Project) {
-        for step in self.calculate_steps() {
-            dbg!(step);
+        let steps = self.calculate_steps();
+        for step in &steps {
+            for (&path, &code) in &step.files {
+                project.load_in_memory_file(path.to_owned(), code.to_owned());
+            }
+            let script = zuban_python::Script::new(project, Some("main".to_owned()), None);
+            let diagnostics = script.diagnostics();
+            dbg!(diagnostics);
             todo!();
+        }
+        for step in &steps {
+            for (path, _) in &step.files {
+                project.unload_in_memory_file(path);
+            }
         }
     }
 
@@ -112,7 +123,7 @@ fn main() {
     for file in files {
         let code = read_to_string(&file).unwrap();
         for case in mypy_style_cases(file.file_stem().unwrap(), &code) {
-            //case.run(&mut project);
+            case.run(&mut project);
             ran_count += 1;
             full_count += 1;
         }

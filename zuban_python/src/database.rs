@@ -11,7 +11,8 @@ use walkdir::WalkDir;
 
 use crate::file::PythonFile;
 use crate::file_state::{
-    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, VirtualFileSystemReader,
+    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader,
+    VirtualFileSystemReader,
 };
 use crate::inferred::NodeReference;
 use crate::python_state::PythonState;
@@ -926,6 +927,8 @@ impl Database {
                 if loader.responsible_for_file_endings().contains(&e) {
                     return Some(loader.as_ref());
                 }
+            } else {
+                return Some(&PythonFileLoader {});
             }
         }
         None
@@ -976,6 +979,10 @@ impl Database {
         let file_index = self.load_file(path.clone(), code);
         self.in_memory_files.insert(path, file_index);
         file_index
+    }
+
+    pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
+        self.in_memory_files.get(path).cloned()
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
