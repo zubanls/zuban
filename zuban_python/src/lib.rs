@@ -66,8 +66,13 @@ impl Project {
     pub fn complete_search(&self, string: &str, all_scopes: bool) {}
 
     pub fn add_in_memory_file(&mut self, path: String, code: String) {
+        self.internal_add_in_memory_file(path, code);
+    }
+
+    fn internal_add_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         let file_index = self.database.load_file(path.clone(), code);
         self.database.in_memory_files.insert(path, file_index);
+        file_index
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
@@ -101,9 +106,18 @@ impl<'a> Script<'a> {
     pub fn new(project: &'a mut Project, path: Option<String>, code: Option<String>) -> Self {
         let database = &mut project.database;
         database.acquire();
-        let path = path.unwrap();
-        let file_index = database.file_state_index_by_path(&path);
-        let file_index = file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
+        let file_index = match path {
+            Some(path) => {
+                if let Some(code) = code {
+                    project.internal_add_in_memory_file(path, code)
+                } else {
+                    let file_index = database.file_state_index_by_path(&path);
+                    file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
+                    todo!()
+                }
+            }
+            None => todo!(),
+        };
         Self {
             project,
             file_index,
