@@ -871,7 +871,7 @@ pub struct Database {
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
     pub workspaces: Vec<Workspace>,
-    pub in_memory_files: HashMap<String, FileIndex>,
+    in_memory_files: HashMap<String, FileIndex>,
 
     pub python_state: PythonState,
 }
@@ -970,6 +970,12 @@ impl Database {
     pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
         self.loader(&path)
             .map(|loader| self.add_file_state(loader.load_unparsed(path)))
+    }
+
+    pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
+        let file_index = self.load_file(path.clone(), code);
+        self.in_memory_files.insert(path, file_index);
+        file_index
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
