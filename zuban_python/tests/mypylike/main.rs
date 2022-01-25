@@ -57,15 +57,18 @@ impl<'code> TestCase<'code> {
         let mut current_rest = "main";
         let mut current_step_start = 0;
 
-        let process_step =
-            |current_step: &mut Step<'code>, current_type, current_step_start, current_step_end| {
-                let in_between = &self.code[current_step_start..current_step_end];
-                if current_type == "file" {
-                    current_step.files.insert(current_rest, in_between);
-                } else if current_type == "out" {
-                    current_step.out = in_between;
-                }
-            };
+        let process_step = |current_step: &mut Step<'code>,
+                            current_type,
+                            current_step_start,
+                            current_step_end,
+                            current_rest| {
+            let in_between = &self.code[current_step_start..current_step_end];
+            if current_type == "file" {
+                current_step.files.insert(current_rest, in_between);
+            } else if current_type == "out" {
+                current_step.out = in_between;
+            }
+        };
 
         for capture in CASE_PART.captures_iter(&self.code) {
             process_step(
@@ -73,6 +76,7 @@ impl<'code> TestCase<'code> {
                 current_type,
                 current_step_start,
                 capture.get(0).unwrap().start(),
+                current_rest,
             );
 
             current_type = capture.get(1).unwrap().as_str();
@@ -102,6 +106,7 @@ impl<'code> TestCase<'code> {
             current_type,
             current_step_start,
             self.code.len(),
+            current_rest,
         );
 
         let mut result_steps = vec![];

@@ -1,6 +1,6 @@
 use parsa_python_ast::{
     debug_info, Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
-    PrimaryContent, PythonString, StringsOrBytes,
+    PrimaryContent, PythonString,
 };
 use std::fmt;
 
