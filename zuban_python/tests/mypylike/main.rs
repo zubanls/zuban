@@ -52,7 +52,10 @@ impl<'code> TestCase<'code> {
         }
         for step in &steps {
             for (path, _) in &step.files {
-                project.unload_in_memory_file(path);
+                #[allow(unused_must_use)]
+                {
+                    project.unload_in_memory_file(path);
+                }
             }
         }
     }
