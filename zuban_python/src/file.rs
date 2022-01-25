@@ -4,6 +4,7 @@ use crate::database::{
     PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
+use crate::diagnostics::Diagnostic;
 use crate::file_state::{File, Issue, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
@@ -94,6 +95,10 @@ impl File for PythonFile {
         } else {
             (line, (byte - self.lines()[line - 1] + 1) as usize)
         }
+    }
+
+    fn diagnostics<'db>(&self, database: &'db Database) -> Box<[Diagnostic]> {
+        Box::new([Diagnostic {}])
     }
 }
 

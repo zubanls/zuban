@@ -1,4 +1,5 @@
 use crate::database::{Database, FileIndex, Locality};
+use crate::diagnostics::Diagnostic;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names};
@@ -118,6 +119,8 @@ pub trait File: std::fmt::Debug + AsAny {
     fn file_path<'db>(&self, database: &'db Database) -> &'db str {
         database.file_path(self.file_index())
     }
+
+    fn diagnostics<'db>(&self, database: &'db Database) -> Box<[Diagnostic]>;
 }
 
 pub trait FileState: fmt::Debug + Unpin {
