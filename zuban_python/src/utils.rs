@@ -62,6 +62,12 @@ impl<T: ?Sized> InsertOnlyVec<T> {
     pub fn last(&self) -> Option<&T> {
         unsafe { &*self.vec.get() }.last().map(|x| x as &T)
     }
+
+    pub unsafe fn iter(&self) -> impl Iterator<Item = &T> {
+        // Because the size of the vec can grow and shrink at any point, this is an unsafe
+        // operation.
+        (&*self.vec.get()).iter().map(|x| x as &T)
+    }
 }
 
 impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {

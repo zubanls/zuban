@@ -100,10 +100,12 @@ impl File for PythonFile {
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
         self.inference(&mut i_s).calculate_diagnostics();
-        self.issues
-            .iter()
-            .map(|i| Diagnostic::new(db, self, i))
-            .collect()
+        unsafe {
+            self.issues
+                .iter()
+                .map(|i| Diagnostic::new(db, self, i))
+                .collect()
+        }
     }
 }
 
@@ -115,7 +117,7 @@ pub struct PythonFile {
     pub complex_points: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
-    issues: Vec<Issue>,
+    issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
 
     new_line_indices: UnsafeCell<Option<Vec<u32>>>,
@@ -141,7 +143,7 @@ impl<'db> PythonFile {
             complex_points: Default::default(),
             dependencies: vec![],
             star_imports: vec![],
-            issues: vec![],
+            issues: InsertOnlyVec::default(),
             new_line_indices: UnsafeCell::new(None),
         }
     }
@@ -877,5 +879,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_unknown()
     }
 
-    fn calculate_diagnostics(&mut self) {}
+    fn calculate_diagnostics(&mut self) {
+        self.file.issues.push(Box::pin(Issue {
+            issue_id: 0,
+            tree_node: 0,
+            locality: Locality::File,
+        }));
+    }
 }
