@@ -71,18 +71,12 @@ impl Project {
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
-        if let Some(file_index) = self.database.in_memory_files.get(path) {
-            self.database.in_memory_files.remove(path);
-            Ok(())
-        } else {
-            Err("The path is not known to be an in memory file")
-        }
+        self.database.unload_in_memory_file(path)
     }
 
     pub fn unload_all_in_memory_files(&mut self) {
         // Mostly used for testing
-        for (path, file_index) in &self.database.in_memory_files {}
-        self.database.in_memory_files.clear();
+        self.database.unload_all_in_memory_files()
     }
 }
 

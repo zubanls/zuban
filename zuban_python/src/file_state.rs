@@ -134,7 +134,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
     fn file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
         match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing => None,
+            InternalFileExistence::Missing | InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
                 // It is extremely important to deal with the data given here before overwriting it
@@ -155,7 +155,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
     fn set_file_index(&self, index: FileIndex) {
         match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing => {}
+            InternalFileExistence::Missing | InternalFileExistence::Unloaded => {}
             InternalFileExistence::Parsed(f) => f.set_file_index(index),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
                 file_index_cell.set(Some(index))
@@ -165,7 +165,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
     fn unload(&mut self) {
         // TODO invalidate
-        self.state = UnsafeCell::new(InternalFileExistence::Missing)
+        self.state = UnsafeCell::new(InternalFileExistence::Unloaded)
     }
 }
 
@@ -214,6 +214,7 @@ impl<F: File> LanguageFileState<F> {
 
 enum InternalFileExistence<F: 'static> {
     Missing,
+    Unloaded,
     Unparsed(LoadFileFunction<F>, Cell<Option<FileIndex>>),
     Parsed(F),
 }
@@ -223,7 +224,8 @@ impl<F> fmt::Debug for InternalFileExistence<F> {
         // Intentionally remove the T here, because it's usually huge and we are usually not
         // interested in that while debugging.
         match *self {
-            Self::Missing => write!(f, "DoesNotExist"),
+            Self::Missing => write!(f, "Missing"),
+            Self::Unloaded => write!(f, "Unloaded"),
             Self::Unparsed(_, _) => write!(f, "Unparsed"),
             Self::Parsed(_) => write!(f, "Parsed(_)"),
         }

@@ -972,9 +972,21 @@ impl Database {
             .map(|loader| self.add_file_state(loader.load_unparsed(path)))
     }
 
-    pub fn unload_file(&mut self, file_index: FileIndex) {
-        let f = &mut self.files[file_index.0 as usize];
-        f.unload();
+    pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
+        if let Some(file_index) = self.in_memory_files.get(path) {
+            self.files[file_index.0 as usize].unload();
+            self.in_memory_files.remove(path);
+            Ok(())
+        } else {
+            Err("The path is not known to be an in memory file")
+        }
+    }
+
+    pub fn unload_all_in_memory_files(&mut self) {
+        for (path, file_index) in &mut self.in_memory_files {
+            self.files[file_index.0 as usize].unload();
+        }
+        self.in_memory_files.clear();
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
