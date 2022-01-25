@@ -120,7 +120,7 @@ pub trait File: std::fmt::Debug + AsAny {
         database.file_path(self.file_index())
     }
 
-    fn diagnostics<'db>(&'db self, database: &'db Database) -> Box<[Diagnostic<'db>]>;
+    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
 }
 
 pub trait FileState: fmt::Debug + Unpin {

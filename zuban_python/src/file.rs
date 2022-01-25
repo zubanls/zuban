@@ -97,10 +97,12 @@ impl File for PythonFile {
         }
     }
 
-    fn diagnostics<'db>(&'db self, database: &'db Database) -> Box<[Diagnostic<'db>]> {
+    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
+        let mut i_s = InferenceState::new(db);
+        self.inference(&mut i_s).calculate_diagnostics();
         self.issues
             .iter()
-            .map(|i| Diagnostic::new(database, i))
+            .map(|i| Diagnostic::new(db, self, i))
             .collect()
     }
 }
@@ -874,4 +876,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
         Inferred::new_unknown()
     }
+
+    fn calculate_diagnostics(&mut self) {}
 }
