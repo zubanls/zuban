@@ -6,6 +6,7 @@
 
 mod arguments;
 mod database;
+mod diagnostics;
 mod file;
 mod file_state;
 mod generics;
@@ -201,7 +202,9 @@ impl<'a> Script<'a> {
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn diagnostics(&self) {}
+    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic]> {
+        Box::new([diagnostics::Diagnostic {}])
+    }
 
     pub fn errors(&self) {}
 

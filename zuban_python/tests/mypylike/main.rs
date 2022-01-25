@@ -39,8 +39,16 @@ impl<'code> TestCase<'code> {
             }
             let script = zuban_python::Script::new(project, Some("main".to_owned()), None);
             let diagnostics = script.diagnostics();
-            dbg!(diagnostics);
-            todo!();
+            let actual = diagnostics
+                .iter()
+                .fold(String::new(), |a, b| a + &b.as_string() + "\n");
+            assert_eq!(
+                actual,
+                step.out,
+                "\n\nError {}: {}\n\n",
+                self.file_name.to_str().unwrap(),
+                &self.name
+            );
         }
         for step in &steps {
             for (path, _) in &step.files {
