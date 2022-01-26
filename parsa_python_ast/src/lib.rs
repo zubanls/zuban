@@ -180,6 +180,12 @@ create_nonterminal_structs!(
     AsyncStmt: async_stmt
 
     GlobalStmt: global_stmt
+    DelStmt: del_stmt
+    PassStmt: pass_stmt
+    AssertStmt: assert_stmt
+    BreakStmt: break_stmt
+    ContinueStmt: continue_stmt
+    RaiseStmt: raise_stmt
     NonlocalStmt: nonlocal_stmt
 
     StarExpressions: star_expressions
@@ -1094,21 +1100,53 @@ impl<'db> SimpleStmt<'db> {
         let simple_child = self.node.nth_child(0);
         if simple_child.is_type(Nonterminal(assignment)) {
             SimpleStmtContent::Assignment(Assignment::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(star_expressions)) {
+            SimpleStmtContent::StarExpressions(StarExpressions::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(return_stmt)) {
+            SimpleStmtContent::ReturnStmt(ReturnStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(yield_expr)) {
+            SimpleStmtContent::YieldExpr(YieldExpr::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(raise_stmt)) {
+            SimpleStmtContent::RaiseStmt(RaiseStmt::new(simple_child))
         } else if simple_child.is_type(Nonterminal(import_from)) {
             SimpleStmtContent::ImportFrom(ImportFrom::new(simple_child))
         } else if simple_child.is_type(Nonterminal(import_name)) {
             SimpleStmtContent::ImportName(ImportName::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(pass_stmt)) {
+            SimpleStmtContent::PassStmt(PassStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(global_stmt)) {
+            SimpleStmtContent::GlobalStmt(GlobalStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(nonlocal_stmt)) {
+            SimpleStmtContent::NonlocalStmt(NonlocalStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(assert_stmt)) {
+            SimpleStmtContent::AssertStmt(AssertStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(break_stmt)) {
+            SimpleStmtContent::BreakStmt(BreakStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(continue_stmt)) {
+            SimpleStmtContent::ContinueStmt(ContinueStmt::new(simple_child))
+        } else if simple_child.is_type(Nonterminal(del_stmt)) {
+            SimpleStmtContent::DelStmt(DelStmt::new(simple_child))
         } else {
-            SimpleStmtContent::Other
+            unreachable!()
         }
     }
 }
 
 pub enum SimpleStmtContent<'db> {
     Assignment(Assignment<'db>),
+    StarExpressions(StarExpressions<'db>),
+    ReturnStmt(ReturnStmt<'db>),
+    YieldExpr(YieldExpr<'db>),
+    RaiseStmt(RaiseStmt<'db>),
     ImportFrom(ImportFrom<'db>),
     ImportName(ImportName<'db>),
-    Other,
+    PassStmt(PassStmt<'db>),
+    GlobalStmt(GlobalStmt<'db>),
+    NonlocalStmt(NonlocalStmt<'db>),
+    AssertStmt(AssertStmt<'db>),
+    BreakStmt(BreakStmt<'db>),
+    ContinueStmt(ContinueStmt<'db>),
+    DelStmt(DelStmt<'db>),
 }
 
 impl<'db> StarExpressions<'db> {

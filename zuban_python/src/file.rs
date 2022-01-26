@@ -880,10 +880,46 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn calculate_diagnostics(&mut self) {
-        self.file.issues.push(Box::pin(Issue {
-            issue_id: 0,
-            tree_node: 0,
-            locality: Locality::File,
-        }));
+        self.stmts_diagnostics(self.file.tree.root().iter_stmts());
     }
+
+    fn stmts_diagnostics(&mut self, stmts: StmtIterator<'db>) {
+        for stmt in stmts {
+            match stmt.unpack() {
+                StmtContent::SimpleStmts(simple_stmts) => {
+                    for simple_stmt in simple_stmts.iter() {
+                        match simple_stmt.unpack() {
+                            SimpleStmtContent::Assignment(a) => {}
+                            SimpleStmtContent::StarExpressions(x) => {}
+                            SimpleStmtContent::ReturnStmt(x) => {}
+                            SimpleStmtContent::YieldExpr(x) => {}
+                            SimpleStmtContent::RaiseStmt(x) => {}
+                            SimpleStmtContent::ImportFrom(import_from) => {}
+                            SimpleStmtContent::ImportName(import_name) => {}
+                            SimpleStmtContent::PassStmt(x) => {}
+                            SimpleStmtContent::GlobalStmt(x) => {}
+                            SimpleStmtContent::NonlocalStmt(x) => {}
+                            SimpleStmtContent::AssertStmt(x) => {}
+                            SimpleStmtContent::BreakStmt(x) => {}
+                            SimpleStmtContent::ContinueStmt(x) => {}
+                            SimpleStmtContent::DelStmt(x) => {}
+                        }
+                    }
+                }
+                StmtContent::FunctionDef(func) => {}
+                StmtContent::ClassDef(class) => {}
+                StmtContent::Decorated(decorated) => {}
+                StmtContent::IfStmt(if_stmt) => {}
+                StmtContent::ForStmt(for_stmt) => {}
+                StmtContent::TryStmt(try_stmt) => {}
+                StmtContent::WhileStmt(while_stmt) => {}
+                StmtContent::WithStmt(with_stmt) => {}
+                StmtContent::MatchStmt(match_stmt) => {}
+                StmtContent::AsyncStmt(async_stmt) => {}
+                StmtContent::Newline => {}
+            };
+        }
+    }
+
+    fn stmt_diagnostics(&mut self) {}
 }

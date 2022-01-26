@@ -1,13 +1,18 @@
 use parsa_python_ast::NodeIndex;
 
-use crate::database::{Database, Locality};
+use crate::database::Database;
 use crate::file_state::File;
 
 #[derive(Debug)]
+#[repr(u8)]
+pub enum IssueType {
+    Foo,
+}
+
+#[derive(Debug)]
 pub struct Issue {
-    pub issue_id: u32,
+    pub type_: IssueType,
     pub tree_node: NodeIndex,
-    pub locality: Locality,
 }
 
 pub struct Diagnostic<'db> {
