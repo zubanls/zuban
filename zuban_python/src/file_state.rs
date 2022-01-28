@@ -2,8 +2,8 @@ use crate::database::{Database, FileIndex};
 use crate::diagnostics::Diagnostic;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
-use crate::name::{Name, Names};
-use parsa_python_ast::{CodeIndex, Keyword};
+use crate::name::{Name, Names, TreePosition};
+use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 use std::any::Any;
 use std::cell::{Cell, UnsafeCell};
 use std::fmt;
@@ -113,6 +113,8 @@ pub trait File: std::fmt::Debug + AsAny {
     fn file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 
+    fn node_start_position(&self, n: NodeIndex) -> TreePosition;
+    fn node_end_position(&self, n: NodeIndex) -> TreePosition;
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 

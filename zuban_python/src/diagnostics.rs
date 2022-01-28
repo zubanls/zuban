@@ -2,6 +2,7 @@ use parsa_python_ast::NodeIndex;
 
 use crate::database::Database;
 use crate::file_state::File;
+use crate::name::TreePosition;
 
 #[derive(Debug)]
 pub enum IssueType {
@@ -25,6 +26,14 @@ impl<'db> Diagnostic<'db> {
         Self { db, file, issue }
     }
 
+    fn start_position(&self) -> TreePosition<'db> {
+        self.file.node_start_position(self.issue.node_index)
+    }
+
+    fn end_position(&self) -> TreePosition<'db> {
+        self.file.node_end_position(self.issue.node_index)
+    }
+
     pub fn as_string(&self) -> String {
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
@@ -32,9 +41,9 @@ impl<'db> Diagnostic<'db> {
             }
         };
         format!(
-            "{}:{} error: {}",
+            "{}:{}: error: {}",
             self.db.file_path(self.file.file_index()),
-            0,
+            self.start_position().line_and_column().0,
             error
         )
     }

@@ -10,7 +10,7 @@ use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
-use crate::name::{Names, TreeName};
+use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::Function;
@@ -81,6 +81,14 @@ impl File for PythonFile {
         self.file_index.set(Some(index));
     }
 
+    fn node_start_position(&self, n: NodeIndex) -> TreePosition {
+        TreePosition::new(self, self.tree.node_start_position(n))
+    }
+
+    fn node_end_position(&self, n: NodeIndex) -> TreePosition {
+        TreePosition::new(self, self.tree.node_end_position(n))
+    }
+
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
         let byte = self.lines()[line];
         // TODO column can be unicode, is that an issue?
@@ -91,9 +99,9 @@ impl File for PythonFile {
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
         let line = self.lines().partition_point(|&l| l < byte as CodeIndex);
         if line == 0 {
-            (line, byte as usize)
+            (line + 1, byte as usize)
         } else {
-            (line, (byte - self.lines()[line - 1] + 1) as usize)
+            (line + 1, (byte - self.lines()[line - 1] + 1) as usize)
         }
     }
 

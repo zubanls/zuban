@@ -50,6 +50,14 @@ impl Tree {
         }
         Some(Expression::new(node))
     }
+
+    pub fn node_start_position(&self, index: NodeIndex) -> CodeIndex {
+        self.0.node_by_index(index).start()
+    }
+
+    pub fn node_end_position(&self, index: NodeIndex) -> CodeIndex {
+        self.0.node_by_index(index).end()
+    }
 }
 
 pub fn debug_info(tree: &Tree, index: NodeIndex) -> String {

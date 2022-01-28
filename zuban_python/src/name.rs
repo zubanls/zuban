@@ -16,13 +16,17 @@ pub struct TreePosition<'db> {
     position: CodeIndex,
 }
 
-impl TreePosition<'_> {
-    fn byte_position(&self) -> CodeIndex {
+impl<'db> TreePosition<'db> {
+    pub(in crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
+        Self { file, position }
+    }
+
+    pub fn byte_position(&self) -> CodeIndex {
         self.position
     }
 
-    fn line_and_column(&self) -> (CodeIndex, CodeIndex) {
-        unimplemented!();
+    pub fn line_and_column(&self) -> (usize, usize) {
+        self.file.byte_to_line_column(self.position)
     }
 }
 
