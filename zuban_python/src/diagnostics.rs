@@ -26,8 +26,17 @@ impl<'db> Diagnostic<'db> {
     }
 
     pub fn as_string(&self) -> String {
-        dbg!(self.file);
-        format!("{}: TODO", self.db.file_path(self.file.file_index()))
+        let error = match &self.issue.type_ {
+            IssueType::AttributeError(object, name) => {
+                format!("{:?} has no attribute {:?}", object, name)
+            }
+        };
+        format!(
+            "{}:{} error: {}",
+            self.db.file_path(self.file.file_index()),
+            0,
+            error
+        )
     }
 }
 
