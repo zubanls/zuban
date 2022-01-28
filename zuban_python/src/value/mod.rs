@@ -11,9 +11,10 @@ use parsa_python_ast::{ListElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::GenericPart;
+use crate::diagnostics::{Issue, IssueType};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, NodeReference};
 pub use bound_method::BoundMethod;
 pub use class::{Class, ClassLike};
 pub use function::{Function, OverloadedFunction};
@@ -131,7 +132,27 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         base_description!(self)
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db>;
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>>;
+
+    fn lookup(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+        from: NodeReference<'db>,
+    ) -> Inferred<'db> {
+        self.lookup_internal(i_s, name).unwrap_or_else(|| {
+            from.file.issues.push(Box::pin(Issue {
+                type_: IssueType::AttributeError(self.description(i_s), name.to_owned()),
+                node_index: from.node_index,
+            }));
+            Inferred::new_unknown()
+        })
+    }
+
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -147,11 +168,15 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         todo!()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, 'a> {
+    fn iter(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        from: NodeReference<'db>,
+    ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
-            self.lookup(i_s, "__iter__")
+            self.lookup(i_s, "__iter__", from)
                 .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
-                .execute_function(i_s, "__next__"),
+                .execute_function(i_s, "__next__", from),
         )
     }
 

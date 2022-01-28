@@ -1194,15 +1194,24 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn execute_function(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        self.run_on_value(i_s, &mut |i_s, value| value.lookup(i_s, name))
+    pub fn execute_function(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+        from: NodeReference<'db>,
+    ) -> Inferred<'db> {
+        self.run_on_value(i_s, &mut |i_s, value| value.lookup(i_s, name, from))
             .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
     }
 
-    pub fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, '_> {
+    pub fn iter(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        from: NodeReference<'db>,
+    ) -> IteratorContent<'db, '_> {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.iter(i_s),
+            &mut |i_s, v| v.iter(i_s, from),
             &|_, i1, i2| todo!(),
             &mut |i_s, inferred| IteratorContent::Inferred(inferred),
             &mut |_, p| IteratorContent::Inferred(Self::new_unknown()),

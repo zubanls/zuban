@@ -14,7 +14,11 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         "None"
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         todo!()
     }
 

@@ -4,15 +4,14 @@ use crate::database::Database;
 use crate::file_state::File;
 
 #[derive(Debug)]
-#[repr(u8)]
 pub enum IssueType {
-    Foo,
+    AttributeError(String, String),
 }
 
 #[derive(Debug)]
 pub struct Issue {
     pub type_: IssueType,
-    pub tree_node: NodeIndex,
+    pub node_index: NodeIndex,
 }
 
 pub struct Diagnostic<'db> {

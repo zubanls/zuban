@@ -238,7 +238,11 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         func.name().as_str()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         todo!()
     }
 
@@ -473,7 +477,11 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         self.reference.as_name().as_str()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         todo!()
     }
 

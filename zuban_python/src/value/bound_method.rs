@@ -34,8 +34,12 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         self.function.name()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        self.function.lookup(i_s, name)
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        self.function.lookup_internal(i_s, name)
     }
 
     fn execute(

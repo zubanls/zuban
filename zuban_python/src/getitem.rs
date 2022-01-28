@@ -7,7 +7,7 @@ use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
 use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, NodeReference};
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
@@ -54,6 +54,10 @@ impl<'db> SliceType<'db> {
         }
     }
 
+    pub fn as_node_ref(&self) -> NodeReference<'db> {
+        NodeReference::new(self.file(), self.primary_index())
+    }
+
     pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
         SliceArguments(self)
     }
@@ -89,8 +93,8 @@ pub struct Slice<'db> {
 
 #[derive(Debug, Copy, Clone)]
 pub struct Slices<'db> {
-    file: &'db PythonFile,
-    primary_index: NodeIndex,
+    pub file: &'db PythonFile,
+    pub primary_index: NodeIndex,
     slices: ASTSlices<'db>,
 }
 

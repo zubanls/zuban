@@ -90,11 +90,19 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         "list"
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         todo!()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>) -> IteratorContent<'db, 'a> {
+    fn iter(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        from: NodeReference<'db>,
+    ) -> IteratorContent<'db, 'a> {
         match self.list_node().unpack() {
             ListContent::Elements(elements) => IteratorContent::ListLiteral(*self, elements),
             ListContent::Comprehension(_) => unreachable!(),
@@ -261,7 +269,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         "dict"
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         todo!()
     }
 

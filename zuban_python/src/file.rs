@@ -117,7 +117,7 @@ pub struct PythonFile {
     pub complex_points: ComplexValues,
     dependencies: Vec<FileIndex>,
     file_index: Cell<Option<FileIndex>>,
-    issues: InsertOnlyVec<Issue>,
+    pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
 
     new_line_indices: UnsafeCell<Option<Vec<u32>>>,
@@ -289,7 +289,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 let element = self
                     .infer_star_expressions(star_exprs)
-                    .iter(self.i_s)
+                    .iter(self.i_s, NodeReference::new(self.file, star_exprs.index()))
                     .infer_all(self.i_s);
                 debug!("For loop input: {}", element.description(self.i_s));
                 self.assign_targets(star_targets.as_target(), &element)
@@ -562,7 +562,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match primary.second() {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                value.lookup(i_s, name.as_str())
+                value.lookup(
+                    i_s,
+                    name.as_str(),
+                    NodeReference::new(self.file, primary.index()),
+                )
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -890,7 +894,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     for simple_stmt in simple_stmts.iter() {
                         match simple_stmt.unpack() {
                             SimpleStmtContent::Assignment(a) => {}
-                            SimpleStmtContent::StarExpressions(x) => {}
+                            SimpleStmtContent::StarExpressions(star_exprs) => {
+                                self.infer_star_expressions(star_exprs);
+                            }
                             SimpleStmtContent::ReturnStmt(x) => {}
                             SimpleStmtContent::YieldExpr(x) => {}
                             SimpleStmtContent::RaiseStmt(x) => {}

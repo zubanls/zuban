@@ -41,11 +41,12 @@ impl<'db> Value<'db, '_> for Module<'db> {
         self.file.file_path(self.database)
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        self.file
-            .inference(i_s)
-            .infer_module_name(name)
-            .unwrap_or_else(|| todo!())
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        self.file.inference(i_s).infer_module_name(name)
     }
 
     fn execute(

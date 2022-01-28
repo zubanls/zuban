@@ -29,7 +29,11 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         self.class.name()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
         for (mro_index, class) in self.class.mro(i_s) {
             if let ClassLike::Class(c) = class {
                 let inf = c
@@ -44,14 +48,14 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                             .infer_name_by_index(node_index)
                     });
                 if let Some(inf) = inf {
-                    return inf.resolve_function_return(i_s);
+                    return Some(inf.resolve_function_return(i_s));
                 }
             }
             if let Some(inf) = class.lookup_symbol(i_s, name) {
-                return inf.resolve_function_return(i_s).bind(i_s, self, mro_index);
+                return Some(inf.resolve_function_return(i_s).bind(i_s, self, mro_index));
             }
         }
-        todo!("{:?}.{:?}", self.name(), name)
+        None
     }
 
     fn execute(
@@ -67,7 +71,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        self.lookup(i_s, "__getitem__")
+        self.lookup(i_s, "__getitem__", slice_type.as_node_ref())
             .run_on_value(i_s, &mut |i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
 

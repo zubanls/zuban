@@ -396,8 +396,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         self.node().name().as_str()
     }
 
-    fn lookup(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> Inferred<'db> {
-        self.lookup_and_class(i_s, name).0
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        Some(self.lookup_and_class(i_s, name).0)
     }
 
     fn execute(
