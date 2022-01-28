@@ -4,7 +4,7 @@ use crate::database::{
     PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
-use crate::diagnostics::{Diagnostic, Issue};
+use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
@@ -221,6 +221,18 @@ impl<'db> PythonFile {
                 node_index,
                 locality: Locality::DirectExtern,
             })
+    }
+
+    pub fn add_issue(&self, db: &Database, node_index: NodeIndex, issue_type: IssueType) {
+        let issue = Issue {
+            type_: issue_type,
+            node_index,
+        };
+        debug!(
+            "New issue: {}",
+            Diagnostic::new(db, self, &issue).as_string()
+        );
+        self.issues.push(Box::pin(issue));
     }
 }
 
