@@ -195,6 +195,16 @@ impl<'db> Argument<'db, '_> {
             }
         }
     }
+
+    pub fn node_index(&self) -> NodeIndex {
+        match self {
+            Self::Positional(node_ref) => node_ref.node_index,
+            Self::Keyword(_, node_ref) => node_ref.node_index,
+            Self::PositionalFirst(_) => {
+                todo!("Probably happens with something weird like def foo(self: int)")
+            }
+        }
+    }
 }
 
 pub enum ArgumentIteratorBase<'db> {

@@ -399,10 +399,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 let value_class = value.class_as_generic_option(i_s);
                                 function.reference.file.add_issue(
                                     i_s.database,
-                                    0, // TODO p.argument.unwrap()
+                                    p.argument.unwrap().node_index(),
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {:?} of {:?} has incompatible type {:?}; expected {:?}",
-                                        1, function.name(), "A", value_class.as_string(i_s), annotation_g.as_string(i_s),
+                                        1, function.name(), "A", value_class.as_string(i_s),
+                                        annotation_g.as_string(i_s),
                                     )),
                                 );
                                 self.matches = false;

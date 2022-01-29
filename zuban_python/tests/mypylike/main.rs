@@ -45,9 +45,11 @@ impl<'code> TestCase<'code> {
             assert_eq!(
                 actual,
                 step.out,
-                "\n\nError {}: {}\n\n",
+                "\n\nError {}: {}\n\nWanted:\n{}Actual:\n{}\n",
                 self.file_name.to_str().unwrap(),
-                &self.name
+                &self.name,
+                step.out,
+                actual,
             );
         }
         for step in &steps {
