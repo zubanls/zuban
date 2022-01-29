@@ -24,32 +24,28 @@ pub enum ClassLike<'db, 'a> {
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
-    pub fn infer_type_vars(
+    pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value_class: GenericOption<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
-    ) {
+    ) -> bool {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         // TODO use type_var_remap
         match value_class {
             GenericOption::ClassLike(c) => {
-                let mut some_class_matches = false;
                 for (mro_index, class_like) in c.mro(i_s) {
                     if self.check_match(i_s, matcher, &class_like) {
-                        some_class_matches = true;
-                        break;
+                        return true;
                     }
                 }
-                if !some_class_matches {
-                    matcher.does_not_match();
-                }
+                false
             }
             GenericOption::TypeVar(_, node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
-            GenericOption::None | GenericOption::Invalid => (), // TODO should be matcher.does_not_match(),
+            GenericOption::None | GenericOption::Invalid => true, // TODO should be false
         }
     }
 
@@ -59,7 +55,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         matcher: &mut TypeVarMatcher<'db, '_>,
         other: &Self,
     ) -> bool {
-        let matches = match self {
+        let mut matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => c1.reference == c2.reference,
                 _ => false,
@@ -75,10 +71,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (class_generics, class_result_generics) = self.generics();
             let (value_generics, value_result_generics) = other.generics();
 
-            class_generics.infer_type_vars(i_s, matcher, value_generics);
+            matches &= class_generics.matches(i_s, matcher, value_generics);
             // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
-                class_result_generics.infer_type_vars(i_s, matcher, value_result_generics.unwrap());
+                matches &=
+                    class_result_generics.matches(i_s, matcher, value_result_generics.unwrap());
             }
         }
         matches

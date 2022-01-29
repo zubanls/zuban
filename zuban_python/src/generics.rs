@@ -8,6 +8,7 @@ use crate::database::{
     Database, GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferrable, Inferred, NodeReference};
@@ -155,22 +156,24 @@ impl<'db, 'a> Generics<'db, 'a> {
         format!("[{}]", strings.join(", "))
     }
 
-    pub fn infer_type_vars(
+    pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
         value_generics: Self,
-    ) {
+    ) -> bool {
         let mut value_generics = value_generics.iter();
+        let mut matches = false;
         self.iter()
             .run_on_all_generic_options(i_s, |i_s, generic_option| {
                 let appeared = value_generics.run_on_next(i_s, |i_s, g| {
-                    generic_option.infer_type_vars(i_s, matcher, g)
+                    matches &= generic_option.matches(i_s, matcher, g);
                 });
                 if appeared.is_none() {
                     debug!("Generic not found for: {:?}", generic_option);
                 }
             });
+        matches
     }
 }
 
@@ -386,13 +389,24 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         {
                             let value = p.infer(i_s);
                             let value_class = value.class_as_generic_option(i_s);
-                            function
+                            let inf = function
                                 .reference
                                 .file
                                 .inference(i_s)
-                                .infer_annotation_expression_class(annotation.expression())
-                                .as_generic_option(i_s)
-                                .infer_type_vars(i_s, self, value_class);
+                                .infer_annotation_expression_class(annotation.expression());
+                            let annotation_g = inf.as_generic_option(i_s);
+                            if !annotation_g.matches(i_s, self, value_class) {
+                                let value_class = value.class_as_generic_option(i_s);
+                                function.reference.file.add_issue(
+                                    i_s.database,
+                                    0, // TODO p.argument.unwrap()
+                                    IssueType::ArgumentIssue(format!(
+                                        "Argument {} to {:?} of {:?} has incompatible type {:?}; expected {:?}",
+                                        1, function.name(), "A", value_class.as_string(i_s), annotation_g.as_string(i_s),
+                                    )),
+                                );
+                                self.matches = false;
+                            }
                         } else {
                             self.matches = false;
                             todo!();
@@ -411,8 +425,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(argument) = param.argument {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_generic_option(i_s);
-                        GenericOption::from_generic_part(i_s.database, param.param_type)
-                            .infer_type_vars(i_s, self, value_class)
+                        let m = GenericOption::from_generic_part(i_s.database, param.param_type)
+                            .matches(i_s, self, value_class);
+                        self.matches &= m;
                     }
                 }
             }
@@ -456,11 +471,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             .as_mut()
             .unwrap()
             .set_generic(type_var_index, class);
-    }
-
-    pub fn does_not_match(&mut self) {
-        debug!("NOT MATCHING");
-        self.matches = false;
     }
 
     pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -589,18 +599,19 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn infer_type_vars(
+    pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: &mut TypeVarMatcher<'db, '_>,
         value_class: Self,
-    ) {
+    ) -> bool {
         match self {
-            Self::ClassLike(class) => class.infer_type_vars(i_s, value_class, matcher),
+            Self::ClassLike(class) => class.matches(i_s, value_class, matcher),
             Self::TypeVar(type_var_index, node_ref) => match value_class {
                 GenericOption::ClassLike(class) => {
                     let generic = class.as_generic_part(i_s);
                     matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    true
                 }
                 GenericOption::TypeVar(_, _) | GenericOption::Invalid => {
                     todo!("{:?}", value_class)
@@ -608,6 +619,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 GenericOption::Union(list) => {
                     let generic = GenericPart::Union(GenericsList::from_vec(list));
                     matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    true
                 }
                 GenericOption::None => {
                     //matcher.add_type_var_class(i_s, *type_var_index, GenericPart::None)
@@ -630,7 +642,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }
                     /*
                     if type_var_index.is_some() {
-                            GenericOption::from_generic_part(i_s.database, g1).infer_type_vars(
+                            GenericOption::from_generic_part(i_s.database, g1).matches(
                                 i_s,
                                 matcher,
                                 GenericOption::from_generic_part(i_s.database, g2),
@@ -643,18 +655,19 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             _ => GenericPart::Union(GenericsList::from_vec(list2)),
                         };
                         matcher.add_type_var_class(i_s, type_var_index, g);
+                        true
                     } else if !list2.is_empty() {
-                        matcher.does_not_match()
+                        false
+                    } else {
+                        true
                     }
                 }
-                _ => matcher.does_not_match(),
+                _ => false,
             },
             Self::None => {
-                if !matches!(value_class, Self::None) {
-                    matcher.does_not_match()
-                }
+                matches!(value_class, Self::None)
             }
-            Self::Invalid => matcher.does_not_match(),
+            Self::Invalid => false,
         }
     }
 
