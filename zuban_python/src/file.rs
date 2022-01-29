@@ -97,7 +97,7 @@ impl File for PythonFile {
     }
 
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
-        let line = self.lines().partition_point(|&l| l < byte as CodeIndex);
+        let line = self.lines().partition_point(|&l| l <= byte as CodeIndex);
         if line == 0 {
             (line + 1, byte as usize)
         } else {
@@ -160,7 +160,7 @@ impl<'db> PythonFile {
         let ptr = unsafe { &mut *self.new_line_indices.get() };
         if ptr.is_none() {
             // TODO probably use a OnceCell or something
-            let mut v = vec![0];
+            let mut v = vec![];
             for m in NEWLINES.find_iter(self.tree.code()) {
                 v.push(m.end() as CodeIndex);
             }
