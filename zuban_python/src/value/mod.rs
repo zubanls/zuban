@@ -11,7 +11,7 @@ use parsa_python_ast::{ListElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::GenericPart;
-use crate::diagnostics::{Issue, IssueType};
+use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};

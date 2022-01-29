@@ -606,10 +606,10 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         if let Some(params) = &self.content.params {
             params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
         }
-        let finder =
+        let mut finder =
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
         let g_o = GenericOption::from_generic_part(i_s.database, &self.content.return_class);
-        g_o.execute_and_resolve_type_vars(i_s, None, &mut Some(finder))
+        g_o.execute_and_resolve_type_vars(i_s, None, &mut finder)
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

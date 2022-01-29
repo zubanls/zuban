@@ -251,15 +251,19 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        if let Some(return_annotation) = self.node().annotation() {
+        let annotation = self.node().annotation();
+        let func_type_vars = if annotation.is_some() {
+            self.calculated_type_vars(i_s)
+        } else {
+            None
+        };
+        let mut finder =
+            TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
+        if let Some(return_annotation) = annotation {
             let i_s = &mut i_s.with_annotation_instance();
-            let func_type_vars = self.calculated_type_vars(i_s);
             let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
                 // TODO this could also be a tuple...
-                let mut finder = func_type_vars.map(|t| {
-                    TypeVarMatcher::new(self, args, false, Some(t), Specific::FunctionTypeVar)
-                });
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
@@ -274,12 +278,14 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                     .as_generic_option(i_s)
                     .execute_and_resolve_type_vars(i_s, self.class, &mut finder)
             } else {
+                finder.matches_signature(i_s); // TODO this should be different
                 self.reference
                     .file
                     .inference(i_s)
                     .infer_annotation_expression(expr)
             }
         } else {
+            finder.matches_signature(i_s); // TODO this should be different
             self.execute_without_annotation(i_s, args)
         }
     }

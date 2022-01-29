@@ -459,6 +459,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 
     pub fn does_not_match(&mut self) {
+        debug!("NOT MATCHING");
         self.matches = false;
     }
 
@@ -661,7 +662,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+        function_matcher: &mut TypeVarMatcher<'db, '_>,
     ) -> Inferred<'db> {
         let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
@@ -675,10 +676,10 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+        function_matcher: &mut TypeVarMatcher<'db, '_>,
     ) -> GenericPart {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                function_matcher: &mut Option<TypeVarMatcher<'db, '_>>,
+                                function_matcher: &mut TypeVarMatcher<'db, '_>,
                                 type_var_index: TypeVarIndex,
                                 node_ref: &NodeReference| {
             let point = node_ref.point();
@@ -698,16 +699,12 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         .unwrap_or_else(|| generic(type_var_index))
                 }
                 Specific::FunctionTypeVar => function_matcher
-                    .as_mut()
-                    .unwrap()
                     .nth(i_s, type_var_index)
                     .unwrap_or_else(|| unreachable!()),
                 Specific::LateBoundTypeVar => {
-                    if let Some(function_matcher) = function_matcher {
-                        if function_matcher.match_specific == Specific::LateBoundTypeVar {
-                            if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
-                                return calculated;
-                            }
+                    if function_matcher.match_specific == Specific::LateBoundTypeVar {
+                        if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
+                            return calculated;
                         }
                     }
                     // Just pass the type var again, because it might be resolved by a future

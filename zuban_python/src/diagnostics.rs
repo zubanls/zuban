@@ -7,6 +7,7 @@ use crate::name::TreePosition;
 #[derive(Debug)]
 pub enum IssueType {
     AttributeError(String, String),
+    ArgumentIssue(String),
 }
 
 #[derive(Debug)]
@@ -39,6 +40,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::AttributeError(object, name) => {
                 format!("{:?} has no attribute {:?}", object, name)
             }
+            IssueType::ArgumentIssue(s) => s.clone(),
         };
         format!(
             "{}:{}: error: {}",
