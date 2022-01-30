@@ -43,8 +43,8 @@ impl<'code> TestCase<'code> {
                 .iter()
                 .fold(String::new(), |a, b| a + &b.as_string() + "\n");
             assert_eq!(
-                actual,
-                step.out,
+                actual.trim(),
+                step.out.trim(),
                 "\n\nError {}: {}\n\nWanted:\n{}Actual:\n{}\n",
                 self.file_name.to_str().unwrap(),
                 &self.name,
