@@ -4,7 +4,7 @@ use std::ptr::null;
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::inferred::NodeReference;
+use crate::inferred::NodeRef;
 
 pub struct PythonState {
     builtins: *const PythonFile,
@@ -65,9 +65,9 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object(&self) -> NodeReference {
+    pub fn object(&self) -> NodeRef {
         debug_assert!(self.object_node_index != 0);
-        NodeReference::new(self.builtins(), self.object_node_index)
+        NodeRef::new(self.builtins(), self.object_node_index)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {

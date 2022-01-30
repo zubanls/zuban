@@ -8,15 +8,15 @@ use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 
 #[derive(Debug, Copy, Clone)]
 pub struct ListLiteral<'db> {
-    node_reference: NodeReference<'db>,
+    node_reference: NodeRef<'db>,
 }
 
 impl<'db> ListLiteral<'db> {
-    pub fn new(node_reference: NodeReference<'db>) -> Self {
+    pub fn new(node_reference: NodeRef<'db>) -> Self {
         Self { node_reference }
     }
 
@@ -101,7 +101,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     fn iter(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        from: NodeReference<'db>,
+        from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         match self.list_node().unpack() {
             ListContent::Elements(elements) => IteratorContent::ListLiteral(*self, elements),
@@ -176,7 +176,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference = NodeReference::from_link(
+        let node_reference = NodeRef::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("list"),
         );
@@ -193,11 +193,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
 
 #[derive(Debug)]
 pub struct DictLiteral<'db> {
-    node_reference: NodeReference<'db>,
+    node_reference: NodeRef<'db>,
 }
 
 impl<'db> DictLiteral<'db> {
-    pub fn new(node_reference: NodeReference<'db>) -> Self {
+    pub fn new(node_reference: NodeRef<'db>) -> Self {
         Self { node_reference }
     }
 
@@ -332,7 +332,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference = NodeReference::from_link(
+        let node_reference = NodeRef::from_link(
             i_s.database,
             i_s.database.python_state.builtins_point_link("dict"),
         );

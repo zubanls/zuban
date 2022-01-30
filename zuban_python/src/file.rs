@@ -9,7 +9,7 @@ use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
@@ -274,7 +274,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 let element = self
                     .infer_star_expressions(star_exprs)
-                    .iter(self.i_s, NodeReference::new(self.file, star_exprs.index()))
+                    .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
                     .infer_all(self.i_s);
                 debug!("For loop input: {}", element.description(self.i_s));
                 self.assign_targets(star_targets.as_target(), &element)
@@ -507,7 +507,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if let Some(string) = python_string.to_owned() {
                         inferred = match self.infer_annotation_string(string) {
                             GenericPart::Class(link) => {
-                                let node_reference = NodeReference::from_link(i_s.database, link);
+                                let node_reference = NodeRef::from_link(i_s.database, link);
                                 Inferred::new_saved(
                                     node_reference.file,
                                     node_reference.node_index,
@@ -571,11 +571,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match primary.second() {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                value.lookup(
-                    i_s,
-                    name.as_str(),
-                    NodeReference::new(self.file, primary.index()),
-                )
+                value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary.index()))
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -717,7 +713,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             } else {
                                 todo!(
                                     "{}",
-                                    NodeReference::new(inference.file, node_index)
+                                    NodeRef::new(inference.file, node_index)
                                         .debug_info(self.i_s.database)
                                 )
                             }
@@ -744,7 +740,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             name.function_or_lambda_ancestor().unwrap()
                         {
                             let func = Function::new(
-                                NodeReference::new(self.file, func.index()),
+                                NodeRef::new(self.file, func.index()),
                                 self.i_s.current_class,
                             );
                             func.calculated_type_vars(self.i_s);

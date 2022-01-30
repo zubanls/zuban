@@ -3,7 +3,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 use crate::value::{Class, Function, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
@@ -20,7 +20,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn type_(&self) -> ArgumentsType<'db>;
-    fn node_reference(&self) -> NodeReference<'db>;
+    fn node_reference(&self) -> NodeRef<'db>;
 }
 
 #[derive(Debug)]
@@ -55,8 +55,8 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node)
     }
 
-    fn node_reference(&self) -> NodeReference<'db> {
-        NodeReference::new(self.file, self.primary_node.index())
+    fn node_reference(&self) -> NodeRef<'db> {
+        NodeRef::new(self.file, self.primary_node.index())
     }
 }
 
@@ -152,7 +152,7 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
         self.arguments.type_()
     }
 
-    fn node_reference(&self) -> NodeReference<'db> {
+    fn node_reference(&self) -> NodeRef<'db> {
         self.arguments.node_reference()
     }
 }
@@ -175,17 +175,17 @@ impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     PositionalFirst(&'a dyn Value<'db, 'a>),
-    Keyword(&'db str, NodeReference<'db>),
-    Positional(NodeReference<'db>),
+    Keyword(&'db str, NodeRef<'db>),
+    Positional(NodeRef<'db>),
 }
 
 impl<'db> Argument<'db, '_> {
     fn new_argument(file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        Self::Positional(NodeReference { file, node_index })
+        Self::Positional(NodeRef { file, node_index })
     }
 
     fn new_keyword_argument(file: &'db PythonFile, name: &'db str, node_index: NodeIndex) -> Self {
-        Self::Keyword(name, NodeReference { file, node_index })
+        Self::Keyword(name, NodeRef { file, node_index })
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
@@ -205,7 +205,7 @@ impl<'db> Argument<'db, '_> {
         }
     }
 
-    pub fn as_node_reference(&self) -> NodeReference {
+    pub fn as_node_reference(&self) -> NodeRef {
         match self {
             Self::Positional(node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,
@@ -270,7 +270,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     let file = s.file;
                     let named_expr = s.named_expr;
                     *self = Self::Normal(Finished);
-                    Some(Self::Item::Positional(NodeReference {
+                    Some(Self::Item::Positional(NodeRef {
                         file,
                         node_index: named_expr.index(),
                     }))
@@ -282,10 +282,10 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct NoArguments<'db>(NodeReference<'db>);
+pub struct NoArguments<'db>(NodeRef<'db>);
 
 impl<'db> NoArguments<'db> {
-    pub fn new(node_ref: NodeReference<'db>) -> Self {
+    pub fn new(node_ref: NodeRef<'db>) -> Self {
         Self(node_ref)
     }
 }
@@ -307,7 +307,7 @@ impl<'db> Arguments<'db> for NoArguments<'db> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeReference<'db> {
+    fn node_reference(&self) -> NodeRef<'db> {
         self.0
     }
 }

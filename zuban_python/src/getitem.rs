@@ -7,7 +7,7 @@ use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
 use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
@@ -54,8 +54,8 @@ impl<'db> SliceType<'db> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeReference<'db> {
-        NodeReference::new(self.file(), self.primary_index())
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
+        NodeRef::new(self.file(), self.primary_index())
     }
 
     pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
@@ -174,7 +174,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeReference<'db> {
+    fn node_reference(&self) -> NodeRef<'db> {
         self.0.as_node_ref()
     }
 }

@@ -13,7 +13,7 @@ use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader,
     VirtualFileSystemReader,
 };
-use crate::inferred::NodeReference;
+use crate::inferred::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 
@@ -617,7 +617,7 @@ impl GenericPart {
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
     ) -> String {
         let class_name = |link| {
-            NodeReference::from_link(db, link)
+            NodeRef::from_link(db, link)
                 .maybe_class()
                 .unwrap()
                 .name()
@@ -639,10 +639,7 @@ impl GenericPart {
                 if let Some(type_var_generics) = type_var_generics {
                     return type_var_generics(*index).as_type_string(db, None);
                 }
-                NodeReference::from_link(db, *link)
-                    .as_name()
-                    .as_str()
-                    .to_owned()
+                NodeRef::from_link(db, *link).as_name().as_str().to_owned()
             }
             Self::Type(generic_part) => format!(
                 "Type[{}]",

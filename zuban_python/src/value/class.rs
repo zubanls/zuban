@@ -11,7 +11,7 @@ use crate::file::PythonFile;
 use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{FunctionOrOverload, Inferred, NodeReference};
+use crate::inferred::{FunctionOrOverload, Inferred, NodeRef};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
@@ -146,7 +146,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Class<'db, 'a> {
-    pub reference: NodeReference<'db>,
+    pub reference: NodeRef<'db>,
     pub(super) class_storage: &'db ClassStorage,
     generics: Generics<'db, 'a>,
     pub type_var_remap: Option<&'db GenericsList>,
@@ -154,7 +154,7 @@ pub struct Class<'db, 'a> {
 
 impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
-        reference: NodeReference<'db>,
+        reference: NodeRef<'db>,
         class_storage: &'db ClassStorage,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db GenericsList>,
@@ -169,7 +169,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     #[inline]
     pub fn from_position(
-        reference: NodeReference<'db>,
+        reference: NodeRef<'db>,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db GenericsList>,
     ) -> Option<Self> {
@@ -514,7 +514,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                 match c {
                     GenericPart::Class(c) => ClassLike::Class(
                         Class::from_position(
-                            NodeReference::from_link(self.database, *c),
+                            NodeRef::from_link(self.database, *c),
                             self.generics.unwrap(),
                             None,
                         )
@@ -522,7 +522,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                     ),
                     GenericPart::GenericClass(c, generics) => ClassLike::Class(
                         Class::from_position(
-                            NodeReference::from_link(self.database, *c),
+                            NodeRef::from_link(self.database, *c),
                             self.generics.unwrap(),
                             Some(generics),
                         )
@@ -545,7 +545,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
 
 fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    original_class: NodeReference<'db>,
+    original_class: NodeRef<'db>,
     original_type_vars: &[PointLink],
     generic: GenericOption<'db, '_>,
 ) -> GenericPart {
@@ -569,7 +569,7 @@ fn create_type_var_remap<'db>(
 
 fn create_mro_class<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    original_class: NodeReference<'db>,
+    original_class: NodeRef<'db>,
     original_type_vars: &[PointLink],
     class: &Class<'db, '_>,
 ) -> GenericPart {

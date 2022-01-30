@@ -10,12 +10,12 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred, NodeReference};
+use crate::inferred::{Inferrable, Inferred, NodeRef};
 use crate::value::Class;
 
 #[derive(Clone, Copy)]
 pub struct Function<'db, 'a> {
-    pub reference: NodeReference<'db>,
+    pub reference: NodeRef<'db>,
     pub class: Option<&'a Class<'db, 'a>>,
 }
 
@@ -32,7 +32,7 @@ impl<'db, 'a> Function<'db, 'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(reference: NodeReference<'db>, class: Option<&'a Class<'db, 'a>>) -> Self {
+    pub fn new(reference: NodeRef<'db>, class: Option<&'a Class<'db, 'a>>) -> Self {
         Self { reference, class }
     }
 
@@ -43,7 +43,7 @@ impl<'db, 'a> Function<'db, 'a> {
     ) -> Self {
         let f_func = database.loaded_python_file(execution.function.file);
         Function::new(
-            NodeReference {
+            NodeRef {
                 file: f_func,
                 node_index: execution.function.node_index,
             },
@@ -412,14 +412,14 @@ fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'db, 'a> {
-    reference: NodeReference<'db>,
+    reference: NodeRef<'db>,
     overload: &'a Overload,
     class: Option<&'a Class<'db, 'a>>,
 }
 
 impl<'db, 'a> OverloadedFunction<'db, 'a> {
     pub fn new(
-        reference: NodeReference<'db>,
+        reference: NodeRef<'db>,
         overload: &'a Overload,
         class: Option<&'a Class<'db, 'a>>,
     ) -> Self {
@@ -437,7 +437,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         class: Option<&Class<'db, '_>>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
-            let function = Function::new(NodeReference::from_link(i_s.database, *link), self.class);
+            let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
             let mut finder = match class {
                 Some(c) => TypeVarMatcher::new(
                     &function,

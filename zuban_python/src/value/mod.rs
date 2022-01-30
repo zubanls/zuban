@@ -14,7 +14,7 @@ use crate::database::GenericPart;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 pub use bound_method::BoundMethod;
 pub use class::{Class, ClassLike};
 pub use function::{Function, OverloadedFunction};
@@ -142,7 +142,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        from: NodeReference<'db>,
+        from: NodeRef<'db>,
     ) -> Inferred<'db> {
         self.lookup_internal(i_s, name).unwrap_or_else(|| {
             from.add_issue(
@@ -171,7 +171,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn iter(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        from: NodeReference<'db>,
+        from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
             self.lookup(i_s, "__iter__", from)

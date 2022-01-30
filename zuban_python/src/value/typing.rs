@@ -12,16 +12,16 @@ use crate::database::{
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeReference};
+use crate::inferred::{Inferred, NodeRef};
 
 #[derive(Debug)]
 pub struct TypingClass<'db> {
-    reference: NodeReference<'db>,
+    reference: NodeRef<'db>,
     specific: Specific,
 }
 
 impl<'db> TypingClass<'db> {
-    pub fn new(reference: NodeReference<'db>, specific: Specific) -> Self {
+    pub fn new(reference: NodeRef<'db>, specific: Specific) -> Self {
         Self {
             reference,
             specific,
@@ -173,12 +173,12 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
 
 #[derive(Debug)]
 pub struct TypingWithGenerics<'db> {
-    reference: NodeReference<'db>,
+    reference: NodeRef<'db>,
     pub specific: Specific,
 }
 
 impl<'db> TypingWithGenerics<'db> {
-    pub fn new(reference: NodeReference<'db>, specific: Specific) -> Self {
+    pub fn new(reference: NodeRef<'db>, specific: Specific) -> Self {
         Self {
             reference,
             specific,
@@ -305,7 +305,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     fn iter(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        from: NodeReference<'db>,
+        from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {

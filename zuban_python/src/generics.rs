@@ -11,14 +11,14 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred, NodeReference};
+use crate::inferred::{Inferrable, Inferred, NodeRef};
 use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
 
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             Some(type_var_generics) => $g.clone().replace_type_vars(&mut |type_var_index, link| {
-                let node_ref = NodeReference::from_link($i_s.database, link);
+                let node_ref = NodeRef::from_link($i_s.database, link);
                 if node_ref.point().specific() != Specific::ClassTypeVar {
                     return GenericPart::Unknown;
                 }
@@ -545,7 +545,7 @@ pub fn search_type_vars<'db>(
 #[derive(Debug)]
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    TypeVar(TypeVarIndex, NodeReference<'db>),
+    TypeVar(TypeVarIndex, NodeRef<'db>),
     Union(Vec<GenericPart>),
     None,
     Invalid,
@@ -555,7 +555,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     pub fn from_generic_part(database: &'db Database, generic_part: &'a GenericPart) -> Self {
         match generic_part {
             GenericPart::Class(link) => {
-                let node_ref = NodeReference::from_link(database, *link);
+                let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
@@ -563,14 +563,14 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             GenericPart::Unknown => Self::Invalid,
             GenericPart::None => GenericOption::None,
             GenericPart::GenericClass(link, generics) => {
-                let node_ref = NodeReference::from_link(database, *link);
+                let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
                     Class::from_position(node_ref, Generics::new_list(generics), None).unwrap(),
                 ))
             }
             GenericPart::Union(list) => Self::Union(list.iter().cloned().collect()),
             GenericPart::TypeVar(index, link) => {
-                Self::TypeVar(*index, NodeReference::from_link(database, *link))
+                Self::TypeVar(*index, NodeRef::from_link(database, *link))
             }
             GenericPart::Type(generic_part) => {
                 Self::ClassLike(ClassLike::TypeWithGenericPart(generic_part))
@@ -706,7 +706,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
                                 function_matcher: &mut TypeVarMatcher<'db, '_>,
                                 type_var_index: TypeVarIndex,
-                                node_ref: &NodeReference| {
+                                node_ref: &NodeRef| {
             let point = node_ref.point();
             match point.specific() {
                 Specific::ClassTypeVar => {
@@ -744,7 +744,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::ClassLike(c) => {
                 c.as_generic_part(i_s)
                     .replace_type_vars(&mut |type_var_index, link| {
-                        let node_ref = NodeReference::from_link(i_s.database, link);
+                        let node_ref = NodeRef::from_link(i_s.database, link);
                         resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
                     })
             }
@@ -755,7 +755,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 list.iter()
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |type_var_index, link| {
-                            let node_ref = NodeReference::from_link(i_s.database, link);
+                            let node_ref = NodeRef::from_link(i_s.database, link);
                             resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
                         })
                     })
