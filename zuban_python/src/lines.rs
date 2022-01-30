@@ -25,7 +25,13 @@ impl NewlineIndices {
     }
 
     pub fn line_column_to_byte(&self, code: &str, line: usize, column: usize) -> CodeIndex {
-        let byte = self.lines(code)[line];
+        if line == 0 {
+            panic!("Lines are 1-based")
+        } else if line == 1 {
+            return column as CodeIndex;
+        }
+
+        let byte = self.lines(code)[line - 2];
         // TODO column can be unicode, is that an issue?
         // TODO Also column can be bigger than the current line.
         byte + column as CodeIndex

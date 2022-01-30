@@ -56,7 +56,7 @@ impl TestFile<'_> {
                                         ""
                                     })
                             },
-                            Position::LineColumn(case.line, case.column),
+                            Position::LineColumn(case.line + 1, case.column),
                         )
                         .collect();
                     assert_eq!(actual, expected);
