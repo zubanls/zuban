@@ -382,7 +382,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
                 let right = if let Some(start) = suffix.find("# type: ") {
-                    self.infer_annotation_string(suffix[start + "# type: ".len()..].to_owned())
+                    let g =
+                        self.infer_annotation_string(suffix[start + "# type: ".len()..].to_owned());
+                    Inferred::execute_generic_part(self.i_s, g)
                 } else {
                     self.infer_assignment_right_side(right_side)
                 };
@@ -511,7 +513,33 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // save the result.
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
-                let inferred = inference.infer_expression_part(n);
+                let mut inferred = inference.infer_expression_part(n);
+
+                if let Some(python_string) = inferred.maybe_str() {
+                    if let Some(string) = python_string.to_owned() {
+                        inferred = match self.infer_annotation_string(string) {
+                            GenericPart::Class(link) => {
+                                let node_reference = NodeReference::from_link(i_s.database, link);
+                                Inferred::new_saved(
+                                    node_reference.file,
+                                    node_reference.node_index,
+                                    node_reference.point(),
+                                )
+                            }
+                            GenericPart::GenericClass(l, g) => todo!(),
+                            GenericPart::Union(multiple) => todo!(),
+                            GenericPart::Tuple(content) => todo!(),
+                            GenericPart::Callable(content) => todo!(),
+                            GenericPart::Type(c) => todo!(),
+                            GenericPart::None => return Inferred::new_none(),
+                            GenericPart::TypeVar(index, link) => todo!(),
+                            GenericPart::Unknown => Inferred::new_unknown(),
+                        };
+                    } else {
+                        inferred = Inferred::new_unknown()
+                    }
+                }
+
                 if self.file.points.get(expr_part_index).calculated() {
                     inferred
                 } else {
@@ -531,12 +559,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_simple_class(inference.i_s) {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
-        } else if let Some(python_string) = inferred.maybe_str() {
-            if let Some(string) = python_string.to_owned() {
-                return self.infer_annotation_string(string);
-            } else {
-                Point::new_unknown(self.file.file_index(), Locality::Stmt)
-            }
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
@@ -675,6 +697,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 {
                     return i;
                 }
+            }
+            if let Some(inferred) = self.infer_module_name(name.as_str()) {
+                // TODO mypy this is a issue AFAIK and this code should not be needed
+                return inferred;
             }
             debug!("Unknown potential star import name {}", name.as_str());
             Point::new_unknown(self.file_index, Locality::File)
@@ -861,7 +887,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .map(|i| self.infer_name_by_index(i))
     }
 
-    fn infer_annotation_string(&mut self, string: String) -> Inferred<'db> {
+    fn infer_annotation_string(&mut self, string: String) -> GenericPart {
         let file = self
             .i_s
             .database
@@ -875,9 +901,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 "Inferred annotation string as {}",
                 generic_part.as_type_string(self.i_s.database, None)
             );
-            return Inferred::execute_generic_part(self.i_s, generic_part);
+            return generic_part;
         }
-        Inferred::new_unknown()
+        debug!("Found non-expression in annotation: {}", file.tree.code());
+        GenericPart::Unknown
     }
 
     fn calculate_diagnostics(&mut self) {
