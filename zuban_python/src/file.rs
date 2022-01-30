@@ -538,6 +538,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         inferred = Inferred::new_unknown()
                     }
+                    // Always overwrite the inferred string literal
+                    return inferred.save_redirect(self.file, expr_part_index);
                 }
 
                 if self.file.points.get(expr_part_index).calculated() {
