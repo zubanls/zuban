@@ -1,0 +1,60 @@
+[case testMethodCall]
+
+a = None # type: A
+b = None # type: B
+
+a.foo(B())        # Fail
+a.bar(B(), A())   # Fail
+
+a.foo(A())
+b.bar(B(), A())
+
+class A:
+    def foo(self, x: 'A') -> None: pass
+class B:
+    def bar(self, x: 'B', y: A) -> None: pass
+[out]
+main:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
+main:6: error: "A" has no attribute "bar"
+
+[case testMethodCallWithSubtype]
+
+a = None # type: A
+a.foo(A())
+a.foo(B())
+a.bar(A()) # Fail
+a.bar(B())
+
+class A:
+    def foo(self, x: 'A') -> None: pass
+    def bar(self, x: 'B') -> None: pass
+class B(A): pass
+[out]
+main:5: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
+
+[case testInheritingMethod]
+
+a = None # type: B
+a.foo(A()) # Fail
+a.foo(B())
+
+class A:
+    def foo(self, x: 'B') -> None: pass
+class B(A): pass
+[targets __main__, __main__, __main__.A.foo]
+[out]
+main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
+
+[case testMethodCallWithInvalidNumberOfArguments]
+
+a = None # type: A
+a.foo()               # Fail
+a.foo(object(), A())  # Fail
+
+class A:
+    def foo(self, x: 'A') -> None: pass
+[out]
+main:3: error: Missing positional argument "x" in call to "foo" of "A"
+main:4: error: Too many arguments for "foo" of "A"
+main:4: error: Argument 1 to "foo" of "A" has incompatible type "object"; expected "A"
+
