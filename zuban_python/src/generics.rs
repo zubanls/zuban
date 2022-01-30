@@ -429,7 +429,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     }
                 }
                 if iter.has_unused_argument() {
-                    debug!("Too many arguments");
+                    self.args.node_reference().add_issue(
+                        i_s.database,
+                        IssueType::ArgumentIssue(format!(
+                            "Too many arguments for {:?} in {:?}",
+                            function.name(),
+                            "A",
+                        )),
+                    );
                     self.matches = false
                 }
             }
