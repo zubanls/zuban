@@ -163,7 +163,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         value_generics: Self,
     ) -> bool {
         let mut value_generics = value_generics.iter();
-        let mut matches = false;
+        let mut matches = true;
         self.iter()
             .run_on_all_generic_options(i_s, |i_s, generic_option| {
                 let appeared = value_generics.run_on_next(i_s, |i_s, g| {
