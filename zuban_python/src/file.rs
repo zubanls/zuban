@@ -99,12 +99,14 @@ impl File for PythonFile {
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
         self.inference(&mut i_s).calculate_diagnostics();
-        unsafe {
+        let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
-        }
+        };
+        vec.sort_by_key(|diag| diag.issue.node_index);
+        vec.into_boxed_slice()
     }
 }
 

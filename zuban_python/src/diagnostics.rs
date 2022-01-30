@@ -19,7 +19,7 @@ pub struct Issue {
 pub struct Diagnostic<'db> {
     db: &'db Database,
     file: &'db dyn File,
-    issue: &'db Issue,
+    pub(in crate) issue: &'db Issue,
 }
 
 impl<'db> Diagnostic<'db> {
