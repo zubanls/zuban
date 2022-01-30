@@ -418,6 +418,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     }
                 }
                 if iter.has_unused_argument() {
+                    debug!("Too many arguments");
                     self.matches = false
                 }
             }

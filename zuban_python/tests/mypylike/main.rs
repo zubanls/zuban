@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ffi::{OsStr, OsString};
 use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -24,14 +23,17 @@ struct Step<'code> {
 }
 
 #[derive(Debug)]
-struct TestCase<'code> {
-    file_name: OsString,
+struct TestCase<'name, 'code> {
+    file_name: &'name str,
     name: String,
     code: &'code str,
 }
 
-impl<'code> TestCase<'code> {
+impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
+        if cfg!(feature = "zuban_debug") {
+            println!("\nStart test {}: {}", self.file_name, self.name);
+        }
         let steps = self.calculate_steps();
         for step in &steps {
             for (&path, &code) in &step.files {
@@ -46,7 +48,7 @@ impl<'code> TestCase<'code> {
                 actual.trim(),
                 step.out.trim(),
                 "\n\nError {}: {}\n\nWanted:\n{}Actual:\n{}\n",
-                self.file_name.to_str().unwrap(),
+                self.file_name,
                 &self.name,
                 step.out,
                 actual,
@@ -140,7 +142,9 @@ fn main() {
     let file_count = files.len();
     for file in files {
         let code = read_to_string(&file).unwrap();
-        for case in mypy_style_cases(file.file_stem().unwrap(), &code) {
+        let stem = file.file_stem().unwrap().to_owned();
+        let file_name = stem.to_str().unwrap();
+        for case in mypy_style_cases(file_name, &code) {
             case.run(&mut project);
             ran_count += 1;
             full_count += 1;
@@ -155,12 +159,12 @@ fn main() {
     );
 }
 
-fn mypy_style_cases<'a>(file_name: &OsStr, code: &'a str) -> Vec<TestCase<'a>> {
+fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'a, 'b>> {
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
         cases.push(TestCase {
-            file_name: file_name.to_owned(),
+            file_name,
             name,
             code: &code[start..end],
         });
