@@ -205,10 +205,10 @@ impl<'db> Argument<'db, '_> {
         }
     }
 
-    pub fn node_index(&self) -> NodeIndex {
+    pub fn as_node_reference(&self) -> NodeReference {
         match self {
-            Self::Positional(node_ref) => node_ref.node_index,
-            Self::Keyword(_, node_ref) => node_ref.node_index,
+            Self::Positional(node_ref) => *node_ref,
+            Self::Keyword(_, node_ref) => *node_ref,
             Self::PositionalFirst(_) => {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }

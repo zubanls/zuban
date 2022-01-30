@@ -145,9 +145,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeReference<'db>,
     ) -> Inferred<'db> {
         self.lookup_internal(i_s, name).unwrap_or_else(|| {
-            from.file.add_issue(
+            from.add_issue(
                 i_s.database,
-                from.node_index,
                 IssueType::AttributeError(self.name().to_owned(), name.to_owned()),
             );
             Inferred::new_unknown()

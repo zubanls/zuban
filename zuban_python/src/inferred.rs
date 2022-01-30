@@ -10,6 +10,7 @@ use crate::database::{
     Point, PointLink, PointType, Specific, TypeVarIndex,
 };
 use crate::debug;
+use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::{GenericOption, Generics};
@@ -125,6 +126,18 @@ impl<'db> NodeReference<'db> {
             self.file.file_path(db),
             debug_info(&self.file.tree, self.node_index)
         )
+    }
+
+    pub fn add_issue(&self, db: &Database, issue_type: IssueType) {
+        let issue = Issue {
+            type_: issue_type,
+            node_index: self.node_index,
+        };
+        debug!(
+            "New issue: {}",
+            Diagnostic::new(db, self.file, &issue).as_string()
+        );
+        self.file.issues.push(Box::pin(issue));
     }
 }
 

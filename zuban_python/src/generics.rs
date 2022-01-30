@@ -386,10 +386,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if !p.has_argument() {
                         // TODO?! comments?!
                         //self.matches = false;
-                        let arguments_ref = self.args.node_reference();
-                        arguments_ref.file.add_issue(
+                        self.args.node_reference().add_issue(
                             i_s.database,
-                            arguments_ref.node_index,
                             IssueType::ArgumentIssue(format!(
                                 "Missing positional argument {:?} in call to {:?} of {:?}",
                                 p.param.name_definition().name().as_str(),
@@ -413,9 +411,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let annotation_g = inf.as_generic_option(i_s);
                             if !annotation_g.matches(i_s, self, value_class) {
                                 let value_class = value.class_as_generic_option(i_s);
-                                function.reference.file.add_issue(
+                                p.argument.unwrap().as_node_reference().add_issue(
                                     i_s.database,
-                                    p.argument.unwrap().node_index(),
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {:?} of {:?} has incompatible type {:?}; expected {:?}",
                                         1, function.name(), "A", value_class.as_string(i_s),
