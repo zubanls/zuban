@@ -20,6 +20,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Execution;
     fn type_(&self) -> ArgumentsType<'db>;
+    fn node_reference(&self) -> NodeReference<'db>;
 }
 
 #[derive(Debug)]
@@ -52,6 +53,10 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
     fn type_(&self) -> ArgumentsType<'db> {
         ArgumentsType::Normal(self.file, self.primary_node)
+    }
+
+    fn node_reference(&self) -> NodeReference<'db> {
+        NodeReference::new(self.file, self.primary_node.index())
     }
 }
 
@@ -145,6 +150,10 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
 
     fn type_(&self) -> ArgumentsType<'db> {
         self.arguments.type_()
+    }
+
+    fn node_reference(&self) -> NodeReference<'db> {
+        self.arguments.node_reference()
     }
 }
 
@@ -273,9 +282,15 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct NoArguments();
+pub struct NoArguments<'db>(NodeReference<'db>);
 
-impl<'db> Arguments<'db> for NoArguments {
+impl<'db> NoArguments<'db> {
+    pub fn new(node_ref: NodeReference<'db>) -> Self {
+        Self(node_ref)
+    }
+}
+
+impl<'db> Arguments<'db> for NoArguments<'db> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::Normal(ArgumentIteratorBase::Finished)
     }
@@ -290,5 +305,9 @@ impl<'db> Arguments<'db> for NoArguments {
 
     fn type_(&self) -> ArgumentsType<'db> {
         todo!()
+    }
+
+    fn node_reference(&self) -> NodeReference<'db> {
+        self.0
     }
 }

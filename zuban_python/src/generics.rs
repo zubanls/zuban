@@ -383,6 +383,22 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 function.calculated_type_vars(i_s);
                 let mut iter = function.iter_inferrable_params(self.args, self.skip_first);
                 while let Some(p) = iter.next() {
+                    if !p.has_argument() {
+                        // TODO?! comments?!
+                        //self.matches = false;
+                        let arguments_ref = self.args.node_reference();
+                        arguments_ref.file.add_issue(
+                            i_s.database,
+                            arguments_ref.node_index,
+                            IssueType::ArgumentIssue(format!(
+                                "Missing positional argument {:?} in call to {:?} of {:?}",
+                                p.param.name_definition().name().as_str(),
+                                function.name(),
+                                "A",
+                            )),
+                        );
+                        //continue
+                    }
                     if let Some(annotation) = p.param.annotation() {
                         if let ExpressionContent::ExpressionPart(part) =
                             annotation.expression().unpack()
@@ -412,9 +428,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             self.matches = false;
                             todo!();
                         }
-                    } else if !p.has_argument() {
-                        self.matches = false;
-                        debug!("Not enough arguments: {:?}", p);
                     }
                 }
                 if iter.has_unused_argument() {

@@ -176,7 +176,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
             self.lookup(i_s, "__iter__", from)
-                .run_on_value(i_s, &mut |i_s, value| value.execute(i_s, &NoArguments()))
+                .run_on_value(i_s, &mut |i_s, value| {
+                    value.execute(i_s, &NoArguments::new(from))
+                })
                 .execute_function(i_s, "__next__", from),
         )
     }

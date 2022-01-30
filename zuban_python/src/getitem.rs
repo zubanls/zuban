@@ -173,4 +173,8 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         */
         todo!()
     }
+
+    fn node_reference(&self) -> NodeReference<'db> {
+        self.0.as_node_ref()
+    }
 }
