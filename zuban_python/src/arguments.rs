@@ -3,7 +3,8 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeRef};
+use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Value};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,

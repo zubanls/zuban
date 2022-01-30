@@ -11,7 +11,8 @@ use crate::file::PythonFile;
 use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{FunctionOrOverload, Inferred, NodeRef};
+use crate::inferred::{FunctionOrOverload, Inferred};
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {

@@ -17,6 +17,7 @@ mod inferred;
 mod lines;
 mod name;
 mod name_binder;
+mod node_ref;
 mod python_state;
 mod utils;
 mod value;

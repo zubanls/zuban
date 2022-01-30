@@ -7,7 +7,8 @@ use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
 use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeRef};
+use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]

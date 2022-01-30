@@ -10,7 +10,8 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred, NodeRef};
+use crate::inferred::{Inferrable, Inferred};
+use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 #[derive(Clone, Copy)]

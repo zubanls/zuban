@@ -12,7 +12,8 @@ use crate::database::{
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeRef};
+use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub struct TypingClass<'db> {

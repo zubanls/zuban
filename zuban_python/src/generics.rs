@@ -11,7 +11,8 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred, NodeRef};
+use crate::inferred::{Inferrable, Inferred};
+use crate::node_ref::NodeRef;
 use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
 
 macro_rules! replace_class_vars {

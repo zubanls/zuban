@@ -8,7 +8,8 @@ use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, NodeRef};
+use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ListLiteral<'db> {
