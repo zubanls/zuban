@@ -432,7 +432,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     self.args.node_reference().add_issue(
                         i_s.database,
                         IssueType::ArgumentIssue(format!(
-                            "Too many arguments for {:?} in {:?}",
+                            "Too many arguments for {:?} of {:?}",
                             function.name(),
                             "A",
                         )),
