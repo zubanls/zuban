@@ -10,18 +10,14 @@ use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, NodeReference};
+use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::Function;
 use parsa_python_ast::*;
-use regex::Regex;
-use std::cell::{Cell, UnsafeCell};
+use std::cell::Cell;
 use std::fmt;
-
-lazy_static::lazy_static! {
-    static ref NEWLINES: Regex = Regex::new(r"\n|\r\n|\r").unwrap();
-}
 
 #[derive(Default)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -90,19 +86,13 @@ impl File for PythonFile {
     }
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
-        let byte = self.lines()[line];
-        // TODO column can be unicode, is that an issue?
-        // TODO Also column can be bigger than the current line.
-        byte + column as CodeIndex
+        self.newline_indices
+            .line_column_to_byte(self.tree.code(), line, column)
     }
 
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize) {
-        let line = self.lines().partition_point(|&l| l <= byte as CodeIndex);
-        if line == 0 {
-            (line + 1, byte as usize)
-        } else {
-            (line + 1, (byte - self.lines()[line - 1] + 1) as usize)
-        }
+        self.newline_indices
+            .byte_to_line_column(self.tree.code(), byte)
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
@@ -128,7 +118,7 @@ pub struct PythonFile {
     pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
 
-    new_line_indices: UnsafeCell<Option<Vec<u32>>>,
+    newline_indices: NewlineIndices,
 }
 
 impl fmt::Debug for PythonFile {
@@ -152,21 +142,8 @@ impl<'db> PythonFile {
             dependencies: vec![],
             star_imports: vec![],
             issues: InsertOnlyVec::default(),
-            new_line_indices: UnsafeCell::new(None),
+            newline_indices: NewlineIndices::new(),
         }
-    }
-
-    fn lines(&self) -> &[u32] {
-        let ptr = unsafe { &mut *self.new_line_indices.get() };
-        if ptr.is_none() {
-            // TODO probably use a OnceCell or something
-            let mut v = vec![];
-            for m in NEWLINES.find_iter(self.tree.code()) {
-                v.push(m.end() as CodeIndex);
-            }
-            *ptr = Some(v);
-        }
-        ptr.as_ref().unwrap()
     }
 
     pub fn calculate_global_definitions_and_references(&self) {

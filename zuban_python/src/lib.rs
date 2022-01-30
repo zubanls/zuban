@@ -14,6 +14,7 @@ mod getitem;
 mod imports;
 mod inference_state;
 mod inferred;
+mod lines;
 mod name;
 mod name_binder;
 mod python_state;

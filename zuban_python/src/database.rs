@@ -1,4 +1,3 @@
-use once_cell::unsync::OnceCell;
 use parsa_python_ast::{Name, NodeIndex};
 use std::cell::Cell;
 use std::collections::HashMap;
