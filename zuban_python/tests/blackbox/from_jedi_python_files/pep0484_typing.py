@@ -137,9 +137,9 @@ def mapping(
         #? Value()
         value
     for item in p.items():
-        #? Key()
+        ##? Key()
         item[0]
-        #? Value()
+        ##? Value()
         item[1]
         (key, value) = item
         ##? Key()
@@ -215,10 +215,10 @@ def testdict(x: TestDict):
     #? ["setdud", "setdefault"]
     x.setd
     for key in x.keys():
-        #? str()
+        ##? str()
         key
     for value in x.values():
-        #? int()
+        ##? int()
         value
 
 x = TestDict()
@@ -269,10 +269,10 @@ def testdict(x: TestDefaultDict):
     #? ["setdud", "setdefault"]
     x.setd
     for key in x.keys():
-        #? str()
+        ##? str()
         key
     for value in x.values():
-        #? int()
+        ##? int()
         value
 
 x = TestDefaultDict()

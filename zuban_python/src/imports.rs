@@ -6,6 +6,11 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     if name == "typing" {
         return Some(database.python_state.typing().file_index());
     }
+    if name == "typing_extensions" {
+        // TODO this is completely wrong
+        return Some(database.python_state.typing().file_index());
+    }
+
     let result = python_import(
         database,
         database

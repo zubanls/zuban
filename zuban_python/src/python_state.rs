@@ -99,6 +99,9 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     setup_type_alias(typing, "Counter", collections, "Counter");
     setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
     setup_type_alias(typing, "Deque", collections, "deque");
+
+    // TODO this is completely wrong, but for now it's good enough
+    setup_type_alias(builtins, "SupportsIndex", builtins, "int")
 }
 
 fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
