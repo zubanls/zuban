@@ -441,6 +441,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
+        /*
+        TODO reenable this maybe?
         if is_decorated {
             self.add_point_definition(
                 class.name_definition(),
@@ -448,8 +450,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 in_base_scope,
             );
         } else {
-            self.add_redirect_definition(class.name_definition(), class.index(), in_base_scope);
-        }
+        */
+        self.add_redirect_definition(class.name_definition(), class.index(), in_base_scope);
+        //}
     }
 
     fn index_self_vars(&mut self, class: ClassDef<'db>) {
