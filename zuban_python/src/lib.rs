@@ -55,6 +55,7 @@ impl Project {
         for p in &sys_path {
             workspaces.add(loaders.as_ref(), p.to_owned())
         }
+        workspaces.add(loaders.as_ref(), path.clone());
         let database = Database::new(loaders, workspaces);
         Self {
             type_: ProjectType::PythonProject(PythonProject {

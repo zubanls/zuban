@@ -5,6 +5,8 @@ use std::time::Instant;
 
 use regex::Regex;
 
+const BASE_PATH: &str = "/mypylike/";
+
 lazy_static::lazy_static! {
     static ref CASE: Regex = Regex::new(r"(?m)^\[case ([a-zA-Z_0-9-]+)\][ \t]*\n").unwrap();
     // This is how I found out about possible "commands in mypy, executed in
@@ -37,9 +39,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let steps = self.calculate_steps();
         for step in &steps {
             for (&path, &code) in &step.files {
-                project.load_in_memory_file(path.to_owned(), code.to_owned());
+                project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
-            let script = zuban_python::Script::new(project, Some("main".to_owned()), None);
+            let script =
+                zuban_python::Script::new(project, Some(BASE_PATH.to_owned() + "main"), None);
             let diagnostics = script.diagnostics();
             let actual = diagnostics
                 .iter()
@@ -58,7 +61,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             for (path, _) in &step.files {
                 #[allow(unused_must_use)]
                 {
-                    project.unload_in_memory_file(path);
+                    project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
                 }
             }
         }
@@ -133,7 +136,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
 }
 
 fn main() {
-    let mut project = zuban_python::Project::new("foo".to_owned());
+    let mut project = zuban_python::Project::new(BASE_PATH.to_owned());
 
     let files = find_mypy_style_files();
     let start = Instant::now();
