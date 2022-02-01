@@ -973,6 +973,7 @@ impl Database {
 
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         let file_index = self.load_file(path.clone(), code);
+        self.workspaces.add_in_memory_file(&path, file_index);
         self.in_memory_files.insert(path, file_index);
         file_index
     }

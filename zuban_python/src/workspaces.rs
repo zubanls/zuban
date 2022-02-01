@@ -18,6 +18,20 @@ impl Workspaces {
             .iter()
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
     }
+
+    pub fn add_in_memory_file(&mut self, path: &str, file_index: FileIndex) {
+        for workspace in &mut self.0 {
+            if path.starts_with(workspace.root.name()) {
+                if let DirectoryOrFile::Directory(name, files) = &mut workspace.root {
+                    // TODO this is obviously wrong, nested files are not cared for
+                    files.push(DirectoryOrFile::File(
+                        path[name.len()..].to_owned(),
+                        WorkspaceFileIndex::some(file_index),
+                    ))
+                }
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -109,6 +123,10 @@ pub struct WorkspaceFileIndex(Cell<Option<FileIndex>>);
 impl WorkspaceFileIndex {
     fn none() -> Self {
         Self(Cell::new(None))
+    }
+
+    fn some(file_index: FileIndex) -> Self {
+        Self(Cell::new(Some(file_index)))
     }
 
     pub fn set(&self, index: FileIndex) {
