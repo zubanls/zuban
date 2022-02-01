@@ -66,8 +66,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
     fn calculate_steps(&self) -> Vec<Step<'code>> {
         let mut steps = HashMap::<usize, Step>::new();
-        steps.insert(0, Default::default());
-        let mut current_step = steps.get_mut(&0).unwrap();
+        steps.insert(1, Default::default());
+        let mut current_step = steps.get_mut(&1).unwrap();
         let mut current_type = "file";
         let mut current_rest = "main";
         let mut current_step_start = 0;
@@ -98,7 +98,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             current_rest = capture.get(2).map(|x| x.as_str()).unwrap_or("");
             current_step_start = capture.get(0).unwrap().end();
 
-            let mut start = 0;
+            let mut start = 1;
             if current_type == "file" {
                 let last = current_rest.chars().last().unwrap();
                 if let Some(digit) = last.to_digit(10) {
@@ -125,7 +125,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         );
 
         let mut result_steps = vec![];
-        for i in 0..steps.len() {
+        for i in 1..steps.len() + 1 {
             result_steps.push(steps[&i].clone());
         }
         result_steps
