@@ -51,7 +51,7 @@ impl Project {
             "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages".to_owned(),
         ];
-        let mut workspaces = Workspaces::new();
+        let mut workspaces = Workspaces::default();
         for p in &sys_path {
             workspaces.add(loaders.as_ref(), p.to_owned())
         }

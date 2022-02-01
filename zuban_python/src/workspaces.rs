@@ -5,14 +5,10 @@ use walkdir::WalkDir;
 use crate::database::FileIndex;
 use crate::file_state::FileStateLoader;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
     pub fn add(&mut self, loaders: &[Box<dyn FileStateLoader>], root: String) {
         self.0.push(Workspace::new(loaders, root))
     }
