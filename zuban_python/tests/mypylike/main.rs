@@ -70,27 +70,41 @@ impl<'name, 'code> TestCase<'name, 'code> {
     fn calculate_steps(&self) -> Vec<Step<'code>> {
         let mut steps = HashMap::<usize, Step>::new();
         steps.insert(1, Default::default());
-        let mut current_step = steps.get_mut(&1).unwrap();
+        let mut current_step_index = 1;
         let mut current_type = "file";
         let mut current_rest = "main";
         let mut current_step_start = 0;
 
-        let process_step = |current_step: &mut Step<'code>,
-                            current_type,
-                            current_step_start,
-                            current_step_end,
-                            current_rest| {
-            let in_between = &self.code[current_step_start..current_step_end];
-            if current_type == "file" {
-                current_step.files.insert(current_rest, in_between);
-            } else if current_type == "out" {
-                current_step.out = in_between;
+        let mut process_step_part2 = |step_index, type_, in_between, rest| {
+            let step = if let Some(s) = steps.get_mut(&step_index) {
+                s
+            } else {
+                steps.insert(step_index, Default::default());
+                steps.get_mut(&step_index).unwrap()
+            };
+            if type_ == "file" {
+                step.files.insert(rest, in_between);
+            } else if type_ == "out" {
+                step.out = in_between;
+            }
+        };
+
+        let mut process_step = |step_index, type_, step_start, step_end, rest| {
+            let in_between = &self.code[step_start..step_end];
+
+            if type_ == "out" && step_index == 1 {
+                assert_eq!(rest, "");
+                for (i, part) in in_between.split("==\n").enumerate() {
+                    process_step_part2(i + 1, "out", part, rest)
+                }
+            } else {
+                process_step_part2(step_index, type_, in_between, rest)
             }
         };
 
         for capture in CASE_PART.captures_iter(&self.code) {
             process_step(
-                current_step,
+                current_step_index,
                 current_type,
                 current_step_start,
                 capture.get(0).unwrap().start(),
@@ -101,26 +115,19 @@ impl<'name, 'code> TestCase<'name, 'code> {
             current_rest = capture.get(2).map(|x| x.as_str()).unwrap_or("");
             current_step_start = capture.get(0).unwrap().end();
 
-            let mut start = 1;
+            current_step_index = 1;
             if current_type == "file" {
                 let last = current_rest.chars().last().unwrap();
                 if let Some(digit) = last.to_digit(10) {
-                    start = digit as usize;
+                    current_step_index = digit as usize;
                     current_rest = &current_rest[..current_rest.len() - 2];
                 }
             } else if current_type.starts_with("out") && current_type.len() > 3 {
                 todo!()
             }
-
-            current_step = if let Some(s) = steps.get_mut(&start) {
-                s
-            } else {
-                steps.insert(start, Default::default());
-                steps.get_mut(&start).unwrap()
-            };
         }
         process_step(
-            current_step,
+            current_step_index,
             current_type,
             current_step_start,
             self.code.len(),
