@@ -1,6 +1,7 @@
-use crate::database::{Database, DirectoryOrFile, FileIndex};
+use crate::database::{Database, FileIndex};
 use crate::debug;
 use crate::file_state::File;
+use crate::workspaces::DirectoryOrFile;
 
 pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     if name == "typing" {
@@ -11,14 +12,7 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(
-        database,
-        database
-            .workspaces
-            .iter()
-            .map(|x| (x.root().name(), x.root().directory_entries().unwrap())),
-        name,
-    );
+    let result = python_import(database, database.workspaces.directories(), name);
     debug!("Global import {}: {:?}", name, result);
     result
 }

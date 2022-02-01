@@ -21,13 +21,15 @@ mod node_ref;
 mod python_state;
 mod utils;
 mod value;
+mod workspaces;
 
-use database::{Database, FileIndex, Workspace};
+use database::{Database, FileIndex};
 use file_state::{Leaf, PythonFileLoader};
 use inference_state::InferenceState;
 use name::{Names, ValueName};
 use parsa_python_ast::CodeIndex;
 pub use value::ValueKind;
+use workspaces::Workspaces;
 
 pub enum ProjectType {
     PythonProject(PythonProject),
@@ -49,10 +51,10 @@ impl Project {
             "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages".to_owned(),
         ];
-        let workspaces = sys_path
-            .iter()
-            .map(|s| Workspace::new(loaders.as_ref(), s.to_owned()))
-            .collect();
+        let mut workspaces = Workspaces::new();
+        for p in &sys_path {
+            workspaces.add(loaders.as_ref(), p.to_owned())
+        }
         let database = Database::new(loaders, workspaces);
         Self {
             type_: ProjectType::PythonProject(PythonProject {

@@ -4,9 +4,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::iter::repeat;
 use std::mem;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::pin::Pin;
-use walkdir::WalkDir;
 
 use crate::file::PythonFile;
 use crate::file_state::{
@@ -16,6 +15,7 @@ use crate::file_state::{
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::workspaces::{WorkspaceFileIndex, Workspaces};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -867,14 +867,14 @@ pub struct Database {
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
-    pub workspaces: Vec<Workspace>,
+    pub workspaces: Workspaces,
     in_memory_files: HashMap<String, FileIndex>,
 
     pub python_state: PythonState,
 }
 
 impl Database {
-    pub fn new(file_state_loaders: FileStateLoaders, workspaces: Vec<Workspace>) -> Self {
+    pub fn new(file_state_loaders: FileStateLoaders, workspaces: Workspaces) -> Self {
         let mut this = Self {
             in_use: false,
             file_system_reader: Box::<FileSystemReader>::new(Default::default()),
@@ -1013,135 +1013,6 @@ impl Database {
         let collections =
             self.py_load_tmp("../typeshed/stdlib/collections/__init__.pyi") as *const _;
         PythonState::initialize(self, builtins, typing, collections);
-    }
-}
-
-#[derive(Debug)]
-pub struct Workspace {
-    root: DirectoryOrFile,
-    //watcher: dyn notify::Watcher,
-}
-
-impl Workspace {
-    pub fn new(loaders: &[Box<dyn FileStateLoader>], root: String) -> Self {
-        let mut stack = vec![(
-            PathBuf::from(&root),
-            DirectoryOrFile::Directory(root, vec![]),
-        )];
-        // TODO optimize if there are a lot of files
-        for entry in WalkDir::new(&stack[0].1.name())
-            .follow_links(true)
-            .into_iter()
-            .filter_entry(|entry| {
-                entry
-                    .file_name()
-                    .to_str()
-                    .map(|name| {
-                        !loaders.iter().any(|l| l.should_be_ignored(name))
-                            && loaders.iter().any(|l| l.might_be_relevant(name))
-                    })
-                    .unwrap_or(false)
-            })
-            .filter_map(|e| e.ok())
-            .skip(1)
-        {
-            while !entry.path().starts_with(&stack.last().unwrap().0) {
-                let n = stack.pop().unwrap().1;
-                stack
-                    .last_mut()
-                    .unwrap()
-                    .1
-                    .directory_entries_mut()
-                    .unwrap()
-                    .push(n);
-            }
-            let name = entry.file_name();
-            if let Some(name) = name.to_str() {
-                match entry.metadata() {
-                    Ok(m) => {
-                        if m.is_dir() {
-                            stack.push((
-                                entry.path().to_owned(),
-                                DirectoryOrFile::Directory(name.to_owned(), vec![]),
-                            ));
-                        } else {
-                            stack
-                                .last_mut()
-                                .unwrap()
-                                .1
-                                .directory_entries_mut()
-                                .unwrap()
-                                .push(DirectoryOrFile::File(
-                                    name.to_owned(),
-                                    WorkspaceFileIndex::none(),
-                                ));
-                        }
-                    }
-                    Err(e) => {
-                        // Just ignore it for now
-                        panic!("Need to investigate")
-                    }
-                }
-            }
-        }
-        while let Some(current) = stack.pop() {
-            if let Some(parent) = stack.last_mut() {
-                parent.1.directory_entries_mut().unwrap().push(current.1)
-            } else {
-                return Self { root: current.1 };
-            }
-        }
-        unreachable!()
-    }
-
-    pub fn root(&self) -> &DirectoryOrFile {
-        &self.root
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct WorkspaceFileIndex(Cell<Option<FileIndex>>);
-
-impl WorkspaceFileIndex {
-    fn none() -> Self {
-        Self(Cell::new(None))
-    }
-
-    fn set(&self, index: FileIndex) {
-        self.0.set(Some(index));
-    }
-
-    pub fn get(&self) -> Option<FileIndex> {
-        self.0.get()
-    }
-}
-
-#[derive(Debug)]
-pub enum DirectoryOrFile {
-    File(String, WorkspaceFileIndex),
-    Directory(String, Vec<DirectoryOrFile>),
-}
-
-impl DirectoryOrFile {
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Directory(name, _) => name,
-            Self::File(name, _) => name,
-        }
-    }
-
-    pub fn directory_entries(&self) -> Option<&[DirectoryOrFile]> {
-        match self {
-            DirectoryOrFile::Directory(_, entries) => Some(entries),
-            _ => None,
-        }
-    }
-
-    pub fn directory_entries_mut(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
-        match self {
-            DirectoryOrFile::Directory(_, entries) => Some(entries),
-            _ => None,
-        }
     }
 }
 
