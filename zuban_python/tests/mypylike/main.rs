@@ -37,7 +37,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
             println!("\nStart test {}: {}", self.file_name, self.name);
         }
         let steps = self.calculate_steps();
-        for step in &steps {
+        for (i, step) in steps.iter().enumerate() {
+            if i != 0 && cfg!(feature = "zuban_debug") {
+                println!("\nStep {} of {}", i + 1, self.name);
+            }
             for (&path, &code) in &step.files {
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
