@@ -937,6 +937,10 @@ impl Database {
         file_index
     }
 
+    fn update_file_state(&mut self, file_index: FileIndex, file_state: Pin<Box<dyn FileState>>) {
+        self.files.set(file_index.0 as usize, file_state);
+    }
+
     pub fn load_annotation_file(&self, in_file: FileIndex, code: String) -> &PythonFile {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(code + "\n");
@@ -972,10 +976,17 @@ impl Database {
     }
 
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
-        let file_index = self.load_file(path.clone(), code);
-        self.workspaces.add_in_memory_file(&path, file_index);
-        self.in_memory_files.insert(path, file_index);
-        file_index
+        if let Some(file_index) = self.in_memory_file(&path) {
+            let file_state = self.loader(&path).unwrap().load_parsed(path, code);
+            file_state.set_file_index(file_index);
+            self.update_file_state(file_index, file_state);
+            file_index
+        } else {
+            let file_index = self.load_file(path.clone(), code);
+            self.workspaces.add_in_memory_file(&path, file_index);
+            self.in_memory_files.insert(path, file_index);
+            file_index
+        }
     }
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {

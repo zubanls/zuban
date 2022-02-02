@@ -68,6 +68,10 @@ impl<T: ?Sized> InsertOnlyVec<T> {
         // operation.
         (&*self.vec.get()).iter().map(|x| x as &T)
     }
+
+    pub fn set(&mut self, index: usize, obj: Pin<Box<T>>) {
+        self.vec.get_mut()[index] = obj;
+    }
 }
 
 impl<T: fmt::Debug> fmt::Debug for InsertOnlyVec<T> {
