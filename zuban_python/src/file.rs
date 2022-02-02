@@ -902,19 +902,31 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn stmts_diagnostics(&mut self, stmts: StmtIterator<'db>) {
         for stmt in stmts {
+            let point = self.file.points.get(stmt.index());
+            if point.calculated() {
+                debug_assert_eq!(point.type_(), PointType::NodeAnalysis);
+                continue;
+            }
+
             match stmt.unpack() {
                 StmtContent::SimpleStmts(simple_stmts) => {
                     for simple_stmt in simple_stmts.iter() {
                         match simple_stmt.unpack() {
-                            SimpleStmtContent::Assignment(a) => {}
+                            SimpleStmtContent::Assignment(assignment) => {
+                                self.cache_assignment_nodes(assignment);
+                            }
                             SimpleStmtContent::StarExpressions(star_exprs) => {
                                 self.infer_star_expressions(star_exprs);
                             }
                             SimpleStmtContent::ReturnStmt(x) => {}
                             SimpleStmtContent::YieldExpr(x) => {}
                             SimpleStmtContent::RaiseStmt(x) => {}
-                            SimpleStmtContent::ImportFrom(import_from) => {}
-                            SimpleStmtContent::ImportName(import_name) => {}
+                            SimpleStmtContent::ImportFrom(import_from) => {
+                                self.cache_import_from(import_from);
+                            }
+                            SimpleStmtContent::ImportName(import_name) => {
+                                self.cache_import_name(import_name);
+                            }
                             SimpleStmtContent::PassStmt(x) => {}
                             SimpleStmtContent::GlobalStmt(x) => {}
                             SimpleStmtContent::NonlocalStmt(x) => {}
@@ -937,6 +949,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StmtContent::AsyncStmt(async_stmt) => {}
                 StmtContent::Newline => {}
             };
+            self.file.points.set(
+                stmt.index(),
+                Point::new_node_analysis(Locality::ImplicitExtern),
+            );
         }
     }
 
