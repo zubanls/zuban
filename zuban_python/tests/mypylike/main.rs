@@ -33,13 +33,16 @@ struct TestCase<'name, 'code> {
 
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
-        if cfg!(feature = "zuban_debug") {
-            println!("\nStart test {}: {}", self.file_name, self.name);
-        }
         let steps = self.calculate_steps();
         for (i, step) in steps.iter().enumerate() {
-            if i != 0 && cfg!(feature = "zuban_debug") {
-                println!("\nStep {} of {}", i + 1, self.name);
+            if cfg!(feature = "zuban_debug") {
+                println!(
+                    "\nTest: {} ({}): Step {}/{}",
+                    self.name,
+                    self.file_name,
+                    i + 1,
+                    steps.len()
+                );
             }
             for (&path, &code) in &step.files {
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
@@ -53,9 +56,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
             assert_eq!(
                 actual.trim(),
                 step.out.trim(),
-                "\n\nError {}: {}\n\nWanted:\n{}Actual:\n{}\n",
-                self.file_name,
+                "\n\nError {} ({})\n\nWanted:\n{}Actual:\n{}\n",
                 &self.name,
+                self.file_name,
                 step.out,
                 actual,
             );
