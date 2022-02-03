@@ -108,6 +108,10 @@ impl File for PythonFile {
         vec.sort_by_key(|diag| diag.issue.node_index);
         vec.into_boxed_slice()
     }
+
+    fn invalidate_references_to(&self, file_index: FileIndex) {
+        self.points.invalidate_references_to(file_index)
+    }
 }
 
 pub struct PythonFile {

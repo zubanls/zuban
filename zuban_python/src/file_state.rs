@@ -123,6 +123,7 @@ pub trait File: std::fmt::Debug + AsAny {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
+    fn invalidate_references_to(&self, file_index: FileIndex);
 }
 
 pub trait FileState: fmt::Debug + Unpin {

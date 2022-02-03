@@ -307,6 +307,17 @@ impl Points {
         }
         self.set(index, point);
     }
+
+    pub fn invalidate_references_to(&self, file_index: FileIndex) {
+        for cell in &self.0 {
+            let locality = cell.get().locality();
+            if locality == Locality::DirectExtern && cell.get().file_index() == file_index {
+                cell.set(Point::new_uncalculated());
+            } else if locality == Locality::ComplexExtern || locality == Locality::ImplicitExtern {
+                cell.set(Point::new_uncalculated())
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -382,7 +393,7 @@ pub enum Specific {
     LateBoundTypeVar,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
@@ -996,8 +1007,10 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let invalidations = self.files[file_index.0 as usize].unload_and_return_invalidations();
-        for invalid_index in &invalidations {
-            todo!()
+        for invalid_index in invalidations {
+            if let Some(file) = self.file_state(invalid_index).file(self) {
+                file.invalidate_references_to(file_index);
+            }
         }
     }
 
