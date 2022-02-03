@@ -716,6 +716,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             let name = Name::maybe_by_index(&inference.file.tree, node_index);
                             if let Some(name) = name {
                                 inference._infer_name(name)
+                            } else if let Some(expr) =
+                                Expression::maybe_by_index(&inference.file.tree, node_index)
+                            {
+                                inference._infer_expression(expr)
                             } else {
                                 todo!(
                                     "{}",
