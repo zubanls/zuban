@@ -411,12 +411,20 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .infer_annotation_expression_class(annotation.expression());
                             let annotation_g = inf.as_generic_option(i_s);
                             if !annotation_g.matches(i_s, self, value_class) {
+                                let class_string;
                                 let value_class = value.class_as_generic_option(i_s);
+                                let class_str = match function.class {
+                                    Some(class) => {
+                                        class_string = format!("of {:?} ", class.name());
+                                        &class_string as &str
+                                    }
+                                    None => "",
+                                };
                                 p.argument.unwrap().as_node_reference().add_issue(
                                     i_s.database,
                                     IssueType::ArgumentIssue(format!(
-                                        "Argument {} to {:?} of {:?} has incompatible type {:?}; expected {:?}",
-                                        1, function.name(), "A", value_class.as_string(i_s),
+                                        "Argument {} to {:?} {}has incompatible type {:?}; expected {:?}",
+                                        1, function.name(), class_str, value_class.as_string(i_s),
                                         annotation_g.as_string(i_s),
                                     )),
                                 );
