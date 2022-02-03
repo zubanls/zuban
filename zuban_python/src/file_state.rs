@@ -3,6 +3,7 @@ use crate::diagnostics::Diagnostic;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
+use crate::utils::Invalidations;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 use std::any::Any;
 use std::cell::{Cell, UnsafeCell};
@@ -130,7 +131,8 @@ pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
     fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
-    fn unload_and_return_invalidations(&mut self) -> Vec<FileIndex>;
+    fn unload_and_return_invalidations(&mut self) -> Invalidations;
+    fn add_invalidates(&self, file_index: FileIndex);
 }
 
 impl<F: File + Unpin> FileState for LanguageFileState<F> {
@@ -169,10 +171,14 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         }
     }
 
-    fn unload_and_return_invalidations(&mut self) -> Vec<FileIndex> {
+    fn unload_and_return_invalidations(&mut self) -> Invalidations {
         let invalidates = std::mem::take(&mut self.invalidates);
         self.state = UnsafeCell::new(InternalFileExistence::Unloaded);
         invalidates
+    }
+
+    fn add_invalidates(&self, file_index: FileIndex) {
+        self.invalidates.add(file_index)
     }
 }
 
@@ -180,7 +186,7 @@ pub struct LanguageFileState<F: 'static> {
     path: String,
     // Unsafe, because the file is parsed lazily
     state: UnsafeCell<InternalFileExistence<F>>,
-    invalidates: Vec<FileIndex>,
+    invalidates: Invalidations,
 }
 
 impl<F> fmt::Debug for LanguageFileState<F> {
@@ -198,7 +204,7 @@ impl<F: File> LanguageFileState<F> {
         Self {
             path,
             state: UnsafeCell::new(InternalFileExistence::Parsed(file)),
-            invalidates: vec![],
+            invalidates: Default::default(),
         }
     }
 
@@ -206,7 +212,7 @@ impl<F: File> LanguageFileState<F> {
         Self {
             path,
             state: UnsafeCell::new(InternalFileExistence::Unparsed(loader, Cell::new(None))),
-            invalidates: vec![],
+            invalidates: Default::default(),
         }
     }
 
@@ -214,7 +220,7 @@ impl<F: File> LanguageFileState<F> {
         Self {
             path,
             state: UnsafeCell::new(InternalFileExistence::Missing),
-            invalidates: vec![],
+            invalidates: Default::default(),
         }
     }
 }

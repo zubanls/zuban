@@ -1007,11 +1007,15 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let invalidations = self.files[file_index.0 as usize].unload_and_return_invalidations();
-        for invalid_index in invalidations {
+        for invalid_index in invalidations.into_iter() {
             if let Some(file) = self.file_state(invalid_index).file(self) {
                 file.invalidate_references_to(file_index);
             }
         }
+    }
+
+    pub fn add_invalidates(&self, file: FileIndex, invalidates: FileIndex) {
+        self.file_state(file).add_invalidates(invalidates)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
