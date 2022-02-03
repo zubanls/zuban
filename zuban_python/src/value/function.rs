@@ -177,7 +177,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     // Overwrite with a better type var definition.
                     self.reference.file.points.set(
                         n,
-                        Point::new_numbered_type_var(Specific::ClassTypeVar, index, Locality::Stmt),
+                        Point::new_numbered_type_var(Specific::ClassTypeVar, index, Locality::Todo),
                     );
                     return None;
                 }
@@ -207,7 +207,7 @@ impl<'db, 'a> Function<'db, 'a> {
             );
         }
         match found_type_vars.len() {
-            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Stmt)),
+            0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => type_var_reference.insert_complex(ComplexPoint::FunctionTypeVars(
                 found_type_vars.into_boxed_slice(),
             )),

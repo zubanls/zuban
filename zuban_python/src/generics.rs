@@ -528,7 +528,7 @@ pub fn search_type_vars<'db>(
                                 Point::new_numbered_type_var(
                                     Specific::LateBoundTypeVar,
                                     TypeVarIndex::new(i),
-                                    Locality::Stmt,
+                                    Locality::Todo,
                                 ),
                             );
                             continue;
@@ -541,7 +541,7 @@ pub fn search_type_vars<'db>(
                         Point::new_numbered_type_var(
                             point_type,
                             TypeVarIndex::new(i),
-                            Locality::Stmt,
+                            Locality::Todo,
                         ),
                     );
                 }

@@ -854,7 +854,7 @@ impl<'db> Inferred<'db> {
                     Point::new_redirect(
                         definition.file.file_index(),
                         definition.node_index,
-                        Locality::Stmt,
+                        Locality::Todo,
                     ),
                 );
                 self
@@ -865,12 +865,12 @@ impl<'db> Inferred<'db> {
                 Self::new_saved(file, index, file.points.get(index))
             }
             InferredState::UnsavedSpecific(specific) => {
-                let point = Point::new_simple_specific(*specific, Locality::Stmt);
+                let point = Point::new_simple_specific(*specific, Locality::Todo);
                 file.points.set(index, point);
                 Self::new_saved(file, index, point)
             }
             InferredState::Unknown => {
-                let point = Point::new_unknown(file.file_index(), Locality::File);
+                let point = Point::new_unknown(file.file_index(), Locality::Todo);
                 file.points.set(index, point);
                 Self::new_saved(file, index, point)
             }

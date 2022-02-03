@@ -431,7 +431,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             })
         } else {
-            let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Stmt);
+            let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Todo);
             match args.type_() {
                 ArgumentsType::Normal(file, primary_node) => {
                     Inferred::new_and_save(file, primary_node.index(), point)
@@ -445,7 +445,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Stmt);
+        let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
         Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
     }
 

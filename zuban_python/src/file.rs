@@ -33,7 +33,7 @@ impl ComplexValues {
         self.0.push(Box::pin(complex));
         points.set(
             node_index,
-            Point::new_complex_point(complex_index, Locality::Stmt),
+            Point::new_complex_point(complex_index, Locality::Todo),
         );
     }
 }
@@ -203,7 +203,7 @@ impl<'db> PythonFile {
             .map(|node_index| LocalityLink {
                 file: self.file_index(),
                 node_index,
-                locality: Locality::DirectExtern,
+                locality: Locality::Todo,
             })
     }
 }
@@ -337,7 +337,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         // TODO star imports
                         debug!("Unknown potential star name {}", name.as_str());
-                        Point::new_unknown(import_file.file_index(), Locality::DirectExtern)
+                        Point::new_unknown(import_file.file_index(), Locality::Todo)
                     };
                     if let Some(import_name) = import_name {
                         self.file.points.set_on_name(&import_name, point);
@@ -554,12 +554,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let inferred = inference.infer_annotation_expression_class(expr);
         // TODO locality is wrong!!!!!1
         let point = if inferred.is_simple_class(inference.i_s) {
-            Point::new_simple_specific(Specific::AnnotationInstance, Locality::Stmt)
+            Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
             debug!("Unknown annotation expression {}", expr.short_debug());
-            Point::new_unknown(self.file.file_index(), Locality::Stmt)
+            Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
     }
@@ -663,7 +663,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             YieldExpr(_) => todo!(),
             NamedExpression(named_expression) => todo!(),
         };
-        let point = Point::new_simple_specific(specific, Locality::Stmt);
+        let point = Point::new_simple_specific(specific, Locality::Todo);
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
@@ -695,7 +695,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 return inferred;
             }
             debug!("Unknown potential star import name {}", name.as_str());
-            Point::new_unknown(self.file_index, Locality::File)
+            Point::new_unknown(self.file_index, Locality::Todo)
         };
         self.file.points.set_on_name(&name, point);
         debug_assert!(self.file.points.get(name.index()).calculated());
@@ -780,7 +780,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                         self.file.points.set(
                             name_index,
-                            Point::new_redirect(self.file_index, class.index(), Locality::Stmt),
+                            Point::new_redirect(self.file_index, class.index(), Locality::Todo),
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());
                         self.check_point_cache(node_index).unwrap()
@@ -956,10 +956,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StmtContent::AsyncStmt(async_stmt) => {}
                 StmtContent::Newline => {}
             };
-            self.file.points.set(
-                stmt.index(),
-                Point::new_node_analysis(Locality::ImplicitExtern),
-            );
+            self.file
+                .points
+                .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
         }
     }
 

@@ -55,7 +55,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
         match self.specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 let point =
-                    Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Stmt);
+                    Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Todo);
                 Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
             }
             Specific::TypingTuple => {
