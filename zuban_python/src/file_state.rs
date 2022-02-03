@@ -129,7 +129,7 @@ pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
     fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
     fn set_file_index(&self, index: FileIndex);
-    fn unload(&mut self);
+    fn unload_and_return_invalidations(&mut self) -> Vec<FileIndex>;
 }
 
 impl<F: File + Unpin> FileState for LanguageFileState<F> {
@@ -168,9 +168,10 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         }
     }
 
-    fn unload(&mut self) {
-        // TODO invalidate
-        self.state = UnsafeCell::new(InternalFileExistence::Unloaded)
+    fn unload_and_return_invalidations(&mut self) -> Vec<FileIndex> {
+        let invalidates = std::mem::take(&mut self.invalidates);
+        self.state = UnsafeCell::new(InternalFileExistence::Unloaded);
+        invalidates
     }
 }
 

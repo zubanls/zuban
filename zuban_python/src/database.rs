@@ -977,6 +977,7 @@ impl Database {
 
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         if let Some(file_index) = self.in_memory_file(&path) {
+            self.unload_file(file_index);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             file_state.set_file_index(file_index);
             self.update_file_state(file_index, file_state);
@@ -993,9 +994,16 @@ impl Database {
         self.in_memory_files.get(path).cloned()
     }
 
+    fn unload_file(&mut self, file_index: FileIndex) {
+        let invalidations = self.files[file_index.0 as usize].unload_and_return_invalidations();
+        for invalid_index in &invalidations {
+            todo!()
+        }
+    }
+
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
         if let Some(file_index) = self.in_memory_files.get(path) {
-            self.files[file_index.0 as usize].unload();
+            self.unload_file(*file_index);
             self.in_memory_files.remove(path);
             Ok(())
         } else {
@@ -1004,10 +1012,10 @@ impl Database {
     }
 
     pub fn unload_all_in_memory_files(&mut self) {
-        for (path, file_index) in &mut self.in_memory_files {
-            self.files[file_index.0 as usize].unload();
+        let in_memory_files = mem::take(&mut self.in_memory_files);
+        for (path, file_index) in in_memory_files.into_iter() {
+            self.unload_file(file_index);
         }
-        self.in_memory_files.clear();
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
