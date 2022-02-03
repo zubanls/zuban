@@ -295,13 +295,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, _) => {
                     let name = name_def.name();
-                    let file_index = global_import(self.i_s.database, name.as_str());
-                    let point = if let Some(file_index) = file_index {
-                        Point::new_file_reference(file_index, Locality::DirectExtern)
-                    } else {
-                        Point::new_missing_file()
-                    };
-                    self.file.points.set(name.index(), point);
+                    self.global_import(name);
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let inferred = self.infer_import_dotted_name(dotted_name);
@@ -354,17 +348,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    fn global_import(&self, name: Name<'db>) -> Inferred<'db> {
+        let file_index = global_import(self.i_s.database, name.as_str());
+        let point = if let Some(file_index) = file_index {
+            Point::new_file_reference(file_index, Locality::DirectExtern)
+        } else {
+            Point::new_missing_file()
+        };
+        Inferred::new_and_save(self.file, name.index(), point)
+    }
+
     fn infer_import_dotted_name(&mut self, dotted: DottedName<'db>) -> Inferred<'db> {
         match dotted.unpack() {
-            DottedNameContent::Name(name) => {
-                let file_index = global_import(self.i_s.database, name.as_str());
-                let point = if let Some(file_index) = file_index {
-                    Point::new_file_reference(file_index, Locality::DirectExtern)
-                } else {
-                    Point::new_missing_file()
-                };
-                Inferred::new_and_save(self.file, name.index(), point)
-            }
+            DottedNameContent::Name(name) => self.global_import(name),
             DottedNameContent::DottedName(dotted_name, name) => {
                 let base = self.infer_import_dotted_name(dotted_name);
                 todo!()
