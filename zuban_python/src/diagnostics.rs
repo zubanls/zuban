@@ -44,7 +44,10 @@ impl<'db> Diagnostic<'db> {
         };
         format!(
             "{}:{}: error: {}",
-            self.db.file_path(self.file.file_index()),
+            // TODO REMOVE mypy removal
+            self.db
+                .file_path(self.file.file_index())
+                .trim_start_matches("/mypylike/"),
             self.start_position().line_and_column().0,
             error
         )
