@@ -2,13 +2,14 @@ mod strings;
 
 use std::iter::StepBy;
 
-pub use parsa_python::{CodeIndex, NodeIndex};
 use parsa_python::{
+    parse,
     NonterminalType::*,
     PyNode, PyNodeType,
     PyNodeType::{ErrorNonterminal, ErrorTerminal, Nonterminal, Terminal},
-    PyTree, SearchIterator, SiblingIterator, TerminalType, PYTHON_GRAMMAR,
+    PyTree, SearchIterator, SiblingIterator, TerminalType,
 };
+pub use parsa_python::{CodeIndex, NodeIndex};
 use strings::starts_with_string;
 pub use strings::PythonString;
 
@@ -16,7 +17,7 @@ pub struct Tree(PyTree);
 
 impl Tree {
     pub fn parse(code: String) -> Self {
-        Self(PYTHON_GRAMMAR.parse(code))
+        Self(parse(code))
     }
 
     pub fn length(&self) -> usize {

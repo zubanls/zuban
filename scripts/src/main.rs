@@ -24,13 +24,13 @@ fn main() -> std::io::Result<()> {
 
     let c = contents.repeat(10);
     let start = std::time::Instant::now();
-    parsa_python::PYTHON_GRAMMAR.parse(c);
+    parsa_python::parse(c);
     eprintln!("elapsed {:?}", start.elapsed());
 
     for _ in 0..10 {
         let c = contents.repeat(10);
         let start = std::time::Instant::now();
-        parsa_python::PYTHON_GRAMMAR.parse(c);
+        parsa_python::parse(c);
         eprintln!("elapsed {:?}", start.elapsed());
     }
     Ok(())

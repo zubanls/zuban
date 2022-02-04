@@ -724,7 +724,7 @@ macro_rules! create_grammar {
         }
 
         $crate::lazy_static! {
-            pub static ref $grammar: $Grammar = {$Grammar::new()};
+            static ref $grammar: $Grammar = {$Grammar::new()};
         }
     }
 }

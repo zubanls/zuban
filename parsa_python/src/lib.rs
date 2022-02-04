@@ -318,12 +318,16 @@ create_grammar!(
     fstring_format_spec: ":" fstring_content*
 );
 
+pub fn parse(mut code: String) -> PyTree {
+    PYTHON_GRAMMAR.parse(code)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     #[test]
     fn test_grammar() {
-        let tree = PYTHON_GRAMMAR.parse("{foo: 1}\n".to_owned());
+        let tree = parse("{foo: 1}\n".to_owned());
         let root_node = tree.root_node();
         assert_eq!(
             root_node.type_(),
