@@ -1,0 +1,53 @@
+[case testReprocessTopLevel]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def f(x: str) -> None: pass
+[out]
+==
+main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+
+[case testReprocessMethod]
+import m
+class B:
+    def f(self, a: m.A) -> None:
+        a.g() # E
+[file m.py]
+class A:
+    def g(self) -> None: pass
+[file m.py.2]
+class A:
+    def g(self, a: A) -> None: pass
+[out]
+==
+main:4: error: Missing positional argument "a" in call to "g" of "A"
+
+[case testFunctionMissingModuleAttribute]
+import m
+def h() -> None:
+    m.f(1)
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: str) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:3: error: "/mypylike/m.py" has no attribute "f"
+
+[case testTopLevelMissingModuleAttribute]
+import m
+m.f(1)
+def g() -> None: pass
+[file m.py]
+def f(x: int) -> None: pass
+[file m.py.2]
+def g(x: int) -> None: pass
+[builtins fixtures/fine_grained.pyi]
+[out]
+==
+main:2: error: "/mypylike/m.py" has no attribute "f"
+
