@@ -294,6 +294,10 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::FunctionType(*self)
     }
+
+    fn as_function(&self) -> Option<&Function<'db, 'a>> {
+        Some(self)
+    }
 }
 
 struct ReturnOrYieldIterator<'db> {

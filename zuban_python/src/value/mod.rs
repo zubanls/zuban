@@ -186,6 +186,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_instance(&self) -> Option<&Instance<'db, 'a>> {
         None
     }
+    fn as_function(&self) -> Option<&Function<'db, 'a>> {
+        None
+    }
     fn as_class(&self) -> Option<&Class<'db, 'a>> {
         // TODO is this really needed anymore next to as_class_like?
         None

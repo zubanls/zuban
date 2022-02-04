@@ -1072,13 +1072,17 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    pub fn is_simple_class(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn maybe_simple<'a, T>(
+        &'a self,
+        i_s: &mut InferenceState<'db, '_>,
+        c: impl Fn(&dyn Value<'db, 'a>) -> Option<T>,
+    ) -> Option<T> {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.as_class().is_some(),
-            &|_, i1, i2| false,
-            &mut |i_s, inferred| false,
-            &mut |_, p| false,
+            &mut |i_s, v| c(v),
+            &|_, i1, i2| None,
+            &mut |i_s, inferred| None,
+            &mut |_, p| None,
         )
     }
 

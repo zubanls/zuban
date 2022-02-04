@@ -1,10 +1,15 @@
+use std::cell::Cell;
+use std::fmt;
+
+use parsa_python_ast::*;
+
 use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, LocalityLink, Point,
     PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
-use crate::diagnostics::{Diagnostic, Issue};
+use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
@@ -15,10 +20,7 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::Function;
-use parsa_python_ast::*;
-use std::cell::Cell;
-use std::fmt;
+use crate::value::{Function, Value};
 
 #[derive(Default)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -559,12 +561,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let mut inference = self.file.inference(&mut i_s);
         let inferred = inference.infer_annotation_expression_class(expr);
         // TODO locality is wrong!!!!!1
-        let point = if inferred.is_simple_class(inference.i_s) {
+        let point = if inferred
+            .maybe_simple(inference.i_s, |v| v.as_class().cloned())
+            .is_some()
+        {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
-            debug!("Unknown annotation expression {}", expr.short_debug());
+            if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
+                NodeRef::new(self.file, expr.index()).add_issue(
+                    i_s.database,
+                    IssueType::ValidType(format!(
+                        "Function {:?} is not valid as a type\n Perhaps you need \"Callable[...]\" or a callback protocol?",
+                        func.name(),
+                    )),
+                );
+            } else {
+                debug!("Unknown annotation expression {}", expr.short_debug());
+            }
             Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
@@ -952,7 +967,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 StmtContent::FunctionDef(func) => {
-                    let (_, _, _, block) = func.unpack();
+                    let (_, params, return_annotation, block) = func.unpack();
+                    for param in params.iter() {
+                        if let Some(annotation) = param.annotation() {
+                            self.infer_annotation_expression(annotation.expression());
+                        }
+                    }
                     match block.unpack() {
                         BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
                         BlockContent::OneLine(simple_stmts) => {}
