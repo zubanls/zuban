@@ -574,7 +574,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     i_s.database,
                     IssueType::ValidType(format!(
                         "Function {:?} is not valid as a type\n Perhaps you need \"Callable[...]\" or a callback protocol?",
-                        func.name(),
+                        func.qualified_name(i_s.database),
                     )),
                 );
             } else {

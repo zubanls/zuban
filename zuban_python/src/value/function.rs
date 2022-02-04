@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
 use std::fmt;
 
-use super::{ClassLike, Value, ValueKind};
+use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
@@ -297,6 +297,10 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
 
     fn as_function(&self) -> Option<&Function<'db, 'a>> {
         Some(self)
+    }
+
+    fn module(&self, db: &'db Database) -> Module<'db> {
+        Module::new(db, self.reference.file)
     }
 }
 

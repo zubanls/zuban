@@ -1,6 +1,6 @@
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::{CallableClass, Function, TupleClass, Value, ValueKind};
+use super::{CallableClass, Function, Module, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, GenericPart, GenericsList, Locality,
@@ -392,6 +392,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 
     fn name(&self) -> &'db str {
         self.node().name().as_str()
+    }
+
+    fn module(&self, db: &'db Database) -> Module<'db> {
+        todo!()
     }
 
     fn lookup_internal(

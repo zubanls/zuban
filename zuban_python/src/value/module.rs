@@ -20,6 +20,7 @@ impl<'db> fmt::Debug for Module<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct Module<'db> {
     database: &'db Database,
     file: &'db PythonFile,
@@ -38,7 +39,16 @@ impl<'db> Value<'db, '_> for Module<'db> {
 
     fn name(&self) -> &'db str {
         // TODO this is not correct...
-        self.file.file_path(self.database)
+        let path = self.file.file_path(self.database);
+        path[path.rfind('/').unwrap() + 1..].trim_end_matches(".py")
+    }
+
+    fn module(&self, db: &'db Database) -> Module<'db> {
+        *self
+    }
+
+    fn qualified_name(&self, db: &'db Database) -> String {
+        self.name().to_owned()
     }
 
     fn lookup_internal(

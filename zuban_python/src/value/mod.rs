@@ -10,7 +10,7 @@ mod typing;
 use parsa_python_ast::{ListElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::GenericPart;
+use crate::database::{Database, GenericPart};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -128,6 +128,18 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     //fn file(&self) -> &'db dyn File;
 
     fn name(&self) -> &'db str;
+
+    fn qualified_name(&self, db: &'db Database) -> String {
+        format!(
+            "{}.{}",
+            self.module(db).qualified_name(db),
+            self.name().to_owned()
+        )
+    }
+
+    fn module(&self, db: &'db Database) -> Module<'db> {
+        todo!("{:?}", self)
+    }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         base_description!(self)
