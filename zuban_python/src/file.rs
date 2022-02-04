@@ -944,8 +944,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                 }
-                StmtContent::FunctionDef(func) => {}
-                StmtContent::ClassDef(class) => {}
+                StmtContent::FunctionDef(func) => {
+                    let (_, _, _, block) = func.unpack();
+                    match block.unpack() {
+                        BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
+                        BlockContent::OneLine(simple_stmts) => {}
+                    }
+                }
+                StmtContent::ClassDef(class) => {
+                    let (_, block) = class.unpack();
+                    match block.unpack() {
+                        BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
+                        BlockContent::OneLine(simple_stmts) => todo!(),
+                    }
+                }
                 StmtContent::Decorated(decorated) => {}
                 StmtContent::IfStmt(if_stmt) => {}
                 StmtContent::ForStmt(for_stmt) => {}
@@ -961,6 +973,4 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
         }
     }
-
-    fn stmt_diagnostics(&mut self) {}
 }
