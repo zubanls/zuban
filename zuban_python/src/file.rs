@@ -908,6 +908,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn stmts_diagnostics(&mut self, stmts: StmtIterator<'db>) {
+        // TODO In general all {} blocks are todos
         for stmt in stmts {
             let point = self.file.points.get(stmt.index());
             if point.calculated() {
@@ -955,7 +956,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let (_, block) = class.unpack();
                     match block.unpack() {
                         BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
-                        BlockContent::OneLine(simple_stmts) => todo!(),
+                        BlockContent::OneLine(simple_stmts) => {}
                     }
                 }
                 StmtContent::Decorated(decorated) => {}
