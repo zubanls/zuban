@@ -1007,7 +1007,9 @@ impl Database {
     }
 
     fn unload_file(&mut self, file_index: FileIndex) {
-        let invalidations = self.files[file_index.0 as usize].unload_and_return_invalidations();
+        let file_state = &mut self.files[file_index.0 as usize];
+        self.workspaces.unload_if_not_available(file_state.path());
+        let invalidations = file_state.unload_and_return_invalidations();
         for invalid_index in invalidations.into_iter() {
             if let Some(file) = self.file_state(invalid_index).file(self) {
                 file.invalidate_references_to(file_index);
