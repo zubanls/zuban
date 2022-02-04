@@ -9,6 +9,8 @@ pub enum IssueType {
     AttributeError(String, String),
     ArgumentIssue(String),
     ValidType(String),
+
+    Note(String),
 }
 
 #[derive(Debug)]
@@ -37,19 +39,26 @@ impl<'db> Diagnostic<'db> {
     }
 
     pub fn as_string(&self) -> String {
+        let mut type_ = "error";
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
                 format!("{:?} has no attribute {:?}", object, name)
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
+            IssueType::Note(s) => {
+                type_ = "note";
+                s.clone()
+            }
         };
+        let string = String::new();
         format!(
-            "{}:{}: error: {}",
+            "{}:{}: {}: {}",
             // TODO REMOVE mypy removal
             self.db
                 .file_path(self.file.file_index())
                 .trim_start_matches("/mypylike/"),
             self.start_position().line_and_column().0,
+            type_,
             error
         )
     }

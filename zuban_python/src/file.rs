@@ -570,13 +570,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             return i.save_redirect(self.file, expr.index());
         } else {
             if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
-                NodeRef::new(self.file, expr.index()).add_issue(
+                let node_ref = NodeRef::new(self.file, expr.index());
+                node_ref.add_issue(
                     i_s.database,
                     IssueType::ValidType(format!(
-                        "Function {:?} is not valid as a type\n Perhaps you need \"Callable[...]\" or a callback protocol?",
+                        "Function {:?} is not valid as a type",
                         func.qualified_name(i_s.database),
                     )),
                 );
+                node_ref.add_issue(
+                    i_s.database,
+                    IssueType::Note(
+                        "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
+                    ),
+                )
             } else {
                 debug!("Unknown annotation expression {}", expr.short_debug());
             }
