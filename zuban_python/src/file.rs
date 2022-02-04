@@ -354,8 +354,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             self.i_s
                 .database
                 .add_invalidates(file_index, self.file.file_index());
+            debug!(
+                "Global import {:?}: {:?}",
+                name.as_str(),
+                self.i_s.database.file_path(file_index)
+            );
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
+            debug!("Global import not found: {}", name.as_str());
             Point::new_missing_file()
         };
         Inferred::new_and_save(self.file, name.index(), point)

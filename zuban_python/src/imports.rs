@@ -1,5 +1,4 @@
 use crate::database::{Database, FileIndex};
-use crate::debug;
 use crate::file_state::File;
 use crate::workspaces::DirectoryOrFile;
 
@@ -13,7 +12,6 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
     }
 
     let result = python_import(database, database.workspaces.directories(), name);
-    debug!("Global import {}: {:?}", name, result);
     result
 }
 
