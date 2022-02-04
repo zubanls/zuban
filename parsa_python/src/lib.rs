@@ -15,7 +15,7 @@ create_grammar!(
         Name: "match" | "case" | "_"
     ]
 
-    file: stmt+ Endmarker
+    file: stmt* Endmarker
 
     stmt: @error_recovery
           simple_stmts | Newline
@@ -319,6 +319,10 @@ create_grammar!(
 );
 
 pub fn parse(mut code: String) -> PyTree {
+    // TODO is this really the best way? Especially for refactoring?!
+    if !code.ends_with('\n') {
+        code += "\n";
+    }
     PYTHON_GRAMMAR.parse(code)
 }
 

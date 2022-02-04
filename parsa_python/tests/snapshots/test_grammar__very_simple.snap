@@ -1,0 +1,15 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-2
+ stmt: 0-2
+  simple_stmts: 0-2
+   simple_stmt: 0-1
+    star_expressions: 0-1
+     expression: 0-1
+      atom: 0-1
+       Number: 0-1 "1"
+   Newline: 1-2 "\n"
+ Endmarker: 2-2 ""
+

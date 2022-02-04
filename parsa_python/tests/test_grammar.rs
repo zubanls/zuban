@@ -64,6 +64,8 @@ macro_rules! parametrize_snapshots {
 }
 
 parametrize_snapshots!(
+    empty: "".to_owned();
+    very_simple: "1".to_owned();
     json: "{foo: 1}\n".to_owned();
     simple: dedent("
         a(bar:=1, foo=1);
