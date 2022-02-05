@@ -33,6 +33,12 @@ struct TestCase<'name, 'code> {
 
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
+        if self.name.contains("TODO") {
+            // TODO remove this if
+            println!("Skipped: {}", self.name);
+            return;
+        }
+
         let steps = self.calculate_steps();
         for (i, step) in steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
