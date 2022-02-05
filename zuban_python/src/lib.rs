@@ -83,6 +83,21 @@ impl Project {
         // Mostly used for testing
         self.database.unload_all_in_memory_files()
     }
+
+    pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic<'_>]> {
+        let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
+        self.database
+            .workspaces
+            .last()
+            .root()
+            .for_each_file(&mut |file_index| {
+                let file = self.database.loaded_file(file_index);
+
+                let array: [i32; 3] = [0; 3];
+                all_diagnostics.append(&mut file.diagnostics(&self.database).into_vec())
+            });
+        all_diagnostics.into_boxed_slice()
+    }
 }
 
 pub struct PythonProject {
@@ -137,11 +152,7 @@ impl<'a> Script<'a> {
     }
 
     fn file(&self) -> &dyn file_state::File {
-        self.project
-            .database
-            .file_state(self.file_index)
-            .file(&self.project.database)
-            .unwrap()
+        self.project.database.loaded_file(self.file_index)
     }
 
     fn leaf(&self, position: Position) -> Leaf {

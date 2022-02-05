@@ -53,10 +53,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
             for (&path, &code) in &step.files {
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
-            let script =
-                zuban_python::Script::new(project, Some(BASE_PATH.to_owned() + "main"), None);
-            let diagnostics = script.diagnostics();
-            let actual = diagnostics
+            let actual = project
+                .diagnostics()
                 .iter()
                 .fold(String::new(), |a, b| a + &b.as_string() + "\n");
             assert_eq!(

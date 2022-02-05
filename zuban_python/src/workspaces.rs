@@ -45,6 +45,11 @@ impl Workspaces {
             }
         }
     }
+
+    pub fn last(&self) -> &Workspace {
+        // TODO this should probably not be needed
+        self.0.last().unwrap()
+    }
 }
 
 #[derive(Debug)]
@@ -176,6 +181,21 @@ impl DirectoryOrFile {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,
+        }
+    }
+
+    pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
+        match self {
+            Self::File(_, index) => {
+                if let Some(index) = index.get() {
+                    callable(index)
+                }
+            }
+            Self::Directory(_, nodes) => {
+                for n in nodes {
+                    n.for_each_file(callable)
+                }
+            }
         }
     }
 }
