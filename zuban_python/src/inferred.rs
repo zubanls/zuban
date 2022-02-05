@@ -861,7 +861,7 @@ impl<'db> Inferred<'db> {
             }
             InferredState::UnsavedComplex(complex) => {
                 file.complex_points
-                    .insert(&file.points, index, complex.clone());
+                    .insert(&file.points, index, complex.clone(), Locality::Todo);
                 Self::new_saved(file, index, file.points.get(index))
             }
             InferredState::UnsavedSpecific(specific) => {

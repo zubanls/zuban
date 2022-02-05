@@ -438,6 +438,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.points,
             class.index(),
             ComplexPoint::Class(Box::new(ClassStorage::new(symbol_table, self_symbol_table))),
+            Locality::File,
         );
         // Need to first index the class, because the class body does not have access to
         // the class name.
@@ -681,6 +682,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.points,
                 name.index(),
                 ComplexPoint::FunctionOverload(Box::new(new_overload)),
+                Locality::File,
             );
             self.symbol_table.add_or_replace_symbol(name);
         } else {

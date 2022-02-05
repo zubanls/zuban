@@ -3,7 +3,7 @@ use parsa_python_ast::{
     PythonString,
 };
 
-use crate::database::{ComplexPoint, Database, Point, PointLink, PointType};
+use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType};
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
@@ -55,10 +55,10 @@ impl<'db> NodeRef<'db> {
         }
     }
 
-    pub fn insert_complex(&self, complex: ComplexPoint) {
+    pub fn insert_complex(&self, complex: ComplexPoint, locality: Locality) {
         self.file
             .complex_points
-            .insert(&self.file.points, self.node_index, complex);
+            .insert(&self.file.points, self.node_index, complex, locality);
     }
 
     pub fn as_link(&self) -> PointLink {

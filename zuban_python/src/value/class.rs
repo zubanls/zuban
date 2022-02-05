@@ -232,7 +232,10 @@ impl<'db, 'a> Class<'db, 'a> {
                 _ => unreachable!(),
             }
         } else {
-            reference.insert_complex(ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)));
+            reference.insert_complex(
+                ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
+                Locality::Todo,
+            );
             debug_assert!(reference.point().calculated());
             self.class_infos(i_s)
         }

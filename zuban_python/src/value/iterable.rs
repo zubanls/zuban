@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
-use crate::database::{ComplexPoint, GenericPart, GenericsList, TypeVarIndex};
+use crate::database::{ComplexPoint, GenericPart, GenericsList, Locality, TypeVarIndex};
 use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -68,10 +68,13 @@ impl<'db> ListLiteral<'db> {
                 ListContent::Comprehension(_) => unreachable!(),
                 ListContent::None => todo!(),
             };
-            reference.insert_complex(ComplexPoint::GenericClass(
-                i_s.database.python_state.builtins_point_link("list"),
-                GenericsList::new(Box::new([result])),
-            ));
+            reference.insert_complex(
+                ComplexPoint::GenericClass(
+                    i_s.database.python_state.builtins_point_link("list"),
+                    GenericsList::new(Box::new([result])),
+                ),
+                Locality::Todo,
+            );
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
@@ -247,10 +250,13 @@ impl<'db> DictLiteral<'db> {
                     }
                 }
             }
-            reference.insert_complex(ComplexPoint::GenericClass(
-                i_s.database.python_state.builtins_point_link("list"),
-                GenericsList::new(Box::new([keys, values])),
-            ));
+            reference.insert_complex(
+                ComplexPoint::GenericClass(
+                    i_s.database.python_state.builtins_point_link("list"),
+                    GenericsList::new(Box::new([keys, values])),
+                ),
+                Locality::Todo,
+            );
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),

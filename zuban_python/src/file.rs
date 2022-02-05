@@ -31,12 +31,18 @@ impl ComplexValues {
         self.0.get(index).unwrap()
     }
 
-    pub fn insert(&self, points: &Points, node_index: NodeIndex, complex: ComplexPoint) {
+    pub fn insert(
+        &self,
+        points: &Points,
+        node_index: NodeIndex,
+        complex: ComplexPoint,
+        locality: Locality,
+    ) {
         let complex_index = self.0.len() as u32;
         self.0.push(Box::pin(complex));
         points.set(
             node_index,
-            Point::new_complex_point(complex_index, Locality::Todo),
+            Point::new_complex_point(complex_index, locality),
         );
     }
 }

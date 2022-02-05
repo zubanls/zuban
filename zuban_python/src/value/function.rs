@@ -208,9 +208,10 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
-            _ => type_var_reference.insert_complex(ComplexPoint::FunctionTypeVars(
-                found_type_vars.into_boxed_slice(),
-            )),
+            _ => type_var_reference.insert_complex(
+                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
+                Locality::Todo,
+            ),
         }
         debug_assert!(type_var_reference.point().calculated());
         self.calculated_type_vars(i_s)
