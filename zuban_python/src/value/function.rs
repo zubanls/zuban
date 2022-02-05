@@ -56,6 +56,10 @@ impl<'db, 'a> Function<'db, 'a> {
         FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
+    pub fn return_annotation(&self) -> Option<Expression<'db>> {
+        self.node().annotation().map(|a| a.expression())
+    }
+
     pub fn iter_inferrable_params<'b>(
         &self,
         args: &'b dyn Arguments<'db>,
@@ -253,7 +257,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let annotation = self.node().annotation();
+        let annotation = self.return_annotation();
         let func_type_vars = if annotation.is_some() {
             self.calculated_type_vars(i_s)
         } else {
@@ -261,9 +265,8 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         };
         let mut finder =
             TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
-        if let Some(return_annotation) = annotation {
+        if let Some(expr) = annotation {
             let i_s = &mut i_s.with_annotation_instance();
-            let expr = return_annotation.expression();
             if contains_type_vars(self.reference.file, &expr) {
                 // TODO this could also be a tuple...
                 debug!(

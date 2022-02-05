@@ -782,7 +782,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s),
             Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
