@@ -939,10 +939,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn calculate_diagnostics(&mut self) {
-        self.stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
+        self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }
 
-    fn stmts_diagnostics(
+    fn calc_stmts_diagnostics(
         &mut self,
         stmts: StmtIterator<'db>,
         class: Option<&Class<'db, '_>>,
@@ -998,26 +998,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let function = Function::new(NodeRef::new(self.file, f.index()), class);
                     match block.unpack() {
                         BlockContent::Indented(stmts) => {
-                            self.stmts_diagnostics(stmts, None, Some(&function))
+                            self.calc_stmts_diagnostics(stmts, None, Some(&function))
                         }
                         BlockContent::OneLine(simple_stmts) => {}
                     }
                 }
-                StmtContent::ClassDef(class) => {
-                    let (_, block) = class.unpack();
-                    let class = Class::from_position(
-                        NodeRef::new(self.file, class.index()),
-                        Generics::None,
-                        None,
-                    )
-                    .unwrap();
-                    match block.unpack() {
-                        BlockContent::Indented(stmts) => {
-                            self.stmts_diagnostics(stmts, Some(&class), None)
-                        }
-                        BlockContent::OneLine(simple_stmts) => {}
-                    }
-                }
+                StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtContent::Decorated(decorated) => {}
                 StmtContent::IfStmt(if_stmt) => {}
                 StmtContent::ForStmt(for_stmt) => {}
@@ -1031,6 +1017,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             self.file
                 .points
                 .set(stmt.index(), Point::new_node_analysis(Locality::Todo));
+        }
+    }
+
+    fn calc_class_diagnostics(&mut self, class: ClassDef<'db>) {
+        let (_, block) = class.unpack();
+        let class =
+            Class::from_position(NodeRef::new(self.file, class.index()), Generics::None, None)
+                .unwrap();
+        match block.unpack() {
+            BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, Some(&class), None),
+            BlockContent::OneLine(simple_stmts) => {}
         }
     }
 }
