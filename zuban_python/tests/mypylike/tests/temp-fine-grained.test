@@ -36,7 +36,7 @@ def g(x: str) -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
-main:3: error: "/mypylike/m.py" has no attribute "f"
+main:3: error: "m" has no attribute "f"
 
 [case testTopLevelMissingModuleAttribute]
 import m
@@ -49,5 +49,37 @@ def g(x: int) -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
-main:2: error: "/mypylike/m.py" has no attribute "f"
+main:2: error: "m" has no attribute "f"
+
+[case testClassChangedIntoFunction]
+
+import m
+def f(a: m.A) -> None:
+    pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[out]
+==
+main:3: error: Function "m.A" is not valid as a type
+main:3: note: Perhaps you need "Callable[...]" or a callback protocol?
+
+[case testClassChangedIntoFunction2]
+
+import m
+class B:
+    def f(self, a: m.A) -> None: pass
+[file m.py]
+class A: pass
+[file m.py.2]
+def A() -> None: pass
+[file n.py.3]
+[out]
+==
+main:4: error: Function "m.A" is not valid as a type
+main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
+==
+main:4: error: Function "m.A" is not valid as a type
+main:4: note: Perhaps you need "Callable[...]" or a callback protocol?
 
