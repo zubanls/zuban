@@ -9,6 +9,7 @@ pub enum IssueType {
     AttributeError(String, String),
     ArgumentIssue(String),
     ValidType(String),
+    IncompatibleReturn(String, String),
 
     Note(String),
 }
@@ -43,6 +44,12 @@ impl<'db> Diagnostic<'db> {
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
                 format!("{:?} has no attribute {:?}", object, name)
+            }
+            IssueType::IncompatibleReturn(got, expected) => {
+                format!(
+                    "Incompatible return value type (got {:?}, expected {:?})",
+                    got, expected
+                )
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
             IssueType::Note(s) => {
