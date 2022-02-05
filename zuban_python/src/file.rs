@@ -11,6 +11,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -20,9 +21,9 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Function, Value};
+use crate::value::{Class, Function, Value};
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
@@ -932,10 +933,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn calculate_diagnostics(&mut self) {
-        self.stmts_diagnostics(self.file.tree.root().iter_stmts());
+        self.stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }
 
-    fn stmts_diagnostics(&mut self, stmts: StmtIterator<'db>) {
+    fn stmts_diagnostics(
+        &mut self,
+        stmts: StmtIterator<'db>,
+        class: Option<&Class<'db, '_>>,
+        func: Option<&Function<'db, '_>>,
+    ) {
         // TODO In general all {} blocks are todos
         for stmt in stmts {
             let point = self.file.points.get(stmt.index());
@@ -952,9 +958,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 self.cache_assignment_nodes(assignment);
                             }
                             SimpleStmtContent::StarExpressions(star_exprs) => {
-                                self.infer_star_expressions(star_exprs);
+                                let inf = self.infer_star_expressions(star_exprs);
+                                inf.as_generic_option(self.i_s);
                             }
-                            SimpleStmtContent::ReturnStmt(x) => {}
+                            SimpleStmtContent::ReturnStmt(return_stmt) => {
+                                return_stmt.star_expressions();
+                            }
                             SimpleStmtContent::YieldExpr(x) => {}
                             SimpleStmtContent::RaiseStmt(x) => {}
                             SimpleStmtContent::ImportFrom(import_from) => {
@@ -973,22 +982,33 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                 }
-                StmtContent::FunctionDef(func) => {
-                    let (_, params, return_annotation, block) = func.unpack();
+                StmtContent::FunctionDef(f) => {
+                    let (_, params, return_annotation, block) = f.unpack();
                     for param in params.iter() {
                         if let Some(annotation) = param.annotation() {
                             self.infer_annotation_expression(annotation.expression());
                         }
                     }
+                    let function = Function::new(NodeRef::new(self.file, f.index()), class);
                     match block.unpack() {
-                        BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
+                        BlockContent::Indented(stmts) => {
+                            self.stmts_diagnostics(stmts, None, Some(&function))
+                        }
                         BlockContent::OneLine(simple_stmts) => {}
                     }
                 }
                 StmtContent::ClassDef(class) => {
                     let (_, block) = class.unpack();
+                    let class = Class::from_position(
+                        NodeRef::new(self.file, class.index()),
+                        Generics::None,
+                        None,
+                    )
+                    .unwrap();
                     match block.unpack() {
-                        BlockContent::Indented(stmts) => self.stmts_diagnostics(stmts),
+                        BlockContent::Indented(stmts) => {
+                            self.stmts_diagnostics(stmts, Some(&class), None)
+                        }
                         BlockContent::OneLine(simple_stmts) => {}
                     }
                 }

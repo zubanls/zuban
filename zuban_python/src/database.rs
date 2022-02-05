@@ -281,6 +281,7 @@ impl fmt::Debug for Point {
     }
 }
 
+#[derive(Debug)]
 pub struct Points(Vec<Cell<Point>>);
 
 impl Points {
