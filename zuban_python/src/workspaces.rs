@@ -36,11 +36,11 @@ impl Workspaces {
     pub fn unload_if_not_available(&mut self, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
-            if let DirectoryOrFile::Directory(ref name, files) = &mut workspace.root {
-                if path.starts_with(name) {
+            if let DirectoryOrFile::Directory(ref dir_name, files) = &mut workspace.root {
+                if path.starts_with(dir_name) {
                     // TODO this is obviously wrong, nested files are not cared for
-                    let name = &path[name.len()..];
-                    files.retain(|f| f.name() == name);
+                    let name = &path[dir_name.len()..];
+                    files.retain(|f| f.name() != name);
                 }
             }
         }

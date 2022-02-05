@@ -991,6 +991,7 @@ impl Database {
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
+            self.workspaces.add_in_memory_file(&path, file_index);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             file_state.set_file_index(file_index);
             self.update_file_state(file_index, file_state);
