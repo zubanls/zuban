@@ -988,21 +988,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                 }
-                StmtContent::FunctionDef(f) => {
-                    let (_, params, return_annotation, block) = f.unpack();
-                    for param in params.iter() {
-                        if let Some(annotation) = param.annotation() {
-                            self.infer_annotation_expression(annotation.expression());
-                        }
-                    }
-                    let function = Function::new(NodeRef::new(self.file, f.index()), class);
-                    match block.unpack() {
-                        BlockContent::Indented(stmts) => {
-                            self.calc_stmts_diagnostics(stmts, None, Some(&function))
-                        }
-                        BlockContent::OneLine(simple_stmts) => {}
-                    }
-                }
+                StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtContent::Decorated(decorated) => {}
                 StmtContent::IfStmt(if_stmt) => {}
@@ -1027,6 +1013,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .unwrap();
         match block.unpack() {
             BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, Some(&class), None),
+            BlockContent::OneLine(simple_stmts) => {}
+        }
+    }
+
+    fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {
+        let (_, params, return_annotation, block) = f.unpack();
+        for param in params.iter() {
+            if let Some(annotation) = param.annotation() {
+                self.infer_annotation_expression(annotation.expression());
+            }
+        }
+        let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        match block.unpack() {
+            BlockContent::Indented(stmts) => {
+                self.calc_stmts_diagnostics(stmts, None, Some(&function))
+            }
             BlockContent::OneLine(simple_stmts) => {}
         }
     }
