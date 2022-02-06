@@ -16,6 +16,7 @@ lazy_static::lazy_static! {
         r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets|delete)",
         r"(?: ([^\]]*))?\][ \t]*\n"
     )).unwrap();
+    static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -162,6 +163,7 @@ fn main() {
     let file_count = files.len();
     for file in files {
         let code = read_to_string(&file).unwrap();
+        let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code) {
