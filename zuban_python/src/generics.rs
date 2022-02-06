@@ -390,10 +390,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         self.args.node_reference().add_issue(
                             i_s.database,
                             IssueType::ArgumentIssue(format!(
-                                "Missing positional argument {:?} in call to {:?} of {:?}",
+                                "Missing positional argument {:?} in call to {}",
                                 p.param.name_definition().name().as_str(),
-                                function.name(),
-                                "A",
+                                function.with_class_string(),
                             )),
                         );
                         //continue
@@ -434,9 +433,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     self.args.node_reference().add_issue(
                         i_s.database,
                         IssueType::ArgumentIssue(format!(
-                            "Too many arguments for {:?} of {:?}",
-                            function.name(),
-                            "A",
+                            "Too many arguments for {}",
+                            function.with_class_string(),
                         )),
                     );
                     self.matches = false
