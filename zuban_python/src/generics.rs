@@ -392,7 +392,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             IssueType::ArgumentIssue(format!(
                                 "Missing positional argument {:?} in call to {}",
                                 p.param.name_definition().name().as_str(),
-                                function.with_class_string(),
+                                function.diagnostic_string(),
                             )),
                         );
                         //continue
@@ -416,7 +416,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {} has incompatible type {:?}; expected {:?}",
                                         1,
-                                        function.with_class_string(),
+                                        function.diagnostic_string(),
                                         value_class.as_string(i_s),
                                         annotation_g.as_string(i_s),
                                     )),
@@ -434,7 +434,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         i_s.database,
                         IssueType::ArgumentIssue(format!(
                             "Too many arguments for {}",
-                            function.with_class_string(),
+                            function.diagnostic_string(),
                         )),
                     );
                     self.matches = false

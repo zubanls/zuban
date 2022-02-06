@@ -233,7 +233,7 @@ impl<'db, 'a> Function<'db, 'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn with_class_string(&self) -> String {
+    pub fn diagnostic_string(&self) -> String {
         match self.class {
             Some(class) => format!("{:?} of {:?} ", self.name(), class.name()),
             None => format!("{:?}", self.name()),
