@@ -232,6 +232,13 @@ impl<'db, 'a> Function<'db, 'a> {
             .map(|a| Generics::Expression(self.reference.file, a.expression()))
             .unwrap_or(Generics::None)
     }
+
+    pub fn with_class_string(&self) -> String {
+        match self.class {
+            Some(class) => format!("{:?} of {:?} ", self.name(), class.name()),
+            None => format!("{:?}", self.name()),
+        }
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
