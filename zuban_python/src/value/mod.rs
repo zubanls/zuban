@@ -158,9 +158,14 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeRef<'db>,
     ) -> Inferred<'db> {
         self.lookup_internal(i_s, name).unwrap_or_else(|| {
+            let origin = if self.is_module() {
+                "Module".to_owned()
+            } else {
+                format!("{:?}", self.name())
+            };
             from.add_issue(
                 i_s.database,
-                IssueType::AttributeError(self.name().to_owned(), name.to_owned()),
+                IssueType::AttributeError(origin, name.to_owned()),
             );
             Inferred::new_unknown()
         })
@@ -215,6 +220,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         None
     }
     fn is_none(&self) -> bool {
+        false
+    }
+    fn is_module(&self) -> bool {
         false
     }
 

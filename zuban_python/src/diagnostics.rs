@@ -43,7 +43,7 @@ impl<'db> Diagnostic<'db> {
         let mut type_ = "error";
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
-                format!("{:?} has no attribute {:?}", object, name)
+                format!("{} has no attribute {:?}", object, name)
             }
             IssueType::IncompatibleReturn(got, expected) => {
                 format!(

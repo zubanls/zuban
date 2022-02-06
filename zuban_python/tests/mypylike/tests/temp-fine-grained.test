@@ -36,7 +36,7 @@ def g(x: str) -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
-main:3: error: "m" has no attribute "f"
+main:3: error: Module has no attribute "f"
 
 [case testTopLevelMissingModuleAttribute]
 import m
@@ -49,7 +49,7 @@ def g(x: int) -> None: pass
 [builtins fixtures/fine_grained.pyi]
 [out]
 ==
-main:2: error: "m" has no attribute "f"
+main:2: error: Module has no attribute "f"
 
 [case testClassChangedIntoFunction]
 

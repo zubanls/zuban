@@ -167,7 +167,6 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
     }
 
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
-        dbg!(&self);
         match self.state.get_mut() {
             InternalFileExistence::Parsed(f) => Some(f),
             _ => None,
