@@ -48,7 +48,7 @@ impl<T: ?Sized> Default for InsertOnlyVec<T> {
     }
 }
 
-impl<T: ?Sized> InsertOnlyVec<T> {
+impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
     pub fn get(&self, index: usize) -> Option<&T> {
         unsafe { &*self.vec.get() }.get(index).map(|x| x as &T)
     }
@@ -77,6 +77,10 @@ impl<T: ?Sized> InsertOnlyVec<T> {
 
     pub fn set(&mut self, index: usize, obj: Pin<Box<T>>) {
         self.vec.get_mut()[index] = obj;
+    }
+
+    pub fn as_vec_mut(&mut self) -> &mut Vec<Pin<Box<T>>> {
+        self.vec.get_mut()
     }
 }
 

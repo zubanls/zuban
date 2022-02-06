@@ -118,8 +118,9 @@ impl File for PythonFile {
         vec.into_boxed_slice()
     }
 
-    fn invalidate_references_to(&self, file_index: FileIndex) {
-        self.points.invalidate_references_to(file_index)
+    fn invalidate_references_to(&mut self, file_index: FileIndex) {
+        self.points.invalidate_references_to(file_index);
+        self.issues.as_vec_mut().clear();
     }
 }
 

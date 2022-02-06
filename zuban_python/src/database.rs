@@ -309,7 +309,7 @@ impl Points {
         self.set(index, point);
     }
 
-    pub fn invalidate_references_to(&self, file_index: FileIndex) {
+    pub fn invalidate_references_to(&mut self, file_index: FileIndex) {
         for cell in &self.0 {
             let locality = cell.get().locality();
             if locality == Locality::DirectExtern && cell.get().file_index() == file_index {
@@ -917,8 +917,8 @@ impl Database {
         self.files.get(index.0 as usize).unwrap()
     }
 
-    pub fn file_state_mut(&mut self, index: FileIndex) -> Pin<&mut (dyn FileState + 'static)> {
-        self.files.get_mut(index.0 as usize).unwrap()
+    pub fn file_state_mut(&mut self, index: FileIndex) -> &mut (dyn FileState + 'static) {
+        &mut self.files[index.0 as usize]
     }
 
     pub fn file_path(&self, index: FileIndex) -> &str {
@@ -930,7 +930,9 @@ impl Database {
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        self.file_state(index).file(self).unwrap()
+        self.file_state(index)
+            .file(&*self.file_system_reader)
+            .unwrap()
     }
 
     fn loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
@@ -1021,14 +1023,12 @@ impl Database {
 
     fn invalidate_file(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
         for invalid_index in invalidations.into_iter() {
-            let state = self.file_state(invalid_index);
-            if let Some(file) = state.file(self) {
-                // TODO check if a file was already invalidated
+            let file_state = self.file_state_mut(invalid_index);
+            let invalidations = file_state.take_invalidations();
+            if let Some(file) = file_state.maybe_loaded_file_mut() {
                 file.invalidate_references_to(original_file_index);
             }
 
-            let mut state = self.file_state_mut(invalid_index);
-            let invalidations = state.take_invalidations();
             self.invalidate_file(original_file_index, invalidations);
         }
     }

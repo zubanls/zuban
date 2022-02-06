@@ -124,12 +124,13 @@ pub trait File: std::fmt::Debug + AsAny {
     }
 
     fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
-    fn invalidate_references_to(&self, file_index: FileIndex);
+    fn invalidate_references_to(&mut self, file_index: FileIndex);
 }
 
 pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
-    fn file(&self, database: &Database) -> Option<&(dyn File + 'static)>;
+    fn file(&self, reader: &dyn VirtualFileSystemReader) -> Option<&(dyn File + 'static)>;
+    fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn set_file_index(&self, index: FileIndex);
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
@@ -141,7 +142,10 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn file(&self, database: &Database) -> Option<&(dyn File + 'static)> {
+    fn file(
+        &self,
+        file_system_reader: &dyn VirtualFileSystemReader,
+    ) -> Option<&(dyn File + 'static)> {
         match unsafe { &*self.state.get() } {
             InternalFileExistence::Missing | InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
@@ -149,16 +153,24 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
                 // It is extremely important to deal with the data given here before overwriting it
                 // in `slot`. Otherwise we access memory that has different data structures.
                 let file_index = file_index_cell.get().unwrap();
-                if let Some(file) = database.file_system_reader.read_file(&self.path) {
+                if let Some(file) = file_system_reader.read_file(&self.path) {
                     unsafe { *self.state.get() = InternalFileExistence::Parsed(loader(file)) };
                 } else {
                     unsafe { *self.state.get() = InternalFileExistence::Missing };
                 }
 
-                let file = self.file(database);
+                let file = self.file(file_system_reader);
                 file.unwrap().set_file_index(file_index);
                 file
             }
+        }
+    }
+
+    fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
+        dbg!(&self);
+        match self.state.get_mut() {
+            InternalFileExistence::Parsed(f) => Some(f),
+            _ => None,
         }
     }
 
