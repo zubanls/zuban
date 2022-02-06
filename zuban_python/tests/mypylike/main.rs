@@ -54,17 +54,25 @@ impl<'name, 'code> TestCase<'name, 'code> {
             for (&path, &code) in &step.files {
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
-            let actual = project
+            let mut diagnostics: Vec<_> = project
                 .diagnostics()
                 .iter()
-                .fold(String::new(), |a, b| a + &b.as_string() + "\n");
+                .map(|d| d.as_string())
+                .collect();
+            let mut specified = step.out.trim().split("\n").collect::<Vec<_>>();
+            diagnostics.sort();
+            specified.sort();
+            if specified.len() == 1 && specified[0] == "" {
+                specified.pop();
+            }
+            let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
             assert_eq!(
-                actual.trim(),
-                step.out.trim(),
-                "\n\nError {} ({})\n\nWanted:\n{}Actual:\n{}\n",
+                diagnostics,
+                specified,
+                "\n\nError {} ({})\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,
-                step.out,
+                step.out.trim(),
                 actual,
             );
         }
