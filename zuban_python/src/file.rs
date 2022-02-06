@@ -387,6 +387,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn cache_assignment_nodes(&mut self, assignment: Assignment<'db>) {
+        if self.file.points.get(assignment.index()).calculated() {
+            return;
+        }
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
@@ -410,6 +413,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!()
             }
         }
+        self.file
+            .points
+            .set(assignment.index(), Point::new_node_analysis(Locality::Todo));
     }
 
     fn infer_assignment_right_side(&mut self, right: AssignmentRightSide<'db>) -> Inferred<'db> {
