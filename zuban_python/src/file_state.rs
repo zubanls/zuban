@@ -133,6 +133,7 @@ pub trait FileState: fmt::Debug + Unpin {
     fn set_file_index(&self, index: FileIndex);
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
     fn add_invalidates(&self, file_index: FileIndex);
+    fn take_invalidations(&mut self) -> Invalidations;
 }
 
 impl<F: File + Unpin> FileState for LanguageFileState<F> {
@@ -175,6 +176,10 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         let invalidates = std::mem::take(&mut self.invalidates);
         self.state = UnsafeCell::new(InternalFileExistence::Unloaded);
         invalidates
+    }
+
+    fn take_invalidations(&mut self) -> Invalidations {
+        std::mem::take(&mut self.invalidates)
     }
 
     fn add_invalidates(&self, file_index: FileIndex) {

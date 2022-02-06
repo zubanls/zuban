@@ -14,7 +14,7 @@ use crate::file_state::{
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::workspaces::{WorkspaceFileIndex, Workspaces};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -917,6 +917,10 @@ impl Database {
         self.files.get(index.0 as usize).unwrap()
     }
 
+    pub fn file_state_mut(&mut self, index: FileIndex) -> Pin<&mut (dyn FileState + 'static)> {
+        self.files.get_mut(index.0 as usize).unwrap()
+    }
+
     pub fn file_path(&self, index: FileIndex) -> &str {
         self.file_state(index).path()
     }
@@ -1012,10 +1016,20 @@ impl Database {
         let file_state = &mut self.files[file_index.0 as usize];
         self.workspaces.unload_if_not_available(file_state.path());
         let invalidations = file_state.unload_and_return_invalidations();
+        self.invalidate_file(file_index, invalidations)
+    }
+
+    fn invalidate_file(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
         for invalid_index in invalidations.into_iter() {
-            if let Some(file) = self.file_state(invalid_index).file(self) {
-                file.invalidate_references_to(file_index);
+            let state = self.file_state(invalid_index);
+            if let Some(file) = state.file(self) {
+                // TODO check if a file was already invalidated
+                file.invalidate_references_to(original_file_index);
             }
+
+            let mut state = self.file_state_mut(invalid_index);
+            let invalidations = state.take_invalidations();
+            self.invalidate_file(original_file_index, invalidations);
         }
     }
 

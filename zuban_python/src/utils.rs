@@ -53,6 +53,10 @@ impl<T: ?Sized> InsertOnlyVec<T> {
         unsafe { &*self.vec.get() }.get(index).map(|x| x as &T)
     }
 
+    pub fn get_mut(&mut self, index: usize) -> Option<Pin<&mut T>> {
+        self.vec.get_mut().get_mut(index).map(|x| x.as_mut())
+    }
+
     pub fn push(&self, element: Pin<Box<T>>) {
         unsafe { &mut *self.vec.get() }.push(element);
     }
