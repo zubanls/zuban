@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    debug_info, Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
+    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
     PythonString,
 };
 
@@ -107,7 +107,7 @@ impl<'db> NodeRef<'db> {
         format!(
             "{}: {}",
             self.file.file_path(db),
-            debug_info(&self.file.tree, self.node_index)
+            self.file.tree.debug_info(self.node_index)
         )
     }
 

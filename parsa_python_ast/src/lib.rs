@@ -67,10 +67,10 @@ impl Tree {
             .map(|s| s.suffix().trim_start_matches(&[' ', '\t'][..]) == "# type: ignore")
             .unwrap_or(false)
     }
-}
 
-pub fn debug_info(tree: &Tree, index: NodeIndex) -> String {
-    format!("{:?}", tree.0.node_by_index(index))
+    pub fn debug_info(&self, index: NodeIndex) -> String {
+        format!("{:?}", self.0.node_by_index(index))
+    }
 }
 
 pub trait InterestingNodeSearcher<'db> {
