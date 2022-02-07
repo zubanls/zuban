@@ -111,7 +111,7 @@ impl<'db> NodeRef<'db> {
         )
     }
 
-    pub fn add_issue(&self, db: &Database, issue_type: IssueType) {
+    pub fn add_typing_issue(&self, db: &Database, issue_type: IssueType) {
         let issue = Issue {
             type_: issue_type,
             node_index: self.node_index,

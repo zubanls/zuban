@@ -376,11 +376,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
             let node_ref = NodeRef::new(self.file, name.index());
-            node_ref.add_issue(
+            node_ref.add_typing_issue(
                 self.i_s.database,
                 IssueType::ModuleNotFound(name.as_str().to_owned()),
             );
-            node_ref.add_issue(
+            node_ref.add_typing_issue(
                 self.i_s.database,
                 IssueType::Note(
                     "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
@@ -600,14 +600,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else {
             if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
                 let node_ref = NodeRef::new(self.file, expr.index());
-                node_ref.add_issue(
+                node_ref.add_typing_issue(
                     i_s.database,
                     IssueType::ValidType(format!(
                         "Function {:?} is not valid as a type",
                         func.qualified_name(i_s.database),
                     )),
                 );
-                node_ref.add_issue(
+                node_ref.add_typing_issue(
                     i_s.database,
                     IssueType::Note(
                         "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
@@ -1071,7 +1071,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let inf_annot = self.infer_annotation_expression_class(expr);
                 let g_o = inf_annot.as_generic_option(self.i_s);
                 if !g_o.matches(self.i_s, &mut tm, value_generic_option) {
-                    NodeRef::new(self.file, return_stmt.index()).add_issue(
+                    NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
                         self.i_s.database,
                         IssueType::IncompatibleReturn(
                             inf.class_as_generic_option(self.i_s).as_string(self.i_s),

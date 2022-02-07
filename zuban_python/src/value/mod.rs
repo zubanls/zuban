@@ -163,7 +163,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             } else {
                 format!("{:?}", self.name())
             };
-            from.add_issue(
+            from.add_typing_issue(
                 i_s.database,
                 IssueType::AttributeError(origin, name.to_owned()),
             );

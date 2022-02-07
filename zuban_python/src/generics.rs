@@ -387,7 +387,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if !p.has_argument() {
                         // TODO?! comments?!
                         //self.matches = false;
-                        self.args.node_reference().add_issue(
+                        self.args.node_reference().add_typing_issue(
                             i_s.database,
                             IssueType::ArgumentIssue(format!(
                                 "Missing positional argument {:?} in call to {}",
@@ -411,7 +411,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let annotation_g = inf.as_generic_option(i_s);
                             if !annotation_g.matches(i_s, self, value_class) {
                                 let value_class = value.class_as_generic_option(i_s);
-                                p.argument.unwrap().as_node_reference().add_issue(
+                                p.argument.unwrap().as_node_reference().add_typing_issue(
                                     i_s.database,
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {} has incompatible type {:?}; expected {:?}",
@@ -430,7 +430,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     }
                 }
                 if iter.has_unused_argument() {
-                    self.args.node_reference().add_issue(
+                    self.args.node_reference().add_typing_issue(
                         i_s.database,
                         IssueType::ArgumentIssue(format!(
                             "Too many arguments for {}",
