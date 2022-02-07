@@ -116,6 +116,13 @@ impl<'db> NodeRef<'db> {
             type_: issue_type,
             node_index: self.node_index,
         };
+        if self.file.tree.node_has_type_ignore_comment(self.node_index) {
+            debug!(
+                "New ignored issue: {}",
+                Diagnostic::new(db, self.file, &issue).as_string()
+            );
+            return;
+        }
         debug!(
             "New issue: {}",
             Diagnostic::new(db, self.file, &issue).as_string()

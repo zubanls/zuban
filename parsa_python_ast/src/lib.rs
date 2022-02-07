@@ -59,6 +59,14 @@ impl Tree {
     pub fn node_end_position(&self, index: NodeIndex) -> CodeIndex {
         self.0.node_by_index(index).end()
     }
+
+    pub fn node_has_type_ignore_comment(&self, index: NodeIndex) -> bool {
+        self.0
+            .node_by_index(index)
+            .parent_until(&[Nonterminal(simple_stmt)])
+            .map(|s| s.suffix().trim_start_matches(&[' ', '\t'][..]) == "# type: ignore")
+            .unwrap_or(false)
+    }
 }
 
 pub fn debug_info(tree: &Tree, index: NodeIndex) -> String {
