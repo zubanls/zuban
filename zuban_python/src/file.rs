@@ -332,22 +332,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
             ImportFromTargets::Iterator(targets) => {
                 // as names should have been calculated earlier
-                let import_file = self
-                    .i_s
-                    .database
-                    .loaded_python_file(inferred.unwrap().as_file_index().unwrap());
+                let import_file = inferred
+                    .unwrap()
+                    .as_file_index()
+                    .map(|f| self.i_s.database.loaded_python_file(f));
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
                     let name = import_name.unwrap_or_else(|| name_def.name());
-                    let point = if let Some(link) = import_file.lookup_global(name.as_str()) {
-                        debug_assert!(
-                            link.file != self.file_index || link.node_index != name.index()
-                        );
-                        link.into_point_redirect()
+                    let point = if let Some(import_file) = import_file {
+                        if let Some(link) = import_file.lookup_global(name.as_str()) {
+                            debug_assert!(
+                                link.file != self.file_index || link.node_index != name.index()
+                            );
+                            link.into_point_redirect()
+                        } else {
+                            // TODO star imports
+                            debug!("Unknown potential star name {}", name.as_str());
+                            Point::new_unknown(import_file.file_index(), Locality::Todo)
+                        }
                     } else {
-                        // TODO star imports
-                        debug!("Unknown potential star name {}", name.as_str());
-                        Point::new_unknown(import_file.file_index(), Locality::Todo)
+                        Point::new_unknown(self.file.file_index(), Locality::Todo)
                     };
                     if let Some(import_name) = import_name {
                         self.file.points.set_on_name(&import_name, point);
@@ -383,7 +387,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .to_owned(),
                 ),
             );
-            Point::new_missing_file()
+            Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         Inferred::new_and_save(self.file, name.index(), point)
     }

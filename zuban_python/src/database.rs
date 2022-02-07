@@ -134,11 +134,6 @@ impl Point {
         }
     }
 
-    pub fn new_missing_file() -> Self {
-        // Imports that point nowhere
-        todo!()
-    }
-
     pub fn new_node_analysis(locality: Locality) -> Self {
         Self {
             flags: Self::calculate_flags(PointType::NodeAnalysis, 0, locality),
