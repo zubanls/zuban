@@ -371,7 +371,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             );
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
-            debug!("Global import not found: {}", name.as_str());
+            let node_ref = NodeRef::new(self.file, name.index());
+            node_ref.add_issue(
+                self.i_s.database,
+                IssueType::ModuleNotFound(name.as_str().to_owned()),
+            );
+            node_ref.add_issue(
+                self.i_s.database,
+                IssueType::Note(
+                    "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
+                        .to_owned(),
+                ),
+            );
             Point::new_missing_file()
         };
         Inferred::new_and_save(self.file, name.index(), point)

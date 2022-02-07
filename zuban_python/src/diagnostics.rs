@@ -10,6 +10,7 @@ pub enum IssueType {
     ArgumentIssue(String),
     ValidType(String),
     IncompatibleReturn(String, String),
+    ModuleNotFound(String),
 
     Note(String),
 }
@@ -52,6 +53,10 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
+            IssueType::ModuleNotFound(s) => format!(
+                "Cannot find implementation or library stub for module named {:?}",
+                s
+            ),
             IssueType::Note(s) => {
                 type_ = "note";
                 s.clone()
