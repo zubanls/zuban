@@ -46,8 +46,6 @@ pub trait FileStateLoader {
     fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
-
-    fn inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>>;
 }
 
 #[derive(Default)]
@@ -75,10 +73,6 @@ impl FileStateLoader for PythonFileLoader {
 
     fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
         Box::pin(LanguageFileState::new_unparsed(path, &PythonFile::new))
-    }
-
-    fn inexistent_file_state(&self, path: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::<PythonFile>::new_does_not_exist(path))
     }
 }
 
@@ -147,7 +141,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         file_system_reader: &dyn VirtualFileSystemReader,
     ) -> Option<&(dyn File + 'static)> {
         match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing | InternalFileExistence::Unloaded => None,
+            InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
                 // It is extremely important to deal with the data given here before overwriting it
@@ -156,7 +150,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
                 if let Some(file) = file_system_reader.read_file(&self.path) {
                     unsafe { *self.state.get() = InternalFileExistence::Parsed(loader(file)) };
                 } else {
-                    unsafe { *self.state.get() = InternalFileExistence::Missing };
+                    unsafe { *self.state.get() = InternalFileExistence::Unloaded };
                 }
 
                 let file = self.file(file_system_reader);
@@ -175,7 +169,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
     fn set_file_index(&self, index: FileIndex) {
         match unsafe { &*self.state.get() } {
-            InternalFileExistence::Missing | InternalFileExistence::Unloaded => {}
+            InternalFileExistence::Unloaded => {}
             InternalFileExistence::Parsed(f) => f.set_file_index(index),
             InternalFileExistence::Unparsed(loader, file_index_cell) => {
                 file_index_cell.set(Some(index))
@@ -231,18 +225,9 @@ impl<F: File> LanguageFileState<F> {
             invalidates: Default::default(),
         }
     }
-
-    fn new_does_not_exist(path: String) -> Self {
-        Self {
-            path,
-            state: UnsafeCell::new(InternalFileExistence::Missing),
-            invalidates: Default::default(),
-        }
-    }
 }
 
 enum InternalFileExistence<F: 'static> {
-    Missing,
     Unloaded,
     Unparsed(LoadFileFunction<F>, Cell<Option<FileIndex>>),
     Parsed(F),
@@ -253,7 +238,6 @@ impl<F> fmt::Debug for InternalFileExistence<F> {
         // Intentionally remove the T here, because it's usually huge and we are usually not
         // interested in that while debugging.
         match *self {
-            Self::Missing => write!(f, "Missing"),
             Self::Unloaded => write!(f, "Unloaded"),
             Self::Unparsed(_, _) => write!(f, "Unparsed"),
             Self::Parsed(_) => write!(f, "Parsed(_)"),
