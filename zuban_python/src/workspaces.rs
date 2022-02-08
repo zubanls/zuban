@@ -4,6 +4,7 @@ use walkdir::WalkDir;
 
 use crate::database::FileIndex;
 use crate::file_state::FileStateLoader;
+use crate::utils::Invalidations;
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
@@ -159,6 +160,7 @@ impl WorkspaceFileIndex {
 #[derive(Debug)]
 pub enum DirectoryOrFile {
     File(String, WorkspaceFileIndex),
+    MissingEntry(String, Invalidations),
     Directory(String, Vec<DirectoryOrFile>),
 }
 
@@ -167,6 +169,7 @@ impl DirectoryOrFile {
         match self {
             Self::Directory(name, _) => name,
             Self::File(name, _) => name,
+            Self::MissingEntry(name, _) => name,
         }
     }
 
@@ -196,6 +199,7 @@ impl DirectoryOrFile {
                     n.for_each_file(callable)
                 }
             }
+            Self::MissingEntry(name, _) => (),
         }
     }
 }

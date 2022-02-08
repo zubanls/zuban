@@ -2,7 +2,7 @@ use crate::database::{Database, FileIndex};
 use crate::file_state::File;
 use crate::workspaces::DirectoryOrFile;
 
-pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
+pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {
     if name == "typing" {
         return Some(database.python_state.typing().file_index());
     }
@@ -11,7 +11,12 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(database, database.workspaces.borrow().directories(), name);
+    let result = python_import(
+        database,
+        from_file,
+        database.workspaces.borrow().directories(),
+        name,
+    );
     result
 }
 
@@ -21,6 +26,7 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
 
 fn python_import<'db>(
     database: &Database,
+    from_file: FileIndex,
     directories: impl Iterator<Item = (&'db str, &'db [DirectoryOrFile])>,
     name: &str,
 ) -> Option<FileIndex> {
@@ -51,6 +57,9 @@ fn python_import<'db>(
                                     }
                                 }
                                 DirectoryOrFile::Directory(_, _) => {}
+                                DirectoryOrFile::MissingEntry(dir_name, children) => {
+                                    todo!()
+                                }
                             }
                         }
                     }
@@ -66,6 +75,9 @@ fn python_import<'db>(
                         }
                         return file_index.get();
                     }
+                }
+                DirectoryOrFile::MissingEntry(dir_name, children) => {
+                    todo!()
                 }
             }
         }
