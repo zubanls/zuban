@@ -1,5 +1,5 @@
 use parsa_python_ast::{Name, NodeIndex};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt;
 use std::iter::repeat;
@@ -875,7 +875,7 @@ pub struct Database {
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
-    pub workspaces: Workspaces,
+    pub workspaces: RefCell<Workspaces>,
     in_memory_files: HashMap<String, FileIndex>,
 
     pub python_state: PythonState,
@@ -889,7 +889,7 @@ impl Database {
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),
-            workspaces,
+            workspaces: RefCell::new(workspaces),
             in_memory_files: Default::default(),
             python_state: PythonState::reserve(),
         };
@@ -992,14 +992,14 @@ impl Database {
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
-            self.workspaces.add_in_memory_file(&path, file_index);
+            self.workspaces.borrow_mut().add_file(&path, file_index);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             file_state.set_file_index(file_index);
             self.update_file_state(file_index, file_state);
             file_index
         } else {
             let file_index = self.load_file(path.clone(), code);
-            self.workspaces.add_in_memory_file(&path, file_index);
+            self.workspaces.borrow_mut().add_file(&path, file_index);
             self.in_memory_files.insert(path, file_index);
             file_index
         }
@@ -1011,7 +1011,9 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.files[file_index.0 as usize];
-        self.workspaces.unload_if_not_available(file_state.path());
+        self.workspaces
+            .borrow_mut()
+            .unload_if_not_available(file_state.path());
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_file(file_index, invalidations)
     }

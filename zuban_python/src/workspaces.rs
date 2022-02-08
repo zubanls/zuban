@@ -19,7 +19,7 @@ impl Workspaces {
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
     }
 
-    pub fn add_in_memory_file(&mut self, path: &str, file_index: FileIndex) {
+    pub fn add_file(&mut self, path: &str, file_index: FileIndex) {
         for workspace in &mut self.0 {
             if path.starts_with(workspace.root.name()) {
                 if let DirectoryOrFile::Directory(name, files) = &mut workspace.root {
@@ -62,7 +62,7 @@ impl Workspace {
     fn new(loaders: &[Box<dyn FileStateLoader>], root: String) -> Self {
         let mut stack = vec![(
             PathBuf::from(&root),
-            DirectoryOrFile::Directory(root, vec![]),
+            DirectoryOrFile::Directory(root, Default::default()),
         )];
         // TODO optimize if there are a lot of files
         for entry in WalkDir::new(&stack[0].1.name())
@@ -98,7 +98,7 @@ impl Workspace {
                         if m.is_dir() {
                             stack.push((
                                 entry.path().to_owned(),
-                                DirectoryOrFile::Directory(name.to_owned(), vec![]),
+                                DirectoryOrFile::Directory(name.to_owned(), Default::default()),
                             ));
                         } else {
                             stack

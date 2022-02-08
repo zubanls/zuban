@@ -11,7 +11,7 @@ pub fn global_import(database: &Database, name: &str) -> Option<FileIndex> {
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(database, database.workspaces.directories(), name);
+    let result = python_import(database, database.workspaces.borrow().directories(), name);
     result
 }
 
