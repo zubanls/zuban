@@ -421,8 +421,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                let inferred = self.infer_annotation_expression(annotation.expression());
-                self.assign_targets(target, &inferred)
+                let inf_annot = self.infer_annotation_expression(annotation.expression());
+                if let Some(right_side) = right_side {
+                    let right = self.infer_assignment_right_side(right_side);
+                    inf_annot.annotation_matches(self.i_s, &right, |t1, t2| {
+                        NodeRef::new(self.file, annotation.index()).add_typing_issue(
+                            self.i_s.database,
+                            IssueType::IncompatibleAssignment(t1, t2),
+                        );
+                    })
+                }
+                self.assign_targets(target, &inf_annot)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -1064,11 +1073,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             if let Some(expr) = func.return_annotation() {
                 let inf = self.infer_star_expressions(return_stmt.star_expressions());
                 let inf_annot = self.infer_annotation_expression_class(expr);
-                inf_annot.annotation_matches(
-                    self.i_s,
-                    &inf,
-                    NodeRef::new(self.file, return_stmt.index()),
-                );
+                inf_annot.annotation_matches(self.i_s, &inf, |t1, t2| {
+                    NodeRef::new(self.file, return_stmt.index())
+                        .add_typing_issue(self.i_s.database, IssueType::IncompatibleReturn(t1, t2));
+                });
             }
         } else {
             todo!()

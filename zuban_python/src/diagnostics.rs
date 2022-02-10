@@ -10,6 +10,7 @@ pub enum IssueType {
     ArgumentIssue(String),
     ValidType(String),
     IncompatibleReturn(String, String),
+    IncompatibleAssignment(String, String),
     ModuleNotFound(String),
 
     Note(String),
@@ -49,6 +50,12 @@ impl<'db> Diagnostic<'db> {
             IssueType::IncompatibleReturn(got, expected) => {
                 format!(
                     "Incompatible return value type (got {:?}, expected {:?})",
+                    got, expected
+                )
+            }
+            IssueType::IncompatibleAssignment(got, expected) => {
+                format!(
+                    "Incompatible types in assignment (xpression has type {:?}, variable has type {:?})",
                     got, expected
                 )
             }

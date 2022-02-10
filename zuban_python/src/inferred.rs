@@ -7,7 +7,6 @@ use crate::database::{
     Point, PointLink, PointType, Specific, TypeVarIndex,
 };
 use crate::debug;
-use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::{GenericOption, Generics};
@@ -1125,19 +1124,16 @@ impl<'db> Inferred<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value: &Self,
-        node_ref: NodeRef<'db>,
+        mut callback: impl FnMut(String, String),
     ) {
         let value_generic_option = value.class_as_generic_option(i_s);
         // TODO this is weird with the TypeVarMatcher
         let g_o = self.as_generic_option(i_s);
         if !g_o.matches(i_s, None, value_generic_option) {
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::IncompatibleReturn(
-                    value.class_as_generic_option(i_s).as_string(i_s),
-                    g_o.as_string(i_s),
-                ),
-            );
+            callback(
+                value.class_as_generic_option(i_s).as_string(i_s),
+                g_o.as_string(i_s),
+            )
         }
     }
 }
