@@ -363,7 +363,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn global_import(&self, name: Name<'db>) -> Inferred<'db> {
-        let file_index = global_import(self.i_s.database, name.as_str());
+        let file_index = global_import(self.i_s.database, self.file.file_index(), name.as_str());
         let point = if let Some(file_index) = file_index {
             self.i_s
                 .database

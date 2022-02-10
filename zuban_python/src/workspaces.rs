@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, Ref, RefCell};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 
@@ -14,7 +14,7 @@ impl Workspaces {
         self.0.push(Workspace::new(loaders, root))
     }
 
-    pub fn directories(&self) -> impl Iterator<Item = (&str, &[DirectoryOrFile])> {
+    pub fn directories(&self) -> impl Iterator<Item = (&str, &DirContent)> {
         self.0
             .iter()
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
@@ -25,10 +25,7 @@ impl Workspaces {
             if path.starts_with(workspace.root.name()) {
                 if let DirectoryOrFile::Directory(name, files) = &mut workspace.root {
                     // TODO this is obviously wrong, nested files are not cared for
-                    files.push(DirectoryOrFile::File(
-                        path[name.len()..].to_owned(),
-                        WorkspaceFileIndex::some(file_index),
-                    ))
+                    files.add_file(path[name.len()..].to_owned(), file_index)
                 }
             }
         }
@@ -41,7 +38,7 @@ impl Workspaces {
                 if path.starts_with(dir_name) {
                     // TODO this is obviously wrong, nested files are not cared for
                     let name = &path[dir_name.len()..];
-                    files.retain(|f| f.name() != name);
+                    files.remove_name(name);
                 }
             }
         }
@@ -88,8 +85,10 @@ impl Workspace {
                     .last_mut()
                     .unwrap()
                     .1
-                    .directory_entries_mut()
+                    .directory_entries()
                     .unwrap()
+                    .0
+                    .borrow_mut()
                     .push(n);
             }
             let name = entry.file_name();
@@ -106,8 +105,10 @@ impl Workspace {
                                 .last_mut()
                                 .unwrap()
                                 .1
-                                .directory_entries_mut()
+                                .directory_entries()
                                 .unwrap()
+                                .0
+                                .borrow_mut()
                                 .push(DirectoryOrFile::File(
                                     name.to_owned(),
                                     WorkspaceFileIndex::none(),
@@ -123,7 +124,13 @@ impl Workspace {
         }
         while let Some(current) = stack.pop() {
             if let Some(parent) = stack.last_mut() {
-                parent.1.directory_entries_mut().unwrap().push(current.1)
+                parent
+                    .1
+                    .directory_entries()
+                    .unwrap()
+                    .0
+                    .borrow_mut()
+                    .push(current.1)
             } else {
                 return Self { root: current.1 };
             }
@@ -133,6 +140,10 @@ impl Workspace {
 
     pub fn root(&self) -> &DirectoryOrFile {
         &self.root
+    }
+
+    pub fn root_mut(&mut self) -> &mut DirectoryOrFile {
+        &mut self.root
     }
 }
 
@@ -161,7 +172,7 @@ impl WorkspaceFileIndex {
 pub enum DirectoryOrFile {
     File(String, WorkspaceFileIndex),
     MissingEntry(String, Invalidations),
-    Directory(String, Vec<DirectoryOrFile>),
+    Directory(String, DirContent),
 }
 
 impl DirectoryOrFile {
@@ -173,14 +184,7 @@ impl DirectoryOrFile {
         }
     }
 
-    pub fn directory_entries(&self) -> Option<&[DirectoryOrFile]> {
-        match self {
-            DirectoryOrFile::Directory(_, entries) => Some(entries),
-            _ => None,
-        }
-    }
-
-    pub fn directory_entries_mut(&mut self) -> Option<&mut Vec<DirectoryOrFile>> {
+    pub fn directory_entries(&self) -> Option<&DirContent> {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,
@@ -195,11 +199,59 @@ impl DirectoryOrFile {
                 }
             }
             Self::Directory(_, nodes) => {
-                for n in nodes {
+                for n in nodes.0.borrow().iter() {
                     n.for_each_file(callable)
                 }
             }
             Self::MissingEntry(name, _) => (),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct DirContent(RefCell<Vec<DirectoryOrFile>>);
+
+impl DirContent {
+    pub fn iter(&self) -> DirContentIter {
+        DirContentIter {
+            inner: Some(Ref::map(self.0.borrow(), |v| &v[..])),
+        }
+    }
+
+    fn remove_name(&mut self, name: &str) {
+        self.0.get_mut().retain(|f| f.name() != name);
+    }
+
+    fn add_file(&mut self, name: String, file_index: FileIndex) {
+        self.0.get_mut().push(DirectoryOrFile::File(
+            name,
+            WorkspaceFileIndex::some(file_index),
+        ))
+    }
+
+    pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
+        todo!()
+    }
+}
+
+pub struct DirContentIter<'a> {
+    inner: Option<Ref<'a, [DirectoryOrFile]>>,
+}
+
+impl<'a> Iterator for DirContentIter<'a> {
+    type Item = Ref<'a, DirectoryOrFile>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.inner.take() {
+            Some(borrow) => match *borrow {
+                [] => None,
+                [_, ..] => {
+                    let (head, tail) = Ref::map_split(borrow, |slice| (&slice[0], &slice[1..]));
+                    self.inner.replace(tail);
+                    Some(head)
+                }
+            },
+            None => None,
         }
     }
 }

@@ -1,6 +1,7 @@
 use crate::database::{Database, FileIndex};
 use crate::file_state::File;
-use crate::workspaces::DirectoryOrFile;
+use crate::workspaces::{DirContent, DirectoryOrFile};
+use std::ops::Deref;
 
 pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {
     if name == "typing" {
@@ -11,12 +12,7 @@ pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> O
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(
-        database,
-        from_file,
-        database.workspaces.borrow().directories(),
-        name,
-    );
+    let result = python_import(database, from_file, database.workspaces.directories(), name);
     result
 }
 
@@ -27,17 +23,17 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
 fn python_import<'db>(
     database: &Database,
     from_file: FileIndex,
-    directories: impl Iterator<Item = (&'db str, &'db [DirectoryOrFile])>,
+    directories: impl Iterator<Item = (&'db str, &'db DirContent)>,
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator
     for (dir_path, dir_children) in directories {
-        for directory in dir_children {
-            match directory {
+        for directory in dir_children.iter() {
+            match directory.deref() {
                 DirectoryOrFile::Directory(dir_name, children) => {
                     if dir_name == name {
-                        for child in children {
-                            match child {
+                        for child in children.iter() {
+                            match child.deref() {
                                 DirectoryOrFile::File(file_name, file_index) => {
                                     if file_name == "__init__.py" || file_name == "__init__.pyi" {
                                         if file_index.get().is_none() {
@@ -63,6 +59,8 @@ fn python_import<'db>(
                             }
                         }
                     }
+                    //TODO
+                    children.add_missing_entry(name, from_file);
                 }
                 DirectoryOrFile::File(file_name, file_index) => {
                     if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name)

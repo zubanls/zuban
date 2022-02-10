@@ -88,7 +88,6 @@ impl Project {
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         self.database
             .workspaces
-            .borrow()
             .last()
             .root()
             .for_each_file(&mut |file_index| {
