@@ -15,7 +15,7 @@ pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> O
     let result = python_import(database, database.workspaces.directories(), name);
     if result.is_none() {
         for (_, dir_children) in database.workspaces.directories() {
-            dir_children.add_missing_entry(name, from_file);
+            dir_children.add_missing_entry(name.to_owned() + ".py", from_file);
         }
     }
     result

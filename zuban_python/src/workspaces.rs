@@ -20,15 +20,16 @@ impl Workspaces {
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
     }
 
-    pub fn add_file(&mut self, path: &str, file_index: FileIndex) {
+    pub fn add_file(&mut self, path: &str, file_index: FileIndex) -> Invalidations {
         for workspace in &mut self.0 {
             if path.starts_with(workspace.root.name()) {
                 if let DirectoryOrFile::Directory(name, files) = &mut workspace.root {
                     // TODO this is obviously wrong, nested files are not cared for
-                    files.add_file(path[name.len()..].to_owned(), file_index)
+                    return files.add_file(path[name.len()..].to_owned(), file_index);
                 }
             }
         }
+        Invalidations::default()
     }
 
     pub fn unload_if_not_available(&mut self, path: &str) {
@@ -222,14 +223,30 @@ impl DirContent {
         self.0.get_mut().retain(|f| f.name() != name);
     }
 
-    fn add_file(&mut self, name: String, file_index: FileIndex) {
-        self.0.get_mut().push(DirectoryOrFile::File(
-            name,
-            WorkspaceFileIndex::some(file_index),
-        ))
+    fn add_file(&mut self, name: String, file_index: FileIndex) -> Invalidations {
+        let new = DirectoryOrFile::File(name, WorkspaceFileIndex::some(file_index));
+
+        for entry in self.0.get_mut().iter_mut() {
+            dbg!(&entry.name(), new.name());
+            if entry.name() == new.name() {
+                if let DirectoryOrFile::MissingEntry(_, _) = entry {
+                    let old = std::mem::replace(entry, new);
+                    if let DirectoryOrFile::MissingEntry(_, invalidations) = old {
+                        return invalidations;
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    // If this is not unreachable, we should probably not have a new file_index here
+                    unreachable!()
+                }
+            }
+        }
+        self.0.get_mut().push(new);
+        Invalidations::default()
     }
 
-    pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
+    pub fn add_missing_entry(&self, name: String, invalidates: FileIndex) {
         let mut vec = self.0.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name() == name) {
             if let DirectoryOrFile::MissingEntry(_, ref invalidations) = vec[pos] {
@@ -240,10 +257,7 @@ impl DirContent {
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(DirectoryOrFile::MissingEntry(
-                name.to_owned(),
-                invalidations,
-            ))
+            vec.push(DirectoryOrFile::MissingEntry(name, invalidations))
         }
     }
 }

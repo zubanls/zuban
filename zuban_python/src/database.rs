@@ -993,14 +993,16 @@ impl Database {
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
-            self.workspaces.add_file(&path, file_index);
+            let invalidations = self.workspaces.add_file(&path, file_index);
+            self.invalidate_file(file_index, invalidations);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             file_state.set_file_index(file_index);
             self.update_file_state(file_index, file_state);
             file_index
         } else {
             let file_index = self.load_file(path.clone(), code);
-            self.workspaces.add_file(&path, file_index);
+            let invalidations = self.workspaces.add_file(&path, file_index);
+            self.invalidate_file(file_index, invalidations);
             self.in_memory_files.insert(path, file_index);
             file_index
         }
