@@ -148,6 +148,14 @@ impl Default for Invalidations {
     }
 }
 
+impl std::clone::Clone for Invalidations {
+    fn clone(&self) -> Self {
+        Self {
+            vec: UnsafeCell::new(unsafe { &*self.vec.get() }.clone()),
+        }
+    }
+}
+
 impl Invalidations {
     pub fn add(&self, element: FileIndex) {
         let vec = unsafe { &mut *self.vec.get() };

@@ -12,7 +12,12 @@ pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> O
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(database, from_file, database.workspaces.directories(), name);
+    let result = python_import(database, database.workspaces.directories(), name);
+    if result.is_none() {
+        for (_, dir_children) in database.workspaces.directories() {
+            dir_children.add_missing_entry(name, from_file);
+        }
+    }
     result
 }
 
@@ -22,7 +27,6 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
 
 fn python_import<'db>(
     database: &Database,
-    from_file: FileIndex,
     directories: impl Iterator<Item = (&'db str, &'db DirContent)>,
     name: &str,
 ) -> Option<FileIndex> {
@@ -59,8 +63,6 @@ fn python_import<'db>(
                             }
                         }
                     }
-                    //TODO
-                    children.add_missing_entry(name, from_file);
                 }
                 DirectoryOrFile::File(file_name, file_index) => {
                     if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name)
@@ -74,9 +76,7 @@ fn python_import<'db>(
                         return file_index.get();
                     }
                 }
-                DirectoryOrFile::MissingEntry(dir_name, children) => {
-                    todo!()
-                }
+                DirectoryOrFile::MissingEntry(dir_name, children) => (),
             }
         }
     }

@@ -168,7 +168,7 @@ impl WorkspaceFileIndex {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DirectoryOrFile {
     File(String, WorkspaceFileIndex),
     MissingEntry(String, Invalidations),
@@ -191,7 +191,7 @@ impl DirectoryOrFile {
         }
     }
 
-    pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
+    pub fn for_each_file(&mut self, callable: &mut impl FnMut(FileIndex)) {
         match self {
             Self::File(_, index) => {
                 if let Some(index) = index.get() {
@@ -199,7 +199,7 @@ impl DirectoryOrFile {
                 }
             }
             Self::Directory(_, nodes) => {
-                for n in nodes.0.borrow().iter() {
+                for n in nodes.0.get_mut().iter_mut() {
                     n.for_each_file(callable)
                 }
             }
@@ -208,7 +208,7 @@ impl DirectoryOrFile {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DirContent(RefCell<Vec<DirectoryOrFile>>);
 
 impl DirContent {
@@ -230,7 +230,21 @@ impl DirContent {
     }
 
     pub fn add_missing_entry(&self, name: &str, invalidates: FileIndex) {
-        todo!()
+        let mut vec = self.0.borrow_mut();
+        if let Some(pos) = vec.iter().position(|x| x.name() == name) {
+            if let DirectoryOrFile::MissingEntry(_, ref invalidations) = vec[pos] {
+                invalidations.add(invalidates)
+            } else {
+                unreachable!()
+            }
+        } else {
+            let invalidations = Invalidations::default();
+            invalidations.add(invalidates);
+            vec.push(DirectoryOrFile::MissingEntry(
+                name.to_owned(),
+                invalidations,
+            ))
+        }
     }
 }
 
