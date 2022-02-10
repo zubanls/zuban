@@ -227,7 +227,6 @@ impl DirContent {
         let new = DirectoryOrFile::File(name, WorkspaceFileIndex::some(file_index));
 
         for entry in self.0.get_mut().iter_mut() {
-            dbg!(&entry.name(), new.name());
             if entry.name() == new.name() {
                 if let DirectoryOrFile::MissingEntry(_, _) = entry {
                     let old = std::mem::replace(entry, new);

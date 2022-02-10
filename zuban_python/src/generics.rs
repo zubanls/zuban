@@ -160,7 +160,7 @@ impl<'db, 'a> Generics<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_generics: Self,
     ) -> bool {
         let mut value_generics = value_generics.iter();
@@ -168,7 +168,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter()
             .run_on_all_generic_options(i_s, |i_s, generic_option| {
                 let appeared = value_generics.run_on_next(i_s, |i_s, g| {
-                    matches &= generic_option.matches(i_s, matcher, g);
+                    matches &= generic_option.matches(i_s, matcher.as_deref_mut(), g);
                 });
                 if appeared.is_none() {
                     debug!("Generic not found for: {:?}", generic_option);
@@ -409,7 +409,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .inference(i_s)
                                 .infer_annotation_expression_class(annotation.expression());
                             let annotation_g = inf.as_generic_option(i_s);
-                            if !annotation_g.matches(i_s, self, value_class) {
+                            if !annotation_g.matches(i_s, Some(self), value_class) {
                                 let value_class = value.class_as_generic_option(i_s);
                                 p.argument.unwrap().as_node_reference().add_typing_issue(
                                     i_s.database,
@@ -446,7 +446,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_generic_option(i_s);
                         let m = GenericOption::from_generic_part(i_s.database, param.param_type)
-                            .matches(i_s, self, value_class);
+                            .matches(i_s, Some(self), value_class);
                         self.matches &= m;
                     }
                 }
@@ -622,7 +622,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_class: Self,
     ) -> bool {
         match self {
@@ -630,7 +630,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::TypeVar(type_var_index, node_ref) => match value_class {
                 GenericOption::ClassLike(class) => {
                     let generic = class.as_generic_part(i_s);
-                    matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    if let Some(matcher) = matcher {
+                        matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    }
                     true
                 }
                 GenericOption::TypeVar(_, _) | GenericOption::Invalid => {
@@ -638,7 +640,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 }
                 GenericOption::Union(list) => {
                     let generic = GenericPart::Union(GenericsList::from_vec(list));
-                    matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    if let Some(matcher) = matcher {
+                        matcher.add_type_var_class(i_s, *type_var_index, generic);
+                    }
                     true
                 }
                 GenericOption::None => {
@@ -674,7 +678,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             1 => list2.into_iter().next().unwrap(),
                             _ => GenericPart::Union(GenericsList::from_vec(list2)),
                         };
-                        matcher.add_type_var_class(i_s, type_var_index, g);
+                        if let Some(matcher) = matcher {
+                            matcher.add_type_var_class(i_s, type_var_index, g);
+                        }
                         true
                     } else if !list2.is_empty() {
                         false

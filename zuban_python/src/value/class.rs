@@ -29,7 +29,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         value_class: GenericOption<'db, '_>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     ) -> bool {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
@@ -38,7 +38,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match value_class {
             GenericOption::ClassLike(c) => {
                 for (mro_index, class_like) in c.mro(i_s) {
-                    if self.check_match(i_s, matcher, &class_like) {
+                    if self.check_match(i_s, matcher.as_deref_mut(), &class_like) {
                         return true;
                     }
                 }
@@ -53,7 +53,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     fn check_match(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        matcher: &mut TypeVarMatcher<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &Self,
     ) -> bool {
         let mut matches = match self {
@@ -72,7 +72,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (class_generics, class_result_generics) = self.generics();
             let (value_generics, value_result_generics) = other.generics();
 
-            matches &= class_generics.matches(i_s, matcher, value_generics);
+            matches &= class_generics.matches(i_s, matcher.as_deref_mut(), value_generics);
             // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
                 matches &=

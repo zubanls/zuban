@@ -3,7 +3,7 @@ use std::fmt;
 
 use parsa_python_ast::*;
 
-use crate::arguments::{NoArguments, SimpleArguments};
+use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, LocalityLink, Point,
     PointType, Points, Specific, TupleContent,
@@ -11,7 +11,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
-use crate::generics::{Generics, TypeVarMatcher};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -420,9 +420,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.assign_targets(target, &right)
                 }
             }
-            AssignmentContent::WithAnnotation(target, annotation, _) => {
-                let right = self.infer_annotation_expression(annotation.expression());
-                self.assign_targets(target, &right)
+            AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                let inferred = self.infer_annotation_expression(annotation.expression());
+                self.assign_targets(target, &inferred)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -1063,22 +1063,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if let Some(func) = func {
             if let Some(expr) = func.return_annotation() {
                 let inf = self.infer_star_expressions(return_stmt.star_expressions());
-                let value_generic_option = inf.class_as_generic_option(self.i_s);
-                // TODO this is weird with the TypeVarMatcher
-                let args = NoArguments::new(func.reference);
-                let mut tm =
-                    TypeVarMatcher::new(func, &args, false, None, Specific::FunctionTypeVar);
                 let inf_annot = self.infer_annotation_expression_class(expr);
-                let g_o = inf_annot.as_generic_option(self.i_s);
-                if !g_o.matches(self.i_s, &mut tm, value_generic_option) {
-                    NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
-                        self.i_s.database,
-                        IssueType::IncompatibleReturn(
-                            inf.class_as_generic_option(self.i_s).as_string(self.i_s),
-                            g_o.as_string(self.i_s),
-                        ),
-                    );
-                }
+                inf_annot.annotation_matches(
+                    self.i_s,
+                    &inf,
+                    NodeRef::new(self.file, return_stmt.index()),
+                );
             }
         } else {
             todo!()
