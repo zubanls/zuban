@@ -69,9 +69,11 @@ impl<'name, 'code> TestCase<'name, 'code> {
             assert_eq!(
                 diagnostics,
                 specified,
-                "\n\nError {} ({})\n\nWanted:\n{}\n\nActual:\n{}\n",
+                "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,
+                i + 1,
+                steps.len(),
                 step.out.trim(),
                 actual,
             );
