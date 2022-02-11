@@ -421,8 +421,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                let inf_annot = self.infer_annotation_expression(annotation.expression());
                 if let Some(right_side) = right_side {
+                    let inf_annot = self.infer_annotation_expression_class(annotation.expression());
                     let right = self.infer_assignment_right_side(right_side);
                     inf_annot.annotation_matches(self.i_s, &right, |t1, t2| {
                         NodeRef::new(self.file, annotation.index()).add_typing_issue(
@@ -431,6 +431,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                     })
                 }
+                let inf_annot = self.infer_annotation_expression(annotation.expression());
                 self.assign_targets(target, &inf_annot)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {

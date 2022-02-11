@@ -55,7 +55,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::IncompatibleAssignment(got, expected) => {
                 format!(
-                    "Incompatible types in assignment (xpression has type {:?}, variable has type {:?})",
+                    "Incompatible types in assignment (expression has type {:?}, variable has type {:?})",
                     got, expected
                 )
             }
