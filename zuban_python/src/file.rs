@@ -301,6 +301,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn cache_import_name(&mut self, imp: ImportName<'db>) {
+        if self.file.points.get(imp.index()).calculated() {
+            return;
+        }
+
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, _) => {
@@ -318,9 +322,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
         }
+
+        self.file
+            .points
+            .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
     fn cache_import_from(&mut self, imp: ImportFrom<'db>) {
+        if self.file.points.get(imp.index()).calculated() {
+            return;
+        }
+
         let (level, dotted_name) = imp.level_with_dotted_name();
         let inferred = if level > 0 {
             todo!()
@@ -360,6 +372,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
         }
+        self.file
+            .points
+            .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
     fn global_import(&self, name: Name<'db>) -> Inferred<'db> {
