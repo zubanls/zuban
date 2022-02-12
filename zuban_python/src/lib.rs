@@ -89,6 +89,10 @@ impl Project {
         let mut dir = self.database.workspaces.last().root().clone();
         dir.for_each_file(&mut |file_index| {
             let file = self.database.loaded_file(file_index);
+            debug!(
+                "Calculate Diagnostics for {}",
+                file.file_path(&self.database)
+            );
 
             let array: [i32; 3] = [0; 3];
             all_diagnostics.append(&mut file.diagnostics(&self.database).into_vec())

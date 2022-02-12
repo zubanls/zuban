@@ -425,9 +425,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
                 let right = if let Some(start) = suffix.find("# type: ") {
-                    let g =
-                        self.infer_annotation_string(suffix[start + "# type: ".len()..].to_owned());
-                    Inferred::execute_generic_part(self.i_s, g)
+                    let s = &suffix[start + "# type: ".len()..];
+                    if s == "ignore" {
+                        self.infer_assignment_right_side(right_side)
+                    } else {
+                        let g = self.infer_annotation_string(s.to_owned());
+                        Inferred::execute_generic_part(self.i_s, g)
+                    }
                 } else {
                     self.infer_assignment_right_side(right_side)
                 };
