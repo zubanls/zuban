@@ -338,7 +338,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 }
             }
         }
-        todo!("{:?}.{:?}", self.name(), name)
+        (Inferred::new_unknown(), None)
     }
 
     pub fn generics(&self) -> Generics<'db, '_> {
