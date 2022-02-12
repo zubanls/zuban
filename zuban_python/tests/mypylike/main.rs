@@ -35,12 +35,6 @@ struct TestCase<'name, 'code> {
 
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
-        if self.name.contains("TODO") {
-            // TODO remove this if
-            println!("Skipped: {}", self.name);
-            return;
-        }
-
         let steps = self.calculate_steps();
         for (i, step) in steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
@@ -175,6 +169,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
 fn main() {
     let mut project = zuban_python::Project::new(BASE_PATH.to_owned());
 
+    let skipped = skipped();
+
     let files = find_mypy_style_files();
     let start = Instant::now();
     let mut full_count = 0;
@@ -186,9 +182,13 @@ fn main() {
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code) {
+            full_count += 1;
+            if skipped.iter().any(|s| s.is_skip(&case.name)) {
+                println!("Skipped: {}", case.name);
+                continue;
+            }
             case.run(&mut project);
             ran_count += 1;
-            full_count += 1;
         }
     }
     println!(
@@ -233,10 +233,14 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
     cases
 }
 
-fn find_mypy_style_files() -> Vec<PathBuf> {
+fn get_base() -> PathBuf {
     let mut base = PathBuf::from(file!().replace("zuban_python/", ""));
     assert!(base.pop());
+    base
+}
 
+fn find_mypy_style_files() -> Vec<PathBuf> {
+    let base = get_base();
     let mut entries = vec![];
     for p in ["from_mypy", "tests"] {
         let mut path = base.clone();
@@ -250,4 +254,50 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
     }
     entries.sort();
     entries
+}
+
+#[derive(Debug)]
+struct Skipped {
+    name: String,
+    start_star: bool,
+    end_star: bool,
+}
+
+impl Skipped {
+    fn is_skip(&self, name: &str) -> bool {
+        if self.start_star && self.end_star {
+            name.contains(&self.name)
+        } else if self.start_star {
+            name.ends_with(&self.name)
+        } else if self.end_star {
+            name.starts_with(&self.name)
+        } else {
+            self.name == name
+        }
+    }
+}
+
+fn skipped() -> Box<[Skipped]> {
+    let mut skipped_path = get_base();
+    skipped_path.push("skipped");
+    let file = read_to_string(skipped_path).unwrap();
+
+    file.trim()
+        .split('\n')
+        .map(|mut x| {
+            let start_star = x.starts_with("*");
+            let end_star = x.ends_with("*");
+            if start_star {
+                x = &x[1..];
+            }
+            if end_star {
+                x = &x[..x.len() - 2]
+            }
+            Skipped {
+                name: x.to_owned(),
+                start_star,
+                end_star,
+            }
+        })
+        .collect()
 }
