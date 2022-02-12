@@ -21,6 +21,7 @@ lazy_static::lazy_static! {
 
 #[derive(Default, Clone, Debug)]
 struct Step<'code> {
+    deletions: Vec<&'code str>,
     files: HashMap<&'code str, &'code str>,
     out: &'code str,
 }
@@ -53,6 +54,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
             for (&path, &code) in &step.files {
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
+            }
+            for path in &step.deletions {
+                #[allow(unused_must_use)]
+                {
+                    project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
+                }
             }
             let mut diagnostics: Vec<_> = project
                 .diagnostics()
@@ -107,6 +114,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 step.files.insert(rest, in_between);
             } else if type_ == "out" {
                 step.out = in_between;
+            } else if type_ == "delete" {
+                step.deletions.push(rest)
             }
         };
 
@@ -137,7 +146,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             current_step_start = capture.get(0).unwrap().end();
 
             current_step_index = 1;
-            if current_type == "file" {
+            if current_type == "file" || current_type == "delete" {
                 let last = current_rest.chars().last().unwrap();
                 if let Some(digit) = last.to_digit(10) {
                     current_step_index = digit as usize;
