@@ -3,7 +3,7 @@ use std::fmt;
 
 use parsa_python_ast::*;
 
-use crate::arguments::SimpleArguments;
+use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, LocalityLink, Point,
     PointType, Points, Specific, TupleContent,
@@ -21,7 +21,7 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Class, Function, Value};
+use crate::value::{Class, Function, Instance, Value};
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -669,7 +669,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Execute {}", value.name());
-                    let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
+                    let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
                     value.execute(
                         i_s,
                         &SimpleArguments::new(
@@ -686,7 +686,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item on {}", value.name());
-                    let x = i_s.current_execution.map(|x| x.1.as_execution(x.0));
+                    let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
                     value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
                 })
             }
@@ -1076,9 +1076,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
+
+        let i_a;
+        let i;
+        let inst;
+        let node_ref = NodeRef::new(self.file, f.index());
+        let a = NoArguments::new(node_ref);
+        let args: &dyn Arguments = if let Some(class) = class {
+            i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                class.reference.as_link(),
+                None,
+            ));
+            inst = Instance::new(*class, &i);
+            i_a = InstanceArguments::new(&inst, &a);
+            &i_a
+        } else {
+            &a
+        };
+        let function_i_s = &mut self.i_s.with_func_and_args(&function, args);
+        let mut inference = self.file.inference(function_i_s);
         match block.unpack() {
             BlockContent::Indented(stmts) => {
-                self.calc_stmts_diagnostics(stmts, None, Some(&function))
+                inference.calc_stmts_diagnostics(stmts, None, Some(&function))
             }
             BlockContent::OneLine(simple_stmts) => {}
         }

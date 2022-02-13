@@ -58,6 +58,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn args_as_execution(&self) -> Option<Execution> {
         self.current_execution
-            .map(|(func, args)| args.as_execution(func))
+            .and_then(|(func, args)| args.as_execution(func))
     }
 }

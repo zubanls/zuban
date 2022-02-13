@@ -431,7 +431,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             Inferred::new_unsaved_complex(match generics_list {
                 None => ComplexPoint::ExecutionInstance(
                     self.reference.as_link(),
-                    Box::new(args.as_execution(&func)),
+                    Box::new(args.as_execution(&func).unwrap()),
                 ),
                 Some(generics_list) => {
                     ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))

@@ -155,7 +155,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn as_execution(&self, function: &Function) -> Execution {
+    fn as_execution(&self, function: &Function) -> Option<Execution> {
         /*
         Execution::new(
             function.as_point_link(),

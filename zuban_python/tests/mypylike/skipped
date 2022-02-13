@@ -4,3 +4,7 @@ testIgnoreWorksAfterUpdate
 testIgnoredAttrReprocessedMeta
 testDataclass*
 testAttrs*
+testAddBaseClassMethodCausingInvalidOverride
+testModifyBaseClassMethodCausingInvalidOverride
+testAddBaseClassAttributeCausingErrorInSubclass
+testChangeBaseClassAttributeType

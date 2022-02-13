@@ -651,7 +651,7 @@ impl<'db> Inferred<'db> {
                         debug_assert!(generics.is_none());
                         return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                             inf_cls.get_saved().unwrap().0.as_link(),
-                            Box::new(args.as_execution(&init)),
+                            Box::new(args.as_execution(&init).unwrap()),
                         ));
                     }
                     Specific::Closure => {

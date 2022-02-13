@@ -41,8 +41,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                     .self_symbol_table
                     .lookup_symbol(name)
                     .map(|node_index| {
-                        self.class
-                            .reference
+                        c.reference
                             .file
                             .inference(&mut i_s.with_class_context(&c))
                             .infer_name_by_index(node_index)

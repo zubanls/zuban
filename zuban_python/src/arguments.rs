@@ -19,7 +19,7 @@ pub enum ArgumentsType<'db> {
 pub trait Arguments<'db>: std::fmt::Debug {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
-    fn as_execution(&self, function: &Function) -> Execution;
+    fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType<'db>;
     fn node_reference(&self) -> NodeRef<'db>;
 }
@@ -44,12 +44,12 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         self.in_
     }
 
-    fn as_execution(&self, function: &Function) -> Execution {
-        Execution::new(
+    fn as_execution(&self, function: &Function) -> Option<Execution> {
+        Some(Execution::new(
             function.reference.as_link(),
             PointLink::new(self.file.file_index(), self.primary_node.index()),
             self.in_,
-        )
+        ))
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
@@ -145,7 +145,7 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
         self.arguments.outer_execution()
     }
 
-    fn as_execution(&self, function: &Function) -> Execution {
+    fn as_execution(&self, function: &Function) -> Option<Execution> {
         self.arguments.as_execution(function)
     }
 
@@ -308,8 +308,8 @@ impl<'db> Arguments<'db> for NoArguments<'db> {
         None
     }
 
-    fn as_execution(&self, function: &Function) -> Execution {
-        todo!()
+    fn as_execution(&self, function: &Function) -> Option<Execution> {
+        None
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
