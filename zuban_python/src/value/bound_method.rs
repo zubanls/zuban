@@ -47,7 +47,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let args = InstanceArguments::new(self.instance, self.mro_index, args);
+        let args = InstanceArguments::with_mro_index(self.instance, self.mro_index, args);
         self.function.execute(i_s, &args)
     }
 }

@@ -159,7 +159,15 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
 }
 
 impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
-    pub fn new(
+    pub fn new(instance: &'a dyn Value<'db, 'b>, arguments: &'a dyn Arguments<'db>) -> Self {
+        Self {
+            arguments,
+            instance,
+            mro_index: MroIndex(0),
+        }
+    }
+
+    pub fn with_mro_index(
         instance: &'a dyn Value<'db, 'b>,
         mro_index: MroIndex,
         arguments: &'a dyn Arguments<'db>,
