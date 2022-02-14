@@ -870,7 +870,7 @@ impl CallableContent {
 
 pub struct Database {
     in_use: bool,
-    pub file_system_reader: Box<dyn Vfs>,
+    pub vfs: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
@@ -884,7 +884,7 @@ impl Database {
     pub fn new(file_state_loaders: FileStateLoaders, workspaces: Workspaces) -> Self {
         let mut this = Self {
             in_use: false,
-            file_system_reader: Box::<FileSystemReader>::new(Default::default()),
+            vfs: Box::<FileSystemReader>::new(Default::default()),
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),
@@ -924,9 +924,7 @@ impl Database {
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        self.file_state(index)
-            .file(&*self.file_system_reader)
-            .unwrap()
+        self.file_state(index).file(&*self.vfs).unwrap()
     }
 
     fn loader(&self, path: &str) -> Option<&dyn FileStateLoader> {
@@ -973,14 +971,12 @@ impl Database {
     pub fn load_file_from_workspace(&self, path: String, index: &WorkspaceFileIndex) {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
-        let file_index = self.add_file_state(
-            if let Some(code) = self.file_system_reader.read_file(&path) {
-                loader.load_parsed(path, code)
-            } else {
-                //loader.inexistent_file_state(path)
-                todo!()
-            },
-        );
+        let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
+            loader.load_parsed(path, code)
+        } else {
+            //loader.inexistent_file_state(path)
+            todo!()
+        });
         index.set(file_index);
     }
 
@@ -992,7 +988,7 @@ impl Database {
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
         if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
-            let invalidations = self.workspaces.add_file(&path, file_index);
+            let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
             self.invalidate_file(file_index, invalidations);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             file_state.set_file_index(file_index);
@@ -1000,7 +996,7 @@ impl Database {
             file_index
         } else {
             let file_index = self.load_file(path.clone(), code);
-            let invalidations = self.workspaces.add_file(&path, file_index);
+            let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
             self.invalidate_file(file_index, invalidations);
             self.in_memory_files.insert(path, file_index);
             file_index

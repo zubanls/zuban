@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use walkdir::WalkDir;
 
 use crate::database::FileIndex;
-use crate::file_state::FileStateLoader;
+use crate::file_state::{FileStateLoader, Vfs};
 use crate::utils::Invalidations;
 
 #[derive(Debug, Default)]
@@ -20,12 +20,12 @@ impl Workspaces {
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
     }
 
-    pub fn add_file(&mut self, path: &str, file_index: FileIndex) -> Invalidations {
+    pub fn add_file(&mut self, vfs: &dyn Vfs, path: &str, file_index: FileIndex) -> Invalidations {
         for workspace in &mut self.0 {
             if path.starts_with(workspace.root.name()) {
                 if let DirectoryOrFile::Directory(name, files) = &mut workspace.root {
                     // TODO this is obviously wrong, nested files are not cared for
-                    return files.add_file(path[name.len()..].to_owned(), file_index);
+                    return files.add_file(vfs, &path[name.len()..], file_index);
                 }
             }
         }
@@ -223,13 +223,22 @@ impl DirContent {
         self.0.get_mut().retain(|f| f.name() != name);
     }
 
-    fn add_file(&mut self, name: String, file_index: FileIndex) -> Invalidations {
-        let new = DirectoryOrFile::File(name, WorkspaceFileIndex::some(file_index));
+    fn add_file(&mut self, vfs: &dyn Vfs, name: &str, file_index: FileIndex) -> Invalidations {
+        let (name, rest) = vfs.split_off_folder(name);
+        let new = || {
+            if let Some(rest) = rest {
+                let mut content = Self::default();
+                content.add_file(vfs, rest, file_index);
+                DirectoryOrFile::Directory(name.to_owned(), content)
+            } else {
+                DirectoryOrFile::File(name.to_owned(), WorkspaceFileIndex::some(file_index))
+            }
+        };
 
         for entry in self.0.get_mut().iter_mut() {
-            if entry.name() == new.name() {
+            if entry.name() == name {
                 if let DirectoryOrFile::MissingEntry(_, _) = entry {
-                    let old = std::mem::replace(entry, new);
+                    let old = std::mem::replace(entry, new());
                     if let DirectoryOrFile::MissingEntry(_, invalidations) = old {
                         return invalidations;
                     } else {
@@ -241,7 +250,7 @@ impl DirContent {
                 }
             }
         }
-        self.0.get_mut().push(new);
+        self.0.get_mut().push(new());
         Invalidations::default()
     }
 
