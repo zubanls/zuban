@@ -9,8 +9,7 @@ use std::pin::Pin;
 
 use crate::file::PythonFile;
 use crate::file_state::{
-    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader,
-    VirtualFileSystemReader,
+    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -871,7 +870,7 @@ impl CallableContent {
 
 pub struct Database {
     in_use: bool,
-    pub file_system_reader: Box<dyn VirtualFileSystemReader>,
+    pub file_system_reader: Box<dyn Vfs>,
     file_state_loaders: FileStateLoaders,
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,

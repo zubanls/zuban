@@ -14,14 +14,14 @@ use std::pin::Pin;
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
 
-pub trait VirtualFileSystemReader {
+pub trait Vfs {
     fn read_file(&self, path: &str) -> Option<String>;
 }
 
 #[derive(Default)]
 pub struct FileSystemReader {}
 
-impl VirtualFileSystemReader for FileSystemReader {
+impl Vfs for FileSystemReader {
     fn read_file(&self, path: &str) -> Option<String> {
         // TODO can error
         Some(fs::read_to_string(path).unwrap())
@@ -123,7 +123,7 @@ pub trait File: std::fmt::Debug + AsAny {
 
 pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
-    fn file(&self, reader: &dyn VirtualFileSystemReader) -> Option<&(dyn File + 'static)>;
+    fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn set_file_index(&self, index: FileIndex);
     fn unload_and_return_invalidations(&mut self) -> Invalidations;
@@ -136,10 +136,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn file(
-        &self,
-        file_system_reader: &dyn VirtualFileSystemReader,
-    ) -> Option<&(dyn File + 'static)> {
+    fn file(&self, file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
         match unsafe { &*self.state.get() } {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
