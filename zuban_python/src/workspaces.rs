@@ -237,16 +237,20 @@ impl DirContent {
 
         for entry in self.0.get_mut().iter_mut() {
             if entry.name() == name {
-                if let DirectoryOrFile::MissingEntry(_, _) = entry {
-                    let old = std::mem::replace(entry, new());
-                    if let DirectoryOrFile::MissingEntry(_, invalidations) = old {
-                        return invalidations;
-                    } else {
-                        unreachable!()
+                match entry {
+                    DirectoryOrFile::Directory(_, content) => {
+                        content.add_file(vfs, rest.unwrap(), file_index);
                     }
-                } else {
+                    DirectoryOrFile::MissingEntry(_, _) => {
+                        let old = std::mem::replace(entry, new());
+                        if let DirectoryOrFile::MissingEntry(_, invalidations) = old {
+                            return invalidations;
+                        } else {
+                            unreachable!()
+                        }
+                    }
                     // If this is not unreachable, we should probably not have a new file_index here
-                    unreachable!()
+                    _ => unreachable!(),
                 }
             }
         }
