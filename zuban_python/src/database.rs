@@ -963,12 +963,6 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file(&self, path: String, code: String) -> FileIndex {
-        // This is the explicit version where we know that there's a loader.
-        let loader = self.loader(&path).unwrap();
-        self.add_file_state(loader.load_parsed(path, code))
-    }
-
     pub fn load_file_from_workspace(&self, path: String, index: &WorkspaceFileIndex) {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
@@ -995,7 +989,9 @@ impl Database {
             self.update_file_state(file_index, file_state);
             file_index
         } else {
-            let file_index = self.load_file(path.clone(), code);
+            // TODO there could be no loader...
+            let loader = self.loader(&path).unwrap();
+            let file_index = self.add_file_state(loader.load_parsed(path.clone(), code));
             let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
             self.invalidate_file(file_index, invalidations);
             self.in_memory_files.insert(path, file_index);

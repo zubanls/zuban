@@ -139,7 +139,6 @@ impl<'a> Script<'a> {
                         .in_memory_file(&path)
                         .or_else(|| {
                             let file_index = database.file_state_index_by_path(&path);
-                            file_index.unwrap_or_else(|| database.load_file(path, code.unwrap()));
                             todo!()
                         })
                         .unwrap()
