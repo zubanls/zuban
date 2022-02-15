@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::fmt;
+use std::rc::Rc;
 
 use parsa_python_ast::*;
 
@@ -22,6 +23,7 @@ use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Class, Function, Instance, Value};
+use crate::workspaces::DirContent;
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -134,6 +136,7 @@ pub struct PythonFile {
     file_index: Cell<Option<FileIndex>>,
     pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
+    package_dir_content: Option<Rc<DirContent>>,
 
     newline_indices: NewlineIndices,
 }
@@ -160,6 +163,7 @@ impl<'db> PythonFile {
             star_imports: vec![],
             issues: InsertOnlyVec::default(),
             newline_indices: NewlineIndices::new(),
+            package_dir_content: None,
         }
     }
 
