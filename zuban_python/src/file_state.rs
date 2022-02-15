@@ -84,10 +84,6 @@ impl FileStateLoader for PythonFileLoader {
     }
 }
 
-pub trait FileLoader<F> {
-    fn load_file(&self, path: String, code: String) -> F;
-}
-
 pub trait AsAny {
     fn as_any(&self) -> &dyn Any
     where
