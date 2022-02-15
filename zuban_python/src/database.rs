@@ -981,22 +981,21 @@ impl Database {
     }
 
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
-        if let Some(file_index) = self.in_memory_file(&path) {
+        // TODO there could be no loader...
+        let loader = self.loader(&path).unwrap();
+        let file_state = loader.load_parsed(path.clone(), code);
+        let file_index = if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
-            let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
-            self.invalidate_file(file_index, invalidations);
-            let file_state = self.loader(&path).unwrap().load_parsed(path, code);
             self.update_file_state(file_index, file_state);
             file_index
         } else {
-            // TODO there could be no loader...
-            let loader = self.loader(&path).unwrap();
-            let file_index = self.add_file_state(loader.load_parsed(path.clone(), code));
-            let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
-            self.invalidate_file(file_index, invalidations);
-            self.in_memory_files.insert(path, file_index);
+            let file_index = self.add_file_state(file_state);
+            self.in_memory_files.insert(path.clone(), file_index);
             file_index
-        }
+        };
+        let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
+        self.invalidate_file(file_index, invalidations);
+        file_index
     }
 
     pub fn in_memory_file(&mut self, path: &str) -> Option<FileIndex> {
