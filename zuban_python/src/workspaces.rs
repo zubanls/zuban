@@ -15,7 +15,7 @@ impl Workspaces {
         self.0.push(Workspace::new(loaders, root))
     }
 
-    pub fn directories(&self) -> impl Iterator<Item = (&str, &DirContent)> {
+    pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<DirContent>)> {
         self.0
             .iter()
             .map(|x| (x.root().name(), x.root().directory_entries().unwrap()))
@@ -186,7 +186,7 @@ impl DirectoryOrFile {
         }
     }
 
-    pub fn directory_entries(&self) -> Option<&DirContent> {
+    pub fn directory_entries(&self) -> Option<&Rc<DirContent>> {
         match self {
             DirectoryOrFile::Directory(_, entries) => Some(entries),
             _ => None,

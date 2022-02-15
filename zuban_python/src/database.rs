@@ -6,6 +6,7 @@ use std::iter::repeat;
 use std::mem;
 use std::path::Path;
 use std::pin::Pin;
+use std::rc::Rc;
 
 use crate::file::PythonFile;
 use crate::file_state::{
@@ -14,7 +15,7 @@ use crate::file_state::{
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
-use crate::workspaces::{WorkspaceFileIndex, Workspaces};
+use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -963,7 +964,12 @@ impl Database {
         self.loaded_python_file(index)
     }
 
-    pub fn load_file_from_workspace(&self, path: String, index: &WorkspaceFileIndex) {
+    pub fn load_file_from_workspace(
+        &self,
+        dir: Rc<DirContent>,
+        path: String,
+        index: &WorkspaceFileIndex,
+    ) {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
