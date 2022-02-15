@@ -86,8 +86,16 @@ impl Project {
 
     pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic<'_>]> {
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
-        let mut dir = self.database.workspaces.last().root().clone();
-        dir.for_each_file(&mut |file_index| {
+        let mut file_indexes = vec![];
+        self.database
+            .workspaces
+            .last()
+            .root()
+            .clone()
+            .for_each_file(&mut |file_index| {
+                file_indexes.push(file_index);
+            });
+        for file_index in file_indexes {
             let file = self.database.loaded_file(file_index);
             debug!(
                 "Calculate Diagnostics for {}",
@@ -96,7 +104,7 @@ impl Project {
 
             let array: [i32; 3] = [0; 3];
             all_diagnostics.append(&mut file.diagnostics(&self.database).into_vec())
-        });
+        }
         all_diagnostics.into_boxed_slice()
     }
 }

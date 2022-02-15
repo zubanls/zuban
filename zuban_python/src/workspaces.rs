@@ -1,5 +1,6 @@
 use std::cell::{Cell, Ref, RefCell};
 use std::path::PathBuf;
+use std::rc::Rc;
 use walkdir::WalkDir;
 
 use crate::database::FileIndex;
@@ -173,7 +174,7 @@ impl WorkspaceFileIndex {
 pub enum DirectoryOrFile {
     File(String, WorkspaceFileIndex),
     MissingEntry(String, Invalidations),
-    Directory(String, DirContent),
+    Directory(String, Rc<DirContent>),
 }
 
 impl DirectoryOrFile {
@@ -200,7 +201,7 @@ impl DirectoryOrFile {
                 }
             }
             Self::Directory(_, nodes) => {
-                for n in nodes.0.get_mut().iter_mut() {
+                for n in nodes.0.borrow_mut().iter_mut() {
                     n.for_each_file(callable)
                 }
             }
@@ -219,23 +220,23 @@ impl DirContent {
         }
     }
 
-    fn remove_name(&mut self, name: &str) {
-        self.0.get_mut().retain(|f| f.name() != name);
+    fn remove_name(&self, name: &str) {
+        self.0.borrow_mut().retain(|f| f.name() != name);
     }
 
-    fn add_file(&mut self, vfs: &dyn Vfs, name: &str, file_index: FileIndex) -> Invalidations {
+    fn add_file(&self, vfs: &dyn Vfs, name: &str, file_index: FileIndex) -> Invalidations {
         let (name, rest) = vfs.split_off_folder(name);
         let new = || {
             if let Some(rest) = rest {
-                let mut content = Self::default();
+                let content = Self::default();
                 content.add_file(vfs, rest, file_index);
-                DirectoryOrFile::Directory(name.to_owned(), content)
+                DirectoryOrFile::Directory(name.to_owned(), Rc::new(content))
             } else {
                 DirectoryOrFile::File(name.to_owned(), WorkspaceFileIndex::some(file_index))
             }
         };
 
-        for entry in self.0.get_mut().iter_mut() {
+        for entry in self.0.borrow_mut().iter_mut() {
             if entry.name() == name {
                 match entry {
                     DirectoryOrFile::Directory(_, content) => {
@@ -254,7 +255,7 @@ impl DirContent {
                 }
             }
         }
-        self.0.get_mut().push(new());
+        self.0.borrow_mut().push(new());
         Invalidations::default()
     }
 
