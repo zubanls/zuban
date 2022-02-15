@@ -949,6 +949,7 @@ impl Database {
     }
 
     fn update_file_state(&mut self, file_index: FileIndex, file_state: Pin<Box<dyn FileState>>) {
+        file_state.set_file_index(file_index);
         self.files.set(file_index.0 as usize, file_state);
     }
 
@@ -991,7 +992,6 @@ impl Database {
             let invalidations = self.workspaces.add_file(&*self.vfs, &path, file_index);
             self.invalidate_file(file_index, invalidations);
             let file_state = self.loader(&path).unwrap().load_parsed(path, code);
-            file_state.set_file_index(file_index);
             self.update_file_state(file_index, file_state);
             file_index
         } else {
