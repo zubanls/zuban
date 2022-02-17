@@ -26,11 +26,14 @@ impl Workspaces {
 
     pub fn add_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
-            dbg!(&workspace.root);
             if path.starts_with(&workspace.root.name) {
                 if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                    // TODO this is obviously wrong, nested files are not cared for
-                    return DirContent::add_file(files, vfs, &path[workspace.root.name.len()..]);
+                    let (dir, name) = DirContent::ensure_dir_and_return_name(
+                        files,
+                        vfs,
+                        &path[workspace.root.name.len()..],
+                    );
+                    return dir.ensure_file(name);
                 }
             }
         }
@@ -234,6 +237,42 @@ impl DirContent {
 
     fn remove_name(&self, name: &str) {
         self.0.borrow_mut().retain(|f| f.name != name)
+    }
+
+    fn search(&self, name: &str) -> Option<Ref<DirEntry>> {
+        let borrow = self.0.borrow();
+        // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
+        // https://github.com/rust-lang/rust/issues/81061
+        borrow.iter().find(|entry| entry.name == name)?;
+        Some(Ref::map(borrow, |dir| {
+            dir.iter().find(|entry| entry.name == name).unwrap()
+        }))
+    }
+
+    fn ensure_dir_and_return_name<'a>(
+        dir: &Rc<DirContent>,
+        vfs: &dyn Vfs,
+        path: &'a str,
+    ) -> (Rc<DirContent>, &'a str) {
+        let (name, rest) = vfs.split_off_folder(path);
+        if let Some(rest) = rest {
+            dir.search(name)
+                .map(|x| match &x.type_ {
+                    DirOrFile::Directory(rc) => Self::ensure_dir_and_return_name(rc, vfs, rest),
+                    _ => todo!(),
+                })
+                .unwrap_or_else(|| {
+                    let new_rc = Default::default();
+                    let result = Self::ensure_dir_and_return_name(&new_rc, vfs, rest);
+                    dir.0.borrow_mut().push(DirEntry {
+                        name: name.to_owned(),
+                        type_: DirOrFile::Directory(new_rc),
+                    });
+                    result
+                })
+        } else {
+            (dir.clone(), name)
+        }
     }
 
     fn add_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
