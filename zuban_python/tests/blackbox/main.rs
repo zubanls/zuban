@@ -60,7 +60,7 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
 
-    let mut project = zuban_python::Project::new("foo".to_owned());
+    let mut project = zuban_python::Project::new("tests/blackbox/".to_owned());
 
     let files = python_files();
     let start = Instant::now();

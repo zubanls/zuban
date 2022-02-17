@@ -1,9 +1,8 @@
-use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::database::{Database, FileIndex};
 use crate::file_state::File;
-use crate::workspaces::{DirContent, DirectoryOrFile};
+use crate::workspaces::{DirContent, DirOrFile};
 
 pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {
     if name == "typing" {
@@ -35,13 +34,13 @@ fn python_import<'db>(
     let separator = "/"; // TODO different separator
     for (dir_path, dir_children) in directories {
         for directory in dir_children.iter() {
-            match directory.deref() {
-                DirectoryOrFile::Directory(dir_name, content) => {
-                    if dir_name == name {
+            match &directory.type_ {
+                DirOrFile::Directory(content) => {
+                    if directory.name == name {
                         for child in content.iter() {
-                            match child.deref() {
-                                DirectoryOrFile::File(file_name, file_index) => {
-                                    if file_name == "__init__.py" || file_name == "__init__.pyi" {
+                            match &child.type_ {
+                                DirOrFile::File(file_index) => {
+                                    if child.name == "__init__.py" || child.name == "__init__.pyi" {
                                         if file_index.get().is_none() {
                                             database.load_file_from_workspace(
                                                 content.clone(),
@@ -49,9 +48,9 @@ fn python_import<'db>(
                                                     "{}{}{}{}{}",
                                                     dir_path,
                                                     separator,
-                                                    dir_name,
+                                                    directory.name,
                                                     separator,
-                                                    file_name
+                                                    child.name
                                                 ),
                                                 file_index,
                                             );
@@ -59,28 +58,29 @@ fn python_import<'db>(
                                         return file_index.get();
                                     }
                                 }
-                                DirectoryOrFile::Directory(_, _) => {}
-                                DirectoryOrFile::MissingEntry(dir_name, _) => {
+                                DirOrFile::Directory(_) => {}
+                                DirOrFile::MissingEntry(_) => {
                                     todo!()
                                 }
                             }
                         }
                     }
                 }
-                DirectoryOrFile::File(file_name, file_index) => {
-                    if file_name == &format!("{}.py", name) || file_name == &format!("{}.pyi", name)
+                DirOrFile::File(file_index) => {
+                    if &directory.name == &format!("{}.py", name)
+                        || &directory.name == &format!("{}.pyi", name)
                     {
                         if file_index.get().is_none() {
                             database.load_file_from_workspace(
                                 dir_children.clone(),
-                                format!("{}{}{}", dir_path, separator, file_name),
+                                format!("{}{}{}", dir_path, separator, directory.name),
                                 file_index,
                             );
                         }
                         return file_index.get();
                     }
                 }
-                DirectoryOrFile::MissingEntry(_, _) => (),
+                DirOrFile::MissingEntry(_) => (),
             }
         }
     }

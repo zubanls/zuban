@@ -167,6 +167,10 @@ impl Invalidations {
     pub fn into_iter(self) -> impl Iterator<Item = FileIndex> {
         self.vec.into_inner().into_iter()
     }
+
+    pub fn get_mut(&mut self) -> &mut Vec<FileIndex> {
+        self.vec.get_mut()
+    }
 }
 
 impl fmt::Debug for Invalidations {
