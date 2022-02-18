@@ -237,6 +237,8 @@ pub struct AddedFile {
 
 impl AddedFile {
     pub fn set_file_index(&self, index: FileIndex) {
+        // Theoretically we could just search in the directory for the entry again, but I'm too
+        // lazy for that and it's faster this way.
         unsafe { &mut *self.workspace_file_index }.set(index);
     }
 }
