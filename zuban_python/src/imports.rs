@@ -67,8 +67,8 @@ fn python_import<'db>(
                     }
                 }
                 DirOrFile::File(file_index) => {
-                    if &directory.name == &format!("{}.py", name)
-                        || &directory.name == &format!("{}.pyi", name)
+                    if directory.name == format!("{}.py", name)
+                        || directory.name == format!("{}.pyi", name)
                     {
                         if file_index.get().is_none() {
                             database.load_file_from_workspace(
