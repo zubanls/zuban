@@ -1,4 +1,4 @@
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::path::PathBuf;
 use std::rc::Rc;
 use walkdir::WalkDir;
@@ -24,7 +24,7 @@ impl Workspaces {
         })
     }
 
-    pub fn add_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
+    pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
             if path.starts_with(&workspace.root.name) {
                 if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
@@ -33,7 +33,7 @@ impl Workspaces {
                         vfs,
                         &path[workspace.root.name.len()..],
                     );
-                    return dir.ensure_file(name);
+                    return DirContent::ensure_file(&dir, vfs, name);
                 }
             }
         }
@@ -217,6 +217,13 @@ impl DirEntry {
             DirOrFile::MissingEntry(_) => (),
         }
     }
+
+    fn expect_workspace_index(&mut self) -> &mut WorkspaceFileIndex {
+        match &mut self.type_ {
+            DirOrFile::File(index) => index,
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -225,7 +232,13 @@ pub struct DirContent(RefCell<Vec<DirEntry>>);
 pub struct AddedFile {
     pub invalidations: Invalidations,
     pub directory: Rc<DirContent>,
-    pub workspace_file_index: *const WorkspaceFileIndex,
+    pub workspace_file_index: *mut WorkspaceFileIndex,
+}
+
+impl AddedFile {
+    pub fn set_file_index(&self, index: FileIndex) {
+        unsafe { &mut *self.workspace_file_index }.set(index);
+    }
 }
 
 impl DirContent {
@@ -239,13 +252,13 @@ impl DirContent {
         self.0.borrow_mut().retain(|f| f.name != name)
     }
 
-    fn search(&self, name: &str) -> Option<Ref<DirEntry>> {
-        let borrow = self.0.borrow();
+    fn search(&self, name: &str) -> Option<RefMut<DirEntry>> {
+        let borrow = self.0.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         borrow.iter().find(|entry| entry.name == name)?;
-        Some(Ref::map(borrow, |dir| {
-            dir.iter().find(|entry| entry.name == name).unwrap()
+        Some(RefMut::map(borrow, |dir| {
+            dir.iter_mut().find(|entry| entry.name == name).unwrap()
         }))
     }
 
@@ -275,62 +288,29 @@ impl DirContent {
         }
     }
 
-    fn add_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
-        let (name, rest) = vfs.split_off_folder(name);
-        let new = |entry: &mut DirOrFile| {
-            if let Some(rest) = rest {
-                let content = Rc::new(Self::default());
-                let result = Self::add_file(&content, vfs, rest);
-                *entry = DirOrFile::Directory(content);
-                return result;
-            }
-
-            *entry = DirOrFile::File(WorkspaceFileIndex::none());
-            AddedFile {
-                invalidations: Invalidations::default(),
-                directory: dir.clone(),
-                workspace_file_index: match entry {
-                    DirOrFile::File(w) => w,
-                    _ => unreachable!(),
-                },
-            }
-        };
-
-        for entry in dir.0.borrow_mut().iter_mut() {
-            if entry.name == name {
-                match &entry.type_ {
-                    DirOrFile::Directory(content) => {
-                        return Self::add_file(content, vfs, rest.unwrap());
-                    }
-                    DirOrFile::MissingEntry(_) => {
-                        // Just initialize it somehow to overwrite it later
-                        let old = std::mem::replace(
-                            &mut entry.type_,
-                            DirOrFile::File(WorkspaceFileIndex::none()),
-                        );
-                        if let DirOrFile::MissingEntry(mut invalidations) = old {
-                            let mut result = new(&mut entry.type_);
-                            // TODO add invalidations
-                            result
-                                .invalidations
-                                .get_mut()
-                                .append(invalidations.get_mut());
-                            return result;
-                        } else {
-                            unreachable!()
-                        }
-                    }
-                    // If this is not unreachable, we should probably not have a new file_index here
-                    _ => unreachable!(),
+    fn ensure_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
+        let mut invalidations = Invalidations::default();
+        let workspace_file_index = dir
+            .search(name)
+            .map(|mut entry| match &mut entry.type_ {
+                DirOrFile::File(index) => index as *mut WorkspaceFileIndex,
+                DirOrFile::MissingEntry(inv) => {
+                    invalidations = std::mem::take(inv);
+                    entry.type_ = DirOrFile::File(WorkspaceFileIndex::none());
+                    entry.expect_workspace_index()
                 }
-            }
+                DirOrFile::Directory(_) => todo!(),
+            })
+            .unwrap_or_else(|| {
+                let mut borrow = dir.0.borrow_mut();
+                borrow.push(DirEntry::new_file(name.to_owned()));
+                borrow.last_mut().unwrap().expect_workspace_index()
+            });
+        AddedFile {
+            invalidations,
+            directory: dir.clone(),
+            workspace_file_index,
         }
-        let mut d = dir.0.borrow_mut();
-        d.push(DirEntry {
-            name: name.to_owned(),
-            type_: DirOrFile::File(WorkspaceFileIndex::none()),
-        });
-        new(&mut d.last_mut().unwrap().type_)
     }
 
     pub fn add_missing_entry(&self, name: String, invalidates: FileIndex) {

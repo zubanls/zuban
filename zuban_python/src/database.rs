@@ -990,14 +990,14 @@ impl Database {
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
         let file_state = loader.load_parsed(path.clone(), code);
-        let added = self.workspaces.add_file(&*self.vfs, &path);
+        let added = self.workspaces.ensure_file(&*self.vfs, &path);
         let file_index = if let Some(file_index) = self.in_memory_file(&path) {
             self.unload_file(file_index);
             self.update_file_state(file_index, file_state);
             file_index
         } else {
             let file_index = self.add_file_state(file_state);
-            //added.workspace_file_index.set(file_index);
+            added.set_file_index(file_index);
             self.in_memory_files.insert(path.clone(), file_index);
             file_index
         };
