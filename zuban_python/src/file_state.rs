@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::cell::{Cell, UnsafeCell};
+use std::cell::UnsafeCell;
 use std::fmt;
 use std::fs;
 use std::pin::Pin;
@@ -156,20 +156,6 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         match unsafe { &*self.state.get() } {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
-            InternalFileExistence::Unparsed(loader, file_index_cell) => {
-                // It is extremely important to deal with the data given here before overwriting it
-                // in `slot`. Otherwise we access memory that has different data structures.
-                let file_index = file_index_cell.get().unwrap();
-                if let Some(file) = file_system_reader.read_file(&self.path) {
-                    unsafe { *self.state.get() = InternalFileExistence::Parsed(loader(file)) };
-                } else {
-                    unsafe { *self.state.get() = InternalFileExistence::Unloaded };
-                }
-
-                let file = self.file(file_system_reader);
-                file.unwrap().set_file_index(file_index);
-                file
-            }
         }
     }
 
@@ -184,9 +170,6 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         match unsafe { &*self.state.get() } {
             InternalFileExistence::Unloaded => {}
             InternalFileExistence::Parsed(f) => f.set_file_index(index),
-            InternalFileExistence::Unparsed(loader, file_index_cell) => {
-                file_index_cell.set(Some(index))
-            }
         }
     }
 
@@ -230,19 +213,10 @@ impl<F: File> LanguageFileState<F> {
             invalidates: Default::default(),
         }
     }
-
-    fn new_unparsed(path: String, loader: LoadFileFunction<F>) -> Self {
-        Self {
-            path,
-            state: UnsafeCell::new(InternalFileExistence::Unparsed(loader, Cell::new(None))),
-            invalidates: Default::default(),
-        }
-    }
 }
 
 enum InternalFileExistence<F: 'static> {
     Unloaded,
-    Unparsed(LoadFileFunction<F>, Cell<Option<FileIndex>>),
     Parsed(F),
 }
 
@@ -252,7 +226,6 @@ impl<F> fmt::Debug for InternalFileExistence<F> {
         // interested in that while debugging.
         match *self {
             Self::Unloaded => write!(f, "Unloaded"),
-            Self::Unparsed(_, _) => write!(f, "Unparsed"),
             Self::Parsed(_) => write!(f, "Parsed(_)"),
         }
     }
