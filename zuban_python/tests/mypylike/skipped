@@ -11,3 +11,6 @@ testChangeBaseClassAttributeType
 testModuleAttributeTypeChanges
 testTwoStepsDueToModuleAttribute
 testTwoStepsDueToMultipleNamespaces
+testConstructorSignatureChanged2
+testConstructorSignatureChanged3
+testSuperField
