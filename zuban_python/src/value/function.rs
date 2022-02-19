@@ -235,7 +235,13 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn diagnostic_string(&self) -> String {
         match self.class {
-            Some(class) => format!("{:?} of {:?}", self.name(), class.name()),
+            Some(class) => {
+                if self.name() == "__init__" {
+                    format!("{:?}", class.name())
+                } else {
+                    format!("{:?} of {:?}", self.name(), class.name())
+                }
+            }
             None => format!("{:?}", self.name()),
         }
     }
