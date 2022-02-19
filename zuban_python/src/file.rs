@@ -1046,7 +1046,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
                 StmtContent::Decorated(decorated) => {}
-                StmtContent::IfStmt(if_stmt) => {}
+                StmtContent::IfStmt(if_stmt) => {
+                    for block in if_stmt.iter_blocks() {
+                        match block {
+                            IfBlockType::If(_, block) => {
+                                self.calc_block_diagnostics(block, class, func)
+                            }
+                            IfBlockType::Else(block) => {
+                                self.calc_block_diagnostics(block, class, func)
+                            }
+                        }
+                    }
+                }
                 StmtContent::ForStmt(for_stmt) => {}
                 StmtContent::TryStmt(try_stmt) => {}
                 StmtContent::WhileStmt(while_stmt) => {}
@@ -1061,15 +1072,24 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    fn calc_block_diagnostics(
+        &mut self,
+        block: Block<'db>,
+        class: Option<&Class<'db, '_>>,
+        func: Option<&Function<'db, '_>>,
+    ) {
+        match block.unpack() {
+            BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, class, func),
+            BlockContent::OneLine(simple_stmts) => {}
+        }
+    }
+
     fn calc_class_diagnostics(&mut self, class: ClassDef<'db>) {
         let (_, block) = class.unpack();
         let class =
             Class::from_position(NodeRef::new(self.file, class.index()), Generics::None, None)
                 .unwrap();
-        match block.unpack() {
-            BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, Some(&class), None),
-            BlockContent::OneLine(simple_stmts) => {}
-        }
+        self.calc_block_diagnostics(block, Some(&class), None)
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {
@@ -1099,12 +1119,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         let function_i_s = &mut self.i_s.with_func_and_args(&function, args);
         let mut inference = self.file.inference(function_i_s);
-        match block.unpack() {
-            BlockContent::Indented(stmts) => {
-                inference.calc_stmts_diagnostics(stmts, None, Some(&function))
-            }
-            BlockContent::OneLine(simple_stmts) => {}
-        }
+        inference.calc_block_diagnostics(block, None, Some(&function))
     }
 
     fn calc_return_stmt_diagnostics(
