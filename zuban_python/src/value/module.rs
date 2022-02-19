@@ -76,7 +76,11 @@ impl<'db> Value<'db, '_> for Module<'db> {
                             .unwrap();
                         python_import(i_s.database, p, dir, name)
                     })
-                    .and_then(|file_index| Some(Inferred::new_file_reference(file_index)))
+                    .map(|file_index| {
+                        i_s.database
+                            .add_invalidates(file_index, self.file.file_index());
+                        Inferred::new_file_reference(file_index)
+                    })
             })
     }
 
