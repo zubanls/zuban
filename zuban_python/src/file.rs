@@ -136,7 +136,7 @@ pub struct PythonFile {
     file_index: Cell<Option<FileIndex>>,
     pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
-    package_dir_content: Option<Rc<DirContent>>,
+    package_dir: Option<Rc<DirContent>>,
 
     newline_indices: NewlineIndices,
 }
@@ -150,7 +150,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(code: String) -> Self {
+    pub fn new(package_dir: Option<Rc<DirContent>>, code: String) -> Self {
         let tree = Tree::parse(code);
         let length = tree.length();
         Self {
@@ -163,7 +163,7 @@ impl<'db> PythonFile {
             star_imports: vec![],
             issues: InsertOnlyVec::default(),
             newline_indices: NewlineIndices::new(),
-            package_dir_content: None,
+            package_dir,
         }
     }
 

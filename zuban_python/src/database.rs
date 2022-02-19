@@ -956,7 +956,7 @@ impl Database {
 
     pub fn load_annotation_file(&self, in_file: FileIndex, code: String) -> &PythonFile {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(code + "\n");
+        let mut file = PythonFile::new(None, code + "\n");
         file.star_imports.push(in_file);
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let index =
@@ -973,7 +973,7 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(path, code)
+            loader.load_parsed(dir, path, code)
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -981,17 +981,19 @@ impl Database {
         index.set(file_index);
     }
 
-    pub fn load_unparsed(&self, path: String) -> Option<FileIndex> {
-        self.loader(&path)
-            .map(|loader| self.add_file_state(loader.load_unparsed(path)))
-    }
-
     pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
-        // TODO there could be no loader...
-        let loader = self.loader(&path).unwrap();
-        let file_state = loader.load_parsed(path.clone(), code);
-        let file_index = if let Some(file_index) = self.in_memory_file(&path) {
+        // First unload the old file, if there is already one
+        let in_mem_file = self.in_memory_file(&path);
+        if let Some(file_index) = in_mem_file {
             self.unload_file(file_index);
+        }
+
+        // Then load the new one
+        // TODO there could be no loader...
+        let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
+        let loader = self.loader(&path).unwrap();
+        let file_state = loader.load_parsed(ensured.directory.clone(), path.clone(), code);
+        let file_index = if let Some(file_index) = in_mem_file {
             self.update_file_state(file_index, file_state);
             file_index
         } else {
@@ -999,7 +1001,6 @@ impl Database {
             self.in_memory_files.insert(path.clone(), file_index);
             file_index
         };
-        let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
         ensured.set_file_index(file_index);
         self.invalidate_file(file_index, ensured.invalidations);
         file_index
@@ -1050,7 +1051,12 @@ impl Database {
     }
 
     fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
-        let file_index = self.load_unparsed(p.to_owned()).unwrap();
+        // TODO give this function a better name and put it into a workspace
+        let loader = self.loader(p).unwrap();
+        // TODO this is wrong, because it's just a random dir...
+        let dir = self.workspaces.directories().next().unwrap().1.clone();
+        let code = self.vfs.read_file(p).unwrap();
+        let file_index = self.add_file_state(loader.load_parsed(dir, p.to_owned(), code));
         self.loaded_python_file(file_index)
     }
 

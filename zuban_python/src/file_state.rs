@@ -1,15 +1,18 @@
+use std::any::Any;
+use std::cell::{Cell, UnsafeCell};
+use std::fmt;
+use std::fs;
+use std::pin::Pin;
+use std::rc::Rc;
+
 use crate::database::{Database, FileIndex};
 use crate::diagnostics::Diagnostic;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
 use crate::utils::Invalidations;
+use crate::workspaces::DirContent;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
-use std::any::Any;
-use std::cell::{Cell, UnsafeCell};
-use std::fmt;
-use std::fs;
-use std::pin::Pin;
 
 type InvalidatedDependencies = Vec<FileIndex>;
 type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
@@ -51,9 +54,12 @@ pub trait FileStateLoader {
     fn might_be_relevant(&self, name: &str) -> bool;
     fn should_be_ignored(&self, name: &str) -> bool;
 
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>>;
-
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>>;
+    fn load_parsed(
+        &self,
+        dir: Rc<DirContent>,
+        path: String,
+        code: String,
+    ) -> Pin<Box<dyn FileState>>;
 }
 
 #[derive(Default)]
@@ -75,12 +81,18 @@ impl FileStateLoader for PythonFileLoader {
         name == "__pycache__" && !name.ends_with(".pyc")
     }
 
-    fn load_parsed(&self, path: String, code: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::new_parsed(path, PythonFile::new(code)))
-    }
-
-    fn load_unparsed(&self, path: String) -> Pin<Box<dyn FileState>> {
-        Box::pin(LanguageFileState::new_unparsed(path, &PythonFile::new))
+    fn load_parsed(
+        &self,
+        dir: Rc<DirContent>,
+        path: String,
+        code: String,
+    ) -> Pin<Box<dyn FileState>> {
+        // TODO this check is really stupid.
+        let package_dir = path.ends_with("/__init__.py").then(|| dir);
+        Box::pin(LanguageFileState::new_parsed(
+            path,
+            PythonFile::new(package_dir, code),
+        ))
     }
 }
 
