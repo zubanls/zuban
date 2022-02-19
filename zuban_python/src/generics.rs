@@ -697,6 +697,21 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
+    pub fn error_if_not_matches(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        value: &Inferred<'db>,
+        mut callback: impl FnMut(String, String),
+    ) {
+        let value_generic_option = value.class_as_generic_option(i_s);
+        if !self.matches(i_s, None, value_generic_option) {
+            callback(
+                value.class_as_generic_option(i_s).as_string(i_s),
+                self.as_string(i_s),
+            )
+        }
+    }
+
     pub fn execute_and_resolve_type_vars(
         &self,
         i_s: &mut InferenceState<'db, '_>,
