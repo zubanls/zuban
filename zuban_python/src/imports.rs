@@ -13,13 +13,16 @@ pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> O
         return Some(database.python_state.typing().file_index());
     }
 
-    let result = python_import(database, database.workspaces.directories(), name);
-    if result.is_none() {
-        for (_, dir_children) in database.workspaces.directories() {
-            dir_children.add_missing_entry(name.to_owned() + ".py", from_file);
+    for (dir_path, dir) in database.workspaces.directories() {
+        let result = python_import(database, dir_path, dir, name);
+        if result.is_some() {
+            return result;
         }
     }
-    result
+    for (_, dir_children) in database.workspaces.directories() {
+        dir_children.add_missing_entry(name.to_owned() + ".py", from_file);
+    }
+    None
 }
 
 pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
@@ -28,60 +31,59 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
 
 fn python_import<'db>(
     database: &Database,
-    directories: impl Iterator<Item = (&'db str, &'db Rc<DirContent>)>,
+    dir_path: &str,
+    dir: &'db Rc<DirContent>,
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator
-    for (dir_path, dir_children) in directories {
-        for directory in dir_children.iter() {
-            match &directory.type_ {
-                DirOrFile::Directory(content) => {
-                    if directory.name == name {
-                        for child in content.iter() {
-                            match &child.type_ {
-                                DirOrFile::File(file_index) => {
-                                    if child.name == "__init__.py" || child.name == "__init__.pyi" {
-                                        if file_index.get().is_none() {
-                                            database.load_file_from_workspace(
-                                                content.clone(),
-                                                format!(
-                                                    "{}{}{}{}{}",
-                                                    dir_path,
-                                                    separator,
-                                                    directory.name,
-                                                    separator,
-                                                    child.name
-                                                ),
-                                                file_index,
-                                            );
-                                        }
-                                        return file_index.get();
+    for directory in dir.iter() {
+        match &directory.type_ {
+            DirOrFile::Directory(content) => {
+                if directory.name == name {
+                    for child in content.iter() {
+                        match &child.type_ {
+                            DirOrFile::File(file_index) => {
+                                if child.name == "__init__.py" || child.name == "__init__.pyi" {
+                                    if file_index.get().is_none() {
+                                        database.load_file_from_workspace(
+                                            content.clone(),
+                                            format!(
+                                                "{}{}{}{}{}",
+                                                dir_path,
+                                                separator,
+                                                directory.name,
+                                                separator,
+                                                child.name
+                                            ),
+                                            file_index,
+                                        );
                                     }
+                                    return file_index.get();
                                 }
-                                DirOrFile::Directory(_) => {}
-                                DirOrFile::MissingEntry(_) => {
-                                    todo!()
-                                }
+                            }
+                            DirOrFile::Directory(_) => {}
+                            DirOrFile::MissingEntry(_) => {
+                                todo!()
                             }
                         }
                     }
                 }
-                DirOrFile::File(file_index) => {
-                    if directory.name == format!("{}.py", name)
-                        || directory.name == format!("{}.pyi", name)
-                    {
-                        if file_index.get().is_none() {
-                            database.load_file_from_workspace(
-                                dir_children.clone(),
-                                format!("{}{}{}", dir_path, separator, directory.name),
-                                file_index,
-                            );
-                        }
-                        return file_index.get();
-                    }
-                }
-                DirOrFile::MissingEntry(_) => (),
             }
+            DirOrFile::File(file_index) => {
+                if directory.name == format!("{}.py", name)
+                    || directory.name == format!("{}.pyi", name)
+                {
+                    if file_index.get().is_none() {
+                        database.load_file_from_workspace(
+                            dir.clone(),
+                            format!("{}{}{}", dir_path, separator, directory.name),
+                            file_index,
+                        );
+                    }
+                    return file_index.get();
+                }
+            }
+            DirOrFile::MissingEntry(_) => (),
         }
     }
     None
