@@ -136,7 +136,7 @@ pub struct PythonFile {
     file_index: Cell<Option<FileIndex>>,
     pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
-    package_dir: Option<Rc<DirContent>>,
+    pub package_dir: Option<Rc<DirContent>>,
 
     newline_indices: NewlineIndices,
 }

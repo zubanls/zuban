@@ -29,7 +29,7 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
     todo!()
 }
 
-fn python_import<'db>(
+pub fn python_import<'db>(
     database: &Database,
     dir_path: &str,
     dir: &'db Rc<DirContent>,

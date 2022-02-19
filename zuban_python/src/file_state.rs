@@ -19,12 +19,20 @@ type LoadFileFunction<F> = &'static dyn Fn(String) -> F;
 pub trait Vfs {
     fn read_file(&self, path: &str) -> Option<String>;
 
+    fn separator(&self) -> char {
+        '/'
+    }
+
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
-        if let Some(pos) = path.find('/') {
+        if let Some(pos) = path.find(self.separator()) {
             (&path[..pos], Some(&path[pos + 1..]))
         } else {
             (path, None)
         }
+    }
+
+    fn dir_path<'a>(&self, path: &'a str) -> Option<&'a str> {
+        path.rfind(self.separator()).map(|index| &path[..index])
     }
 }
 

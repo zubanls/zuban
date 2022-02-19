@@ -254,7 +254,7 @@ impl DirContent {
         self.0.borrow_mut().retain(|f| f.name != name)
     }
 
-    fn search(&self, name: &str) -> Option<RefMut<DirEntry>> {
+    pub fn search(&self, name: &str) -> Option<RefMut<DirEntry>> {
         let borrow = self.0.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061

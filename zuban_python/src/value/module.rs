@@ -5,6 +5,7 @@ use crate::arguments::Arguments;
 use crate::database::Database;
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -60,7 +61,23 @@ impl<'db> Value<'db, '_> for Module<'db> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
     ) -> Option<Inferred<'db>> {
-        self.file.inference(i_s).infer_module_name(name)
+        self.file
+            .inference(i_s)
+            .infer_module_name(name)
+            .or_else(|| {
+                self.file
+                    .package_dir
+                    .as_ref()
+                    .and_then(|dir| {
+                        let p = i_s
+                            .database
+                            .vfs
+                            .dir_path(self.file.file_path(i_s.database))
+                            .unwrap();
+                        python_import(i_s.database, p, dir, name)
+                    })
+                    .and_then(|file_index| todo!())
+            })
     }
 
     fn execute(
