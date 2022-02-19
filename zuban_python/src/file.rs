@@ -493,6 +493,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if point.calculated() {
                     // Save on name_definition
                     debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+                    let mut first_definition = point.node_index();
+                    loop {
+                        let point = self.file.points.get(first_definition);
+                        if point.type_() == PointType::MultiDefinition {
+                            first_definition = point.node_index();
+                        } else {
+                            break;
+                        }
+                    }
+                    if let Some(inferred) = self.check_point_cache(first_definition) {
+                        inferred
+                            .class_as_generic_option(self.i_s)
+                            .error_if_not_matches(self.i_s, value, |t1, t2| {
+                                NodeRef::new(self.file, n.index()).add_typing_issue(
+                                    self.i_s.database,
+                                    IssueType::IncompatibleAssignment(t1, t2),
+                                );
+                            });
+                    }
                     value.clone().save_redirect(self.file, n.index() - 1);
                 } else {
                     value.clone().save_redirect(self.file, n.index());
