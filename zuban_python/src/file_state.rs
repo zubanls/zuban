@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::cell::UnsafeCell;
 use std::fmt;
 use std::fs;
 use std::pin::Pin;
@@ -153,21 +152,21 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
     }
 
     fn file(&self, file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
-        match unsafe { &*self.state.get() } {
+        match &self.state {
             InternalFileExistence::Unloaded => None,
             InternalFileExistence::Parsed(f) => Some(f),
         }
     }
 
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File> {
-        match self.state.get_mut() {
+        match &mut self.state {
             InternalFileExistence::Parsed(f) => Some(f),
             _ => None,
         }
     }
 
     fn set_file_index(&self, index: FileIndex) {
-        match unsafe { &*self.state.get() } {
+        match &self.state {
             InternalFileExistence::Unloaded => {}
             InternalFileExistence::Parsed(f) => f.set_file_index(index),
         }
@@ -175,7 +174,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
     fn unload_and_return_invalidations(&mut self) -> Invalidations {
         let invalidates = std::mem::take(&mut self.invalidates);
-        self.state = UnsafeCell::new(InternalFileExistence::Unloaded);
+        self.state = InternalFileExistence::Unloaded;
         invalidates
     }
 
@@ -190,8 +189,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
 pub struct LanguageFileState<F: 'static> {
     path: String,
-    // Unsafe, because the file is parsed lazily
-    state: UnsafeCell<InternalFileExistence<F>>,
+    state: InternalFileExistence<F>,
     invalidates: Invalidations,
 }
 
@@ -199,7 +197,7 @@ impl<F> fmt::Debug for LanguageFileState<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("LanguageFileState")
             .field("path", &self.path)
-            .field("state", unsafe { &*self.state.get() })
+            .field("state", &self.state)
             .field("invalidates", &self.invalidates)
             .finish()
     }
@@ -209,7 +207,7 @@ impl<F: File> LanguageFileState<F> {
     pub fn new_parsed(path: String, file: F) -> Self {
         Self {
             path,
-            state: UnsafeCell::new(InternalFileExistence::Parsed(file)),
+            state: InternalFileExistence::Parsed(file),
             invalidates: Default::default(),
         }
     }
