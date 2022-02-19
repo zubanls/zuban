@@ -40,14 +40,13 @@ impl Workspaces {
         todo!()
     }
 
-    pub fn unload_if_not_available(&mut self, path: &str) {
+    pub fn unload_if_not_available(&mut self, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
             if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
                 if path.starts_with(&workspace.root.name) {
-                    // TODO this is obviously wrong, nested files are not cared for
-                    let name = &path[workspace.root.name.len()..];
-                    files.remove_name(name);
+                    let path = &path[workspace.root.name.len()..];
+                    workspace.root.unload_if_not_available(vfs, path);
                 }
             }
         }
@@ -202,6 +201,29 @@ impl DirEntry {
         }
     }
 
+    pub fn unload_if_not_available(&mut self, vfs: &dyn Vfs, path: &str) {
+        if let DirOrFile::Directory(files) = &self.type_ {
+            let (name, rest) = vfs.split_off_folder(path);
+            if let Some(mut entry) = files.search(name) {
+                if matches!(&entry.type_, DirOrFile::Directory(_)) {
+                    entry.unload_if_not_available(vfs, rest.unwrap());
+                    match &mut entry.type_ {
+                        DirOrFile::Directory(f) => {
+                            if f.is_empty() {
+                                // TODO check if dir still exists
+                                f.remove_name(name);
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                } else {
+                    drop(entry);
+                    files.remove_name(name);
+                }
+            }
+        }
+    }
+
     pub fn for_each_file(&mut self, callable: &mut impl FnMut(FileIndex)) {
         match &self.type_ {
             DirOrFile::File(index) => {
@@ -209,8 +231,8 @@ impl DirEntry {
                     callable(index)
                 }
             }
-            DirOrFile::Directory(nodes) => {
-                for n in nodes.0.borrow_mut().iter_mut() {
+            DirOrFile::Directory(files) => {
+                for n in files.0.borrow_mut().iter_mut() {
                     n.for_each_file(callable)
                 }
             }
@@ -252,6 +274,10 @@ impl DirContent {
 
     fn remove_name(&self, name: &str) {
         self.0.borrow_mut().retain(|f| f.name != name)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.borrow().is_empty()
     }
 
     pub fn search(&self, name: &str) -> Option<RefMut<DirEntry>> {

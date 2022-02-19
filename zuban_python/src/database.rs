@@ -1012,7 +1012,8 @@ impl Database {
 
     fn unload_file(&mut self, file_index: FileIndex) {
         let file_state = &mut self.files[file_index.0 as usize];
-        self.workspaces.unload_if_not_available(file_state.path());
+        self.workspaces
+            .unload_if_not_available(&*self.vfs, file_state.path());
         let invalidations = file_state.unload_and_return_invalidations();
         self.invalidate_file(file_index, invalidations)
     }
