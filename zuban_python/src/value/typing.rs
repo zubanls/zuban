@@ -18,7 +18,7 @@ use crate::node_ref::NodeRef;
 #[derive(Debug)]
 pub struct TypingClass<'db> {
     reference: NodeRef<'db>,
-    specific: Specific,
+    pub specific: Specific,
 }
 
 impl<'db> TypingClass<'db> {
@@ -45,6 +45,10 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
         name: &str,
     ) -> Option<Inferred<'db>> {
         todo!()
+    }
+
+    fn as_typing_class(&self) -> Option<&TypingClass<'db>> {
+        Some(self)
     }
 
     fn get_item(

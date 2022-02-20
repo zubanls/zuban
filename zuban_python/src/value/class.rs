@@ -42,6 +42,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         return true;
                     }
                 }
+                // TODO this should probably be checked before normal mro checking?!
+                if let Self::Class(c1) = self {
+                    if c1.class_infos(i_s).is_protocol {
+                        return match c {
+                            ClassLike::Class(c2) => c1.check_protocol_match(i_s, c2),
+                            _ => false,
+                        };
+                    }
+                }
                 false
             }
             GenericOption::TypeVar(_, node_ref) => todo!(),
@@ -292,6 +301,10 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if t.specific == Specific::TypingProtocol {
                                         is_protocol = true;
                                     }
+                                } else if let Some(t) = v.as_typing_class() {
+                                    if t.specific == Specific::TypingProtocol {
+                                        is_protocol = true;
+                                    }
                                 }
                             },
                             || incomplete_mro = true,
@@ -308,6 +321,20 @@ impl<'db, 'a> Class<'db, 'a> {
             incomplete_mro,
             is_protocol,
         })
+    }
+
+    fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {
+        for c in self.class_infos(i_s).mro.iter() {
+            let symbol_table = &self.class_storage.class_symbol_table;
+            for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
+                if let Some(l) = other.lookup_internal(i_s, class_name) {
+                    // TODO check signature details here!
+                } else {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     fn lookup_symbol(

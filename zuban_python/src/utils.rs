@@ -120,6 +120,11 @@ impl<K: Eq + Hash, V: fmt::Debug + Clone> InsertOnlyHashMap<K, V> {
         let map = unsafe { &mut *self.map.get() };
         map.insert(key, value)
     }
+
+    unsafe fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        let map = &mut *self.map.get();
+        map.iter()
+    }
 }
 
 impl<K, V> Default for InsertOnlyHashMap<K, V> {
@@ -228,6 +233,11 @@ pub struct SymbolTable {
 }
 
 impl SymbolTable {
+    pub unsafe fn iter_on_finished_table(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
+        // This should only ever be called on a table that is not still mutated.
+        self.symbols.iter().map(|(k, v)| (k.as_str(), v))
+    }
+
     pub fn add_or_replace_symbol(&self, name: Name) -> Option<NodeIndex> {
         self.symbols
             .insert(HashableRawStr::new(name.as_str()), name.index())
