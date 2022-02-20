@@ -184,6 +184,7 @@ impl<'db> PythonFile {
             &self.symbol_table,
             &self.points,
             &self.complex_points,
+            &self.issues,
             self.file_index.get().unwrap(),
             func,
         )

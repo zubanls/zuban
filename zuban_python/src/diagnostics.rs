@@ -13,6 +13,8 @@ pub enum IssueType {
     IncompatibleAssignment(String, String),
     ModuleNotFound(String),
 
+    MethodWithoutArguments,
+
     Note(String),
 }
 
@@ -64,6 +66,9 @@ impl<'db> Diagnostic<'db> {
                 "Cannot find implementation or library stub for module named {:?}",
                 s
             ),
+            IssueType::MethodWithoutArguments => {
+                "Method must have at least one argument".to_owned()
+            }
             IssueType::Note(s) => {
                 type_ = "note";
                 s.clone()

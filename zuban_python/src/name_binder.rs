@@ -2,8 +2,10 @@ use crate::database::{
     ClassStorage, ComplexPoint, FileIndex, FunctionType, Locality, Overload, Point, PointLink,
     PointType, Points, Specific,
 };
+use crate::debug;
+use crate::diagnostics::{Issue, IssueType};
 use crate::file::ComplexValues;
-use crate::utils::SymbolTable;
+use crate::utils::{InsertOnlyVec, SymbolTable};
 use parsa_python_ast::{
     AsyncStmtContent, AtomContent, Block, BlockContent, ClassDef, CommonComprehensionExpression,
     Comprehension, Decoratee, Decorators, DictComprehension, Expression, ExpressionContent,
@@ -13,7 +15,7 @@ use parsa_python_ast::{
     WithStmt,
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum NameBinderType {
     Global,
     Function,
@@ -37,6 +39,7 @@ pub struct NameBinder<'db, 'a> {
     symbol_table: &'a SymbolTable,
     points: &'db Points,
     complex_points: &'db ComplexValues,
+    issues: &'db InsertOnlyVec<Issue>,
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     unresolved_names: Vec<Name<'db>>,
@@ -53,6 +56,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
+        issues: &'db InsertOnlyVec<Issue>,
         file_index: FileIndex,
         parent: Option<&'a Self>,
     ) -> Self {
@@ -62,6 +66,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             symbol_table,
             points,
             complex_points,
+            issues,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             unresolved_names: vec![],
@@ -77,6 +82,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
+        issues: &'db InsertOnlyVec<Issue>,
         file_index: FileIndex,
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
     ) where
@@ -88,6 +94,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             symbol_table,
             points,
             complex_points,
+            issues,
             file_index,
             None,
         );
@@ -110,6 +117,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             symbol_table,
             self.points,
             self.complex_points,
+            self.issues,
             self.file_index,
             Some(self),
         );
@@ -122,6 +130,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes
             .extend(unresolved_names.into_iter().map(Unresolved::Name));
         self.unresolved_nodes.extend(unresolved_nodes);
+    }
+
+    pub fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
+        if self.tree.node_has_type_ignore_comment(node_index) {
+            debug!("New ignored name binder issue: {:?}", type_);
+            return;
+        }
+        debug!("New name binder issue: {:?}", type_);
+        let issue = Issue { type_, node_index };
+        self.issues.push(Box::pin(issue));
     }
 
     fn add_new_definition(
@@ -625,6 +643,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.push(Unresolved::FunctionDef(func));
 
         let (name_def, params, return_annotation, _) = func.unpack();
+        let mut param_count = 0;
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
@@ -635,6 +654,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if let Some(expression) = param.default() {
                 self.index_non_block_node(&expression, ordered, false);
             }
+            param_count += 1;
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation that needs to be resolved at the end of a module.
@@ -661,6 +681,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 }
             }
+        }
+
+        if self.type_ == NameBinderType::Class
+            && function_type != FunctionType::StaticMethod
+            && param_count == 0
+        {
+            self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
         let name = name_def.name();
