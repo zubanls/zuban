@@ -6,8 +6,8 @@ use super::{ClassLike, IteratorContent, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific,
-    TupleContent, TypeVarIndex,
+    CallableContent, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList, Locality,
+    Point, Specific, TupleContent, TypeVarIndex,
 };
 use crate::diagnostics::IssueType;
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
@@ -287,7 +287,7 @@ impl<'a> Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database)
+        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
     }
 }
 
@@ -370,7 +370,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database)
+        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
     }
 }
 
@@ -459,7 +459,9 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "generic_part",
-                &self.generic_part.as_type_string(self.database, None),
+                &self
+                    .generic_part
+                    .as_type_string(self.database, None, FormatStyle::Short),
             )
             .finish()
     }
@@ -568,7 +570,7 @@ impl<'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database)
+        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
     }
 
     pub fn iter_params_with_args<'db, 'b>(
@@ -619,7 +621,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database)
+        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
     }
 }
 
@@ -676,9 +678,13 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
+        let s = arg
+            .infer(i_s)
+            .class_as_generic_option(i_s)
+            .as_string(i_s, FormatStyle::Qualified);
         args.node_reference().add_typing_issue(
             i_s.database,
-            IssueType::Note(format!("Revealed type is {:?}", arg.infer(i_s))),
+            IssueType::Note(format!("Revealed type is {:?}", &s)),
         );
         if iterator.next().is_some() {
             todo!()

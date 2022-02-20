@@ -4,7 +4,8 @@ use std::fmt;
 use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, Execution, GenericsList, Locality, Overload, Point, PointLink, Specific,
+    ComplexPoint, Database, Execution, FormatStyle, GenericsList, Locality, Overload, Point,
+    PointLink, Specific,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -285,7 +286,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.as_string(i_s)))
+                        .map(|c| format!("{}.", c.as_string(i_s, FormatStyle::Short)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );

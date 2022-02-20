@@ -3,8 +3,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{CallableClass, Function, Module, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ClassStorage, ComplexPoint, Database, GenericPart, GenericsList, Locality,
-    MroIndex, Point, PointLink, Specific, TypeVarIndex,
+    ClassInfos, ClassStorage, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList,
+    Locality, MroIndex, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -103,12 +103,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
-            Self::Class(c) => c.as_string(i_s),
-            Self::Type(c) => format!("Type[{}]", c.as_string(i_s)),
+            Self::Class(c) => c.as_string(i_s, style),
+            Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
             Self::TypeWithGenericPart(g) => {
-                format!("Type[{}]", g.as_type_string(i_s.database, None))
+                format!("Type[{}]", g.as_type_string(i_s.database, None, style))
             }
             Self::Tuple(c) => c.description(i_s),
             Self::Callable(c) => c.description(i_s),
@@ -390,23 +390,28 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
-        let generics_string = match self.type_var_remap {
-            Some(type_var_remap) => format!(
-                "[{}]",
-                type_var_remap.as_string(
-                    i_s.database,
-                    Some(&mut |index| self.generics.nth(i_s, index))
-                )
-            ),
-            None => self.generics.as_string(i_s),
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+        let mut result = match style {
+            FormatStyle::Short => self.name().to_owned(),
+            FormatStyle::Qualified => self.qualified_name(i_s.database),
         };
         let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
-        format!(
-            "{}{}",
-            self.name(),
-            if has_type_vars { &generics_string } else { "" }
-        )
+        if has_type_vars {
+            let generics_string = match self.type_var_remap {
+                Some(type_var_remap) => format!(
+                    "[{}]",
+                    type_var_remap.as_string(
+                        i_s.database,
+                        Some(&mut |index| self.generics.nth(i_s, index)),
+                        style,
+                    )
+                ),
+                None => self.generics.as_string(i_s, style),
+            };
+
+            result += &generics_string;
+        }
+        result
     }
 
     pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
@@ -427,7 +432,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
-        todo!()
+        Module::new(db, self.reference.file)
     }
 
     fn lookup_internal(
@@ -457,7 +462,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list).as_string(i_s),
+                    Some(generics_list) =>
+                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short),
                     None => "".to_owned(),
                 }
             );
@@ -501,7 +507,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.as_string(i_s),
+            self.as_string(i_s, FormatStyle::Short),
         )
     }
 

@@ -5,7 +5,8 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, GenericPart, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
+    Database, FormatStyle, GenericPart, GenericsList, Locality, Point, PointLink, Specific,
+    TypeVarIndex,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -87,7 +88,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {:?} was requested",
-                        self.as_string(i_s),
+                        self.as_string(i_s, FormatStyle::Short),
                         n
                     );
                     GenericPart::Unknown
@@ -149,11 +150,11 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings = vec![];
         self.iter()
-            .run_on_all_generic_options(i_s, |i_s, g| strings.push(g.as_string(i_s)));
+            .run_on_all_generic_options(i_s, |i_s, g| strings.push(g.as_string(i_s, style)));
         format!("[{}]", strings.join(", "))
     }
 
@@ -417,8 +418,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                         "Argument {} to {} has incompatible type {:?}; expected {:?}",
                                         1,
                                         function.diagnostic_string(),
-                                        value_class.as_string(i_s),
-                                        annotation_g.as_string(i_s),
+                                        value_class.as_string(i_s, FormatStyle::Short),
+                                        annotation_g.as_string(i_s, FormatStyle::Short),
                                     )),
                                 );
                                 self.matches = false;
@@ -463,7 +464,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         &callable_description
                     }
                 },
-                calculated.as_string(i_s.database, None),
+                calculated.as_string(i_s.database, None, FormatStyle::Short),
             );
         }
     }
@@ -706,8 +707,10 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         let value_generic_option = value.class_as_generic_option(i_s);
         if !self.matches(i_s, None, value_generic_option) {
             callback(
-                value.class_as_generic_option(i_s).as_string(i_s),
-                self.as_string(i_s),
+                value
+                    .class_as_generic_option(i_s)
+                    .as_string(i_s, FormatStyle::Short),
+                self.as_string(i_s, FormatStyle::Short),
             )
         }
     }
@@ -721,7 +724,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
             "Resolved type vars: {}",
-            generic_part.as_type_string(i_s.database, None)
+            generic_part.as_type_string(i_s.database, None, FormatStyle::Short)
         );
         Inferred::execute_generic_part(i_s, generic_part)
     }
@@ -795,15 +798,15 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
-            Self::ClassLike(c) => c.as_string(i_s),
+            Self::ClassLike(c) => c.as_string(i_s, style),
             Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
-                    a + &b.as_type_string(i_s.database, None)
+                    a + &b.as_type_string(i_s.database, None, style)
                 } else {
-                    a + &b.as_type_string(i_s.database, None) + ","
+                    a + &b.as_type_string(i_s.database, None, style) + ","
                 }
             }),
             Self::None => "None".to_owned(),

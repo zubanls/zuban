@@ -526,12 +526,13 @@ impl GenericsList {
         &self,
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+        style: FormatStyle,
     ) -> String {
         if let Some(type_var_generics) = type_var_generics {
             // TODO is there no better way than writing this twice???
             self.0
                 .iter()
-                .map(|g| g.as_type_string(db, Some(type_var_generics)))
+                .map(|g| g.as_type_string(db, Some(type_var_generics), style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -542,7 +543,7 @@ impl GenericsList {
         } else {
             self.0
                 .iter()
-                .map(|g| g.as_type_string(db, None))
+                .map(|g| g.as_type_string(db, None, style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -626,8 +627,10 @@ impl GenericPart {
         &self,
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+        style: FormatStyle,
     ) -> String {
         let class_name = |link| {
+            // TODO this does not respect the style argument
             NodeRef::from_link(db, link)
                 .maybe_class()
                 .unwrap()
@@ -640,24 +643,24 @@ impl GenericPart {
                 format!(
                     "{}[{}]",
                     class_name(*link),
-                    generics_lst.as_string(db, type_var_generics)
+                    generics_lst.as_string(db, type_var_generics, style)
                 )
             }
             Self::Union(list) => {
-                format!("Union[{}]", list.as_string(db, type_var_generics))
+                format!("Union[{}]", list.as_string(db, type_var_generics, style))
             }
             Self::TypeVar(index, link) => {
                 if let Some(type_var_generics) = type_var_generics {
-                    return type_var_generics(*index).as_type_string(db, None);
+                    return type_var_generics(*index).as_type_string(db, None, style);
                 }
                 NodeRef::from_link(db, *link).as_name().as_str().to_owned()
             }
             Self::Type(generic_part) => format!(
                 "Type[{}]",
-                generic_part.as_type_string(db, type_var_generics)
+                generic_part.as_type_string(db, type_var_generics, style)
             ),
-            Self::Tuple(content) => format!("Tuple{}", &content.as_string(db)),
-            Self::Callable(content) => format!("Callable{}", &content.as_string(db)),
+            Self::Tuple(content) => format!("Tuple{}", &content.as_string(db, style)),
+            Self::Callable(content) => format!("Callable{}", &content.as_string(db, style)),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
         }
@@ -839,9 +842,9 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn as_string(&self, db: &Database) -> String {
+    pub fn as_string(&self, db: &Database, style: FormatStyle) -> String {
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.as_string(db, None);
+            let list = generics.as_string(db, None, style);
             if self.arbitrary_length {
                 format!("[{}, ...]", list)
             } else {
@@ -860,14 +863,14 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn as_string(&self, db: &Database) -> String {
+    pub fn as_string(&self, db: &Database, style: FormatStyle) -> String {
         format!(
             "[{}, {}]",
             self.params
                 .as_ref()
-                .map(|p| format!("[{}]", p.as_string(db, None)))
+                .map(|p| format!("[{}]", p.as_string(db, None, style)))
                 .unwrap_or_else(|| "...".to_owned()),
-            self.return_class.as_type_string(db, None)
+            self.return_class.as_type_string(db, None, style)
         )
     }
 }
@@ -1102,6 +1105,12 @@ impl<'db> std::cmp::PartialEq for ClassStorage {
     fn eq(&self, other: &Self) -> bool {
         unreachable!("Should never happen with classes")
     }
+}
+
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum FormatStyle {
+    Short,
+    Qualified,
 }
 
 #[cfg(test)]

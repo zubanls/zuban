@@ -1,5 +1,6 @@
 use super::{Class, ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
+use crate::database::FormatStyle;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -90,7 +91,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.class.as_string(i_s),
+            self.class.as_string(i_s, FormatStyle::Short),
         )
     }
 }

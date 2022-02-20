@@ -8,8 +8,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::SimpleArguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, LocalityLink, Point,
-    PointType, Points, Specific, TupleContent,
+    ComplexPoint, Database, FileIndex, FormatStyle, GenericPart, GenericsList, Locality,
+    LocalityLink, Point, PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
@@ -785,7 +785,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 };
                 debug!(
                     "Inferred literal: Tuple{}",
-                    content.as_string(self.i_s.database)
+                    content.as_string(self.i_s.database, FormatStyle::Short)
                 );
                 return Inferred::new_unsaved_complex(ComplexPoint::Tuple(content))
                     .save_redirect(self.file, atom.index());
@@ -1028,7 +1028,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .as_generic_part(self.i_s);
             debug!(
                 "Inferred annotation string as {}",
-                generic_part.as_type_string(self.i_s.database, None)
+                generic_part.as_type_string(self.i_s.database, None, FormatStyle::Short)
             );
             return generic_part;
         }

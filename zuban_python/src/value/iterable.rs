@@ -3,7 +3,9 @@ use parsa_python_ast::{
 };
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
-use crate::database::{ComplexPoint, GenericPart, GenericsList, Locality, TypeVarIndex};
+use crate::database::{
+    ComplexPoint, FormatStyle, GenericPart, GenericsList, Locality, TypeVarIndex,
+};
 use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -78,7 +80,7 @@ impl<'db> ListLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.class(i_s).as_string(i_s),
+                &self.class(i_s).as_string(i_s, FormatStyle::Short),
             );
             self.generic_list(i_s)
         }
@@ -260,7 +262,7 @@ impl<'db> DictLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.class(i_s).as_string(i_s),
+                &self.class(i_s).as_string(i_s, FormatStyle::Short),
             );
             self.generic_part(i_s)
         }
