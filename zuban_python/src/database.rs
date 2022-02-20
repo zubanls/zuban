@@ -387,6 +387,8 @@ pub enum Specific {
     ClassTypeVar,
     FunctionTypeVar,
     LateBoundTypeVar,
+
+    RevealTypeFunction,
 }
 
 #[derive(Debug, PartialEq, Eq)]

@@ -15,8 +15,9 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, Tuple, TupleClass,
-    TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
+    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
+    Tuple, TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
+    Value,
 };
 
 pub trait Inferrable<'db> {
@@ -378,6 +379,7 @@ impl<'db> Inferred<'db> {
             Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar => {
                 on_type_var(definition.point().type_var_index(), *definition)
             }
+            Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
             Specific::None => callable(i_s, &NoneInstance()),
             _ => {
                 let instance = self.resolve_specific(i_s.database, specific);

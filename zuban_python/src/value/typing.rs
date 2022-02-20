@@ -9,6 +9,7 @@ use crate::database::{
     CallableContent, ComplexPoint, Database, GenericPart, GenericsList, Locality, Point, Specific,
     TupleContent, TypeVarIndex,
 };
+use crate::diagnostics::IssueType;
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inference_state::InferenceState;
@@ -644,5 +645,44 @@ impl<'db, 'a, 'b> Iterator for CallableParamIterator<'db, 'a, 'b> {
                 })
             })
             .flatten()
+    }
+}
+
+#[derive(Debug)]
+pub struct RevealTypeFunction();
+
+impl<'db> Value<'db, '_> for RevealTypeFunction {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Function
+    }
+
+    fn name(&self) -> &'static str {
+        "reveal_type"
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        todo!()
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        let mut iterator = args.iter_arguments();
+        let arg = iterator.next().unwrap_or_else(|| todo!());
+
+        args.node_reference().add_typing_issue(
+            i_s.database,
+            IssueType::Note(format!("Revealed type is {:?}", arg.infer(i_s))),
+        );
+        if iterator.next().is_some() {
+            todo!()
+        }
+        Inferred::new_none()
     }
 }

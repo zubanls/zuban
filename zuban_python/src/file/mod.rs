@@ -812,21 +812,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             debug_assert!(link.file != self.file_index || link.node_index != name.index());
             link.into_point_redirect()
         } else {
+            let name_str = name.as_str();
             for index in &self.file.star_imports {
                 let other_file = self.i_s.database.loaded_python_file(*index);
-                if let Some(i) = other_file
-                    .inference(self.i_s)
-                    .infer_module_name(name.as_str())
-                {
+                if let Some(i) = other_file.inference(self.i_s).infer_module_name(name_str) {
                     return i;
                 }
             }
-            if let Some(inferred) = self.infer_module_name(name.as_str()) {
+            if let Some(inferred) = self.infer_module_name(name_str) {
                 // TODO mypy this is a issue AFAIK and this code should not be needed
                 return inferred;
             }
-            debug!("Unknown potential star import name {}", name.as_str());
-            Point::new_unknown(self.file_index, Locality::Todo)
+            if name_str == "reveal_type" {
+                Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
+            } else {
+                debug!("Unknown potential star import name {}", name_str);
+                Point::new_unknown(self.file_index, Locality::Todo)
+            }
         };
         self.file.points.set_on_name(&name, point);
         debug_assert!(self.file.points.get(name.index()).calculated());
