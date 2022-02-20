@@ -57,6 +57,10 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         None
     }
 
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        !self.class.class_infos(i_s).incomplete_mro
+    }
+
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,

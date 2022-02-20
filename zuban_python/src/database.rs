@@ -477,6 +477,7 @@ pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
     pub mro: Box<[GenericPart]>, // Does never include `object`
     pub is_protocol: bool,
+    pub incomplete_mro: bool,
 }
 
 impl ClassInfos {

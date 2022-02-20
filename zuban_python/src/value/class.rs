@@ -247,6 +247,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut type_vars = vec![];
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
+        let mut incomplete_mro = false;
         if let Some(arguments) = self.node().arguments() {
             // First search for type vars
             for argument in arguments.iter() {
@@ -293,7 +294,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                 }
                             },
-                            || todo!(),
+                            || incomplete_mro = true,
                         )
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
@@ -304,6 +305,7 @@ impl<'db, 'a> Class<'db, 'a> {
         Box::new(ClassInfos {
             type_vars: type_vars.into_boxed_slice(),
             mro: mro.into_boxed_slice(),
+            incomplete_mro,
             is_protocol,
         })
     }
@@ -407,6 +409,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         name: &str,
     ) -> Option<Inferred<'db>> {
         Some(self.lookup_and_class(i_s, name).0)
+    }
+
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        !self.class_infos(i_s).incomplete_mro
     }
 
     fn execute(

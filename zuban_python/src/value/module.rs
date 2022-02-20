@@ -11,13 +11,9 @@ use crate::inferred::Inferred;
 
 impl<'db> fmt::Debug for Module<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        todo!()
-        /*
-        f.debug_struct("Function")
-            .field("file", self.reference.file)
-            .field("node", &self.node())
+        f.debug_struct("Module")
+            .field("file", &self.file.file_path(self.database))
             .finish()
-            */
     }
 }
 

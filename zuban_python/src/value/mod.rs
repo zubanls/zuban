@@ -151,6 +151,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         name: &str,
     ) -> Option<Inferred<'db>>;
 
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        dbg!(self);
+        true
+    }
+
     fn lookup(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -158,15 +163,17 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeRef<'db>,
     ) -> Inferred<'db> {
         self.lookup_internal(i_s, name).unwrap_or_else(|| {
-            let origin = if self.is_module() {
-                "Module".to_owned()
-            } else {
-                format!("{:?}", self.name())
-            };
-            from.add_typing_issue(
-                i_s.database,
-                IssueType::AttributeError(origin, name.to_owned()),
-            );
+            if self.should_add_lookup_error(i_s) {
+                let origin = if self.is_module() {
+                    "Module".to_owned()
+                } else {
+                    format!("{:?}", self.name())
+                };
+                from.add_typing_issue(
+                    i_s.database,
+                    IssueType::AttributeError(origin, name.to_owned()),
+                );
+            }
             Inferred::new_unknown()
         })
     }
