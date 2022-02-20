@@ -11,3 +11,4 @@ testChangeBaseClassAttributeType
 testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testSuperField
+testReprocessMethodInNestedClassSemanal

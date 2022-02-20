@@ -23,7 +23,7 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Function, Value};
+use crate::value::{Function, Module, Value};
 use crate::workspaces::DirContent;
 
 #[derive(Default, Debug)]
@@ -357,11 +357,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let (import_name, name_def) = target.unpack();
                     let name = import_name.unwrap_or_else(|| name_def.name());
                     let point = if let Some(import_file) = import_file {
+                        let module = Module::new(self.i_s.database, import_file);
                         if let Some(link) = import_file.lookup_global(name.as_str()) {
                             debug_assert!(
                                 link.file != self.file_index || link.node_index != name.index()
                             );
                             link.into_point_redirect()
+                        } else if let Some(Some(file_index)) = import_file
+                            .package_dir
+                            .as_ref()
+                            .map(|dir| module.sub_module(self.i_s.database, name.as_str()))
+                        {
+                            self.i_s
+                                .database
+                                .add_invalidates(file_index, self.file.file_index());
+                            Point::new_file_reference(file_index, Locality::Todo)
                         } else {
                             // TODO star imports
                             debug!("Unknown potential star name {}", name.as_str());
