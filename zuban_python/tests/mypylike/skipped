@@ -12,3 +12,5 @@ testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testSuperField
 testReprocessMethodInNestedClassSemanal
+testNamedTupleRefresh
+*Decor*
