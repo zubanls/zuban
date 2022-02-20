@@ -827,7 +827,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             if name_str == "reveal_type" {
                 Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
             } else {
-                debug!("Unknown potential star import name {}", name_str);
+                // TODO check star imports
+                NodeRef::new(self.file, name.index()).add_typing_issue(
+                    self.i_s.database,
+                    IssueType::NameError(name.as_str().to_owned()),
+                );
                 Point::new_unknown(self.file_index, Locality::Todo)
             }
         };

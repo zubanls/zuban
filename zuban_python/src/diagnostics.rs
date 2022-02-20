@@ -7,6 +7,7 @@ use crate::name::TreePosition;
 #[derive(Debug)]
 pub enum IssueType {
     AttributeError(String, String),
+    NameError(String),
     ArgumentIssue(String),
     ValidType(String),
     IncompatibleReturn(String, String),
@@ -48,6 +49,9 @@ impl<'db> Diagnostic<'db> {
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
                 format!("{} has no attribute {:?}", object, name)
+            }
+            IssueType::NameError(name) => {
+                format!("Name {:?} is not defined", name)
             }
             IssueType::IncompatibleReturn(got, expected) => {
                 format!(
