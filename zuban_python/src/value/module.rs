@@ -44,7 +44,9 @@ impl<'db> Value<'db, '_> for Module<'db> {
     fn name(&self) -> &'db str {
         // TODO this is not correct...
         let path = self.file.file_path(self.database);
-        path[path.rfind('/').unwrap() + 1..].trim_end_matches(".py")
+        path[path.rfind('/').unwrap() + 1..]
+            .trim_end_matches(".py")
+            .trim_end_matches(".pyi")
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
