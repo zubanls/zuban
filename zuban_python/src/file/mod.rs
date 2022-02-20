@@ -356,8 +356,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
                     let name = import_name.unwrap_or_else(|| name_def.name());
+
                     let point = if let Some(import_file) = import_file {
                         let module = Module::new(self.i_s.database, import_file);
+
                         if let Some(link) = import_file.lookup_global(name.as_str()) {
                             debug_assert!(
                                 link.file != self.file_index || link.node_index != name.index()
@@ -373,8 +375,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 .add_invalidates(file_index, self.file.file_index());
                             Point::new_file_reference(file_index, Locality::Todo)
                         } else {
-                            // TODO star imports
-                            debug!("Unknown potential star name {}", name.as_str());
+                            NodeRef::new(self.file, name.index()).add_typing_issue(
+                                self.i_s.database,
+                                IssueType::AttributeError(
+                                    format!("Module {:?}", module.name()),
+                                    name.as_str().to_owned(),
+                                ),
+                            );
                             Point::new_unknown(import_file.file_index(), Locality::Todo)
                         }
                     } else {
