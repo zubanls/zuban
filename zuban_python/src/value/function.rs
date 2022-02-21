@@ -131,7 +131,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 ReturnOrYield::Yield(yield_expr) => unreachable!(),
             }
         }
-        todo!("Should just return None or maybe NoReturn?");
+        Inferred::new_none()
     }
 
     fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
