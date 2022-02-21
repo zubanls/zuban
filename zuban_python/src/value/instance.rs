@@ -1,6 +1,7 @@
 use super::{Class, ClassLike, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::FormatStyle;
+use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -67,7 +68,13 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        todo!()
+        if let Some(inf) = self.lookup_internal(i_s, "__call__") {
+            todo!()
+        } else {
+            args.node_reference()
+                .add_typing_issue(i_s.database, IssueType::NotCallable(self.name().to_owned()));
+            Inferred::new_unknown()
+        }
     }
 
     fn get_item(

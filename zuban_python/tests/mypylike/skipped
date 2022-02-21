@@ -17,3 +17,7 @@ testNamedTupleRefresh
 testPreviousErrorInMethodSemanalPass3
 *Overload*
 *python2
+testSuperBasics
+testErrorInTypeCheckSecondPassThroughPropagation
+*PartialType*
+*Metaclass*
