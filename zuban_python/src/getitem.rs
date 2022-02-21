@@ -12,55 +12,57 @@ use crate::node_ref::NodeRef;
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
-pub enum SliceType<'db> {
+pub struct SliceType<'db> {
+    pub file: &'db PythonFile,
+    pub ast_node: ASTSliceType<'db>,
+    pub primary_index: NodeIndex,
+}
+
+pub enum SliceTypeContent<'db> {
     Simple(Simple<'db>),
     Slice(Slice<'db>),
     Slices(Slices<'db>),
 }
 
 impl<'db> SliceType<'db> {
-    pub fn new(file: &'db PythonFile, primary_index: NodeIndex, type_: ASTSliceType<'db>) -> Self {
-        match type_ {
-            ASTSliceType::NamedExpression(named_expr) => Self::Simple(Simple {
-                file,
-                primary_index,
-                named_expr,
-            }),
-            ASTSliceType::Slice(slice) => Self::Slice(Slice {
-                file,
-                primary_index,
-                slice,
-            }),
-            ASTSliceType::Slices(slices) => Self::Slices(Slices {
-                file,
-                primary_index,
-                slices,
-            }),
-        }
-    }
-
-    pub fn file(&self) -> &'db PythonFile {
-        match self {
-            Self::Simple(simple) => simple.file,
-            Self::Slice(slice) => slice.file,
-            Self::Slices(slices) => slices.file,
-        }
-    }
-
-    pub fn primary_index(&self) -> NodeIndex {
-        match self {
-            Self::Simple(simple) => simple.primary_index,
-            Self::Slice(slice) => slice.primary_index,
-            Self::Slices(slices) => slices.primary_index,
+    pub fn new(
+        file: &'db PythonFile,
+        primary_index: NodeIndex,
+        ast_node: ASTSliceType<'db>,
+    ) -> Self {
+        Self {
+            file,
+            ast_node,
+            primary_index,
         }
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
-        NodeRef::new(self.file(), self.primary_index())
+        NodeRef::new(self.file, self.primary_index)
     }
 
     pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
         SliceArguments(self)
+    }
+
+    pub fn unpack(&self) -> SliceTypeContent<'db> {
+        match self.ast_node {
+            ASTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
+                file: self.file,
+                primary_index: self.primary_index,
+                named_expr,
+            }),
+            ASTSliceType::Slice(slice) => SliceTypeContent::Slice(Slice {
+                file: self.file,
+                primary_index: self.primary_index,
+                slice,
+            }),
+            ASTSliceType::Slices(slices) => SliceTypeContent::Slices(Slices {
+                file: self.file,
+                primary_index: self.primary_index,
+                slices,
+            }),
+        }
     }
 }
 

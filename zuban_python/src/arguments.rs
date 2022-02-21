@@ -1,7 +1,7 @@
 use crate::database::{Database, Execution, MroIndex, PointLink};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::getitem::SliceType;
+use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -274,8 +274,8 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 Some(Argument::new_argument(file, comprehension.index()))
             }
             Self::Normal(Finished) => None,
-            Self::SliceType(slice_type) => match slice_type {
-                SliceType::Simple(s) => {
+            Self::SliceType(slice_type) => match slice_type.unpack() {
+                SliceTypeContent::Simple(s) => {
                     let file = s.file;
                     let named_expr = s.named_expr;
                     *self = Self::Normal(Finished);

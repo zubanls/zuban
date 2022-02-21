@@ -492,7 +492,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
-        Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
+        Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
     }
 
     fn as_class(&self) -> Option<&Self> {

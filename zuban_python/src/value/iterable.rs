@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::generics::Generics;
-use crate::getitem::SliceType;
+use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -121,8 +121,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        match slice_type {
-            SliceType::Simple(simple) => {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
                     match self.list_node().unpack() {
                         ListContent::Elements(elements) => {
@@ -172,10 +172,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                     ListContent::None => todo!(),
                 }
             }
-            SliceType::Slice(simple) => {
+            SliceTypeContent::Slice(simple) => {
                 todo!()
             }
-            SliceType::Slices(simple) => {
+            SliceTypeContent::Slices(simple) => {
                 todo!()
             }
         }
@@ -293,7 +293,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     ) -> Inferred<'db> {
         /*
         match slice_type {
-            SliceType::Simple(simple) => {
+            SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
                     for child in self.dict_node().iter_elements() {
                         match child {
@@ -329,10 +329,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
                 }
                 inferred.unwrap_or_else(|| todo!())
             }
-            SliceType::Slice(simple) => {
+            SliceTypeContent::Slice(simple) => {
                 todo!()
             }
-            SliceType::Slices(simple) => {
+            SliceTypeContent::Slices(simple) => {
                 todo!()
             }
         }

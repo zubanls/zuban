@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::diagnostics::IssueType;
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
-use crate::getitem::{SliceOrSimple, SliceType};
+use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -61,11 +61,11 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 let point =
                     Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Todo);
-                Inferred::new_and_save(slice_type.file(), slice_type.primary_index(), point)
+                Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
             }
             Specific::TypingTuple => {
-                let content = match slice_type {
-                    SliceType::Simple(simple) => {
+                let content = match slice_type.unpack() {
+                    SliceTypeContent::Simple(simple) => {
                         // TODO if it is a (), it's an empty tuple
                         TupleContent {
                             generics: Some(GenericsList::new(Box::new([simple
@@ -74,10 +74,10 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                             arbitrary_length: false,
                         }
                     }
-                    SliceType::Slice(x) => {
+                    SliceTypeContent::Slice(x) => {
                         todo!()
                     }
-                    SliceType::Slices(slices) => {
+                    SliceTypeContent::Slices(slices) => {
                         let mut arbitrary_length = false;
                         TupleContent {
                             generics: Some(GenericsList::new(
@@ -106,14 +106,14 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                 Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
             }
             Specific::TypingCallable => {
-                let content = match slice_type {
-                    SliceType::Simple(simple) => {
+                let content = match slice_type.unpack() {
+                    SliceTypeContent::Simple(simple) => {
                         todo!()
                     }
-                    SliceType::Slice(x) => {
+                    SliceTypeContent::Slice(x) => {
                         todo!()
                     }
-                    SliceType::Slices(slices) => {
+                    SliceTypeContent::Slices(slices) => {
                         let mut params = vec![];
                         let mut iterator = slices.iter();
                         let param_node = iterator.next().map(|slice_content| match slice_content {
@@ -138,12 +138,12 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                 };
                 Inferred::new_unsaved_complex(ComplexPoint::CallableClass(content))
             }
-            Specific::TypingUnion => match slice_type {
-                SliceType::Simple(simple) => simple.infer_annotation_class(i_s),
-                SliceType::Slice(x) => {
+            Specific::TypingUnion => match slice_type.unpack() {
+                SliceTypeContent::Simple(simple) => simple.infer_annotation_class(i_s),
+                SliceTypeContent::Slice(x) => {
                     todo!()
                 }
-                SliceType::Slices(slices) => Inferred::gather_union(|callable| {
+                SliceTypeContent::Slices(slices) => Inferred::gather_union(|callable| {
                     for slice_content in slices.iter() {
                         if let SliceOrSimple::Simple(n) = slice_content {
                             callable(n.infer_annotation_class(i_s));
@@ -151,14 +151,14 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                     }
                 }),
             },
-            Specific::TypingOptional => match slice_type {
-                SliceType::Simple(simple) => simple
+            Specific::TypingOptional => match slice_type.unpack() {
+                SliceTypeContent::Simple(simple) => simple
                     .infer_annotation_class(i_s)
                     .union(Inferred::new_unsaved_specific(Specific::None)),
                 _ => todo!(),
             },
-            Specific::TypingType => match slice_type {
-                SliceType::Simple(simple) => {
+            Specific::TypingType => match slice_type.unpack() {
+                SliceTypeContent::Simple(simple) => {
                     let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::Type(Box::new(g)))
                 }
@@ -339,8 +339,8 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        match slice_type {
-            SliceType::Simple(simple) => {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
                 let by_index = |i_s: &mut InferenceState<'db, '_>, index| {
                     self.content
                         .generics
@@ -360,10 +360,10 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     todo!()
                 }
             }
-            SliceType::Slice(simple) => {
+            SliceTypeContent::Slice(simple) => {
                 todo!()
             }
-            SliceType::Slices(simple) => {
+            SliceTypeContent::Slices(simple) => {
                 todo!()
             }
         }
@@ -399,15 +399,15 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        match slice_type {
-            SliceType::Simple(simple) => {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
                 // TODO if it is a (), it's am empty tuple
                 simple.infer(i_s)
             }
-            SliceType::Slice(x) => {
+            SliceTypeContent::Slice(x) => {
                 todo!()
             }
-            SliceType::Slices(x) => {
+            SliceTypeContent::Slices(x) => {
                 todo!()
             }
         }
