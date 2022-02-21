@@ -13,7 +13,7 @@ lazy_static::lazy_static! {
     // mypy/test-data/unit:
     // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
     static ref CASE_PART: Regex = Regex::new(concat!(
-        r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets|delete)",
+        r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets|delete|triggered)",
         r"(?: ([^\]]*))?\][ \t]*\n"
     )).unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
