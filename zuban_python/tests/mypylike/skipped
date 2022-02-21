@@ -12,7 +12,7 @@ testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testSuperField
 testReprocessMethodInNestedClassSemanal
-testNamedTupleRefresh
+*NamedTuple*
 *Decor*
 testPreviousErrorInMethodSemanalPass3
 *Overload*
@@ -21,3 +21,9 @@ testSuperBasics
 testErrorInTypeCheckSecondPassThroughPropagation
 *PartialType*
 *Metaclass*
+testRefreshGenericSubclass
+*NewType*
+*Enum*
+*TypedDict*
+testFineGrainedCallable
+testRefreshSubclassNestedInFunction2
