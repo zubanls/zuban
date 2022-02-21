@@ -13,6 +13,7 @@ pub enum IssueType {
     IncompatibleReturn(String, String),
     IncompatibleAssignment(String, String),
     ModuleNotFound(String),
+    TypeArgumentIssue(String, usize, usize),
 
     MethodWithoutArguments,
 
@@ -66,6 +67,10 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
+            IssueType::TypeArgumentIssue(class, expected, given) => format!(
+                "{:?} expects {} type arguments, but {} given",
+                class, expected, given
+            ),
             IssueType::ModuleNotFound(s) => format!(
                 "Cannot find implementation or library stub for module named {:?}",
                 s

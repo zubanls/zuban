@@ -1,4 +1,4 @@
-use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
+use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSliceType};
 
 use super::{CallableClass, Function, Module, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
@@ -7,6 +7,7 @@ use crate::database::{
     Locality, MroIndex, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher};
 use crate::getitem::SliceType;
@@ -492,6 +493,17 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
+        let count_given = match slice_type.ast_node {
+            ASTSliceType::Slices(s) => s.iter().count(),
+            _ => 1,
+        };
+        let expected = self.class_infos(i_s).type_vars.len();
+        if count_given != expected {
+            slice_type.as_node_ref().add_typing_issue(
+                i_s.database,
+                IssueType::TypeArgumentIssue(self.name().to_owned(), expected, count_given),
+            );
+        }
         Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
     }
 
