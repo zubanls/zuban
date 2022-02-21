@@ -114,14 +114,20 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                         todo!()
                     }
                     SliceTypeContent::Slices(slices) => {
-                        let mut params = vec![];
+                        let mut params = Some(vec![]);
                         let mut iterator = slices.iter();
                         let param_node = iterator.next().map(|slice_content| match slice_content {
                             SliceOrSimple::Simple(n) => {
                                 let i = n.infer(i_s);
-                                let mut list = i.iter(i_s, slice_type.as_node_ref());
-                                while let Some(next) = list.next(i_s) {
-                                    params.push(next.as_generic_part(i_s));
+                                if n.named_expr.as_code() == "..." {
+                                    params = None
+                                } else {
+                                    let mut list = i.iter(i_s, slice_type.as_node_ref());
+                                    while let Some(next) = list.next(i_s) {
+                                        if let Some(params) = &mut params {
+                                            params.push(next.as_generic_part(i_s));
+                                        }
+                                    }
                                 }
                             }
                             SliceOrSimple::Slice(s) => todo!(),
@@ -131,7 +137,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                             .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
                             .unwrap_or(GenericPart::Unknown);
                         CallableContent {
-                            params: Some(GenericsList::from_vec(params)),
+                            params: params.map(GenericsList::from_vec),
                             return_class: Box::new(return_class),
                         }
                     }

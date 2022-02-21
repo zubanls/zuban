@@ -156,6 +156,10 @@ macro_rules! create_struct {
             pub fn suffix(&self) -> &'db str {
                 self.node.suffix()
             }
+
+            pub fn as_code(&self) -> &'db str {
+                self.node.as_code()
+            }
         }
 
         impl<'db> InterestingNodeSearcher<'db> for $name<'db> {
