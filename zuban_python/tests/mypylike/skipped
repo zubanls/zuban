@@ -29,3 +29,7 @@ testRefreshGenericSubclass
 testFineGrainedCallable
 testRefreshSubclassNestedInFunction2
 testSkippedClass*
+testReprocessCallableArg
+testImplicitTuple2
+testImplicitTuple3
+*StrictOptional*

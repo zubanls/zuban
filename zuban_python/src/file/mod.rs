@@ -603,7 +603,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
-            ExpressionContent::Ternary(_) => todo!(),
+            ExpressionContent::Ternary(t) => {
+                let (if_, condition, else_) = t.unpack();
+                self.infer_expression_part(if_)
+                    .union(self.infer_expression(else_))
+            }
         };
         inferred.save_redirect(self.file, expr.index())
     }

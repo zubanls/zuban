@@ -709,6 +709,18 @@ impl<'db> InterestingNodeSearcher<'db> for ExpressionPart<'db> {
     }
 }
 
+impl<'db> Ternary<'db> {
+    pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>, Expression<'db>) {
+        let mut iterator = self.node.iter_children();
+        let first = ExpressionPart::new(iterator.next().unwrap());
+        iterator.next();
+        let second = ExpressionPart::new(iterator.next().unwrap());
+        iterator.next();
+        let third = Expression::new(iterator.next().unwrap());
+        (first, second, third)
+    }
+}
+
 impl<'db> NamedExpression<'db> {
     pub fn expression(&self) -> Expression<'db> {
         match self.unpack() {
