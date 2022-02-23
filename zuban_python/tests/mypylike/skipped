@@ -33,3 +33,4 @@ testReprocessCallableArg
 testImplicitTuple2
 testImplicitTuple3
 *StrictOptional*
+*TypeVarValues*

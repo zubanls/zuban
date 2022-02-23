@@ -360,7 +360,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
-                    if name == &param.name_definition().name().as_str() {
+                    if *name == param.name_definition().name().as_str() {
                         return Some(self.unused_keyword_arguments.remove(i));
                     }
                 }
@@ -371,7 +371,11 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             // TODO check param type here and make sure that it makes sense.
             match argument {
                 Argument::Keyword(name, reference) => {
-                    todo!()
+                    if name == param.name_definition().name().as_str() {
+                        return Some(argument);
+                    } else {
+                        self.unused_keyword_arguments.push(argument);
+                    }
                 }
                 _ => return Some(argument),
             }
