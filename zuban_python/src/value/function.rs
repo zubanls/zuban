@@ -356,12 +356,12 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         }
     }
 
-    fn next_argument(&mut self, param: &Param<'db>) -> Option<Argument<'db, 'a>> {
+    fn next_argument(&mut self, param: &Param<'db>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
                     if *name == param.name_definition().name().as_str() {
-                        return Some(self.unused_keyword_arguments.remove(i));
+                        return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
                 }
                 _ => unreachable!(),
@@ -372,15 +372,15 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             match argument {
                 Argument::Keyword(name, reference) => {
                     if name == param.name_definition().name().as_str() {
-                        return Some(argument);
+                        return ParamInput::Argument(argument);
                     } else {
                         self.unused_keyword_arguments.push(argument);
                     }
                 }
-                _ => return Some(argument),
+                _ => return ParamInput::Argument(argument),
             }
         }
-        None
+        ParamInput::None
     }
 
     pub fn has_unused_argument(&mut self) -> bool {
@@ -400,9 +400,16 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
+enum ParamInput<'db, 'a> {
+    Argument(Argument<'db, 'a>),
+    Tuple(Box<[Argument<'db, 'a>]>),
+    None,
+}
+
+#[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: Param<'db>,
-    argument: Option<Argument<'db, 'a>>,
+    argument: ParamInput<'db, 'a>,
 }
 
 impl<'db> InferrableParam<'db, '_> {
@@ -411,11 +418,18 @@ impl<'db> InferrableParam<'db, '_> {
     }
 
     pub fn has_argument(&self) -> bool {
-        self.argument.is_some()
+        !matches!(self.argument, ParamInput::None)
     }
 
     pub fn as_argument_node_reference(&self) -> NodeRef<'db> {
-        self.argument.as_ref().unwrap().as_node_reference()
+        match &self.argument {
+            ParamInput::Argument(arg) => arg.as_node_reference(),
+            ParamInput::Tuple(args) => args
+                .get(0)
+                .map(|arg| arg.as_node_reference())
+                .unwrap_or_else(|| todo!()),
+            ParamInput::None => todo!(),
+        }
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
@@ -423,10 +437,11 @@ impl<'db> InferrableParam<'db, '_> {
             "Infer param {:?}",
             self.param.name_definition().name().as_str()
         );
-        self.argument
-            .as_ref()
-            .map(|a| a.infer(i_s))
-            .unwrap_or_else(Inferred::new_unknown)
+        match &self.argument {
+            ParamInput::Argument(arg) => arg.infer(i_s),
+            ParamInput::Tuple(args) => todo!(),
+            ParamInput::None => Inferred::new_unknown(),
+        }
     }
 }
 
