@@ -1,4 +1,6 @@
-use parsa_python_ast::{Expression, FunctionDef, NodeIndex, Param, ParamIterator, ReturnOrYield};
+use parsa_python_ast::{
+    Expression, FunctionDef, NodeIndex, Param, ParamIterator, ParamType, ReturnOrYield,
+};
 use std::fmt;
 
 use super::{ClassLike, Module, Value, ValueKind};
@@ -367,18 +369,39 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 _ => unreachable!(),
             }
         }
-        for argument in &mut self.arguments {
-            // TODO check param type here and make sure that it makes sense.
-            match argument {
-                Argument::Keyword(name, reference) => {
-                    if name == param.name_definition().name().as_str() {
-                        return ParamInput::Argument(argument);
-                    } else {
-                        self.unused_keyword_arguments.push(argument);
+        match param.type_ {
+            ParamType::PositionalOrKeyword => {
+                for argument in &mut self.arguments {
+                    match argument {
+                        Argument::Keyword(name, reference) => {
+                            if name == param.name_definition().name().as_str() {
+                                return ParamInput::Argument(argument);
+                            } else {
+                                self.unused_keyword_arguments.push(argument);
+                            }
+                        }
+                        _ => return ParamInput::Argument(argument),
                     }
                 }
-                _ => return ParamInput::Argument(argument),
             }
+            ParamType::KeywordOnly => todo!(),
+            ParamType::PositionalOnly => todo!(),
+            ParamType::Starred => {
+                let mut args = vec![];
+                for argument in &mut self.arguments {
+                    if matches!(argument, Argument::Value(_) | Argument::Positional(_)) {
+                        args.push(argument)
+                    } else {
+                        self.unused_keyword_arguments.push(argument);
+                        break;
+                    }
+                }
+                return ParamInput::Tuple(args.into_boxed_slice());
+            }
+            ParamType::DoubleStarred => todo!(),
+        }
+        for argument in &mut self.arguments {
+            // TODO check param type here and make sure that it makes sense.
         }
         ParamInput::None
     }

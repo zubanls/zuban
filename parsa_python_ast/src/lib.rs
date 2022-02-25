@@ -1460,14 +1460,11 @@ impl<'db> Iterator for ParamIterator<'db> {
                         debug_assert!(!*positional_only);
                         return Some(Self::Item::new(&mut node.iter_children(), KeywordOnly));
                     } else if node.is_type(Nonterminal(starred_param)) {
-                        return Some(Self::Item::new(
-                            &mut node.iter_children().skip(1),
-                            MultiArgs,
-                        ));
+                        return Some(Self::Item::new(&mut node.iter_children().skip(1), Starred));
                     } else if node.is_type(Nonterminal(double_starred_param)) {
                         return Some(Self::Item::new(
                             &mut node.iter_children().skip(1),
-                            MultiKwargs,
+                            DoubleStarred,
                         ));
                     }
                 }
@@ -1480,7 +1477,7 @@ impl<'db> Iterator for ParamIterator<'db> {
 
 #[derive(Debug)]
 pub struct Param<'db> {
-    type_: ParamType,
+    pub type_: ParamType,
     name_def: NameDefinition<'db>,
     annotation: Option<Annotation<'db>>,
     default: Option<Expression<'db>>,
@@ -1527,9 +1524,9 @@ impl<'db> Param<'db> {
 pub enum ParamType {
     PositionalOnly,
     PositionalOrKeyword,
-    MultiArgs,
-    MultiKwargs,
     KeywordOnly,
+    Starred,
+    DoubleStarred,
 }
 
 pub enum SimpleParamType {
