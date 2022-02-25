@@ -11,7 +11,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferrable, Inferred};
+use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::Class;
 
@@ -417,10 +417,8 @@ impl<'db> InferrableParam<'db, '_> {
     pub fn as_argument_node_reference(&self) -> NodeRef<'db> {
         self.argument.as_ref().unwrap().as_node_reference()
     }
-}
 
-impl<'db> Inferrable<'db> for InferrableParam<'db, '_> {
-    fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         debug!(
             "Infer param {:?}",
             self.param.name_definition().name().as_str()

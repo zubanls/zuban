@@ -20,10 +20,6 @@ use crate::value::{
     Value,
 };
 
-pub trait Inferrable<'db> {
-    fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db>;
-}
-
 pub enum FunctionOrOverload<'db, 'a> {
     Function(Function<'db, 'a>),
     Overload(OverloadedFunction<'db, 'a>),
