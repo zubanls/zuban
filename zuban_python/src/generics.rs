@@ -811,7 +811,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 if a.is_empty() {
                     a + &b.as_type_string(i_s.database, None, style)
                 } else {
-                    a + &b.as_type_string(i_s.database, None, style) + ","
+                    a + " | " + &b.as_type_string(i_s.database, None, style)
                 }
             }),
             Self::None => "None".to_owned(),
