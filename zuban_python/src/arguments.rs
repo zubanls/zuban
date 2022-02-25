@@ -183,8 +183,8 @@ impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
 #[derive(Debug)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    PositionalFirst(&'a dyn Value<'db, 'a>),
     Keyword(&'db str, NodeRef<'db>),
+    Value(&'a dyn Value<'db, 'a>),
     Positional(NodeRef<'db>),
 }
 
@@ -199,7 +199,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::PositionalFirst(instance) => instance
+            Self::Value(instance) => instance
                 .as_instance()
                 .unwrap_or_else(|| todo!())
                 .as_inferred()
@@ -214,11 +214,11 @@ impl<'db> Argument<'db, '_> {
         }
     }
 
-    pub fn as_node_reference(&self) -> NodeRef {
+    pub fn as_node_reference(&self) -> NodeRef<'db> {
         match self {
             Self::Positional(node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,
-            Self::PositionalFirst(_) => {
+            Self::Value(_) => {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }
         }
@@ -246,7 +246,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
             Self::Instance(_, _) => {
                 if let Self::Instance(instance, args) = mem::replace(self, Self::Normal(Finished)) {
                     *self = args.iter_arguments();
-                    Some(Argument::PositionalFirst(instance))
+                    Some(Argument::Value(instance))
                 } else {
                     unreachable!()
                 }

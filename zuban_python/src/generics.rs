@@ -412,7 +412,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let annotation_g = inf.as_generic_option(i_s);
                             if !annotation_g.matches(i_s, Some(self), value_class) {
                                 let value_class = value.class_as_generic_option(i_s);
-                                p.argument.unwrap().as_node_reference().add_typing_issue(
+                                p.as_argument_node_reference().add_typing_issue(
                                     i_s.database,
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {} has incompatible type {:?}; expected {:?}",

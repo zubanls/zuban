@@ -402,7 +402,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: Param<'db>,
-    pub argument: Option<Argument<'db, 'a>>,
+    argument: Option<Argument<'db, 'a>>,
 }
 
 impl<'db> InferrableParam<'db, '_> {
@@ -412,6 +412,10 @@ impl<'db> InferrableParam<'db, '_> {
 
     pub fn has_argument(&self) -> bool {
         self.argument.is_some()
+    }
+
+    pub fn as_argument_node_reference(&self) -> NodeRef<'db> {
+        self.argument.as_ref().unwrap().as_node_reference()
     }
 }
 
