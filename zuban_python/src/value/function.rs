@@ -384,7 +384,20 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                     }
                 }
             }
-            ParamType::KeywordOnly => todo!(),
+            ParamType::KeywordOnly => {
+                for argument in &mut self.arguments {
+                    match argument {
+                        Argument::Keyword(name, reference) => {
+                            if name == param.name_definition().name().as_str() {
+                                return ParamInput::Argument(argument);
+                            } else {
+                                self.unused_keyword_arguments.push(argument);
+                            }
+                        }
+                        _ => todo!(),
+                    }
+                }
+            }
             ParamType::PositionalOnly => todo!(),
             ParamType::Starred => {
                 let mut args = vec![];
