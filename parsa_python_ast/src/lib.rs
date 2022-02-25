@@ -1812,6 +1812,16 @@ impl<'db> Primary<'db> {
     }
 }
 
+impl<'db> BitwiseOr<'db> {
+    pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let first = iter.next().unwrap();
+        iter.next();
+        let third = iter.next().unwrap();
+        (ExpressionPart::new(first), ExpressionPart::new(third))
+    }
+}
+
 pub enum PrimaryOrAtom<'db> {
     Primary(Primary<'db>),
     Atom(Atom<'db>),

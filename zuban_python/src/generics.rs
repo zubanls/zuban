@@ -621,7 +621,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }
             Self::Union(_) => unreachable!(),
             Self::None => GenericPart::None,
-            Self::Invalid => todo!(),
+            Self::Invalid => GenericPart::Unknown,
         }
     }
 
