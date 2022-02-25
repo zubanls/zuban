@@ -369,7 +369,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 _ => unreachable!(),
             }
         }
-        match param.type_ {
+        match param.type_() {
             ParamType::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument {

@@ -385,7 +385,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 function.calculated_type_vars(i_s);
                 let mut iter = function.iter_inferrable_params(self.args, self.skip_first);
                 while let Some(p) = iter.next() {
-                    if !p.has_argument() {
+                    if !p.has_argument() && p.param.default().is_none() {
                         // TODO?! comments?!
                         //self.matches = false;
                         self.args.node_reference().add_typing_issue(
@@ -399,7 +399,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         //continue
                     }
                     if let Some(annotation) = p.param.annotation() {
-                        match p.param.type_ {
+                        match p.param.type_() {
                             ParamType::Starred => continue, // TODO this is *args: Foo
                             ParamType::DoubleStarred => todo!(),
                             _ => (),

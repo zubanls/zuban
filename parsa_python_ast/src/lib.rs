@@ -1477,7 +1477,7 @@ impl<'db> Iterator for ParamIterator<'db> {
 
 #[derive(Debug)]
 pub struct Param<'db> {
-    pub type_: ParamType,
+    type_: ParamType,
     name_def: NameDefinition<'db>,
     annotation: Option<Annotation<'db>>,
     default: Option<Expression<'db>>,
