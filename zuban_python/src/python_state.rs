@@ -89,6 +89,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Union", Specific::TypingUnion);
     set_typing_inference(typing, "Optional", Specific::TypingOptional);
     set_typing_inference(typing, "cast", Specific::TypingCast);
+    set_typing_inference(typing, "Any", Specific::TypingAny);
 
     setup_type_alias(typing, "List", builtins, "list");
     setup_type_alias(typing, "Dict", builtins, "dict");

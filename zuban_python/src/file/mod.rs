@@ -642,6 +642,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             GenericPart::Callable(content) => todo!(),
                             GenericPart::Type(c) => todo!(),
                             GenericPart::None => return Inferred::new_none(),
+                            GenericPart::Any => todo!(),
                             GenericPart::TypeVar(index, link) => todo!(),
                             GenericPart::Unknown => Inferred::new_unknown(),
                         };

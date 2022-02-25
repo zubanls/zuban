@@ -512,6 +512,31 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
     }
 }
 
+#[derive(Debug)]
+pub struct Any();
+
+impl<'db, 'a> Value<'db, 'a> for Any {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
+    }
+
+    fn name(&self) -> &'db str {
+        "Any"
+    }
+
+    fn is_any(&self) -> bool {
+        true
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        todo!()
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,

@@ -24,7 +24,7 @@ pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
 pub use typing::{
-    Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypingCast, TypingClass,
+    Any, Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypingCast, TypingClass,
     TypingClassVar, TypingType, TypingWithGenerics,
 };
 
@@ -228,6 +228,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     }
     fn as_typing_class(&self) -> Option<&TypingClass<'db>> {
         None
+    }
+    fn is_any(&self) -> bool {
+        false
     }
     fn is_none(&self) -> bool {
         false

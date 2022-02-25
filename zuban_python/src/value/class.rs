@@ -57,6 +57,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             GenericOption::TypeVar(_, node_ref) => todo!(),
             GenericOption::Union(list) => todo!(),
             GenericOption::None | GenericOption::Invalid => true, // TODO should be false
+            GenericOption::Any => true,
         }
     }
 
@@ -622,7 +623,7 @@ fn create_type_var_remap<'db>(
             GenericPart::TypeVar(type_var_index, reference.as_link())
         }
         GenericOption::Union(list) => todo!(),
-        GenericOption::Invalid | GenericOption::None => todo!(),
+        GenericOption::Invalid | GenericOption::None | GenericOption::Any => todo!(),
     }
 }
 

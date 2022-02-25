@@ -382,7 +382,7 @@ pub enum Specific {
 
     //TypingAliasClass,
     //TypingAliasInstance,
-    //TypingAny,
+    TypingAny,
     //TypedDict,
     ClassTypeVar,
     FunctionTypeVar,
@@ -570,6 +570,7 @@ pub enum GenericPart {
     Tuple(TupleContent),
     Callable(CallableContent),
     None,
+    Any,
     Unknown,
 }
 
@@ -660,6 +661,7 @@ impl GenericPart {
             ),
             Self::Tuple(content) => format!("Tuple{}", &content.as_string(db, style)),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db, style)),
+            Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
         }
@@ -676,7 +678,7 @@ impl GenericPart {
             }
         };
         match self {
-            Self::Class(_) | Self::Unknown | Self::None => self,
+            Self::Class(_) | Self::Unknown | Self::None | Self::Any => self,
             Self::GenericClass(link, mut generics) => {
                 replace_list(&mut generics.0, callable);
                 Self::GenericClass(link, generics)
@@ -714,6 +716,7 @@ impl GenericPart {
             Self::Callable(content) => todo!(),
             Self::Class(_)
             | Self::Unknown
+            | Self::Any
             | Self::None
             | Self::Union(_)
             | Self::TypeVar(_, _)
@@ -736,6 +739,7 @@ impl GenericPart {
         match self {
             Self::Class(c) => Self::Class(*c),
             Self::Unknown => Self::Unknown,
+            Self::Any => Self::Any,
             Self::None => Self::None,
             Self::GenericClass(link, generics) => {
                 Self::GenericClass(*link, remap_generics(generics))

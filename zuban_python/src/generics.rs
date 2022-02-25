@@ -562,6 +562,7 @@ pub enum GenericOption<'db, 'a> {
     TypeVar(TypeVarIndex, NodeRef<'db>),
     Union(Vec<GenericPart>),
     None,
+    Any,
     Invalid,
 }
 
@@ -576,6 +577,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }
             GenericPart::Unknown => Self::Invalid,
             GenericPart::None => GenericOption::None,
+            GenericPart::Any => GenericOption::Any,
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -621,7 +623,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }
             Self::Union(_) => unreachable!(),
             Self::None => GenericPart::None,
-            Self::Invalid => GenericPart::Unknown,
+            Self::Any => GenericPart::Any,
+            Self::Invalid => todo!(),
         }
     }
 
@@ -650,6 +653,9 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         matcher.add_type_var_class(i_s, *type_var_index, generic);
                     }
                     true
+                }
+                GenericOption::Any => {
+                    todo!()
                 }
                 GenericOption::None => {
                     //matcher.add_type_var_class(i_s, *type_var_index, GenericPart::None)
@@ -696,9 +702,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 }
                 _ => false,
             },
-            Self::None => {
-                matches!(value_class, Self::None)
-            }
+            Self::None => matches!(value_class, Self::None),
+            Self::Any => true,
             Self::Invalid => false,
         }
     }
@@ -799,6 +804,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     .collect(),
             )),
             Self::None => todo!(),
+            Self::Any => todo!(),
             Self::Invalid => GenericPart::Unknown,
         }
     }
@@ -815,6 +821,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 }
             }),
             Self::None => "None".to_owned(),
+            Self::Any => "Any".to_owned(),
             Self::Invalid => "Unknown".to_owned(),
         }
     }
@@ -835,6 +842,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 GenericPart::TypeVar(*index, node_ref.as_link()),
             )),
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
+            Self::Any => todo!(),
             Self::Invalid => None,
         }
     }

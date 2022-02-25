@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
+    Any, BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
     Tuple, TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
     Value,
@@ -75,6 +75,12 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn new_any() -> Self {
+        Self {
+            state: InferredState::UnsavedSpecific(Specific::TypingAny),
+        }
+    }
+
     pub fn new_file_reference(index: FileIndex) -> Self {
         Self {
             state: InferredState::UnsavedFileReference(index),
@@ -121,6 +127,7 @@ impl<'db> Inferred<'db> {
                 _ => todo!(),
             },
             GenericPart::None => return Inferred::new_none(),
+            GenericPart::Any => return Inferred::new_any(),
             GenericPart::TypeVar(index, link) => {
                 let point = NodeRef::from_link(i_s.database, link).point();
                 if point.specific() == Specific::ClassTypeVar {
@@ -176,6 +183,7 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(GenericOption::ClassLike)
                     .or_else(|| v.is_none().then(|| GenericOption::None))
+                    .or_else(|| v.is_any().then(|| GenericOption::Any))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
                         GenericOption::Invalid
@@ -370,6 +378,7 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
+            Specific::TypingAny => callable(i_s, &Any()),
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
             Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar => {
