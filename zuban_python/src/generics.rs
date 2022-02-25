@@ -556,7 +556,7 @@ pub fn search_type_vars<'db>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum GenericOption<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(TypeVarIndex, NodeRef<'db>),
@@ -631,7 +631,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_class: Self,
     ) -> bool {
         match self {
@@ -700,7 +700,13 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         true
                     }
                 }
-                _ => false,
+                _ => list1.iter().any(|g| {
+                    GenericOption::from_generic_part(i_s.database, g).matches(
+                        i_s,
+                        matcher.as_deref_mut(),
+                        value_class.clone(),
+                    )
+                }),
             },
             Self::None => matches!(value_class, Self::None),
             Self::Any => true,
