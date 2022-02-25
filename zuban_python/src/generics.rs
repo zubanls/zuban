@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, SliceContent,
+    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, ParamType, SliceContent,
     SliceIterator, SliceType, Slices,
 };
 
@@ -399,6 +399,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         //continue
                     }
                     if let Some(annotation) = p.param.annotation() {
+                        match p.param.type_ {
+                            ParamType::Starred => continue, // TODO this is *args: Foo
+                            ParamType::DoubleStarred => todo!(),
+                            _ => (),
+                        }
                         if let ExpressionContent::ExpressionPart(part) =
                             annotation.expression().unpack()
                         {

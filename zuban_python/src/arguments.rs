@@ -204,13 +204,17 @@ impl<'db> Argument<'db, '_> {
                 .unwrap_or_else(|| todo!())
                 .as_inferred()
                 .clone(),
-            Self::Keyword(_, reference) | Self::Positional(reference) => {
+            Self::Positional(reference) => {
                 reference
                     .file
                     // TODO this execution is wrong
                     .inference(i_s)
                     .infer_named_expression(reference.as_named_expression())
             }
+            Self::Keyword(_, reference) => reference
+                .file
+                .inference(i_s)
+                .infer_expression(reference.as_expression()),
         }
     }
 

@@ -496,7 +496,6 @@ pub struct GenericsList(Box<[GenericPart]>);
 
 impl GenericsList {
     pub fn new(parts: Box<[GenericPart]>) -> Self {
-        debug_assert!(parts.len() > 0);
         Self(parts)
     }
 

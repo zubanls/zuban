@@ -7,7 +7,7 @@ use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, Execution, FormatStyle, GenericsList, Locality, Overload, Point,
-    PointLink, Specific,
+    PointLink, Specific, TupleContent,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -462,7 +462,17 @@ impl<'db> InferrableParam<'db, '_> {
         );
         match &self.argument {
             ParamInput::Argument(arg) => arg.infer(i_s),
-            ParamInput::Tuple(args) => todo!(),
+            ParamInput::Tuple(args) => {
+                let mut list = vec![];
+                for arg in args.iter() {
+                    list.push(arg.infer(i_s).as_generic_part(i_s))
+                }
+                let t = TupleContent {
+                    generics: Some(GenericsList::from_vec(list)),
+                    arbitrary_length: false,
+                };
+                Inferred::new_unsaved_complex(ComplexPoint::Tuple(t))
+            }
             ParamInput::None => Inferred::new_unknown(),
         }
     }
