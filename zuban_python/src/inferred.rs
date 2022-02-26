@@ -510,10 +510,10 @@ impl<'db> Inferred<'db> {
                 GenericPart::Class(t) => todo!(),
                 GenericPart::GenericClass(link, generics) => todo!(),
                 GenericPart::Union(lst) => todo!(),
-                GenericPart::TypeVar(index, link) => todo!(),
+                GenericPart::TypeVar(index, link) => todo!(), //on_type_var(*index, NodeRef::from_link(link)),
                 GenericPart::Tuple(content) => callable(i_s, &Tuple::new(content)),
                 GenericPart::Callable(content) => callable(i_s, &Callable::new(content)),
-                GenericPart::None => todo!(),
+                GenericPart::None => callable(i_s, &NoneInstance()),
                 GenericPart::Any => todo!(),
                 GenericPart::Unknown => todo!(),
                 GenericPart::Type(t) => match t.as_ref() {
@@ -1044,13 +1044,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.description(i_s),
             &|_, i1, i2| format!("{}|{}", i1, i2),
             &mut |i_s, inferred| "Unknown".to_owned(),
-            &mut |_, node_ref| {
-                format!(
-                    "{:?} {:?}",
-                    node_ref.point().specific(),
-                    node_ref.point().type_var_index()
-                )
-            },
+            &mut |index, node_ref| format!("{:?} {:?}", node_ref.point().specific(), index),
         )
     }
 
