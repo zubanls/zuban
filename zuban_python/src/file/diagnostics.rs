@@ -106,17 +106,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let class =
             Class::from_position(NodeRef::new(self.file, class.index()), Generics::None, None)
                 .unwrap();
+        // Make sure the type vars are properly pre-calculated
+        class.class_infos(self.i_s);
         self.calc_block_diagnostics(block, Some(&class), None)
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {
+        let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        // Make sure the type vars are properly pre-calculated
+        function.calculated_type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
         for param in params.iter() {
             if let Some(annotation) = param.annotation() {
                 self.infer_annotation_expression(annotation.expression());
             }
         }
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
 
         let i_a;
         let i;
