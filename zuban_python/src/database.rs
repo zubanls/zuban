@@ -450,11 +450,7 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
-    TupleClass(TupleContent),
-    Tuple(TupleContent),
-    Callable(CallableContent),
-    CallableClass(CallableContent),
-    Type(Box<GenericPart>),
+    GenericPart(Box<GenericPart>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

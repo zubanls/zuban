@@ -103,7 +103,8 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                         }
                     }
                 };
-                Inferred::new_unsaved_complex(ComplexPoint::TupleClass(content))
+                let g = GenericPart::Type(Box::new(GenericPart::Tuple(content)));
+                Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(g)))
             }
             Specific::TypingCallable => {
                 let content = match slice_type.unpack() {
@@ -142,7 +143,8 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
                         }
                     }
                 };
-                Inferred::new_unsaved_complex(ComplexPoint::CallableClass(content))
+                let g = GenericPart::Type(Box::new(GenericPart::Callable(content)));
+                Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(g)))
             }
             Specific::TypingUnion => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => simple.infer_annotation_class(i_s),
@@ -166,7 +168,9 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::Type(Box::new(g)))
+                    Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
+                        GenericPart::Type(Box::new(GenericPart::Type(Box::new(g)))),
+                    )))
                 }
                 _ => todo!(),
             },

@@ -264,6 +264,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 }
                 Self::SliceIterator(file, iter) => {
                     if let Some(SliceContent::NamedExpression(s)) = iter.next() {
+                        // TODO why is this not using callable???
                         file.inference(i_s)
                             .infer_annotation_expression_class(s.expression())
                     } else {

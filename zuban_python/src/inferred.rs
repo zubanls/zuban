@@ -104,11 +104,8 @@ impl<'db> Inferred<'db> {
                 }
                 return inferred;
             }
-            GenericPart::Tuple(content) => {
-                InferredState::UnsavedComplex(ComplexPoint::Tuple(content))
-            }
-            GenericPart::Callable(content) => {
-                InferredState::UnsavedComplex(ComplexPoint::Callable(content))
+            GenericPart::Tuple(_) | GenericPart::Callable(_) => {
+                InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
             }
             GenericPart::Type(c) => match *c {
                 GenericPart::Class(link) => {
@@ -509,13 +506,29 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            ComplexPoint::TupleClass(content) => callable(i_s, &TupleClass::new(content)),
-            ComplexPoint::Tuple(content) => callable(i_s, &Tuple::new(content)),
-            ComplexPoint::CallableClass(content) => callable(i_s, &CallableClass::new(content)),
-            ComplexPoint::Callable(content) => callable(i_s, &Callable::new(content)),
-            ComplexPoint::Type(generic_part) => {
-                callable(i_s, &TypingType::new(i_s.database, generic_part))
-            }
+            ComplexPoint::GenericPart(g) => match g.as_ref() {
+                GenericPart::Class(t) => todo!(),
+                GenericPart::GenericClass(link, generics) => todo!(),
+                GenericPart::Union(lst) => todo!(),
+                GenericPart::TypeVar(index, link) => todo!(),
+                GenericPart::Tuple(content) => callable(i_s, &Tuple::new(content)),
+                GenericPart::Callable(content) => callable(i_s, &Callable::new(content)),
+                GenericPart::None => todo!(),
+                GenericPart::Any => todo!(),
+                GenericPart::Unknown => todo!(),
+                GenericPart::Type(t) => match t.as_ref() {
+                    GenericPart::Class(link) => todo!(),
+                    GenericPart::GenericClass(link, generics) => todo!(),
+                    GenericPart::Union(lst) => todo!(),
+                    GenericPart::TypeVar(index, link) => todo!(),
+                    GenericPart::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
+                    GenericPart::Tuple(content) => callable(i_s, &TupleClass::new(content)),
+                    GenericPart::Callable(content) => callable(i_s, &CallableClass::new(content)),
+                    GenericPart::None => todo!(),
+                    GenericPart::Any => todo!(),
+                    GenericPart::Unknown => todo!(),
+                },
+            },
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }
@@ -789,14 +802,17 @@ impl<'db> Inferred<'db> {
             .or_else(|| match &self.state {
                 InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::TupleClass(content) = complex {
-                        Some(ClassLike::Tuple(TupleClass::new(content)))
-                    } else {
-                        None
+                    if let ComplexPoint::GenericPart(g) = complex {
+                        if let GenericPart::Type(t) = g.as_ref() {
+                            return Some(ClassLike::TypeWithGenericPart(t));
+                        }
                     }
+                    None
                 }
-                InferredState::UnsavedComplex(ComplexPoint::Tuple(content)) => {
-                    Some(ClassLike::Tuple(TupleClass::new(content)))
+                InferredState::UnsavedComplex(ComplexPoint::GenericPart(g)) => {
+                    todo!()
+                    // Was originally:
+                    //Some(ClassLike::Tuple(TupleClass::new(content)))
                 }
                 _ => None,
             })
@@ -830,8 +846,8 @@ impl<'db> Inferred<'db> {
                 _ => todo!(),
             },
             InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::TupleClass(_) = complex {
-                    return None;
+                if let ComplexPoint::GenericPart(g) = complex {
+                    todo!() // This was originally a return None for tuple class
                 }
                 todo!("{:?}", complex)
             }

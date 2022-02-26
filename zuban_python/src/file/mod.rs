@@ -799,8 +799,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     "Inferred literal: Tuple{}",
                     content.as_string(self.i_s.database, FormatStyle::Short)
                 );
-                return Inferred::new_unsaved_complex(ComplexPoint::Tuple(content))
-                    .save_redirect(self.file, atom.index());
+                return Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
+                    GenericPart::Tuple(content),
+                )))
+                .save_redirect(self.file, atom.index());
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
