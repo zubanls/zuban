@@ -34,3 +34,6 @@ testImplicitTuple2
 testImplicitTuple3
 *StrictOptional*
 *TypeVarValues*
+*TypeVarBound*
+*GenericFineCallable*
+*Abstract*
