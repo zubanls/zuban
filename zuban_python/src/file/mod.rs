@@ -14,6 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
+use crate::generics::search_type_vars;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -550,7 +551,24 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     pub fn infer_star_expressions(&mut self, exprs: StarExpressions<'db>) -> Inferred<'db> {
         match exprs.unpack() {
-            StarExpressionContent::Expression(expr) => self.infer_expression(expr),
+            StarExpressionContent::Expression(expr) => {
+                if self.i_s.from_annotation {
+                    let mut type_vars = vec![];
+                    // Search for aliases like `foo = Dict[str, T]`
+                    search_type_vars(
+                        self.i_s,
+                        self.file,
+                        &expr,
+                        &mut |_, _| Some(Specific::LateBoundTypeVar),
+                        &mut type_vars,
+                        false,
+                    );
+                    if !type_vars.is_empty() {
+                        debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
+                    }
+                }
+                self.infer_expression(expr)
+            }
             StarExpressionContent::StarExpression(expr) => {
                 todo!("Add error: can't use starred expression here")
             }

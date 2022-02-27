@@ -118,6 +118,14 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
+    pub fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        let mut has_type_vars = false;
+        self.iter().run_on_all_generic_options(i_s, |i_s, g| {
+            dbg!(g);
+        });
+        has_type_vars
+    }
+
     pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         match self {
             Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file

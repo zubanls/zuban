@@ -6,6 +6,7 @@ pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
     pub current_execution: Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)>,
     pub current_class: Option<&'a Class<'db, 'a>>,
+    pub from_annotation: bool,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -14,6 +15,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database,
             current_execution: None,
             current_class: None,
+            from_annotation: false,
         }
     }
 
@@ -26,6 +28,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: Some((func, args)),
             current_class: None,
+            from_annotation: false,
         }
     }
 
@@ -34,6 +37,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: None,
             current_class: None,
+            from_annotation: true,
         }
     }
 
@@ -42,6 +46,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: self.current_execution,
             current_class: Some(current_class),
+            from_annotation: false,
         }
     }
 

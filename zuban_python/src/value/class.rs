@@ -493,6 +493,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
+        if self.generics.has_type_vars(i_s) {
+            todo!()
+        }
         let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
