@@ -471,23 +471,6 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct ClassInfos {
-    pub type_vars: Box<[PointLink]>,
-    pub mro: Box<[GenericPart]>, // Does never include `object`
-    pub is_protocol: bool,
-    pub incomplete_mro: bool,
-}
-
-impl ClassInfos {
-    pub fn find_type_var_index(&self, link: PointLink) -> Option<TypeVarIndex> {
-        self.type_vars
-            .iter()
-            .position(|&r| r == link)
-            .map(|i| TypeVarIndex(i as u32))
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct GenericsList(Box<[GenericPart]>);
 
 impl GenericsList {
@@ -1091,6 +1074,23 @@ impl ClassStorage {
             class_symbol_table,
             self_symbol_table,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ClassInfos {
+    pub type_vars: Box<[PointLink]>,
+    pub mro: Box<[GenericPart]>, // Does never include `object`
+    pub is_protocol: bool,
+    pub incomplete_mro: bool,
+}
+
+impl ClassInfos {
+    pub fn find_type_var_index(&self, link: PointLink) -> Option<TypeVarIndex> {
+        self.type_vars
+            .iter()
+            .position(|&r| r == link)
+            .map(|i| TypeVarIndex(i as u32))
     }
 }
 
