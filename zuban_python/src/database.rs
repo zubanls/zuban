@@ -532,6 +532,10 @@ impl GenericsList {
         }
     }
 
+    pub fn has_type_vars(&self) -> bool {
+        self.iter().any(|g| g.has_type_vars())
+    }
+
     pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
         for g in self.0.iter() {
             g.scan_for_late_bound_type_vars(db, result)
@@ -643,6 +647,22 @@ impl GenericPart {
             Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
+        }
+    }
+
+    pub fn has_type_vars(&self) -> bool {
+        match self {
+            Self::GenericClass(link, generics) => generics.has_type_vars(),
+            Self::Tuple(content) => content
+                .generics
+                .as_ref()
+                .map(|g| g.has_type_vars())
+                .unwrap_or(false),
+            Self::Callable(content) => content.has_type_vars(),
+            Self::Union(list) => list.has_type_vars(),
+            Self::Type(g) => g.has_type_vars(),
+            Self::TypeVar(_, _) => true,
+            Self::Class(_) | Self::Unknown | Self::Any | Self::None => false,
         }
     }
 
@@ -854,6 +874,14 @@ impl CallableContent {
                 .unwrap_or_else(|| "...".to_owned()),
             self.return_class.as_type_string(db, None, style)
         )
+    }
+
+    fn has_type_vars(&self) -> bool {
+        self.params
+            .as_ref()
+            .map(|g| g.has_type_vars())
+            .unwrap_or(false)
+            | self.return_class.has_type_vars()
     }
 }
 

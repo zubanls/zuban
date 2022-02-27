@@ -121,7 +121,7 @@ impl<'db, 'a> Generics<'db, 'a> {
     pub fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         let mut has_type_vars = false;
         self.iter().run_on_all_generic_options(i_s, |i_s, g| {
-            dbg!(g);
+            has_type_vars |= g.has_type_vars(i_s);
         });
         has_type_vars
     }
@@ -859,6 +859,15 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Any => todo!(),
             Self::Invalid => None,
+        }
+    }
+
+    fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        match self {
+            Self::TypeVar(_, _) => true,
+            Self::ClassLike(c) => c.has_type_vars(i_s),
+            Self::Union(list) => list.iter().any(|g| g.has_type_vars()),
+            Self::None | Self::Any | Self::Invalid => false,
         }
     }
 }

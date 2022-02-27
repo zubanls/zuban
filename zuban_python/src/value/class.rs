@@ -105,6 +105,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
+    pub fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        let (g1, g2) = self.generics();
+        g1.has_type_vars(i_s) | g2.map(|g2| g2.has_type_vars(i_s)).unwrap_or(false)
+    }
+
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
