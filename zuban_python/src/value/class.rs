@@ -105,9 +105,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn late_bound_type_var_count(&self, i_s: &mut InferenceState<'db, '_>) -> usize {
         let (g1, g2) = self.generics();
-        g1.has_type_vars(i_s) | g2.map(|g2| g2.has_type_vars(i_s)).unwrap_or(false)
+        g1.late_bound_type_var_count(i_s).unwrap_or(0).max(
+            g2.map(|g2| g2.late_bound_type_var_count(i_s))
+                .flatten()
+                .unwrap_or(0),
+        )
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
@@ -498,15 +502,13 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        if self.generics.has_type_vars(i_s) {
-            todo!()
-        }
+        let late_bound_count = self.generics.late_bound_type_var_count(i_s);
         let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
         };
-        let expected = self.class_infos(i_s).type_vars.len();
+        let expected = late_bound_count.unwrap_or_else(|| self.class_infos(i_s).type_vars.len());
         if count_given != expected {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.database,
