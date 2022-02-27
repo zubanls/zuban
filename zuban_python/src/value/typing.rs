@@ -727,3 +727,40 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         Inferred::new_none()
     }
 }
+
+#[derive(Debug)]
+pub struct TypeVarInstance<'db, 'a> {
+    generic_part: &'a GenericPart,
+    node_ref: NodeRef<'db>,
+}
+
+impl<'db, 'a> TypeVarInstance<'db, 'a> {
+    pub fn new(generic_part: &'a GenericPart, node_ref: NodeRef<'db>) -> Self {
+        Self {
+            generic_part,
+            node_ref,
+        }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::TypeParameter
+    }
+
+    fn name(&self) -> &'db str {
+        self.node_ref.as_name().as_str()
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> Option<Inferred<'db>> {
+        todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::TypeWithGenericPart(self.generic_part)
+    }
+}

@@ -16,8 +16,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     Any, BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
-    Tuple, TupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
-    Value,
+    Tuple, TupleClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType,
+    TypingWithGenerics, Value,
 };
 
 pub enum FunctionOrOverload<'db, 'a> {
@@ -136,7 +136,7 @@ impl<'db> Inferred<'db> {
                         })
                         .unwrap_or_else(|| todo!());
                 } else {
-                    InferredState::Unknown
+                    InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
                 }
             }
             GenericPart::Unknown => InferredState::Unknown,
@@ -510,7 +510,10 @@ impl<'db> Inferred<'db> {
                 GenericPart::Class(t) => todo!(),
                 GenericPart::GenericClass(link, generics) => todo!(),
                 GenericPart::Union(lst) => todo!(),
-                GenericPart::TypeVar(index, link) => todo!(), //on_type_var(*index, NodeRef::from_link(link)),
+                GenericPart::TypeVar(index, link) => callable(
+                    i_s,
+                    &TypeVarInstance::new(g, NodeRef::from_link(i_s.database, *link)),
+                ),
                 GenericPart::Tuple(content) => callable(i_s, &Tuple::new(content)),
                 GenericPart::Callable(content) => callable(i_s, &Callable::new(content)),
                 GenericPart::None => callable(i_s, &NoneInstance()),
