@@ -522,8 +522,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                     self.reference.as_link(),
                     self.generics.as_generics_list(i_s).unwrap(),
                 );
+                let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
                 match generic_part
-                    .replace_type_vars(&mut |index, link| self.generics.nth(i_s, index))
+                    .replace_type_vars(&mut |index, link| given_generics.nth(i_s, index))
                 {
                     GenericPart::GenericClass(link, list) => {
                         Inferred::new_unsaved_complex(ComplexPoint::GenericClass(link, list))
