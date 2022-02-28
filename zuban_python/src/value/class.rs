@@ -503,7 +503,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         let late_bound_count = self.generics.late_bound_type_var_count(i_s);
-        let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
@@ -515,7 +514,27 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 IssueType::TypeArgumentIssue(self.name().to_owned(), expected, count_given),
             );
         }
-        Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
+        if let Some(late_bound_count) = late_bound_count {
+            if late_bound_count == 0 {
+                todo!()
+            } else {
+                let generic_part = GenericPart::GenericClass(
+                    self.reference.as_link(),
+                    self.generics.as_generics_list(i_s).unwrap(),
+                );
+                match generic_part
+                    .replace_type_vars(&mut |index, link| self.generics.nth(i_s, index))
+                {
+                    GenericPart::GenericClass(link, list) => {
+                        Inferred::new_unsaved_complex(ComplexPoint::GenericClass(link, list))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        } else {
+            let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
+            Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
+        }
     }
 
     fn as_class(&self) -> Option<&Self> {

@@ -868,7 +868,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
     fn late_bound_type_var_count(&self, i_s: &mut InferenceState<'db, '_>) -> usize {
         match self {
             Self::TypeVar(index, node_ref) => match node_ref.point().specific() {
-                Specific::LateBoundTypeVar => index.as_usize(),
+                Specific::LateBoundTypeVar => index.as_usize() + 1,
                 _ => 0,
             },
             Self::ClassLike(c) => c.late_bound_type_var_count(i_s),

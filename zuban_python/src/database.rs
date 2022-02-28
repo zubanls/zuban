@@ -666,7 +666,7 @@ impl GenericPart {
             Self::Type(g) => g.late_bound_type_var_count(db),
             Self::TypeVar(index, link) => {
                 if NodeRef::from_link(db, *link).point().specific() == Specific::LateBoundTypeVar {
-                    index.as_usize()
+                    index.as_usize() + 1
                 } else {
                     0
                 }
@@ -890,7 +890,7 @@ impl CallableContent {
             .as_ref()
             .map(|g| g.late_bound_type_var_count(db))
             .unwrap_or(0)
-            | self.return_class.late_bound_type_var_count(db)
+            .max(self.return_class.late_bound_type_var_count(db))
     }
 }
 
