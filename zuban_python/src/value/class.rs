@@ -503,6 +503,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         let late_bound_count = self.generics.late_bound_type_var_count(i_s);
+        // TODO both the type argument issues and are not implemented for other classlikes like
+        // tuple/callable/type, which can also have late bound type vars and too many/few given
+        // type vars!
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
