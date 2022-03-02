@@ -13,7 +13,7 @@ use parsa_python_ast::{
 use std::mem;
 
 pub enum ArgumentsType<'db> {
-    Normal(&'db PythonFile, Primary<'db>),
+    Normal(&'db PythonFile, NodeIndex),
 }
 
 pub trait Arguments<'db>: std::fmt::Debug {
@@ -29,7 +29,7 @@ pub struct SimpleArguments<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
     file: &'db PythonFile,
-    primary_node: Primary<'db>,
+    primary_node_index: NodeIndex,
     details: ArgumentsDetails<'db>,
     in_: Option<&'a Execution>,
     class_of_method: Option<Class<'db, 'a>>,
@@ -47,31 +47,31 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn as_execution(&self, function: &Function) -> Option<Execution> {
         Some(Execution::new(
             function.reference.as_link(),
-            PointLink::new(self.file.file_index(), self.primary_node.index()),
+            PointLink::new(self.file.file_index(), self.primary_node_index),
             self.in_,
         ))
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
-        ArgumentsType::Normal(self.file, self.primary_node)
+        ArgumentsType::Normal(self.file, self.primary_node_index)
     }
 
     fn node_reference(&self) -> NodeRef<'db> {
-        NodeRef::new(self.file, self.primary_node.index())
+        NodeRef::new(self.file, self.primary_node_index)
     }
 }
 
 impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
-        primary_node: Primary<'db>,
+        primary_node_index: NodeIndex,
         details: ArgumentsDetails<'db>,
         in_: Option<&'a Execution>,
         class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
         Self {
             file,
-            primary_node,
+            primary_node_index,
             details,
             in_,
             class_of_method,
@@ -86,7 +86,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node, details, in_, class_of_method)
+                Self::new(file, primary_node.index(), details, in_, class_of_method)
             }
             _ => unreachable!(),
         }
@@ -114,7 +114,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         debug_assert!(self.class_of_method.is_none());
         Self::new(
             self.file,
-            self.primary_node,
+            self.primary_node_index,
             self.details,
             self.in_,
             Some(class),

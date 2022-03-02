@@ -490,8 +490,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         } else {
             let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Todo);
             match args.type_() {
-                ArgumentsType::Normal(file, primary_node) => {
-                    Inferred::new_and_save(file, primary_node.index(), point)
+                ArgumentsType::Normal(file, primary_node_index) => {
+                    Inferred::new_and_save(file, primary_node_index, point)
                 }
             }
         }

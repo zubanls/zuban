@@ -1769,6 +1769,37 @@ impl<'db> DottedAsName<'db> {
     }
 }
 
+impl<'db> PrimaryTarget<'db> {
+    pub fn first(&self) -> PrimaryTargetOrAtom<'db> {
+        let first = self.node.nth_child(0);
+        if first.is_type(Nonterminal(atom)) {
+            PrimaryTargetOrAtom::Atom(Atom::new(first))
+        } else {
+            PrimaryTargetOrAtom::PrimaryTarget(PrimaryTarget::new(first))
+        }
+    }
+
+    pub fn second(&self) -> PrimaryContent<'db> {
+        let second = self.node.nth_child(2);
+        if second.is_type(Nonterminal(name_definition)) {
+            PrimaryContent::Attribute(Name::new(second.nth_child(0)))
+        } else if second.is_type(Nonterminal(arguments)) {
+            PrimaryContent::Execution(ArgumentsDetails::Node(Arguments::new(second)))
+        } else if second.is_type(Nonterminal(named_expression)) {
+            PrimaryContent::GetItem(SliceType::NamedExpression(NamedExpression::new(second)))
+        } else if second.is_type(Nonterminal(comprehension)) {
+            PrimaryContent::Execution(ArgumentsDetails::Comprehension(Comprehension::new(second)))
+        } else if second.is_type(Nonterminal(slice)) {
+            PrimaryContent::GetItem(SliceType::Slice(Slice::new(second)))
+        } else if second.is_type(Nonterminal(slices)) {
+            PrimaryContent::GetItem(SliceType::Slices(Slices::new(second)))
+        } else {
+            debug_assert_eq!(second.as_code(), ")");
+            PrimaryContent::Execution(ArgumentsDetails::None)
+        }
+    }
+}
+
 impl<'db> Primary<'db> {
     pub fn first(&self) -> PrimaryOrAtom<'db> {
         let first = self.node.nth_child(0);
@@ -1780,7 +1811,7 @@ impl<'db> Primary<'db> {
         }
     }
 
-    pub fn second(self) -> PrimaryContent<'db> {
+    pub fn second(&self) -> PrimaryContent<'db> {
         let second = self.node.nth_child(2);
         if second.is_type(Terminal(TerminalType::Name)) {
             PrimaryContent::Attribute(Name::new(second))
@@ -1824,6 +1855,11 @@ impl<'db> BitwiseOr<'db> {
 
 pub enum PrimaryOrAtom<'db> {
     Primary(Primary<'db>),
+    Atom(Atom<'db>),
+}
+
+pub enum PrimaryTargetOrAtom<'db> {
+    PrimaryTarget(PrimaryTarget<'db>),
     Atom(Atom<'db>),
 }
 

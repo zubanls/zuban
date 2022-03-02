@@ -537,7 +537,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     value.clone().save_redirect(self.file, n.index());
                 }
             }
-            Target::NameExpression(_, name_node) => {
+            Target::NameExpression(primary_target, name_node) => {
+                self.infer_primary_target(primary_target)
+                    .class_as_generic_option(self.i_s)
+                    .error_if_not_matches(self.i_s, value, |t1, t2| {
+                        // TODO
+                    });
                 value.clone().save_redirect(self.file, name_node.index());
             }
             Target::IndexExpression(n) => {
@@ -734,10 +739,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     pub fn infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
-        match primary.second() {
+        self.infer_primary_content(base, primary.index(), primary.second())
+    }
+
+    pub fn infer_primary_content(
+        &mut self,
+        base: Inferred<'db>,
+        primary_index: NodeIndex,
+        second: PrimaryContent<'db>,
+    ) -> Inferred<'db> {
+        match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary.index()))
+                value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary_index))
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -748,7 +762,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         i_s,
                         &SimpleArguments::new(
                             f,
-                            primary,
+                            primary_index,
                             details,
                             x.as_ref(),
                             value.as_class().cloned(),
@@ -761,7 +775,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item on {}", value.name());
                     let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
-                    value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
+                    value.get_item(i_s, &SliceType::new(f, primary_index, slice_type))
                 })
             }
         }
@@ -827,6 +841,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         let point = Point::new_simple_specific(specific, Locality::Todo);
         Inferred::new_and_save(self.file, atom.index(), point)
+    }
+
+    fn infer_primary_target(&mut self, primary_target: PrimaryTarget<'db>) -> Inferred<'db> {
+        let first = match primary_target.first() {
+            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
+            PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
+        };
+        self.infer_primary_content(first, primary_target.index(), primary_target.second())
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
