@@ -54,8 +54,8 @@ impl<'db> Value<'db, '_> for Module<'db> {
         *self
     }
 
-    fn is_module(&self) -> bool {
-        true
+    fn as_module(&self) -> Option<&Self> {
+        Some(self)
     }
 
     fn qualified_name(&self, db: &'db Database) -> String {

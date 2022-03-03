@@ -164,7 +164,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> Inferred<'db> {
         self.lookup_internal(i_s, name).unwrap_or_else(|| {
             if self.should_add_lookup_error(i_s) {
-                let origin = if self.is_module() {
+                let origin = if self.as_module().is_some() {
                     "Module".to_owned()
                 } else {
                     format!("{:?}", self.name())
@@ -235,8 +235,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn is_none(&self) -> bool {
         false
     }
-    fn is_module(&self) -> bool {
-        false
+    fn as_module(&self) -> Option<&Module<'db>> {
+        None
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {

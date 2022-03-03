@@ -707,8 +707,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
+            let node_ref = NodeRef::new(self.file, expr.index());
             if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
-                let node_ref = NodeRef::new(self.file, expr.index());
                 node_ref.add_typing_issue(
                     i_s.database,
                     IssueType::ValidType(format!(
@@ -722,6 +722,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
                     ),
                 )
+            } else if let Some(module) =
+                inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
+            {
+                node_ref.add_typing_issue(
+                    i_s.database,
+                    IssueType::ValidType(format!(
+                        "Module {:?} is not valid as a type",
+                        module.qualified_name(i_s.database),
+                    )),
+                );
             } else {
                 debug!("Unknown annotation expression {}", expr.short_debug());
             }
