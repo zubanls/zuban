@@ -123,7 +123,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::Tuple(c) => c.description(i_s),
             Self::Callable(c) => c.description(i_s),
-            Self::FunctionType(f) => todo!(),
+            Self::FunctionType(f) => f.as_type_string(i_s, style),
         }
     }
 

@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, GenericsIterator, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -234,6 +234,30 @@ impl<'db, 'a> Function<'db, 'a> {
             .annotation()
             .map(|a| Generics::Expression(self.reference.file, a.expression()))
             .unwrap_or(Generics::None)
+    }
+
+    pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+        let node = self.node();
+        let mut result = "def (".to_owned();
+        let mut generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
+        let mut first = true;
+        let mut params = self.iter_params();
+        while let Some(_) = generics.run_on_next(i_s, |i_s, g| {
+            if !first {
+                result += ", ";
+            }
+            result += params.next().unwrap().name_definition().as_code();
+            result += ": ";
+            result += &g.as_string(i_s, style);
+            first = false;
+        }) {}
+        result += ") -> ";
+        if let Some(annotation) = node.annotation() {
+            todo!()
+        } else {
+            result += "Any"
+        }
+        result
     }
 
     pub fn diagnostic_string(&self) -> String {
