@@ -82,7 +82,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot find implementation or library stub for module named {:?}",
                 s
             ),
-            IssueType::NotCallable(s) => format!("{:?} not callable", s),
+            IssueType::NotCallable(s) => format!("{} not callable", s),
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }

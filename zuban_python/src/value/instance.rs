@@ -71,8 +71,10 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         if let Some(inf) = self.lookup_internal(i_s, "__call__") {
             todo!()
         } else {
-            args.node_reference()
-                .add_typing_issue(i_s.database, IssueType::NotCallable(self.name().to_owned()));
+            args.node_reference().add_typing_issue(
+                i_s.database,
+                IssueType::NotCallable(format!("{:?}", self.name())),
+            );
             Inferred::new_unknown()
         }
     }
