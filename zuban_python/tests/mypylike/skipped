@@ -26,6 +26,11 @@ testRefreshGenericSubclass
 *Enum*
 *TypedDict*
 testAliasFineNormalClassBases
+testAliasFineGenericToNonGeneric
+testAliasFineClassToAlias
+testAliasFineAliasToClass
+testAliasFineInitGenericMod
+testAliasFineInitGenericFunc
 testFineGrainedCallable
 testRefreshSubclassNestedInFunction2
 testSkippedClass*
