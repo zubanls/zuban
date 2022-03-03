@@ -42,3 +42,5 @@ testImplicitTuple3
 *TypeVarBound*
 *GenericFineCallable*
 *Abstract*
+testChangeTypeVarToFunction
+testChangeTypeVarToModule

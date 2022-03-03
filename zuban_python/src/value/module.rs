@@ -3,6 +3,7 @@ use std::fmt;
 use super::{Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Database, FileIndex};
+use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::imports::python_import;
@@ -83,6 +84,8 @@ impl<'db> Value<'db, '_> for Module<'db> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        todo!()
+        args.node_reference()
+            .add_typing_issue(i_s.database, IssueType::NotCallable("Module".to_owned()));
+        Inferred::new_unknown()
     }
 }
