@@ -538,11 +538,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             Target::NameExpression(primary_target, name_node) => {
-                self.infer_primary_target(primary_target)
-                    .class_as_generic_option(self.i_s)
-                    .error_if_not_matches(self.i_s, value, |t1, t2| {
-                        // TODO
-                    });
+                if primary_target.as_code().contains("self") {
+                    // TODO here we should do something as well.
+                } else {
+                    self.infer_primary_target(primary_target)
+                        .class_as_generic_option(self.i_s)
+                        .error_if_not_matches(self.i_s, value, |t1, t2| {
+                            NodeRef::new(self.file, primary_target.index()).add_typing_issue(
+                                self.i_s.database,
+                                IssueType::IncompatibleAssignment(t1, t2),
+                            );
+                        });
+                }
                 value.clone().save_redirect(self.file, name_node.index());
             }
             Target::IndexExpression(n) => {
