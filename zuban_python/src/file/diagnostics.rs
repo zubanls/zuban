@@ -121,6 +121,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.infer_annotation_expression(annotation.expression());
             }
         }
+        if let Some(annotation) = return_annotation {
+            self.infer_annotation_expression(annotation.expression());
+        }
 
         let i_a;
         let i;

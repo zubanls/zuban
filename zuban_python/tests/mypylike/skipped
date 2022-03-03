@@ -44,3 +44,4 @@ testImplicitTuple3
 *Abstract*
 testChangeTypeVarToFunction
 testChangeTypeVarToModule
+testRefreshGenericClass
