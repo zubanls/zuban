@@ -105,15 +105,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn late_bound_type_var_count(&self, i_s: &mut InferenceState<'db, '_>) -> usize {
-        let (g1, g2) = self.generics();
-        g1.late_bound_type_var_count(i_s).unwrap_or(0).max(
-            g2.map(|g2| g2.late_bound_type_var_count(i_s))
-                .flatten()
-                .unwrap_or(0),
-        )
-    }
-
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
@@ -501,7 +492,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        let late_bound_count = self.generics.late_bound_type_var_count(i_s);
         // TODO both the type argument issues and are not implemented for other classlikes like
         // tuple/callable/type, which can also have late bound type vars and too many/few given
         // type vars!
@@ -509,34 +499,14 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
         };
-        let expected = late_bound_count.unwrap_or_else(|| self.class_infos(i_s).type_vars.len());
+        let expected = self.class_infos(i_s).type_vars.len();
         if count_given != expected {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.database,
                 IssueType::TypeArgumentIssue(self.name().to_owned(), expected, count_given),
             );
         }
-        if let Some(late_bound_count) = late_bound_count {
-            if late_bound_count == 0 {
-                todo!()
-            } else {
-                let generic_part = GenericPart::GenericClass(
-                    self.reference.as_link(),
-                    self.generics.as_generics_list(i_s).unwrap(),
-                );
-                let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
-                match generic_part
-                    .replace_type_vars(&mut |index, link| given_generics.nth(i_s, index))
-                {
-                    GenericPart::GenericClass(link, list) => {
-                        Inferred::new_unsaved_complex(ComplexPoint::GenericClass(link, list))
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        } else {
-            Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-        }
+        Inferred::new_unsaved_specific(Specific::SimpleGeneric)
     }
 
     fn as_class(&self) -> Option<&Self> {

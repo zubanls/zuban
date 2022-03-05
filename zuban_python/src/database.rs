@@ -533,13 +533,6 @@ impl GenericsList {
         }
     }
 
-    pub fn late_bound_type_var_count(&self, db: &Database) -> usize {
-        self.iter()
-            .map(|g| g.late_bound_type_var_count(db))
-            .max()
-            .unwrap_or(0)
-    }
-
     pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
         for g in self.0.iter() {
             g.scan_for_late_bound_type_vars(db, result)
@@ -651,28 +644,6 @@ impl GenericPart {
             Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
-        }
-    }
-
-    pub fn late_bound_type_var_count(&self, db: &Database) -> usize {
-        match self {
-            Self::GenericClass(link, generics) => generics.late_bound_type_var_count(db),
-            Self::Tuple(content) => content
-                .generics
-                .as_ref()
-                .map(|g| g.late_bound_type_var_count(db))
-                .unwrap_or(0),
-            Self::Callable(content) => content.late_bound_type_var_count(db),
-            Self::Union(list) => list.late_bound_type_var_count(db),
-            Self::Type(g) => g.late_bound_type_var_count(db),
-            Self::TypeVar(index, link) => {
-                if NodeRef::from_link(db, *link).point().specific() == Specific::LateBoundTypeVar {
-                    index.as_usize() + 1
-                } else {
-                    0
-                }
-            }
-            Self::Class(_) | Self::Unknown | Self::Any | Self::None => 0,
         }
     }
 
@@ -884,14 +855,6 @@ impl CallableContent {
                 .unwrap_or_else(|| "...".to_owned()),
             self.return_class.as_type_string(db, None, style)
         )
-    }
-
-    fn late_bound_type_var_count(&self, db: &Database) -> usize {
-        self.params
-            .as_ref()
-            .map(|g| g.late_bound_type_var_count(db))
-            .unwrap_or(0)
-            .max(self.return_class.late_bound_type_var_count(db))
     }
 }
 

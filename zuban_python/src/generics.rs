@@ -118,17 +118,6 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn late_bound_type_var_count(&self, i_s: &mut InferenceState<'db, '_>) -> Option<usize> {
-        if matches!(self, Self::None) {
-            return None;
-        }
-        let mut result = 0;
-        self.iter().run_on_all_generic_options(i_s, |i_s, g| {
-            result = result.max(g.late_bound_type_var_count(i_s));
-        });
-        Some(result)
-    }
-
     pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         match self {
             Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file
@@ -874,22 +863,6 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Any => todo!(),
             Self::Invalid => None,
-        }
-    }
-
-    fn late_bound_type_var_count(&self, i_s: &mut InferenceState<'db, '_>) -> usize {
-        match self {
-            Self::TypeVar(index, node_ref) => match node_ref.point().specific() {
-                Specific::LateBoundTypeVar => index.as_usize() + 1,
-                _ => 0,
-            },
-            Self::ClassLike(c) => c.late_bound_type_var_count(i_s),
-            Self::Union(list) => list
-                .iter()
-                .map(|g| g.late_bound_type_var_count(i_s.database))
-                .max()
-                .unwrap(),
-            Self::None | Self::Any | Self::Invalid => 0,
         }
     }
 }
