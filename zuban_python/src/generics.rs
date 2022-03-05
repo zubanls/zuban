@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, ParamType, PrimaryParent,
-    SliceContent, SliceIterator, SliceType, Slices,
+    Expression, ExpressionContent, Name, NameParent, NodeIndex, ParamIterator, ParamType,
+    PrimaryParent, SliceContent, SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
@@ -525,6 +525,16 @@ pub fn search_type_vars<'db>(
     found_type_vars: &mut Vec<PointLink>,
     add_new_as_late_bound_type_var: bool,
 ) {
+    let set_point = |n: Name<'db>, point_type, i| {
+        let point = Point::new_numbered_type_var(point_type, TypeVarIndex::new(i), Locality::Todo);
+        match n.parent() {
+            NameParent::Primary(primary) => {
+                file.points.set(primary.index(), point);
+            }
+            _ => (),
+        }
+        file.points.set(n.index(), point);
+    };
     let mut late_bound_type_vars = vec![];
     for n in expression.search_names() {
         let inferred = match n.parent() {
@@ -557,27 +567,13 @@ pub fn search_type_vars<'db>(
                                 late_bound_type_vars.push(link);
                             }
                             let i = i.unwrap_or(late_bound_type_vars.len() - 1);
-                            file.points.set(
-                                n.index(),
-                                Point::new_numbered_type_var(
-                                    Specific::LateBoundTypeVar,
-                                    TypeVarIndex::new(i),
-                                    Locality::Todo,
-                                ),
-                            );
+                            set_point(n, Specific::LateBoundTypeVar, i);
                             continue;
                         }
                         found_type_vars.push(link);
                     };
                     let i = i.unwrap_or(found_type_vars.len() - 1);
-                    file.points.set(
-                        n.index(),
-                        Point::new_numbered_type_var(
-                            point_type,
-                            TypeVarIndex::new(i),
-                            Locality::Todo,
-                        ),
-                    );
+                    set_point(n, point_type, i);
                 }
             }
         }
