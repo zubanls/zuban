@@ -4,7 +4,7 @@ use super::{CallableClass, Function, Module, TupleClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList,
-    Locality, MroIndex, Point, PointLink, Specific, TypeVarIndex,
+    Locality, MroIndex, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -488,10 +488,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             })
         } else {
-            let point = Point::new_simple_specific(Specific::InstanceWithArguments, Locality::Todo);
             match args.type_() {
                 ArgumentsType::Normal(file, primary_node_index) => {
-                    Inferred::new_and_save(file, primary_node_index, point)
+                    Inferred::new_unsaved_specific(Specific::InstanceWithArguments)
                 }
             }
         }
@@ -536,8 +535,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             }
         } else {
-            let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
-            Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
+            Inferred::new_unsaved_specific(Specific::SimpleGeneric)
         }
     }
 

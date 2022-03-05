@@ -880,7 +880,7 @@ impl<'db> Inferred<'db> {
 
     pub fn save_redirect(self, file: &'db PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
-        match &self.state {
+        let point = match &self.state {
             InferredState::Saved(definition, point) => {
                 let p = file.points.get(index);
                 // Overwriting strings needs to be possible, because of string annotations
@@ -895,25 +895,23 @@ impl<'db> Inferred<'db> {
                         Locality::Todo,
                     ),
                 );
-                self
+                return self;
             }
             InferredState::UnsavedComplex(complex) => {
                 file.complex_points
                     .insert(&file.points, index, complex.clone(), Locality::Todo);
-                Self::new_saved(file, index, file.points.get(index))
+                return Self::new_saved(file, index, file.points.get(index));
             }
             InferredState::UnsavedSpecific(specific) => {
-                let point = Point::new_simple_specific(*specific, Locality::Todo);
-                file.points.set(index, point);
-                Self::new_saved(file, index, point)
+                Point::new_simple_specific(*specific, Locality::Todo)
             }
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::Unknown => {
-                let point = Point::new_unknown(file.file_index(), Locality::Todo);
-                file.points.set(index, point);
-                Self::new_saved(file, index, point)
+            InferredState::UnsavedFileReference(file_index) => {
+                Point::new_file_reference(*file_index, Locality::Todo)
             }
-        }
+            InferredState::Unknown => Point::new_unknown(file.file_index(), Locality::Todo),
+        };
+        file.points.set(index, point);
+        Self::new_saved(file, index, point)
     }
 
     pub fn init_as_function<'a>(

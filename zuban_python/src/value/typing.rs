@@ -6,8 +6,8 @@ use super::{ClassLike, IteratorContent, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList, Locality,
-    Point, Specific, TupleContent, TypeVarIndex,
+    CallableContent, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList, Specific,
+    TupleContent, TypeVarIndex,
 };
 use crate::diagnostics::IssueType;
 use crate::generics::{GenericOption, Generics, TypeVarMatcher};
@@ -59,9 +59,7 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
     ) -> Inferred<'db> {
         match self.specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
-                let point =
-                    Point::new_simple_specific(Specific::TypingWithGenerics, Locality::Todo);
-                Inferred::new_and_save(slice_type.file, slice_type.primary_index, point)
+                Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
             }
             Specific::TypingTuple => {
                 let content = match slice_type.unpack() {

@@ -758,6 +758,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
         self.infer_primary_content(base, primary.index(), primary.second())
+            .save_redirect(self.file, primary.index())
     }
 
     pub fn infer_primary_content(
