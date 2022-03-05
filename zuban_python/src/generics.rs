@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, ParamType, SliceContent,
-    SliceIterator, SliceType, Slices,
+    Expression, ExpressionContent, NameParent, NodeIndex, ParamIterator, ParamType, PrimaryParent,
+    SliceContent, SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
@@ -527,8 +527,25 @@ pub fn search_type_vars<'db>(
 ) {
     let mut late_bound_type_vars = vec![];
     for n in expression.search_names() {
-        if matches!(n.parent(), NameParent::Atom) {
-            let inferred = file.inference(i_s).infer_name_reference(n);
+        let inferred = match n.parent() {
+            NameParent::Atom => Some(file.inference(i_s).infer_name_reference(n)),
+            NameParent::Primary(mut primary) => {
+                let x = loop {
+                    if primary.end() != n.end() {
+                        // This filters out if the name is not the last name and also if it ends
+                        // with a bracket (execution or index).
+                        break None;
+                    }
+                    match primary.parent() {
+                        PrimaryParent::Primary(p) => primary = p,
+                        _ => break Some(file.inference(i_s).infer_primary(primary)),
+                    }
+                };
+                x
+            }
+            _ => None,
+        };
+        if let Some(inferred) = inferred {
             if let Some(definition) = inferred.maybe_type_var(i_s) {
                 let link = definition.as_link();
 

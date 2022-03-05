@@ -539,7 +539,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         NameParent::NonlocalStmt => {
                             // TODO nonlocal
                         }
-                        NameParent::Other => {
+                        _ => {
                             // All other names are not references or part of imports and should be
                             // resolved later.
                         }

@@ -146,6 +146,11 @@ macro_rules! create_struct {
                 self.node.start()
             }
 
+            #[inline]
+            pub fn end(&self) -> CodeIndex {
+                self.node.end()
+            }
+
             pub fn short_debug(&self) -> &'db str {
                 self.node
                     .as_code()
@@ -297,10 +302,6 @@ impl<'db> Name<'db> {
         self.node.as_code()
     }
 
-    pub fn end(&self) -> CodeIndex {
-        self.node.end()
-    }
-
     pub fn is_reference(&self) -> bool {
         !self
             .node
@@ -385,6 +386,8 @@ impl<'db> Name<'db> {
             NameParent::Atom
         } else if parent.is_type(Nonterminal(name_definition)) {
             NameParent::NameDefinition(NameDefinition::new(parent))
+        } else if parent.is_type(Nonterminal(primary)) {
+            NameParent::Primary(Primary::new(parent))
         } else if parent.is_type(Nonterminal(global_stmt)) {
             NameParent::GlobalStmt
         } else if parent.is_type(Nonterminal(nonlocal_stmt)) {
@@ -422,6 +425,7 @@ impl<'db> Name<'db> {
 #[derive(Debug)]
 pub enum NameParent<'db> {
     NameDefinition(NameDefinition<'db>),
+    Primary(Primary<'db>),
     Atom,
     GlobalStmt,
     NonlocalStmt,
@@ -1841,6 +1845,20 @@ impl<'db> Primary<'db> {
             SliceType::Slices(Slices::new(second))
         }
     }
+
+    pub fn parent(&self) -> PrimaryParent<'db> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(t_primary)) {
+            PrimaryParent::Primary(Primary::new(parent))
+        } else {
+            PrimaryParent::Other
+        }
+    }
+}
+
+pub enum PrimaryParent<'db> {
+    Primary(Primary<'db>),
+    Other,
 }
 
 impl<'db> BitwiseOr<'db> {
