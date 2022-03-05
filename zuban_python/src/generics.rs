@@ -530,7 +530,7 @@ pub fn search_type_vars<'db>(
         let inferred = match n.parent() {
             NameParent::Atom => Some(file.inference(i_s).infer_name_reference(n)),
             NameParent::Primary(mut primary) => {
-                let x = loop {
+                loop {
                     if primary.end() != n.end() {
                         // This filters out if the name is not the last name and also if it ends
                         // with a bracket (execution or index).
@@ -540,8 +540,7 @@ pub fn search_type_vars<'db>(
                         PrimaryParent::Primary(p) => primary = p,
                         _ => break Some(file.inference(i_s).infer_primary(primary)),
                     }
-                };
-                x
+                }
             }
             _ => None,
         };
