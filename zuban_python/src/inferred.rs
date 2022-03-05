@@ -16,8 +16,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     Any, BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
-    Tuple, TupleClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType,
-    TypingWithGenerics, Value,
+    Tuple, TupleClass, TypeAlias, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
+    TypingType, TypingWithGenerics, Value,
 };
 
 pub enum FunctionOrOverload<'db, 'a> {
@@ -508,7 +508,15 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::GenericPart(g) => match g.as_ref() {
                 GenericPart::Class(t) => todo!(),
-                GenericPart::GenericClass(link, generics) => todo!(),
+                GenericPart::GenericClass(link, generics) => {
+                    let class = Class::from_position(
+                        NodeRef::from_link(i_s.database, *link),
+                        Generics::new_list(generics),
+                        None,
+                    )
+                    .unwrap();
+                    callable(i_s, &class)
+                }
                 GenericPart::Union(lst) => todo!(),
                 GenericPart::TypeVar(index, link) => callable(
                     i_s,
@@ -532,6 +540,7 @@ impl<'db> Inferred<'db> {
                     GenericPart::Unknown => todo!(),
                 },
             },
+            ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
             _ => {
                 unreachable!("Classes are handled earlier {:?}", complex)
             }

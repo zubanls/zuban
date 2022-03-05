@@ -451,6 +451,7 @@ pub enum ComplexPoint {
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
     GenericPart(Box<GenericPart>),
+    TypeAlias(Box<TypeAlias>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -892,6 +893,12 @@ impl CallableContent {
             .unwrap_or(0)
             .max(self.return_class.late_bound_type_var_count(db))
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeAlias {
+    pub type_vars: Box<[PointLink]>,
+    pub generic_part: GenericPart,
 }
 
 pub struct Database {

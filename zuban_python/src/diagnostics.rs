@@ -14,6 +14,7 @@ pub enum IssueType {
     IncompatibleAssignment(String, String),
     ModuleNotFound(String),
     TypeArgumentIssue(String, usize, usize),
+    TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
 
     MethodWithoutArguments,
@@ -77,6 +78,12 @@ impl<'db> Diagnostic<'db> {
                         class, expected, given
                     )
                 }
+            }
+            IssueType::TypeAliasArgumentIssue(expected, given) => {
+                format!(
+                    "Bad number of arguments for type alias, expected: {}, given: {}",
+                    expected, given
+                )
             }
             IssueType::ModuleNotFound(s) => format!(
                 "Cannot find implementation or library stub for module named {:?}",

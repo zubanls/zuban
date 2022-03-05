@@ -5,6 +5,7 @@ mod instance;
 mod iterable;
 mod module;
 mod none;
+mod type_alias;
 mod typing;
 
 use parsa_python_ast::{ListElementIterator, StarLikeExpression};
@@ -23,6 +24,7 @@ pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
+pub use type_alias::TypeAlias;
 pub use typing::{
     Any, Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypeVarInstance,
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,

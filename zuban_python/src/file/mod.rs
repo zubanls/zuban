@@ -9,7 +9,7 @@ use parsa_python_ast::*;
 use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, FileIndex, FormatStyle, GenericPart, GenericsList, Locality,
-    LocalityLink, Point, PointType, Points, Specific, TupleContent,
+    LocalityLink, Point, PointType, Points, Specific, TupleContent, TypeAlias,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
@@ -237,7 +237,8 @@ macro_rules! check_point_cache_with {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
-                        "Infer {:?} (#{}, {}, {}) from cache: {}",
+                        "{} {:?} (#{}, {}, {}) from cache: {}",
+                        stringify!($name),
                         node.short_debug(),
                         self.file.byte_to_line_column(node.start()).0,
                         self.file.file_index(),
@@ -574,11 +575,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     &mut type_vars,
                     false,
                 );
-                if !type_vars.is_empty() {
+                if type_vars.is_empty() {
+                    self.infer_expression(expr)
+                } else {
                     debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                        type_vars: type_vars.into_boxed_slice(),
+                        generic_part: self.infer_expression(expr).as_generic_part(self.i_s),
+                    })))
                 }
-
-                self.infer_expression(expr)
             }
             StarExpressionContent::StarExpression(expr) => {
                 todo!("Add error: can't use starred expression here")
@@ -642,6 +647,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+        debug!("Infer annotation expression class: {:?}", expr.as_code());
         let expr_part_index = expr.index() + 1;
         let mut i_s = self.i_s.with_annotation_instance();
         let mut inference = self.file.inference(&mut i_s);
