@@ -152,7 +152,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> Option<Inferred<'db>>;
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
-        dbg!(self);
         true
     }
 
