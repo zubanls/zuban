@@ -230,6 +230,7 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
     ) -> Option<Inferred<'db>> {
         todo!()
     }
+
     fn as_typing_with_generics(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&Self> {
         Some(self)
     }

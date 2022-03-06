@@ -647,7 +647,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        debug!("Infer annotation expression class: {:?}", expr.as_code());
+        debug!(
+            "Infer annotation expression class on {:?}: {:?}",
+            self.file.byte_to_line_column(expr.start()),
+            expr.as_code()
+        );
+
         let expr_part_index = expr.index() + 1;
         let mut i_s = self.i_s.with_annotation_instance();
         let mut inference = self.file.inference(&mut i_s);

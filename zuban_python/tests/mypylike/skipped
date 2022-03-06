@@ -45,3 +45,4 @@ testImplicitTuple3
 testChangeTypeVarToFunction
 testChangeTypeVarToModule
 testRefreshGenericClass
+testChangeTypeVarToTypeAlias
