@@ -487,7 +487,9 @@ impl<'db> Inferred<'db> {
                     .map(Generics::new_list)
                     .unwrap_or(Generics::None);
                 let instance = self.use_instance(NodeRef::from_link(i_s.database, *cls), generics);
-                callable(i_s, &instance)
+                // TODO this should probably be generalized to be part of the instance.
+                let mut i_s = i_s.with_class_context(&instance.class);
+                callable(&mut i_s, &instance)
             }
             ComplexPoint::FunctionOverload(overload) => callable(
                 i_s,
@@ -1028,8 +1030,6 @@ impl<'db> Inferred<'db> {
                             definition.as_link(),
                         );
                         return Self::new_unsaved_complex(complex);
-                    } else {
-                        todo!()
                     }
                 }
                 _ => (),

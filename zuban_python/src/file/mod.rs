@@ -14,7 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file_state::{File, Leaf};
-use crate::generics::search_type_vars;
+use crate::generics::{search_type_vars, search_type_vars_within_possible_class};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -465,8 +465,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                let expr = annotation.expression();
                 if let Some(right_side) = right_side {
-                    let inf_annot = self.infer_annotation_expression_class(annotation.expression());
+                    let inf_annot = self.infer_annotation_expression_class(expr);
                     let right = self.infer_assignment_right_side(right_side);
                     inf_annot.as_generic_option(self.i_s).error_if_not_matches(
                         self.i_s,
@@ -479,7 +480,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         },
                     )
                 }
-                let inf_annot = self.infer_annotation_expression(annotation.expression());
+                let mut found_type_vars = vec![];
+                let class_infos = self.i_s.current_class.map(|c| c.class_infos(self.i_s));
+                search_type_vars_within_possible_class(
+                    self.i_s,
+                    self.file,
+                    &expr,
+                    &mut found_type_vars,
+                    class_infos,
+                    true,
+                    Specific::LateBoundTypeVar,
+                );
+                let inf_annot = self.infer_annotation_expression(expr);
                 self.assign_targets(target, &inf_annot)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
