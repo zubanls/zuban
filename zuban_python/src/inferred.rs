@@ -128,16 +128,12 @@ impl<'db> Inferred<'db> {
             GenericPart::TypeVar(index, link) => {
                 let point = NodeRef::from_link(i_s.database, link).point();
                 if point.specific() == Specific::ClassTypeVar {
-                    return i_s
-                        .current_class
-                        .map(|c| {
-                            let g = c.generics().nth(i_s, index);
-                            Inferred::execute_generic_part(i_s, g)
-                        })
-                        .unwrap_or_else(|| todo!());
-                } else {
-                    InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
+                    if let Some(class) = i_s.current_class {
+                        let g = class.generics().nth(i_s, index);
+                        return Inferred::execute_generic_part(i_s, g);
+                    }
                 }
+                InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
             }
             GenericPart::Unknown => InferredState::Unknown,
         };
