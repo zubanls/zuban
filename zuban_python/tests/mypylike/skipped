@@ -46,3 +46,4 @@ testChangeTypeVarToFunction
 testChangeTypeVarToModule
 testRefreshGenericClass
 testChangeTypeVarToTypeAlias
+testRefreshNestedClassWithSelfReference

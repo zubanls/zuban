@@ -302,7 +302,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
                     .infer_all(self.i_s);
                 debug!("For loop input: {}", element.description(self.i_s));
-                self.assign_targets(star_targets.as_target(), &element)
+                self.assign_targets(
+                    star_targets.as_target(),
+                    &element,
+                    NodeRef::new(self.file, star_exprs.index()),
+                )
             }
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
@@ -461,7 +465,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.infer_assignment_right_side(right_side)
                 };
                 for target in targets {
-                    self.assign_targets(target, &right)
+                    self.assign_targets(target, &right, NodeRef::new(self.file, assignment.index()))
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -492,7 +496,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::LateBoundTypeVar,
                 );
                 let inf_annot = self.infer_annotation_expression(expr);
-                self.assign_targets(target, &inf_annot)
+                self.assign_targets(
+                    target,
+                    &inf_annot,
+                    NodeRef::new(self.file, assignment.index()),
+                )
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -513,13 +521,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn assign_targets(&mut self, target: Target<'db>, value: &Inferred<'db>) {
+    fn assign_targets(
+        &mut self,
+        target: Target<'db>,
+        value: &Inferred<'db>,
+        value_node_ref: NodeRef<'db>,
+    ) {
         match target {
             Target::Tuple(target_iterator) => {
-                todo!("Tuple unpack");
-            }
-            Target::StarredTuple(target_iterator) => {
-                todo!()
+                let mut iterator = value.iter(self.i_s, value_node_ref);
+                for target in target_iterator {
+                    if let Some(value) = iterator.next(self.i_s) {
+                        self.assign_targets(target, &value, value_node_ref)
+                    } else {
+                        todo!()
+                    }
+                }
+                if let Some(value) = iterator.next(self.i_s) {
+                    todo!()
+                }
             }
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());

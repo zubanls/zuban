@@ -787,19 +787,14 @@ impl<'db> StarTargets<'db> {
     }
 }
 
-pub enum StarTargetsContent<'db> {
-    Single(StarTarget<'db>),
-    Tuple(StarTargetIterator<'db>),
-}
-
 #[derive(Debug)]
-pub struct StarTargetIterator<'db>(StepBy<SiblingIterator<'db>>);
+pub struct TargetIterator<'db>(StepBy<SiblingIterator<'db>>);
 
-impl<'db> Iterator for StarTargetIterator<'db> {
-    type Item = StarTarget<'db>;
+impl<'db> Iterator for TargetIterator<'db> {
+    type Item = Target<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(Self::Item::new)
+        self.0.next().map(Target::new_non_iterator)
     }
 }
 
@@ -2162,7 +2157,6 @@ pub enum NameOrKeywordLookup<'db> {
 #[derive(Debug)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
-    StarredTuple(StarTargetIterator<'db>),
     Name(Name<'db>),
     NameExpression(PrimaryTarget<'db>, Name<'db>),
     IndexExpression(PrimaryTarget<'db>),
@@ -2176,24 +2170,28 @@ impl<'db> Target<'db> {
         let mut iterator = node.iter_children();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
-            if first.is_type(Nonterminal(name_definition)) {
-                Self::Name(Name::new(first.nth_child(0)))
-            } else if first.is_type(Nonterminal(t_primary)) {
-                Self::new_t_primary(first)
-            } else if first.is_type(Nonterminal(star_target_brackets)) {
-                // StarredTuple()
-                todo!("star_target_brackets")
-            } else if first.is_type(Nonterminal(star_target)) {
-                Self::Starred(StarTarget::new(first.nth_child(1)))
-            } else {
-                unreachable!();
-            }
-        } else if node.is_type(Nonterminal(star_targets)) {
-            todo!()
+            Self::new_non_iterator(first)
         } else {
-            Self::Tuple(TargetIterator {
-                siblings: node.iter_children(),
-            })
+            debug_assert!(matches!(
+                node.type_(),
+                Nonterminal(star_targets) | Nonterminal(targets)
+            ));
+            Self::Tuple(TargetIterator(node.iter_children().step_by(2)))
+        }
+    }
+
+    fn new_non_iterator(node: PyNode<'db>) -> Self {
+        if node.is_type(Nonterminal(name_definition)) {
+            Self::Name(Name::new(node.nth_child(0)))
+        } else if node.is_type(Nonterminal(t_primary)) {
+            Self::new_t_primary(node)
+        } else if node.is_type(Nonterminal(star_target_brackets)) {
+            // StarredTuple()
+            todo!("star_target_brackets")
+        } else if node.is_type(Nonterminal(star_target)) {
+            Self::Starred(StarTarget::new(node.nth_child(1)))
+        } else {
+            unreachable!();
         }
     }
 
@@ -2219,25 +2217,6 @@ impl<'db> Target<'db> {
         } else {
             debug_assert_eq!(node.nth_child(0).as_code(), "(");
             Self::new_single_target(first.nth_child(1))
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct TargetIterator<'db> {
-    siblings: SiblingIterator<'db>,
-}
-
-impl<'db> Iterator for TargetIterator<'db> {
-    type Item = Target<'db>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let current = self.siblings.next();
-        if let Some(sibling) = current {
-            self.siblings.next();
-            Some(Target::new(sibling))
-        } else {
-            None
         }
     }
 }
