@@ -11,7 +11,9 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, GenericsIterator, TypeVarMatcher};
+use crate::generics::{
+    search_type_vars_within_possible_class, Generics, GenericsIterator, TypeVarMatcher,
+};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -178,39 +180,28 @@ impl<'db, 'a> Function<'db, 'a> {
         let class_infos = self.class.map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
-        let mut add = |n: NodeIndex, type_var_link: PointLink| {
-            if let Some(class_infos) = class_infos {
-                if let Some(index) = class_infos.find_type_var_index(type_var_link) {
-                    // Overwrite with a better type var definition.
-                    self.reference.file.points.set(
-                        n,
-                        Point::new_numbered_type_var(Specific::ClassTypeVar, index, Locality::Todo),
-                    );
-                    return None;
-                }
-            }
-            Some(Specific::FunctionTypeVar)
-        };
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                search_type_vars(
+                search_type_vars_within_possible_class(
                     i_s,
                     self.reference.file,
                     &annotation.expression(),
-                    &mut add,
                     &mut found_type_vars,
+                    class_infos,
                     false,
+                    Specific::FunctionTypeVar,
                 );
             }
         }
         if let Some(return_annot) = func_node.annotation() {
-            search_type_vars(
+            search_type_vars_within_possible_class(
                 i_s,
                 self.reference.file,
                 &return_annot.expression(),
-                &mut add,
                 &mut found_type_vars,
+                class_infos,
                 true,
+                Specific::FunctionTypeVar,
             );
         }
         match found_type_vars.len() {

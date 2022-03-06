@@ -5,8 +5,8 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, FormatStyle, GenericPart, GenericsList, Locality, Point, PointLink, Specific,
-    TypeVarIndex,
+    ClassInfos, Database, FormatStyle, GenericPart, GenericsList, Locality, Point, PointLink,
+    Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -568,6 +568,38 @@ pub fn search_type_vars<'db>(
             }
         }
     }
+}
+
+pub fn search_type_vars_within_possible_class<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    file: &'db PythonFile,
+    expression: &Expression<'db>,
+    found_type_vars: &mut Vec<PointLink>,
+    class_infos: Option<&'db ClassInfos>,
+    add_new_as_late_bound_type_var: bool,
+    newly_found_type: Specific,
+) {
+    let mut add = |n: NodeIndex, type_var_link: PointLink| {
+        if let Some(class_infos) = class_infos {
+            if let Some(index) = class_infos.find_type_var_index(type_var_link) {
+                // Overwrite with a better type var definition.
+                file.points.set(
+                    n,
+                    Point::new_numbered_type_var(Specific::ClassTypeVar, index, Locality::Todo),
+                );
+                return None;
+            }
+        }
+        Some(newly_found_type)
+    };
+    search_type_vars(
+        i_s,
+        file,
+        expression,
+        &mut add,
+        found_type_vars,
+        add_new_as_late_bound_type_var,
+    );
 }
 
 #[derive(Debug, Clone)]
