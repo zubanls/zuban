@@ -47,3 +47,6 @@ testChangeTypeVarToModule
 testRefreshGenericClass
 testChangeTypeVarToTypeAlias
 testRefreshNestedClassWithSelfReference
+testNonExistentFileOnCommandLine*
+*DunderNew*
+*Protocol*

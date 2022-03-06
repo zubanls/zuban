@@ -283,6 +283,7 @@ create_nonterminal_structs!(
     Annotation: annotation
     ReturnStmt: return_stmt
     YieldExpr: yield_expr
+    YieldFrom: yield_from
     Lambda: lambda
 
     StarTargets: star_targets
@@ -1997,6 +1998,22 @@ impl<'db> ReturnStmt<'db> {
     pub fn star_expressions(&self) -> StarExpressions<'db> {
         StarExpressions::new(self.node.nth_child(1))
     }
+}
+
+impl<'db> YieldExpr<'db> {
+    pub fn unpack(&self) -> YieldExprContent<'db> {
+        let node = self.node.nth_child(1);
+        if node.is_type(Nonterminal(star_expressions)) {
+            YieldExprContent::StarExpressions(StarExpressions::new(node))
+        } else {
+            YieldExprContent::YieldFrom(YieldFrom::new(node))
+        }
+    }
+}
+
+pub enum YieldExprContent<'db> {
+    StarExpressions(StarExpressions<'db>),
+    YieldFrom(YieldFrom<'db>),
 }
 
 impl<'db> Lambda<'db> {

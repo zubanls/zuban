@@ -517,7 +517,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentRightSide::StarExpressions(star_exprs) => {
                 self.infer_star_expressions(star_exprs)
             }
-            AssignmentRightSide::YieldExpr(yield_expr) => todo!(),
+            AssignmentRightSide::YieldExpr(yield_expr) => match yield_expr.unpack() {
+                YieldExprContent::StarExpressions(s) => todo!(),
+                YieldExprContent::YieldFrom(y) => todo!(),
+            },
         }
     }
 
