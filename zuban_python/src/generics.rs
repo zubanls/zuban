@@ -408,27 +408,28 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         if let ExpressionContent::ExpressionPart(part) =
                             annotation.expression().unpack()
                         {
-                            let value = p.infer(i_s);
-                            let value_class = value.class_as_generic_option(i_s);
-                            let inf = function
-                                .reference
-                                .file
-                                .inference(i_s)
-                                .infer_annotation_expression_class(annotation.expression());
-                            let annotation_g = inf.as_generic_option(i_s);
-                            if !annotation_g.matches(i_s, Some(self), value_class) {
+                            if let Some(value) = p.infer(i_s) {
                                 let value_class = value.class_as_generic_option(i_s);
-                                p.as_argument_node_reference().add_typing_issue(
-                                    i_s.database,
-                                    IssueType::ArgumentIssue(format!(
-                                        "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                        1,
-                                        function.diagnostic_string(),
-                                        value_class.as_string(i_s, FormatStyle::Short),
-                                        annotation_g.as_string(i_s, FormatStyle::Short),
-                                    )),
-                                );
-                                self.matches = false;
+                                let inf = function
+                                    .reference
+                                    .file
+                                    .inference(i_s)
+                                    .infer_annotation_expression_class(annotation.expression());
+                                let annotation_g = inf.as_generic_option(i_s);
+                                if !annotation_g.matches(i_s, Some(self), value_class) {
+                                    let value_class = value.class_as_generic_option(i_s);
+                                    p.as_argument_node_reference().add_typing_issue(
+                                        i_s.database,
+                                        IssueType::ArgumentIssue(format!(
+                                            "Argument {} to {} has incompatible type {:?}; expected {:?}",
+                                            1,
+                                            function.diagnostic_string(),
+                                            value_class.as_string(i_s, FormatStyle::Short),
+                                            annotation_g.as_string(i_s, FormatStyle::Short),
+                                        )),
+                                    );
+                                    self.matches = false;
+                                }
                             }
                         } else {
                             self.matches = false;

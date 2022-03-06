@@ -103,7 +103,7 @@ impl<'db, 'a> Function<'db, 'a> {
         };
         for param in func.iter_inferrable_params(check_args, false) {
             if param.is_at(param_name_index) {
-                return param.infer(i_s);
+                return param.infer(i_s).unwrap_or_else(|| Inferred::new_unknown());
             }
         }
         unreachable!("{:?}", param_name_index);
@@ -492,13 +492,15 @@ impl<'db> InferrableParam<'db, '_> {
         }
     }
 
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        debug!(
-            "Infer param {:?}",
-            self.param.name_definition().name().as_str()
-        );
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+        if !matches!(&self.argument, ParamInput::None) {
+            debug!(
+                "Infer param {:?}",
+                self.param.name_definition().name().as_str()
+            );
+        }
         match &self.argument {
-            ParamInput::Argument(arg) => arg.infer(i_s),
+            ParamInput::Argument(arg) => Some(arg.infer(i_s)),
             ParamInput::Tuple(args) => {
                 let mut list = vec![];
                 for arg in args.iter() {
@@ -508,11 +510,11 @@ impl<'db> InferrableParam<'db, '_> {
                     generics: Some(GenericsList::from_vec(list)),
                     arbitrary_length: false,
                 };
-                Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
-                    GenericPart::Tuple(t),
+                Some(Inferred::new_unsaved_complex(ComplexPoint::GenericPart(
+                    Box::new(GenericPart::Tuple(t)),
                 )))
             }
-            ParamInput::None => Inferred::new_unknown(),
+            ParamInput::None => None,
         }
     }
 }
