@@ -170,4 +170,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             todo!()
         }
     }
+
+    pub fn calc_fstring_diagnostics(&mut self, fstring: FString<'db>) {
+        self.calc_fstring_content_diagnostics(fstring.iter_content())
+    }
+
+    fn calc_fstring_content_diagnostics(
+        &mut self,
+        iter: impl Iterator<Item = FStringContent<'db>>,
+    ) {
+        for content in iter {
+            match content {
+                FStringContent::FStringExpr(e) => {
+                    let (expressions, spec) = e.unpack();
+                    self.infer_star_expressions(expressions);
+                    if let Some(spec) = spec {
+                        self.calc_fstring_content_diagnostics(spec.iter_content());
+                    }
+                }
+                FStringContent::FStringString(_) => (),
+            }
+        }
+    }
 }

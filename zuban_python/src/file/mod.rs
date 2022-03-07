@@ -862,11 +862,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             StringsOrBytes(s_o_b) => {
-                if s_o_b.starts_with_string() {
-                    Specific::String
-                } else {
-                    Specific::Bytes
+                let mut iterator = s_o_b.iter().peekable();
+                let specific = match iterator.peek().unwrap() {
+                    StringOrByte::String(_) => Specific::String,
+                    StringOrByte::Bytes(_) => Specific::Bytes,
+                    StringOrByte::FString(f) => Specific::String,
+                };
+                for string_or_byte in iterator {
+                    if let StringOrByte::FString(f) = string_or_byte {
+                        self.calc_fstring_diagnostics(f)
+                    }
                 }
+                specific
             }
             NoneLiteral => Specific::None,
             Boolean(_) => Specific::Boolean,

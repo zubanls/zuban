@@ -214,7 +214,6 @@ create_nonterminal_structs!(
     RaiseStmt: raise_stmt
     NonlocalStmt: nonlocal_stmt
 
-    Expressions: expressions
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
@@ -2163,10 +2162,6 @@ pub enum AtomContent<'db> {
 }
 
 impl<'db> StringsOrBytes<'db> {
-    pub fn starts_with_string(&self) -> bool {
-        starts_with_string(&self.node.nth_child(0))
-    }
-
     pub fn as_python_string(&self) -> Option<PythonString<'db>> {
         PythonString::new(self.node.iter_children())
     }
@@ -2230,9 +2225,12 @@ pub enum FStringContent<'db> {
 }
 
 impl<'db> FStringExpr<'db> {
-    pub fn unpack(&self) -> (Expressions<'db>, Option<FStringFormatSpec<'db>>) {
+    pub fn unpack(&self) -> (StarExpressions<'db>, Option<FStringFormatSpec<'db>>) {
         let mut iterator = self.node.iter_children().skip(1);
-        let exprs = Expressions::new(iterator.next().unwrap());
+        // This is actually an `expressions` node, but `star_expressions` is a super set.
+        let exprs = StarExpressions {
+            node: iterator.next().unwrap(),
+        };
         let format_spec = iterator
             .find(|n| n.is_type(Nonterminal(fstring_format_spec)))
             .map(FStringFormatSpec::new);
