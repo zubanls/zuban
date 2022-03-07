@@ -84,6 +84,7 @@ macro_rules! base_description {
 pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
     ListLiteral(ListLiteral<'db>, ListElementIterator<'db>),
+    // TODO this should include the arbitrary_length
     TupleGenerics(std::slice::Iter<'a, GenericPart>),
     Empty,
 }
@@ -119,6 +120,15 @@ impl<'db> IteratorContent<'db, '_> {
                 })
             }
             Self::Empty => todo!(),
+        }
+    }
+
+    pub fn size(&self) -> Option<usize> {
+        match self {
+            Self::Inferred(inferred) => None,
+            Self::TupleGenerics(t) => Some(t.len()),
+            Self::ListLiteral(_, iterator) => todo!(),
+            Self::Empty => Some(0),
         }
     }
 }

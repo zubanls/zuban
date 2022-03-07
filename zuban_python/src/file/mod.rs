@@ -531,17 +531,40 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         value_node_ref: NodeRef<'db>,
     ) {
         match target {
-            Target::Tuple(target_iterator) => {
-                let mut iterator = value.iter(self.i_s, value_node_ref);
-                for target in target_iterator {
-                    if let Some(value) = iterator.next(self.i_s) {
-                        self.assign_targets(target, &value, value_node_ref)
+            Target::Tuple(targets) => {
+                let mut value_iterator = value.iter(self.i_s, value_node_ref);
+                for target in targets.iter() {
+                    if let Target::Starred(star_target) = target {
+                        if let Some(value) = value_iterator.next(self.i_s) {
+                            self.assign_targets(target, &value, value_node_ref)
+                        } else {
+                            todo!()
+                        }
                     } else {
-                        todo!()
                     }
                 }
-                if let Some(value) = iterator.next(self.i_s) {
-                    todo!()
+                match targets.calculate_type() {
+                    if let Some(value) = value_iterator.next(self.i_s) {
+                        todo!()
+                    }
+                    TargetsType::NoStars => {
+                    }
+                    TargetsType::OneStar(after_star) => {
+                        for target in targets.iter() {
+                            if let Some(value) = value_iterator.next(self.i_s) {
+                                self.assign_targets(target, &value, value_node_ref)
+                            } else {
+                                todo!()
+                            }
+                        }
+                        if let Some(value) = value_iterator.next(self.i_s) {
+                            todo!()
+                        }
+                        todo!()
+                    }
+                    TargetsType::MultipleStars => {
+                        todo!()
+                    }
                 }
             }
             Target::Name(n) => {
