@@ -1,6 +1,6 @@
 mod strings;
 
-use std::iter::StepBy;
+use std::iter::{Skip, StepBy};
 
 use parsa_python::{
     parse,
@@ -214,6 +214,7 @@ create_nonterminal_structs!(
     RaiseStmt: raise_stmt
     NonlocalStmt: nonlocal_stmt
 
+    Expressions: expressions
     StarExpressions: star_expressions
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
@@ -257,6 +258,9 @@ create_nonterminal_structs!(
     NameDefinition: name_definition
     Atom: atom
     StringsOrBytes: strings
+    FString: fstring
+    FStringExpr: fstring_expr
+    FStringFormatSpec: fstring_format_spec
 
     List: atom
     Set: atom
@@ -295,6 +299,9 @@ create_struct!(Name: Terminal(TerminalType::Name));
 create_struct!(Int: Terminal(TerminalType::Number));
 create_struct!(Float: Terminal(TerminalType::Number));
 create_struct!(Complex: Terminal(TerminalType::Number));
+create_struct!(PyString: Terminal(TerminalType::String));
+create_struct!(Bytes: Terminal(TerminalType::Bytes));
+create_struct!(FStringString: Terminal(TerminalType::FStringString));
 create_struct!(Keyword: PyNodeType::Keyword);
 
 impl<'db> Name<'db> {
@@ -2162,6 +2169,80 @@ impl<'db> StringsOrBytes<'db> {
 
     pub fn as_python_string(&self) -> Option<PythonString<'db>> {
         PythonString::new(self.node.iter_children())
+    }
+
+    pub fn iter(&self) -> StringOrByteIterator<'db> {
+        StringOrByteIterator(self.node.iter_children())
+    }
+}
+
+pub struct StringOrByteIterator<'db>(SiblingIterator<'db>);
+
+impl<'db> Iterator for StringOrByteIterator<'db> {
+    type Item = StringOrByte<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|n| {
+            if n.is_type(Nonterminal(fstring)) {
+                StringOrByte::FString(FString::new(n))
+            } else if starts_with_string(&n) {
+                StringOrByte::String(PyString::new(n))
+            } else {
+                StringOrByte::Bytes(Bytes::new(n))
+            }
+        })
+    }
+}
+
+pub enum StringOrByte<'db> {
+    String(PyString<'db>),
+    Bytes(Bytes<'db>),
+    FString(FString<'db>),
+}
+
+impl<'db> FString<'db> {
+    pub fn iter_content(&self) -> impl Iterator<Item = FStringContent<'db>> {
+        FStringContentIterator(self.node.iter_children().skip(1))
+    }
+}
+
+pub struct FStringContentIterator<'db>(Skip<SiblingIterator<'db>>);
+
+impl<'db> Iterator for FStringContentIterator<'db> {
+    type Item = FStringContent<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().and_then(|n| {
+            if n.is_type(Nonterminal(fstring_expr)) {
+                Some(Self::Item::FStringExpr(FStringExpr::new(n)))
+            } else if n.is_type(Terminal(TerminalType::FStringEnd)) {
+                None
+            } else {
+                Some(Self::Item::FStringString(FStringString::new(n)))
+            }
+        })
+    }
+}
+
+pub enum FStringContent<'db> {
+    FStringString(FStringString<'db>),
+    FStringExpr(FStringExpr<'db>),
+}
+
+impl<'db> FStringExpr<'db> {
+    pub fn unpack(&self) -> (Expressions<'db>, Option<FStringFormatSpec<'db>>) {
+        let mut iterator = self.node.iter_children().skip(1);
+        let exprs = Expressions::new(iterator.next().unwrap());
+        let format_spec = iterator
+            .find(|n| n.is_type(Nonterminal(fstring_format_spec)))
+            .map(FStringFormatSpec::new);
+        (exprs, format_spec)
+    }
+}
+
+impl<'db> FStringFormatSpec<'db> {
+    pub fn iter_content(&self) -> impl Iterator<Item = FStringContent<'db>> {
+        FStringContentIterator(self.node.iter_children().skip(1))
     }
 }
 

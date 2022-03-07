@@ -50,3 +50,4 @@ testRefreshNestedClassWithSelfReference
 testNonExistentFileOnCommandLine*
 *DunderNew*
 *Protocol*
+*Yield*

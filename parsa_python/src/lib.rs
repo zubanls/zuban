@@ -312,7 +312,7 @@ create_grammar!(
 
     strings: (String | fstring)+
     fstring: FStringStart fstring_content* FStringEnd
-    fstring_content: FStringString | fstring_expr
+    fstring_content:? FStringString | fstring_expr
     fstring_conversion: "!" Name
     fstring_expr: "{" expressions ["="] [ fstring_conversion ] [ fstring_format_spec ] "}"
     fstring_format_spec: ":" fstring_content*
