@@ -905,17 +905,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Set(_) => todo!(),
             SetComprehension(_) => todo!(),
             Tuple(tuple) => {
-                let generics: Box<[GenericPart]> = tuple
-                    .iter()
-                    .map(|e| match e {
-                        StarLikeExpression::NamedExpression(e) => self
-                            .infer_named_expression(e)
-                            .as_class_generic_part(self.i_s),
-                        StarLikeExpression::StarNamedExpression(e) => todo!(),
-                    })
-                    .collect();
+                let mut generics = vec![];
+                for e in tuple.iter() {
+                    match e {
+                        StarLikeExpression::NamedExpression(e) => generics.push(
+                            self.infer_named_expression(e)
+                                .as_class_generic_part(self.i_s),
+                        ),
+                        StarLikeExpression::StarNamedExpression(e) => {
+                            let inferred = self.infer_expression_part(e.expression_part());
+                            let mut iterator =
+                                inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
+                            if iterator.len().is_some() {
+                                while let Some(inf) = iterator.next(self.i_s) {
+                                    generics.push(inf.as_class_generic_part(self.i_s))
+                                }
+                            } else {
+                                todo!()
+                            }
+                        }
+                    }
+                }
                 let content = TupleContent {
-                    generics: (generics.len() != 0).then(|| GenericsList::new(generics)),
+                    generics: (generics.len() != 0).then(|| GenericsList::from_vec(generics)),
                     arbitrary_length: false,
                 };
                 debug!(

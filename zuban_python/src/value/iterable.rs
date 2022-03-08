@@ -61,9 +61,14 @@ impl<'db> ListLiteral<'db> {
                             StarLikeExpression::NamedExpression(named_expr) => self
                                 .infer_named_expr(i_s, named_expr)
                                 .as_class_generic_part(i_s),
-                            StarLikeExpression::StarNamedExpression(_) => {
-                                todo!()
-                            }
+                            StarLikeExpression::StarNamedExpression(e) => self
+                                .node_reference
+                                .file
+                                .inference(i_s)
+                                .infer_expression_part(e.expression_part())
+                                .iter(i_s, self.node_reference)
+                                .infer_all(i_s)
+                                .as_class_generic_part(i_s),
                         });
                     }
                 }

@@ -81,6 +81,7 @@ macro_rules! base_description {
     };
 }
 
+#[derive(Debug)]
 pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
     ListLiteral(ListLiteral<'db>, ListElementIterator<'db>),

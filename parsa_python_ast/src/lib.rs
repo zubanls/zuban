@@ -512,6 +512,7 @@ pub enum ListContent<'db> {
     Comprehension(Comprehension<'db>),
 }
 
+#[derive(Debug)]
 pub struct ListElementIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for ListElementIterator<'db> {
@@ -556,7 +557,7 @@ impl<'db> Iterator for TupleLikeIterator<'db> {
             TupleLikeIterator::Elements(iterator) => iterator.next().map(|node| {
                 if node.is_type(Nonterminal(named_expression)) {
                     StarLikeExpression::NamedExpression(NamedExpression::new(node))
-                } else if node.is_type(Nonterminal(named_expression)) {
+                } else if node.is_type(Nonterminal(star_named_expression)) {
                     StarLikeExpression::StarNamedExpression(StarNamedExpression::new(node))
                 } else {
                     debug_assert_eq!(node.type_(), Nonterminal(star_named_expressions));
@@ -1229,6 +1230,12 @@ pub enum StarExpressionContent<'db> {
     Expression(Expression<'db>),
     StarExpression(StarExpression<'db>),
     Tuple(StarExpressionsTuple<'db>),
+}
+
+impl<'db> StarNamedExpression<'db> {
+    pub fn expression_part(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(1))
+    }
 }
 
 impl<'db> Comprehension<'db> {
