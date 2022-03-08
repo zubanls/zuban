@@ -257,6 +257,10 @@ impl<'a> TupleClass<'a> {
             .map(Generics::new_list)
             .unwrap_or(Generics::None)
     }
+
+    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
+        format!("Tuple{}", &self.content.as_string(db, style))
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
@@ -279,6 +283,10 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
         Some(ClassLike::Tuple(TupleClass::new(self.content)))
     }
+
+    fn description(&self, i_s: &mut InferenceState) -> String {
+        base_description!(self) + &self.as_type_string(i_s.database, FormatStyle::Short)
+    }
 }
 
 #[derive(Debug)]
@@ -293,10 +301,6 @@ impl<'a> Tuple<'a> {
 
     pub fn as_generic_part(&self) -> GenericPart {
         GenericPart::Tuple(self.content.clone())
-    }
-
-    fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
     }
 }
 

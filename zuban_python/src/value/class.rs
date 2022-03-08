@@ -55,7 +55,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 false
             }
             GenericOption::TypeVar(_, node_ref) => todo!(),
-            GenericOption::Union(list) => todo!(),
+            GenericOption::Union(list) => false,
             GenericOption::None | GenericOption::Invalid => true, // TODO should be false
             GenericOption::Any => true,
         }
@@ -112,7 +112,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeWithGenericPart(g) => {
                 format!("Type[{}]", g.as_type_string(i_s.database, None, style))
             }
-            Self::Tuple(c) => c.description(i_s),
+            Self::Tuple(c) => c.as_type_string(i_s.database, style),
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
         }
