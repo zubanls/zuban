@@ -535,7 +535,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut value_iterator = value.iter(self.i_s, value_node_ref);
                 while let Some(target) = targets.next() {
                     if let Target::Starred(star_target) = target {
-                        let (stars, normal) = targets.remaining_stars_and_normal_count();
+                        let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
                         if stars > 0 {
                             todo!()
                         } else if let Some(len) = value_iterator.len() {
@@ -545,8 +545,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     callable(value_iterator.next(self.i_s).unwrap());
                                 }
                             });
-                            dbg!(union);
-                            todo!()
+
+                            self.assign_targets(star_target.as_target(), &union, value_node_ref);
                         } else {
                             todo!()
                         }

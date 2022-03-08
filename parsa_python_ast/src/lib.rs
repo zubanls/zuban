@@ -794,7 +794,13 @@ impl<'db> StarTargets<'db> {
     }
 }
 
-#[derive(Debug)]
+impl<'db> StarTarget<'db> {
+    pub fn as_target(&self) -> Target<'db> {
+        Target::new_non_iterator(self.node.nth_child(1))
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct TargetIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> Iterator for TargetIterator<'db> {
