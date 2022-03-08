@@ -805,6 +805,21 @@ impl<'db> Iterator for TargetIterator<'db> {
     }
 }
 
+impl<'db> TargetIterator<'db> {
+    pub fn remaining_stars_and_normal_count(self) -> (usize, usize) {
+        let mut star_count = 0;
+        let mut after_star_count = 0;
+        for t in self {
+            if matches!(t, Target::Starred(_)) {
+                star_count += 1;
+            } else {
+                after_star_count += 1;
+            }
+        }
+        (star_count, after_star_count)
+    }
+}
+
 impl<'db> Block<'db> {
     pub fn unpack(&self) -> BlockContent<'db> {
         // simple_stmts | Newline Indent stmt+ Dedent
@@ -2252,7 +2267,7 @@ pub enum NameOrKeywordLookup<'db> {
 
 #[derive(Debug)]
 pub enum Target<'db> {
-    Tuple(Targets<'db>),
+    Tuple(TargetIterator<'db>),
     Name(Name<'db>),
     NameExpression(PrimaryTarget<'db>, Name<'db>),
     IndexExpression(PrimaryTarget<'db>),
@@ -2272,7 +2287,7 @@ impl<'db> Target<'db> {
                 node.type_(),
                 Nonterminal(star_targets) | Nonterminal(targets)
             ));
-            Self::Tuple(Targets(node))
+            Self::Tuple(TargetIterator(node.iter_children().step_by(2)))
         }
     }
 
@@ -2315,40 +2330,6 @@ impl<'db> Target<'db> {
             Self::new_single_target(first.nth_child(1))
         }
     }
-}
-
-#[derive(Debug)]
-pub struct Targets<'db>(PyNode<'db>);
-
-impl<'db> Targets<'db> {
-    pub fn iter(&self) -> TargetIterator<'db> {
-        TargetIterator(self.0.iter_children().step_by(2))
-    }
-
-    pub fn calculate_type(&self) -> TargetsType {
-        let mut star_count = 0;
-        let mut after_star_count = 0;
-        for t in self.iter() {
-            if matches!(t, Target::Starred(_)) {
-                star_count += 1;
-            } else if star_count > 0 {
-                after_star_count += 1;
-            }
-        }
-        if star_count == 0 {
-            TargetsType::NoStars
-        } else if star_count == 1 {
-            TargetsType::OneStar(after_star_count)
-        } else {
-            TargetsType::MultipleStars
-        }
-    }
-}
-
-pub enum TargetsType {
-    NoStars,
-    OneStar(usize),
-    MultipleStars,
 }
 
 impl<'db> NameOrKeywordLookup<'db> {

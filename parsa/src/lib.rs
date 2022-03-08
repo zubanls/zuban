@@ -393,7 +393,7 @@ macro_rules! __create_node {
             }
         }
 
-        #[derive(Debug)]
+        #[derive(Debug, Clone, Copy)]
         pub struct SiblingIterator<'a> {
             internal_tree: &'a $crate::InternalTree,
             next_index: $crate::NodeIndex,

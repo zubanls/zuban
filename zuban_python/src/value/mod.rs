@@ -123,7 +123,7 @@ impl<'db> IteratorContent<'db, '_> {
         }
     }
 
-    pub fn size(&self) -> Option<usize> {
+    pub fn len(&self) -> Option<usize> {
         match self {
             Self::Inferred(inferred) => None,
             Self::TupleGenerics(t) => Some(t.len()),

@@ -531,38 +531,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         value_node_ref: NodeRef<'db>,
     ) {
         match target {
-            Target::Tuple(targets) => {
+            Target::Tuple(mut targets) => {
                 let mut value_iterator = value.iter(self.i_s, value_node_ref);
-                for target in targets.iter() {
+                while let Some(target) = targets.next() {
                     if let Target::Starred(star_target) = target {
-                        if let Some(value) = value_iterator.next(self.i_s) {
-                            self.assign_targets(target, &value, value_node_ref)
+                        let (stars, normal) = targets.remaining_stars_and_normal_count();
+                        if stars > 0 {
+                            todo!()
+                        } else if let Some(len) = value_iterator.len() {
+                            let fetch = len - normal;
+                            let union = Inferred::gather_union(|callable| {
+                                for _ in 0..(len - normal) {
+                                    callable(value_iterator.next(self.i_s).unwrap());
+                                }
+                            });
+                            dbg!(union);
+                            todo!()
                         } else {
                             todo!()
                         }
+                    } else if let Some(value) = value_iterator.next(self.i_s) {
+                        self.assign_targets(target, &value, value_node_ref)
                     } else {
-                    }
-                }
-                match targets.calculate_type() {
-                    if let Some(value) = value_iterator.next(self.i_s) {
-                        todo!()
-                    }
-                    TargetsType::NoStars => {
-                    }
-                    TargetsType::OneStar(after_star) => {
-                        for target in targets.iter() {
-                            if let Some(value) = value_iterator.next(self.i_s) {
-                                self.assign_targets(target, &value, value_node_ref)
-                            } else {
-                                todo!()
-                            }
-                        }
-                        if let Some(value) = value_iterator.next(self.i_s) {
-                            todo!()
-                        }
-                        todo!()
-                    }
-                    TargetsType::MultipleStars => {
                         todo!()
                     }
                 }
