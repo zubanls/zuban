@@ -10,7 +10,8 @@ pub struct PythonState {
     builtins: *const PythonFile,
     typing: *const PythonFile,
     collections: *const PythonFile,
-    object_node_index: NodeIndex,
+    builtins_object_node_index: NodeIndex,
+    builtins_list_index: NodeIndex,
 }
 
 impl PythonState {
@@ -19,7 +20,8 @@ impl PythonState {
             builtins: null(),
             typing: null(),
             collections: null(),
-            object_node_index: 0,
+            builtins_object_node_index: 0,
+            builtins_list_index: 0,
         }
     }
 
@@ -40,8 +42,10 @@ impl PythonState {
             .calculate_global_definitions_and_references();
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
+        let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
 
-        s.object_node_index = s.builtins().points.get(object_name_index).node_index();
+        s.builtins_object_node_index = s.builtins().points.get(object_name_index).node_index();
+        s.builtins_list_index = s.builtins().points.get(list_name_index).node_index();
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }
@@ -66,8 +70,14 @@ impl PythonState {
 
     #[inline]
     pub fn object(&self) -> NodeRef {
-        debug_assert!(self.object_node_index != 0);
-        NodeRef::new(self.builtins(), self.object_node_index)
+        debug_assert!(self.builtins_object_node_index != 0);
+        NodeRef::new(self.builtins(), self.builtins_object_node_index)
+    }
+
+    #[inline]
+    pub fn list(&self) -> NodeRef {
+        debug_assert!(self.builtins_list_index != 0);
+        NodeRef::new(self.builtins(), self.builtins_list_index)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {

@@ -546,7 +546,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 }
                             });
 
-                            self.assign_targets(star_target.as_target(), &union, value_node_ref);
+                            let generic = union
+                                .class_as_generic_option(self.i_s)
+                                .as_generic_part(self.i_s);
+                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                self.i_s.database.python_state.list().as_link(),
+                                Some(GenericsList::new(Box::new([generic]))),
+                            ));
+                            self.assign_targets(star_target.as_target(), &list, value_node_ref);
                         } else {
                             todo!()
                         }

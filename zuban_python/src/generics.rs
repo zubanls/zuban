@@ -661,7 +661,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
             Self::ClassLike(class_like) => class_like.as_generic_part(i_s),
             Self::TypeVar(type_var_index, node_ref) => {
