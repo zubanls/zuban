@@ -51,3 +51,14 @@ testNonExistentFileOnCommandLine*
 *DunderNew*
 *Protocol*
 *Yield*
+testUnpackInExpression3-only_when_nocache
+*Await*
+test__aiter__and__anext__
+*Async*
+*Liskov*
+*RefreshIgnore*
+testRefreshOptions
+*ImportOnTopOfAlias*
+testRefreshForWithTypeComment2
+*Final*
+testIfTypeCheckingUnreachableClass
