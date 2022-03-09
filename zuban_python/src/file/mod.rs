@@ -1,4 +1,5 @@
 mod diagnostics;
+mod utils;
 
 use std::cell::Cell;
 use std::fmt;
@@ -902,7 +903,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ListComprehension(_) => Specific::List,
             Dict(_) => Specific::Dict,
             DictComprehension(_) => todo!(),
-            Set(_) => todo!(),
+            Set(set) => {
+                if let Some(elements) = set.unpack() {
+                    return Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                        self.i_s.database.python_state.builtins_point_link("set"),
+                        Some(GenericsList::new(Box::new([
+                            self.create_list_or_set_generics(elements)
+                        ]))),
+                    ))
+                    .save_redirect(self.file, atom.index());
+                } else {
+                    todo!()
+                }
+            }
             SetComprehension(_) => todo!(),
             Tuple(tuple) => {
                 let mut generics = vec![];

@@ -51,25 +51,12 @@ impl<'db> ListLiteral<'db> {
                 _ => unreachable!(),
             }
         } else {
-            let mut result = GenericPart::Unknown;
-            match self.list_node().unpack() {
-                Some(elements) => {
-                    for child in elements {
-                        result.union_in_place(match child {
-                            StarLikeExpression::NamedExpression(named_expr) => self
-                                .infer_named_expr(i_s, named_expr)
-                                .as_class_generic_part(i_s),
-                            StarLikeExpression::StarNamedExpression(e) => self
-                                .node_reference
-                                .file
-                                .inference(i_s)
-                                .infer_expression_part(e.expression_part())
-                                .iter(i_s, self.node_reference)
-                                .infer_all(i_s)
-                                .as_class_generic_part(i_s),
-                        });
-                    }
-                }
+            let result = match self.list_node().unpack() {
+                Some(elements) => self
+                    .node_reference
+                    .file
+                    .inference(i_s)
+                    .create_list_or_set_generics(elements),
                 None => todo!(),
             };
             reference.insert_complex(
