@@ -1,6 +1,4 @@
-use parsa_python_ast::{
-    Dict, DictElement, Expression, List, ListContent, NamedExpression, StarLikeExpression,
-};
+use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
 use crate::database::{
@@ -55,7 +53,7 @@ impl<'db> ListLiteral<'db> {
         } else {
             let mut result = GenericPart::Unknown;
             match self.list_node().unpack() {
-                ListContent::Elements(elements) => {
+                Some(elements) => {
                     for child in elements {
                         result.union_in_place(match child {
                             StarLikeExpression::NamedExpression(named_expr) => self
@@ -72,8 +70,7 @@ impl<'db> ListLiteral<'db> {
                         });
                     }
                 }
-                ListContent::Comprehension(_) => unreachable!(),
-                ListContent::None => todo!(),
+                None => todo!(),
             };
             reference.insert_complex(
                 ComplexPoint::GenericClass(
@@ -115,9 +112,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         match self.list_node().unpack() {
-            ListContent::Elements(elements) => IteratorContent::ListLiteral(*self, elements),
-            ListContent::Comprehension(_) => unreachable!(),
-            ListContent::None => IteratorContent::Empty,
+            Some(elements) => IteratorContent::ListLiteral(*self, elements),
+            None => IteratorContent::Empty,
         }
     }
 
@@ -130,7 +126,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
             SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int() {
                     match self.list_node().unpack() {
-                        ListContent::Elements(elements) => {
+                        Some(elements) => {
                             for (i, child) in elements.enumerate() {
                                 match child {
                                     StarLikeExpression::NamedExpression(named_expr) => {
@@ -146,12 +142,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                                 }
                             }
                         }
-                        ListContent::Comprehension(_) => unreachable!(),
-                        ListContent::None => todo!(),
+                        None => todo!(),
                     };
                 }
                 match self.list_node().unpack() {
-                    ListContent::Elements(mut elements) => {
+                    Some(mut elements) => {
                         let mut inferred = match elements.next().unwrap() {
                             StarLikeExpression::NamedExpression(named_expr) => {
                                 self.infer_named_expr(i_s, named_expr)
@@ -173,8 +168,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                         }
                         inferred
                     }
-                    ListContent::Comprehension(_) => unreachable!(),
-                    ListContent::None => todo!(),
+                    None => todo!(),
                 }
             }
             SliceTypeContent::Slice(simple) => {

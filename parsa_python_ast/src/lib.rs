@@ -494,28 +494,21 @@ impl<'db> File<'db> {
 }
 
 impl<'db> List<'db> {
-    pub fn unpack(&self) -> ListContent<'db> {
+    pub fn unpack(&self) -> Option<ListOrSetElementIterator<'db>> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
-            ListContent::Elements(ListElementIterator(n.iter_children().step_by(2)))
-        } else if n.is_type(Nonterminal(comprehension)) {
-            ListContent::Comprehension(Comprehension::new(n))
+            Some(ListOrSetElementIterator(n.iter_children().step_by(2)))
         } else {
-            ListContent::None
+            assert_eq!(n.type_(), PyNodeType::Keyword);
+            None
         }
     }
 }
 
-pub enum ListContent<'db> {
-    None,
-    Elements(ListElementIterator<'db>),
-    Comprehension(Comprehension<'db>),
-}
-
 #[derive(Debug)]
-pub struct ListElementIterator<'db>(StepBy<SiblingIterator<'db>>);
+pub struct ListOrSetElementIterator<'db>(StepBy<SiblingIterator<'db>>);
 
-impl<'db> Iterator for ListElementIterator<'db> {
+impl<'db> Iterator for ListOrSetElementIterator<'db> {
     type Item = StarLikeExpression<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|next| {
@@ -525,6 +518,18 @@ impl<'db> Iterator for ListElementIterator<'db> {
                 StarLikeExpression::StarNamedExpression(StarNamedExpression::new(next))
             }
         })
+    }
+}
+
+impl<'db> Set<'db> {
+    pub fn unpack(&self) -> Option<ListOrSetElementIterator<'db>> {
+        let n = self.node.nth_child(1);
+        if n.is_type(Nonterminal(star_named_expressions)) {
+            Some(ListOrSetElementIterator(n.iter_children().step_by(2)))
+        } else {
+            assert_eq!(n.type_(), PyNodeType::Keyword);
+            None
+        }
     }
 }
 
@@ -2147,7 +2152,9 @@ impl<'db> Atom<'db> {
                         Nonterminal(dict_comprehension) => {
                             AtomContent::DictComprehension(DictComprehension::new(next_node))
                         }
-                        Nonterminal(star_named_expression) => AtomContent::Set(Set::new(self.node)),
+                        Nonterminal(star_named_expressions) => {
+                            AtomContent::Set(Set::new(self.node))
+                        }
                         Nonterminal(comprehension) => {
                             AtomContent::SetComprehension(Comprehension::new(next_node))
                         }

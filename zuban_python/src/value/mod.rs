@@ -8,7 +8,7 @@ mod none;
 mod type_alias;
 mod typing;
 
-use parsa_python_ast::{ListElementIterator, StarLikeExpression};
+use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::{Database, GenericPart};
@@ -84,7 +84,7 @@ macro_rules! base_description {
 #[derive(Debug)]
 pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
-    ListLiteral(ListLiteral<'db>, ListElementIterator<'db>),
+    ListLiteral(ListLiteral<'db>, ListOrSetElementIterator<'db>),
     // TODO this should include the arbitrary_length
     TupleGenerics(std::slice::Iter<'a, GenericPart>),
     Empty,
