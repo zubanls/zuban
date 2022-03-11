@@ -609,7 +609,7 @@ pub enum GenericOption<'db, 'a> {
     Union(Vec<GenericPart>),
     None,
     Any,
-    Invalid,
+    Unknown,
 }
 
 impl<'db, 'a> GenericOption<'db, 'a> {
@@ -621,7 +621,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
             }
-            GenericPart::Unknown => Self::Invalid,
+            GenericPart::Unknown => Self::Unknown,
             GenericPart::None => GenericOption::None,
             GenericPart::Any => GenericOption::Any,
             GenericPart::GenericClass(link, generics) => {
@@ -670,7 +670,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::Union(_) => unreachable!(),
             Self::None => GenericPart::None,
             Self::Any => GenericPart::Any,
-            Self::Invalid => todo!(),
+            Self::Unknown => todo!(),
         }
     }
 
@@ -690,7 +690,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }
                     true
                 }
-                GenericOption::TypeVar(_, _) | GenericOption::Invalid => {
+                GenericOption::TypeVar(_, _) | GenericOption::Unknown => {
                     todo!("{:?}", value_class)
                 }
                 GenericOption::Union(list) => {
@@ -756,7 +756,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             },
             Self::None => matches!(value_class, Self::None),
             Self::Any => true,
-            Self::Invalid => false,
+            Self::Unknown => false,
         }
     }
 
@@ -857,7 +857,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             )),
             Self::None => todo!(),
             Self::Any => todo!(),
-            Self::Invalid => GenericPart::Unknown,
+            Self::Unknown => GenericPart::Unknown,
         }
     }
 
@@ -874,7 +874,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             }),
             Self::None => "None".to_owned(),
             Self::Any => "Any".to_owned(),
-            Self::Invalid => "Unknown".to_owned(),
+            Self::Unknown => "Unknown".to_owned(),
         }
     }
 
@@ -895,7 +895,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             )),
             Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
             Self::Any => todo!(),
-            Self::Invalid => None,
+            Self::Unknown => None,
         }
     }
 }

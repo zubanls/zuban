@@ -179,13 +179,13 @@ impl<'db> Inferred<'db> {
                     .or_else(|| v.is_any().then(|| GenericOption::Any))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
-                        GenericOption::Invalid
+                        GenericOption::Unknown
                     })
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic option is invalid: {}", inf.description(i_s));
-                GenericOption::Invalid
+                GenericOption::Unknown
             },
             &mut GenericOption::TypeVar,
         )
@@ -205,7 +205,7 @@ impl<'db> Inferred<'db> {
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic class option is invalid: {}", inf.description(i_s));
-                GenericOption::Invalid
+                GenericOption::Unknown
             },
             &mut GenericOption::TypeVar,
         )
