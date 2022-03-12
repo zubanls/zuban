@@ -29,10 +29,10 @@ pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
     todo!()
 }
 
-pub fn python_import<'db>(
+pub fn python_import(
     database: &Database,
     dir_path: &str,
-    dir: &'db Rc<DirContent>,
+    dir: &Rc<DirContent>,
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator

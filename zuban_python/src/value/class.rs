@@ -397,8 +397,8 @@ impl<'db, 'a> Class<'db, 'a> {
             FormatStyle::Short => self.name().to_owned(),
             FormatStyle::Qualified => self.qualified_name(i_s.database),
         };
-        let has_type_vars = self.class_infos(i_s).type_vars.len() > 0;
-        if has_type_vars {
+        let type_var_count = self.class_infos(i_s).type_vars.len();
+        if type_var_count > 0 {
             let generics_string = match self.type_var_remap {
                 Some(type_var_remap) => format!(
                     "[{}]",
@@ -408,7 +408,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         style,
                     )
                 ),
-                None => self.generics.as_string(i_s, style),
+                None => self.generics.as_string(i_s, style, Some(type_var_count)),
             };
 
             result += &generics_string;
@@ -465,7 +465,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 self.name(),
                 match generics_list.as_ref() {
                     Some(generics_list) =>
-                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short),
+                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
                     None => "".to_owned(),
                 }
             );

@@ -88,7 +88,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {:?} was requested",
-                        self.as_string(i_s, FormatStyle::Short),
+                        self.as_string(i_s, FormatStyle::Short, None),
                         n
                     );
                     GenericPart::Unknown
@@ -150,11 +150,26 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_string(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        style: FormatStyle,
+        expected: Option<usize>,
+    ) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings = vec![];
-        self.iter()
-            .run_on_all_generic_options(i_s, |i_s, g| strings.push(g.as_string(i_s, style)));
+        let mut i = 0;
+        self.iter().run_on_all_generic_options(i_s, |i_s, g| {
+            if expected.map(|e| i < e).unwrap_or(false) {
+                strings.push(g.as_string(i_s, style));
+                i += 1;
+            }
+        });
+        if let Some(expected) = expected {
+            for _ in i..expected {
+                strings.push("Any".to_owned());
+            }
+        }
         format!("[{}]", strings.join(", "))
     }
 

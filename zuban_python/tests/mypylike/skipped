@@ -68,3 +68,4 @@ testInlineConfigFineGrained*
 testWrongNumberOfArguments
 *NewAnalyzer
 testFileAddedAndImported
+testIsInstanceAdHocIntersectionFineGrainedIncremental*
