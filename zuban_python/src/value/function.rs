@@ -244,7 +244,13 @@ impl<'db, 'a> Function<'db, 'a> {
         }) {}
         result += ") -> ";
         if let Some(annotation) = node.annotation() {
-            todo!()
+            result += &self
+                .reference
+                .file
+                .inference(i_s)
+                .infer_annotation_expression_class(annotation.expression())
+                .as_generic_option(i_s)
+                .as_string(i_s, style)
         } else {
             result += "Any"
         }
