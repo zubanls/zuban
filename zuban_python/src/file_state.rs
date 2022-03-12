@@ -95,7 +95,8 @@ impl FileStateLoader for PythonFileLoader {
         code: String,
     ) -> Pin<Box<dyn FileState>> {
         // TODO this check is really stupid.
-        let package_dir = path.ends_with("/__init__.py").then(|| dir);
+        let package_dir =
+            (path.ends_with("/__init__.py") || path.ends_with("/__init__.pyi")).then(|| dir);
         Box::pin(LanguageFileState::new_parsed(
             path,
             PythonFile::new(package_dir, code),

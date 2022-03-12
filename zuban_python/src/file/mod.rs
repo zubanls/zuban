@@ -442,7 +442,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             DottedNameContent::Name(name) => self.global_import(name),
             DottedNameContent::DottedName(dotted_name, name) => {
                 let base = self.infer_import_dotted_name(dotted_name);
-                todo!()
+                base.run_on_value(self.i_s, &mut |i_s, value| match value.as_module() {
+                    Some(module) => module
+                        .sub_module(i_s.database, name.as_str())
+                        .map(Inferred::new_file_reference)
+                        .unwrap_or_else(Inferred::new_unknown),
+                    None => unreachable!(),
+                })
             }
         }
     }

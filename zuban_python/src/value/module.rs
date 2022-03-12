@@ -30,7 +30,8 @@ impl<'db> Module<'db> {
     }
 
     pub fn sub_module(&self, db: &'db Database, name: &str) -> Option<FileIndex> {
-        self.file.package_dir.as_ref().and_then(|dir| {
+        dbg!(self.file.file_path(db));
+        dbg!(self.file.package_dir.as_ref()).and_then(|dir| {
             let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
             python_import(db, p, dir, name)
         })
@@ -72,6 +73,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
             .infer_module_name(name)
             .or_else(|| {
                 self.sub_module(i_s.database, name).map(|file_index| {
+                    // TODO this should probably move to the sub_module
                     i_s.database
                         .add_invalidates(file_index, self.file.file_index());
                     Inferred::new_file_reference(file_index)
