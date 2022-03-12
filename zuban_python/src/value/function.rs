@@ -230,10 +230,10 @@ impl<'db, 'a> Function<'db, 'a> {
     pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         let node = self.node();
         let mut result = "def (".to_owned();
-        let mut generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
+        let generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
         let mut first = true;
         let mut params = self.iter_params();
-        while let Some(_) = generics.run_on_next(i_s, |i_s, g| {
+        generics.run_on_all_generic_options(i_s, |i_s, g| {
             if !first {
                 result += ", ";
             }
@@ -241,7 +241,7 @@ impl<'db, 'a> Function<'db, 'a> {
             result += ": ";
             result += &g.as_string(i_s, style);
             first = false;
-        }) {}
+        });
         result += ") -> ";
         if let Some(annotation) = node.annotation() {
             result += &self

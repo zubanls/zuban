@@ -249,7 +249,7 @@ impl<'db> GenericsIterator<'db, '_> {
         }
     }
 
-    fn run_on_all_generic_options(
+    pub fn run_on_all_generic_options(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
         mut callable: impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>),
