@@ -69,3 +69,4 @@ testWrongNumberOfArguments
 *NewAnalyzer
 testFileAddedAndImported
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
+testDunderCallAddition

@@ -69,7 +69,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         if let Some(inf) = self.lookup_internal(i_s, "__call__") {
-            todo!()
+            inf.run_on_value(i_s, &mut |i_s, value| value.execute(i_s, args))
         } else {
             args.node_reference().add_typing_issue(
                 i_s.database,
