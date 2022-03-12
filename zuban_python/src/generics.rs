@@ -193,7 +193,7 @@ pub enum GenericsIterator<'db, 'a> {
 }
 
 impl<'db> GenericsIterator<'db, '_> {
-    pub fn run_on_next<T>(
+    fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         mut callable: impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>) -> T,

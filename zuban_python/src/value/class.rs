@@ -645,15 +645,14 @@ fn create_mro_class<'db>(
     if type_vars.is_empty() {
         GenericPart::Class(class.reference.as_link())
     } else {
-        let mut iterator = class.generics.iter();
+        let iterator = class.generics.iter();
         let mut type_var_remap = GenericsList::new_unknown(type_vars.len());
         let mut i = 0;
-        while let Some(g) = iterator.run_on_next(i_s, |i_s, generic_option| {
-            create_type_var_remap(i_s, original_class, original_type_vars, generic_option)
-        }) {
-            type_var_remap.set_generic(TypeVarIndex::new(i), g);
+        iterator.run_on_all_generic_options(i_s, |i_s, generic_option| {
+            let r = create_type_var_remap(i_s, original_class, original_type_vars, generic_option);
+            type_var_remap.set_generic(TypeVarIndex::new(i), r);
             i += 1;
-        }
+        });
         GenericPart::GenericClass(class.reference.as_link(), type_var_remap)
     }
 }
