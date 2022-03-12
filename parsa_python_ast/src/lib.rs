@@ -2343,7 +2343,7 @@ impl<'db> Target<'db> {
         let first = node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
             Self::Name(NameDefinition::new(first).name())
-        } else if first.is_type(Nonterminal(primary)) {
+        } else if first.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(first)
         } else {
             debug_assert_eq!(node.nth_child(0).as_code(), "(");
