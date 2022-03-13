@@ -5,7 +5,7 @@ use std::time::Instant;
 
 use regex::Regex;
 
-const USE_MYPY_TEST_FILES: [&str; 1] = ["fine-grained.test"];
+const USE_MYPY_TEST_FILES: [&str; 2] = ["fine-grained.test", "check-generic-alias.test"];
 
 const BASE_PATH: &str = "/mypylike/";
 
@@ -44,9 +44,23 @@ impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = zuban_python::DiagnosticConfig::default();
+
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
         }
+
+        if steps
+            .flags
+            .iter()
+            .position(|&r| r == "--python-version")
+            .map(|p| ["2.7", "3.5", "3.6", "3.7", "3.8"].contains(&steps.flags[p + 1]))
+            .unwrap_or(false)
+        {
+            // For now skip Python tests < 3.9, because it looks like we won't support them.
+            dbg!("Skipped", self.file_name);
+            return;
+        }
+
         for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
