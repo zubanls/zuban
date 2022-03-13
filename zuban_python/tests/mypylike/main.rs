@@ -71,9 +71,19 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
+            let mut specified_lines = step
+                .out
+                .trim()
+                .split("\n")
+                .map(|s| s.to_owned())
+                .collect::<Vec<_>>();
+
             for (&path, &code) in &step.files {
+                specified_lines.extend(ErrorCommentsOnCode(path, code.split("\n").enumerate()));
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
+            specified_lines.sort();
+
             for path in &step.deletions {
                 #[allow(unused_must_use)]
                 {
@@ -85,8 +95,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .iter()
                 .map(|d| d.as_string())
                 .collect();
-            let mut specified_lines = step.out.trim().split("\n").collect::<Vec<_>>();
-            specified_lines.sort();
+
             let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
             let mut actual_lines = actual.trim().split("\n").collect::<Vec<_>>();
             actual_lines.sort();
@@ -98,7 +107,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 self.file_name,
                 i + 1,
                 steps.steps.len(),
-                step.out.trim(),
+                specified_lines
+                    .iter()
+                    .fold(String::new(), |a, b| a + &b + "\n"),
                 actual,
             );
         }
@@ -196,6 +207,23 @@ impl<'name, 'code> TestCase<'name, 'code> {
             steps: result_steps,
             flags,
         }
+    }
+}
+
+struct ErrorCommentsOnCode<'a>(&'a str, std::iter::Enumerate<std::str::Split<'a, &'a str>>);
+
+impl Iterator for ErrorCommentsOnCode<'_> {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        for (i, line) in &mut self.1 {
+            if let Some(pos) = line.find("# E: ") {
+                return Some(format!("{}:{}: error: {}", self.0, i + 1, &line[pos + 5..]));
+            }
+            if let Some(pos) = line.find("# N: ") {
+                return Some(format!("{}:{}: note: {}", self.0, i + 1, &line[pos + 5..]));
+            }
+        }
+        None
     }
 }
 
