@@ -5,6 +5,8 @@ use std::time::Instant;
 
 use regex::Regex;
 
+const USE_MYPY_TEST_FILES: [&str; 1] = ["fine-grained.test"];
+
 const BASE_PATH: &str = "/mypylike/";
 
 lazy_static::lazy_static! {
@@ -251,6 +253,7 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
 }
 
 fn get_base() -> PathBuf {
+    // TODO windows, this slash probably makes problems...
     let mut base = PathBuf::from(file!().replace("zuban_python/", ""));
     assert!(base.pop());
     base
@@ -259,16 +262,24 @@ fn get_base() -> PathBuf {
 fn find_mypy_style_files() -> Vec<PathBuf> {
     let base = get_base();
     let mut entries = vec![];
-    for p in ["from_mypy", "tests"] {
-        let mut path = base.clone();
-        path.push(p);
 
-        entries.extend(
-            read_dir(path)
-                .unwrap()
-                .map(|res| res.map(|e| e.path()).unwrap()),
-        );
+    // Include local tests
+    let mut path = base.clone();
+    path.push("tests");
+
+    entries.extend(
+        read_dir(path)
+            .unwrap()
+            .map(|res| res.map(|e| e.path()).unwrap()),
+    );
+
+    // Include mypy tests
+    for name in USE_MYPY_TEST_FILES {
+        let mut path = base.clone();
+        path.extend(["mypy", "test-data", "unit", name]);
+        entries.push(path);
     }
+
     entries.sort();
     entries
 }
