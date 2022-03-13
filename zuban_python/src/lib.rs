@@ -24,6 +24,7 @@ mod value;
 mod workspaces;
 
 use database::{Database, FileIndex};
+pub use diagnostics::DiagnosticConfig;
 use file_state::{Leaf, PythonFileLoader};
 use inference_state::InferenceState;
 use name::{Names, ValueName};
@@ -84,7 +85,7 @@ impl Project {
         self.database.unload_all_in_memory_files()
     }
 
-    pub fn diagnostics(&mut self) -> Box<[diagnostics::Diagnostic<'_>]> {
+    pub fn diagnostics(&mut self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic<'_>]> {
         let mut all_diagnostics: Vec<diagnostics::Diagnostic> = vec![];
         let mut file_indexes = vec![];
         self.database
@@ -103,7 +104,7 @@ impl Project {
             );
 
             let array: [i32; 3] = [0; 3];
-            all_diagnostics.append(&mut file.diagnostics(&self.database).into_vec())
+            all_diagnostics.append(&mut file.diagnostics(&self.database, config).into_vec())
         }
         all_diagnostics.into_boxed_slice()
     }
@@ -226,8 +227,8 @@ impl<'a> Script<'a> {
 
     pub fn names(&self /*all_scopes=False, definitions=True, references=False*/) {}
 
-    pub fn diagnostics(&self) -> Box<[diagnostics::Diagnostic<'_>]> {
-        self.file().diagnostics(&self.project.database)
+    pub fn diagnostics(&self, config: &DiagnosticConfig) -> Box<[diagnostics::Diagnostic<'_>]> {
+        self.file().diagnostics(&self.project.database, config)
     }
 
     pub fn errors(&self) {}

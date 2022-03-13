@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 use crate::database::{Database, FileIndex};
-use crate::diagnostics::Diagnostic;
+use crate::diagnostics::{Diagnostic, DiagnosticConfig};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
@@ -141,7 +141,11 @@ pub trait File: std::fmt::Debug + AsAny {
         database.file_path(self.file_index())
     }
 
-    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]>;
+    fn diagnostics<'db>(
+        &'db self,
+        db: &'db Database,
+        config: &DiagnosticConfig,
+    ) -> Box<[Diagnostic<'db>]>;
     fn invalidate_references_to(&mut self, file_index: FileIndex);
 }
 

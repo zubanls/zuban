@@ -33,17 +33,26 @@ struct TestCase<'name, 'code> {
     code: &'code str,
 }
 
+struct Steps<'code> {
+    steps: Vec<Step<'code>>,
+    flags: Vec<&'code str>,
+}
+
 impl<'name, 'code> TestCase<'name, 'code> {
     fn run(&self, project: &mut zuban_python::Project) {
         let steps = self.calculate_steps();
-        for (i, step) in steps.iter().enumerate() {
+        let mut diagnostics_config = zuban_python::DiagnosticConfig::default();
+        if steps.flags.contains(&"--ignore-missing-imports") {
+            diagnostics_config.ignore_missing_imports = true;
+        }
+        for (i, step) in steps.steps.iter().enumerate() {
             if cfg!(feature = "zuban_debug") {
                 println!(
                     "\nTest: {} ({}): Step {}/{}",
                     self.name,
                     self.file_name,
                     i + 1,
-                    steps.len()
+                    steps.steps.len()
                 );
             }
             for (&path, &code) in &step.files {
@@ -56,7 +65,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 }
             }
             let mut diagnostics: Vec<_> = project
-                .diagnostics()
+                .diagnostics(&diagnostics_config)
                 .iter()
                 .map(|d| d.as_string())
                 .collect();
@@ -74,12 +83,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 &self.name,
                 self.file_name,
                 i + 1,
-                steps.len(),
+                steps.steps.len(),
                 step.out.trim(),
                 actual,
             );
         }
-        for step in &steps {
+        for step in &steps.steps {
             for (path, _) in &step.files {
                 #[allow(unused_must_use)]
                 {
@@ -89,13 +98,14 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
     }
 
-    fn calculate_steps(&self) -> Vec<Step<'code>> {
+    fn calculate_steps(&self) -> Steps {
         let mut steps = HashMap::<usize, Step>::new();
         steps.insert(1, Default::default());
         let mut current_step_index = 1;
         let mut current_type = "file";
         let mut current_rest = "main";
         let mut current_step_start = 0;
+        let mut flags = vec![];
 
         let mut process_step_part2 = |step_index, type_, in_between, rest| {
             let step = if let Some(s) = steps.get_mut(&step_index) {
@@ -123,6 +133,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 }
             } else {
                 process_step_part2(step_index, type_, in_between, rest)
+            }
+            if rest == "main" {
+                if in_between.starts_with("# flags: ") {
+                    let all_flags = &in_between[9..in_between.find("\n").unwrap()];
+                    flags = all_flags.split(' ').collect();
+                }
             }
         };
 
@@ -162,7 +178,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
         for i in 1..steps.len() + 1 {
             result_steps.push(steps[&i].clone());
         }
-        result_steps
+        Steps {
+            steps: result_steps,
+            flags,
+        }
     }
 }
 

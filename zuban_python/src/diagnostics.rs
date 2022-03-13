@@ -112,6 +112,20 @@ impl<'db> Diagnostic<'db> {
     }
 }
 
+#[derive(Default)]
+pub struct DiagnosticConfig {
+    pub ignore_missing_imports: bool,
+}
+
+impl DiagnosticConfig {
+    pub fn should_be_reported(&self, type_: &IssueType) -> bool {
+        match type_ {
+            IssueType::ModuleNotFound(_) => !self.ignore_missing_imports,
+            _ => true,
+        }
+    }
+}
+
 impl std::fmt::Debug for Diagnostic<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", &self.as_string())

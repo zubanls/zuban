@@ -13,7 +13,7 @@ use crate::database::{
     LocalityLink, Point, PointType, Points, Specific, TupleContent, TypeAlias,
 };
 use crate::debug;
-use crate::diagnostics::{Diagnostic, Issue, IssueType};
+use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 use crate::file_state::{File, Leaf};
 use crate::generics::{search_type_vars, search_type_vars_within_possible_class};
 use crate::getitem::SliceType;
@@ -110,12 +110,17 @@ impl File for PythonFile {
             .byte_to_line_column(self.tree.code(), byte)
     }
 
-    fn diagnostics<'db>(&'db self, db: &'db Database) -> Box<[Diagnostic<'db>]> {
+    fn diagnostics<'db>(
+        &'db self,
+        db: &'db Database,
+        config: &DiagnosticConfig,
+    ) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
         self.inference(&mut i_s).calculate_diagnostics();
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
+                .filter(|i| config.should_be_reported(&i.type_))
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };

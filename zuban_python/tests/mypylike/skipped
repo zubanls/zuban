@@ -67,6 +67,5 @@ testLiteral*
 testInlineConfigFineGrained*
 testWrongNumberOfArguments
 *NewAnalyzer
-testFileAddedAndImported
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 testDunderCallAddition
