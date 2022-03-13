@@ -64,21 +64,19 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
                 }
             }
-            let mut diagnostics: Vec<_> = project
+            let diagnostics: Vec<_> = project
                 .diagnostics(&diagnostics_config)
                 .iter()
                 .map(|d| d.as_string())
                 .collect();
-            let mut specified = step.out.trim().split("\n").collect::<Vec<_>>();
-            diagnostics.sort();
-            specified.sort();
-            if specified.len() == 1 && specified[0] == "" {
-                specified.pop();
-            }
+            let mut specified_lines = step.out.trim().split("\n").collect::<Vec<_>>();
+            specified_lines.sort();
             let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
+            let mut actual_lines = actual.trim().split("\n").collect::<Vec<_>>();
+            actual_lines.sort();
             assert_eq!(
-                diagnostics,
-                specified,
+                actual_lines,
+                specified_lines,
                 "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,

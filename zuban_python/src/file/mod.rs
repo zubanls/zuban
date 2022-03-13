@@ -430,13 +430,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.i_s.database,
                 IssueType::ModuleNotFound(name.as_str().to_owned()),
             );
-            node_ref.add_typing_issue(
-                self.i_s.database,
-                IssueType::Note(
-                    "See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports"
-                        .to_owned(),
-                ),
-            );
             Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         Inferred::new_and_save(self.file, name.index(), point)

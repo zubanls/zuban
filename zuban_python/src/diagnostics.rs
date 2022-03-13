@@ -49,6 +49,12 @@ impl<'db> Diagnostic<'db> {
 
     pub fn as_string(&self) -> String {
         let mut type_ = "error";
+        // TODO REMOVE mypy removal
+        let path = self
+            .db
+            .file_path(self.file.file_index())
+            .trim_start_matches("/mypylike/");
+        let line = self.start_position().line_and_column().0;
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
                 format!("{} has no attribute {:?}", object, name)
@@ -86,8 +92,9 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::ModuleNotFound(s) => format!(
-                "Cannot find implementation or library stub for module named {:?}",
-                s
+                "Cannot find implementation or library stub for module named {:?}\n\
+                 {}:{}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
+                 s, path, line
             ),
             IssueType::NotCallable(s) => format!("{} not callable", s),
             IssueType::MethodWithoutArguments => {
@@ -99,16 +106,7 @@ impl<'db> Diagnostic<'db> {
             }
         };
         let string = String::new();
-        format!(
-            "{}:{}: {}: {}",
-            // TODO REMOVE mypy removal
-            self.db
-                .file_path(self.file.file_index())
-                .trim_start_matches("/mypylike/"),
-            self.start_position().line_and_column().0,
-            type_,
-            error
-        )
+        format!("{}:{}: {}: {}", path, line, type_, error)
     }
 }
 
