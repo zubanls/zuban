@@ -195,7 +195,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        todo!()
+        todo!("execute not implemented for {:?}", self)
     }
     fn get_item(
         &self,

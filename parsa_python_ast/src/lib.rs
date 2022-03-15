@@ -544,7 +544,7 @@ impl<'db> Tuple<'db> {
         if n.is_type(Nonterminal(tuple_content)) {
             TupleLikeIterator::Elements(n.iter_children().step_by(2))
         } else {
-            debug_assert_eq!(n.as_code(), "(");
+            debug_assert_eq!(n.as_code(), ")");
             TupleLikeIterator::Empty
         }
     }
