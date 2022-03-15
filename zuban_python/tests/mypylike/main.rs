@@ -246,7 +246,10 @@ struct TypeStuffReplacer();
 
 impl Replacer for TypeStuffReplacer {
     fn replace_append(&mut self, _caps: &Captures<'_>, dst: &mut String) {
-        if dst.ends_with("(got \"") || dst.ends_with(", expected \"") {
+        if dst.ends_with("(got \"")
+            || dst.ends_with(", expected \"")
+            || dst.ends_with("has type \"")
+        {
             dst.push_str("tuple")
         } else {
             dst.push_str("builtins.tuple")

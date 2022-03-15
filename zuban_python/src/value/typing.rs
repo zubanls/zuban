@@ -311,6 +311,16 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         Some(ClassLike::Tuple(TupleClass::new(self.content)))
     }
 
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(GenericPart::Tuple(
+            self.content.clone(),
+        ))))
+    }
+
     fn description(&self, i_s: &mut InferenceState) -> String {
         base_description!(self) + &self.as_type_string(i_s.database, FormatStyle::Short)
     }
