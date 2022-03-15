@@ -204,7 +204,7 @@ impl<'db> Inferred<'db> {
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
-                debug!("Generic class option is invalid: {}", inf.description(i_s));
+                debug!("Generic class option is unknown: {}", inf.description(i_s));
                 GenericOption::Unknown
             },
             &mut GenericOption::TypeVar,

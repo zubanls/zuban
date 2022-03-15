@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TypingClass<'db> {
     reference: NodeRef<'db>,
     pub specific: Specific,
@@ -29,9 +29,20 @@ impl<'db> TypingClass<'db> {
             specific,
         }
     }
+
+    pub fn as_generic_part(&self) -> GenericPart {
+        match self.specific {
+            Specific::TypingTuple => GenericPart::Tuple(TupleContent {
+                generics: None,
+                arbitrary_length: true,
+            }),
+            Specific::TypingType => GenericPart::Type(Box::new(GenericPart::Any)),
+            _ => todo!("{:?}", self.specific),
+        }
+    }
 }
 
-impl<'db> Value<'db, '_> for TypingClass<'db> {
+impl<'db, 'a> Value<'db, 'a> for TypingClass<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -174,6 +185,10 @@ impl<'db> Value<'db, '_> for TypingClass<'db> {
             },
             _ => unreachable!("{:?}", self.specific),
         }
+    }
+
+    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
+        Some(ClassLike::TypingClass(*self))
     }
 
     fn execute(

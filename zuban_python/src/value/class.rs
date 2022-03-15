@@ -1,6 +1,6 @@
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSliceType};
 
-use super::{CallableClass, Function, Module, TupleClass, Value, ValueKind};
+use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList,
@@ -23,6 +23,7 @@ pub enum ClassLike<'db, 'a> {
     FunctionType(Function<'db, 'a>),
     Type(Class<'db, 'a>),
     TypeWithGenericPart(&'a GenericPart),
+    TypingClass(TypingClass<'db>),
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -78,6 +79,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
             Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
             Self::FunctionType(f) => unreachable!(),
+            Self::TypingClass(c) => todo!(),
         };
         if matches {
             let (class_generics, class_result_generics) = self.generics();
@@ -102,6 +104,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
             Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
+            Self::TypingClass(c) => (Generics::None, None),
         }
     }
 
@@ -115,6 +118,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => c.as_type_string(i_s.database, style),
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
+            Self::TypingClass(c) => todo!(),
         }
     }
 
@@ -152,6 +156,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(t) => t.as_generic_part(),
             Self::Callable(c) => c.as_generic_part(),
             Self::FunctionType(f) => todo!(),
+            Self::TypingClass(c) => c.as_generic_part(),
         }
     }
 }
