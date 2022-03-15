@@ -12,9 +12,11 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
+use crate::generics::Generics;
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
+use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -610,19 +612,19 @@ impl GenericPart {
         style: FormatStyle,
     ) -> String {
         let class_name = |link| {
-            // TODO this does not respect the style argument
-            NodeRef::from_link(db, link)
-                .maybe_class()
-                .unwrap()
-                .name()
-                .as_str()
+            let class =
+                Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
+            match style {
+                FormatStyle::Short => class.name().to_owned(),
+                FormatStyle::Qualified => class.qualified_name(db),
+            }
         };
         match self {
-            Self::Class(link) => class_name(*link).to_owned(),
+            Self::Class(link) => class_name(*link),
             Self::GenericClass(link, generics_lst) => {
                 format!(
                     "{}[{}]",
-                    class_name(*link),
+                    &class_name(*link),
                     generics_lst.as_string(db, type_var_generics, style)
                 )
             }
