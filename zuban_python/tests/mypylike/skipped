@@ -69,3 +69,6 @@ testWrongNumberOfArguments
 *NewAnalyzer
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 testDunderCallAddition
+# check-generic-alias test stuff
+testGenericAliasImportRe
+testGenericAliasCollectionsABCReveal

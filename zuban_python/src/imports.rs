@@ -12,6 +12,9 @@ pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> O
         // TODO this is completely wrong
         return Some(database.python_state.typing().file_index());
     }
+    if name == "collections" {
+        return Some(database.python_state.collections().file_index());
+    }
 
     for (dir_path, dir) in database.workspaces.directories() {
         let result = python_import(database, dir_path, dir, name);

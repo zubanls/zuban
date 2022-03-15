@@ -45,10 +45,20 @@ impl<'db> Value<'db, '_> for Module<'db> {
 
     fn name(&self) -> &'db str {
         // TODO this is not correct...
-        let path = self.file.file_path(self.database);
-        path[path.rfind('/').unwrap() + 1..]
-            .trim_end_matches(".py")
-            .trim_end_matches(".pyi")
+        let (dir, mut name) = self
+            .database
+            .vfs
+            .dir_and_name(self.file.file_path(self.database));
+        if name.ends_with(".py") {
+            name = name.trim_end_matches(".py");
+        } else {
+            name = name.trim_end_matches(".pyi");
+        }
+        if name == "__init__" {
+            self.database.vfs.dir_and_name(dir.unwrap()).1
+        } else {
+            name
+        }
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
