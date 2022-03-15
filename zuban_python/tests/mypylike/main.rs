@@ -3,7 +3,7 @@ use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use regex::Regex;
+use regex::{Captures, Regex, Replacer};
 
 const USE_MYPY_TEST_FILES: [&str; 2] = ["fine-grained.test", "check-generic-alias.test"];
 
@@ -73,7 +73,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 );
             }
             let mut specified_lines = REPLACE_TUPLE
-                .replace_all(step.out, "builtins.tuple")
+                .replace_all(step.out, TypeStuffReplacer())
                 .trim()
                 .split("\n")
                 .map(|s| s.to_owned())
@@ -233,6 +233,18 @@ impl Iterator for ErrorCommentsOnCode<'_> {
             }
         }
         None
+    }
+}
+
+struct TypeStuffReplacer();
+
+impl Replacer for TypeStuffReplacer {
+    fn replace_append(&mut self, _caps: &Captures<'_>, dst: &mut String) {
+        if dst.ends_with("(got \"") || dst.ends_with(", expected \"") {
+            dst.push_str("tuple")
+        } else {
+            dst.push_str("builtins.tuple")
+        }
     }
 }
 
