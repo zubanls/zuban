@@ -279,7 +279,14 @@ impl<'a> TupleClass<'a> {
     }
 
     pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
-        format!("tuple{}", &self.content.as_string(db, style))
+        format!(
+            "{}{}",
+            match style {
+                FormatStyle::Short => "tuple",
+                FormatStyle::Qualified => "builtins.tuple",
+            },
+            &self.content.as_string(db, style)
+        )
     }
 }
 
@@ -561,6 +568,10 @@ impl<'db, 'a> Value<'db, 'a> for Any {
         name: &str,
     ) -> Option<Inferred<'db>> {
         todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::AnyType
     }
 }
 

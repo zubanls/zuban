@@ -121,6 +121,7 @@ impl<'db> Inferred<'db> {
                 GenericPart::Tuple(content) => {
                     todo!()
                 }
+                GenericPart::Any => return Self::new_any(),
                 _ => todo!(),
             },
             GenericPart::None => return Inferred::new_none(),

@@ -24,6 +24,7 @@ pub enum ClassLike<'db, 'a> {
     Type(Class<'db, 'a>),
     TypeWithGenericPart(&'a GenericPart),
     TypingClass(TypingClass),
+    AnyType,
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -80,6 +81,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
             Self::FunctionType(f) => unreachable!(),
             Self::TypingClass(c) => todo!(),
+            Self::AnyType => todo!(),
         };
         if matches {
             let (class_generics, class_result_generics) = self.generics();
@@ -104,7 +106,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
             Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
-            Self::TypingClass(c) => (Generics::None, None),
+            Self::TypingClass(_) | Self::AnyType => (Generics::None, None),
         }
     }
 
@@ -119,6 +121,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
+            Self::AnyType => "Type[Any]".to_owned(),
         }
     }
 
@@ -157,6 +160,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Callable(c) => c.as_generic_part(),
             Self::FunctionType(f) => todo!(),
             Self::TypingClass(c) => c.as_generic_part(),
+            Self::AnyType => GenericPart::Type(Box::new(GenericPart::Any)),
         }
     }
 }

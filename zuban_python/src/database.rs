@@ -834,7 +834,7 @@ impl TupleContent {
                 format!("[{}]", list)
             }
         } else {
-            "".to_owned()
+            "[Any, ...]".to_owned()
         }
     }
 }
