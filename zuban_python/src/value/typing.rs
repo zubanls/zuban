@@ -1,6 +1,6 @@
 use std::fmt;
 
-use parsa_python_ast::{Name, PrimaryContent};
+use parsa_python_ast::PrimaryContent;
 
 use super::{ClassLike, IteratorContent, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
@@ -17,17 +17,13 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
-pub struct TypingClass<'db> {
-    reference: NodeRef<'db>,
+pub struct TypingClass {
     pub specific: Specific,
 }
 
-impl<'db> TypingClass<'db> {
-    pub fn new(reference: NodeRef<'db>, specific: Specific) -> Self {
-        Self {
-            reference,
-            specific,
-        }
+impl TypingClass {
+    pub fn new(specific: Specific) -> Self {
+        Self { specific }
     }
 
     pub fn as_generic_part(&self) -> GenericPart {
@@ -42,13 +38,22 @@ impl<'db> TypingClass<'db> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingClass<'db> {
+impl<'db, 'a> Value<'db, 'a> for TypingClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
     fn name(&self) -> &'db str {
-        Name::by_index(&self.reference.file.tree, self.reference.node_index).as_str()
+        match self.specific {
+            Specific::TypingGeneric => "Generic",
+            Specific::TypingProtocol => "Protocol",
+            Specific::TypingTuple => "Tuple",
+            Specific::TypingCallable => "Callable",
+            Specific::TypingUnion => "Union",
+            Specific::TypingOptional => "Optional",
+            Specific::TypingType => "Type",
+            _ => unreachable!("{:?}", self.specific),
+        }
     }
 
     fn lookup_internal(
@@ -59,7 +64,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass<'db> {
         todo!()
     }
 
-    fn as_typing_class(&self) -> Option<&TypingClass<'db>> {
+    fn as_typing_class(&self) -> Option<&TypingClass> {
         Some(self)
     }
 

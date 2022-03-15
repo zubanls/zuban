@@ -238,7 +238,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> Option<&TypingWithGenerics<'db>> {
         None
     }
-    fn as_typing_class(&self) -> Option<&TypingClass<'db>> {
+    fn as_typing_class(&self) -> Option<&TypingClass> {
         None
     }
     fn is_any(&self) -> bool {

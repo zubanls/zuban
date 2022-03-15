@@ -23,7 +23,7 @@ pub enum ClassLike<'db, 'a> {
     FunctionType(Function<'db, 'a>),
     Type(Class<'db, 'a>),
     TypeWithGenericPart(&'a GenericPart),
-    TypingClass(TypingClass<'db>),
+    TypingClass(TypingClass),
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
