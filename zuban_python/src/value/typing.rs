@@ -259,7 +259,7 @@ impl<'a> TupleClass<'a> {
     }
 
     pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
-        format!("Tuple{}", &self.content.as_string(db, style))
+        format!("tuple{}", &self.content.as_string(db, style))
     }
 }
 
@@ -269,7 +269,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn name(&self) -> &'db str {
-        "Tuple"
+        "tuple"
     }
 
     fn lookup_internal(
@@ -310,7 +310,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn name(&self) -> &'db str {
-        "Tuple"
+        "tuple"
     }
 
     fn lookup_internal(

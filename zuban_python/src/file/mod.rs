@@ -662,10 +662,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let p = inference
                         .infer_annotation_expression_class(expression)
                         .as_generic_part(self.i_s);
-                    Inferred::create_instance(
-                        self.i_s.database.python_state.builtins_point_link("tuple"),
-                        Some(&[p]),
-                    )
+                    Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
+                        GenericPart::Tuple(TupleContent {
+                            generics: Some(GenericsList::new(Box::new([p]))),
+                            arbitrary_length: true,
+                        }),
+                    )))
                 }
                 SimpleParamType::MultiKwargs => {
                     let p = inference

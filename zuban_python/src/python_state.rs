@@ -93,8 +93,10 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
     set_typing_inference(typing, "Tuple", Specific::TypingTuple);
+    set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
+    set_typing_inference(builtins, "type", Specific::TypingType);
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
     set_typing_inference(typing, "Union", Specific::TypingUnion);
     set_typing_inference(typing, "Optional", Specific::TypingOptional);
@@ -115,12 +117,12 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     setup_type_alias(builtins, "SupportsIndex", builtins, "int")
 }
 
-fn set_typing_inference(typing: &PythonFile, name: &str, specific: Specific) {
-    let node_index = typing.symbol_table.lookup_symbol(name).unwrap();
-    if name != "cast" {
-        debug_assert!(!typing.points.get(node_index).calculated());
+fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
+    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    if !["cast", "type", "tuple"].contains(&name) {
+        debug_assert!(!file.points.get(node_index).calculated());
     }
-    typing.points.set(
+    file.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
