@@ -76,11 +76,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .out
                 .trim()
                 .split("\n")
-                .map(|s| {
-                    REPLACE_TUPLE
-                        .replace_all(s, TypeStuffReplacer())
-                        .into_owned()
-                })
+                .map(|s| cleanup_mypy_issues(s))
                 .collect::<Vec<_>>();
 
             if specified_lines == [""] {
@@ -230,15 +226,26 @@ impl Iterator for ErrorCommentsOnCode<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         for (i, line) in &mut self.1 {
             if let Some(pos) = line.find("# E: ") {
-                let out = REPLACE_TUPLE.replace_all(&line[pos + 5..], TypeStuffReplacer());
+                let out = cleanup_mypy_issues(&line[pos + 5..]);
                 return Some(format!("{}:{}: error: {}", self.0, i + 1, &out));
             }
             if let Some(pos) = line.find("# N: ") {
-                let out = REPLACE_TUPLE.replace_all(&line[pos + 5..], TypeStuffReplacer());
+                let out = cleanup_mypy_issues(&line[pos + 5..]);
                 return Some(format!("{}:{}: note: {}", self.0, i + 1, &out));
             }
         }
         None
+    }
+}
+
+fn cleanup_mypy_issues(s: &str) -> String {
+    let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
+    if s.contains("Revealed type is") {
+        // For now just skip stars, it's weird. See also
+        // https://stackoverflow.com/questions/50498575/what-does-the-asterisk-in-the-output-of-reveal-type-mean
+        s.replace("*", "")
+    } else {
+        s.into_owned()
     }
 }
 
