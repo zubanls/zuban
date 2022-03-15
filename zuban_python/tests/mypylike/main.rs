@@ -19,6 +19,7 @@ lazy_static::lazy_static! {
         r"(?: ([^\]]*))?\][ \t]*\n"
     )).unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
+    static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -57,7 +58,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             .unwrap_or(false)
         {
             // For now skip Python tests < 3.9, because it looks like we won't support them.
-            dbg!("Skipped", self.file_name);
+            println!("Skipped: {}, because {:?}", self.file_name, steps.flags);
             return;
         }
 
@@ -71,12 +72,16 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
-            let mut specified_lines = step
-                .out
+            let mut specified_lines = REPLACE_TUPLE
+                .replace_all(step.out, "builtins.tuple")
                 .trim()
                 .split("\n")
                 .map(|s| s.to_owned())
                 .collect::<Vec<_>>();
+
+            if specified_lines == [""] {
+                specified_lines.pop();
+            }
 
             for (&path, &code) in &step.files {
                 specified_lines.extend(ErrorCommentsOnCode(path, code.split("\n").enumerate()));
@@ -98,7 +103,11 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
             let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
             let mut actual_lines = actual.trim().split("\n").collect::<Vec<_>>();
+            if actual_lines == [""] {
+                actual_lines.pop();
+            }
             actual_lines.sort();
+
             assert_eq!(
                 actual_lines,
                 specified_lines,

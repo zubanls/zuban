@@ -121,7 +121,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
-            Self::AnyType => "Type[Any]".to_owned(),
+            // TODO this does not respect formatstyle
+            Self::AnyType => "builtins.type".to_owned(),
         }
     }
 
