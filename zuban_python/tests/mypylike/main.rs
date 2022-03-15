@@ -72,11 +72,15 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
-            let mut specified_lines = REPLACE_TUPLE
-                .replace_all(step.out, TypeStuffReplacer())
+            let mut specified_lines = step
+                .out
                 .trim()
                 .split("\n")
-                .map(|s| s.to_owned())
+                .map(|s| {
+                    REPLACE_TUPLE
+                        .replace_all(s, TypeStuffReplacer())
+                        .into_owned()
+                })
                 .collect::<Vec<_>>();
 
             if specified_lines == [""] {
@@ -226,10 +230,12 @@ impl Iterator for ErrorCommentsOnCode<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         for (i, line) in &mut self.1 {
             if let Some(pos) = line.find("# E: ") {
-                return Some(format!("{}:{}: error: {}", self.0, i + 1, &line[pos + 5..]));
+                let out = REPLACE_TUPLE.replace_all(&line[pos + 5..], TypeStuffReplacer());
+                return Some(format!("{}:{}: error: {}", self.0, i + 1, &out));
             }
             if let Some(pos) = line.find("# N: ") {
-                return Some(format!("{}:{}: note: {}", self.0, i + 1, &line[pos + 5..]));
+                let out = REPLACE_TUPLE.replace_all(&line[pos + 5..], TypeStuffReplacer());
+                return Some(format!("{}:{}: note: {}", self.0, i + 1, &out));
             }
         }
         None
