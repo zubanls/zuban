@@ -304,7 +304,14 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
             TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
         if let Some(expr) = annotation {
             let i_s = &mut i_s.with_annotation_instance();
-            if contains_type_vars(self.reference.file, &expr) {
+            // We check first if type vars are involved, because if they aren't we can reuse the
+            // annotation expression cache instead of recalculating.
+            if func_type_vars.is_some()
+                || self
+                    .class
+                    .map(|c| !c.class_infos(i_s).type_vars.is_empty())
+                    .unwrap_or(false)
+            {
                 // TODO this could also be a tuple...
                 debug!(
                     "Inferring generics for {}{}",
@@ -514,19 +521,6 @@ impl<'db> InferrableParam<'db, '_> {
             ParamInput::None => None,
         }
     }
-}
-
-#[inline]
-fn contains_type_vars(file: &PythonFile, expr: &Expression) -> bool {
-    for n in expr.search_names() {
-        if matches!(
-            file.points.get(n.index()).maybe_specific(),
-            Some(Specific::ClassTypeVar | Specific::FunctionTypeVar)
-        ) {
-            return true;
-        }
-    }
-    false
 }
 
 #[derive(Debug)]
