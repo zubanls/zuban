@@ -508,12 +508,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_index: TypeVarIndex,
-        class: GenericPart,
+        class: GenericOption<'db, '_>,
     ) {
         self.calculated_type_vars
             .as_mut()
             .unwrap()
-            .set_generic(type_var_index, class);
+            .set_generic(type_var_index, class.into_generic_part(i_s));
     }
 
     pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -666,23 +666,26 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             if let Self::Union(list2) = other {
                 list1.extend(list2);
             } else {
-                list1.push(other.as_generic_part(i_s));
+                list1.push(other.into_generic_part(i_s));
             }
             Self::Union(list1)
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
-            GenericOption::Union(vec![self.as_generic_part(i_s), other.as_generic_part(i_s)])
+            GenericOption::Union(vec![
+                self.into_generic_part(i_s),
+                other.into_generic_part(i_s),
+            ])
         }
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn into_generic_part(self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
         match self {
             Self::ClassLike(class_like) => class_like.as_generic_part(i_s),
             Self::TypeVar(type_var_index, node_ref) => {
-                GenericPart::TypeVar(*type_var_index, node_ref.as_link())
+                GenericPart::TypeVar(type_var_index, node_ref.as_link())
             }
-            Self::Union(_) => unreachable!(),
+            Self::Union(list) => GenericPart::Union(GenericsList::from_vec(list)),
             Self::None => GenericPart::None,
             Self::Any => GenericPart::Any,
             Self::Unknown => todo!(),
@@ -699,19 +702,18 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher),
             Self::TypeVar(type_var_index, node_ref) => match value_class {
                 GenericOption::ClassLike(class) => {
-                    let generic = class.as_generic_part(i_s);
                     if let Some(matcher) = matcher {
-                        matcher.add_type_var_class(i_s, *type_var_index, generic);
+                        let generic = class.as_generic_part(i_s);
+                        matcher.add_type_var_class(i_s, *type_var_index, value_class);
                     }
                     true
                 }
                 GenericOption::TypeVar(_, _) | GenericOption::Unknown => {
                     todo!("{:?}", value_class)
                 }
-                GenericOption::Union(list) => {
-                    let generic = GenericPart::Union(GenericsList::from_vec(list));
+                GenericOption::Union(ref list) => {
                     if let Some(matcher) = matcher {
-                        matcher.add_type_var_class(i_s, *type_var_index, generic);
+                        matcher.add_type_var_class(i_s, *type_var_index, value_class);
                     }
                     true
                 }
@@ -719,7 +721,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     todo!()
                 }
                 GenericOption::None => {
-                    //matcher.add_type_var_class(i_s, *type_var_index, GenericPart::None)
+                    //matcher.add_type_var_class(i_s, *type_var_index, value_class)
                     todo!()
                 }
             },
@@ -746,12 +748,15 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                             );
                     }*/
                     if let Some(type_var_index) = type_var_index {
-                        let g = match list2.len() {
-                            0 => unreachable!(),
-                            1 => list2.into_iter().next().unwrap(),
-                            _ => GenericPart::Union(GenericsList::from_vec(list2)),
-                        };
                         if let Some(matcher) = matcher {
+                            let g = match list2.len() {
+                                0 => unreachable!(),
+                                1 => GenericOption::from_generic_part(
+                                    i_s.database,
+                                    list2.iter().next().unwrap(),
+                                ),
+                                _ => GenericOption::Union(list2),
+                            };
                             matcher.add_type_var_class(i_s, type_var_index, g);
                         }
                         true

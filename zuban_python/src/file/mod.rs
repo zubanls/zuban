@@ -553,7 +553,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
                             let generic = union
                                 .class_as_generic_option(self.i_s)
-                                .as_generic_part(self.i_s);
+                                .into_generic_part(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.database.python_state.list().as_link(),
                                 Some(GenericsList::new(Box::new([generic]))),
