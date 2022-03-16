@@ -774,9 +774,9 @@ impl GenericPart {
         }
     }
 
-    pub fn maybe_type_var_index(&self) -> Option<TypeVarIndex> {
+    pub fn maybe_type_var_index(&self) -> Option<(TypeVarIndex, PointLink)> {
         match self {
-            Self::TypeVar(index, _) => Some(*index),
+            Self::TypeVar(index, link) => Some((*index, *link)),
             _ => None,
         }
     }
