@@ -870,7 +870,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     })
                     .collect(),
             )),
-            Self::None => todo!(),
+            Self::None => GenericPart::None,
             Self::Any => todo!(),
             Self::Unknown => GenericPart::Unknown,
         }

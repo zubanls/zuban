@@ -72,3 +72,5 @@ testDunderCallAddition
 # check-generic-alias test stuff
 testGenericAliasImportRe
 testGenericAliasCollectionsABCReveal
+# check-generics
+testGenericMethodReturnType

@@ -5,7 +5,11 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
-const USE_MYPY_TEST_FILES: [&str; 2] = ["fine-grained.test", "check-generic-alias.test"];
+const USE_MYPY_TEST_FILES: [&str; 3] = [
+    "fine-grained.test",
+    "check-generic-alias.test",
+    "check-generics.test",
+];
 
 const BASE_PATH: &str = "/mypylike/";
 
@@ -352,6 +356,8 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
             .map(|res| res.map(|e| e.path()).unwrap()),
     );
 
+    entries.sort();
+
     // Include mypy tests
     for name in USE_MYPY_TEST_FILES {
         let mut path = base.clone();
@@ -359,7 +365,6 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
         entries.push(path);
     }
 
-    entries.sort();
     entries
 }
 
