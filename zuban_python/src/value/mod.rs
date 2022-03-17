@@ -95,10 +95,10 @@ impl<'db> IteratorContent<'db, '_> {
         match self {
             Self::Inferred(inferred) => inferred,
             Self::ListLiteral(list, _) => {
-                let g = list.generic_part(i_s).clone();
-                Inferred::execute_generic_part(i_s, g)
+                let g = list.db_type(i_s).clone();
+                Inferred::execute_db_type(i_s, g)
             }
-            Self::TupleGenerics(generics) => Inferred::execute_generic_part(
+            Self::TupleGenerics(generics) => Inferred::execute_db_type(
                 i_s,
                 generics.fold(DbType::Unknown, |a, b| a.union(b.clone())),
             ),
@@ -109,9 +109,7 @@ impl<'db> IteratorContent<'db, '_> {
     pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
             Self::Inferred(inferred) => None,
-            Self::TupleGenerics(t) => t
-                .next()
-                .map(|g| Inferred::execute_generic_part(i_s, g.clone())),
+            Self::TupleGenerics(t) => t.next().map(|g| Inferred::execute_db_type(i_s, g.clone())),
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
                     StarLikeExpression::NamedExpression(named_expr) => {

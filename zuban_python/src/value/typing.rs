@@ -365,7 +365,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     ) -> IteratorContent<'db, 'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
-                IteratorContent::Inferred(Inferred::execute_generic_part(
+                IteratorContent::Inferred(Inferred::execute_db_type(
                     i_s,
                     generics.nth(TypeVarIndex::new(0)).unwrap().clone(),
                 ))
@@ -396,9 +396,9 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         .generics
                         .as_ref()
                         .and_then(|generics| {
-                            generics.nth(TypeVarIndex::new(index)).map(|generic_part| {
-                                Inferred::execute_generic_part(i_s, generic_part.clone())
-                            })
+                            generics
+                                .nth(TypeVarIndex::new(index))
+                                .map(|db_type| Inferred::execute_db_type(i_s, db_type.clone()))
                         })
                         .unwrap_or_else(Inferred::new_unknown)
                 };
@@ -466,15 +466,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
 pub struct TypingType<'db, 'a> {
     database: &'db Database,
-    pub generic_part: &'a DbType,
+    pub db_type: &'a DbType,
 }
 
 impl<'db, 'a> TypingType<'db, 'a> {
-    pub fn new(database: &'db Database, generic_part: &'a DbType) -> Self {
-        Self {
-            database,
-            generic_part,
-        }
+    pub fn new(database: &'db Database, db_type: &'a DbType) -> Self {
+        Self { database, db_type }
     }
 }
 
@@ -500,7 +497,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::TypeWithDbType(self.generic_part))
+        Some(ClassLike::TypeWithDbType(self.db_type))
     }
 }
 
@@ -508,9 +505,9 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
             .field(
-                "generic_part",
+                "db_type",
                 &self
-                    .generic_part
+                    .db_type
                     .as_type_string(self.database, None, FormatStyle::Short),
             )
             .finish()
@@ -550,7 +547,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
             .next()
             .map(|arg| {
                 let g = arg.infer(i_s).as_db_type(i_s);
-                Inferred::execute_generic_part(i_s, g)
+                Inferred::execute_db_type(i_s, g)
             })
             .unwrap_or_else(|| todo!())
     }
@@ -695,7 +692,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         }
         let mut finder =
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
-        let g_o = Type::from_generic_part(i_s.database, &self.content.return_class);
+        let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, &mut finder)
     }
 
@@ -774,16 +771,13 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
 
 #[derive(Debug)]
 pub struct TypeVarInstance<'db, 'a> {
-    generic_part: &'a DbType,
+    db_type: &'a DbType,
     node_ref: NodeRef<'db>,
 }
 
 impl<'db, 'a> TypeVarInstance<'db, 'a> {
-    pub fn new(generic_part: &'a DbType, node_ref: NodeRef<'db>) -> Self {
-        Self {
-            generic_part,
-            node_ref,
-        }
+    pub fn new(db_type: &'a DbType, node_ref: NodeRef<'db>) -> Self {
+        Self { db_type, node_ref }
     }
 }
 
@@ -805,6 +799,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeWithDbType(self.generic_part)
+        ClassLike::TypeWithDbType(self.db_type)
     }
 }

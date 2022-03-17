@@ -37,7 +37,7 @@ impl<'db> ListLiteral<'db> {
         )
     }
 
-    pub fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
+    pub fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
         self.generic_list(i_s).nth(TypeVarIndex::new(0)).unwrap()
     }
 
@@ -209,7 +209,7 @@ impl<'db> DictLiteral<'db> {
         )
     }
 
-    fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+    fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
         let reference = self.node_reference.add_to_node_index(1);
         if reference.point().calculated() {
             match reference.complex().unwrap() {
@@ -223,12 +223,11 @@ impl<'db> DictLiteral<'db> {
                 match child {
                     DictElement::KeyValue(key_value) => {
                         keys.union_in_place(
-                            self.infer_expr(i_s, key_value.key())
-                                .as_class_generic_part(i_s),
+                            self.infer_expr(i_s, key_value.key()).as_class_db_type(i_s),
                         );
                         values.union_in_place(
                             self.infer_expr(i_s, key_value.value())
-                                .as_class_generic_part(i_s),
+                                .as_class_db_type(i_s),
                         );
                     }
                     DictElement::DictStarred(_) => {
@@ -248,7 +247,7 @@ impl<'db> DictLiteral<'db> {
                 self.dict_node().short_debug(),
                 &self.class(i_s).as_string(i_s, FormatStyle::Short),
             );
-            self.generic_part(i_s)
+            self.db_type(i_s)
         }
     }
 }
@@ -330,12 +329,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
             i_s.database.python_state.builtins_point_link("dict"),
         );
         ClassLike::Class(
-            Class::from_position(
-                node_reference,
-                Generics::new_list(self.generic_part(i_s)),
-                None,
-            )
-            .unwrap(),
+            Class::from_position(node_reference, Generics::new_list(self.db_type(i_s)), None)
+                .unwrap(),
         )
     }
 }

@@ -87,7 +87,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn execute_generic_part(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
+    pub fn execute_db_type(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
             DbType::Class(link) => {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(link, None))
@@ -97,10 +97,9 @@ impl<'db> Inferred<'db> {
             }
             DbType::Union(multiple) => {
                 let mut multiple = multiple.iter();
-                let mut inferred =
-                    Self::execute_generic_part(i_s, multiple.next().unwrap().clone());
+                let mut inferred = Self::execute_db_type(i_s, multiple.next().unwrap().clone());
                 for m in multiple {
-                    inferred = inferred.union(Self::execute_generic_part(i_s, m.clone()));
+                    inferred = inferred.union(Self::execute_db_type(i_s, m.clone()));
                 }
                 return inferred;
             }
@@ -131,7 +130,7 @@ impl<'db> Inferred<'db> {
                 if point.specific() == Specific::ClassTypeVar {
                     if let Some(class) = i_s.current_class {
                         let g = class.generics().nth(i_s, index);
-                        return Inferred::execute_generic_part(i_s, g);
+                        return Inferred::execute_db_type(i_s, g);
                     }
                 }
                 InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
@@ -207,7 +206,7 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn as_class_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_class_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.class(i_s).as_db_type(i_s),

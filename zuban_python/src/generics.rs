@@ -230,10 +230,10 @@ impl<'db> GenericsIterator<'db, '_> {
             }
             Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
                 let g = replace_class_vars!(i_s, g, type_var_generics);
-                callable(i_s, Type::from_generic_part(i_s.database, &g))
+                callable(i_s, Type::from_db_type(i_s.database, &g))
             }),
             Self::DbType(g) => {
-                let result = Some(callable(i_s, Type::from_generic_part(i_s.database, g)));
+                let result = Some(callable(i_s, Type::from_db_type(i_s.database, g)));
                 *self = Self::None;
                 result
             }
@@ -410,7 +410,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(argument) = param.argument {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_type(i_s);
-                        let m = Type::from_generic_part(i_s.database, param.param_type).matches(
+                        let m = Type::from_db_type(i_s.database, param.param_type).matches(
                             i_s,
                             Some(self),
                             value_class,
@@ -457,14 +457,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             self.calculated_type_vars
                 .as_mut()
                 .unwrap()
-                .set_generic(type_var_index, class.into_generic_part(i_s));
+                .set_generic(type_var_index, class.into_db_type(i_s));
             true
         } else if specific == Specific::ClassTypeVar {
             match self.func_or_callable {
                 FunctionOrCallable::Function(f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_index);
                     // TODO nth should return a type instead of DbType
-                    let g = Type::from_generic_part(i_s.database, &g);
+                    let g = Type::from_db_type(i_s.database, &g);
                     g.matches(i_s, Some(self), class)
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -586,8 +586,8 @@ pub enum Type<'db, 'a> {
 }
 
 impl<'db, 'a> Type<'db, 'a> {
-    pub fn from_generic_part(database: &'db Database, generic_part: &'a DbType) -> Self {
-        match generic_part {
+    pub fn from_db_type(database: &'db Database, db_type: &'a DbType) -> Self {
+        match db_type {
             DbType::Class(link) => {
                 let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -607,7 +607,7 @@ impl<'db, 'a> Type<'db, 'a> {
             DbType::TypeVar(index, link) => {
                 Self::TypeVar(*index, NodeRef::from_link(database, *link))
             }
-            DbType::Type(generic_part) => Self::ClassLike(ClassLike::TypeWithDbType(generic_part)),
+            DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
             DbType::Callable(content) => {
                 Self::ClassLike(ClassLike::Callable(CallableClass::new(content)))
@@ -620,20 +620,17 @@ impl<'db, 'a> Type<'db, 'a> {
             if let Self::Union(list2) = other {
                 list1.extend(list2);
             } else {
-                list1.push(other.into_generic_part(i_s));
+                list1.push(other.into_db_type(i_s));
             }
             Self::Union(list1)
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
-            Type::Union(vec![
-                self.into_generic_part(i_s),
-                other.into_generic_part(i_s),
-            ])
+            Type::Union(vec![self.into_db_type(i_s), other.into_db_type(i_s)])
         }
     }
 
-    pub fn into_generic_part(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::TypeVar(type_var_index, node_ref) => {
@@ -697,17 +694,17 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                     /*
                     if type_var_content.is_some() {
-                            Type::from_generic_part(i_s.database, g1).matches(
+                            Type::from_db_type(i_s.database, g1).matches(
                                 i_s,
                                 matcher,
-                                Type::from_generic_part(i_s.database, g2),
+                                Type::from_db_type(i_s.database, g2),
                             );
                     }*/
                     if let Some((type_var_index, link)) = type_var_content {
                         if let Some(matcher) = matcher {
                             let g = match list2.len() {
                                 0 => unreachable!(),
-                                1 => Type::from_generic_part(i_s.database, &list2[0]),
+                                1 => Type::from_db_type(i_s.database, &list2[0]),
                                 _ => Type::Union(list2),
                             };
                             let node_ref = NodeRef::from_link(i_s.database, link);
@@ -722,7 +719,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 _ => list1.iter().any(|g| {
-                    Type::from_generic_part(i_s.database, g).matches(
+                    Type::from_db_type(i_s.database, g).matches(
                         i_s,
                         matcher.as_deref_mut(),
                         value_class.clone(),
@@ -758,12 +755,12 @@ impl<'db, 'a> Type<'db, 'a> {
         class: Option<&Class<'db, '_>>,
         function_matcher: &mut TypeVarMatcher<'db, '_>,
     ) -> Inferred<'db> {
-        let generic_part = self.internal_resolve_type_vars(i_s, class, function_matcher);
+        let db_type = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
             "Resolved type vars: {}",
-            generic_part.as_type_string(i_s.database, None, FormatStyle::Short)
+            db_type.as_type_string(i_s.database, None, FormatStyle::Short)
         );
-        Inferred::execute_generic_part(i_s, generic_part)
+        Inferred::execute_db_type(i_s, db_type)
     }
 
     fn internal_resolve_type_vars(
@@ -875,14 +872,14 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => {
                 let g = c.as_db_type(i_s);
-                Some(Inferred::execute_generic_part(i_s, g))
+                Some(Inferred::execute_db_type(i_s, g))
             }
             Self::Union(list) => Some(Inferred::gather_union(|callable| {
-                for generic_part in list.iter() {
-                    callable(Inferred::execute_generic_part(i_s, generic_part.clone()))
+                for db_type in list.iter() {
+                    callable(Inferred::execute_db_type(i_s, db_type.clone()))
                 }
             })),
-            Self::TypeVar(index, node_ref) => Some(Inferred::execute_generic_part(
+            Self::TypeVar(index, node_ref) => Some(Inferred::execute_db_type(
                 i_s,
                 DbType::TypeVar(*index, node_ref.as_link()),
             )),

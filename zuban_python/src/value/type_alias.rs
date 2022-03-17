@@ -54,7 +54,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
         let replaced = self
             .alias
-            .generic_part
+            .db_type
             .clone()
             .replace_type_vars(&mut |index, link| given_generics.nth(i_s, index));
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(replaced)))

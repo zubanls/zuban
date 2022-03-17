@@ -637,9 +637,9 @@ impl DbType {
                 }
                 NodeRef::from_link(db, *link).as_name().as_str().to_owned()
             }
-            Self::Type(generic_part) => format!(
+            Self::Type(db_type) => format!(
                 "Type[{}]",
-                generic_part.as_type_string(db, type_var_generics, style)
+                db_type.as_type_string(db, type_var_generics, style)
             ),
             Self::Tuple(content) => format!("Tuple{}", &content.as_string(db, style)),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db, style)),
@@ -669,10 +669,10 @@ impl DbType {
                 todo!()
             }
             Self::TypeVar(type_var_index, link) => callable(type_var_index, link),
-            Self::Type(mut generic_part) => {
-                let g = std::mem::replace(&mut *generic_part, DbType::Unknown);
-                *generic_part = g.replace_type_vars(callable);
-                Self::Type(generic_part)
+            Self::Type(mut db_type) => {
+                let g = std::mem::replace(&mut *db_type, DbType::Unknown);
+                *db_type = g.replace_type_vars(callable);
+                Self::Type(db_type)
             }
             Self::Tuple(mut content) => {
                 if let Some(generics) = content.generics.as_mut() {
@@ -728,9 +728,7 @@ impl DbType {
             }
             Self::Union(list) => Self::Union(remap_generics(list)),
             Self::TypeVar(index, _) => resolve_type_var(*index),
-            Self::Type(generic_part) => {
-                Self::Type(Box::new(generic_part.remap_type_vars(resolve_type_var)))
-            }
+            Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
         }
@@ -756,7 +754,7 @@ impl DbType {
                     }
                 }
             }
-            Self::Type(generic_part) => generic_part.scan_for_late_bound_type_vars(db, result),
+            Self::Type(db_type) => db_type.scan_for_late_bound_type_vars(db, result),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
                     generics.scan_for_late_bound_type_vars(db, result)
@@ -863,7 +861,7 @@ impl CallableContent {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: Box<[PointLink]>,
-    pub generic_part: DbType,
+    pub db_type: DbType,
 }
 
 pub struct Database {

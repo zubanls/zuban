@@ -464,7 +464,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.infer_assignment_right_side(right_side)
                     } else {
                         let g = self.infer_annotation_string(s.to_owned());
-                        Inferred::execute_generic_part(self.i_s, g)
+                        Inferred::execute_db_type(self.i_s, g)
                     }
                 } else {
                     self.infer_assignment_right_side(right_side)
@@ -549,7 +549,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 }
                             });
 
-                            let generic = union.class_as_type(self.i_s).into_generic_part(self.i_s);
+                            let generic = union.class_as_type(self.i_s).into_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.database.python_state.list().as_link(),
                                 Some(GenericsList::new(Box::new([generic]))),
@@ -639,7 +639,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias {
                         type_vars: type_vars.into_boxed_slice(),
-                        generic_part: self.infer_expression(expr).as_db_type(self.i_s),
+                        db_type: self.infer_expression(expr).as_db_type(self.i_s),
                     })))
                 }
             }
@@ -925,17 +925,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut generics = vec![];
                 for e in tuple.iter() {
                     match e {
-                        StarLikeExpression::NamedExpression(e) => generics.push(
-                            self.infer_named_expression(e)
-                                .as_class_generic_part(self.i_s),
-                        ),
+                        StarLikeExpression::NamedExpression(e) => {
+                            generics.push(self.infer_named_expression(e).as_class_db_type(self.i_s))
+                        }
                         StarLikeExpression::StarNamedExpression(e) => {
                             let inferred = self.infer_expression_part(e.expression_part());
                             let mut iterator =
                                 inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
                             if iterator.len().is_some() {
                                 while let Some(inf) = iterator.next(self.i_s) {
-                                    generics.push(inf.as_class_generic_part(self.i_s))
+                                    generics.push(inf.as_class_db_type(self.i_s))
                                 }
                             } else {
                                 todo!()
@@ -1200,15 +1199,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            let generic_part = file
+            let db_type = file
                 .inference(self.i_s)
                 .infer_annotation_expression_class(expr)
                 .as_db_type(self.i_s);
             debug!(
                 "Inferred annotation string as {}",
-                generic_part.as_type_string(self.i_s.database, None, FormatStyle::Short)
+                db_type.as_type_string(self.i_s.database, None, FormatStyle::Short)
             );
-            return generic_part;
+            return db_type;
         }
         debug!("Found non-expression in annotation: {}", file.tree.code());
         DbType::Unknown
