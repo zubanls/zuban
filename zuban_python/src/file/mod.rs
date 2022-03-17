@@ -775,38 +775,43 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .is_some()
         {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
-        } else if let Some(i) = inferred.as_type(self.i_s).maybe_execute(self.i_s) {
-            return i.save_redirect(self.file, expr.index());
         } else {
-            let node_ref = NodeRef::new(self.file, expr.index());
-            if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::ValidType(format!(
-                        "Function {:?} is not valid as a type",
-                        func.qualified_name(i_s.database),
-                    )),
-                );
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::Note(
-                        "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
-                    ),
-                )
-            } else if let Some(module) =
-                inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
-            {
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::ValidType(format!(
-                        "Module {:?} is not valid as a type",
-                        module.qualified_name(i_s.database),
-                    )),
-                );
+            let type_ = inferred.as_type(self.i_s);
+            if let Some(i) = type_.maybe_execute(self.i_s) {
+                return i.save_redirect(self.file, expr.index());
             } else {
-                debug!("Unknown annotation expression {}", expr.short_debug());
+                let node_ref = NodeRef::new(self.file, expr.index());
+                if let Some(func) =
+                    inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned())
+                {
+                    node_ref.add_typing_issue(
+                        i_s.database,
+                        IssueType::ValidType(format!(
+                            "Function {:?} is not valid as a type",
+                            func.qualified_name(i_s.database),
+                        )),
+                    );
+                    node_ref.add_typing_issue(
+                        i_s.database,
+                        IssueType::Note(
+                            "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
+                        ),
+                    )
+                } else if let Some(module) =
+                    inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
+                {
+                    node_ref.add_typing_issue(
+                        i_s.database,
+                        IssueType::ValidType(format!(
+                            "Module {:?} is not valid as a type",
+                            module.qualified_name(i_s.database),
+                        )),
+                    );
+                } else {
+                    debug!("Unknown annotation expression {}", expr.short_debug());
+                }
+                Point::new_unknown(self.file.file_index(), Locality::Todo)
             }
-            Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         Inferred::new_and_save(self.file, expr.index(), point)
     }
