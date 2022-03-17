@@ -37,7 +37,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }
                             SimpleStmtContent::StarExpressions(star_exprs) => {
                                 let inf = self.infer_star_expressions(star_exprs);
-                                inf.as_generic_option(self.i_s);
+                                inf.as_type(self.i_s);
                             }
                             SimpleStmtContent::ReturnStmt(return_stmt) => {
                                 self.calc_return_stmt_diagnostics(func, return_stmt)
@@ -155,16 +155,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             if let Some(expr) = func.return_annotation() {
                 let inf = self.infer_star_expressions(return_stmt.star_expressions());
                 let inf_annot = self.infer_annotation_expression_class(expr);
-                inf_annot.as_generic_option(self.i_s).error_if_not_matches(
-                    self.i_s,
-                    &inf,
-                    |t1, t2| {
+                inf_annot
+                    .as_type(self.i_s)
+                    .error_if_not_matches(self.i_s, &inf, |t1, t2| {
                         NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
                             self.i_s.database,
                             IssueType::IncompatibleReturn(t1, t2),
                         );
-                    },
-                );
+                    });
             }
         } else {
             todo!()

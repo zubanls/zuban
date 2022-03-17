@@ -478,16 +478,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let inf_annot = self.infer_annotation_expression_class(expr);
                     let right = self.infer_assignment_right_side(right_side);
-                    inf_annot.as_generic_option(self.i_s).error_if_not_matches(
-                        self.i_s,
-                        &right,
-                        |t1, t2| {
+                    inf_annot
+                        .as_type(self.i_s)
+                        .error_if_not_matches(self.i_s, &right, |t1, t2| {
                             NodeRef::new(self.file, annotation.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
-                        },
-                    )
+                        })
                 }
                 let mut found_type_vars = vec![];
                 let class_infos = self.i_s.current_class.map(|c| c.class_infos(self.i_s));
@@ -551,9 +549,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 }
                             });
 
-                            let generic = union
-                                .class_as_generic_option(self.i_s)
-                                .into_generic_part(self.i_s);
+                            let generic = union.class_as_type(self.i_s).into_generic_part(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.database.python_state.list().as_link(),
                                 Some(GenericsList::new(Box::new([generic]))),
@@ -584,14 +580,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                     if let Some(inferred) = self.check_point_cache(first_definition) {
-                        inferred
-                            .class_as_generic_option(self.i_s)
-                            .error_if_not_matches(self.i_s, value, |t1, t2| {
+                        inferred.class_as_type(self.i_s).error_if_not_matches(
+                            self.i_s,
+                            value,
+                            |t1, t2| {
                                 NodeRef::new(self.file, n.index()).add_typing_issue(
                                     self.i_s.database,
                                     IssueType::IncompatibleAssignment(t1, t2),
                                 );
-                            });
+                            },
+                        );
                     }
                     value.clone().save_redirect(self.file, n.index() - 1);
                 } else {
@@ -603,7 +601,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     // TODO here we should do something as well.
                 } else {
                     self.infer_primary_target(primary_target)
-                        .class_as_generic_option(self.i_s)
+                        .class_as_type(self.i_s)
                         .error_if_not_matches(self.i_s, value, |t1, t2| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
                                 self.i_s.database,
@@ -777,7 +775,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .is_some()
         {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
-        } else if let Some(i) = inferred.as_generic_option(self.i_s).maybe_execute(self.i_s) {
+        } else if let Some(i) = inferred.as_type(self.i_s).maybe_execute(self.i_s) {
             return i.save_redirect(self.file, expr.index());
         } else {
             let node_ref = NodeRef::new(self.file, expr.index());

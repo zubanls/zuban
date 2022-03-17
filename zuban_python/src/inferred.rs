@@ -168,7 +168,7 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
+    pub fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
@@ -190,7 +190,7 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn class_as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
+    pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,
             // TODO is this is_none necessary? It was added because None class was not implemented

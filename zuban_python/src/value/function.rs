@@ -249,7 +249,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .infer_annotation_expression_class(annotation.expression())
-                .as_generic_option(i_s)
+                .as_type(i_s)
                 .as_string(i_s, None, style)
         } else {
             result += "Any"
@@ -325,7 +325,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                     .file
                     .inference(i_s)
                     .infer_annotation_expression_class(expr)
-                    .as_generic_option(i_s)
+                    .as_type(i_s)
                     .execute_and_resolve_type_vars(i_s, self.class, &mut finder)
             } else {
                 finder.matches_signature(i_s); // TODO this should be different

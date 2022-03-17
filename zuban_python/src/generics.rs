@@ -212,7 +212,7 @@ impl<'db> GenericsIterator<'db, '_> {
         match self {
             Self::Expression(file, expr) => {
                 let inferred = file.inference(i_s).infer_annotation_expression_class(*expr);
-                let g = inferred.as_generic_option(i_s);
+                let g = inferred.as_type(i_s);
                 let result = callable(i_s, g);
                 *self = GenericsIterator::None;
                 Some(result)
@@ -222,7 +222,7 @@ impl<'db> GenericsIterator<'db, '_> {
                     let inferred = file
                         .inference(i_s)
                         .infer_annotation_expression_class(s.expression());
-                    let g = inferred.as_generic_option(i_s);
+                    let g = inferred.as_type(i_s);
                     Some(callable(i_s, g))
                 } else {
                     None
@@ -248,7 +248,7 @@ impl<'db> GenericsIterator<'db, '_> {
                         let inferred = f
                             .inference(i_s)
                             .infer_annotation_expression_class(a.expression());
-                        let g = inferred.as_generic_option(i_s);
+                        let g = inferred.as_type(i_s);
                         callable(i_s, g)
                     })
                     .unwrap_or_else(|| callable(i_s, Type::None))
@@ -366,15 +366,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             annotation.expression().unpack()
                         {
                             if let Some(value) = p.infer(i_s) {
-                                let value_class = value.class_as_generic_option(i_s);
+                                let value_class = value.class_as_type(i_s);
                                 let inf = function
                                     .reference
                                     .file
                                     .inference(i_s)
                                     .infer_annotation_expression_class(annotation.expression());
-                                let annotation_g = inf.as_generic_option(i_s);
+                                let annotation_g = inf.as_type(i_s);
                                 if !annotation_g.matches(i_s, Some(self), value_class) {
-                                    let value_class = value.class_as_generic_option(i_s);
+                                    let value_class = value.class_as_type(i_s);
                                     p.as_argument_node_reference().add_typing_issue(
                                         i_s.database,
                                         IssueType::ArgumentIssue(format!(
@@ -409,7 +409,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 for param in callable.iter_params_with_args(self.args) {
                     if let Some(argument) = param.argument {
                         let value = argument.infer(i_s);
-                        let value_class = value.class_as_generic_option(i_s);
+                        let value_class = value.class_as_type(i_s);
                         let m = Type::from_generic_part(i_s.database, param.param_type).matches(
                             i_s,
                             Some(self),
@@ -741,11 +741,11 @@ impl<'db, 'a> Type<'db, 'a> {
         value: &Inferred<'db>,
         mut callback: impl FnMut(String, String),
     ) {
-        let value_generic_option = value.class_as_generic_option(i_s);
+        let value_generic_option = value.class_as_type(i_s);
         if !self.matches(i_s, None, value_generic_option) {
             callback(
                 value
-                    .class_as_generic_option(i_s)
+                    .class_as_type(i_s)
                     .as_string(i_s, None, FormatStyle::Short),
                 self.as_string(i_s, None, FormatStyle::Short),
             )
