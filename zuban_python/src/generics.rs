@@ -159,7 +159,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings = vec![];
         let mut i = 0;
-        self.iter().run_on_all_generic_options(i_s, &mut |i_s, g| {
+        self.iter().run_on_all(i_s, &mut |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
                 strings.push(g.as_string(i_s, None, style));
                 i += 1;
@@ -181,15 +181,14 @@ impl<'db, 'a> Generics<'db, 'a> {
     ) -> bool {
         let mut value_generics = value_generics.iter();
         let mut matches = true;
-        self.iter()
-            .run_on_all_generic_options(i_s, &mut |i_s, generic_option| {
-                let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                    matches &= generic_option.matches(i_s, matcher.as_deref_mut(), g);
-                });
-                if appeared.is_none() {
-                    debug!("Generic not found for: {:?}", generic_option);
-                }
+        self.iter().run_on_all(i_s, &mut |i_s, generic_option| {
+            let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
+                matches &= generic_option.matches(i_s, matcher.as_deref_mut(), g);
             });
+            if appeared.is_none() {
+                debug!("Generic not found for: {:?}", generic_option);
+            }
+        });
         matches
     }
 }
@@ -258,7 +257,7 @@ impl<'db> GenericsIterator<'db, '_> {
         }
     }
 
-    pub fn run_on_all_generic_options(
+    pub fn run_on_all(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>),

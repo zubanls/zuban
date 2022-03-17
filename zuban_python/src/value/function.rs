@@ -233,7 +233,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
         let mut first = true;
         let mut params = self.iter_params();
-        generics.run_on_all_generic_options(i_s, &mut |i_s, g| {
+        generics.run_on_all(i_s, &mut |i_s, g| {
             if !first {
                 result += ", ";
             }
