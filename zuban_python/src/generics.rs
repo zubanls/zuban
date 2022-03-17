@@ -159,7 +159,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings = vec![];
         let mut i = 0;
-        self.iter().run_on_all_generic_options(i_s, |i_s, g| {
+        self.iter().run_on_all_generic_options(i_s, &mut |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
                 strings.push(g.as_string(i_s, None, style));
                 i += 1;
@@ -182,8 +182,8 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut value_generics = value_generics.iter();
         let mut matches = true;
         self.iter()
-            .run_on_all_generic_options(i_s, |i_s, generic_option| {
-                let appeared = value_generics.run_on_next(i_s, |i_s, g| {
+            .run_on_all_generic_options(i_s, &mut |i_s, generic_option| {
+                let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                     matches &= generic_option.matches(i_s, matcher.as_deref_mut(), g);
                 });
                 if appeared.is_none() {
@@ -211,7 +211,7 @@ impl<'db> GenericsIterator<'db, '_> {
     fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        mut callable: impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>) -> T,
     ) -> Option<T> {
         match self {
             Self::Expression(file, expr) => {
@@ -267,60 +267,9 @@ impl<'db> GenericsIterator<'db, '_> {
     pub fn run_on_all_generic_options(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
-        mut callable: impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>),
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>),
     ) {
-        loop {
-            let inferred = match &mut self {
-                Self::Expression(file, expr) => {
-                    let result = file.inference(i_s).infer_annotation_expression_class(*expr);
-                    let g = result.as_generic_option(i_s);
-                    callable(i_s, g);
-                    return;
-                }
-                Self::SliceIterator(file, iter) => {
-                    if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                        // TODO why is this not using callable???
-                        file.inference(i_s)
-                            .infer_annotation_expression_class(s.expression())
-                    } else {
-                        return;
-                    }
-                }
-                Self::GenericsList(iterator, type_var_generics) => {
-                    for g in iterator {
-                        // TODO since this and run_on_next gets used for a lot of mro
-                        // comparisons, we should probably reduce cloning here!!
-                        let g = replace_class_vars!(i_s, g, type_var_generics);
-                        callable(i_s, GenericOption::from_generic_part(i_s.database, &g));
-                    }
-                    return;
-                }
-                Self::GenericPart(g) => {
-                    callable(i_s, GenericOption::from_generic_part(i_s.database, g));
-                    return;
-                }
-                Self::Class(s) => {
-                    todo!();
-                }
-                Self::ParamIterator(f, params) => {
-                    for p in params {
-                        if let Some(annotation) = p.annotation() {
-                            let inferred = f
-                                .inference(i_s)
-                                .infer_annotation_expression_class(annotation.expression());
-                            let g = inferred.as_generic_option(i_s);
-                            callable(i_s, g)
-                        } else {
-                            callable(i_s, GenericOption::None)
-                        }
-                    }
-                    return;
-                }
-                GenericsIterator::None => return,
-            };
-            let generic_option = inferred.as_generic_option(i_s);
-            callable(i_s, generic_option);
-        }
+        while self.run_on_next(i_s, callable).is_some() {}
     }
 }
 
