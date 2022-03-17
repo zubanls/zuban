@@ -154,13 +154,13 @@ impl<'db> Inferred<'db> {
                 v.as_class_like()
                     .map(|c| c.as_db_type(i_s))
                     .unwrap_or_else(|| {
-                        debug!("Generic part not resolvable: {}", v.description(i_s));
+                        debug!("Type not resolvable: {}", v.description(i_s));
                         DbType::Unknown
                     })
             },
             &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
-                debug!("Generic part not found: {}", inf.description(i_s));
+                debug!("Type not found: {}", inf.description(i_s));
                 DbType::Unknown
             },
             &mut |type_var_index, node_ref| DbType::TypeVar(type_var_index, node_ref.as_link()),
@@ -212,7 +212,7 @@ impl<'db> Inferred<'db> {
             &mut |i_s, v| v.class(i_s).as_db_type(i_s),
             &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
-                debug!("Class generic part not found: {}", inf.description(i_s));
+                debug!("Type not found: {}", inf.description(i_s));
                 DbType::Unknown
             },
             &mut |_, _| unreachable!(),
