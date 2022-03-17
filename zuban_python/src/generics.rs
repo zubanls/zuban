@@ -868,24 +868,23 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+    pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
             Self::ClassLike(c) => {
                 let g = c.as_db_type(i_s);
-                Some(Inferred::execute_db_type(i_s, g))
+                Inferred::execute_db_type(i_s, g)
             }
-            Self::Union(list) => Some(Inferred::gather_union(|callable| {
+            Self::Union(list) => Inferred::gather_union(|callable| {
                 for db_type in list.iter() {
                     callable(Inferred::execute_db_type(i_s, db_type.clone()))
                 }
-            })),
-            Self::TypeVar(index, node_ref) => Some(Inferred::execute_db_type(
-                i_s,
-                DbType::TypeVar(*index, node_ref.as_link()),
-            )),
-            Self::None => Some(Inferred::new_unsaved_specific(Specific::None)),
+            }),
+            Self::TypeVar(index, node_ref) => {
+                Inferred::execute_db_type(i_s, DbType::TypeVar(*index, node_ref.as_link()))
+            }
+            Self::None => Inferred::new_unsaved_specific(Specific::None),
             Self::Any => todo!(),
-            Self::Unknown => None,
+            Self::Unknown => unreachable!(), // Was checked earlier
         }
     }
 }

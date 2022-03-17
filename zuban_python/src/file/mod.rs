@@ -15,7 +15,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 use crate::file_state::{File, Leaf};
-use crate::generics::{search_type_vars, search_type_vars_within_possible_class};
+use crate::generics::{search_type_vars, search_type_vars_within_possible_class, Type};
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -777,9 +777,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
         } else {
             let type_ = inferred.as_type(self.i_s);
-            if let Some(i) = type_.maybe_execute(self.i_s) {
-                return i.save_redirect(self.file, expr.index());
-            } else {
+            if matches!(type_, Type::Unknown) {
                 let node_ref = NodeRef::new(self.file, expr.index());
                 if let Some(func) =
                     inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned())
@@ -811,6 +809,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     debug!("Unknown annotation expression {}", expr.short_debug());
                 }
                 Point::new_unknown(self.file.file_index(), Locality::Todo)
+            } else {
+                return type_
+                    .maybe_execute(self.i_s)
+                    .save_redirect(self.file, expr.index());
             }
         };
         Inferred::new_and_save(self.file, expr.index(), point)
