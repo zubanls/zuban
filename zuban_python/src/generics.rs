@@ -161,7 +161,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut i = 0;
         self.iter().run_on_all_generic_options(i_s, |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
-                strings.push(g.as_string(i_s, style));
+                strings.push(g.as_string(i_s, None, style));
                 i += 1;
             }
         });
@@ -439,8 +439,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                             "Argument {} to {} has incompatible type {:?}; expected {:?}",
                                             1,
                                             function.diagnostic_string(),
-                                            value_class.as_string(i_s, FormatStyle::Short),
-                                            annotation_g.as_string(i_s, FormatStyle::Short),
+                                            value_class.as_string(i_s, None, FormatStyle::Short),
+                                            annotation_g.as_string(i_s, Some(function), FormatStyle::Short),
                                         )),
                                     );
                                     self.matches = false;
@@ -809,8 +809,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
             callback(
                 value
                     .class_as_generic_option(i_s)
-                    .as_string(i_s, FormatStyle::Short),
-                self.as_string(i_s, FormatStyle::Short),
+                    .as_string(i_s, None, FormatStyle::Short),
+                self.as_string(i_s, None, FormatStyle::Short),
             )
         }
     }
@@ -899,10 +899,28 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_string(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        func: Option<&Function<'db, '_>>,
+        style: FormatStyle,
+    ) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
-            Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
+            Self::TypeVar(index, node_ref) => {
+                if let Some(func) = func {
+                    if node_ref.point().specific() == Specific::ClassTypeVar {
+                        if let Some(class) = func.class {
+                            return class.generics.nth(i_s, *index).as_type_string(
+                                i_s.database,
+                                None,
+                                style,
+                            );
+                        }
+                    }
+                }
+                node_ref.as_name().as_str().to_owned()
+            }
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
                     a + &b.as_type_string(i_s.database, None, style)

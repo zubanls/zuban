@@ -757,10 +757,11 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let s = arg
-            .infer(i_s)
-            .class_as_generic_option(i_s)
-            .as_string(i_s, FormatStyle::Qualified);
+        let s = arg.infer(i_s).class_as_generic_option(i_s).as_string(
+            i_s,
+            None,
+            FormatStyle::Qualified,
+        );
         args.node_reference().add_typing_issue(
             i_s.database,
             IssueType::Note(format!("Revealed type is {:?}", &s)),
