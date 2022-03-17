@@ -9,7 +9,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, GenericOption, Generics, TypeVarMatcher};
+use crate::generics::{search_type_vars, Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
@@ -31,7 +31,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value_class: GenericOption<'db, '_>,
+        value_class: Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     ) -> bool {
         // Note: we need to handle the MRO _in order_, so we need to extract
@@ -39,7 +39,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // them back in a set afterwards.
         // TODO use type_var_remap
         match value_class {
-            GenericOption::ClassLike(c) => {
+            Type::ClassLike(c) => {
                 for (mro_index, class_like) in c.mro(i_s) {
                     if self.check_match(i_s, matcher.as_deref_mut(), &class_like) {
                         return true;
@@ -56,10 +56,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 false
             }
-            GenericOption::TypeVar(_, node_ref) => todo!(),
-            GenericOption::Union(list) => false,
-            GenericOption::None | GenericOption::Unknown => true, // TODO should be false
-            GenericOption::Any => true,
+            Type::TypeVar(_, node_ref) => todo!(),
+            Type::Union(list) => false,
+            Type::None | Type::Unknown => true, // TODO should be false
+            Type::Any => true,
         }
     }
 
@@ -621,10 +621,10 @@ fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
     original_class: NodeRef<'db>,
     original_type_vars: &[PointLink],
-    generic: GenericOption<'db, '_>,
+    generic: Type<'db, '_>,
 ) -> GenericPart {
     match generic {
-        GenericOption::ClassLike(class) => create_mro_class(
+        Type::ClassLike(class) => create_mro_class(
             i_s,
             original_class,
             original_type_vars,
@@ -633,11 +633,11 @@ fn create_type_var_remap<'db>(
                 _ => todo!(),
             },
         ),
-        GenericOption::TypeVar(type_var_index, reference) => {
+        Type::TypeVar(type_var_index, reference) => {
             GenericPart::TypeVar(type_var_index, reference.as_link())
         }
-        GenericOption::Union(list) => todo!(),
-        GenericOption::Unknown | GenericOption::None | GenericOption::Any => todo!(),
+        Type::Union(list) => todo!(),
+        Type::Unknown | Type::None | Type::Any => todo!(),
     }
 }
 

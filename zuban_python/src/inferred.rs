@@ -9,7 +9,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{GenericOption, Generics};
+use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
@@ -170,45 +170,42 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> GenericOption<'db, '_> {
+    pub fn as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
                 v.as_class_like()
-                    .map(GenericOption::ClassLike)
-                    .or_else(|| v.is_none().then(|| GenericOption::None))
-                    .or_else(|| v.is_any().then(|| GenericOption::Any))
+                    .map(Type::ClassLike)
+                    .or_else(|| v.is_none().then(|| Type::None))
+                    .or_else(|| v.is_any().then(|| Type::Any))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
-                        GenericOption::Unknown
+                        Type::Unknown
                     })
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic option is invalid: {}", inf.description(i_s));
-                GenericOption::Unknown
+                Type::Unknown
             },
-            &mut GenericOption::TypeVar,
+            &mut Type::TypeVar,
         )
     }
 
-    pub fn class_as_generic_option(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> GenericOption<'db, '_> {
+    pub fn class_as_generic_option(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,
             // TODO is this is_none necessary? It was added because None class was not implemented
             &mut |i_s, v| match v.is_none() {
-                true => GenericOption::None,
-                false => GenericOption::ClassLike(v.class(i_s)),
+                true => Type::None,
+                false => Type::ClassLike(v.class(i_s)),
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s, inf| {
                 debug!("Generic class option is unknown: {}", inf.description(i_s));
-                GenericOption::Unknown
+                Type::Unknown
             },
-            &mut GenericOption::TypeVar,
+            &mut Type::TypeVar,
         )
     }
 

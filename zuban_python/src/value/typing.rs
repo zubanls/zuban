@@ -10,7 +10,7 @@ use crate::database::{
     TupleContent, TypeVarIndex,
 };
 use crate::diagnostics::IssueType;
-use crate::generics::{GenericOption, Generics, TypeVarMatcher};
+use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -695,7 +695,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         }
         let mut finder =
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
-        let g_o = GenericOption::from_generic_part(i_s.database, &self.content.return_class);
+        let g_o = Type::from_generic_part(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, &mut finder)
     }
 

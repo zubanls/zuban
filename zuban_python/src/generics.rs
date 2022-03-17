@@ -211,7 +211,7 @@ impl<'db> GenericsIterator<'db, '_> {
     fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>) -> T,
     ) -> Option<T> {
         match self {
             Self::Expression(file, expr) => {
@@ -234,18 +234,15 @@ impl<'db> GenericsIterator<'db, '_> {
             }
             Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
                 let g = replace_class_vars!(i_s, g, type_var_generics);
-                callable(i_s, GenericOption::from_generic_part(i_s.database, &g))
+                callable(i_s, Type::from_generic_part(i_s.database, &g))
             }),
             Self::GenericPart(g) => {
-                let result = Some(callable(
-                    i_s,
-                    GenericOption::from_generic_part(i_s.database, g),
-                ));
+                let result = Some(callable(i_s, Type::from_generic_part(i_s.database, g)));
                 *self = Self::None;
                 result
             }
             Self::Class(s) => {
-                let result = callable(i_s, GenericOption::ClassLike(ClassLike::Class(**s)));
+                let result = callable(i_s, Type::ClassLike(ClassLike::Class(**s)));
                 *self = Self::None;
                 Some(result)
             }
@@ -258,7 +255,7 @@ impl<'db> GenericsIterator<'db, '_> {
                         let g = inferred.as_generic_option(i_s);
                         callable(i_s, g)
                     })
-                    .unwrap_or_else(|| callable(i_s, GenericOption::None))
+                    .unwrap_or_else(|| callable(i_s, Type::None))
             }),
             GenericsIterator::None => None,
         }
@@ -267,7 +264,7 @@ impl<'db> GenericsIterator<'db, '_> {
     pub fn run_on_all_generic_options(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, GenericOption<'db, '_>),
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>),
     ) {
         while self.run_on_next(i_s, callable).is_some() {}
     }
@@ -417,8 +414,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(argument) = param.argument {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_generic_option(i_s);
-                        let m = GenericOption::from_generic_part(i_s.database, param.param_type)
-                            .matches(i_s, Some(self), value_class);
+                        let m = Type::from_generic_part(i_s.database, param.param_type).matches(
+                            i_s,
+                            Some(self),
+                            value_class,
+                        );
                         self.matches &= m;
                     }
                 }
@@ -458,7 +458,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         type_var_index: TypeVarIndex,
         node_ref: NodeRef<'db>,
-        class: GenericOption<'db, '_>,
+        class: Type<'db, '_>,
     ) -> bool {
         let specific = node_ref.point().specific();
         if self.match_specific == specific {
@@ -472,7 +472,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 FunctionOrCallable::Function(f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_index);
                     // TODO nth should return a generic option
-                    let g = GenericOption::from_generic_part(i_s.database, &g);
+                    let g = Type::from_generic_part(i_s.database, &g);
                     g.matches(i_s, Some(self), class)
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -584,7 +584,7 @@ pub fn search_type_vars_within_possible_class<'db>(
 }
 
 #[derive(Debug, Clone)]
-pub enum GenericOption<'db, 'a> {
+pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(TypeVarIndex, NodeRef<'db>),
     Union(Vec<GenericPart>),
@@ -593,7 +593,7 @@ pub enum GenericOption<'db, 'a> {
     Unknown,
 }
 
-impl<'db, 'a> GenericOption<'db, 'a> {
+impl<'db, 'a> Type<'db, 'a> {
     pub fn from_generic_part(database: &'db Database, generic_part: &'a GenericPart) -> Self {
         match generic_part {
             GenericPart::Class(link) => {
@@ -603,8 +603,8 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 ))
             }
             GenericPart::Unknown => Self::Unknown,
-            GenericPart::None => GenericOption::None,
-            GenericPart::Any => GenericOption::Any,
+            GenericPart::None => Type::None,
+            GenericPart::Any => Type::Any,
             GenericPart::GenericClass(link, generics) => {
                 let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -638,7 +638,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
-            GenericOption::Union(vec![
+            Type::Union(vec![
                 self.into_generic_part(i_s),
                 other.into_generic_part(i_s),
             ])
@@ -667,7 +667,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher),
             Self::TypeVar(type_var_index, node_ref) => match value_class {
-                GenericOption::ClassLike(class) => {
+                Type::ClassLike(class) => {
                     if let Some(matcher) = matcher {
                         let generic = class.as_generic_part(i_s);
                         matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
@@ -675,20 +675,20 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                         true
                     }
                 }
-                GenericOption::TypeVar(_, _) | GenericOption::Unknown => {
+                Type::TypeVar(_, _) | Type::Unknown => {
                     todo!("{:?}", value_class)
                 }
-                GenericOption::Union(ref list) => {
+                Type::Union(ref list) => {
                     if let Some(matcher) = matcher {
                         matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
                     } else {
                         true
                     }
                 }
-                GenericOption::Any => {
+                Type::Any => {
                     todo!()
                 }
-                GenericOption::None => {
+                Type::None => {
                     //matcher.match_or_add_type_var(i_s, *type_var_index, node_ref, value_class)
                     todo!()
                 }
@@ -709,18 +709,18 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }
                     /*
                     if type_var_content.is_some() {
-                            GenericOption::from_generic_part(i_s.database, g1).matches(
+                            Type::from_generic_part(i_s.database, g1).matches(
                                 i_s,
                                 matcher,
-                                GenericOption::from_generic_part(i_s.database, g2),
+                                Type::from_generic_part(i_s.database, g2),
                             );
                     }*/
                     if let Some((type_var_index, link)) = type_var_content {
                         if let Some(matcher) = matcher {
                             let g = match list2.len() {
                                 0 => unreachable!(),
-                                1 => GenericOption::from_generic_part(i_s.database, &list2[0]),
-                                _ => GenericOption::Union(list2),
+                                1 => Type::from_generic_part(i_s.database, &list2[0]),
+                                _ => Type::Union(list2),
                             };
                             let node_ref = NodeRef::from_link(i_s.database, link);
                             matcher.match_or_add_type_var(i_s, type_var_index, node_ref, g)
@@ -734,7 +734,7 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                     }
                 }
                 _ => list1.iter().any(|g| {
-                    GenericOption::from_generic_part(i_s.database, g).matches(
+                    Type::from_generic_part(i_s.database, g).matches(
                         i_s,
                         matcher.as_deref_mut(),
                         value_class.clone(),
