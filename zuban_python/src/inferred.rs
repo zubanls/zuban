@@ -148,12 +148,12 @@ impl<'db> Inferred<'db> {
         ))
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
                 v.as_class_like()
-                    .map(|c| c.as_generic_part(i_s))
+                    .map(|c| c.as_db_type(i_s))
                     .unwrap_or_else(|| {
                         debug!("Generic part not resolvable: {}", v.description(i_s));
                         DbType::Unknown
@@ -210,7 +210,7 @@ impl<'db> Inferred<'db> {
     pub fn as_class_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.class(i_s).as_generic_part(i_s),
+            &mut |i_s, v| v.class(i_s).as_db_type(i_s),
             &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
                 debug!("Class generic part not found: {}", inf.description(i_s));

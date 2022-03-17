@@ -26,7 +26,7 @@ impl TypingClass {
         Self { specific }
     }
 
-    pub fn as_generic_part(&self) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         match self.specific {
             Specific::TypingTuple => DbType::Tuple(TupleContent {
                 generics: None,
@@ -84,7 +84,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         TupleContent {
                             generics: Some(GenericsList::new(Box::new([simple
                                 .infer_annotation_class(i_s)
-                                .as_generic_part(i_s)]))),
+                                .as_db_type(i_s)]))),
                             arbitrary_length: false,
                         }
                     }
@@ -100,7 +100,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                                     .filter_map(|slice_content| match slice_content {
                                         SliceOrSimple::Simple(n) => {
                                             let result =
-                                                n.infer_annotation_class(i_s).as_generic_part(i_s);
+                                                n.infer_annotation_class(i_s).as_db_type(i_s);
                                             if let DbType::Unknown = result {
                                                 if n.named_expr.is_ellipsis_literal() {
                                                     arbitrary_length = true;
@@ -140,7 +140,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                                     let mut list = i.iter(i_s, slice_type.as_node_ref());
                                     while let Some(next) = list.next(i_s) {
                                         if let Some(params) = &mut params {
-                                            params.push(next.as_generic_part(i_s));
+                                            params.push(next.as_db_type(i_s));
                                         }
                                     }
                                 }
@@ -149,7 +149,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         });
                         let return_class = iterator
                             .next()
-                            .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
+                            .map(|n| n.infer_annotation_class(i_s).as_db_type(i_s))
                             .unwrap_or(DbType::Unknown);
                         CallableContent {
                             params: params.map(GenericsList::from_vec),
@@ -181,7 +181,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             },
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
-                    let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
+                    let g = simple.infer_annotation_class(i_s).as_db_type(i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                         DbType::Type(Box::new(DbType::Type(Box::new(g)))),
                     )))
@@ -266,7 +266,7 @@ impl<'a> TupleClass<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         DbType::Tuple(self.content.clone())
     }
 
@@ -336,7 +336,7 @@ impl<'a> Tuple<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         DbType::Tuple(self.content.clone())
     }
 }
@@ -549,7 +549,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         args.iter_arguments()
             .next()
             .map(|arg| {
-                let g = arg.infer(i_s).as_generic_part(i_s);
+                let g = arg.infer(i_s).as_db_type(i_s);
                 Inferred::execute_generic_part(i_s, g)
             })
             .unwrap_or_else(|| todo!())
@@ -595,7 +595,7 @@ impl<'a> CallableClass<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         DbType::Callable(self.content.clone())
     }
 
@@ -644,7 +644,7 @@ impl<'a> Callable<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         DbType::Callable(self.content.clone())
     }
 

@@ -509,7 +509,7 @@ impl<'db> InferrableParam<'db, '_> {
             ParamInput::Tuple(args) => {
                 let mut list = vec![];
                 for arg in args.iter() {
-                    list.push(arg.infer(i_s).as_generic_part(i_s))
+                    list.push(arg.infer(i_s).as_db_type(i_s))
                 }
                 let t = TupleContent {
                     generics: Some(GenericsList::from_vec(list)),

@@ -61,7 +61,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 if n.as_usize() == 0 {
                     file.inference(i_s)
                         .infer_annotation_expression_class(*expr)
-                        .as_generic_part(i_s)
+                        .as_db_type(i_s)
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -78,7 +78,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     SliceContent::NamedExpression(n) => file
                         .inference(i_s)
                         .infer_annotation_expression_class(n.expression())
-                        .as_generic_part(i_s),
+                        .as_db_type(i_s),
                     SliceContent::Slice(s) => todo!(),
                 })
                 .unwrap_or(DbType::Unknown),
@@ -123,7 +123,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file
                 .inference(i_s)
                 .infer_annotation_expression_class(*expr)
-                .as_generic_part(i_s)]))),
+                .as_db_type(i_s)]))),
             Self::Slices(file, slices) => Some(GenericsList::new(
                 slices
                     .iter()
@@ -131,7 +131,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         if let SliceContent::NamedExpression(n) = slice {
                             file.inference(i_s)
                                 .infer_annotation_expression_class(n.expression())
-                                .as_generic_part(i_s)
+                                .as_db_type(i_s)
                         } else {
                             todo!()
                         }
@@ -635,7 +635,7 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn into_generic_part(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
-            Self::ClassLike(class_like) => class_like.as_generic_part(i_s),
+            Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::TypeVar(type_var_index, node_ref) => {
                 DbType::TypeVar(type_var_index, node_ref.as_link())
             }
@@ -657,7 +657,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::TypeVar(type_var_index, node_ref) => match value_class {
                 Type::ClassLike(class) => {
                     if let Some(matcher) = matcher {
-                        let generic = class.as_generic_part(i_s);
+                        let generic = class.as_db_type(i_s);
                         matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
                     } else {
                         true
@@ -811,7 +811,7 @@ impl<'db, 'a> Type<'db, 'a> {
 
         match self {
             Self::ClassLike(c) => {
-                c.as_generic_part(i_s)
+                c.as_db_type(i_s)
                     .replace_type_vars(&mut |type_var_index, link| {
                         let node_ref = NodeRef::from_link(i_s.database, link);
                         resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
@@ -874,7 +874,7 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
             Self::ClassLike(c) => {
-                let g = c.as_generic_part(i_s);
+                let g = c.as_db_type(i_s);
                 Some(Inferred::execute_generic_part(i_s, g))
             }
             Self::Union(list) => Some(Inferred::gather_union(|callable| {

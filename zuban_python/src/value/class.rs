@@ -155,15 +155,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
-            Self::Class(c) => c.as_generic_part(i_s),
-            Self::Type(c) => DbType::Type(Box::new(c.as_generic_part(i_s))),
+            Self::Class(c) => c.as_db_type(i_s),
+            Self::Type(c) => DbType::Type(Box::new(c.as_db_type(i_s))),
             Self::TypeWithDbType(g) => DbType::Type(Box::new((*g).clone())),
-            Self::Tuple(t) => t.as_generic_part(),
-            Self::Callable(c) => c.as_generic_part(),
+            Self::Tuple(t) => t.as_db_type(),
+            Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => todo!(),
-            Self::TypingClass(c) => c.as_generic_part(),
+            Self::TypingClass(c) => c.as_db_type(),
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
         }
     }
@@ -429,7 +429,7 @@ impl<'db, 'a> Class<'db, 'a> {
         result
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         let lst = self.generics.as_generics_list(i_s);
         let link = self.reference.as_link();
         lst.map(|lst| DbType::GenericClass(link, lst))
