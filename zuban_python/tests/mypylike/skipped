@@ -74,3 +74,7 @@ testGenericAliasImportRe
 testGenericAliasCollectionsABCReveal
 # check-generics
 testGenericMethodReturnType
+testGenericMemberVariable
+testGenericMemberVariable2
+testSimpleGenericSubtyping
+testGenericTypeCompatibilityWithAny
