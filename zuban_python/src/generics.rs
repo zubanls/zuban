@@ -181,12 +181,12 @@ impl<'db, 'a> Generics<'db, 'a> {
     ) -> bool {
         let mut value_generics = value_generics.iter();
         let mut matches = true;
-        self.iter().run_on_all(i_s, &mut |i_s, generic_option| {
+        self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                matches &= generic_option.matches(i_s, matcher.as_deref_mut(), g);
+                matches &= type_.matches(i_s, matcher.as_deref_mut(), g);
             });
             if appeared.is_none() {
-                debug!("Generic not found for: {:?}", generic_option);
+                debug!("Generic not found for: {:?}", type_);
             }
         });
         matches
@@ -741,8 +741,8 @@ impl<'db, 'a> Type<'db, 'a> {
         value: &Inferred<'db>,
         mut callback: impl FnMut(String, String),
     ) {
-        let value_generic_option = value.class_as_type(i_s);
-        if !self.matches(i_s, None, value_generic_option) {
+        let value_type = value.class_as_type(i_s);
+        if !self.matches(i_s, None, value_type) {
             callback(
                 value
                     .class_as_type(i_s)

@@ -661,8 +661,8 @@ fn create_mro_class<'db>(
         let iterator = class.generics.iter();
         let mut type_var_remap = GenericsList::new_unknown(type_vars.len());
         let mut i = 0;
-        iterator.run_on_all(i_s, &mut |i_s, generic_option| {
-            let r = create_type_var_remap(i_s, original_class, original_type_vars, generic_option);
+        iterator.run_on_all(i_s, &mut |i_s, type_| {
+            let r = create_type_var_remap(i_s, original_class, original_type_vars, type_);
             type_var_remap.set_generic(TypeVarIndex::new(i), r);
             i += 1;
         });
