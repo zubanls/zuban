@@ -540,6 +540,10 @@ impl GenericsList {
             g.scan_for_late_bound_type_vars(db, result)
         }
     }
+
+    fn has_type_vars(&self) -> bool {
+        self.0.iter().any(|g| g.has_type_vars())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -688,6 +692,18 @@ impl DbType {
                 *content.return_class = g.replace_type_vars(callable);
                 Self::Callable(content)
             }
+        }
+    }
+
+    pub fn has_type_vars(&self) -> bool {
+        match self {
+            Self::GenericClass(link, generics) => generics.has_type_vars(),
+            Self::Tuple(content) => todo!(),
+            Self::Callable(content) => todo!(),
+            Self::TypeVar(_, _) => true,
+            Self::Union(list) => list.has_type_vars(),
+            Self::Type(g) => g.has_type_vars(),
+            Self::Class(_) | Self::Unknown | Self::Any | Self::None => false,
         }
     }
 

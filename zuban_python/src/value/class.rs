@@ -100,8 +100,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         matches
     }
 
-    #[inline]
-    fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
+    pub fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
         match self {
             Self::Class(c) => (c.generics(), None),
             Self::Type(c) => (Generics::Class(c), None),

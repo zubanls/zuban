@@ -833,6 +833,27 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    pub fn has_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        match self {
+            Self::ClassLike(class_like) => {
+                let (class_generics, class_result_generics) = class_like.generics();
+                let mut out = false;
+                class_generics
+                    .iter()
+                    .run_on_all(i_s, &mut |i_s, g| out |= g.has_type_vars(i_s));
+                if let Some(class_result_generics) = class_result_generics {
+                    class_result_generics
+                        .iter()
+                        .run_on_all(i_s, &mut |i_s, g| out |= g.has_type_vars(i_s));
+                }
+                out
+            }
+            Self::TypeVar(type_var_index, node_ref) => true,
+            Self::Union(list) => list.iter().any(|g| g.has_type_vars()),
+            Self::None | Self::Any | Self::Unknown => false,
+        }
+    }
+
     pub fn as_string(
         &self,
         i_s: &mut InferenceState<'db, '_>,
