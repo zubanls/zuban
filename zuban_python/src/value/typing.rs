@@ -693,7 +693,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         let mut finder =
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
         let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
-        g_o.execute_and_resolve_type_vars(i_s, None, &mut finder)
+        g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

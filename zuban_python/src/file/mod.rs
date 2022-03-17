@@ -812,8 +812,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             } else {
                 if type_.has_type_vars(self.i_s) {
                     // Cannot save this, because different type vars change the output.
-                    //return type_.execute_and_resolve_type_vars(i_s, None, None)
-                    return type_.maybe_execute(self.i_s);
+                    return type_.execute_and_resolve_type_vars(
+                        self.i_s,
+                        self.i_s.current_class,
+                        None,
+                    );
                 } else {
                     return type_
                         .maybe_execute(self.i_s)

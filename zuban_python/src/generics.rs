@@ -753,7 +753,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        function_matcher: &mut TypeVarMatcher<'db, '_>,
+        function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     ) -> Inferred<'db> {
         let db_type = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
@@ -767,35 +767,46 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        function_matcher: &mut TypeVarMatcher<'db, '_>,
+        mut function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     ) -> DbType {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                function_matcher: &mut TypeVarMatcher<'db, '_>,
+                                function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
                                 type_var_index: TypeVarIndex,
                                 node_ref: &NodeRef| {
             let point = node_ref.point();
             match point.specific() {
                 Specific::ClassTypeVar => {
-                    let class = class.unwrap();
-                    let mut generic = |type_var_index| class.generics().nth(i_s, type_var_index);
-                    class
-                        .type_var_remap
-                        .map(|remaps| {
-                            remaps
-                                .nth(type_var_index)
-                                .map(|x| x.remap_type_vars(&mut generic))
-                                // This means that no generic was provided
-                                .unwrap_or(DbType::Unknown)
-                        })
-                        .unwrap_or_else(|| generic(type_var_index))
+                    if let Some(c) = class {
+                        let mut generic = |type_var_index| c.generics().nth(i_s, type_var_index);
+                        c.type_var_remap
+                            .map(|remaps| {
+                                remaps
+                                    .nth(type_var_index)
+                                    .map(|x| x.remap_type_vars(&mut generic))
+                                    // This means that no generic was provided
+                                    .unwrap_or(DbType::Unknown)
+                            })
+                            .unwrap_or_else(|| generic(type_var_index))
+                    } else {
+                        // TODO we are just passing the type vars again. Does this make sense?
+                        DbType::TypeVar(type_var_index, node_ref.as_link())
+                    }
                 }
-                Specific::FunctionTypeVar => function_matcher
-                    .nth(i_s, type_var_index)
-                    .unwrap_or_else(|| unreachable!()),
+                Specific::FunctionTypeVar => {
+                    if let Some(fm) = function_matcher {
+                        fm.nth(i_s, type_var_index)
+                            .unwrap_or_else(|| unreachable!())
+                    } else {
+                        // TODO we are just passing the type vars again. Does this make sense?
+                        DbType::TypeVar(type_var_index, node_ref.as_link())
+                    }
+                }
                 Specific::LateBoundTypeVar => {
-                    if function_matcher.match_specific == Specific::LateBoundTypeVar {
-                        if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
-                            return calculated;
+                    if let Some(function_matcher) = function_matcher {
+                        if function_matcher.match_specific == Specific::LateBoundTypeVar {
+                            if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
+                                return calculated;
+                            }
                         }
                     }
                     // Just pass the type var again, because it might be resolved by a future
@@ -811,7 +822,12 @@ impl<'db, 'a> Type<'db, 'a> {
                 c.as_db_type(i_s)
                     .replace_type_vars(&mut |type_var_index, link| {
                         let node_ref = NodeRef::from_link(i_s.database, link);
-                        resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
+                        resolve_type_var(
+                            i_s,
+                            function_matcher.as_deref_mut(),
+                            type_var_index,
+                            &node_ref,
+                        )
                     })
             }
             Self::TypeVar(type_var_index, node_ref) => {
@@ -822,7 +838,12 @@ impl<'db, 'a> Type<'db, 'a> {
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |type_var_index, link| {
                             let node_ref = NodeRef::from_link(i_s.database, link);
-                            resolve_type_var(i_s, function_matcher, type_var_index, &node_ref)
+                            resolve_type_var(
+                                i_s,
+                                function_matcher.as_deref_mut(),
+                                type_var_index,
+                                &node_ref,
+                            )
                         })
                     })
                     .collect(),
