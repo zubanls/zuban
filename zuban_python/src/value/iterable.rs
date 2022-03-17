@@ -223,11 +223,11 @@ impl<'db> DictLiteral<'db> {
                 match child {
                     DictElement::KeyValue(key_value) => {
                         keys.union_in_place(
-                            self.infer_expr(i_s, key_value.key()).as_class_db_type(i_s),
+                            self.infer_expr(i_s, key_value.key()).class_as_db_type(i_s),
                         );
                         values.union_in_place(
                             self.infer_expr(i_s, key_value.value())
-                                .as_class_db_type(i_s),
+                                .class_as_db_type(i_s),
                         );
                     }
                     DictElement::DictStarred(_) => {

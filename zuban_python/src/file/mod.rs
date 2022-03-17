@@ -926,7 +926,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 for e in tuple.iter() {
                     match e {
                         StarLikeExpression::NamedExpression(e) => {
-                            generics.push(self.infer_named_expression(e).as_class_db_type(self.i_s))
+                            generics.push(self.infer_named_expression(e).class_as_db_type(self.i_s))
                         }
                         StarLikeExpression::StarNamedExpression(e) => {
                             let inferred = self.infer_expression_part(e.expression_part());
@@ -934,7 +934,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
                             if iterator.len().is_some() {
                                 while let Some(inf) = iterator.next(self.i_s) {
-                                    generics.push(inf.as_class_db_type(self.i_s))
+                                    generics.push(inf.class_as_db_type(self.i_s))
                                 }
                             } else {
                                 todo!()
