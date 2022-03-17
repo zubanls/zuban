@@ -515,7 +515,7 @@ impl<'db> InferrableParam<'db, '_> {
                     generics: Some(GenericsList::from_vec(list)),
                     arbitrary_length: false,
                 };
-                Some(Inferred::new_unsaved_complex(ComplexPoint::DbType(
+                Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                     Box::new(DbType::Tuple(t)),
                 )))
             }

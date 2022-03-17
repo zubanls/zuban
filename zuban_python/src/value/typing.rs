@@ -118,7 +118,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                     }
                 };
                 let g = DbType::Type(Box::new(DbType::Tuple(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(g)))
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
             }
             Specific::TypingCallable => {
                 let content = match slice_type.unpack() {
@@ -158,7 +158,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                     }
                 };
                 let g = DbType::Type(Box::new(DbType::Callable(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(g)))
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
             }
             Specific::TypingUnion => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => simple.infer_annotation_class(i_s),
@@ -182,9 +182,9 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Type(
-                        Box::new(DbType::Type(Box::new(g))),
-                    ))))
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Type(Box::new(DbType::Type(Box::new(g)))),
+                    )))
                 }
                 _ => todo!(),
             },
@@ -316,7 +316,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Tuple(
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
             self.content.clone(),
         ))))
     }

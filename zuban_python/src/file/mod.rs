@@ -662,12 +662,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let p = inference
                         .infer_annotation_expression_class(expression)
                         .as_generic_part(self.i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Tuple(
-                        TupleContent {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Tuple(TupleContent {
                             generics: Some(GenericsList::new(Box::new([p]))),
                             arbitrary_length: true,
-                        },
-                    ))))
+                        }),
+                    )))
                 }
                 SimpleParamType::MultiKwargs => {
                     let p = inference
@@ -953,7 +953,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     "Inferred literal: Tuple{}",
                     content.as_string(self.i_s.database, FormatStyle::Short)
                 );
-                return Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(
+                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                     DbType::Tuple(content),
                 )))
                 .save_redirect(self.file, atom.index());

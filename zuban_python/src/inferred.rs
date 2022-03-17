@@ -105,7 +105,7 @@ impl<'db> Inferred<'db> {
                 return inferred;
             }
             DbType::Tuple(_) | DbType::Callable(_) => {
-                InferredState::UnsavedComplex(ComplexPoint::DbType(Box::new(generic)))
+                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
             }
             DbType::Type(c) => match *c {
                 DbType::Class(link) => {
@@ -134,7 +134,7 @@ impl<'db> Inferred<'db> {
                         return Inferred::execute_generic_part(i_s, g);
                     }
                 }
-                InferredState::UnsavedComplex(ComplexPoint::DbType(Box::new(generic)))
+                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
             }
             DbType::Unknown => InferredState::Unknown,
         };
@@ -500,7 +500,7 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            ComplexPoint::DbType(g) => match g.as_ref() {
+            ComplexPoint::TypeInstance(g) => match g.as_ref() {
                 DbType::Class(t) => todo!(),
                 DbType::GenericClass(link, generics) => {
                     let class = Class::from_position(
@@ -808,14 +808,14 @@ impl<'db> Inferred<'db> {
             .or_else(|| match &self.state {
                 InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::DbType(g) = complex {
+                    if let ComplexPoint::TypeInstance(g) = complex {
                         if let DbType::Type(t) = g.as_ref() {
                             return Some(ClassLike::TypeWithDbType(t));
                         }
                     }
                     None
                 }
-                InferredState::UnsavedComplex(ComplexPoint::DbType(g)) => {
+                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(g)) => {
                     todo!()
                     // Was originally:
                     //Some(ClassLike::Tuple(TupleClass::new(content)))
@@ -852,7 +852,7 @@ impl<'db> Inferred<'db> {
                 _ => todo!(),
             },
             InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::DbType(g) = complex {
+                if let ComplexPoint::TypeInstance(g) = complex {
                     todo!() // This was originally a return None for tuple class
                 }
                 todo!("{:?}", complex)

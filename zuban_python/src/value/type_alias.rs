@@ -57,7 +57,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             .generic_part
             .clone()
             .replace_type_vars(&mut |index, link| given_generics.nth(i_s, index));
-        Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(replaced)))
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(replaced)))
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {

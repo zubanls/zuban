@@ -452,7 +452,7 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
-    DbType(Box<DbType>),
+    TypeInstance(Box<DbType>),
     TypeAlias(Box<TypeAlias>),
 }
 
