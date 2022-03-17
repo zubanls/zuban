@@ -11,7 +11,7 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{Database, GenericPart};
+use crate::database::{Database, DbType};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -86,7 +86,7 @@ pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
     ListLiteral(ListLiteral<'db>, ListOrSetElementIterator<'db>),
     // TODO this should include the arbitrary_length
-    TupleGenerics(std::slice::Iter<'a, GenericPart>),
+    TupleGenerics(std::slice::Iter<'a, DbType>),
     Empty,
 }
 
@@ -100,7 +100,7 @@ impl<'db> IteratorContent<'db, '_> {
             }
             Self::TupleGenerics(generics) => Inferred::execute_generic_part(
                 i_s,
-                generics.fold(GenericPart::Unknown, |a, b| a.union(b.clone())),
+                generics.fold(DbType::Unknown, |a, b| a.union(b.clone())),
             ),
             Self::Empty => todo!(),
         }

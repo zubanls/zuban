@@ -6,7 +6,7 @@ use super::{ClassLike, IteratorContent, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList, Specific,
+    CallableContent, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Specific,
     TupleContent, TypeVarIndex,
 };
 use crate::diagnostics::IssueType;
@@ -26,13 +26,13 @@ impl TypingClass {
         Self { specific }
     }
 
-    pub fn as_generic_part(&self) -> GenericPart {
+    pub fn as_generic_part(&self) -> DbType {
         match self.specific {
-            Specific::TypingTuple => GenericPart::Tuple(TupleContent {
+            Specific::TypingTuple => DbType::Tuple(TupleContent {
                 generics: None,
                 arbitrary_length: true,
             }),
-            Specific::TypingType => GenericPart::Type(Box::new(GenericPart::Any)),
+            Specific::TypingType => DbType::Type(Box::new(DbType::Any)),
             _ => todo!("{:?}", self.specific),
         }
     }
@@ -101,7 +101,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                                         SliceOrSimple::Simple(n) => {
                                             let result =
                                                 n.infer_annotation_class(i_s).as_generic_part(i_s);
-                                            if let GenericPart::Unknown = result {
+                                            if let DbType::Unknown = result {
                                                 if n.named_expr.is_ellipsis_literal() {
                                                     arbitrary_length = true;
                                                     return None;
@@ -117,8 +117,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         }
                     }
                 };
-                let g = GenericPart::Type(Box::new(GenericPart::Tuple(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(g)))
+                let g = DbType::Type(Box::new(DbType::Tuple(content)));
+                Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(g)))
             }
             Specific::TypingCallable => {
                 let content = match slice_type.unpack() {
@@ -150,15 +150,15 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         let return_class = iterator
                             .next()
                             .map(|n| n.infer_annotation_class(i_s).as_generic_part(i_s))
-                            .unwrap_or(GenericPart::Unknown);
+                            .unwrap_or(DbType::Unknown);
                         CallableContent {
                             params: params.map(GenericsList::from_vec),
                             return_class: Box::new(return_class),
                         }
                     }
                 };
-                let g = GenericPart::Type(Box::new(GenericPart::Callable(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(g)))
+                let g = DbType::Type(Box::new(DbType::Callable(content)));
+                Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(g)))
             }
             Specific::TypingUnion => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => simple.infer_annotation_class(i_s),
@@ -182,9 +182,9 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     let g = simple.infer_annotation_class(i_s).as_generic_part(i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
-                        GenericPart::Type(Box::new(GenericPart::Type(Box::new(g)))),
-                    )))
+                    Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Type(
+                        Box::new(DbType::Type(Box::new(g))),
+                    ))))
                 }
                 _ => todo!(),
             },
@@ -266,8 +266,8 @@ impl<'a> TupleClass<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> GenericPart {
-        GenericPart::Tuple(self.content.clone())
+    pub fn as_generic_part(&self) -> DbType {
+        DbType::Tuple(self.content.clone())
     }
 
     pub(super) fn generics(&self) -> Generics<'static, 'a> {
@@ -316,7 +316,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(GenericPart::Tuple(
+        Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Tuple(
             self.content.clone(),
         ))))
     }
@@ -336,8 +336,8 @@ impl<'a> Tuple<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> GenericPart {
-        GenericPart::Tuple(self.content.clone())
+    pub fn as_generic_part(&self) -> DbType {
+        DbType::Tuple(self.content.clone())
     }
 }
 
@@ -466,11 +466,11 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
 pub struct TypingType<'db, 'a> {
     database: &'db Database,
-    pub generic_part: &'a GenericPart,
+    pub generic_part: &'a DbType,
 }
 
 impl<'db, 'a> TypingType<'db, 'a> {
-    pub fn new(database: &'db Database, generic_part: &'a GenericPart) -> Self {
+    pub fn new(database: &'db Database, generic_part: &'a DbType) -> Self {
         Self {
             database,
             generic_part,
@@ -500,7 +500,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::TypeWithGenericPart(self.generic_part))
+        Some(ClassLike::TypeWithDbType(self.generic_part))
     }
 }
 
@@ -595,8 +595,8 @@ impl<'a> CallableClass<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> GenericPart {
-        GenericPart::Callable(self.content.clone())
+    pub fn as_generic_part(&self) -> DbType {
+        DbType::Callable(self.content.clone())
     }
 
     pub fn param_generics<'db>(&self) -> Generics<'db, 'a> {
@@ -608,7 +608,7 @@ impl<'a> CallableClass<'a> {
     }
 
     pub fn result_generics<'db>(&self) -> Generics<'db, 'a> {
-        Generics::GenericPart(&self.content.return_class)
+        Generics::DbType(&self.content.return_class)
     }
 }
 
@@ -644,8 +644,8 @@ impl<'a> Callable<'a> {
         Self { content }
     }
 
-    pub fn as_generic_part(&self) -> GenericPart {
-        GenericPart::Callable(self.content.clone())
+    pub fn as_generic_part(&self) -> DbType {
+        DbType::Callable(self.content.clone())
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
@@ -705,12 +705,12 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 }
 
 pub struct CallableParam<'db, 'a, 'b> {
-    pub param_type: &'a GenericPart,
+    pub param_type: &'a DbType,
     pub argument: Option<Argument<'db, 'b>>,
 }
 
 pub struct CallableParamIterator<'db, 'a, 'b> {
-    params: Option<std::slice::Iter<'a, GenericPart>>,
+    params: Option<std::slice::Iter<'a, DbType>>,
     arguments: ArgumentIterator<'db, 'b>,
 }
 
@@ -775,12 +775,12 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
 
 #[derive(Debug)]
 pub struct TypeVarInstance<'db, 'a> {
-    generic_part: &'a GenericPart,
+    generic_part: &'a DbType,
     node_ref: NodeRef<'db>,
 }
 
 impl<'db, 'a> TypeVarInstance<'db, 'a> {
-    pub fn new(generic_part: &'a GenericPart, node_ref: NodeRef<'db>) -> Self {
+    pub fn new(generic_part: &'a DbType, node_ref: NodeRef<'db>) -> Self {
         Self {
             generic_part,
             node_ref,
@@ -806,6 +806,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeWithGenericPart(self.generic_part)
+        ClassLike::TypeWithDbType(self.generic_part)
     }
 }

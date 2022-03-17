@@ -1,9 +1,7 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
 use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
-use crate::database::{
-    ComplexPoint, FormatStyle, GenericPart, GenericsList, Locality, TypeVarIndex,
-};
+use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality, TypeVarIndex};
 use crate::debug;
 use crate::generics::Generics;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -39,7 +37,7 @@ impl<'db> ListLiteral<'db> {
         )
     }
 
-    pub fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericPart {
+    pub fn generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
         self.generic_list(i_s).nth(TypeVarIndex::new(0)).unwrap()
     }
 
@@ -219,8 +217,8 @@ impl<'db> DictLiteral<'db> {
                 _ => unreachable!(),
             }
         } else {
-            let mut keys = GenericPart::Unknown;
-            let mut values = GenericPart::Unknown;
+            let mut keys = DbType::Unknown;
+            let mut values = DbType::Unknown;
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {

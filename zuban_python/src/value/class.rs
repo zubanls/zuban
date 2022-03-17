@@ -3,8 +3,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSl
 use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
-    ClassInfos, ClassStorage, ComplexPoint, Database, FormatStyle, GenericPart, GenericsList,
-    Locality, MroIndex, PointLink, Specific, TypeVarIndex,
+    ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
+    MroIndex, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -22,7 +22,7 @@ pub enum ClassLike<'db, 'a> {
     Callable(CallableClass<'a>),
     FunctionType(Function<'db, 'a>),
     Type(Class<'db, 'a>),
-    TypeWithGenericPart(&'a GenericPart),
+    TypeWithDbType(&'a DbType),
     TypingClass(TypingClass),
     AnyType,
 }
@@ -74,8 +74,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c2) => c1.reference == c2.reference,
                 _ => false,
             },
-            Self::Type(_) | Self::TypeWithGenericPart(_) => {
-                matches!(other, Self::Type(_) | Self::TypeWithGenericPart(_))
+            Self::Type(_) | Self::TypeWithDbType(_) => {
+                matches!(other, Self::Type(_) | Self::TypeWithDbType(_))
             }
             Self::Tuple(_) => matches!(other, Self::Tuple(_)),
             Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
@@ -105,7 +105,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => (c.generics(), None),
             Self::Type(c) => (Generics::Class(c), None),
-            Self::TypeWithGenericPart(g) => (Generics::GenericPart(g), None),
+            Self::TypeWithDbType(g) => (Generics::DbType(g), None),
             Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
             Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
@@ -117,7 +117,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
-            Self::TypeWithGenericPart(g) => {
+            Self::TypeWithDbType(g) => {
                 format!("Type[{}]", g.as_type_string(i_s.database, None, style))
             }
             Self::Tuple(c) => c.as_type_string(i_s.database, style),
@@ -155,16 +155,16 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::Class(c) => c.as_generic_part(i_s),
-            Self::Type(c) => GenericPart::Type(Box::new(c.as_generic_part(i_s))),
-            Self::TypeWithGenericPart(g) => GenericPart::Type(Box::new((*g).clone())),
+            Self::Type(c) => DbType::Type(Box::new(c.as_generic_part(i_s))),
+            Self::TypeWithDbType(g) => DbType::Type(Box::new((*g).clone())),
             Self::Tuple(t) => t.as_generic_part(),
             Self::Callable(c) => c.as_generic_part(),
             Self::FunctionType(f) => todo!(),
             Self::TypingClass(c) => c.as_generic_part(),
-            Self::AnyType => GenericPart::Type(Box::new(GenericPart::Any)),
+            Self::AnyType => DbType::Type(Box::new(DbType::Any)),
         }
     }
 }
@@ -429,11 +429,11 @@ impl<'db, 'a> Class<'db, 'a> {
         result
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         let lst = self.generics.as_generics_list(i_s);
         let link = self.reference.as_link();
-        lst.map(|lst| GenericPart::GenericClass(link, lst))
-            .unwrap_or_else(|| GenericPart::Class(link))
+        lst.map(|lst| DbType::GenericClass(link, lst))
+            .unwrap_or_else(|| DbType::Class(link))
     }
 }
 
@@ -567,7 +567,7 @@ pub struct MroIterator<'db, 'a> {
     database: &'db Database,
     generics: Option<Generics<'db, 'a>>,
     class: Option<ClassLike<'db, 'a>>,
-    iterator: std::slice::Iter<'db, GenericPart>,
+    iterator: std::slice::Iter<'db, DbType>,
     mro_index: u32,
     returned_object: bool,
 }
@@ -586,7 +586,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    GenericPart::Class(c) => ClassLike::Class(
+                    DbType::Class(c) => ClassLike::Class(
                         Class::from_position(
                             NodeRef::from_link(self.database, *c),
                             self.generics.unwrap(),
@@ -594,7 +594,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                         )
                         .unwrap(),
                     ),
-                    GenericPart::GenericClass(c, generics) => ClassLike::Class(
+                    DbType::GenericClass(c, generics) => ClassLike::Class(
                         Class::from_position(
                             NodeRef::from_link(self.database, *c),
                             self.generics.unwrap(),
@@ -622,7 +622,7 @@ fn create_type_var_remap<'db>(
     original_class: NodeRef<'db>,
     original_type_vars: &[PointLink],
     generic: Type<'db, '_>,
-) -> GenericPart {
+) -> DbType {
     match generic {
         Type::ClassLike(class) => create_mro_class(
             i_s,
@@ -634,7 +634,7 @@ fn create_type_var_remap<'db>(
             },
         ),
         Type::TypeVar(type_var_index, reference) => {
-            GenericPart::TypeVar(type_var_index, reference.as_link())
+            DbType::TypeVar(type_var_index, reference.as_link())
         }
         Type::Union(list) => todo!(),
         Type::Unknown | Type::None | Type::Any => todo!(),
@@ -646,7 +646,7 @@ fn create_mro_class<'db>(
     original_class: NodeRef<'db>,
     original_type_vars: &[PointLink],
     class: &Class<'db, '_>,
-) -> GenericPart {
+) -> DbType {
     let type_vars = if class.reference == original_class {
         // We need to use the original type vars here, because there can be a recursion in there,
         // like `class str(Sequence[str])`, which means that the class info must not be fetched,
@@ -656,7 +656,7 @@ fn create_mro_class<'db>(
         class.type_vars(i_s)
     };
     if type_vars.is_empty() {
-        GenericPart::Class(class.reference.as_link())
+        DbType::Class(class.reference.as_link())
     } else {
         let iterator = class.generics.iter();
         let mut type_var_remap = GenericsList::new_unknown(type_vars.len());
@@ -666,6 +666,6 @@ fn create_mro_class<'db>(
             type_var_remap.set_generic(TypeVarIndex::new(i), r);
             i += 1;
         });
-        GenericPart::GenericClass(class.reference.as_link(), type_var_remap)
+        DbType::GenericClass(class.reference.as_link(), type_var_remap)
     }
 }

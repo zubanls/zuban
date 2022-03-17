@@ -6,7 +6,7 @@ use std::fmt;
 use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, Execution, FormatStyle, GenericPart, GenericsList, Locality, Overload,
+    ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
     Point, PointLink, Specific, TupleContent,
 };
 use crate::debug;
@@ -515,8 +515,8 @@ impl<'db> InferrableParam<'db, '_> {
                     generics: Some(GenericsList::from_vec(list)),
                     arbitrary_length: false,
                 };
-                Some(Inferred::new_unsaved_complex(ComplexPoint::GenericPart(
-                    Box::new(GenericPart::Tuple(t)),
+                Some(Inferred::new_unsaved_complex(ComplexPoint::DbType(
+                    Box::new(DbType::Tuple(t)),
                 )))
             }
             ParamInput::None => None,

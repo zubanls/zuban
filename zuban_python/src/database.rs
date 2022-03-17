@@ -452,7 +452,7 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
-    GenericPart(Box<GenericPart>),
+    DbType(Box<DbType>),
     TypeAlias(Box<TypeAlias>),
 }
 
@@ -474,39 +474,39 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericsList(Box<[GenericPart]>);
+pub struct GenericsList(Box<[DbType]>);
 
 impl GenericsList {
-    pub fn new(parts: Box<[GenericPart]>) -> Self {
+    pub fn new(parts: Box<[DbType]>) -> Self {
         Self(parts)
     }
 
-    pub fn from_vec(parts: Vec<GenericPart>) -> Self {
+    pub fn from_vec(parts: Vec<DbType>) -> Self {
         Self::new(parts.into_boxed_slice())
     }
 
     pub fn new_unknown(length: usize) -> Self {
         debug_assert!(length > 0);
-        let vec: Vec<_> = repeat(GenericPart::Unknown).take(length).collect();
+        let vec: Vec<_> = repeat(DbType::Unknown).take(length).collect();
         Self(vec.into_boxed_slice())
     }
 
-    pub fn set_generic(&mut self, index: TypeVarIndex, generic: GenericPart) {
+    pub fn set_generic(&mut self, index: TypeVarIndex, generic: DbType) {
         self.0[index.0 as usize].union_in_place(generic);
     }
 
-    pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericPart> {
+    pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {
         self.0.get(index.0 as usize)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<GenericPart> {
+    pub fn iter(&self) -> std::slice::Iter<DbType> {
         self.0.iter()
     }
 
     pub fn as_string(
         &self,
         db: &Database,
-        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
         style: FormatStyle,
     ) -> String {
         if let Some(type_var_generics) = type_var_generics {
@@ -543,12 +543,12 @@ impl GenericsList {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum GenericPart {
+pub enum DbType {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(GenericsList),
     TypeVar(TypeVarIndex, PointLink),
-    Type(Box<GenericPart>),
+    Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(CallableContent),
     None,
@@ -556,8 +556,8 @@ pub enum GenericPart {
     Unknown,
 }
 
-impl GenericPart {
-    pub fn union(self, other: GenericPart) -> Self {
+impl DbType {
+    pub fn union(self, other: DbType) -> Self {
         match self {
             Self::Union(list) => {
                 let mut vec = list.0.into_vec();
@@ -601,14 +601,14 @@ impl GenericPart {
         }
     }
 
-    pub fn union_in_place(&mut self, other: GenericPart) {
+    pub fn union_in_place(&mut self, other: DbType) {
         *self = mem::replace(self, Self::Unknown).union(other);
     }
 
     pub fn as_type_string(
         &self,
         db: &Database,
-        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> GenericPart>,
+        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
         style: FormatStyle,
     ) -> String {
         let class_name = |link| {
@@ -653,9 +653,9 @@ impl GenericPart {
     where
         C: FnMut(TypeVarIndex, PointLink) -> Self,
     {
-        let replace_list = |list: &mut Box<[GenericPart]>, callable: &mut C| {
+        let replace_list = |list: &mut Box<[DbType]>, callable: &mut C| {
             for item in list.iter_mut() {
-                let g = std::mem::replace(&mut *item, GenericPart::Unknown);
+                let g = std::mem::replace(&mut *item, DbType::Unknown);
                 *item = g.replace_type_vars(callable);
             }
         };
@@ -670,7 +670,7 @@ impl GenericPart {
             }
             Self::TypeVar(type_var_index, link) => callable(type_var_index, link),
             Self::Type(mut generic_part) => {
-                let g = std::mem::replace(&mut *generic_part, GenericPart::Unknown);
+                let g = std::mem::replace(&mut *generic_part, DbType::Unknown);
                 *generic_part = g.replace_type_vars(callable);
                 Self::Type(generic_part)
             }
@@ -684,7 +684,7 @@ impl GenericPart {
                 if let Some(params) = content.params.as_mut() {
                     replace_list(&mut params.0, callable)
                 }
-                let g = std::mem::replace(&mut *content.return_class, GenericPart::Unknown);
+                let g = std::mem::replace(&mut *content.return_class, DbType::Unknown);
                 *content.return_class = g.replace_type_vars(callable);
                 Self::Callable(content)
             }
@@ -708,7 +708,7 @@ impl GenericPart {
 
     pub fn remap_type_vars(
         &self,
-        resolve_type_var: &mut impl FnMut(TypeVarIndex) -> GenericPart,
+        resolve_type_var: &mut impl FnMut(TypeVarIndex) -> DbType,
     ) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new(
@@ -749,7 +749,7 @@ impl GenericPart {
                         break;
                     } else {
                         // This a bit special, because these are late-bound parameters that are not
-                        // part of the GenericPart anymore. This won't ever be accessed, but it's a
+                        // part of the DbType anymore. This won't ever be accessed, but it's a
                         // placeholder in the array so that type var indexes still work normally.
                         // e.g. Tuple[Callable[[T], T], Callable[[U], U]] needs this.
                         result.push(PointLink::new(FileIndex(0), u32::MAX));
@@ -844,7 +844,7 @@ impl TupleContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
     pub params: Option<GenericsList>,
-    pub return_class: Box<GenericPart>,
+    pub return_class: Box<DbType>,
 }
 
 impl CallableContent {
@@ -863,7 +863,7 @@ impl CallableContent {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: Box<[PointLink]>,
-    pub generic_part: GenericPart,
+    pub generic_part: DbType,
 }
 
 pub struct Database {
@@ -1089,7 +1089,7 @@ impl ClassStorage {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub type_vars: Box<[PointLink]>,
-    pub mro: Box<[GenericPart]>, // Does never include `object`
+    pub mro: Box<[DbType]>, // Does never include `object`
     pub is_protocol: bool,
     pub incomplete_mro: bool,
 }
@@ -1133,6 +1133,6 @@ mod tests {
         assert_eq!(size_of::<AnyLink>(), 16);
         assert_eq!(size_of::<Execution>(), 24);
         assert_eq!(size_of::<ComplexPoint>(), 32);
-        assert_eq!(size_of::<GenericPart>(), 32);
+        assert_eq!(size_of::<DbType>(), 32);
     }
 }

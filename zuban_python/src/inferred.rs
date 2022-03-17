@@ -3,8 +3,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, FileIndex, GenericPart, GenericsList, Locality, MroIndex,
-    Point, PointLink, PointType, Specific, TypeVarIndex,
+    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
+    PointLink, PointType, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -87,15 +87,15 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn execute_generic_part(i_s: &mut InferenceState<'db, '_>, generic: GenericPart) -> Self {
+    pub fn execute_generic_part(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            GenericPart::Class(link) => {
+            DbType::Class(link) => {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(link, None))
             }
-            GenericPart::GenericClass(l, g) => {
+            DbType::GenericClass(l, g) => {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(l, Some(g)))
             }
-            GenericPart::Union(multiple) => {
+            DbType::Union(multiple) => {
                 let mut multiple = multiple.iter();
                 let mut inferred =
                     Self::execute_generic_part(i_s, multiple.next().unwrap().clone());
@@ -104,29 +104,29 @@ impl<'db> Inferred<'db> {
                 }
                 return inferred;
             }
-            GenericPart::Tuple(_) | GenericPart::Callable(_) => {
-                InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
+            DbType::Tuple(_) | DbType::Callable(_) => {
+                InferredState::UnsavedComplex(ComplexPoint::DbType(Box::new(generic)))
             }
-            GenericPart::Type(c) => match *c {
-                GenericPart::Class(link) => {
+            DbType::Type(c) => match *c {
+                DbType::Class(link) => {
                     let node_reference = NodeRef::from_link(i_s.database, link);
                     InferredState::Saved(node_reference, node_reference.point())
                 }
-                GenericPart::GenericClass(l, g) => {
+                DbType::GenericClass(l, g) => {
                     InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
                 }
-                GenericPart::Union(multiple) => {
+                DbType::Union(multiple) => {
                     todo!()
                 }
-                GenericPart::Tuple(content) => {
+                DbType::Tuple(content) => {
                     todo!()
                 }
-                GenericPart::Any => return Self::new_any(),
+                DbType::Any => return Self::new_any(),
                 _ => todo!(),
             },
-            GenericPart::None => return Inferred::new_none(),
-            GenericPart::Any => return Inferred::new_any(),
-            GenericPart::TypeVar(index, link) => {
+            DbType::None => return Inferred::new_none(),
+            DbType::Any => return Inferred::new_any(),
+            DbType::TypeVar(index, link) => {
                 let point = NodeRef::from_link(i_s.database, link).point();
                 if point.specific() == Specific::ClassTypeVar {
                     if let Some(class) = i_s.current_class {
@@ -134,21 +134,21 @@ impl<'db> Inferred<'db> {
                         return Inferred::execute_generic_part(i_s, g);
                     }
                 }
-                InferredState::UnsavedComplex(ComplexPoint::GenericPart(Box::new(generic)))
+                InferredState::UnsavedComplex(ComplexPoint::DbType(Box::new(generic)))
             }
-            GenericPart::Unknown => InferredState::Unknown,
+            DbType::Unknown => InferredState::Unknown,
         };
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<&[GenericPart]>) -> Self {
+    pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::Instance(
             class,
             generics.map(|lst| GenericsList::from_vec(lst.to_vec())),
         ))
     }
 
-    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
@@ -156,17 +156,15 @@ impl<'db> Inferred<'db> {
                     .map(|c| c.as_generic_part(i_s))
                     .unwrap_or_else(|| {
                         debug!("Generic part not resolvable: {}", v.description(i_s));
-                        GenericPart::Unknown
+                        DbType::Unknown
                     })
             },
             &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
                 debug!("Generic part not found: {}", inf.description(i_s));
-                GenericPart::Unknown
+                DbType::Unknown
             },
-            &mut |type_var_index, node_ref| {
-                GenericPart::TypeVar(type_var_index, node_ref.as_link())
-            },
+            &mut |type_var_index, node_ref| DbType::TypeVar(type_var_index, node_ref.as_link()),
         )
     }
 
@@ -209,14 +207,14 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn as_class_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> GenericPart {
+    pub fn as_class_generic_part(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.class(i_s).as_generic_part(i_s),
             &|_, g1, g2| g1.union(g2),
             &mut |i_s, inf| {
                 debug!("Class generic part not found: {}", inf.description(i_s));
-                GenericPart::Unknown
+                DbType::Unknown
             },
             &mut |_, _| unreachable!(),
         )
@@ -502,9 +500,9 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            ComplexPoint::GenericPart(g) => match g.as_ref() {
-                GenericPart::Class(t) => todo!(),
-                GenericPart::GenericClass(link, generics) => {
+            ComplexPoint::DbType(g) => match g.as_ref() {
+                DbType::Class(t) => todo!(),
+                DbType::GenericClass(link, generics) => {
                     let class = Class::from_position(
                         NodeRef::from_link(i_s.database, *link),
                         Generics::new_list(generics),
@@ -513,27 +511,27 @@ impl<'db> Inferred<'db> {
                     .unwrap();
                     callable(i_s, &class)
                 }
-                GenericPart::Union(lst) => todo!(),
-                GenericPart::TypeVar(index, link) => callable(
+                DbType::Union(lst) => todo!(),
+                DbType::TypeVar(index, link) => callable(
                     i_s,
                     &TypeVarInstance::new(g, NodeRef::from_link(i_s.database, *link)),
                 ),
-                GenericPart::Tuple(content) => callable(i_s, &Tuple::new(content)),
-                GenericPart::Callable(content) => callable(i_s, &Callable::new(content)),
-                GenericPart::None => callable(i_s, &NoneInstance()),
-                GenericPart::Any => todo!(),
-                GenericPart::Unknown => todo!(),
-                GenericPart::Type(t) => match t.as_ref() {
-                    GenericPart::Class(link) => todo!(),
-                    GenericPart::GenericClass(link, generics) => todo!(),
-                    GenericPart::Union(lst) => todo!(),
-                    GenericPart::TypeVar(index, link) => todo!(),
-                    GenericPart::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
-                    GenericPart::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-                    GenericPart::Callable(content) => callable(i_s, &CallableClass::new(content)),
-                    GenericPart::None => todo!(),
-                    GenericPart::Any => todo!(),
-                    GenericPart::Unknown => todo!(),
+                DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
+                DbType::Callable(content) => callable(i_s, &Callable::new(content)),
+                DbType::None => callable(i_s, &NoneInstance()),
+                DbType::Any => todo!(),
+                DbType::Unknown => todo!(),
+                DbType::Type(t) => match t.as_ref() {
+                    DbType::Class(link) => todo!(),
+                    DbType::GenericClass(link, generics) => todo!(),
+                    DbType::Union(lst) => todo!(),
+                    DbType::TypeVar(index, link) => todo!(),
+                    DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
+                    DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
+                    DbType::Callable(content) => callable(i_s, &CallableClass::new(content)),
+                    DbType::None => todo!(),
+                    DbType::Any => todo!(),
+                    DbType::Unknown => todo!(),
                 },
             },
             ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
@@ -810,14 +808,14 @@ impl<'db> Inferred<'db> {
             .or_else(|| match &self.state {
                 InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
                     let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::GenericPart(g) = complex {
-                        if let GenericPart::Type(t) = g.as_ref() {
-                            return Some(ClassLike::TypeWithGenericPart(t));
+                    if let ComplexPoint::DbType(g) = complex {
+                        if let DbType::Type(t) = g.as_ref() {
+                            return Some(ClassLike::TypeWithDbType(t));
                         }
                     }
                     None
                 }
-                InferredState::UnsavedComplex(ComplexPoint::GenericPart(g)) => {
+                InferredState::UnsavedComplex(ComplexPoint::DbType(g)) => {
                     todo!()
                     // Was originally:
                     //Some(ClassLike::Tuple(TupleClass::new(content)))
@@ -854,7 +852,7 @@ impl<'db> Inferred<'db> {
                 _ => todo!(),
             },
             InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::GenericPart(g) = complex {
+                if let ComplexPoint::DbType(g) = complex {
                     todo!() // This was originally a return None for tuple class
                 }
                 todo!("{:?}", complex)

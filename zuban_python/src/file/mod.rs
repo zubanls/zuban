@@ -9,8 +9,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::SimpleArguments;
 use crate::database::{
-    ComplexPoint, Database, FileIndex, FormatStyle, GenericPart, GenericsList, Locality,
-    LocalityLink, Point, PointType, Points, Specific, TupleContent, TypeAlias,
+    ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
+    Point, PointType, Points, Specific, TupleContent, TypeAlias,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -662,12 +662,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let p = inference
                         .infer_annotation_expression_class(expression)
                         .as_generic_part(self.i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
-                        GenericPart::Tuple(TupleContent {
+                    Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(DbType::Tuple(
+                        TupleContent {
                             generics: Some(GenericsList::new(Box::new([p]))),
                             arbitrary_length: true,
-                        }),
-                    )))
+                        },
+                    ))))
                 }
                 SimpleParamType::MultiKwargs => {
                     let p = inference
@@ -676,7 +676,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Inferred::create_instance(
                         self.i_s.database.python_state.builtins_point_link("dict"),
                         Some(&[
-                            GenericPart::Class(
+                            DbType::Class(
                                 self.i_s.database.python_state.builtins_point_link("str"),
                             ),
                             p,
@@ -730,7 +730,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(python_string) = inferred.maybe_str() {
                     if let Some(string) = python_string.to_owned() {
                         inferred = match self.infer_annotation_string(string) {
-                            GenericPart::Class(link) => {
+                            DbType::Class(link) => {
                                 let node_reference = NodeRef::from_link(i_s.database, link);
                                 Inferred::new_saved(
                                     node_reference.file,
@@ -738,15 +738,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     node_reference.point(),
                                 )
                             }
-                            GenericPart::GenericClass(l, g) => todo!(),
-                            GenericPart::Union(multiple) => todo!(),
-                            GenericPart::Tuple(content) => todo!(),
-                            GenericPart::Callable(content) => todo!(),
-                            GenericPart::Type(c) => todo!(),
-                            GenericPart::None => return Inferred::new_none(),
-                            GenericPart::Any => todo!(),
-                            GenericPart::TypeVar(index, link) => todo!(),
-                            GenericPart::Unknown => Inferred::new_unknown(),
+                            DbType::GenericClass(l, g) => todo!(),
+                            DbType::Union(multiple) => todo!(),
+                            DbType::Tuple(content) => todo!(),
+                            DbType::Callable(content) => todo!(),
+                            DbType::Type(c) => todo!(),
+                            DbType::None => return Inferred::new_none(),
+                            DbType::Any => todo!(),
+                            DbType::TypeVar(index, link) => todo!(),
+                            DbType::Unknown => Inferred::new_unknown(),
                         };
                     } else {
                         inferred = Inferred::new_unknown()
@@ -953,8 +953,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     "Inferred literal: Tuple{}",
                     content.as_string(self.i_s.database, FormatStyle::Short)
                 );
-                return Inferred::new_unsaved_complex(ComplexPoint::GenericPart(Box::new(
-                    GenericPart::Tuple(content),
+                return Inferred::new_unsaved_complex(ComplexPoint::DbType(Box::new(
+                    DbType::Tuple(content),
                 )))
                 .save_redirect(self.file, atom.index());
             }
@@ -1196,7 +1196,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .map(|i| self.infer_name_by_index(i))
     }
 
-    fn infer_annotation_string(&mut self, string: String) -> GenericPart {
+    fn infer_annotation_string(&mut self, string: String) -> DbType {
         let file = self
             .i_s
             .database
@@ -1213,6 +1213,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             return generic_part;
         }
         debug!("Found non-expression in annotation: {}", file.tree.code());
-        GenericPart::Unknown
+        DbType::Unknown
     }
 }
