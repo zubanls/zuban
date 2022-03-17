@@ -504,18 +504,30 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn add_type_var_class(
+    fn match_or_add_type_var(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_index: TypeVarIndex,
         node_ref: NodeRef<'db>,
         class: GenericOption<'db, '_>,
-    ) {
-        if self.match_specific == node_ref.point().specific() {
+    ) -> bool {
+        let specific = node_ref.point().specific();
+        if self.match_specific == specific {
             self.calculated_type_vars
                 .as_mut()
                 .unwrap()
                 .set_generic(type_var_index, class.into_generic_part(i_s));
+            true
+        } else if specific == Specific::ClassTypeVar {
+            match self.func_or_callable {
+                FunctionOrCallable::Function(f) => {
+                    let g = f.class.unwrap().generics.nth(i_s, type_var_index);
+                    // TODO nth should return a generic option
+                    let g = GenericOption::from_generic_part(i_s.database, &g);
+                    g.matches(i_s, Some(self), class)
+                }
+                FunctionOrCallable::Callable(c) => todo!(),
+            }
         } else {
             todo!()
         }
@@ -709,24 +721,26 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                 GenericOption::ClassLike(class) => {
                     if let Some(matcher) = matcher {
                         let generic = class.as_generic_part(i_s);
-                        matcher.add_type_var_class(i_s, *type_var_index, *node_ref, value_class);
+                        matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
+                    } else {
+                        true
                     }
-                    true
                 }
                 GenericOption::TypeVar(_, _) | GenericOption::Unknown => {
                     todo!("{:?}", value_class)
                 }
                 GenericOption::Union(ref list) => {
                     if let Some(matcher) = matcher {
-                        matcher.add_type_var_class(i_s, *type_var_index, *node_ref, value_class);
+                        matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
+                    } else {
+                        true
                     }
-                    true
                 }
                 GenericOption::Any => {
                     todo!()
                 }
                 GenericOption::None => {
-                    //matcher.add_type_var_class(i_s, *type_var_index, node_ref, value_class)
+                    //matcher.match_or_add_type_var(i_s, *type_var_index, node_ref, value_class)
                     todo!()
                 }
             },
@@ -760,9 +774,10 @@ impl<'db, 'a> GenericOption<'db, 'a> {
                                 _ => GenericOption::Union(list2),
                             };
                             let node_ref = NodeRef::from_link(i_s.database, link);
-                            matcher.add_type_var_class(i_s, type_var_index, node_ref, g);
+                            matcher.match_or_add_type_var(i_s, type_var_index, node_ref, g)
+                        } else {
+                            true
                         }
-                        true
                     } else if !list2.is_empty() {
                         false
                     } else {

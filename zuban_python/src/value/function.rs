@@ -320,6 +320,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
+                finder.matches_signature(i_s); // TODO this should be different
                 self.reference
                     .file
                     .inference(i_s)
