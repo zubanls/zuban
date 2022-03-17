@@ -463,7 +463,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             match self.func_or_callable {
                 FunctionOrCallable::Function(f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_index);
-                    // TODO nth should return a generic option
+                    // TODO nth should return a type instead of DbType
                     let g = Type::from_generic_part(i_s.database, &g);
                     g.matches(i_s, Some(self), class)
                 }
