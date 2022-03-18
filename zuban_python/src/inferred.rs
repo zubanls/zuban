@@ -1030,9 +1030,7 @@ impl<'db> Inferred<'db> {
                 }
                 _ => (),
             },
-            InferredState::UnsavedComplex(complex) => {
-                todo!()
-            }
+            InferredState::UnsavedComplex(complex) => (),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => (),

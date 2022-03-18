@@ -499,7 +499,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::LateBoundTypeVar,
                 );
                 let inf_annot = self.infer_annotation(annotation);
-                self.assign_single_target(target, &inf_annot)
+                self.assign_single_target(target, &inf_annot, |index| {
+                    self.file.points.set(
+                        index,
+                        Point::new_redirect(
+                            self.file.file_index(),
+                            annotation.index(),
+                            Locality::Todo,
+                        ),
+                    );
+                })
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -523,7 +532,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn assign_single_target(&mut self, target: Target<'db>, value: &Inferred<'db>) {
+    fn assign_single_target(
+        &mut self,
+        target: Target<'db>,
+        value: &Inferred<'db>,
+        save: impl Fn(NodeIndex),
+    ) {
         match target {
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());
@@ -551,9 +565,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             },
                         );
                     }
-                    value.clone().save_redirect(self.file, n.index() - 1);
+                    save(n.index() - 1);
                 } else {
-                    value.clone().save_redirect(self.file, n.index());
+                    save(n.index());
                 }
             }
             Target::NameExpression(primary_target, name_node) => {
@@ -569,7 +583,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                         });
                 }
-                value.clone().save_redirect(self.file, name_node.index());
+                save(name_node.index()); // TODO why is this needed? document!
             }
             Target::IndexExpression(n) => {
                 todo!("{:?}", n);
@@ -619,7 +633,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
-            _ => self.assign_single_target(target, value),
+            _ => self.assign_single_target(target, value, |index| {
+                value.clone().save_redirect(self.file, index);
+            }),
         };
     }
 
@@ -1064,6 +1080,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 Expression::maybe_by_index(&inference.file.tree, node_index)
                             {
                                 inference._infer_expression(expr)
+                            } else if let Some(annotation) =
+                                Annotation::maybe_by_index(&inference.file.tree, node_index)
+                            {
+                                inference.infer_annotation(annotation)
                             } else {
                                 todo!(
                                     "{}",
