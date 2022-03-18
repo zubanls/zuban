@@ -238,7 +238,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             result += params.next().unwrap().name_definition().as_code();
             result += ": ";
-            result += &g.as_string(i_s, None, style);
+            result += &g.as_string(i_s, style);
             first = false;
         });
         result += ") -> ";
@@ -249,7 +249,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .inference(i_s)
                 .infer_annotation_expression_class(annotation.expression())
                 .as_type(i_s)
-                .as_string(i_s, None, style)
+                .as_string(i_s, style)
         } else {
             result += "Any"
         }

@@ -757,7 +757,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let s = arg
             .infer(i_s)
             .class_as_type(i_s)
-            .as_string(i_s, None, FormatStyle::Qualified);
+            .as_string(i_s, FormatStyle::Qualified);
         args.node_reference().add_typing_issue(
             i_s.database,
             IssueType::Note(format!("Revealed type is {:?}", &s)),
