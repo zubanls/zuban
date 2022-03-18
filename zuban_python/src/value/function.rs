@@ -297,6 +297,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
         let mut finder =
             TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
+        finder.matches_signature(i_s); // TODO this should be different
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
@@ -315,7 +316,6 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
-                finder.matches_signature(i_s); // TODO this should be different
                 self.reference
                     .file
                     .inference(i_s)
@@ -323,14 +323,12 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                     .as_type(i_s)
                     .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
             } else {
-                finder.matches_signature(i_s); // TODO this should be different
                 self.reference
                     .file
                     .inference(i_s)
                     .infer_return_annotation(return_annotation)
             }
         } else {
-            finder.matches_signature(i_s); // TODO this should be different
             self.execute_without_annotation(i_s, args)
         }
     }

@@ -452,6 +452,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         node_ref: NodeRef<'db>,
         class: Type<'db, '_>,
     ) -> bool {
+        // TODO we should be able to remove the match part here!
         let specific = node_ref.point().specific();
         if self.match_specific == specific {
             self.calculated_type_vars
