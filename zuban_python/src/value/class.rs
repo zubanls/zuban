@@ -279,7 +279,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         &mut i_s,
                         self.reference.file,
                         &n.expression(),
-                        &mut |_, _| Some(Specific::ClassTypeVar),
+                        &mut |_, _, _| Some(Specific::ClassTypeVar),
                         &mut type_vars,
                         false,
                     );

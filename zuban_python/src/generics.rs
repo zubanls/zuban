@@ -5,8 +5,7 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    ClassInfos, Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific,
-    TypeVarIndex,
+    Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -478,7 +477,11 @@ pub fn search_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
     file: &'db PythonFile,
     expression: &Expression<'db>,
-    found_callback: &mut dyn FnMut(NodeIndex, PointLink) -> Option<Specific>,
+    found_callback: &mut impl FnMut(
+        &mut InferenceState<'db, '_>,
+        NodeIndex,
+        PointLink,
+    ) -> Option<Specific>,
     found_type_vars: &mut Vec<PointLink>,
     add_new_as_late_bound_type_var: bool,
 ) {
@@ -515,7 +518,7 @@ pub fn search_type_vars<'db>(
             if let Some(definition) = inferred.maybe_type_var(i_s) {
                 let link = definition.as_link();
 
-                if let Some(point_type) = found_callback(n.index(), link) {
+                if let Some(point_type) = found_callback(i_s, n.index(), link) {
                     let i = found_type_vars.iter().position(|&r| r == link);
                     if i.is_none() {
                         if add_new_as_late_bound_type_var {
@@ -542,12 +545,12 @@ pub fn search_type_vars_within_possible_class<'db>(
     file: &'db PythonFile,
     expression: &Expression<'db>,
     found_type_vars: &mut Vec<PointLink>,
-    class_infos: Option<&'db ClassInfos>,
+    class: Option<&Class<'db, '_>>,
     add_new_as_late_bound_type_var: bool,
     newly_found_type: Specific,
 ) {
-    let mut add = |n: NodeIndex, type_var_link: PointLink| {
-        if let Some(class_infos) = class_infos {
+    let mut add = |i_s: &mut InferenceState<'db, '_>, n: NodeIndex, type_var_link: PointLink| {
+        if let Some(class_infos) = class.map(|c| c.class_infos(i_s)) {
             if let Some(index) = class_infos.find_type_var_index(type_var_link) {
                 // Overwrite with a better type var definition.
                 file.points.set(

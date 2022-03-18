@@ -177,7 +177,6 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             return None;
         }
-        let class_infos = self.class.map(|c| c.class_infos(i_s));
         let mut found_type_vars = vec![];
         let func_node = self.node();
         for param in func_node.params().iter() {
@@ -187,7 +186,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     self.reference.file,
                     &annotation.expression(),
                     &mut found_type_vars,
-                    class_infos,
+                    self.class,
                     false,
                     Specific::FunctionTypeVar,
                 );
@@ -199,7 +198,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 self.reference.file,
                 &return_annot.expression(),
                 &mut found_type_vars,
-                class_infos,
+                self.class,
                 true,
                 Specific::FunctionTypeVar,
             );

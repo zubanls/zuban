@@ -488,13 +488,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         })
                 }
                 let mut found_type_vars = vec![];
-                let class_infos = self.i_s.current_class.map(|c| c.class_infos(self.i_s));
                 search_type_vars_within_possible_class(
                     self.i_s,
                     self.file,
                     &expr,
                     &mut found_type_vars,
-                    class_infos,
+                    self.i_s.current_class,
                     true,
                     Specific::LateBoundTypeVar,
                 );
@@ -648,7 +647,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.i_s,
                     self.file,
                     &expr,
-                    &mut |_, _| Some(Specific::LateBoundTypeVar),
+                    &mut |_, _, _| Some(Specific::LateBoundTypeVar),
                     &mut type_vars,
                     false,
                 );
