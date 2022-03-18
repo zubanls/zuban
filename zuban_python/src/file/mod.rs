@@ -499,11 +499,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::LateBoundTypeVar,
                 );
                 let inf_annot = self.infer_annotation(annotation);
-                self.assign_targets(
-                    target,
-                    &inf_annot,
-                    NodeRef::new(self.file, assignment.index()),
-                )
+                self.assign_single_target(target, &inf_annot)
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -527,44 +523,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn assign_targets(
-        &mut self,
-        target: Target<'db>,
-        value: &Inferred<'db>,
-        value_node_ref: NodeRef<'db>,
-    ) {
+    fn assign_single_target(&mut self, target: Target<'db>, value: &Inferred<'db>) {
         match target {
-            Target::Tuple(mut targets) => {
-                let mut value_iterator = value.iter(self.i_s, value_node_ref);
-                while let Some(target) = targets.next() {
-                    if let Target::Starred(star_target) = target {
-                        let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
-                        if stars > 0 {
-                            todo!()
-                        } else if let Some(len) = value_iterator.len() {
-                            let fetch = len - normal;
-                            let union = Inferred::gather_union(|callable| {
-                                for _ in 0..(len - normal) {
-                                    callable(value_iterator.next(self.i_s).unwrap());
-                                }
-                            });
-
-                            let generic = union.class_as_type(self.i_s).into_db_type(self.i_s);
-                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.database.python_state.list().as_link(),
-                                Some(GenericsList::new(Box::new([generic]))),
-                            ));
-                            self.assign_targets(star_target.as_target(), &list, value_node_ref);
-                        } else {
-                            todo!()
-                        }
-                    } else if let Some(value) = value_iterator.next(self.i_s) {
-                        self.assign_targets(target, &value, value_node_ref)
-                    } else {
-                        todo!()
-                    }
-                }
-            }
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());
                 if point.calculated() {
@@ -614,9 +574,52 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::IndexExpression(n) => {
                 todo!("{:?}", n);
             }
+            Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+        }
+    }
+
+    fn assign_targets(
+        &mut self,
+        target: Target<'db>,
+        value: &Inferred<'db>,
+        value_node_ref: NodeRef<'db>,
+    ) {
+        match target {
+            Target::Tuple(mut targets) => {
+                let mut value_iterator = value.iter(self.i_s, value_node_ref);
+                while let Some(target) = targets.next() {
+                    if let Target::Starred(star_target) = target {
+                        let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
+                        if stars > 0 {
+                            todo!()
+                        } else if let Some(len) = value_iterator.len() {
+                            let fetch = len - normal;
+                            let union = Inferred::gather_union(|callable| {
+                                for _ in 0..(len - normal) {
+                                    callable(value_iterator.next(self.i_s).unwrap());
+                                }
+                            });
+
+                            let generic = union.class_as_type(self.i_s).into_db_type(self.i_s);
+                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                self.i_s.database.python_state.list().as_link(),
+                                Some(GenericsList::new(Box::new([generic]))),
+                            ));
+                            self.assign_targets(star_target.as_target(), &list, value_node_ref);
+                        } else {
+                            todo!()
+                        }
+                    } else if let Some(value) = value_iterator.next(self.i_s) {
+                        self.assign_targets(target, &value, value_node_ref)
+                    } else {
+                        todo!()
+                    }
+                }
+            }
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
+            _ => self.assign_single_target(target, value),
         };
     }
 
