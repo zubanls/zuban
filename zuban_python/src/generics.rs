@@ -654,7 +654,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::TypeVar(type_var_index, node_ref) => match value_class {
                 Type::ClassLike(class) => {
                     if let Some(matcher) = matcher {
-                        let generic = class.as_db_type(i_s);
                         matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
                     } else {
                         true
