@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Expression, FunctionDef, NodeIndex, Param, ParamIterator, ParamType, ReturnOrYield,
+    FunctionDef, NodeIndex, Param, ParamIterator, ParamType, ReturnAnnotation, ReturnOrYield,
 };
 use std::fmt;
 
@@ -61,8 +61,8 @@ impl<'db, 'a> Function<'db, 'a> {
         FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn return_annotation(&self) -> Option<Expression<'db>> {
-        self.node().annotation().map(|a| a.expression())
+    pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
+        self.node().return_annotation()
     }
 
     pub fn iter_inferrable_params<'b>(
@@ -193,7 +193,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 );
             }
         }
-        if let Some(return_annot) = func_node.annotation() {
+        if let Some(return_annot) = func_node.return_annotation() {
             search_type_vars_within_possible_class(
                 i_s,
                 self.reference.file,
@@ -221,8 +221,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn result_generics(&self) -> Generics<'db, 'a> {
-        self.node()
-            .annotation()
+        self.return_annotation()
             .map(|a| Generics::Expression(self.reference.file, a.expression()))
             .unwrap_or(Generics::None)
     }
@@ -243,7 +242,7 @@ impl<'db, 'a> Function<'db, 'a> {
             first = false;
         });
         result += ") -> ";
-        if let Some(annotation) = node.annotation() {
+        if let Some(annotation) = node.return_annotation() {
             result += &self
                 .reference
                 .file
@@ -294,15 +293,11 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let annotation = self.return_annotation();
-        let func_type_vars = if annotation.is_some() {
-            self.calculated_type_vars(i_s)
-        } else {
-            None
-        };
+        let return_annotation = self.return_annotation();
+        let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
         let mut finder =
             TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
-        if let Some(expr) = annotation {
+        if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
             // annotation expression cache instead of recalculating.
@@ -324,7 +319,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 self.reference
                     .file
                     .inference(i_s)
-                    .infer_annotation_expression_class(expr)
+                    .infer_annotation_expression_class(return_annotation.expression())
                     .as_type(i_s)
                     .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
             } else {
@@ -332,7 +327,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 self.reference
                     .file
                     .inference(i_s)
-                    .infer_annotation_expression(expr)
+                    .infer_return_annotation(return_annotation)
             }
         } else {
             finder.matches_signature(i_s); // TODO this should be different

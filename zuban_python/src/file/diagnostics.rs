@@ -118,11 +118,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let (_, params, return_annotation, block) = f.unpack();
         for param in params.iter() {
             if let Some(annotation) = param.annotation() {
-                self.infer_annotation_expression(annotation.expression());
+                self.infer_annotation(annotation);
             }
         }
         if let Some(annotation) = return_annotation {
-            self.infer_annotation_expression(annotation.expression());
+            self.infer_return_annotation(annotation);
         }
 
         let i_a;
@@ -152,9 +152,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         return_stmt: ReturnStmt<'db>,
     ) {
         if let Some(func) = func {
-            if let Some(expr) = func.return_annotation() {
+            if let Some(annotation) = func.return_annotation() {
                 let inf = self.infer_star_expressions(return_stmt.star_expressions());
-                let inf_annot = self.infer_annotation_expression_class(expr);
+                let inf_annot = self.infer_annotation_expression_class(annotation.expression());
                 inf_annot
                     .as_type(self.i_s)
                     .error_if_not_matches(self.i_s, &inf, |t1, t2| {

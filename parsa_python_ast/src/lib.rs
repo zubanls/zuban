@@ -1390,7 +1390,7 @@ impl<'db> FunctionDef<'db> {
         )
     }
 
-    pub fn annotation(&self) -> Option<ReturnAnnotation<'db>> {
+    pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
         let ret = self.node.nth_child(3);
         if ret.is_type(Nonterminal(return_annotation)) {
             Some(ReturnAnnotation::new(ret))

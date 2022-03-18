@@ -317,6 +317,7 @@ impl<'db> Inferred<'db> {
         match specific {
             Specific::Function => callable(i_s, &Function::new(*definition, None)),
             Specific::AnnotationInstance => {
+                let definition = definition.add_to_node_index(2);
                 let inferred = definition
                     .file
                     .inference(i_s)

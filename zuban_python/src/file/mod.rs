@@ -498,7 +498,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     true,
                     Specific::LateBoundTypeVar,
                 );
-                let inf_annot = self.infer_annotation_expression(expr);
+                let inf_annot = self.infer_annotation(annotation);
                 self.assign_targets(
                     target,
                     &inf_annot,
@@ -652,13 +652,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn maybe_infer_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation().map(|annotation| {
-            let expression = annotation.expression();
             let mut inference = self.file.inference(self.i_s);
             match name.simple_param_type() {
-                SimpleParamType::Normal => inference.infer_annotation_expression(expression),
+                SimpleParamType::Normal => inference.infer_annotation(annotation),
                 SimpleParamType::MultiArgs => {
                     let p = inference
-                        .infer_annotation_expression_class(expression)
+                        .infer_annotation_expression_class(annotation.expression())
                         .as_db_type(self.i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                         DbType::Tuple(TupleContent {
@@ -669,7 +668,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 SimpleParamType::MultiKwargs => {
                     let p = inference
-                        .infer_annotation_expression_class(expression)
+                        .infer_annotation_expression_class(annotation.expression())
                         .as_db_type(self.i_s);
                     Inferred::create_instance(
                         self.i_s.database.python_state.builtins_point_link("dict"),
@@ -763,7 +762,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_annotation_expression(&mut self, expr: Expression<'db>) -> Inferred<'db> {
+    pub fn infer_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) -> Inferred<'db> {
+        self.infer_annotation_internal(annotation.index(), annotation.expression())
+    }
+
+    pub fn infer_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
+        self.infer_annotation_internal(annotation.index(), annotation.expression())
+    }
+
+    fn infer_annotation_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> Inferred<'db> {
+        if let Some(inferred) = self.check_point_cache(annotation_index) {
+            return inferred;
+        }
+
         // Make sure that we're not working "inside" of a function/closure. Annotations are always
         // considered global and should not use params or local state.
         let mut i_s = self.i_s.with_annotation_instance();
@@ -820,11 +835,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 } else {
                     return type_
                         .maybe_execute(self.i_s)
-                        .save_redirect(self.file, expr.index());
+                        .save_redirect(self.file, annotation_index);
                 }
             }
         };
-        Inferred::new_and_save(self.file, expr.index(), point)
+        Inferred::new_and_save(self.file, annotation_index, point)
     }
 
     pub fn infer_expression_part(&mut self, node: ExpressionPart<'db>) -> Inferred<'db> {
