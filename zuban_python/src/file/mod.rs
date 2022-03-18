@@ -1239,6 +1239,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
+            let mut found_type_vars = vec![];
+            search_type_vars_within_possible_class(
+                self.i_s,
+                file,
+                &expr,
+                &mut found_type_vars,
+                self.i_s.current_class,
+                true,
+                Specific::LateBoundTypeVar,
+            );
             let db_type = file
                 .inference(self.i_s)
                 .infer_annotation_expression_class(expr)
