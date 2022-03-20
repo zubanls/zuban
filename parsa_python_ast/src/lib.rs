@@ -366,6 +366,27 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn expect_type(&self) -> TypeLike<'db> {
+        let node = self
+            .node
+            .parent_until(&[
+                Nonterminal(class_def),
+                Nonterminal(assignment),
+                Nonterminal(function_def),
+                Nonterminal(stmt),
+            ])
+            .expect("There should always be a stmt");
+        if node.is_type(Nonterminal(class_def)) {
+            TypeLike::ClassDef(ClassDef::new(node))
+        } else if node.is_type(Nonterminal(assignment)) {
+            TypeLike::SimpleAssignment(Expression::new(node))
+        } else if node.is_type(Nonterminal(function_def)) {
+            TypeLike::Function
+        } else {
+            TypeLike::Other
+        }
+    }
+
     pub fn function_or_lambda_ancestor(&self) -> Option<FunctionOrLambda<'db>> {
         self.node
             .parent_until(&[Nonterminal(function_def), Nonterminal(lambda)])
@@ -469,6 +490,13 @@ impl<'db> StmtLike<'db> {
             StmtLike::DictComprehension(n) => n.index(),
         }
     }
+}
+
+pub enum TypeLike<'db> {
+    SimpleAssignment(Expression<'db>),
+    ClassDef(ClassDef<'db>),
+    Function,
+    Other,
 }
 
 impl<'db> Keyword<'db> {
