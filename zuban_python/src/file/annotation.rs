@@ -1,22 +1,28 @@
 use parsa_python_ast::*;
 
-use crate::database::{DbType, FormatStyle, Locality, Point, Specific};
+use crate::database::{DbType, FormatStyle, Locality, Point, PointType, Specific};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::file_state::File;
-use crate::generics::{search_type_vars_within_possible_class, Type};
+use crate::generics::Type;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{ClassLike, Value};
-
 
 struct InferredType<'db> {
     type_: Inferred<'db>,
     has_type_vars: bool,
 }
 
-impl InferredType<'_> {
+impl<'db> InferredType<'db> {
+    pub fn new(type_: Inferred<'db>) -> Self {
+        Self {
+            type_,
+            has_type_vars: false,
+        }
+    }
+
     pub fn union(self, other: Self) -> Self {
         Self {
             type_: self.type_.union(other.type_),
@@ -47,6 +53,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut inferred = inferred.type_;
 
                 if let Some(python_string) = inferred.maybe_str() {
+                    /*
                     if let Some(string) = python_string.to_owned() {
                         inferred = match self.infer_annotation_string(string) {
                             DbType::Class(link) => {
@@ -70,6 +77,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         inferred = Inferred::new_unknown()
                     }
+                    */
+                    todo!();
                     // Always overwrite the inferred string literal
                     return inferred.save_redirect(self.file, expr_part_index);
                 }
@@ -109,7 +118,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // TODO locality is wrong!!!!!1
         let type_ = inferred.as_type(self.i_s);
         let point = if matches!(type_, Type::Unknown) {
-            return Inferred::new_unknown()
+            return Inferred::new_unknown();
         } else if type_.has_type_vars(self.i_s) {
             // Cannot save this, because different type vars change the output.
             return type_.execute_and_resolve_type_vars(self.i_s, self.i_s.current_class, None);
@@ -123,38 +132,24 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, annotation_index, point)
     }
 
-    pub fn infer_annotation_string(&mut self, string: String) -> DbType {
+    fn infer_annotation_string(&mut self, string: String) -> InferredType<'db> {
         let file = self
             .i_s
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            let mut found_type_vars = vec![];
-            search_type_vars_within_possible_class(
-                self.i_s,
-                file,
-                &expr,
-                &mut found_type_vars,
-                self.i_s.current_class,
-                true,
-                Specific::LateBoundTypeVar,
-            );
-            let db_type = file
-                .inference(self.i_s)
-                .infer_annotation_expression_class(expr)
-                .as_db_type(self.i_s);
-            debug!(
-                "Inferred annotation string as {}",
-                db_type.as_type_string(self.i_s.database, None, FormatStyle::Short)
-            );
-            return db_type;
+            file.inference(self.i_s).infer_type(expr)
+        } else {
+            debug!("Found non-expression in annotation: {}", file.tree.code());
+            todo!()
         }
-        debug!("Found non-expression in annotation: {}", file.tree.code());
-        DbType::Unknown
     }
 
     fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
-        let InferredType {type_, has_type_vars} = match expr.unpack() {
+        let InferredType {
+            type_,
+            has_type_vars,
+        } = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_type_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
@@ -177,36 +172,36 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             _ => todo!("Not handled yet {:?}", node),
         }
         /*
-            let node_ref = NodeRef::new(self.file, expr.index());
-            if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::ValidType(format!(
-                        "Function {:?} is not valid as a type",
-                        func.qualified_name(i_s.database),
-                    )),
-                );
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::Note(
-                        "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
-                    ),
-                )
-            } else if let Some(module) =
-                inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
-            {
-                node_ref.add_typing_issue(
-                    i_s.database,
-                    IssueType::ValidType(format!(
-                        "Module {:?} is not valid as a type",
-                        module.qualified_name(i_s.database),
-                    )),
-                );
-            } else {
-                debug!("Unknown annotation expression {}", expr.short_debug());
-            }
-            Point::new_unknown(self.file.file_index(), Locality::Todo)
-            */
+        let node_ref = NodeRef::new(self.file, expr.index());
+        if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
+            node_ref.add_typing_issue(
+                i_s.database,
+                IssueType::ValidType(format!(
+                    "Function {:?} is not valid as a type",
+                    func.qualified_name(i_s.database),
+                )),
+            );
+            node_ref.add_typing_issue(
+                i_s.database,
+                IssueType::Note(
+                    "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
+                ),
+            )
+        } else if let Some(module) =
+            inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
+        {
+            node_ref.add_typing_issue(
+                i_s.database,
+                IssueType::ValidType(format!(
+                    "Module {:?} is not valid as a type",
+                    module.qualified_name(i_s.database),
+                )),
+            );
+        } else {
+            debug!("Unknown annotation expression {}", expr.short_debug());
+        }
+        Point::new_unknown(self.file.file_index(), Locality::Todo)
+        */
     }
 
     fn infer_type_primary(&mut self, primary: Primary<'db>) -> InferredType<'db> {
@@ -246,61 +241,51 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn infer_type_atom(&mut self, atom: Atom<'db>) -> InferredType<'db> {
-        use AtomContent::*;
-        let specific = match atom.unpack() {
-            Name(n) => return self.infer_type_name(n),
-            StringsOrBytes(s_o_b) => {
-                let mut iterator = s_o_b.iter();
-                match iterator.next().unwrap() {
-                    StringOrByte::String(s) => {
-                        if iterator.next().is_none() {
-                            return self.infer_annotation_string(s)
-                        } else {
-                            todo!("multiple strings")
-                        }
-                    },
-                    StringOrByte::Bytes(_) => todo!(),
-                    StringOrByte::FString(f) => todo!(),
-                };
-                for string_or_byte in iterator {
-                    if let StringOrByte::FString(f) = string_or_byte {
-                        self.calc_fstring_diagnostics(f)
+        match atom.unpack() {
+            AtomContent::Name(n) => return self.infer_type_name(n),
+            AtomContent::StringsOrBytes(s_o_b) => {
+                if let Some(s) = s_o_b.as_python_string() {
+                    if let Some(s) = s.to_owned() {
+                        self.infer_annotation_string(s)
+                    } else {
+                        todo!()
                     }
+                } else {
+                    todo!()
                 }
             }
-            NoneLiteral => return None
+            AtomContent::NoneLiteral => return InferredType::new(Inferred::new_none()),
             _ => todo!(),
-        };
-        let point = Point::new_simple_specific(specific, Locality::Todo);
-        InferredType {
-            type_: Inferred::new_and_save(self.file, atom.index(), point),
-            has_type_vars: false,
         }
     }
 
     fn infer_type_name(&mut self, name: Name<'db>) -> InferredType<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
-            let file = match point.file_index() == self.file.file_index() {
-                true => self.file,
-                false => self.i_s.database.loaded_python_file(point.file_index()),
-            };
-            let name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
-            match name.expect_type() {
-                TypeLike::ClassDef(c) => {
-                    return InferredType {
-                        type_: Inferred::new_saved(file, c.index(), file.points.get(c.index())),
-                        has_type_vars: false,
+            if point.type_() == PointType::Specific {
+                todo!()
+            } else {
+                let file = match point.file_index() == self.file.file_index() {
+                    true => self.file,
+                    false => self.i_s.database.loaded_python_file(point.file_index()),
+                };
+                let name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
+                match name.expect_type() {
+                    TypeLike::ClassDef(c) => {
+                        return InferredType {
+                            type_: Inferred::new_saved(file, c.index(), file.points.get(c.index())),
+                            has_type_vars: false,
+                        }
                     }
-                }
-                TypeLike::SimpleAssignment(expr) => {
-                    todo!()
-                }
-                TypeLike::Function => {
-                    todo!()
-                }
-                TypeLike::Other => {
-                    todo!()
+                    TypeLike::SimpleAssignment(expr) => {
+                        todo!()
+                    }
+                    TypeLike::Function => {
+                        todo!()
+                    }
+                    TypeLike::Other => {
+                        todo!()
+                    }
                 }
             }
         }

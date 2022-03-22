@@ -201,7 +201,9 @@ impl Point {
 
     pub fn file_index(self) -> FileIndex {
         debug_assert!(
-            self.type_() == PointType::Redirect || self.type_() == PointType::FileReference
+            self.type_() == PointType::Redirect || self.type_() == PointType::FileReference,
+            "{:?}",
+            self.type_()
         );
         FileIndex(self.flags & REST_MASK)
     }
