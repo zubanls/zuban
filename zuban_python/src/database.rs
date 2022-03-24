@@ -455,6 +455,9 @@ pub enum ComplexPoint {
     FunctionTypeVars(Box<[PointLink]>),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
+
+    // Relevant for types only (not inference)
+    TypeVar(Rc<TypeVar>),
     TypeAlias(Box<TypeAlias>),
 }
 
@@ -553,7 +556,7 @@ pub enum DbType {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(GenericsList),
-    TypeVar(TypeVarIndex, PointLink),
+    TypeVar(Rc<TypeVarUsage>),
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(CallableContent),
@@ -874,6 +877,29 @@ impl CallableContent {
             self.return_class.as_type_string(db, None, style)
         )
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeVar {
+    name: PointLink,
+    constraints: Box<[Rc<DbType>]>,
+    bound: Option<Rc<DbType>>,
+    covariant: bool,
+    contravariant: bool,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TypeVarType {
+    Class,
+    Function,
+    LateBound,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeVarUsage {
+    type_var: Rc<TypeVar>,
+    index: TypeVarIndex,
+    type_: TypeVarType,
 }
 
 #[derive(Debug, PartialEq, Clone)]
