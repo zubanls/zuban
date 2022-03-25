@@ -56,7 +56,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             .alias
             .db_type
             .clone()
-            .replace_type_vars(&mut |index, link| given_generics.nth(i_s, index));
+            .replace_type_vars(&mut |t| given_generics.nth(i_s, t.index));
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(replaced)))
     }
 

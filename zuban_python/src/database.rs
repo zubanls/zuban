@@ -556,7 +556,7 @@ pub enum DbType {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
     Union(GenericsList),
-    TypeVar(Rc<TypeVarUsage>),
+    TypeVar(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(CallableContent),
@@ -640,11 +640,11 @@ impl DbType {
             Self::Union(list) => {
                 format!("Union[{}]", list.as_string(db, type_var_generics, style))
             }
-            Self::TypeVar(index, link) => {
+            Self::TypeVar(t) => {
                 if let Some(type_var_generics) = type_var_generics {
-                    return type_var_generics(*index).as_type_string(db, None, style);
+                    return type_var_generics(t.index).as_type_string(db, None, style);
                 }
-                NodeRef::from_link(db, *link).as_name().as_str().to_owned()
+                t.type_var.name(db)
             }
             Self::Type(db_type) => format!(
                 "Type[{}]",
@@ -660,7 +660,7 @@ impl DbType {
 
     pub fn replace_type_vars<C>(self, callable: &mut C) -> Self
     where
-        C: FnMut(TypeVarIndex, PointLink) -> Self,
+        C: FnMut(&TypeVarUsage) -> Self,
     {
         let replace_list = |list: &mut Box<[DbType]>, callable: &mut C| {
             for item in list.iter_mut() {
@@ -677,7 +677,7 @@ impl DbType {
             Self::Union(list) => {
                 todo!()
             }
-            Self::TypeVar(type_var_index, link) => callable(type_var_index, link),
+            Self::TypeVar(t) => callable(&t),
             Self::Type(mut db_type) => {
                 let g = std::mem::replace(&mut *db_type, DbType::Unknown);
                 *db_type = g.replace_type_vars(callable);
@@ -705,7 +705,7 @@ impl DbType {
             Self::GenericClass(link, generics) => generics.has_type_vars(),
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
-            Self::TypeVar(_, _) => true,
+            Self::TypeVar(_) => true,
             Self::Union(list) => list.has_type_vars(),
             Self::Type(g) => g.has_type_vars(),
             Self::Class(_) | Self::Unknown | Self::Any | Self::None => false,
@@ -722,14 +722,14 @@ impl DbType {
             | Self::Any
             | Self::None
             | Self::Union(_)
-            | Self::TypeVar(_, _)
+            | Self::TypeVar(_)
             | Self::Type(_) => unreachable!(),
         }
     }
 
     pub fn remap_type_vars(
         &self,
-        resolve_type_var: &mut impl FnMut(TypeVarIndex) -> DbType,
+        resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> DbType,
     ) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new(
@@ -748,7 +748,7 @@ impl DbType {
                 Self::GenericClass(*link, remap_generics(generics))
             }
             Self::Union(list) => Self::Union(remap_generics(list)),
-            Self::TypeVar(index, _) => resolve_type_var(*index),
+            Self::TypeVar(t) => resolve_type_var(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
@@ -761,10 +761,11 @@ impl DbType {
                 generics.scan_for_late_bound_type_vars(db, result)
             }
             Self::Union(list) => list.scan_for_late_bound_type_vars(db, result),
-            Self::TypeVar(index, link) => {
+            Self::TypeVar(t) => {
                 loop {
-                    if index.as_usize() == result.len() {
-                        result.push(*link);
+                    if t.index.as_usize() == result.len() {
+                        todo!();
+                        //result.push(*link);
                         break;
                     } else {
                         // This a bit special, because these are late-bound parameters that are not
@@ -793,9 +794,9 @@ impl DbType {
         }
     }
 
-    pub fn maybe_type_var_index(&self) -> Option<(TypeVarIndex, PointLink)> {
+    pub fn maybe_type_var_index(&self) -> Option<&TypeVarUsage> {
         match self {
-            Self::TypeVar(index, link) => Some((*index, *link)),
+            Self::TypeVar(t) => Some(t),
             _ => None,
         }
     }
@@ -888,6 +889,13 @@ pub struct TypeVar {
     contravariant: bool,
 }
 
+impl TypeVar {
+    pub fn name(&self, db: &Database) -> String {
+        todo!()
+        //NodeRef::from_link(db, *link).as_name().as_str().to_owned()
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeVarType {
     Class,
@@ -897,9 +905,9 @@ pub enum TypeVarType {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
-    type_var: Rc<TypeVar>,
-    index: TypeVarIndex,
-    type_: TypeVarType,
+    pub type_var: Rc<TypeVar>,
+    pub index: TypeVarIndex,
+    pub type_: TypeVarType,
 }
 
 #[derive(Debug, PartialEq, Clone)]

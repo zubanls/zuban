@@ -4,7 +4,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVarIndex,
+    PointLink, PointType, Specific, TypeVarIndex, TypeVarType,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -125,11 +125,10 @@ impl<'db> Inferred<'db> {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            DbType::TypeVar(index, link) => {
-                let point = NodeRef::from_link(i_s.database, link).point();
-                if point.specific() == Specific::ClassTypeVar {
+            DbType::TypeVar(t) => {
+                if t.type_ == TypeVarType::Class {
                     if let Some(class) = i_s.current_class {
-                        let g = class.generics().nth(i_s, index);
+                        let g = class.generics().nth(i_s, t.index);
                         return Inferred::execute_db_type(i_s, g);
                     }
                 }
@@ -163,7 +162,7 @@ impl<'db> Inferred<'db> {
                 debug!("Type not found: {}", inf.description(i_s));
                 DbType::Unknown
             },
-            &mut |type_var_index, node_ref| DbType::TypeVar(type_var_index, node_ref.as_link()),
+            &mut |type_var_index, node_ref| todo!(), // DbType::TypeVar(type_var_index, node_ref.as_link()),
         )
     }
 
@@ -513,10 +512,7 @@ impl<'db> Inferred<'db> {
                     callable(i_s, &class)
                 }
                 DbType::Union(lst) => todo!(),
-                DbType::TypeVar(index, link) => callable(
-                    i_s,
-                    &TypeVarInstance::new(g, NodeRef::from_link(i_s.database, *link)),
-                ),
+                DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.database, g, t)),
                 DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
                 DbType::Callable(content) => callable(i_s, &Callable::new(content)),
                 DbType::None => callable(i_s, &NoneInstance()),
@@ -526,7 +522,7 @@ impl<'db> Inferred<'db> {
                     DbType::Class(link) => todo!(),
                     DbType::GenericClass(link, generics) => todo!(),
                     DbType::Union(lst) => todo!(),
-                    DbType::TypeVar(index, link) => todo!(),
+                    DbType::TypeVar(t) => todo!(),
                     DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
                     DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
                     DbType::Callable(content) => callable(i_s, &CallableClass::new(content)),

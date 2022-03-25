@@ -56,7 +56,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 false
             }
-            Type::TypeVar(_, node_ref) => todo!(),
+            Type::TypeVar(t) => todo!(),
             Type::Union(list) => false,
             Type::None | Type::Unknown => true, // TODO should be false
             Type::Any => true,
@@ -307,8 +307,12 @@ impl<'db, 'a> Class<'db, 'a> {
                                         class,
                                     ));
                                     for base in class.class_infos(i_s).mro.iter() {
-                                        mro.push(base.remap_type_vars(&mut |i| {
-                                            mro[mro_index].expect_generics().nth(i).unwrap().clone()
+                                        mro.push(base.remap_type_vars(&mut |t| {
+                                            mro[mro_index]
+                                                .expect_generics()
+                                                .nth(t.index)
+                                                .unwrap()
+                                                .clone()
                                         }));
                                     }
                                 } else if let Some(t) = v.as_typing_with_generics(i_s) {
@@ -632,8 +636,9 @@ fn create_type_var_remap<'db>(
                 _ => todo!(),
             },
         ),
-        Type::TypeVar(type_var_index, reference) => {
-            DbType::TypeVar(type_var_index, reference.as_link())
+        Type::TypeVar(t) => {
+            todo!();
+            DbType::TypeVar(t.clone())
         }
         Type::Union(list) => todo!(),
         Type::Unknown | Type::None | Type::Any => todo!(),

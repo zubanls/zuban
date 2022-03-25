@@ -5,7 +5,8 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific, TypeVarIndex,
+    Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific,
+    TypeVarIndex, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -18,12 +19,12 @@ use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleCla
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            Some(type_var_generics) => $g.clone().replace_type_vars(&mut |type_var_index, link| {
-                let node_ref = NodeRef::from_link($i_s.database, link);
-                if node_ref.point().specific() != Specific::ClassTypeVar {
-                    return DbType::Unknown;
+            Some(type_var_generics) => $g.clone().replace_type_vars(&mut |t| {
+                if t.type_ == TypeVarType::Class {
+                    type_var_generics.nth($i_s, t.index)
+                } else {
+                    DbType::Unknown
                 }
-                type_var_generics.nth($i_s, type_var_index)
             }),
             None => $g.clone(),
         }
@@ -440,22 +441,20 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     fn match_or_add_type_var(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var_index: TypeVarIndex,
-        node_ref: NodeRef<'db>,
+        type_var_usage: &TypeVarUsage,
         class: Type<'db, '_>,
     ) -> bool {
         // TODO we should be able to remove the match part here!
-        let specific = node_ref.point().specific();
         if self.match_specific == specific {
             self.calculated_type_vars
                 .as_mut()
                 .unwrap()
-                .set_generic(type_var_index, class.into_db_type(i_s));
+                .set_generic(type_var_usage.index, class.into_db_type(i_s));
             true
         } else if specific == Specific::ClassTypeVar {
             match self.func_or_callable {
                 FunctionOrCallable::Function(f) => {
-                    let g = f.class.unwrap().generics.nth(i_s, type_var_index);
+                    let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
                     let g = Type::from_db_type(i_s.database, &g);
                     g.matches(i_s, Some(self), class)
@@ -575,7 +574,7 @@ pub fn search_type_vars_within_possible_class<'db>(
 #[derive(Debug, Clone)]
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    TypeVar(TypeVarIndex, NodeRef<'db>),
+    TypeVar(&'a TypeVarUsage),
     Union(Vec<DbType>),
     None,
     Any,
@@ -601,9 +600,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 ))
             }
             DbType::Union(list) => Self::Union(list.iter().cloned().collect()),
-            DbType::TypeVar(index, link) => {
-                Self::TypeVar(*index, NodeRef::from_link(database, *link))
-            }
+            DbType::TypeVar(t) => Self::TypeVar(t),
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
             DbType::Callable(content) => {
@@ -630,8 +627,9 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::TypeVar(type_var_index, node_ref) => {
-                DbType::TypeVar(type_var_index, node_ref.as_link())
+            Self::TypeVar(t) => {
+                todo!();
+                //DbType::TypeVar(t)
             }
             Self::Union(list) => DbType::Union(GenericsList::from_vec(list)),
             Self::None => DbType::None,
@@ -648,20 +646,20 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher),
-            Self::TypeVar(type_var_index, node_ref) => match value_class {
+            Self::TypeVar(t) => match value_class {
                 Type::ClassLike(class) => {
                     if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
+                        matcher.match_or_add_type_var(i_s, t, value_class)
                     } else {
                         true
                     }
                 }
-                Type::TypeVar(_, _) | Type::Unknown => {
+                Type::TypeVar(_) | Type::Unknown => {
                     todo!("{:?}", value_class)
                 }
                 Type::Union(ref list) => {
                     if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, *type_var_index, *node_ref, value_class)
+                        matcher.match_or_add_type_var(i_s, t, value_class)
                     } else {
                         true
                     }
@@ -676,10 +674,10 @@ impl<'db, 'a> Type<'db, 'a> {
             },
             Self::Union(list1) => match value_class {
                 Self::Union(mut list2) => {
-                    let mut type_var_content = None;
+                    let mut type_var_usage = None;
                     for g1 in list1 {
                         if let Some(t) = g1.maybe_type_var_index() {
-                            type_var_content = Some(t);
+                            type_var_usage = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
                             if g1.todo_matches(g2) {
@@ -689,22 +687,21 @@ impl<'db, 'a> Type<'db, 'a> {
                         }
                     }
                     /*
-                    if type_var_content.is_some() {
+                    if type_var_usage.is_some() {
                             Type::from_db_type(i_s.database, g1).matches(
                                 i_s,
                                 matcher,
                                 Type::from_db_type(i_s.database, g2),
                             );
                     }*/
-                    if let Some((type_var_index, link)) = type_var_content {
+                    if let Some(type_var_usage) = type_var_usage {
                         if let Some(matcher) = matcher {
                             let g = match list2.len() {
                                 0 => unreachable!(),
                                 1 => Type::from_db_type(i_s.database, &list2[0]),
                                 _ => Type::Union(list2),
                             };
-                            let node_ref = NodeRef::from_link(i_s.database, link);
-                            matcher.match_or_add_type_var(i_s, type_var_index, node_ref, g)
+                            matcher.match_or_add_type_var(i_s, type_var_usage, g)
                         } else {
                             true
                         }
@@ -765,79 +762,59 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> DbType {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
                                 function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-                                type_var_index: TypeVarIndex,
-                                node_ref: &NodeRef| {
-            let point = node_ref.point();
-            match point.specific() {
-                Specific::ClassTypeVar => {
+                                usage: &TypeVarUsage| {
+            match usage.type_ {
+                TypeVarType::Class => {
                     if let Some(c) = class {
-                        let mut generic = |type_var_index| c.generics().nth(i_s, type_var_index);
+                        let mut generic = |usage: &TypeVarUsage| c.generics().nth(i_s, usage.index);
                         c.type_var_remap
                             .map(|remaps| {
                                 remaps
-                                    .nth(type_var_index)
+                                    .nth(usage.index)
                                     .map(|x| x.remap_type_vars(&mut generic))
                                     // This means that no generic was provided
                                     .unwrap_or(DbType::Unknown)
                             })
-                            .unwrap_or_else(|| generic(type_var_index))
+                            .unwrap_or_else(|| generic(usage))
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
-                        DbType::TypeVar(type_var_index, node_ref.as_link())
+                        DbType::TypeVar(usage.clone())
                     }
                 }
-                Specific::FunctionTypeVar => {
+                TypeVarType::Function => {
                     if let Some(fm) = function_matcher {
-                        fm.nth(i_s, type_var_index)
-                            .unwrap_or_else(|| unreachable!())
+                        fm.nth(i_s, usage.index).unwrap_or_else(|| unreachable!())
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
-                        DbType::TypeVar(type_var_index, node_ref.as_link())
+                        DbType::TypeVar(usage.clone())
                     }
                 }
-                Specific::LateBoundTypeVar => {
+                TypeVarType::LateBound => {
                     if let Some(function_matcher) = function_matcher {
                         if function_matcher.match_specific == Specific::LateBoundTypeVar {
-                            if let Some(calculated) = function_matcher.nth(i_s, type_var_index) {
+                            if let Some(calculated) = function_matcher.nth(i_s, usage.index) {
                                 return calculated;
                             }
                         }
                     }
                     // Just pass the type var again, because it might be resolved by a future
                     // callable, that is late bound, like Callable[..., Callable[[T], T]]
-                    DbType::TypeVar(type_var_index, node_ref.as_link())
+                    DbType::TypeVar(usage.clone())
                 }
                 _ => unreachable!(),
             }
         };
 
         match self {
-            Self::ClassLike(c) => {
-                c.as_db_type(i_s)
-                    .replace_type_vars(&mut |type_var_index, link| {
-                        let node_ref = NodeRef::from_link(i_s.database, link);
-                        resolve_type_var(
-                            i_s,
-                            function_matcher.as_deref_mut(),
-                            type_var_index,
-                            &node_ref,
-                        )
-                    })
-            }
-            Self::TypeVar(type_var_index, node_ref) => {
-                resolve_type_var(i_s, function_matcher, *type_var_index, node_ref)
-            }
+            Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
+                resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
+            }),
+            Self::TypeVar(t) => resolve_type_var(i_s, function_matcher, t),
             Self::Union(list) => DbType::Union(GenericsList::new(
                 list.iter()
                     .map(|g| {
-                        g.clone().replace_type_vars(&mut |type_var_index, link| {
-                            let node_ref = NodeRef::from_link(i_s.database, link);
-                            resolve_type_var(
-                                i_s,
-                                function_matcher.as_deref_mut(),
-                                type_var_index,
-                                &node_ref,
-                            )
+                        g.clone().replace_type_vars(&mut |t| {
+                            resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
                         })
                     })
                     .collect(),
@@ -863,7 +840,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 out
             }
-            Self::TypeVar(type_var_index, node_ref) => true,
+            Self::TypeVar(_) => true,
             Self::Union(list) => list.iter().any(|g| g.has_type_vars()),
             Self::None | Self::Any | Self::Unknown => false,
         }
@@ -872,7 +849,7 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
-            Self::TypeVar(_, node_ref) => node_ref.as_name().as_str().to_owned(),
+            Self::TypeVar(t) => t.type_var.name(i_s.database),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
                     a + &b.as_type_string(i_s.database, None, style)
@@ -897,9 +874,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     callable(Inferred::execute_db_type(i_s, db_type.clone()))
                 }
             }),
-            Self::TypeVar(index, node_ref) => {
-                Inferred::execute_db_type(i_s, DbType::TypeVar(*index, node_ref.as_link()))
-            }
+            Self::TypeVar(&usage) => Inferred::execute_db_type(i_s, DbType::TypeVar(usage.clone())),
             Self::None => Inferred::new_unsaved_specific(Specific::None),
             Self::Any => todo!(),
             Self::Unknown => unreachable!(), // Was checked earlier

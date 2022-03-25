@@ -7,7 +7,7 @@ use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Specific,
-    TupleContent, TypeVarIndex,
+    TupleContent, TypeVarIndex, TypeVarUsage,
 };
 use crate::diagnostics::IssueType;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -769,15 +769,19 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
     }
 }
 
-#[derive(Debug)]
 pub struct TypeVarInstance<'db, 'a> {
+    db: &'db Database,
     db_type: &'a DbType,
-    node_ref: NodeRef<'db>,
+    type_var_usage: &'a TypeVarUsage,
 }
 
 impl<'db, 'a> TypeVarInstance<'db, 'a> {
-    pub fn new(db_type: &'a DbType, node_ref: NodeRef<'db>) -> Self {
-        Self { db_type, node_ref }
+    pub fn new(db: &'db Database, db_type: &'a DbType, type_var_usage: &'a TypeVarUsage) -> Self {
+        Self {
+            db,
+            db_type,
+            type_var_usage,
+        }
     }
 }
 
@@ -787,7 +791,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn name(&self) -> &'db str {
-        self.node_ref.as_name().as_str()
+        todo!();
+        //self.type_var_usage.type_var.name(self.db)
     }
 
     fn lookup_internal(
@@ -800,5 +805,13 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(self.db_type)
+    }
+}
+
+impl fmt::Debug for TypeVarInstance<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("TypeVarInstance")
+            .field("db_type", &self.db_type)
+            .finish()
     }
 }
