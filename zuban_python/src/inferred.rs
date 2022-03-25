@@ -125,7 +125,7 @@ impl<'db> Inferred<'db> {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            DbType::TypeVar(t) => {
+            DbType::TypeVar(ref t) => {
                 if t.type_ == TypeVarType::Class {
                     if let Some(class) = i_s.current_class {
                         let g = class.generics().nth(i_s, t.index);
@@ -184,7 +184,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic option is invalid: {}", inf.description(i_s));
                 Type::Unknown
             },
-            &mut Type::TypeVar,
+            &mut |_, _| todo!("PLEASE REMOVE THIS ARGUMENT"),
         )
     }
 
@@ -201,7 +201,7 @@ impl<'db> Inferred<'db> {
                 debug!("Generic class option is unknown: {}", inf.description(i_s));
                 Type::Unknown
             },
-            &mut Type::TypeVar,
+            &mut |_, _| todo!(),
         )
     }
 

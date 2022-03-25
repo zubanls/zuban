@@ -278,7 +278,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     pub calculated_type_vars: Option<GenericsList>,
     matches: bool,
     type_vars: Option<&'a [PointLink]>,
-    match_specific: Specific,
+    match_type: TypeVarType,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -287,7 +287,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
         type_vars: Option<&'a [PointLink]>,
-        match_specific: Specific,
+        match_type: TypeVarType,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Function(function),
@@ -296,7 +296,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             skip_first,
             matches: true,
             type_vars,
-            match_specific,
+            match_type,
         }
     }
     // TODO the structure of this impl looks very weird, strange funcs
@@ -305,7 +305,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         callable: &'a Callable<'a>,
         args: &'a dyn Arguments<'db>,
         type_vars: Option<&'a [PointLink]>,
-        match_specific: Specific,
+        match_type: TypeVarType,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Callable(callable),
@@ -314,7 +314,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             skip_first: false,
             matches: true,
             type_vars,
-            match_specific,
+            match_type,
         }
     }
 
@@ -324,9 +324,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
         type_vars: Option<&'db [PointLink]>,
-        match_specific: Specific,
+        match_type: TypeVarType,
     ) -> Option<GenericsList> {
-        let mut self_ = Self::new(function, args, skip_first, type_vars, match_specific);
+        let mut self_ = Self::new(function, args, skip_first, type_vars, match_type);
         self_.calculate_type_vars(i_s);
         self_.calculated_type_vars
     }
@@ -445,13 +445,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         class: Type<'db, '_>,
     ) -> bool {
         // TODO we should be able to remove the match part here!
-        if self.match_specific == specific {
+        if self.match_type == type_var_usage.type_ {
             self.calculated_type_vars
                 .as_mut()
                 .unwrap()
                 .set_generic(type_var_usage.index, class.into_db_type(i_s));
             true
-        } else if specific == Specific::ClassTypeVar {
+        } else if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
                 FunctionOrCallable::Function(f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
@@ -791,7 +791,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 TypeVarType::LateBound => {
                     if let Some(function_matcher) = function_matcher {
-                        if function_matcher.match_specific == Specific::LateBoundTypeVar {
+                        if function_matcher.match_type == TypeVarType::LateBound {
                             if let Some(calculated) = function_matcher.nth(i_s, usage.index) {
                                 return calculated;
                             }
@@ -874,7 +874,9 @@ impl<'db, 'a> Type<'db, 'a> {
                     callable(Inferred::execute_db_type(i_s, db_type.clone()))
                 }
             }),
-            Self::TypeVar(&usage) => Inferred::execute_db_type(i_s, DbType::TypeVar(usage.clone())),
+            Self::TypeVar(usage) => {
+                Inferred::execute_db_type(i_s, DbType::TypeVar((*usage).clone()))
+            }
             Self::None => Inferred::new_unsaved_specific(Specific::None),
             Self::Any => todo!(),
             Self::Unknown => unreachable!(), // Was checked earlier

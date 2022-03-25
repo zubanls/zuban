@@ -7,7 +7,7 @@ use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Specific,
-    TupleContent, TypeVarIndex, TypeVarUsage,
+    TupleContent, TypeVarIndex, TypeVarType, TypeVarUsage,
 };
 use crate::diagnostics::IssueType;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -691,7 +691,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
         }
         let mut finder =
-            TypeVarMatcher::from_callable(self, args, Some(&type_vars), Specific::LateBoundTypeVar);
+            TypeVarMatcher::from_callable(self, args, Some(&type_vars), TypeVarType::LateBound);
         let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
     }

@@ -900,7 +900,7 @@ impl TypeVar {
 pub enum TypeVarType {
     Class,
     Function,
-    LateBound,
+    LateBound, // Used in Aliases and Callables
 }
 
 #[derive(Debug, PartialEq, Clone)]

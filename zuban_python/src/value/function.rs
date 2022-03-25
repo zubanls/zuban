@@ -7,7 +7,7 @@ use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
-    Point, PointLink, Specific, TupleContent,
+    Point, PointLink, Specific, TupleContent, TypeVarType,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -295,7 +295,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
         let mut finder =
-            TypeVarMatcher::new(self, args, false, func_type_vars, Specific::FunctionTypeVar);
+            TypeVarMatcher::new(self, args, false, func_type_vars, TypeVarType::Function);
         finder.matches_signature(i_s); // TODO this should be different
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
@@ -550,7 +550,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     args,
                     true,
                     Some(c.type_vars(i_s)),
-                    Specific::ClassTypeVar,
+                    TypeVarType::Class,
                 ),
                 None => {
                     let func_type_vars = function.calculated_type_vars(i_s);
@@ -559,7 +559,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         args,
                         false,
                         func_type_vars,
-                        Specific::FunctionTypeVar,
+                        TypeVarType::Function,
                     )
                 }
             };

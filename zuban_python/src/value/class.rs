@@ -4,7 +4,7 @@ use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, Val
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, PointLink, Specific, TypeVarIndex,
+    MroIndex, PointLink, Specific, TypeVarIndex, TypeVarType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -220,7 +220,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     args,
                     true,
                     Some(type_vars),
-                    Specific::ClassTypeVar,
+                    TypeVarType::Class,
                 );
                 return (func, list);
             }
