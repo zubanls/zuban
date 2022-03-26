@@ -121,7 +121,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) -> Inferred<'db> {
         let point = self.file.points.get(annotation_index);
         let has_type_vars = if point.calculated() {
-            todo!()
+            point.specific() == Specific::AnnotationWithTypeVars
         } else {
             self.cache_annotation_internal(annotation_index, expr)
         };
@@ -162,15 +162,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let specific = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
                 i.save_redirect(self.file, expr.index());
-                Specific::AnnotationInstance
+                Specific::AnnotationClassInstance
             }
             TypeContent::DbType(d) => {
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     .save_redirect(self.file, expr.index());
                 if has_type_vars {
-                    todo!()
+                    Specific::AnnotationWithTypeVars
                 } else {
-                    todo!()
+                    Specific::AnnotationWithoutTypeVars
                 }
             }
         };
