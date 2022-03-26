@@ -1,31 +1,43 @@
 use parsa_python_ast::*;
 
-use crate::database::{DbType, FormatStyle, Locality, Point, PointType, Specific};
+use crate::database::{ComplexPoint, DbType, FormatStyle, Locality, Point, PointType, Specific};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::file_state::File;
 use crate::generics::Type;
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{ClassLike, Value};
 
-struct InferredType<'db> {
-    type_: Inferred<'db>,
+pub enum TypeContent<'db> {
+    ClassWithoutTypeVar(Inferred<'db>),
+    DbType(DbType),
+}
+
+pub struct InferredType<'db> {
+    pub type_: TypeContent<'db>,
     has_type_vars: bool,
 }
 
 impl<'db> InferredType<'db> {
-    pub fn new(type_: Inferred<'db>) -> Self {
+    pub fn new(type_: TypeContent<'db>) -> Self {
         Self {
             type_,
             has_type_vars: false,
         }
     }
 
-    pub fn union(self, other: Self) -> Self {
+    pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         Self {
-            type_: self.type_.union(other.type_),
+            type_: TypeContent::DbType(match self.type_ {
+                TypeContent::ClassWithoutTypeVar(inf) => todo!(),
+                TypeContent::DbType(t) => t.union(match other.type_ {
+                    TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
+                    TypeContent::DbType(t) => t,
+                }),
+            }),
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }
     }
@@ -52,8 +64,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut inferred = inference.infer_type(expr);
                 let mut inferred = inferred.type_;
 
+                /*
                 if let Some(python_string) = inferred.maybe_str() {
-                    /*
                     if let Some(string) = python_string.to_owned() {
                         inferred = match self.infer_annotation_string(string) {
                             DbType::Class(link) => {
@@ -77,10 +89,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         inferred = Inferred::new_unknown()
                     }
-                    */
                     todo!();
                     // Always overwrite the inferred string literal
-                    return inferred.save_redirect(self.file, expr_part_index);
+                    //return inferred.save_redirect(self.file, expr_part_index);
                 }
 
                 if self.file.points.get(expr_part_index).calculated() {
@@ -88,6 +99,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 } else {
                     inferred.save_redirect(self.file, expr_part_index)
                 }
+                */
+                todo!()
             }
             ExpressionContent::Lambda(_) | ExpressionContent::Ternary(_) => Inferred::new_unknown(),
         }
@@ -106,30 +119,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         annotation_index: NodeIndex,
         expr: Expression<'db>,
     ) -> Inferred<'db> {
-        if let Some(inferred) = self.check_point_cache(annotation_index) {
-            return inferred;
-        }
-
-        // Make sure that we're not working "inside" of a function/closure. Annotations are always
-        // considered global and should not use params or local state.
-        let mut i_s = self.i_s.with_annotation_instance();
-        let mut inference = self.file.inference(&mut i_s);
-        let inferred = inference.infer_annotation_expression_class(expr);
-        // TODO locality is wrong!!!!!1
-        let type_ = inferred.as_type(self.i_s);
-        let point = if matches!(type_, Type::Unknown) {
-            return Inferred::new_unknown();
-        } else if type_.has_type_vars(self.i_s) {
-            // Cannot save this, because different type vars change the output.
-            return type_.execute_and_resolve_type_vars(self.i_s, self.i_s.current_class, None);
-        } else if matches!(type_, Type::ClassLike(ClassLike::Class(_))) {
-            Point::new_simple_specific(Specific::AnnotationInstance, Locality::Todo)
+        let point = self.file.points.get(annotation_index);
+        let has_type_vars = if point.calculated() {
+            todo!()
         } else {
-            return type_
-                .maybe_execute(self.i_s)
-                .save_redirect(self.file, annotation_index);
+            self.cache_annotation_internal(annotation_index, expr)
         };
-        Inferred::new_and_save(self.file, annotation_index, point)
+
+        if has_type_vars {
+            // TODO this is always a TypeInstance, just use that.
+            let inferred = self.check_point_cache(expr.index()).unwrap();
+            let type_ = inferred.class_as_type(self.i_s);
+            type_.execute_and_resolve_type_vars(self.i_s, self.i_s.current_class, None)
+        } else {
+            self.check_point_cache(expr.index()).unwrap()
+        }
     }
 
     fn infer_annotation_string(&mut self, string: String) -> InferredType<'db> {
@@ -145,18 +149,43 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
+    fn cache_annotation_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> bool {
         let InferredType {
             type_,
             has_type_vars,
-        } = match expr.unpack() {
+        } = self.infer_type(expr);
+
+        let specific = match type_ {
+            TypeContent::ClassWithoutTypeVar(i) => {
+                i.save_redirect(self.file, expr.index());
+                Specific::AnnotationInstance
+            }
+            TypeContent::DbType(d) => {
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+                    .save_redirect(self.file, expr.index());
+                if has_type_vars {
+                    todo!()
+                } else {
+                    todo!()
+                }
+            }
+        };
+        self.file.points.set(
+            annotation_index,
+            Point::new_simple_specific(specific, Locality::Todo),
+        );
+        has_type_vars
+    }
+
+    pub fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_type_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
-        };
-        InferredType {
-            type_: type_.save_redirect(self.file, expr.index()),
-            has_type_vars,
         }
     }
     fn infer_type_expression_part(&mut self, node: ExpressionPart<'db>) -> InferredType<'db> {
@@ -166,8 +195,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
-                self.infer_type_expression_part(a)
-                    .union(self.infer_type_expression_part(b))
+                let other = self.infer_type_expression_part(b);
+                self.infer_type_expression_part(a).union(self.i_s, other)
             }
             _ => todo!("Not handled yet {:?}", node),
         }
@@ -254,7 +283,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     todo!()
                 }
             }
-            AtomContent::NoneLiteral => return InferredType::new(Inferred::new_none()),
+            AtomContent::NoneLiteral => InferredType::new(TypeContent::DbType(DbType::None)),
             _ => todo!(),
         }
     }
@@ -273,7 +302,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 match name.expect_type() {
                     TypeLike::ClassDef(c) => {
                         return InferredType {
-                            type_: Inferred::new_saved(file, c.index(), file.points.get(c.index())),
+                            type_: TypeContent::ClassWithoutTypeVar(Inferred::new_saved(
+                                file,
+                                c.index(),
+                                file.points.get(c.index()),
+                            )),
                             has_type_vars: false,
                         }
                     }

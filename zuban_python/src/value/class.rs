@@ -9,7 +9,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
-use crate::generics::{search_type_vars, Generics, Type, TypeVarMatcher};
+use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
@@ -272,20 +272,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut is_protocol = false;
         let mut incomplete_mro = false;
         if let Some(arguments) = self.node().arguments() {
-            // First search for type vars
-            for argument in arguments.iter() {
-                if let Argument::Positional(n) = argument {
-                    search_type_vars(
-                        &mut i_s,
-                        self.reference.file,
-                        &n.expression(),
-                        &mut |_, _, _| Some(Specific::ClassTypeVar),
-                        &mut type_vars,
-                        false,
-                    );
-                }
-            }
-            // Then calculate the type var remapping
+            // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
@@ -293,8 +280,10 @@ impl<'db, 'a> Class<'db, 'a> {
                             .reference
                             .file
                             .inference(&mut i_s)
-                            .infer_named_expression(n);
-                        inf.run_mut(
+                            .infer_type(n.expression());
+                        todo!();
+                        /*
+                        inf.type_.run_mut(
                             &mut i_s,
                             &mut |i_s, v| {
                                 if let Some(class) = v.as_class() {
@@ -327,6 +316,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             },
                             || incomplete_mro = true,
                         )
+                        */
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
