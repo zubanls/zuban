@@ -658,40 +658,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn maybe_infer_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
-        name.maybe_param_annotation().map(|annotation| {
-            let mut inference = self.file.inference(self.i_s);
-            match name.simple_param_type() {
-                SimpleParamType::Normal => inference.infer_annotation(annotation),
-                SimpleParamType::MultiArgs => {
-                    let p = inference
-                        .infer_annotation_expression_class(annotation.expression())
-                        .as_db_type(self.i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Tuple(TupleContent {
-                            generics: Some(GenericsList::new(Box::new([p]))),
-                            arbitrary_length: true,
-                        }),
-                    )))
-                }
-                SimpleParamType::MultiKwargs => {
-                    let p = inference
-                        .infer_annotation_expression_class(annotation.expression())
-                        .as_db_type(self.i_s);
-                    Inferred::create_instance(
-                        self.i_s.database.python_state.builtins_point_link("dict"),
-                        Some(&[
-                            DbType::Class(
-                                self.i_s.database.python_state.builtins_point_link("str"),
-                            ),
-                            p,
-                        ]),
-                    )
-                }
-            }
-        })
-    }
-
     pub fn infer_named_expression(&mut self, named_expr: NamedExpression<'db>) -> Inferred<'db> {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
