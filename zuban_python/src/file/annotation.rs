@@ -81,6 +81,39 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         })
     }
 
+    pub fn return_annotation_type(&mut self, annotation: ReturnAnnotation<'db>) -> Type<'db, 'db> {
+        self.annotation_type_internal(annotation.index(), annotation.expression())
+    }
+
+    pub fn annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
+        self.annotation_type_internal(annotation.index(), annotation.expression())
+    }
+
+    fn annotation_type_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> Type<'db, 'db> {
+        let specific = self.cache_annotation_internal(annotation_index, expr);
+        match specific {
+            Specific::AnnotationClassInstance => Type::ClassLike(ClassLike::Class(
+                self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
+            )),
+            Specific::AnnotationWithoutTypeVars | Specific::AnnotationWithTypeVars => {
+                if let ComplexPoint::TypeInstance(db_type) = self
+                    .file
+                    .complex_points
+                    .get_by_node_index(&self.file.points, expr.index())
+                {
+                    Type::from_db_type(self.i_s.database, db_type)
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
         debug!(
             "Infer annotation expression class on {:?}: {:?}",
@@ -156,14 +189,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         annotation_index: NodeIndex,
         expr: Expression<'db>,
     ) -> Inferred<'db> {
-        let point = self.file.points.get(annotation_index);
-        let has_type_vars = if point.calculated() {
-            point.specific() == Specific::AnnotationWithTypeVars
-        } else {
-            self.cache_annotation_internal(annotation_index, expr)
-        };
+        let specific = self.cache_annotation_internal(annotation_index, expr);
 
-        if has_type_vars {
+        if specific == Specific::AnnotationWithTypeVars {
             // TODO this is always a TypeInstance, just use that.
             let inferred = self.check_point_cache(expr.index()).unwrap();
             let type_ = inferred.class_as_type(self.i_s);
@@ -186,11 +214,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    #[inline]
     fn cache_annotation_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression<'db>,
-    ) -> bool {
+    ) -> Specific {
+        let point = self.file.points.get(annotation_index);
+        if point.calculated() {
+            return point.specific();
+        }
+
         let InferredType {
             type_,
             has_type_vars,
@@ -215,7 +249,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             annotation_index,
             Point::new_simple_specific(specific, Locality::Todo),
         );
-        has_type_vars
+        specific
     }
 
     pub fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {

@@ -34,7 +34,11 @@ pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
 
 impl ComplexValues {
     pub fn get(&self, index: usize) -> &ComplexPoint {
-        self.0.get(index).unwrap()
+        &self.0[index]
+    }
+
+    pub fn get_by_node_index(&self, points: &Points, node_index: NodeIndex) -> &ComplexPoint {
+        &self.0[points.get(node_index).complex_index()]
     }
 
     pub fn insert(
