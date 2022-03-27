@@ -780,7 +780,7 @@ impl<'db> Inferred<'db> {
         Instance::new(class, self)
     }
 
-    pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, '_>> {
+    pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, 'db>> {
         let mut generics = Generics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
@@ -1085,7 +1085,7 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn expect_generics(&self) -> Option<Generics<'db, '_>> {
+    fn expect_generics(&self) -> Option<Generics<'db, 'db>> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
                 let primary = definition.as_primary();
