@@ -110,68 +110,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_annotation_expression_class(&mut self, expr: Expression<'db>) -> Inferred<'db> {
-        debug!(
-            "Infer annotation expression class on {:?}: {:?}",
-            self.file.byte_to_line_column(expr.start()),
-            expr.as_code()
-        );
-
-        let expr_part_index = expr.index() + 1;
-        let mut i_s = self.i_s.with_annotation_instance();
-        let mut inference = self.file.inference(&mut i_s);
-        if let Some(inferred) = self.check_point_cache(expr_part_index) {
-            return inferred;
-        }
-        // Since the expression is reserved for instantiating the expression, just do not
-        // save the result.
-        match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => {
-                let mut inferred = inference.infer_type(expr);
-                let mut inferred = inferred.type_;
-
-                /*
-                if let Some(python_string) = inferred.maybe_str() {
-                    if let Some(string) = python_string.to_owned() {
-                        inferred = match self.infer_annotation_string(string) {
-                            DbType::Class(link) => {
-                                let node_reference = NodeRef::from_link(i_s.database, link);
-                                Inferred::new_saved(
-                                    node_reference.file,
-                                    node_reference.node_index,
-                                    node_reference.point(),
-                                )
-                            }
-                            DbType::GenericClass(l, g) => todo!(),
-                            DbType::Union(multiple) => todo!(),
-                            DbType::Tuple(content) => todo!(),
-                            DbType::Callable(content) => todo!(),
-                            DbType::Type(c) => todo!(),
-                            DbType::None => return Inferred::new_none(),
-                            DbType::Any => todo!(),
-                            DbType::TypeVar(index, link) => todo!(),
-                            DbType::Unknown => Inferred::new_unknown(),
-                        };
-                    } else {
-                        inferred = Inferred::new_unknown()
-                    }
-                    todo!();
-                    // Always overwrite the inferred string literal
-                    //return inferred.save_redirect(self.file, expr_part_index);
-                }
-
-                if self.file.points.get(expr_part_index).calculated() {
-                    inferred
-                } else {
-                    inferred.save_redirect(self.file, expr_part_index)
-                }
-                */
-                todo!()
-            }
-            ExpressionContent::Lambda(_) | ExpressionContent::Ternary(_) => Inferred::new_unknown(),
-        }
-    }
-
     pub fn infer_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) -> Inferred<'db> {
         self.infer_annotation_internal(annotation.index(), annotation.expression())
     }
@@ -220,6 +158,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if point.calculated() {
             return point.specific();
         }
+        debug!(
+            "Infer annotation expression class on {:?}: {:?}",
+            self.file.byte_to_line_column(expr.start()),
+            expr.as_code()
+        );
 
         let InferredType {
             type_,

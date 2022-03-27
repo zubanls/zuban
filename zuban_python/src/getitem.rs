@@ -77,9 +77,12 @@ impl<'db> Simple<'db> {
     }
 
     pub fn infer_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        /*
         self.file
             .inference(i_s)
             .infer_annotation_expression_class(self.named_expr.expression())
+        */
+        todo!()
     }
 }
 
