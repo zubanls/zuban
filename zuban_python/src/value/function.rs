@@ -246,8 +246,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .reference
                 .file
                 .inference(i_s)
-                .infer_annotation_expression_class(annotation.expression())
-                .as_type(i_s)
+                .return_annotation_type(annotation)
                 .as_string(i_s, style)
         } else {
             result += "Any"
@@ -318,8 +317,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 self.reference
                     .file
                     .inference(i_s)
-                    .infer_annotation_expression_class(return_annotation.expression())
-                    .as_type(i_s)
+                    .return_annotation_type(return_annotation)
                     .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
             } else {
                 self.reference

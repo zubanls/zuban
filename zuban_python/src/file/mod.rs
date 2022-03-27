@@ -478,18 +478,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                let expr = annotation.expression();
                 if let Some(right_side) = right_side {
-                    let inf_annot = self.infer_annotation_expression_class(expr);
                     let right = self.infer_assignment_right_side(right_side);
-                    inf_annot
-                        .as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, &right, |t1, t2| {
+                    self.annotation_type(annotation).error_if_not_matches(
+                        self.i_s,
+                        &right,
+                        |t1, t2| {
                             NodeRef::new(self.file, annotation.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
-                        })
+                        },
+                    )
                 }
                 let inf_annot = self.infer_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, |index| {

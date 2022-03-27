@@ -53,9 +53,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match name.simple_param_type() {
                 SimpleParamType::Normal => inference.infer_annotation(annotation),
                 SimpleParamType::MultiArgs => {
-                    let p = inference
-                        .infer_annotation_expression_class(annotation.expression())
-                        .as_db_type(self.i_s);
+                    let p = inference.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                         DbType::Tuple(TupleContent {
                             generics: Some(GenericsList::new(Box::new([p]))),
@@ -64,9 +62,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     )))
                 }
                 SimpleParamType::MultiKwargs => {
-                    let p = inference
-                        .infer_annotation_expression_class(annotation.expression())
-                        .as_db_type(self.i_s);
+                    let p = inference.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::create_instance(
                         self.i_s.database.python_state.builtins_point_link("dict"),
                         Some(&[
@@ -184,7 +180,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_annotation_internal(annotation.index(), annotation.expression())
     }
 
-    fn infer_annotation_internal(
+    pub fn infer_annotation_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression<'db>,

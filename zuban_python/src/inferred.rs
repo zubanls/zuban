@@ -320,7 +320,7 @@ impl<'db> Inferred<'db> {
                 let inferred = definition
                     .file
                     .inference(i_s)
-                    .infer_annotation_expression_class(definition.as_expression());
+                    .infer_expression(definition.as_expression());
                 inferred.with_instance(i_s, self, None, |i_s, instance| {
                     callable(&mut i_s.with_annotation_instance(), instance)
                 })

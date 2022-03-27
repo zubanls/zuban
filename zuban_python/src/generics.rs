@@ -59,9 +59,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => {
                 if n.as_usize() == 0 {
-                    file.inference(i_s)
-                        .infer_annotation_expression_class(*expr)
-                        .as_db_type(i_s)
+                    file.inference(i_s).infer_expression(*expr).as_db_type(i_s)
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -77,7 +75,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 .map(|slice_content| match slice_content {
                     SliceContent::NamedExpression(n) => file
                         .inference(i_s)
-                        .infer_annotation_expression_class(n.expression())
+                        .infer_expression(n.expression())
                         .as_db_type(i_s),
                     SliceContent::Slice(s) => todo!(),
                 })
@@ -122,7 +120,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file
                 .inference(i_s)
-                .infer_annotation_expression_class(*expr)
+                .infer_expression(*expr)
                 .as_db_type(i_s)]))),
             Self::Slices(file, slices) => Some(GenericsList::new(
                 slices
@@ -130,7 +128,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
                             file.inference(i_s)
-                                .infer_annotation_expression_class(n.expression())
+                                .infer_expression(n.expression())
                                 .as_db_type(i_s)
                         } else {
                             todo!()
@@ -211,7 +209,7 @@ impl<'db> GenericsIterator<'db, '_> {
     ) -> Option<T> {
         match self {
             Self::Expression(file, expr) => {
-                let inferred = file.inference(i_s).infer_annotation_expression_class(*expr);
+                let inferred = file.inference(i_s).infer_expression(*expr);
                 let g = inferred.as_type(i_s);
                 let result = callable(i_s, g);
                 *self = GenericsIterator::None;
@@ -219,9 +217,7 @@ impl<'db> GenericsIterator<'db, '_> {
             }
             Self::SliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    let inferred = file
-                        .inference(i_s)
-                        .infer_annotation_expression_class(s.expression());
+                    let inferred = file.inference(i_s).infer_expression(s.expression());
                     let g = inferred.as_type(i_s);
                     Some(callable(i_s, g))
                 } else {
@@ -245,11 +241,8 @@ impl<'db> GenericsIterator<'db, '_> {
             Self::ParamIterator(f, params) => params.next().map(|p| {
                 p.annotation()
                     .map(|a| {
-                        let inferred = f
-                            .inference(i_s)
-                            .infer_annotation_expression_class(a.expression());
-                        let g = inferred.as_type(i_s);
-                        callable(i_s, g)
+                        let t = f.inference(i_s).annotation_type(a);
+                        callable(i_s, t)
                     })
                     .unwrap_or_else(|| callable(i_s, Type::None))
             }),
@@ -364,12 +357,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         }
                         if let Some(value) = p.infer(i_s) {
                             let value_class = value.class_as_type(i_s);
-                            let inf = function
+                            let annotation_g = function
                                 .reference
                                 .file
                                 .inference(i_s)
-                                .infer_annotation_expression_class(annotation.expression());
-                            let annotation_g = inf.as_type(i_s);
+                                .annotation_type(annotation);
                             if !annotation_g.matches(i_s, Some(self), value_class) {
                                 let value_class = value.class_as_type(i_s);
                                 p.as_argument_node_reference().add_typing_issue(
