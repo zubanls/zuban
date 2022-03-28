@@ -191,6 +191,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         specific
     }
 
+    pub fn infer_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {
+        match self.infer_type(expr).type_ {
+            TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.i_s),
+            TypeContent::DbType(d) => d,
+        }
+    }
+
     fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_type_expression_part(n),

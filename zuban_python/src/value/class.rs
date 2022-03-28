@@ -276,13 +276,13 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        todo!();
-                        /*
-                        let inf = self
+                        let type_ = self
                             .reference
                             .file
                             .inference(&mut i_s)
-                            .infer_type(n.expression());
+                            .infer_type_as_db_type(n.expression());
+                        todo!();
+                        /*
                         inf.type_.run_mut(
                             &mut i_s,
                             &mut |i_s, v| {
