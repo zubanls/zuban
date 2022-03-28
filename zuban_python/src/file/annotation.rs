@@ -14,12 +14,12 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{ClassLike, Value};
 
-pub enum TypeContent<'db> {
+enum TypeContent<'db> {
     ClassWithoutTypeVar(Inferred<'db>),
     DbType(DbType),
 }
 
-pub struct InferredType<'db> {
+struct InferredType<'db> {
     pub type_: TypeContent<'db>,
     has_type_vars: bool,
 }
@@ -191,7 +191,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         specific
     }
 
-    pub fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
+    fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_type_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
