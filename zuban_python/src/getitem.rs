@@ -4,7 +4,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::Execution;
+use crate::database::{DbType, Execution};
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -76,7 +76,7 @@ impl<'db> Simple<'db> {
             .infer_named_expression(self.named_expr)
     }
 
-    pub fn infer_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         /*
         self.file
             .inference(i_s)
@@ -110,9 +110,9 @@ pub enum SliceOrSimple<'db> {
 }
 
 impl<'db> SliceOrSimple<'db> {
-    pub fn infer_annotation_class(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
-            Self::Simple(simple) => simple.infer_annotation_class(i_s),
+            Self::Simple(simple) => simple.infer_type(i_s),
             Self::Slice(slice) => todo!(),
         }
     }

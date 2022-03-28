@@ -73,18 +73,17 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        match self.specific {
+        let g = match self.specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
-                Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
+                //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
+                todo!()
             }
             Specific::TypingTuple => {
                 let content = match slice_type.unpack() {
                     SliceTypeContent::Simple(simple) => {
                         // TODO if it is a (), it's an empty tuple
                         TupleContent {
-                            generics: Some(GenericsList::new(Box::new([simple
-                                .infer_annotation_class(i_s)
-                                .as_db_type(i_s)]))),
+                            generics: Some(GenericsList::new(Box::new([simple.infer_type(i_s)]))),
                             arbitrary_length: false,
                         }
                     }
@@ -99,8 +98,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                                     .iter()
                                     .filter_map(|slice_content| match slice_content {
                                         SliceOrSimple::Simple(n) => {
-                                            let result =
-                                                n.infer_annotation_class(i_s).as_db_type(i_s);
+                                            let result = n.infer_type(i_s);
                                             if let DbType::Unknown = result {
                                                 if n.named_expr.is_ellipsis_literal() {
                                                     arbitrary_length = true;
@@ -117,8 +115,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         }
                     }
                 };
-                let g = DbType::Type(Box::new(DbType::Tuple(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
+                DbType::Tuple(content)
             }
             Specific::TypingCallable => {
                 let content = match slice_type.unpack() {
@@ -149,7 +146,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         });
                         let return_class = iterator
                             .next()
-                            .map(|n| n.infer_annotation_class(i_s).as_db_type(i_s))
+                            .map(|n| n.infer_type(i_s))
                             .unwrap_or(DbType::Unknown);
                         CallableContent {
                             params: params.map(GenericsList::from_vec),
@@ -157,39 +154,36 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                         }
                     }
                 };
-                let g = DbType::Type(Box::new(DbType::Callable(content)));
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
+                DbType::Callable(content)
             }
             Specific::TypingUnion => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => simple.infer_annotation_class(i_s),
+                SliceTypeContent::Simple(simple) => todo!(), //simple.infer_type(i_s),
                 SliceTypeContent::Slice(x) => {
                     todo!()
                 }
-                SliceTypeContent::Slices(slices) => Inferred::gather_union(|callable| {
+                SliceTypeContent::Slices(slices) => {
                     for slice_content in slices.iter() {
                         if let SliceOrSimple::Simple(n) = slice_content {
-                            callable(n.infer_annotation_class(i_s));
+                            n.infer_type(i_s);
                         }
                     }
-                }),
+                    todo!()
+                }
             },
             Specific::TypingOptional => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => simple
-                    .infer_annotation_class(i_s)
-                    .union(Inferred::new_unsaved_specific(Specific::None)),
+                SliceTypeContent::Simple(simple) => simple.infer_type(i_s).union(DbType::None),
                 _ => todo!(),
             },
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
-                    let g = simple.infer_annotation_class(i_s).as_db_type(i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Type(Box::new(DbType::Type(Box::new(g)))),
-                    )))
+                    let g = simple.infer_type(i_s);
+                    DbType::Type(Box::new(g))
                 }
                 _ => todo!(),
             },
             _ => unreachable!("{:?}", self.specific),
-        }
+        };
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
