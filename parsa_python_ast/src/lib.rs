@@ -373,6 +373,8 @@ impl<'db> Name<'db> {
                 Nonterminal(class_def),
                 Nonterminal(assignment),
                 Nonterminal(function_def),
+                Nonterminal(import_from_as_name),
+                Nonterminal(dotted_as_name),
                 Nonterminal(stmt),
             ])
             .expect("There should always be a stmt");
@@ -382,8 +384,10 @@ impl<'db> Name<'db> {
             TypeLike::SimpleAssignment(Expression::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function
-        } else {
+        } else if node.is_type(Nonterminal(stmt)) {
             TypeLike::Other
+        } else {
+            TypeLike::Import
         }
     }
 
@@ -496,6 +500,7 @@ pub enum TypeLike<'db> {
     SimpleAssignment(Expression<'db>),
     ClassDef(ClassDef<'db>),
     Function,
+    Import,
     Other,
 }
 

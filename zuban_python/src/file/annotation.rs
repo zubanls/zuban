@@ -14,11 +14,13 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{ClassLike, Value};
 
+#[derive(Debug)]
 enum TypeContent<'db> {
     ClassWithoutTypeVar(Inferred<'db>),
     DbType(DbType),
 }
 
+#[derive(Debug)]
 struct InferredType<'db> {
     pub type_: TypeContent<'db>,
     has_type_vars: bool,
@@ -251,7 +253,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn infer_type_primary(&mut self, primary: Primary<'db>) -> InferredType<'db> {
-        let base = self.infer_primary_or_atom(primary.first());
+        let base = self.infer_type_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => todo!()/*base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Type lookup {}.{}", value.name(), name.as_str());
@@ -266,6 +268,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!()
             }
             PrimaryContent::GetItem(slice_type) => {
+                dbg!(&base);
                 todo!()
                 /*
                 let f = self.file;
@@ -333,29 +336,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     TypeLike::Function => {
                         todo!()
                     }
+                    TypeLike::Import => {
+                        if point.type_() == PointType::Redirect {
+                            file.inference(self.i_s).infer_type_name(name)
+                        } else {
+                            todo!()
+                        }
+                    }
                     TypeLike::Other => {
                         todo!()
                     }
                 }
             }
-        }
-
-        // class alias import ?
-        let point = if let Some(link) = self
-            .i_s
-            .database
-            .python_state
-            .builtins()
-            .lookup_global(name.as_str())
-        {
-            debug_assert!(link.file != self.file_index || link.node_index != name.index());
-            dbg!(&link.file, link.node_index);
-            link.into_point_redirect()
         } else {
-            todo!()
-        };
-        self.file.points.set_on_name(&name, point);
-        debug_assert!(self.file.points.get(name.index()).calculated());
-        todo!()
+            // Make sure the name is cached.
+            self.infer_name(name);
+            debug_assert!(self.file.points.get(name.index()).calculated());
+            self.infer_type_name(name)
+        }
     }
 }
