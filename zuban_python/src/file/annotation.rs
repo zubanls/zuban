@@ -8,11 +8,11 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::file_state::File;
-use crate::generics::Type;
+use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{ClassLike, Value};
+use crate::value::{Class, ClassLike, Value};
 
 #[derive(Debug)]
 enum TypeContent<'db> {
@@ -268,17 +268,55 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!()
             }
             PrimaryContent::GetItem(slice_type) => {
-                dbg!(&base);
-                todo!()
+                match base.type_ {
+                    TypeContent::ClassWithoutTypeVar(i) => {
+                        let cls = i.maybe_class(self.i_s).unwrap();
+                        self.infer_type_get_item_on_class(cls, primary.index(), slice_type)
+                    }
+                    TypeContent::DbType(d) => todo!(),
+                }
                 /*
                 let f = self.file;
-                base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Get Item on {}", value.name());
-                    let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
-                    value.get_item(i_s, &SliceType::new(f, primary_index, slice_type))
-                })
+                base
                 */
             }
+        }
+    }
+
+    fn infer_type_get_item_on_class(
+        &mut self,
+        class: Class,
+        primary_index: NodeIndex,
+        slice_type: SliceType<'db>,
+    ) -> InferredType<'db> {
+        if matches!(class.generics, Generics::None) {
+            match slice_type {
+                SliceType::NamedExpression(named_expr) => {
+                    match self.infer_type(named_expr.expression()).type_ {
+                        TypeContent::ClassWithoutTypeVar(_) => {
+                            debug_assert!(!self.file.points.get(primary_index).calculated());
+                            InferredType::new(TypeContent::ClassWithoutTypeVar(
+                                Inferred::new_and_save(
+                                    self.file,
+                                    primary_index,
+                                    Point::new_simple_specific(
+                                        Specific::SimpleGeneric,
+                                        Locality::Todo,
+                                    ),
+                                ),
+                            ))
+                        }
+                        TypeContent::DbType(d) => todo!(),
+                    }
+                }
+                SliceType::Slice(slice) => todo!(),
+                SliceType::Slices(slices) => {
+                    slices.iter();
+                    todo!()
+                }
+            }
+        } else {
+            todo!()
         }
     }
 
@@ -338,7 +376,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                     TypeLike::Import => {
                         if point.type_() == PointType::Redirect {
-                            file.inference(self.i_s).infer_type_name(name)
+                            let mut inference = file.inference(self.i_s);
+                            // Cache
+                            inference.infer_name(name);
+                            inference.infer_type_name(name)
                         } else {
                             todo!()
                         }
@@ -350,7 +391,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         } else {
             // Make sure the name is cached.
-            self.infer_name(name);
+            self.infer_name_reference(name);
             debug_assert!(self.file.points.get(name.index()).calculated());
             self.infer_type_name(name)
         }

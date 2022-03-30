@@ -281,7 +281,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_type_as_db_type(n.expression());
-                        todo!();
+                        mro.push(type_);
                         /*
                         inf.type_.run_mut(
                             &mut i_s,
@@ -498,6 +498,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
+        todo!();
         // TODO both the type argument issues and are not implemented for other classlikes like
         // tuple/callable/type, which can also have late bound type vars and too many/few given
         // type vars!

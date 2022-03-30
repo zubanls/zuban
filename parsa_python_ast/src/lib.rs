@@ -496,6 +496,7 @@ impl<'db> StmtLike<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum TypeLike<'db> {
     SimpleAssignment(Expression<'db>),
     ClassDef(ClassDef<'db>),
