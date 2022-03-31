@@ -356,8 +356,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     true => self.file,
                     false => self.i_s.database.loaded_python_file(point.file_index()),
                 };
-                let name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
-                match name.expect_type() {
+                let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
+                match new_name.expect_type() {
                     TypeLike::ClassDef(c) => {
                         return InferredType {
                             type_: TypeContent::ClassWithoutTypeVar(Inferred::new_saved(
@@ -378,8 +378,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if point.type_() == PointType::Redirect {
                             let mut inference = file.inference(self.i_s);
                             // Cache
-                            inference.infer_name(name);
-                            inference.infer_type_name(name)
+                            inference.infer_name(new_name);
+                            inference.infer_type_name(new_name)
                         } else {
                             todo!()
                         }
