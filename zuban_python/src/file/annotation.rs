@@ -401,7 +401,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             todo!()
                         }
                         TypeLike::Function => {
-                            todo!()
+                            let node_ref = NodeRef::new(self.file, name.index());
+                            node_ref.add_typing_issue(
+                                self.i_s.database,
+                                IssueType::ValidType(format!(
+                                    "Function {:?} is not valid as a type",
+                                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
+                                )),
+                            );
+                            node_ref.add_typing_issue(
+                                self.i_s.database,
+                                IssueType::Note(
+                                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
+                                        .to_owned(),
+                                ),
+                            );
+                            InferredType::new(TypeContent::DbType(DbType::Any))
                         }
                         TypeLike::Import => {
                             if point.type_() == PointType::Redirect {
