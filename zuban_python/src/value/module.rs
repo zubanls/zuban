@@ -21,7 +21,7 @@ impl<'db> fmt::Debug for Module<'db> {
 #[derive(Copy, Clone)]
 pub struct Module<'db> {
     database: &'db Database,
-    file: &'db PythonFile,
+    pub file: &'db PythonFile,
 }
 
 impl<'db> Module<'db> {

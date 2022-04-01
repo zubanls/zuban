@@ -6,7 +6,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonInference;
+use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
 use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
@@ -16,7 +16,7 @@ use crate::value::{Class, ClassLike, Module, Value};
 
 #[derive(Debug)]
 enum TypeContent<'db> {
-    Module(Module<'db>),
+    Module(&'db PythonFile),
     ClassWithoutTypeVar(Inferred<'db>),
     DbType(DbType),
 }
@@ -260,15 +260,24 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_type_primary(&mut self, primary: Primary<'db>) -> InferredType<'db> {
         let base = self.infer_type_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => todo!()/*base.run_on_value(self.i_s, &mut |i_s, value| {
-                debug!("Type lookup {}.{}", value.name(), name.as_str());
-                /*
-                InferredType {
-                    type_: value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary_index)),
-                    has_type_vars: false,
+            PrimaryContent::Attribute(name) => {
+                match base.type_ {
+                    TypeContent::Module(f) => {
+                        // TODO this is a bit weird. shouldn't this just do a goto?
+                        if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
+                            self.file.points.set(
+                                name.index(),
+                                Point::new_redirect(f.file_index(), index, Locality::Todo),
+                            );
+                            self.infer_type_name(name)
+                        } else {
+                            todo!()
+                        }
+                    }
+                    TypeContent::ClassWithoutTypeVar(_) => todo!(),
+                    TypeContent::DbType(t) => todo!(),
                 }
-                */
-            })*/,
+            }
             PrimaryContent::Execution(details) => {
                 todo!()
             }
@@ -279,7 +288,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
-            }
+            },
         }
     }
 
@@ -330,7 +339,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn infer_type_atom(&mut self, atom: Atom<'db>) -> InferredType<'db> {
         match atom.unpack() {
-            AtomContent::Name(n) => return self.infer_type_name(n),
+            AtomContent::Name(n) => self.infer_type_name(n),
             AtomContent::StringsOrBytes(s_o_b) => {
                 if let Some(s) = s_o_b.as_python_string() {
                     if let Some(s) = s.to_owned() {
@@ -387,7 +396,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::FileReference => {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
-                    InferredType::new(TypeContent::Module(Module::new(self.i_s.database, file)))
+                    InferredType::new(TypeContent::Module(file))
                 }
                 _ => todo!(),
             }
