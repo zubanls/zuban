@@ -12,10 +12,11 @@ use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike, Value};
+use crate::value::{Class, ClassLike, Module, Value};
 
 #[derive(Debug)]
 enum TypeContent<'db> {
+    Module(Module<'db>),
     ClassWithoutTypeVar(Inferred<'db>),
     DbType(DbType),
 }
@@ -41,7 +42,9 @@ impl<'db> InferredType<'db> {
                 TypeContent::DbType(t) => t.union(match other.type_ {
                     TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
                     TypeContent::DbType(t) => t,
+                    TypeContent::Module(m) => todo!(),
                 }),
+                TypeContent::Module(m) => todo!(),
             }),
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }
@@ -185,6 +188,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::AnnotationWithoutTypeVars
                 }
             }
+            TypeContent::Module(m) => todo!(),
         };
         self.file.points.set(
             annotation_index,
@@ -197,6 +201,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match self.infer_type(expr).type_ {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.i_s),
             TypeContent::DbType(d) => d,
+            TypeContent::Module(m) => todo!(),
         }
     }
 
@@ -274,6 +279,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.infer_type_get_item_on_class(cls, primary.index(), slice_type)
                     }
                     TypeContent::DbType(d) => todo!(),
+                    TypeContent::Module(m) => todo!(),
                 }
                 /*
                 let f = self.file;
@@ -307,6 +313,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             ))
                         }
                         TypeContent::DbType(d) => todo!(),
+                        TypeContent::Module(m) => todo!(),
                     }
                 }
                 SliceType::Slice(slice) => todo!(),
