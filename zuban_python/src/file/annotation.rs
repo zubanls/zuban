@@ -272,19 +272,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::Execution(details) => {
                 todo!()
             }
-            PrimaryContent::GetItem(slice_type) => {
-                match base.type_ {
-                    TypeContent::ClassWithoutTypeVar(i) => {
-                        let cls = i.maybe_class(self.i_s).unwrap();
-                        self.infer_type_get_item_on_class(cls, primary.index(), slice_type)
-                    }
-                    TypeContent::DbType(d) => todo!(),
-                    TypeContent::Module(m) => todo!(),
+            PrimaryContent::GetItem(slice_type) => match base.type_ {
+                TypeContent::ClassWithoutTypeVar(i) => {
+                    let cls = i.maybe_class(self.i_s).unwrap();
+                    self.infer_type_get_item_on_class(cls, primary.index(), slice_type)
                 }
-                /*
-                let f = self.file;
-                base
-                */
+                TypeContent::DbType(d) => todo!(),
+                TypeContent::Module(m) => todo!(),
             }
         }
     }
@@ -356,45 +350,46 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_type_name(&mut self, name: Name<'db>) -> InferredType<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
-            if point.type_() == PointType::Specific {
-                todo!()
-            } else {
-                let file = match point.file_index() == self.file.file_index() {
-                    true => self.file,
-                    false => self.i_s.database.loaded_python_file(point.file_index()),
-                };
-                let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
-                match new_name.expect_type() {
-                    TypeLike::ClassDef(c) => {
-                        return InferredType {
-                            type_: TypeContent::ClassWithoutTypeVar(Inferred::new_saved(
-                                file,
-                                c.index(),
-                                file.points.get(c.index()),
-                            )),
-                            has_type_vars: false,
+            match point.type_() {
+                PointType::Specific => todo!(),
+                PointType::Redirect => {
+                    let file = match point.file_index() == self.file.file_index() {
+                        true => self.file,
+                        false => self.i_s.database.loaded_python_file(point.file_index()),
+                    };
+                    let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
+                    match new_name.expect_type() {
+                        TypeLike::ClassDef(c) => {
+                            return InferredType::new(TypeContent::ClassWithoutTypeVar(
+                                Inferred::new_saved(file, c.index(), file.points.get(c.index())),
+                            ))
                         }
-                    }
-                    TypeLike::SimpleAssignment(expr) => {
-                        todo!()
-                    }
-                    TypeLike::Function => {
-                        todo!()
-                    }
-                    TypeLike::Import => {
-                        if point.type_() == PointType::Redirect {
-                            let mut inference = file.inference(self.i_s);
-                            // Cache
-                            inference.infer_name(new_name);
-                            inference.infer_type_name(new_name)
-                        } else {
+                        TypeLike::SimpleAssignment(expr) => {
+                            todo!()
+                        }
+                        TypeLike::Function => {
+                            todo!()
+                        }
+                        TypeLike::Import => {
+                            if point.type_() == PointType::Redirect {
+                                let mut inference = file.inference(self.i_s);
+                                // Cache
+                                inference.infer_name(new_name);
+                                inference.infer_type_name(new_name)
+                            } else {
+                                todo!()
+                            }
+                        }
+                        TypeLike::Other => {
                             todo!()
                         }
                     }
-                    TypeLike::Other => {
-                        todo!()
-                    }
                 }
+                PointType::FileReference => {
+                    let file = self.i_s.database.loaded_python_file(point.file_index());
+                    InferredType::new(TypeContent::Module(Module::new(self.i_s.database, file)))
+                }
+                _ => todo!(),
             }
         } else {
             // Make sure the name is cached.
