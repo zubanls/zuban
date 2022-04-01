@@ -466,7 +466,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if s == "ignore" {
                         self.infer_assignment_right_side(right_side)
                     } else {
-                        //let g = self.infer_annotation_string(s.to_owned());
+                        //let g = self.compute_annotation_string(s.to_owned());
                         //Inferred::execute_db_type(self.i_s, g)
                         todo!()
                     }
@@ -491,7 +491,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         },
                     )
                 }
-                let inf_annot = self.infer_annotation(annotation);
+                let inf_annot = self.compute_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, |index| {
                     self.file.points.set(
                         index,
@@ -905,7 +905,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             } else if let Some(annotation) =
                                 Annotation::maybe_by_index(&inference.file.tree, node_index)
                             {
-                                inference.infer_annotation(annotation)
+                                inference.compute_annotation(annotation)
                             } else {
                                 todo!(
                                     "{}",
@@ -941,7 +941,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                             func.calculated_type_vars(self.i_s);
                         }
-                        if let Some(inferred) = self.maybe_infer_param_annotation(name) {
+                        if let Some(inferred) = self.maybe_compute_param_annotation(name) {
                             return inferred;
                         }
                         if let Some((function, args)) = self.i_s.current_execution {

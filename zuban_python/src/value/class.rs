@@ -280,7 +280,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             .reference
                             .file
                             .inference(&mut i_s)
-                            .infer_type_as_db_type(n.expression());
+                            .compute_type_as_db_type(n.expression());
                         mro.push(type_);
                         /*
                         inf.type_.run_mut(

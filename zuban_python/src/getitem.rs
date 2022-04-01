@@ -80,7 +80,7 @@ impl<'db> Simple<'db> {
         /*
         self.file
             .inference(i_s)
-            .infer_annotation_expression_class(self.named_expr.expression())
+            .compute_annotation_expression_class(self.named_expr.expression())
         */
         todo!()
     }

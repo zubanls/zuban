@@ -28,12 +28,12 @@ enum TypeContent<'db> {
 }
 
 #[derive(Debug)]
-struct InferredType<'db> {
+struct ComputedType<'db> {
     pub type_: TypeContent<'db>,
     has_type_vars: bool,
 }
 
-impl<'db> InferredType<'db> {
+impl<'db> ComputedType<'db> {
     pub fn new(type_: TypeContent<'db>) -> Self {
         Self {
             type_,
@@ -58,11 +58,11 @@ impl<'db> InferredType<'db> {
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    pub fn maybe_infer_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
+    pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation().map(|annotation| {
             let mut inference = self.file.inference(self.i_s);
             match name.simple_param_type() {
-                SimpleParamType::Normal => inference.infer_annotation(annotation),
+                SimpleParamType::Normal => inference.compute_annotation(annotation),
                 SimpleParamType::MultiArgs => {
                     let p = inference.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
@@ -119,15 +119,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) -> Inferred<'db> {
-        self.infer_annotation_internal(annotation.index(), annotation.expression())
+    pub fn compute_return_annotation(
+        &mut self,
+        annotation: ReturnAnnotation<'db>,
+    ) -> Inferred<'db> {
+        self.compute_annotation_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn infer_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
-        self.infer_annotation_internal(annotation.index(), annotation.expression())
+    pub fn compute_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
+        self.compute_annotation_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn infer_annotation_internal(
+    pub fn compute_annotation_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression<'db>,
@@ -144,13 +147,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_annotation_string(&mut self, string: String) -> InferredType<'db> {
+    fn compute_annotation_string(&mut self, string: String) -> ComputedType<'db> {
         let file = self
             .i_s
             .database
             .load_annotation_file(self.file.file_index(), string);
         if let Some(expr) = file.tree.maybe_expression() {
-            file.inference(self.i_s).infer_type(expr)
+            file.inference(self.i_s).compute_type(expr)
         } else {
             debug!("Found non-expression in annotation: {}", file.tree.code());
             todo!()
@@ -183,10 +186,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             expr.as_code()
         );
 
-        let InferredType {
+        let ComputedType {
             type_,
             has_type_vars,
-        } = self.infer_type(expr);
+        } = self.compute_type(expr);
 
         let (specific, ret) = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
@@ -221,30 +224,30 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         ret
     }
 
-    pub fn infer_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {
-        match self.infer_type(expr).type_ {
+    pub fn compute_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {
+        match self.compute_type(expr).type_ {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => todo!(),
         }
     }
 
-    fn infer_type(&mut self, expr: Expression<'db>) -> InferredType<'db> {
+    fn compute_type(&mut self, expr: Expression<'db>) -> ComputedType<'db> {
         match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => self.infer_type_expression_part(n),
+            ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
         }
     }
-    fn infer_type_expression_part(&mut self, node: ExpressionPart<'db>) -> InferredType<'db> {
+    fn compute_type_expression_part(&mut self, node: ExpressionPart<'db>) -> ComputedType<'db> {
         match node {
-            ExpressionPart::Atom(atom) => self.infer_type_atom(atom),
-            ExpressionPart::Primary(primary) => self.infer_type_primary(primary),
+            ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
+            ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
-                let other = self.infer_type_expression_part(b);
-                self.infer_type_expression_part(a).union(self.i_s, other)
+                let other = self.compute_type_expression_part(b);
+                self.compute_type_expression_part(a).union(self.i_s, other)
             }
             _ => todo!("Not handled yet {:?}", node),
         }
@@ -281,8 +284,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         */
     }
 
-    fn infer_type_primary(&mut self, primary: Primary<'db>) -> InferredType<'db> {
-        let base = self.infer_type_primary_or_atom(primary.first());
+    fn compute_type_primary(&mut self, primary: Primary<'db>) -> ComputedType<'db> {
+        let base = self.compute_type_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
                 match base.type_ {
@@ -293,7 +296,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 name.index(),
                                 Point::new_redirect(f.file_index(), index, Locality::Todo),
                             );
-                            self.infer_type_name(name)
+                            self.compute_type_name(name)
                         } else {
                             todo!()
                         }
@@ -308,7 +311,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::GetItem(slice_type) => match base.type_ {
                 TypeContent::ClassWithoutTypeVar(i) => {
                     let cls = i.maybe_class(self.i_s).unwrap();
-                    self.infer_type_get_item_on_class(cls, primary.index(), slice_type)
+                    self.compute_type_get_item_on_class(cls, primary.index(), slice_type)
                 }
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
@@ -316,19 +319,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_type_get_item_on_class(
+    fn compute_type_get_item_on_class(
         &mut self,
         class: Class,
         primary_index: NodeIndex,
         slice_type: SliceType<'db>,
-    ) -> InferredType<'db> {
+    ) -> ComputedType<'db> {
         if matches!(class.generics, Generics::None) {
             match slice_type {
                 SliceType::NamedExpression(named_expr) => {
-                    match self.infer_type(named_expr.expression()).type_ {
+                    match self.compute_type(named_expr.expression()).type_ {
                         TypeContent::ClassWithoutTypeVar(_) => {
                             debug_assert!(!self.file.points.get(primary_index).calculated());
-                            InferredType::new(TypeContent::ClassWithoutTypeVar(
+                            ComputedType::new(TypeContent::ClassWithoutTypeVar(
                                 Inferred::new_and_save(
                                     self.file,
                                     primary_index,
@@ -354,20 +357,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_type_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> InferredType<'db> {
+    fn compute_type_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> ComputedType<'db> {
         match p {
-            PrimaryOrAtom::Primary(primary) => self.infer_type_primary(primary),
-            PrimaryOrAtom::Atom(atom) => self.infer_type_atom(atom),
+            PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary),
+            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom),
         }
     }
 
-    fn infer_type_atom(&mut self, atom: Atom<'db>) -> InferredType<'db> {
+    fn compute_type_atom(&mut self, atom: Atom<'db>) -> ComputedType<'db> {
         match atom.unpack() {
-            AtomContent::Name(n) => self.infer_type_name(n),
+            AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::StringsOrBytes(s_o_b) => {
                 if let Some(s) = s_o_b.as_python_string() {
                     if let Some(s) = s.to_owned() {
-                        self.infer_annotation_string(s)
+                        self.compute_annotation_string(s)
                     } else {
                         todo!()
                     }
@@ -375,12 +378,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     todo!()
                 }
             }
-            AtomContent::NoneLiteral => InferredType::new(TypeContent::DbType(DbType::None)),
+            AtomContent::NoneLiteral => ComputedType::new(TypeContent::DbType(DbType::None)),
             _ => todo!(),
         }
     }
 
-    fn infer_type_name(&mut self, name: Name<'db>) -> InferredType<'db> {
+    fn compute_type_name(&mut self, name: Name<'db>) -> ComputedType<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             match point.type_() {
@@ -393,7 +396,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
                     match new_name.expect_type() {
                         TypeLike::ClassDef(c) => {
-                            return InferredType::new(TypeContent::ClassWithoutTypeVar(
+                            return ComputedType::new(TypeContent::ClassWithoutTypeVar(
                                 Inferred::new_saved(file, c.index(), file.points.get(c.index())),
                             ))
                         }
@@ -416,14 +419,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         .to_owned(),
                                 ),
                             );
-                            InferredType::new(TypeContent::DbType(DbType::Any))
+                            ComputedType::new(TypeContent::DbType(DbType::Any))
                         }
                         TypeLike::Import => {
                             if point.type_() == PointType::Redirect {
                                 let mut inference = file.inference(self.i_s);
                                 // Cache
                                 inference.infer_name(new_name);
-                                inference.infer_type_name(new_name)
+                                inference.compute_type_name(new_name)
                             } else {
                                 todo!()
                             }
@@ -435,7 +438,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::FileReference => {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
-                    InferredType::new(TypeContent::Module(file))
+                    ComputedType::new(TypeContent::Module(file))
                 }
                 _ => todo!(),
             }
@@ -443,7 +446,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             // Make sure the name is cached.
             self.infer_name_reference(name);
             debug_assert!(self.file.points.get(name.index()).calculated());
-            self.infer_type_name(name)
+            self.compute_type_name(name)
         }
     }
 }
