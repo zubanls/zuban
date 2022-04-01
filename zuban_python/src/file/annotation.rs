@@ -14,6 +14,12 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, ClassLike, Module, Value};
 
+enum AnnotationType {
+    SimpleClass,
+    DbTypeWithTypeVars,
+    DbTypeWithoutTypeVars,
+}
+
 #[derive(Debug)]
 enum TypeContent<'db> {
     Module(&'db PythonFile),
@@ -95,12 +101,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         annotation_index: NodeIndex,
         expr: Expression<'db>,
     ) -> Type<'db, 'db> {
-        let specific = self.cache_annotation_internal(annotation_index, expr);
-        match specific {
-            Specific::AnnotationClassInstance => Type::ClassLike(ClassLike::Class(
+        match self.cache_annotation_internal(annotation_index, expr) {
+            AnnotationType::SimpleClass => Type::ClassLike(ClassLike::Class(
                 self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
             )),
-            Specific::AnnotationWithoutTypeVars | Specific::AnnotationWithTypeVars => {
+            AnnotationType::DbTypeWithTypeVars | AnnotationType::DbTypeWithoutTypeVars => {
                 if let ComplexPoint::TypeInstance(db_type) = self
                     .file
                     .complex_points
@@ -111,7 +116,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     unreachable!()
                 }
             }
-            _ => unreachable!(),
         }
     }
 
@@ -128,15 +132,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         annotation_index: NodeIndex,
         expr: Expression<'db>,
     ) -> Inferred<'db> {
-        let specific = self.cache_annotation_internal(annotation_index, expr);
+        let t = self.cache_annotation_internal(annotation_index, expr);
 
-        if specific == Specific::AnnotationWithTypeVars {
+        if matches!(t, AnnotationType::DbTypeWithTypeVars) {
             // TODO this is always a TypeInstance, just use that.
             let inferred = self.check_point_cache(expr.index()).unwrap();
             let type_ = inferred.class_as_type(self.i_s);
             type_.execute_and_resolve_type_vars(self.i_s, self.i_s.current_class, None)
         } else {
-            self.check_point_cache(expr.index()).unwrap()
+            self.check_point_cache(annotation_index).unwrap()
         }
     }
 
@@ -158,10 +162,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression<'db>,
-    ) -> Specific {
+    ) -> AnnotationType {
         let point = self.file.points.get(annotation_index);
         if point.calculated() {
-            return point.specific();
+            return if point.type_() == PointType::Specific {
+                if point.specific() == Specific::AnnotationClassInstance {
+                    AnnotationType::SimpleClass
+                } else {
+                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                    AnnotationType::DbTypeWithTypeVars
+                }
+            } else {
+                debug_assert_eq!(point.type_(), PointType::Complex);
+                AnnotationType::DbTypeWithoutTypeVars
+            };
         }
         debug!(
             "Infer annotation expression class on {:?}: {:?}",
@@ -174,18 +188,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             has_type_vars,
         } = self.infer_type(expr);
 
-        let specific = match type_ {
+        let (specific, ret) = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
                 i.save_redirect(self.file, expr.index());
-                Specific::AnnotationClassInstance
+                (
+                    Specific::AnnotationClassInstance,
+                    AnnotationType::SimpleClass,
+                )
             }
             TypeContent::DbType(d) => {
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                    .save_redirect(self.file, expr.index());
                 if has_type_vars {
-                    Specific::AnnotationWithTypeVars
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Type(Box::new(d)),
+                    )))
+                    .save_redirect(self.file, expr.index());
+                    (
+                        Specific::AnnotationWithTypeVars,
+                        AnnotationType::DbTypeWithTypeVars,
+                    )
                 } else {
-                    Specific::AnnotationWithoutTypeVars
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+                        .save_redirect(self.file, annotation_index);
+                    return AnnotationType::DbTypeWithoutTypeVars;
                 }
             }
             TypeContent::Module(m) => todo!(),
@@ -194,7 +218,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             annotation_index,
             Point::new_simple_specific(specific, Locality::Todo),
         );
-        specific
+        ret
     }
 
     pub fn infer_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {

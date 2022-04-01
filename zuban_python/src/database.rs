@@ -365,7 +365,6 @@ pub enum Specific {
     InstanceWithArguments, // A primary node
     AnnotationClassInstance,
     AnnotationWithTypeVars,
-    AnnotationWithoutTypeVars,
     SimpleGeneric,      // primary: primary '[' slices ']'
     TypingWithGenerics, // Same as SimpleGeneric, but with a Typing*Class instead
 
