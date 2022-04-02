@@ -880,15 +880,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             let name_str = name.as_str();
             for index in &self.file.star_imports {
                 let other_file = self.i_s.database.loaded_python_file(*index);
-                if let Some(i) = other_file.inference(self.i_s).infer_module_name(name_str) {
-                    return i;
+
+                if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
+                    self.file.points.set(
+                        name.index(),
+                        Point::new_redirect(other_file.file_index(), symbol, Locality::Todo),
+                    );
+                    return self.infer_name_reference(name);
                 }
             }
-            if let Some(inferred) = self.infer_module_name(name_str) {
+            if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {
                 // TODO mypy this is a issue AFAIK and this code should not be needed
-                return inferred;
-            }
-            if name_str == "reveal_type" {
+                Point::new_redirect(self.file_index, symbol, Locality::Todo)
+            } else if name_str == "reveal_type" {
                 Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
             } else {
                 // TODO check star imports
