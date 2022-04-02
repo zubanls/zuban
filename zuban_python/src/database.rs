@@ -1002,11 +1002,7 @@ impl Database {
         self.files.set(file_index.0 as usize, file_state);
     }
 
-    pub fn load_annotation_file(&self, in_file: FileIndex, code: String) -> &PythonFile {
-        // TODO should probably not need a newline
-        let mut file = PythonFile::new(None, code + "\n");
-        file.star_imports.push(in_file);
-        // TODO just saving this in the cache and forgetting about it is a bad idea
+    pub fn load_sub_file(&self, file: PythonFile) -> &PythonFile {
         let index =
             self.add_file_state(Box::pin(LanguageFileState::new_parsed("".to_owned(), file)));
         self.loaded_python_file(index)

@@ -147,15 +147,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn compute_annotation_string(&mut self, string: String) -> ComputedType<'db> {
-        let file = self
-            .i_s
-            .database
-            .load_annotation_file(self.file.file_index(), string);
-        if let Some(expr) = file.tree.maybe_expression() {
-            file.inference(self.i_s).compute_type(expr)
+    // TODO this should not be a string, but probably cow
+    fn compute_annotation_string(&mut self, start: CodeIndex, string: String) -> ComputedType<'db> {
+        let f = self
+            .file
+            .new_annotation_file(self.i_s.database, start, string);
+        if let Some(expr) = f.tree.maybe_expression() {
+            f.inference(self.i_s).compute_type(expr)
         } else {
-            debug!("Found non-expression in annotation: {}", file.tree.code());
+            debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
         }
     }
@@ -367,17 +367,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn compute_type_atom(&mut self, atom: Atom<'db>) -> ComputedType<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => self.compute_type_name(n),
-            AtomContent::StringsOrBytes(s_o_b) => {
-                if let Some(s) = s_o_b.as_python_string() {
-                    if let Some(s) = s.to_owned() {
-                        self.compute_annotation_string(s)
-                    } else {
-                        todo!()
-                    }
-                } else {
-                    todo!()
+            AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
+                Some(PythonString::Ref(start, s)) => {
+                    self.compute_annotation_string(start, s.to_owned())
                 }
-            }
+                Some(PythonString::String(start, s)) => todo!(),
+                Some(PythonString::FString) => todo!(),
+                None => todo!(),
+            },
             AtomContent::NoneLiteral => ComputedType::new(TypeContent::DbType(DbType::None)),
             _ => todo!(),
         }

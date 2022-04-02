@@ -1,11 +1,11 @@
 use parsa_python::NonterminalType::fstring;
 use parsa_python::PyNodeType::Nonterminal;
-use parsa_python::{PyNode, SiblingIterator};
+use parsa_python::{CodeIndex, PyNode, SiblingIterator};
 
 #[derive(Debug)]
 pub enum PythonString<'db> {
-    Ref(&'db str),
-    String(String),
+    Ref(CodeIndex, &'db str),
+    String(CodeIndex, String),
     FString,
 }
 
@@ -36,31 +36,23 @@ impl<'db> PythonString<'db> {
             if c.contains(['\'', '\\', '"'].as_slice()) {
                 todo!()
             }
-            Self::Ref(c)
+            Self::Ref(literal.start() + 1, c)
         }
     }
 
     fn union(self, other: Self) -> Self {
         match other {
-            Self::Ref(s2) => match self {
-                Self::Ref(s1) => Self::String(s1.to_owned() + s2),
-                Self::String(s1) => Self::String(s1 + s2),
-                Self::FString => unreachable!(),
+            Self::Ref(start, s1) => match self {
+                Self::Ref(_, s2) => Self::String(start, s1.to_owned() + s2),
+                Self::String(_, s2) => Self::String(start, s1.to_owned() + &s2),
+                Self::FString => todo!(),
             },
-            Self::String(s2) => match self {
-                Self::Ref(s1) => Self::String(s1.to_owned() + &s2),
-                Self::String(s1) => Self::String(s1 + &s2),
-                Self::FString => unreachable!(),
+            Self::String(start, s1) => match self {
+                Self::Ref(_, s2) => Self::String(start, s1 + s2),
+                Self::String(_, s2) => Self::String(start, s1 + &s2),
+                Self::FString => todo!(),
             },
             Self::FString => Self::FString,
-        }
-    }
-
-    pub fn to_owned(self) -> Option<String> {
-        match self {
-            Self::Ref(s) => Some(s.to_owned()),
-            Self::String(s) => Some(s),
-            Self::FString => None,
         }
     }
 }

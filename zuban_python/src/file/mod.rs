@@ -2,7 +2,8 @@ mod annotation;
 mod diagnostics;
 mod utils;
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
@@ -149,6 +150,7 @@ pub struct PythonFile {
     pub issues: InsertOnlyVec<Issue>,
     pub star_imports: Vec<FileIndex>,
     pub package_dir: Option<Rc<DirContent>>,
+    sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
 
     newline_indices: NewlineIndices,
 }
@@ -171,9 +173,10 @@ impl<'db> PythonFile {
             symbol_table: Default::default(),
             points: Points::new(length),
             complex_points: Default::default(),
-            star_imports: vec![],
-            issues: InsertOnlyVec::default(),
+            star_imports: Default::default(),
+            issues: Default::default(),
             newline_indices: NewlineIndices::new(),
+            sub_files: Default::default(),
             package_dir,
         }
     }
@@ -231,6 +234,21 @@ impl<'db> PythonFile {
                 node_index,
                 locality: Locality::Todo,
             })
+    }
+
+    fn new_annotation_file(
+        &'db self,
+        db: &'db Database,
+        start: CodeIndex,
+        code: String,
+    ) -> &'db Self {
+        // TODO should probably not need a newline
+        let mut file = PythonFile::new(None, code + "\n");
+        file.star_imports.push(self.file_index());
+        // TODO just saving this in the cache and forgetting about it is a bad idea
+        let f = db.load_sub_file(file);
+        self.sub_files.borrow_mut().insert(start, f.file_index());
+        f
     }
 }
 
