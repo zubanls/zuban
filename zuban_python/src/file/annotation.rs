@@ -378,8 +378,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
-                    todo!()
-                    //self.compute_annotation_string(start, s.to_owned())
+                    self.compute_annotation_string(start, s.to_owned())
                 }
                 Some(PythonString::String(start, s)) => todo!(),
                 Some(PythonString::FString) => todo!(),
