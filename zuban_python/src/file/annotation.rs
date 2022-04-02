@@ -406,8 +406,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 Inferred::new_saved(file, c.index(), file.points.get(c.index())),
                             ))
                         }
-                        TypeLike::SimpleAssignment(expr) => {
-                            todo!()
+                        TypeLike::Assignment(assignment) => {
+                            self.cache_assignment_nodes(assignment);
+                            match assignment.unpack() {
+                                AssignmentContent::Normal(
+                                    _,
+                                    AssignmentRightSide::StarExpressions(right),
+                                ) => {
+                                    if let StarExpressionContent::Expression(expr) = right.unpack()
+                                    {
+                                        self.compute_type(expr)
+                                    } else {
+                                        todo!()
+                                    }
+                                }
+                                AssignmentContent::WithAnnotation(
+                                    target,
+                                    annotation,
+                                    right_side,
+                                ) => {
+                                    todo!()
+                                }
+                                _ => todo!(),
+                            }
                         }
                         TypeLike::Function => {
                             let node_ref = NodeRef::new(self.file, name.index());

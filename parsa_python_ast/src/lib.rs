@@ -381,7 +381,7 @@ impl<'db> Name<'db> {
         if node.is_type(Nonterminal(class_def)) {
             TypeLike::ClassDef(ClassDef::new(node))
         } else if node.is_type(Nonterminal(assignment)) {
-            TypeLike::SimpleAssignment(Expression::new(node))
+            TypeLike::Assignment(Assignment::new(node))
         } else if node.is_type(Nonterminal(function_def)) {
             TypeLike::Function
         } else if node.is_type(Nonterminal(stmt)) {
@@ -498,7 +498,7 @@ impl<'db> StmtLike<'db> {
 
 #[derive(Debug)]
 pub enum TypeLike<'db> {
-    SimpleAssignment(Expression<'db>),
+    Assignment(Assignment<'db>),
     ClassDef(ClassDef<'db>),
     Function,
     Import,
