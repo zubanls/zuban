@@ -973,7 +973,9 @@ impl Database {
     }
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
-        self.file_state(index).file(&*self.vfs).unwrap()
+        let f = self.file_state(index).file(&*self.vfs).unwrap();
+        f.ensure_initialized();
+        f
     }
 
     fn loader(&self, path: &str) -> Option<&dyn FileStateLoader> {

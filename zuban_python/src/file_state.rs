@@ -128,6 +128,8 @@ impl<T> AsAny for T {
 }
 
 pub trait File: std::fmt::Debug + AsAny {
+    // Called each time a file is loaded
+    fn ensure_initialized(&self);
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }

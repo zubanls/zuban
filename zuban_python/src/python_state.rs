@@ -36,10 +36,6 @@ impl PythonState {
         s.typing = typing;
         s.collections = collections;
         let builtins = s.builtins();
-        builtins.calculate_global_definitions_and_references();
-        s.typing().calculate_global_definitions_and_references();
-        s.collections()
-            .calculate_global_definitions_and_references();
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();

@@ -59,6 +59,16 @@ impl ComplexValues {
 }
 
 impl File for PythonFile {
+    fn ensure_initialized(&self) {
+        if self.points.get(0).calculated() {
+            // It was already done.
+            return;
+        }
+        self.with_global_binder(|binder| binder.index_file(self.tree.root()));
+
+        self.points.set(0, Point::new_node_analysis(Locality::File));
+    }
+
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         todo!()
     }
@@ -181,15 +191,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn calculate_global_definitions_and_references(&self) {
-        if self.points.get(0).calculated() {
-            // It was already done.
-            return;
-        }
-        self.with_global_binder(|binder| binder.index_file(self.tree.root()));
-
-        self.points.set(0, Point::new_node_analysis(Locality::File));
-    }
+    pub fn calculate_global_definitions_and_references(&self) {}
 
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
@@ -217,7 +219,6 @@ impl<'db> PythonFile {
         &'db self,
         i_s: &'b mut InferenceState<'db, 'a>,
     ) -> PythonInference<'db, 'a, 'b> {
-        self.calculate_global_definitions_and_references();
         PythonInference {
             file: self,
             file_index: self.file_index(),
@@ -226,7 +227,6 @@ impl<'db> PythonFile {
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
-        self.calculate_global_definitions_and_references();
         self.symbol_table
             .lookup_symbol(name)
             .map(|node_index| LocalityLink {
