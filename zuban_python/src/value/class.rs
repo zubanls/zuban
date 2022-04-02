@@ -276,12 +276,53 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        let type_ = self
+                        let db_type = self
                             .reference
                             .file
                             .inference(&mut i_s)
                             .compute_type_as_db_type(n.expression());
-                        mro.push(type_);
+                        mro.push(db_type);
+                        let class = match &mro.last().unwrap() {
+                            DbType::Class(link) => {
+                                let r = NodeRef::from_link(i_s.database, *link);
+                                Some(Self::from_position(r, Generics::None, None).unwrap())
+                            }
+                            DbType::GenericClass(link, generics) => Some(
+                                Class::from_position(
+                                    NodeRef::from_link(i_s.database, *link),
+                                    Generics::new_list(generics),
+                                    None,
+                                )
+                                .unwrap(),
+                            ),
+                            _ => {
+                                dbg!(mro.last());
+                                todo!()
+                            } /*
+                              DbType::Unknown => ,
+                              DbType::None => ,
+                              DbType::Any => ,
+                              DbType::Union(list) => ,
+                              DbType::TypeVar(t) => ,
+                              DbType::Type(db_type) => ,
+                              DbType::Tuple(content) => ,
+                              DbType::Callable(content) => ,
+                              */
+                        };
+                        let mro_index = mro.len();
+                        if let Some(class) = class {
+                            for base in class.class_infos(&mut i_s).mro.iter() {
+                                /*
+                                    dbg!(base.remap_type_vars(&mut |t| {
+                                        mro[mro_index]
+                                            .expect_generics()
+                                            .nth(t.index)
+                                            .unwrap()
+                                            .clone()
+                                    }));
+                                */
+                            }
+                        }
                         /*
                         inf.type_.run_mut(
                             &mut i_s,
