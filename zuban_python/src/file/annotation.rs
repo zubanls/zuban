@@ -55,6 +55,14 @@ impl<'db> ComputedType<'db> {
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }
     }
+
+    fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+        match self.type_ {
+            TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
+            TypeContent::DbType(d) => d,
+            TypeContent::Module(m) => todo!(),
+        }
+    }
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
@@ -147,6 +155,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    pub(super) fn compute_type_comment(&mut self, start: CodeIndex, string: String) -> DbType {
+        self.compute_annotation_string(start, string)
+            .into_db_type(self.i_s)
+    }
+
     // TODO this should not be a string, but probably cow
     fn compute_annotation_string(&mut self, start: CodeIndex, string: String) -> ComputedType<'db> {
         let f = self
@@ -225,11 +238,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn compute_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {
-        match self.compute_type(expr).type_ {
-            TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.i_s),
-            TypeContent::DbType(d) => d,
-            TypeContent::Module(m) => todo!(),
-        }
+        self.compute_type(expr).into_db_type(self.i_s)
     }
 
     fn compute_type(&mut self, expr: Expression<'db>) -> ComputedType<'db> {
@@ -369,7 +378,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
-                    self.compute_annotation_string(start, s.to_owned())
+                    todo!()
+                    //self.compute_annotation_string(start, s.to_owned())
                 }
                 Some(PythonString::String(start, s)) => todo!(),
                 Some(PythonString::FString) => todo!(),

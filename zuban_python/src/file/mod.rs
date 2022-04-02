@@ -484,9 +484,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if s == "ignore" {
                         self.infer_assignment_right_side(right_side)
                     } else {
-                        //let g = self.compute_annotation_string(s.to_owned());
-                        //Inferred::execute_db_type(self.i_s, g)
-                        todo!()
+                        let g = self.compute_type_comment(
+                            assignment.end() + "# type: ".len() as CodeIndex,
+                            s.to_owned(),
+                        );
+                        Inferred::execute_db_type(self.i_s, g)
                     }
                 } else {
                     self.infer_assignment_right_side(right_side)
