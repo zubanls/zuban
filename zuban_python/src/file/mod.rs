@@ -191,8 +191,6 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn calculate_global_definitions_and_references(&self) {}
-
     fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
         NameBinder::with_global_binder(
             &self.tree,
