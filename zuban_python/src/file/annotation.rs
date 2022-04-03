@@ -1,8 +1,10 @@
+use std::rc::Rc;
+
 use parsa_python_ast::*;
 
 use crate::database::{
     ComplexPoint, DbType, FormatStyle, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent,
+    TupleContent, TypeVar, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -65,6 +67,12 @@ impl<'db> ComputedType<'db> {
     }
 }
 
+pub struct TypeComputation<'db, 'a, 'b, C> {
+    inference: PythonInference<'db, 'a, 'b>,
+    type_var_callback: &'b mut C,
+}
+
+//impl<'db, 'a, 'b, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a, 'b, C> {
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation().map(|annotation| {
