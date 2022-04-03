@@ -75,12 +75,11 @@ pub struct TypeComputation<'db, 'a, 'b, C> {
 //impl<'db, 'a, 'b, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a, 'b, C> {
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
-        name.maybe_param_annotation().map(|annotation| {
-            let mut inference = self.file.inference(self.i_s);
-            match name.simple_param_type() {
-                SimpleParamType::Normal => inference.compute_annotation(annotation),
+        name.maybe_param_annotation()
+            .map(|annotation| match name.simple_param_type() {
+                SimpleParamType::Normal => self.compute_annotation(annotation),
                 SimpleParamType::MultiArgs => {
-                    let p = inference.annotation_type(annotation).into_db_type(self.i_s);
+                    let p = self.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                         DbType::Tuple(TupleContent {
                             generics: Some(GenericsList::new(Box::new([p]))),
@@ -89,7 +88,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     )))
                 }
                 SimpleParamType::MultiKwargs => {
-                    let p = inference.annotation_type(annotation).into_db_type(self.i_s);
+                    let p = self.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::create_instance(
                         self.i_s.database.python_state.builtins_point_link("dict"),
                         Some(&[
@@ -100,8 +99,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ]),
                     )
                 }
-            }
-        })
+            })
     }
 
     pub fn return_annotation_type(&mut self, annotation: ReturnAnnotation<'db>) -> Type<'db, 'db> {
