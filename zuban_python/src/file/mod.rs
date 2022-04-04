@@ -12,10 +12,11 @@ use parsa_python_ast::*;
 use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
-    Point, PointType, Points, Specific, TupleContent, TypeAlias,
+    Point, PointType, Points, Specific, TupleContent, TypeAlias, TypeVar, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
+use crate::file::annotation::TypeComputation;
 use crate::file_state::{File, Leaf};
 use crate::generics::search_type_vars;
 use crate::getitem::SliceType;
@@ -222,6 +223,24 @@ impl<'db> PythonFile {
             file_index: self.file_index(),
             i_s,
         }
+    }
+
+    pub fn type_computation<'a, 'b, C: FnMut(Rc<TypeVar>) -> TypeVarUsage>(
+        &'db self,
+        i_s: &'b mut InferenceState<'db, 'a>,
+        type_var_callback: &'b mut C,
+    ) -> TypeComputation<'db, 'a, 'b, C> {
+        TypeComputation::new(self.inference(i_s), type_var_callback)
+    }
+
+    pub fn type_computation_with_known_type_vars<'a, 'b>(
+        &'db self,
+        i_s: &'b mut InferenceState<'db, 'a>,
+    ) -> TypeComputation<'db, 'a, 'b, fn(Rc<TypeVar>) -> TypeVarUsage> {
+        fn unreachable(_: Rc<TypeVar>) -> TypeVarUsage {
+            unreachable!()
+        }
+        self.type_computation(i_s, &mut unreachable)
     }
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {

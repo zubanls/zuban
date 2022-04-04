@@ -279,7 +279,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let db_type = self
                             .reference
                             .file
-                            .inference(&mut i_s)
+                            .type_computation(&mut i_s, &mut |x| todo!())
                             .compute_type_as_db_type(n.expression());
                         mro.push(db_type);
                         let class = match &mro.last().unwrap() {
