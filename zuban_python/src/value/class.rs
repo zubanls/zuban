@@ -9,6 +9,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
+use crate::file::TypeComputation;
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -276,15 +277,12 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        todo!();
-                        /*
-                        let db_type = self
-                            .reference
-                            .file
-                            .type_computation(&mut i_s, &mut |x| todo!())
-                            .compute_type_as_db_type(n.expression());
+                        let mut inference = self.reference.file.inference(&mut i_s);
+                        let db_type = TypeComputation::new(&mut inference, &mut |_| {
+                            todo!("blablablblalblalbalblal")
+                        })
+                        .compute_type_as_db_type(n.expression());
                         mro.push(db_type);
-                        */
                         let class = match &mro.last().unwrap() {
                             DbType::Class(link) => {
                                 let r = NodeRef::from_link(i_s.database, *link);

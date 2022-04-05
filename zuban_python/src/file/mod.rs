@@ -16,7 +16,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
-use crate::file::annotation::TypeComputation;
+pub use crate::file::annotation::TypeComputation;
 use crate::file_state::{File, Leaf};
 use crate::generics::search_type_vars;
 use crate::getitem::SliceType;
