@@ -290,6 +290,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         todo!()
     }
 
+    fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> ComputedType<'db> {
+        self.cache_assignment_nodes(assignment);
+        match assignment.unpack() {
+            AssignmentContent::Normal(_, AssignmentRightSide::StarExpressions(right)) => {
+                if let StarExpressionContent::Expression(expr) = right.unpack() {
+                    let inferred = self.check_point_cache(expr.index()).unwrap();
+                    if let Some(tv) = inferred.maybe_type_var(self.i_s) {
+                        dbg!(tv.file.tree.debug_info(tv.node_index));
+                    }
+                    TypeComputation::new(self, &mut |x| todo!()).compute_type(expr)
+                } else {
+                    todo!()
+                }
+            }
+            AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                todo!()
+            }
+            _ => todo!(),
+        }
+    }
+
     fn compute_type_name(&mut self, name: Name<'db>) -> ComputedType<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
@@ -307,31 +328,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 Inferred::new_saved(file, c.index(), file.points.get(c.index())),
                             ))
                         }
-                        TypeLike::Assignment(assignment) => {
-                            self.cache_assignment_nodes(assignment);
-                            match assignment.unpack() {
-                                AssignmentContent::Normal(
-                                    _,
-                                    AssignmentRightSide::StarExpressions(right),
-                                ) => {
-                                    if let StarExpressionContent::Expression(expr) = right.unpack()
-                                    {
-                                        TypeComputation::new(self, &mut |x| todo!())
-                                            .compute_type(expr)
-                                    } else {
-                                        todo!()
-                                    }
-                                }
-                                AssignmentContent::WithAnnotation(
-                                    target,
-                                    annotation,
-                                    right_side,
-                                ) => {
-                                    todo!()
-                                }
-                                _ => todo!(),
-                            }
-                        }
+                        TypeLike::Assignment(assignment) => self.cache_type_assignment(assignment),
                         TypeLike::Function => {
                             let node_ref = NodeRef::new(self.file, name.index());
                             node_ref.add_typing_issue(
