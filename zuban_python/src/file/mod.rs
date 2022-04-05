@@ -18,7 +18,6 @@ use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 pub use crate::file::annotation::TypeComputation;
 use crate::file_state::{File, Leaf};
-use crate::generics::search_type_vars;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -654,24 +653,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_star_expressions(&mut self, exprs: StarExpressions<'db>) -> Inferred<'db> {
         match exprs.unpack() {
             StarExpressionContent::Expression(expr) => {
-                let mut type_vars = vec![];
-                // Search for aliases like `foo = Dict[str, T]`
-                search_type_vars(
-                    self.i_s,
-                    self.file,
-                    &expr,
-                    &mut |_, _, _| Some(Specific::LateBoundTypeVar),
-                    &mut type_vars,
-                    false,
-                );
-                if type_vars.is_empty() {
+                if true {
                     self.infer_expression(expr)
                 } else {
+                    // TODO use this somewhere
+                    /*
                     debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
                     Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias {
                         type_vars: type_vars.into_boxed_slice(),
                         db_type: self.infer_expression(expr).as_db_type(self.i_s),
                     })))
+                    */
+                    todo!()
                 }
             }
             StarExpressionContent::StarExpression(expr) => {

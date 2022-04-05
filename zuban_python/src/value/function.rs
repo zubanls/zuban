@@ -11,9 +11,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::file::PythonFile;
-use crate::generics::{
-    search_type_vars_within_possible_class, Generics, GenericsIterator, TypeVarMatcher,
-};
+use crate::generics::{Generics, GenericsIterator, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -181,27 +179,11 @@ impl<'db, 'a> Function<'db, 'a> {
         let func_node = self.node();
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                search_type_vars_within_possible_class(
-                    i_s,
-                    self.reference.file,
-                    &annotation.expression(),
-                    &mut found_type_vars,
-                    self.class,
-                    false,
-                    Specific::FunctionTypeVar,
-                );
+                todo!()
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            search_type_vars_within_possible_class(
-                i_s,
-                self.reference.file,
-                &return_annot.expression(),
-                &mut found_type_vars,
-                self.class,
-                true,
-                Specific::FunctionTypeVar,
-            );
+            todo!()
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
