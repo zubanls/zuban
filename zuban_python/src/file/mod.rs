@@ -233,6 +233,7 @@ impl<'db> PythonFile {
         TypeComputation::new(self.inference(i_s), type_var_callback)
     }
 
+    /*
     pub fn type_computation_with_known_type_vars<'a, 'b>(
         &'db self,
         i_s: &'b mut InferenceState<'db, 'a>,
@@ -242,6 +243,7 @@ impl<'db> PythonFile {
         }
         self.type_computation(i_s, &mut unreachable)
     }
+    */
 
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.symbol_table
@@ -982,7 +984,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                             func.calculated_type_vars(self.i_s);
                         }
-                        if let Some(inferred) = self.maybe_compute_param_annotation(name) {
+                        if let Some(inferred) = self.use_cached_param_annotation(name) {
                             return inferred;
                         }
                         if let Some((function, args)) = self.i_s.current_execution {

@@ -430,7 +430,11 @@ impl<'db, 'a, 'b, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    fn compute_type_name(&mut self, name: Name<'db>) -> ComputedType<'db> {
+    pub(super) fn use_cached_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
+        todo!()
+    }
+
+    fn compute_type_name(self, name: Name<'db>) -> ComputedType<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             match point.type_() {
@@ -456,7 +460,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 ) => {
                                     if let StarExpressionContent::Expression(expr) = right.unpack()
                                     {
-                                        self.inference.compute_type(expr)
+                                        TypeComputation::new(self, &mut |x| todo!())
+                                            .compute_type(expr)
                                     } else {
                                         todo!()
                                     }
