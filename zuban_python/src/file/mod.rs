@@ -225,26 +225,6 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn type_computation<'a, 'b, C: FnMut(Rc<TypeVar>) -> TypeVarUsage>(
-        &'db self,
-        i_s: &'b mut InferenceState<'db, 'a>,
-        type_var_callback: &'b mut C,
-    ) -> TypeComputation<'db, 'a, 'b, C> {
-        TypeComputation::new(self.inference(i_s), type_var_callback)
-    }
-
-    /*
-    pub fn type_computation_with_known_type_vars<'a, 'b>(
-        &'db self,
-        i_s: &'b mut InferenceState<'db, 'a>,
-    ) -> TypeComputation<'db, 'a, 'b, fn(Rc<TypeVar>) -> TypeVarUsage> {
-        fn unreachable(_: Rc<TypeVar>) -> TypeVarUsage {
-            unreachable!()
-        }
-        self.type_computation(i_s, &mut unreachable)
-    }
-    */
-
     pub fn lookup_global(&self, name: &str) -> Option<LocalityLink> {
         self.symbol_table
             .lookup_symbol(name)
