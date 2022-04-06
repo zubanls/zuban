@@ -10,7 +10,7 @@ use crate::database::{
     Point, PointLink, Specific, TupleContent, TypeVarType,
 };
 use crate::debug;
-use crate::file::PythonFile;
+use crate::file::{PythonFile, TypeComputation};
 use crate::generics::{Generics, GenericsIterator, TypeVarMatcher};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -177,13 +177,16 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         let mut found_type_vars = vec![];
         let func_node = self.node();
+        let mut inference = self.reference.file.inference(i_s);
+        let mut on_type_var = |_| todo!("blablablblalblalbalblal");
+        let mut type_computation = TypeComputation::new(&mut inference, &mut on_type_var);
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                todo!()
+                type_computation.compute_type_as_db_type(annotation.expression());
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            todo!()
+            type_computation.compute_type_as_db_type(return_annot.expression());
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),

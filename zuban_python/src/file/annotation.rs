@@ -109,6 +109,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             ExpressionContent::Ternary(t) => todo!(),
         }
     }
+
     fn compute_type_expression_part(&mut self, node: ExpressionPart<'db>) -> ComputedType<'db> {
         match node {
             ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
