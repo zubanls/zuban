@@ -883,11 +883,11 @@ impl CallableContent {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVar {
-    name: PointLink,
-    constraints: Box<[Rc<DbType>]>,
-    bound: Option<Rc<DbType>>,
-    covariant: bool,
-    contravariant: bool,
+    pub name: PointLink,
+    pub constraints: Box<[DbType]>,
+    pub bound: Option<DbType>,
+    pub covariant: bool,
+    pub contravariant: bool,
 }
 
 impl TypeVar {

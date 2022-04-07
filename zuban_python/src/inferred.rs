@@ -4,7 +4,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVarIndex, TypeVarType,
+    PointLink, PointType, Specific, TypeVar, TypeVarIndex, TypeVarType,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -641,7 +641,7 @@ impl<'db> Inferred<'db> {
         self.use_instance(NodeRef::new(builtins, v.node_index()), Generics::None)
     }
 
-    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NodeRef<'db>> {
+    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific
                 && point.specific() == Specific::InstanceWithArguments
@@ -657,7 +657,13 @@ impl<'db> Inferred<'db> {
                             .map(|cls| cls.name().as_str() == "TypeVar")
                             .unwrap_or(false)
                     {
-                        return Some(definition);
+                        let args = SimpleArguments::from_primary(
+                            definition.file,
+                            definition.as_primary(),
+                            None,
+                            None,
+                        );
+                        return args.maybe_type_var(i_s);
                     }
                 }
             }

@@ -800,6 +800,17 @@ impl<'db> NamedExpression<'db> {
         }
         false
     }
+
+    pub fn maybe_single_string_literal(&self) -> Option<PyString<'db>> {
+        if let NamedExpressionContent::Expression(e) = self.unpack() {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
+                if let AtomContent::StringsOrBytes(s) = a.unpack() {
+                    return s.maybe_single_string_literal();
+                }
+            }
+        }
+        None
+    }
 }
 
 pub enum NamedExpressionContent<'db> {
@@ -2237,6 +2248,15 @@ impl<'db> StringsOrBytes<'db> {
 
     pub fn iter(&self) -> StringOrByteIterator<'db> {
         StringOrByteIterator(self.node.iter_children())
+    }
+
+    pub fn maybe_single_string_literal(&self) -> Option<PyString<'db>> {
+        let mut iterator = self.iter();
+        if let Some(StringOrByte::String(s)) = iterator.next() {
+            Some(s)
+        } else {
+            None
+        }
     }
 }
 

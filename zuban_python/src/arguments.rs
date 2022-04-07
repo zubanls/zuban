@@ -1,4 +1,6 @@
-use crate::database::{Database, Execution, MroIndex, PointLink};
+use std::mem;
+
+use crate::database::{Database, Execution, MroIndex, PointLink, TypeVar};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -10,7 +12,6 @@ use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
 };
-use std::mem;
 
 pub enum ArgumentsType<'db> {
     Normal(&'db PythonFile, NodeIndex),
@@ -119,6 +120,75 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
             self.in_,
             Some(class),
         )
+    }
+
+    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
+        let mut iterator = self.iter_arguments();
+        if let Some(Argument::Positional(name_node)) = iterator.next() {
+            let name_expr = name_node.as_named_expression();
+            let py_string = match name_expr.maybe_single_string_literal() {
+                Some(py_string) => py_string,
+                None => return None,
+            };
+            let mut constraints = vec![];
+            let mut bound = None;
+            let mut covariant = false;
+            let mut contravariant = false;
+            for arg in iterator {
+                match arg {
+                    Argument::Positional(node) => {
+                        let mut inference = node.file.inference(i_s);
+                        if let Some(t) = inference.compute_type_var_bound(node.as_expression()) {
+                            constraints.push(t);
+                        } else {
+                            return None;
+                        }
+                    }
+                    Argument::Keyword(name, node) => match name {
+                        "covariant" => {
+                            let code = node.as_expression().as_code();
+                            match code {
+                                "true" => covariant = true,
+                                "false" => (),
+                                _ => return None,
+                            }
+                        }
+                        "contravariant" => {
+                            let code = node.as_expression().as_code();
+                            match code {
+                                "true" => contravariant = true,
+                                "false" => (),
+                                _ => return None,
+                            }
+                        }
+                        "bound" => {
+                            if let Some(t) = node
+                                .file
+                                .inference(i_s)
+                                .compute_type_var_bound(node.as_expression())
+                            {
+                                bound = Some(t)
+                            } else {
+                                return None;
+                            }
+                        }
+                        _ => return None,
+                    },
+                    Argument::Value(v) => unreachable!(),
+                }
+            }
+            return Some(TypeVar {
+                name: PointLink {
+                    file: name_node.file.file_index(),
+                    node_index: py_string.index(),
+                },
+                constraints: constraints.into_boxed_slice(),
+                bound,
+                covariant,
+                contravariant,
+            });
+        }
+        None
     }
 }
 

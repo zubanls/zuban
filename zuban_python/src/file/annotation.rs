@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    ComplexPoint, DbType, FormatStyle, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeVar, TypeVarUsage,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TupleContent,
+    TypeVar, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -14,7 +14,7 @@ use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike, Module, Value};
+use crate::value::{Class, ClassLike};
 
 enum AnnotationType {
     SimpleClass,
@@ -298,9 +298,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let StarExpressionContent::Expression(expr) = right.unpack() {
                     let inferred = self.check_point_cache(expr.index()).unwrap();
                     if let Some(tv) = inferred.maybe_type_var(self.i_s) {
-                        dbg!(tv.file.tree.debug_info(tv.node_index));
+                        todo!()
+                    } else {
+                        TypeComputation::new(self, &mut |x| todo!()).compute_type(expr)
                     }
-                    TypeComputation::new(self, &mut |x| todo!()).compute_type(expr)
                 } else {
                     todo!()
                 }
@@ -505,5 +506,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_simple_specific(specific, Locality::Todo),
         );
         ret
+    }
+
+    pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
+        let mut had_type_vars = false;
+        let db_type = TypeComputation::new(self, &mut |_| {
+            had_type_vars = true;
+            todo!()
+        })
+        .compute_type_as_db_type(expr);
+        (!had_type_vars).then(|| db_type)
     }
 }
