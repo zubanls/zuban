@@ -26,7 +26,16 @@ enum AnnotationType {
 enum TypeContent<'db> {
     Module(&'db PythonFile),
     ClassWithoutTypeVar(Inferred<'db>),
+    TypeAlias(&'db TypeAlias),
     DbType(DbType),
+}
+
+enum TypeNameLookup<'db> {
+    Module(&'db PythonFile),
+    Class(Inferred<'db>),
+    TypeVar(Rc<TypeVar>),
+    TypeAlias(&'db TypeAlias),
+    Invalid,
 }
 
 #[derive(Debug)]
@@ -58,8 +67,10 @@ impl<'db> ComputedType<'db> {
                     TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
                     TypeContent::DbType(t) => t,
                     TypeContent::Module(m) => todo!(),
+                    TypeContent::TypeAlias(m) => todo!(),
                 }),
                 TypeContent::Module(m) => todo!(),
+                TypeContent::TypeAlias(m) => todo!(),
             }),
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }
@@ -70,6 +81,7 @@ impl<'db> ComputedType<'db> {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => todo!(),
+            TypeContent::TypeAlias(m) => todo!(),
         }
     }
 }
@@ -175,13 +187,14 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                                 name.index(),
                                 Point::new_redirect(f.file_index(), index, Locality::Todo),
                             );
-                            self.inference.compute_type_name(name)
+                            self.compute_type_name(name)
                         } else {
                             todo!()
                         }
                     }
                     TypeContent::ClassWithoutTypeVar(_) => todo!(),
                     TypeContent::DbType(t) => todo!(),
+                    TypeContent::TypeAlias(m) => todo!(),
                 }
             }
             PrimaryContent::Execution(details) => {
@@ -194,6 +207,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
+                TypeContent::TypeAlias(m) => todo!(),
             },
         }
     }
@@ -228,6 +242,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         }
                         TypeContent::DbType(d) => todo!(),
                         TypeContent::Module(m) => todo!(),
+                        TypeContent::TypeAlias(m) => todo!(),
                     }
                 }
                 SliceType::Slice(slice) => todo!(),
@@ -250,7 +265,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
 
     fn compute_type_atom(&mut self, atom: Atom<'db>) -> ComputedType<'db> {
         match atom.unpack() {
-            AtomContent::Name(n) => self.inference.compute_type_name(n),
+            AtomContent::Name(n) => self.compute_type_name(n),
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
                     self.compute_annotation_string(start, s.to_owned())
@@ -261,6 +276,21 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             },
             AtomContent::NoneLiteral => ComputedType::new(TypeContent::DbType(DbType::None)),
             _ => todo!(),
+        }
+    }
+
+    fn compute_type_name(&mut self, name: Name<'db>) -> ComputedType<'db> {
+        match self.inference.lookup_type_name(name) {
+            TypeNameLookup::Module(f) => ComputedType::new(TypeContent::Module(f)),
+            TypeNameLookup::Class(i) => ComputedType::new(TypeContent::ClassWithoutTypeVar(i)),
+            TypeNameLookup::TypeVar(t) => {
+                ComputedType::new(TypeContent::DbType(DbType::TypeVar((self
+                    .type_var_callback)(
+                    t
+                ))))
+            }
+            TypeNameLookup::TypeAlias(alias) => ComputedType::new(TypeContent::TypeAlias(alias)),
+            TypeNameLookup::Invalid => ComputedType::new(TypeContent::DbType(DbType::Any)),
         }
     }
 }
@@ -298,15 +328,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         todo!()
     }
 
-    fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> ComputedType<'db> {
+    fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
         self.cache_assignment_nodes(assignment);
         match assignment.unpack() {
             AssignmentContent::Normal(mut targets, AssignmentRightSide::StarExpressions(right)) => {
                 if let StarExpressionContent::Expression(expr) = right.unpack() {
                     let first_target = targets.next().unwrap();
                     if targets.next().is_some() {
-                        todo!();
-                        return ComputedType::new_any();
+                        return TypeNameLookup::Invalid;
                     }
                     let inferred = self.check_point_cache(expr.index()).unwrap();
                     let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
@@ -326,9 +355,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             complex,
                             Locality::Todo,
                         );
-                        x
-                    } else {
                         todo!()
+                    } else {
+                        unreachable!()
                     }
                 } else {
                     todo!()
@@ -341,7 +370,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn compute_type_name(&mut self, name: Name<'db>) -> ComputedType<'db> {
+    fn lookup_type_name(&mut self, name: Name<'db>) -> TypeNameLookup<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             match point.type_() {
@@ -354,8 +383,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
                     match new_name.expect_type() {
                         TypeLike::ClassDef(c) => {
-                            return ComputedType::new(TypeContent::ClassWithoutTypeVar(
-                                Inferred::new_saved(file, c.index(), file.points.get(c.index())),
+                            return TypeNameLookup::Class(Inferred::new_saved(
+                                file,
+                                c.index(),
+                                file.points.get(c.index()),
                             ))
                         }
                         TypeLike::Assignment(assignment) => self.cache_type_assignment(assignment),
@@ -375,14 +406,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         .to_owned(),
                                 ),
                             );
-                            ComputedType::new(TypeContent::DbType(DbType::Any))
+                            TypeNameLookup::Invalid
                         }
                         TypeLike::Import => {
                             if point.type_() == PointType::Redirect {
                                 let mut inference = file.inference(self.i_s);
                                 // Cache
                                 inference.infer_name(new_name);
-                                inference.compute_type_name(new_name)
+                                inference.lookup_type_name(new_name)
                             } else {
                                 todo!()
                             }
@@ -394,7 +425,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::FileReference => {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
-                    ComputedType::new(TypeContent::Module(file))
+                    TypeNameLookup::Module(file)
                 }
                 _ => todo!(),
             }
@@ -402,7 +433,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             // Make sure the name is cached.
             self.infer_name_reference(name);
             debug_assert!(self.file.points.get(name.index()).calculated());
-            self.compute_type_name(name)
+            self.lookup_type_name(name)
         }
     }
 
@@ -528,6 +559,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             TypeContent::Module(m) => todo!(),
+            TypeContent::TypeAlias(m) => todo!(),
         };
         self.file.points.set(
             annotation_index,
