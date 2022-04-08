@@ -349,13 +349,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }))
                     };
                     if let Target::Name(n) = first_target {
-                        let node_ref = NodeRef::new(self.file, n.index() - 1);
+                        let name_def_index = n.name_definition().unwrap().index();
+                        let node_ref = NodeRef::new(self.file, name_def_index);
                         node_ref.insert_complex(complex, Locality::Todo);
-                        match node_ref.complex().unwrap() {
-                            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
-                            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t),
-                            _ => unreachable!(),
-                        }
+                        Self::load_cached_type(node_ref)
                     } else {
                         unreachable!()
                     }
@@ -367,6 +364,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 todo!()
             }
             _ => todo!(),
+        }
+    }
+
+    fn load_cached_type(node_ref: NodeRef<'db>) -> TypeNameLookup<'db> {
+        match node_ref.complex().unwrap() {
+            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
+            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
+            _ => unreachable!(),
         }
     }
 
@@ -389,7 +394,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 file.points.get(c.index()),
                             ))
                         }
-                        TypeLike::Assignment(assignment) => self.cache_type_assignment(assignment),
+                        TypeLike::Assignment(assignment) => {
+                            // Name must be a NameDefinition
+                            let name_def_index = new_name.name_definition().unwrap().index();
+                            let node_ref = NodeRef::new(self.file, name_def_index);
+                            if node_ref.point().calculated() {
+                                Self::load_cached_type(node_ref)
+                            } else {
+                                self.cache_type_assignment(assignment)
+                            }
+                        }
                         TypeLike::Function => {
                             let node_ref = NodeRef::new(self.file, name.index());
                             node_ref.add_typing_issue(
