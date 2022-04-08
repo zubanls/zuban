@@ -6,7 +6,7 @@ use parsa_python_ast::{
 use crate::arguments::Arguments;
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific,
-    TypeVarIndex, TypeVarType, TypeVarUsage,
+    TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -270,7 +270,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     skip_first: bool,
     pub calculated_type_vars: Option<GenericsList>,
     matches: bool,
-    type_vars: Option<&'a [PointLink]>,
+    type_vars: Option<&'a TypeVars>,
     match_type: TypeVarType,
 }
 
@@ -279,7 +279,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
-        type_vars: Option<&'a [PointLink]>,
+        type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
     ) -> Self {
         Self {
@@ -297,7 +297,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn from_callable(
         callable: &'a Callable<'a>,
         args: &'a dyn Arguments<'db>,
-        type_vars: Option<&'a [PointLink]>,
+        type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
     ) -> Self {
         Self {
@@ -316,7 +316,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
-        type_vars: Option<&'db [PointLink]>,
+        type_vars: Option<&'db TypeVars>,
         match_type: TypeVarType,
     ) -> Option<GenericsList> {
         let mut self_ = Self::new(function, args, skip_first, type_vars, match_type);

@@ -1,10 +1,13 @@
+use std::rc::Rc;
+
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSliceType};
 
 use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, PointLink, Specific, TypeVarIndex, TypeVarType,
+    MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
+    TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -243,7 +246,7 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [PointLink] {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [Rc<TypeVar>] {
         &self.class_infos(i_s).type_vars
     }
 
@@ -268,7 +271,7 @@ impl<'db, 'a> Class<'db, 'a> {
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         let mut mro = vec![];
-        let mut type_vars = vec![];
+        let mut type_vars = TypeVarManager::default();
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
         let mut incomplete_mro = false;
@@ -278,8 +281,13 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let mut inference = self.reference.file.inference(&mut i_s);
-                        let db_type = TypeComputation::new(&mut inference, &mut |_| {
-                            todo!("blablablblalblalbalblal")
+                        let db_type = TypeComputation::new(&mut inference, &mut |type_var| {
+                            let index = type_vars.add(type_var.clone());
+                            TypeVarUsage {
+                                type_var,
+                                index,
+                                type_: TypeVarType::Class,
+                            }
                         })
                         .compute_type_as_db_type(n.expression());
                         mro.push(db_type);
@@ -656,7 +664,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
 fn create_type_var_remap<'db>(
     i_s: &mut InferenceState<'db, '_>,
     original_class: NodeRef<'db>,
-    original_type_vars: &[PointLink],
+    original_type_vars: &TypeVars,
     generic: Type<'db, '_>,
 ) -> DbType {
     match generic {
@@ -681,7 +689,7 @@ fn create_type_var_remap<'db>(
 fn create_mro_class<'db>(
     i_s: &mut InferenceState<'db, '_>,
     original_class: NodeRef<'db>,
-    original_type_vars: &[PointLink],
+    original_type_vars: &TypeVars,
     class: &Class<'db, '_>,
 ) -> DbType {
     let type_vars = if class.reference == original_class {

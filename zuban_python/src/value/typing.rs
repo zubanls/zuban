@@ -680,6 +680,8 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
+        todo!()
+        /*
         let mut type_vars = vec![]; // todo!()
         if let Some(params) = &self.content.params {
             params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
@@ -688,6 +690,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             TypeVarMatcher::from_callable(self, args, Some(&type_vars), TypeVarType::LateBound);
         let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
+        */
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

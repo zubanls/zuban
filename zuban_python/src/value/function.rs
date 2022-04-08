@@ -7,7 +7,7 @@ use super::{ClassLike, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
-    Point, PointLink, Specific, TupleContent, TypeVarType,
+    Point, PointLink, Specific, TupleContent, TypeVarType, TypeVars,
 };
 use crate::debug;
 use crate::file::{PythonFile, TypeComputation};
@@ -158,10 +158,7 @@ impl<'db, 'a> Function<'db, 'a> {
         false
     }
 
-    pub fn calculated_type_vars(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<&'db [PointLink]> {
+    pub fn calculated_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
         // To save the generics (which happens mostly not really), just use the def keyword's
         // storage.
         // + 1 for def; + 2 for name + 1 for (

@@ -453,7 +453,7 @@ pub enum ComplexPoint {
     GenericClass(PointLink, GenericsList),
     Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
-    FunctionTypeVars(Box<[PointLink]>),
+    FunctionTypeVars(Box<TypeVars>),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
 
@@ -881,13 +881,39 @@ impl CallableContent {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Default)]
+pub struct TypeVarManager(Vec<Rc<TypeVar>>);
+
+impl TypeVarManager {
+    pub fn add(&mut self, tv: Rc<TypeVar>) -> TypeVarIndex {
+        if let Some(index) = self.0.iter().position(|t| t.as_ref() == tv.as_ref()) {
+            TypeVarIndex::new(index)
+        } else {
+            self.0.push(tv);
+            TypeVarIndex::new(self.0.len() - 1)
+        }
+    }
+
+    pub fn into_boxed_slice(self) -> Box<[Rc<TypeVar>]> {
+        self.0.into_boxed_slice()
+    }
+}
+
+pub type TypeVars = [Rc<TypeVar>];
+
+#[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name: PointLink,
     pub constraints: Box<[DbType]>,
     pub bound: Option<DbType>,
     pub covariant: bool,
     pub contravariant: bool,
+}
+
+impl PartialEq for TypeVar {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
 }
 
 impl TypeVar {
@@ -1137,7 +1163,7 @@ impl ClassStorage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub type_vars: Box<[PointLink]>,
+    pub type_vars: Box<[Rc<TypeVar>]>,
     pub mro: Box<[DbType]>, // Does never include `object`
     pub is_protocol: bool,
     pub incomplete_mro: bool,
@@ -1145,10 +1171,13 @@ pub struct ClassInfos {
 
 impl ClassInfos {
     pub fn find_type_var_index(&self, link: PointLink) -> Option<TypeVarIndex> {
+        todo!("currently not used")
+        /*
         self.type_vars
             .iter()
             .position(|&r| r == link)
             .map(|i| TypeVarIndex(i as u32))
+        */
     }
 }
 
