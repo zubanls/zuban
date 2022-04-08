@@ -52,13 +52,6 @@ impl<'db> ComputedType<'db> {
         }
     }
 
-    fn new_any() -> Self {
-        Self {
-            type_: TypeContent::DbType(DbType::Any),
-            has_type_vars: false,
-        }
-    }
-
     fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         Self {
             type_: TypeContent::DbType(match self.type_ {
