@@ -349,13 +349,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }))
                     };
                     if let Target::Name(n) = first_target {
-                        self.file.complex_points.insert(
-                            &self.file.points,
-                            n.index() - 1,
-                            complex,
-                            Locality::Todo,
-                        );
-                        todo!()
+                        let node_ref = NodeRef::new(self.file, n.index() - 1);
+                        node_ref.insert_complex(complex, Locality::Todo);
+                        match node_ref.complex().unwrap() {
+                            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
+                            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t),
+                            _ => unreachable!(),
+                        }
                     } else {
                         unreachable!()
                     }
