@@ -40,7 +40,7 @@ enum TypeNameLookup<'db> {
 
 #[derive(Debug)]
 struct ComputedType<'db> {
-    pub type_: TypeContent<'db>,
+    type_: TypeContent<'db>,
     has_type_vars: bool,
 }
 
@@ -214,7 +214,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         if matches!(class.generics, Generics::None) {
             match slice_type {
                 SliceType::NamedExpression(named_expr) => {
-                    match self.compute_type(named_expr.expression()).type_ {
+                    let ComputedType {
+                        type_,
+                        has_type_vars,
+                    } = self.compute_type(named_expr.expression());
+                    match type_ {
                         TypeContent::ClassWithoutTypeVar(_) => {
                             debug_assert!(!self
                                 .inference
@@ -233,7 +237,13 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                                 ),
                             ))
                         }
-                        TypeContent::DbType(d) => todo!(),
+                        TypeContent::DbType(d) => ComputedType {
+                            type_: TypeContent::DbType(DbType::GenericClass(
+                                class.reference.as_link(),
+                                GenericsList::new(Box::new([d])),
+                            )),
+                            has_type_vars,
+                        },
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
                     }

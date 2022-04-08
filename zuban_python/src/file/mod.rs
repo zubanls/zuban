@@ -554,7 +554,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let point = self.file.points.get(n.index());
                 if point.calculated() {
                     // Save on name_definition
-                    debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+                    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{:?}", target);
                     let mut first_definition = point.node_index();
                     loop {
                         let point = self.file.points.get(first_definition);
