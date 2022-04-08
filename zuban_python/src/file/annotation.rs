@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TupleContent,
-    TypeVar, TypeVarUsage,
+    TypeAlias, TypeVar, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -36,14 +36,21 @@ struct ComputedType<'db> {
 }
 
 impl<'db> ComputedType<'db> {
-    pub fn new(type_: TypeContent<'db>) -> Self {
+    fn new(type_: TypeContent<'db>) -> Self {
         Self {
             type_,
             has_type_vars: false,
         }
     }
 
-    pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
+    fn new_any() -> Self {
+        Self {
+            type_: TypeContent::DbType(DbType::Any),
+            has_type_vars: false,
+        }
+    }
+
+    fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         Self {
             type_: TypeContent::DbType(match self.type_ {
                 TypeContent::ClassWithoutTypeVar(inf) => todo!(),
@@ -294,13 +301,34 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> ComputedType<'db> {
         self.cache_assignment_nodes(assignment);
         match assignment.unpack() {
-            AssignmentContent::Normal(_, AssignmentRightSide::StarExpressions(right)) => {
+            AssignmentContent::Normal(mut targets, AssignmentRightSide::StarExpressions(right)) => {
                 if let StarExpressionContent::Expression(expr) = right.unpack() {
+                    let first_target = targets.next().unwrap();
+                    if targets.next().is_some() {
+                        todo!();
+                        return ComputedType::new_any();
+                    }
                     let inferred = self.check_point_cache(expr.index()).unwrap();
-                    if let Some(tv) = inferred.maybe_type_var(self.i_s) {
-                        todo!()
+                    let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
+                        ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
-                        TypeComputation::new(self, &mut |x| todo!()).compute_type(expr)
+                        let type_vars = vec![];
+                        let t = TypeComputation::new(self, &mut |x| todo!()).compute_type(expr);
+                        ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                            type_vars: type_vars.into_boxed_slice(),
+                            db_type: Rc::new(t.into_db_type(self.i_s)),
+                        }))
+                    };
+                    if let Target::Name(n) = first_target {
+                        self.file.complex_points.insert(
+                            &self.file.points,
+                            n.index() - 1,
+                            complex,
+                            Locality::Todo,
+                        );
+                        x
+                    } else {
+                        todo!()
                     }
                 } else {
                     todo!()

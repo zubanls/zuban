@@ -914,7 +914,7 @@ pub struct TypeVarUsage {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: Box<[PointLink]>,
-    pub db_type: DbType,
+    pub db_type: Rc<DbType>,
 }
 
 pub struct Database {

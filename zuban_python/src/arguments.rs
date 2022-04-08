@@ -148,16 +148,16 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                         "covariant" => {
                             let code = node.as_expression().as_code();
                             match code {
-                                "true" => covariant = true,
-                                "false" => (),
+                                "True" => covariant = true,
+                                "False" => (),
                                 _ => return None,
                             }
                         }
                         "contravariant" => {
                             let code = node.as_expression().as_code();
                             match code {
-                                "true" => contravariant = true,
-                                "false" => (),
+                                "True" => contravariant = true,
+                                "False" => (),
                                 _ => return None,
                             }
                         }
