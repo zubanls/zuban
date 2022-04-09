@@ -364,7 +364,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                todo!()
+                todo!("{:?}", target)
             }
             _ => todo!(),
         }

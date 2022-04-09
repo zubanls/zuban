@@ -1,4 +1,4 @@
-use parsa_python_ast::NodeIndex;
+use parsa_python_ast::{NodeIndex, TypeLike};
 use std::ptr::null;
 
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
@@ -88,17 +88,20 @@ impl PythonState {
 fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &PythonFile) {
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
-    set_typing_inference(typing, "Tuple", Specific::TypingTuple);
-    set_typing_inference(builtins, "tuple", Specific::TypingTuple);
-    set_typing_inference(typing, "Callable", Specific::TypingCallable);
-    set_typing_inference(typing, "Type", Specific::TypingType);
-    set_typing_inference(builtins, "type", Specific::TypingType);
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
+
     set_typing_inference(typing, "Union", Specific::TypingUnion);
     set_typing_inference(typing, "Optional", Specific::TypingOptional);
-    set_typing_inference(typing, "cast", Specific::TypingCast);
     set_typing_inference(typing, "Any", Specific::TypingAny);
+    set_typing_inference(typing, "Callable", Specific::TypingCallable);
+    set_typing_inference(typing, "Type", Specific::TypingType);
 
+    set_typing_inference(builtins, "tuple", Specific::TypingTuple);
+    set_typing_inference(builtins, "type", Specific::TypingType);
+
+    set_typing_inference(typing, "cast", Specific::TypingCast);
+
+    setup_type_alias(typing, "Tuple", builtins, "tuple");
     setup_type_alias(typing, "List", builtins, "list");
     setup_type_alias(typing, "Dict", builtins, "dict");
     setup_type_alias(typing, "Set", builtins, "set");
@@ -117,6 +120,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
     if !["cast", "type", "tuple"].contains(&name) {
         debug_assert!(!file.points.get(node_index).calculated());
+        set_assignments_cached(file, node_index);
     }
     file.points.set(
         node_index,
@@ -132,4 +136,19 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
         node_index,
         Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
     );
+    if name != "SupportsIndex" {
+        // TODO SupportsIndex should not be handled as an alias in the first place.
+        set_assignments_cached(typing, node_index);
+    }
+}
+
+fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
+    // To avoid getting overwritten we also have to set the assignments to a proper state.
+    let name = NodeRef::new(file, name_node).as_name();
+    if let TypeLike::Assignment(assignment) = name.expect_type() {
+        file.points
+            .set(assignment.index(), Point::new_node_analysis(Locality::Stmt));
+    } else {
+        unreachable!();
+    }
 }
