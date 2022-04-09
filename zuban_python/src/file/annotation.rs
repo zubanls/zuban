@@ -22,7 +22,9 @@ enum SpecialType {
     Optional,
     Any,
     Protocol,
+    ProtocolWithGenerics,
     Generic,
+    GenericWithGenerics,
 }
 
 enum AnnotationType {
@@ -216,7 +218,20 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
                 TypeContent::TypeAlias(m) => todo!(),
-                TypeContent::SpecialType(m) => todo!(),
+                TypeContent::SpecialType(special) => match special {
+                    SpecialType::Union => todo!(),
+                    SpecialType::Optional => todo!(),
+                    SpecialType::Any => todo!(),
+                    SpecialType::Protocol => {
+                        self.expect_type_var_args(slice_type);
+                        ComputedType::new(TypeContent::SpecialType(
+                            SpecialType::ProtocolWithGenerics,
+                        ))
+                    }
+                    SpecialType::ProtocolWithGenerics => todo!(),
+                    SpecialType::Generic => todo!(),
+                    SpecialType::GenericWithGenerics => todo!(),
+                },
             },
         }
     }
@@ -276,6 +291,22 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         }
     }
 
+    fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
+        match slice_type {
+            SliceType::NamedExpression(named_expr) => {
+                match self.compute_type(named_expr.expression()).type_ {
+                    TypeContent::DbType(DbType::TypeVar(_)) => (),
+                    _ => todo!(),
+                }
+            }
+            SliceType::Slice(slice) => todo!(),
+            SliceType::Slices(slices) => {
+                slices.iter();
+                todo!()
+            }
+        }
+    }
+
     fn compute_type_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> ComputedType<'db> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary),
@@ -311,7 +342,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
             TypeNameLookup::TypeAlias(alias) => ComputedType::new(TypeContent::TypeAlias(alias)),
             TypeNameLookup::Invalid => ComputedType::new(TypeContent::DbType(DbType::Any)),
-            TypeNameLookup::SpecialType(special) => todo!(),
+            TypeNameLookup::SpecialType(special) => {
+                ComputedType::new(TypeContent::SpecialType(special))
+            }
         }
     }
 }
@@ -406,7 +439,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         true => self.file,
                         false => self.i_s.database.loaded_python_file(point.file_index()),
                     };
-                    let new_name = Name::maybe_by_index(&file.tree, point.node_index()).unwrap();
+                    let new_name_ref = NodeRef::new(file, point.node_index());
+
+                    if let Some(special) = check_special_type(new_name_ref.point()) {
+                        return TypeNameLookup::SpecialType(special);
+                    }
+
+                    let new_name = new_name_ref.as_name();
                     match new_name.expect_type() {
                         TypeLike::ClassDef(c) => {
                             return TypeNameLookup::Class(Inferred::new_saved(
@@ -612,5 +651,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         })
         .compute_type_as_db_type(expr);
         (!had_type_vars).then(|| db_type)
+    }
+}
+
+fn check_special_type(point: Point) -> Option<SpecialType> {
+    if point.calculated() && point.type_() == PointType::Specific {
+        Some(match point.specific() {
+            Specific::TypingUnion => SpecialType::Union,
+            Specific::TypingOptional => SpecialType::Optional,
+            Specific::TypingAny => SpecialType::Any,
+            Specific::TypingGeneric => SpecialType::Generic,
+            Specific::TypingProtocol => SpecialType::Protocol,
+            _ => return None,
+        })
+    } else {
+        None
     }
 }
