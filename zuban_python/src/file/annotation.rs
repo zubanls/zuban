@@ -369,6 +369,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+    /* TODO remove
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation()
             .map(|annotation| match name.simple_param_type() {
@@ -396,9 +397,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             })
     }
+    */
 
-    pub(super) fn use_cached_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
-        todo!()
+    pub(super) fn use_cached_param_annotation(
+        &mut self,
+        annotation: Annotation<'db>,
+    ) -> Inferred<'db> {
+        let point = self.file.points.get(annotation.index());
+        if point.type_() == PointType::Specific {
+            if point.specific() == Specific::AnnotationClassInstance {
+                Inferred::new_saved(self.file, annotation.index(), point)
+            } else {
+                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                Inferred::new_saved(self.file, annotation.expression().index(), point)
+            }
+        } else {
+            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
+            debug_assert!(matches!(
+                self.file.complex_points.get(point.complex_index()),
+                ComplexPoint::TypeInstance(_)
+            ));
+            Inferred::new_saved(self.file, annotation.index(), point)
+        }
     }
 
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {

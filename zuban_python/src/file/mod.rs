@@ -957,10 +957,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                             func.calculated_type_vars(self.i_s);
                         }
-                        if let Some(inferred) = self.use_cached_param_annotation(name) {
-                            return inferred;
-                        }
-                        if let Some((function, args)) = self.i_s.current_execution {
+
+                        if let Some(annotation) = name.maybe_param_annotation() {
+                            self.use_cached_param_annotation(annotation)
+                        } else if let Some((function, args)) = self.i_s.current_execution {
                             function
                                 .infer_param(self.i_s, node_index, args)
                                 .resolve_function_return(self.i_s)
