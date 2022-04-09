@@ -6,13 +6,11 @@ use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, Val
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
-    TypeVarUsage, TypeVars,
+    MroIndex, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonFile;
-use crate::file::TypeComputation;
+use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -281,7 +279,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let mut inference = self.reference.file.inference(&mut i_s);
-                        let db_type = TypeComputation::new(&mut inference, &mut |type_var| {
+                        let base = TypeComputation::new(&mut inference, &mut |type_var| {
                             let index = type_vars.add(type_var.clone());
                             TypeVarUsage {
                                 type_var,
@@ -289,39 +287,45 @@ impl<'db, 'a> Class<'db, 'a> {
                                 type_: TypeVarType::Class,
                             }
                         })
-                        .compute_type_as_db_type(n.expression());
-                        mro.push(db_type);
-                        let class = match &mro.last().unwrap() {
-                            DbType::Class(link) => {
-                                let r = NodeRef::from_link(i_s.database, *link);
-                                Some(Self::from_position(r, Generics::None, None).unwrap())
+                        .compute_base_class(n.expression());
+                        match base {
+                            BaseClass::DbType(t) => {
+                                mro.push(t);
+                                let class = match &mro.last().unwrap() {
+                                    DbType::Class(link) => {
+                                        let r = NodeRef::from_link(i_s.database, *link);
+                                        Some(Self::from_position(r, Generics::None, None).unwrap())
+                                    }
+                                    DbType::GenericClass(link, generics) => Some(
+                                        Class::from_position(
+                                            NodeRef::from_link(i_s.database, *link),
+                                            Generics::new_list(generics),
+                                            None,
+                                        )
+                                        .unwrap(),
+                                    ),
+                                    _ => {
+                                        dbg!(mro.last());
+                                        todo!()
+                                    } /*
+                                      DbType::Unknown => ,
+                                      DbType::None => ,
+                                      DbType::Any => ,
+                                      DbType::Union(list) => ,
+                                      DbType::TypeVar(t) => ,
+                                      DbType::Type(db_type) => ,
+                                      DbType::Tuple(content) => ,
+                                      DbType::Callable(content) => ,
+                                      */
+                                };
                             }
-                            DbType::GenericClass(link, generics) => Some(
-                                Class::from_position(
-                                    NodeRef::from_link(i_s.database, *link),
-                                    Generics::new_list(generics),
-                                    None,
-                                )
-                                .unwrap(),
-                            ),
-                            _ => {
-                                dbg!(mro.last());
-                                todo!()
-                            } /*
-                              DbType::Unknown => ,
-                              DbType::None => ,
-                              DbType::Any => ,
-                              DbType::Union(list) => ,
-                              DbType::TypeVar(t) => ,
-                              DbType::Type(db_type) => ,
-                              DbType::Tuple(content) => ,
-                              DbType::Callable(content) => ,
-                              */
+                            BaseClass::Protocol => is_protocol = true,
+                            BaseClass::Generic => (),
                         };
+                        /*
                         let mro_index = mro.len();
                         if let Some(class) = class {
                             for base in class.class_infos(&mut i_s).mro.iter() {
-                                /*
                                     dbg!(base.remap_type_vars(&mut |t| {
                                         mro[mro_index]
                                             .expect_generics()
@@ -329,9 +333,9 @@ impl<'db, 'a> Class<'db, 'a> {
                                             .unwrap()
                                             .clone()
                                     }));
-                                */
                             }
                         }
+                                */
                         /*
                         inf.type_.run_mut(
                             &mut i_s,

@@ -51,6 +51,12 @@ enum TypeNameLookup<'db> {
     Invalid,
 }
 
+pub enum BaseClass {
+    DbType(DbType),
+    Protocol,
+    Generic,
+}
+
 #[derive(Debug)]
 struct ComputedType<'db> {
     type_: TypeContent<'db>,
@@ -123,6 +129,19 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
+        }
+    }
+
+    pub fn compute_base_class(&mut self, expr: Expression<'db>) -> BaseClass {
+        let calculated = self.compute_type(expr);
+        match calculated.type_ {
+            TypeContent::SpecialType(SpecialType::Protocol | SpecialType::ProtocolWithGenerics) => {
+                BaseClass::Protocol
+            }
+            TypeContent::SpecialType(SpecialType::Generic | SpecialType::GenericWithGenerics) => {
+                BaseClass::Protocol
+            }
+            _ => BaseClass::DbType(calculated.into_db_type(self.inference.i_s)),
         }
     }
 
