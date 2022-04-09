@@ -16,6 +16,15 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, ClassLike};
 
+#[derive(Debug)]
+enum SpecialType {
+    Union,
+    Optional,
+    Any,
+    Protocol,
+    Generic,
+}
+
 enum AnnotationType {
     SimpleClass,
     DbTypeWithTypeVars,
@@ -28,6 +37,7 @@ enum TypeContent<'db> {
     ClassWithoutTypeVar(Inferred<'db>),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
+    SpecialType(SpecialType),
 }
 
 enum TypeNameLookup<'db> {
@@ -35,6 +45,7 @@ enum TypeNameLookup<'db> {
     Class(Inferred<'db>),
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
+    SpecialType(SpecialType),
     Invalid,
 }
 
@@ -61,9 +72,11 @@ impl<'db> ComputedType<'db> {
                     TypeContent::DbType(t) => t,
                     TypeContent::Module(m) => todo!(),
                     TypeContent::TypeAlias(m) => todo!(),
+                    TypeContent::SpecialType(m) => todo!(),
                 }),
                 TypeContent::Module(m) => todo!(),
                 TypeContent::TypeAlias(m) => todo!(),
+                TypeContent::SpecialType(m) => todo!(),
             }),
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }
@@ -75,6 +88,7 @@ impl<'db> ComputedType<'db> {
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => todo!(),
             TypeContent::TypeAlias(m) => todo!(),
+            TypeContent::SpecialType(m) => todo!(),
         }
     }
 }
@@ -188,6 +202,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     TypeContent::ClassWithoutTypeVar(_) => todo!(),
                     TypeContent::DbType(t) => todo!(),
                     TypeContent::TypeAlias(m) => todo!(),
+                    TypeContent::SpecialType(m) => todo!(),
                 }
             }
             PrimaryContent::Execution(details) => {
@@ -201,6 +216,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
                 TypeContent::TypeAlias(m) => todo!(),
+                TypeContent::SpecialType(m) => todo!(),
             },
         }
     }
@@ -246,6 +262,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         },
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
+                        TypeContent::SpecialType(m) => todo!(),
                     }
                 }
                 SliceType::Slice(slice) => todo!(),
@@ -294,6 +311,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
             TypeNameLookup::TypeAlias(alias) => ComputedType::new(TypeContent::TypeAlias(alias)),
             TypeNameLookup::Invalid => ComputedType::new(TypeContent::DbType(DbType::Any)),
+            TypeNameLookup::SpecialType(special) => todo!(),
         }
     }
 }
@@ -577,6 +595,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             TypeContent::Module(m) => todo!(),
             TypeContent::TypeAlias(m) => todo!(),
+            TypeContent::SpecialType(_) => todo!(),
         };
         self.file.points.set(
             annotation_index,
