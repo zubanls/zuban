@@ -115,8 +115,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.calculated_type_vars(self.i_s);
-        let (_, params, return_annotation, block) = f.unpack();
         /*
+        let (_, params, return_annotation, block) = f.unpack();
          * TODO I think this is not needed anymore
         for param in params.iter() {
             if let Some(annotation) = param.annotation() {
@@ -159,7 +159,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let inf = self.infer_star_expressions(return_stmt.star_expressions());
                 todo!()
                 /*
-                self.return_annotation_type(annotation)
+                self.use_return_annotation_type(annotation)
                     .error_if_not_matches(self.i_s, &inf, |t1, t2| {
                         NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
                             self.i_s.database,

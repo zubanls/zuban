@@ -207,6 +207,9 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+        // Make sure annotations/type vars are calculated
+        self.calculated_type_vars(i_s);
+
         let node = self.node();
         let mut result = "def (".to_owned();
         let generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
@@ -227,7 +230,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .reference
                 .file
                 .inference(i_s)
-                .return_annotation_type(annotation)
+                .use_return_annotation_type(annotation)
                 .as_string(i_s, style)
         } else {
             result += "Any"
@@ -295,11 +298,14 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
+                todo!("Probably move this into use_return_annotation")
+                /*
                 self.reference
                     .file
                     .inference(i_s)
-                    .return_annotation_type(return_annotation)
+                    .use_return_annotation_type(return_annotation)
                     .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
+                */
             } else {
                 self.reference
                     .file
