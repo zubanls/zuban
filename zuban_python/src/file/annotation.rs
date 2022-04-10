@@ -484,18 +484,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn use_return_annotation_type(
+    pub fn use_cached_return_annotation_type(
         &mut self,
         annotation: ReturnAnnotation<'db>,
     ) -> Type<'db, 'db> {
-        self.use_annotation_type_internal(annotation.index(), annotation.expression())
+        self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn use_annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
-        self.use_annotation_type_internal(annotation.index(), annotation.expression())
+    pub fn use_cached_annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
+        self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
-    fn use_annotation_type_internal(
+    fn use_cached_annotation_type_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression<'db>,
