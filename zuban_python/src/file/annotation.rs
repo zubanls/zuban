@@ -149,34 +149,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         self.compute_type(expr).into_db_type(self.inference.i_s)
     }
 
-    pub fn compute_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
-        self.compute_annotation_internal(annotation.index(), annotation.expression())
+    pub fn compute_annotation(&mut self, annotation: Annotation<'db>) {
+        self.cache_annotation_internal(annotation.index(), annotation.expression());
     }
 
     pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) {
-        self.compute_annotation_internal(annotation.index(), annotation.expression());
-    }
-
-    fn compute_annotation_internal(
-        &mut self,
-        annotation_index: NodeIndex,
-        expr: Expression<'db>,
-    ) -> Inferred<'db> {
-        let t = self.cache_annotation_internal(annotation_index, expr);
-
-        if matches!(t, AnnotationType::DbTypeWithTypeVars) {
-            // TODO this is always a TypeInstance, just use that.
-            let inferred = self.inference.check_point_cache(expr.index()).unwrap();
-            let type_ = inferred.class_as_type(self.inference.i_s);
-            todo!();
-            type_.execute_and_resolve_type_vars(
-                self.inference.i_s,
-                self.inference.i_s.current_class,
-                None,
-            )
-        } else {
-            self.inference.check_point_cache(annotation_index).unwrap()
-        }
+        self.cache_annotation_internal(annotation.index(), annotation.expression());
     }
 
     #[inline]
