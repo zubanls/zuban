@@ -27,12 +27,6 @@ enum SpecialType {
     GenericWithGenerics,
 }
 
-enum AnnotationType {
-    SimpleClass,
-    DbTypeWithTypeVars,
-    DbTypeWithoutTypeVars,
-}
-
 #[derive(Debug)]
 enum TypeContent<'db> {
     Module(&'db PythonFile),
@@ -158,24 +152,10 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
     }
 
     #[inline]
-    fn cache_annotation_internal(
-        &mut self,
-        annotation_index: NodeIndex,
-        expr: Expression<'db>,
-    ) -> AnnotationType {
+    fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression<'db>) {
         let point = self.inference.file.points.get(annotation_index);
         if point.calculated() {
-            return if point.type_() == PointType::Specific {
-                if point.specific() == Specific::AnnotationClassInstance {
-                    AnnotationType::SimpleClass
-                } else {
-                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
-                    AnnotationType::DbTypeWithTypeVars
-                }
-            } else {
-                debug_assert_eq!(point.type_(), PointType::Complex);
-                AnnotationType::DbTypeWithoutTypeVars
-            };
+            return;
         }
         debug!(
             "Infer annotation expression class on {:?}: {:?}",
@@ -188,13 +168,10 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             has_type_vars,
         } = self.compute_type(expr);
 
-        let (specific, ret) = match type_ {
+        let specific = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
                 i.save_redirect(self.inference.file, expr.index());
-                (
-                    Specific::AnnotationClassInstance,
-                    AnnotationType::SimpleClass,
-                )
+                Specific::AnnotationClassInstance
             }
             TypeContent::DbType(d) => {
                 if has_type_vars {
@@ -202,14 +179,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         DbType::Type(Box::new(d)),
                     )))
                     .save_redirect(self.inference.file, expr.index());
-                    (
-                        Specific::AnnotationWithTypeVars,
-                        AnnotationType::DbTypeWithTypeVars,
-                    )
+                    Specific::AnnotationWithTypeVars
                 } else {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                         .save_redirect(self.inference.file, annotation_index);
-                    return AnnotationType::DbTypeWithoutTypeVars;
+                    return;
                 }
             }
             TypeContent::Module(m) => todo!(),
@@ -220,7 +194,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             annotation_index,
             Point::new_simple_specific(specific, Locality::Todo),
         );
-        ret
     }
 
     fn compute_type(&mut self, expr: Expression<'db>) -> ComputedType<'db> {
