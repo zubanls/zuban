@@ -241,7 +241,7 @@ impl<'db> GenericsIterator<'db, '_> {
             Self::ParamIterator(f, params) => params.next().map(|p| {
                 p.annotation()
                     .map(|a| {
-                        let t = f.inference(i_s).annotation_type(a);
+                        let t = f.inference(i_s).use_annotation_type(a);
                         callable(i_s, t)
                     })
                     .unwrap_or_else(|| callable(i_s, Type::None))
@@ -361,7 +361,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .reference
                                 .file
                                 .inference(i_s)
-                                .annotation_type(annotation);
+                                .use_annotation_type(annotation);
                             if !annotation_g.matches(i_s, Some(self), value_class) {
                                 let value_class = value.class_as_type(i_s);
                                 p.as_argument_node_reference().add_typing_issue(

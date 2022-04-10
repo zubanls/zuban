@@ -448,6 +448,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         todo!()
     }
 
+    pub fn use_annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
+        todo!()
+    }
+
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
         self.cache_assignment_nodes(assignment);
         match assignment.unpack() {
@@ -575,10 +579,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             debug_assert!(self.file.points.get(name.index()).calculated());
             self.lookup_type_name(name)
         }
-    }
-
-    pub fn annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
-        self.annotation_type_internal(annotation.index(), annotation.expression())
     }
 
     fn annotation_type_internal(

@@ -498,6 +498,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
+                    todo!()
+                    /*
                     self.annotation_type(annotation).error_if_not_matches(
                         self.i_s,
                         &right,
@@ -508,6 +510,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                         },
                     )
+                    */
                 }
                 let inf_annot = self.compute_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, |index| {
