@@ -334,19 +334,21 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
 
     fn compute_type_get_item_on_class(
         &mut self,
-        class: Class,
+        class: Class<'db, '_>,
         primary_index: NodeIndex,
         slice_type: SliceType<'db>,
     ) -> ComputedType<'db> {
         if matches!(class.generics, Generics::None) {
-            match slice_type {
+            let expected_count = class.type_vars(self.inference.i_s).len();
+            let mut given_count = 1;
+            let result = match slice_type {
                 SliceType::NamedExpression(named_expr) => {
                     let ComputedType {
                         type_,
                         has_type_vars,
                     } = self.compute_type(named_expr.expression());
                     match type_ {
-                        TypeContent::ClassWithoutTypeVar(_) => {
+                        TypeContent::ClassWithoutTypeVar(inf) => {
                             let point =
                                 Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
                             self.inference.file.points.set(primary_index, point);
@@ -368,10 +370,27 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
                 SliceType::Slice(slice) => todo!(),
                 SliceType::Slices(slices) => {
-                    slices.iter();
+                    given_count = 0;
+                    for slice_content in slices.iter() {
+                        given_count += 1;
+                    }
                     todo!()
                 }
+            };
+            if given_count != expected_count {
+                // TODO both the type argument issues and are not implemented for other classlikes
+                // like tuple/callable/type, which can also have late bound type vars and too
+                // many/few given type vars!
+                NodeRef::new(self.inference.file, primary_index).add_typing_issue(
+                    self.inference.i_s.database,
+                    IssueType::TypeArgumentIssue(
+                        class.name().to_owned(),
+                        expected_count,
+                        given_count,
+                    ),
+                );
             }
+            result
         } else {
             todo!()
         }

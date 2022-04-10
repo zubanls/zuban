@@ -551,23 +551,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         )
         /*
          * TODO above we just ignore everything that happens within the brackets
-         *
-        // TODO both the type argument issues and are not implemented for other classlikes like
-        // tuple/callable/type, which can also have late bound type vars and too many/few given
-        // type vars!
-        let count_given = match slice_type.ast_node {
-            ASTSliceType::Slices(s) => s.iter().count(),
-            _ => 1,
-        };
-        let expected = self.class_infos(i_s).type_vars.len();
-        if count_given != expected {
-            slice_type.as_node_ref().add_typing_issue(
-                i_s.database,
-                IssueType::TypeArgumentIssue(self.name().to_owned(), expected, count_given),
-            );
-        }
-        Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-        */
+         */
     }
 
     fn as_class(&self) -> Option<&Self> {
