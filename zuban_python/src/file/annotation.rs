@@ -387,8 +387,17 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
             SliceType::Slice(slice) => todo!(),
             SliceType::Slices(slices) => {
-                slices.iter();
-                todo!()
+                for slice_content in slices.iter() {
+                    match slice_content {
+                        SliceContent::NamedExpression(n) => {
+                            match self.compute_type(n.expression()).type_ {
+                                TypeContent::DbType(DbType::TypeVar(_)) => (),
+                                _ => todo!(),
+                            }
+                        }
+                        SliceContent::Slice(n) => todo!(),
+                    }
+                }
             }
         }
     }
