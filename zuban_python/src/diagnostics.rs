@@ -1,8 +1,10 @@
 use parsa_python_ast::NodeIndex;
 
 use crate::database::Database;
+use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::name::TreePosition;
+use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub enum IssueType {
@@ -13,6 +15,7 @@ pub enum IssueType {
     IncompatibleReturn(String, String),
     IncompatibleAssignment(String, String),
     ModuleNotFound(String),
+    TypeNotFound,
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
@@ -30,12 +33,12 @@ pub struct Issue {
 
 pub struct Diagnostic<'db> {
     db: &'db Database,
-    file: &'db dyn File,
+    file: &'db PythonFile,
     pub(in crate) issue: &'db Issue,
 }
 
 impl<'db> Diagnostic<'db> {
-    pub fn new(db: &'db Database, file: &'db dyn File, issue: &'db Issue) -> Self {
+    pub fn new(db: &'db Database, file: &'db PythonFile, issue: &'db Issue) -> Self {
         Self { db, file, issue }
     }
 
@@ -75,6 +78,10 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
+            IssueType::TypeNotFound => {
+                let primary = NodeRef::new(self.file, self.issue.node_index);
+                format!("Name {:?} is not defined", primary.as_code())
+            }
             IssueType::TypeArgumentIssue(class, expected, given) => {
                 if *expected == 0 {
                     format!("{:?} expects no type arguments, but {} given", class, given)

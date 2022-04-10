@@ -115,6 +115,10 @@ impl<'db> NodeRef<'db> {
         )
     }
 
+    pub fn as_code(&self) -> &'db str {
+        self.file.tree.code_of_index(self.node_index)
+    }
+
     pub fn add_typing_issue(&self, db: &Database, issue_type: IssueType) {
         let issue = Issue {
             type_: issue_type,

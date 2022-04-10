@@ -71,6 +71,10 @@ impl Tree {
     pub fn debug_info(&self, index: NodeIndex) -> String {
         format!("{:?}", self.0.node_by_index(index))
     }
+
+    pub fn code_of_index(&self, index: NodeIndex) -> &str {
+        self.0.node_by_index(index).as_code()
+    }
 }
 
 pub trait InterestingNodeSearcher<'db> {

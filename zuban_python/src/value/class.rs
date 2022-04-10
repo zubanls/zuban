@@ -308,6 +308,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     DbType::Tuple(content) => todo!(),
                                     DbType::Callable(content) => todo!(),
                                     _ => {
+                                        incomplete_mro = true;
                                         mro.pop();
                                         None
                                     }

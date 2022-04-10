@@ -260,6 +260,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             );
                             self.compute_type_name(name)
                         } else {
+                            let node_ref = NodeRef::new(self.inference.file, primary.index());
+                            node_ref.add_typing_issue(
+                                self.inference.i_s.database,
+                                IssueType::TypeNotFound,
+                            );
                             self.inference.file.points.set(
                                 name.index(),
                                 Point::new_unknown(f.file_index(), Locality::Todo),
