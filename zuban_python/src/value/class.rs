@@ -305,19 +305,12 @@ impl<'db, 'a> Class<'db, 'a> {
                                         )
                                         .unwrap(),
                                     ),
+                                    DbType::Tuple(content) => todo!(),
+                                    DbType::Callable(content) => todo!(),
                                     _ => {
-                                        dbg!(mro.last());
-                                        todo!()
-                                    } /*
-                                      DbType::Unknown => ,
-                                      DbType::None => ,
-                                      DbType::Any => ,
-                                      DbType::Union(list) => ,
-                                      DbType::TypeVar(t) => ,
-                                      DbType::Type(db_type) => ,
-                                      DbType::Tuple(content) => ,
-                                      DbType::Callable(content) => ,
-                                      */
+                                        mro.pop();
+                                        None
+                                    }
                                 };
                                 if let Some(class) = class {
                                     for base in class.class_infos(&mut i_s).mro.iter() {

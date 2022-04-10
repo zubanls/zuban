@@ -260,7 +260,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             );
                             self.compute_type_name(name)
                         } else {
-                            todo!()
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_unknown(f.file_index(), Locality::Todo),
+                            );
+                            ComputedType::new(TypeContent::DbType(DbType::Unknown))
                         }
                     }
                     TypeContent::ClassWithoutTypeVar(i) => {
