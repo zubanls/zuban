@@ -421,6 +421,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    pub fn use_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) -> Inferred<'db> {
+        let point = self.file.points.get(annotation.index());
+        assert!(point.calculated());
+        if point.type_() == PointType::Specific {
+            if point.specific() == Specific::AnnotationClassInstance {
+                Inferred::new_saved(self.file, annotation.index(), point)
+            } else {
+                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                todo!()
+            }
+        } else {
+            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
+            debug_assert!(matches!(
+                self.file.complex_points.get(point.complex_index()),
+                ComplexPoint::TypeInstance(_)
+            ));
+            Inferred::new_saved(self.file, annotation.index(), point)
+        }
+    }
+
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
         self.cache_assignment_nodes(assignment);
         match assignment.unpack() {
@@ -585,11 +605,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.compute_annotation_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn compute_return_annotation(
-        &mut self,
-        annotation: ReturnAnnotation<'db>,
-    ) -> Inferred<'db> {
-        self.compute_annotation_internal(annotation.index(), annotation.expression())
+    pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) {
+        self.compute_annotation_internal(annotation.index(), annotation.expression());
     }
 
     pub fn compute_annotation_internal(

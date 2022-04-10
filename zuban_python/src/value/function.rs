@@ -159,8 +159,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn calculated_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
-        // To save the generics (which happens mostly not really), just use the def keyword's
-        // storage.
+        // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.reference.add_to_node_index(4);
         if type_var_reference.point().calculated() {
@@ -183,7 +182,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            type_computation.compute_type_as_db_type(return_annot.expression());
+            type_computation.compute_return_annotation(return_annot.expression());
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
@@ -305,7 +304,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 self.reference
                     .file
                     .inference(i_s)
-                    .compute_return_annotation(return_annotation)
+                    .use_return_annotation(return_annotation)
             }
         } else {
             self.execute_without_annotation(i_s, args)
