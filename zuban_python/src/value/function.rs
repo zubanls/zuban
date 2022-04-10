@@ -178,7 +178,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut type_computation = TypeComputation::new(&mut inference, &mut on_type_var);
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                type_computation.compute_type_as_db_type(annotation.expression());
+                type_computation.compute_annotation(annotation);
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {

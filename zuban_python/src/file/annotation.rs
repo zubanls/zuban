@@ -139,10 +139,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         }
     }
 
-    pub fn compute_type_as_db_type(&mut self, expr: Expression<'db>) -> DbType {
-        self.compute_type(expr).into_db_type(self.inference.i_s)
-    }
-
     pub fn compute_annotation(&mut self, annotation: Annotation<'db>) {
         self.cache_annotation_internal(annotation.index(), annotation.expression());
     }
@@ -673,7 +669,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             had_type_vars = true;
             todo!()
         })
-        .compute_type_as_db_type(expr);
+        .compute_type(expr)
+        .into_db_type(self.i_s);
         (!had_type_vars).then(|| db_type)
     }
 }
