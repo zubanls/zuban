@@ -445,11 +445,44 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         annotation: ReturnAnnotation<'db>,
     ) -> Type<'db, 'db> {
-        todo!()
+        self.use_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
     pub fn use_annotation_type(&mut self, annotation: Annotation<'db>) -> Type<'db, 'db> {
-        todo!()
+        self.use_annotation_type_internal(annotation.index(), annotation.expression())
+    }
+
+    fn use_annotation_type_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> Type<'db, 'db> {
+        let point = self.file.points.get(annotation_index);
+        assert!(point.calculated());
+        if point.type_() == PointType::Specific {
+            if point.specific() == Specific::AnnotationClassInstance {
+                return Type::ClassLike(ClassLike::Class(
+                    self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
+                ));
+            } else {
+                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+            }
+        } else {
+            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", expr);
+            debug_assert!(matches!(
+                self.file.complex_points.get(point.complex_index()),
+                ComplexPoint::TypeInstance(_)
+            ));
+        }
+        if let ComplexPoint::TypeInstance(db_type) = self
+            .file
+            .complex_points
+            .get_by_node_index(&self.file.points, expr.index())
+        {
+            Type::from_db_type(self.i_s.database, db_type)
+        } else {
+            unreachable!()
+        }
     }
 
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
@@ -578,29 +611,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             self.infer_name_reference(name);
             debug_assert!(self.file.points.get(name.index()).calculated());
             self.lookup_type_name(name)
-        }
-    }
-
-    fn annotation_type_internal(
-        &mut self,
-        annotation_index: NodeIndex,
-        expr: Expression<'db>,
-    ) -> Type<'db, 'db> {
-        match self.cache_annotation_internal(annotation_index, expr) {
-            AnnotationType::SimpleClass => Type::ClassLike(ClassLike::Class(
-                self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
-            )),
-            AnnotationType::DbTypeWithTypeVars | AnnotationType::DbTypeWithoutTypeVars => {
-                if let ComplexPoint::TypeInstance(db_type) = self
-                    .file
-                    .complex_points
-                    .get_by_node_index(&self.file.points, expr.index())
-                {
-                    Type::from_db_type(self.i_s.database, db_type)
-                } else {
-                    unreachable!()
-                }
-            }
         }
     }
 
