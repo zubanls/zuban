@@ -14,7 +14,7 @@ use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike};
+use crate::value::{Class, ClassLike, Value};
 
 #[derive(Debug)]
 enum SpecialType {
@@ -263,7 +263,27 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             todo!()
                         }
                     }
-                    TypeContent::ClassWithoutTypeVar(_) => todo!(),
+                    TypeContent::ClassWithoutTypeVar(i) => {
+                        let cls = i.maybe_class(self.inference.i_s).unwrap();
+                        let node_ref = NodeRef::new(self.inference.file, primary.index());
+                        if let Some(index) = cls
+                            .class_storage
+                            .class_symbol_table
+                            .lookup_symbol(name.as_str())
+                        {
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_redirect(
+                                    cls.reference.file.file_index(),
+                                    index,
+                                    Locality::Todo,
+                                ),
+                            );
+                            self.compute_type_name(name)
+                        } else {
+                            todo!()
+                        }
+                    }
                     TypeContent::DbType(t) => todo!(),
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
@@ -642,7 +662,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
                     TypeNameLookup::Module(file)
                 }
-                _ => todo!(),
+                _ => todo!("{:?}", point),
             }
         } else {
             // Make sure the name is cached.

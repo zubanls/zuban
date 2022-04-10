@@ -173,7 +173,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Class<'db, 'a> {
     pub reference: NodeRef<'db>,
-    pub(super) class_storage: &'db ClassStorage,
+    pub class_storage: &'db ClassStorage,
     pub generics: Generics<'db, 'a>,
     pub type_var_remap: Option<&'db GenericsList>,
 }
