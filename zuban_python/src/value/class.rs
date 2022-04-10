@@ -290,6 +290,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         .compute_base_class(n.expression());
                         match base {
                             BaseClass::DbType(t) => {
+                                let mro_index = mro.len();
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
                                     DbType::Class(link) => {
@@ -318,24 +319,21 @@ impl<'db, 'a> Class<'db, 'a> {
                                       DbType::Callable(content) => ,
                                       */
                                 };
+                                if let Some(class) = class {
+                                    for base in class.class_infos(&mut i_s).mro.iter() {
+                                        mro.push(base.remap_type_vars(&mut |t| {
+                                            mro[mro_index]
+                                                .expect_generics()
+                                                .nth(t.index)
+                                                .unwrap()
+                                                .clone()
+                                        }));
+                                    }
+                                }
                             }
                             BaseClass::Protocol => is_protocol = true,
                             BaseClass::Generic => (),
                         };
-                        /*
-                        let mro_index = mro.len();
-                        if let Some(class) = class {
-                            for base in class.class_infos(&mut i_s).mro.iter() {
-                                    dbg!(base.remap_type_vars(&mut |t| {
-                                        mro[mro_index]
-                                            .expect_generics()
-                                            .nth(t.index)
-                                            .unwrap()
-                                            .clone()
-                                    }));
-                            }
-                        }
-                                */
                         /*
                         inf.type_.run_mut(
                             &mut i_s,
