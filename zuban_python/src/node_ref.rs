@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary,
+    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary, PyString,
     PythonString,
 };
 
@@ -93,6 +93,10 @@ impl<'db> NodeRef<'db> {
                 _ => None,
             }
         })
+    }
+
+    pub fn maybe_str(&self) -> Option<PyString<'db>> {
+        PyString::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'db>> {

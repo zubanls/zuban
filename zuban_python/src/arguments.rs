@@ -178,7 +178,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                 }
             }
             return Some(TypeVar {
-                name: PointLink {
+                name_string: PointLink {
                     file: name_node.file.file_index(),
                     node_index: py_string.index(),
                 },

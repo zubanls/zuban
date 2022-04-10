@@ -903,7 +903,7 @@ pub type TypeVars = [Rc<TypeVar>];
 
 #[derive(Debug, Clone)]
 pub struct TypeVar {
-    pub name: PointLink,
+    pub name_string: PointLink,
     pub constraints: Box<[DbType]>,
     pub bound: Option<DbType>,
     pub covariant: bool,
@@ -912,14 +912,17 @@ pub struct TypeVar {
 
 impl PartialEq for TypeVar {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.name_string == other.name_string
     }
 }
 
 impl TypeVar {
     pub fn name(&self, db: &Database) -> String {
-        todo!()
-        //NodeRef::from_link(db, *link).as_name().as_str().to_owned()
+        NodeRef::from_link(db, self.name_string)
+            .maybe_str()
+            .unwrap()
+            .as_code()
+            .to_owned()
     }
 }
 
