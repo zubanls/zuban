@@ -1,3 +1,4 @@
+testTypeAliasRefresh
 testReprocessMethodShowSource
 testVariableTypeBecomesInvalid
 testIgnoreWorksAfterUpdate

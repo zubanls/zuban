@@ -544,7 +544,14 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        todo!();
+        Inferred::new_saved(
+            self.reference.file,
+            self.reference.node_index,
+            self.reference.point(),
+        )
+        /*
+         * TODO above we just ignore everything that happens within the brackets
+         *
         // TODO both the type argument issues and are not implemented for other classlikes like
         // tuple/callable/type, which can also have late bound type vars and too many/few given
         // type vars!
@@ -560,6 +567,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             );
         }
         Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+        */
     }
 
     fn as_class(&self) -> Option<&Self> {
