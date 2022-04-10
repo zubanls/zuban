@@ -291,7 +291,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         ))
                     }
                     SpecialType::ProtocolWithGenerics => todo!(),
-                    SpecialType::Generic => todo!(),
+                    SpecialType::Generic => {
+                        self.expect_type_var_args(slice_type);
+                        ComputedType::new(TypeContent::SpecialType(
+                            SpecialType::GenericWithGenerics,
+                        ))
+                    }
                     SpecialType::GenericWithGenerics => todo!(),
                 },
             },
@@ -313,21 +318,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     } = self.compute_type(named_expr.expression());
                     match type_ {
                         TypeContent::ClassWithoutTypeVar(_) => {
-                            debug_assert!(!self
-                                .inference
-                                .file
-                                .points
-                                .get(primary_index)
-                                .calculated());
+                            let point =
+                                Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
+                            self.inference.file.points.set(primary_index, point);
                             ComputedType::new(TypeContent::ClassWithoutTypeVar(
-                                Inferred::new_and_save(
-                                    self.inference.file,
-                                    primary_index,
-                                    Point::new_simple_specific(
-                                        Specific::SimpleGeneric,
-                                        Locality::Todo,
-                                    ),
-                                ),
+                                Inferred::new_and_save(self.inference.file, primary_index, point),
                             ))
                         }
                         TypeContent::DbType(d) => ComputedType {
