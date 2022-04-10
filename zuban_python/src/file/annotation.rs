@@ -461,7 +461,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn use_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) -> Inferred<'db> {
+    pub fn use_cached_return_annotation(
+        &mut self,
+        annotation: ReturnAnnotation<'db>,
+    ) -> Inferred<'db> {
         let point = self.file.points.get(annotation.index());
         assert!(point.calculated());
         if point.type_() == PointType::Specific {

@@ -310,7 +310,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 self.reference
                     .file
                     .inference(i_s)
-                    .use_return_annotation(return_annotation)
+                    .use_cached_return_annotation(return_annotation)
             }
         } else {
             self.execute_without_annotation(i_s, args)
