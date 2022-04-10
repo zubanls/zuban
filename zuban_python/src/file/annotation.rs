@@ -149,6 +149,102 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         self.compute_type(expr).into_db_type(self.inference.i_s)
     }
 
+    pub fn compute_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
+        self.compute_annotation_internal(annotation.index(), annotation.expression())
+    }
+
+    pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) {
+        self.compute_annotation_internal(annotation.index(), annotation.expression());
+    }
+
+    fn compute_annotation_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> Inferred<'db> {
+        let t = self.cache_annotation_internal(annotation_index, expr);
+
+        if matches!(t, AnnotationType::DbTypeWithTypeVars) {
+            // TODO this is always a TypeInstance, just use that.
+            let inferred = self.inference.check_point_cache(expr.index()).unwrap();
+            let type_ = inferred.class_as_type(self.inference.i_s);
+            todo!();
+            type_.execute_and_resolve_type_vars(
+                self.inference.i_s,
+                self.inference.i_s.current_class,
+                None,
+            )
+        } else {
+            self.inference.check_point_cache(annotation_index).unwrap()
+        }
+    }
+
+    #[inline]
+    fn cache_annotation_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression<'db>,
+    ) -> AnnotationType {
+        let point = self.inference.file.points.get(annotation_index);
+        if point.calculated() {
+            return if point.type_() == PointType::Specific {
+                if point.specific() == Specific::AnnotationClassInstance {
+                    AnnotationType::SimpleClass
+                } else {
+                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                    AnnotationType::DbTypeWithTypeVars
+                }
+            } else {
+                debug_assert_eq!(point.type_(), PointType::Complex);
+                AnnotationType::DbTypeWithoutTypeVars
+            };
+        }
+        debug!(
+            "Infer annotation expression class on {:?}: {:?}",
+            self.inference.file.byte_to_line_column(expr.start()),
+            expr.as_code()
+        );
+
+        let ComputedType {
+            type_,
+            has_type_vars,
+        } = self.compute_type(expr);
+
+        let (specific, ret) = match type_ {
+            TypeContent::ClassWithoutTypeVar(i) => {
+                i.save_redirect(self.inference.file, expr.index());
+                (
+                    Specific::AnnotationClassInstance,
+                    AnnotationType::SimpleClass,
+                )
+            }
+            TypeContent::DbType(d) => {
+                if has_type_vars {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Type(Box::new(d)),
+                    )))
+                    .save_redirect(self.inference.file, expr.index());
+                    (
+                        Specific::AnnotationWithTypeVars,
+                        AnnotationType::DbTypeWithTypeVars,
+                    )
+                } else {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+                        .save_redirect(self.inference.file, annotation_index);
+                    return AnnotationType::DbTypeWithoutTypeVars;
+                }
+            }
+            TypeContent::Module(m) => todo!(),
+            TypeContent::TypeAlias(m) => todo!(),
+            TypeContent::SpecialType(_) => todo!(),
+        };
+        self.inference.file.points.set(
+            annotation_index,
+            Point::new_simple_specific(specific, Locality::Todo),
+        );
+        ret
+    }
+
     fn compute_type(&mut self, expr: Expression<'db>) -> ComputedType<'db> {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
@@ -614,102 +710,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn compute_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
-        self.compute_annotation_internal(annotation.index(), annotation.expression())
-    }
-
-    pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation<'db>) {
-        self.compute_annotation_internal(annotation.index(), annotation.expression());
-    }
-
-    pub fn compute_annotation_internal(
-        &mut self,
-        annotation_index: NodeIndex,
-        expr: Expression<'db>,
-    ) -> Inferred<'db> {
-        let t = self.cache_annotation_internal(annotation_index, expr);
-
-        if matches!(t, AnnotationType::DbTypeWithTypeVars) {
-            // TODO this is always a TypeInstance, just use that.
-            let inferred = self.check_point_cache(expr.index()).unwrap();
-            let type_ = inferred.class_as_type(self.i_s);
-            todo!();
-            type_.execute_and_resolve_type_vars(self.i_s, self.i_s.current_class, None)
-        } else {
-            self.check_point_cache(annotation_index).unwrap()
-        }
-    }
-
     pub(super) fn compute_type_comment(&mut self, start: CodeIndex, string: String) -> DbType {
         TypeComputation::new(self, &mut |_| todo!())
             .compute_annotation_string(start, string)
             .into_db_type(self.i_s)
-    }
-
-    #[inline]
-    fn cache_annotation_internal(
-        &mut self,
-        annotation_index: NodeIndex,
-        expr: Expression<'db>,
-    ) -> AnnotationType {
-        let point = self.file.points.get(annotation_index);
-        if point.calculated() {
-            return if point.type_() == PointType::Specific {
-                if point.specific() == Specific::AnnotationClassInstance {
-                    AnnotationType::SimpleClass
-                } else {
-                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
-                    AnnotationType::DbTypeWithTypeVars
-                }
-            } else {
-                debug_assert_eq!(point.type_(), PointType::Complex);
-                AnnotationType::DbTypeWithoutTypeVars
-            };
-        }
-        debug!(
-            "Infer annotation expression class on {:?}: {:?}",
-            self.file.byte_to_line_column(expr.start()),
-            expr.as_code()
-        );
-
-        let ComputedType {
-            type_,
-            has_type_vars,
-        } = TypeComputation::new(self, &mut |_| todo!()).compute_type(expr);
-
-        let (specific, ret) = match type_ {
-            TypeContent::ClassWithoutTypeVar(i) => {
-                i.save_redirect(self.file, expr.index());
-                (
-                    Specific::AnnotationClassInstance,
-                    AnnotationType::SimpleClass,
-                )
-            }
-            TypeContent::DbType(d) => {
-                if has_type_vars {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Type(Box::new(d)),
-                    )))
-                    .save_redirect(self.file, expr.index());
-                    (
-                        Specific::AnnotationWithTypeVars,
-                        AnnotationType::DbTypeWithTypeVars,
-                    )
-                } else {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                        .save_redirect(self.file, annotation_index);
-                    return AnnotationType::DbTypeWithoutTypeVars;
-                }
-            }
-            TypeContent::Module(m) => todo!(),
-            TypeContent::TypeAlias(m) => todo!(),
-            TypeContent::SpecialType(_) => todo!(),
-        };
-        self.file.points.set(
-            annotation_index,
-            Point::new_simple_specific(specific, Locality::Todo),
-        );
-        ret
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {

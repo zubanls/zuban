@@ -512,6 +512,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     )
                     */
                 }
+                /*
                 let inf_annot = self.compute_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, |index| {
                     self.file.points.set(
@@ -523,6 +524,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ),
                     );
                 })
+                */
+                todo!()
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -924,7 +927,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             } else if let Some(annotation) =
                                 Annotation::maybe_by_index(&inference.file.tree, node_index)
                             {
-                                inference.compute_annotation(annotation)
+                                todo!()
+                                // inference.compute_annotation(annotation)
                             } else {
                                 todo!(
                                     "{}",

@@ -182,7 +182,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            type_computation.compute_return_annotation(return_annot.expression());
+            type_computation.compute_return_annotation(return_annot);
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
