@@ -496,11 +496,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
+                TypeComputation::new(self, &mut |_| todo!()).compute_annotation(annotation);
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
-                    todo!()
-                    /*
-                    self.annotation_type(annotation).error_if_not_matches(
+                    self.use_annotation_type(annotation).error_if_not_matches(
                         self.i_s,
                         &right,
                         |t1, t2| {
@@ -510,10 +509,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                         },
                     )
-                    */
                 }
-                /*
-                let inf_annot = self.compute_annotation(annotation);
+                let inf_annot = self.use_cached_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, |index| {
                     self.file.points.set(
                         index,
@@ -524,8 +521,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ),
                     );
                 })
-                */
-                todo!()
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let right = self.infer_assignment_right_side(right_side);
@@ -966,7 +961,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
 
                         if let Some(annotation) = name.maybe_param_annotation() {
-                            self.use_cached_param_annotation(annotation)
+                            self.use_cached_annotation(annotation)
                         } else if let Some((function, args)) = self.i_s.current_execution {
                             function
                                 .infer_param(self.i_s, node_index, args)

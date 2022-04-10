@@ -442,10 +442,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
     */
 
-    pub(super) fn use_cached_param_annotation(
-        &mut self,
-        annotation: Annotation<'db>,
-    ) -> Inferred<'db> {
+    pub(super) fn use_cached_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
         let point = self.file.points.get(annotation.index());
         if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationClassInstance {
