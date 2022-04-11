@@ -589,6 +589,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if targets.next().is_some() {
                         return TypeNameLookup::Invalid;
                     }
+                    debug_assert!(self.file.points.get(expr.index()).calculated());
                     let inferred = self.check_point_cache(expr.index()).unwrap();
                     let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                         ComplexPoint::TypeVar(Rc::new(tv))
@@ -659,7 +660,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             if node_ref.point().calculated() {
                                 Self::load_cached_type(node_ref)
                             } else {
-                                self.cache_type_assignment(assignment)
+                                file.inference(self.i_s).cache_type_assignment(assignment)
                             }
                         }
                         TypeLike::Function => {
@@ -699,6 +700,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
                     TypeNameLookup::Module(file)
                 }
+                PointType::Unknown => TypeNameLookup::Invalid,
                 _ => todo!("{:?}", point),
             }
         } else {
