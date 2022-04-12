@@ -1,3 +1,5 @@
+use std::fmt;
+
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary, PyString,
     PythonString,
@@ -9,7 +11,7 @@ use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
 use crate::file_state::File;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct NodeRef<'db> {
     pub file: &'db PythonFile,
     pub node_index: NodeIndex,
@@ -136,5 +138,14 @@ impl<'db> NodeRef<'db> {
             Diagnostic::new(db, self.file, &issue).as_string()
         );
         self.file.issues.push(Box::pin(issue));
+    }
+}
+
+impl fmt::Debug for NodeRef<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("NodeRef")
+            .field("file_index", &self.file.file_index())
+            .field("node", &self.as_code())
+            .finish()
     }
 }
