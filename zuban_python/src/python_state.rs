@@ -102,15 +102,15 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
     setup_type_alias(typing, "Tuple", builtins, "tuple");
-    setup_type_alias(typing, "List", builtins, "list");
-    setup_type_alias(typing, "Dict", builtins, "dict");
-    setup_type_alias(typing, "Set", builtins, "set");
-    setup_type_alias(typing, "FrozenSet", builtins, "frozenset");
+    //setup_type_alias(typing, "List", builtins, "list");
+    //setup_type_alias(typing, "Dict", builtins, "dict");
+    //setup_type_alias(typing, "Set", builtins, "set");
+    //setup_type_alias(typing, "FrozenSet", builtins, "frozenset");
 
-    setup_type_alias(typing, "ChainMap", collections, "ChainMap");
-    setup_type_alias(typing, "Counter", collections, "Counter");
-    setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
-    setup_type_alias(typing, "Deque", collections, "deque");
+    //setup_type_alias(typing, "ChainMap", collections, "ChainMap");
+    //setup_type_alias(typing, "Counter", collections, "Counter");
+    //setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
+    //setup_type_alias(typing, "Deque", collections, "deque");
 
     // TODO this is completely wrong, but for now it's good enough
     setup_type_alias(builtins, "SupportsIndex", builtins, "int")
