@@ -309,7 +309,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
             }
             PrimaryContent::Execution(details) => {
-                todo!()
+                todo!("{:?}", primary)
             }
             PrimaryContent::GetItem(slice_type) => match base.type_ {
                 TypeContent::ClassWithoutTypeVar(i) => {
@@ -597,8 +597,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if targets.next().is_some() {
                         return TypeNameLookup::Invalid;
                     }
-                    debug_assert!(self.file.points.get(expr.index()).calculated());
-                    let inferred = self.check_point_cache(expr.index()).unwrap();
+                    let name = if let Target::Name(n) = first_target {
+                        n
+                    } else {
+                        unreachable!()
+                    };
+                    debug_assert!(self.file.points.get(name.index()).calculated());
+                    let inferred = self.check_point_cache(name.index()).unwrap();
                     let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                         ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
@@ -609,14 +614,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             db_type: Rc::new(t.into_db_type(self.i_s)),
                         }))
                     };
-                    if let Target::Name(n) = first_target {
-                        let name_def_index = n.name_definition().unwrap().index();
-                        let node_ref = NodeRef::new(self.file, name_def_index);
-                        node_ref.insert_complex(complex, Locality::Todo);
-                        Self::load_cached_type(node_ref)
-                    } else {
-                        unreachable!()
-                    }
+                    let name_def_index = name.name_definition().unwrap().index();
+                    let node_ref = NodeRef::new(self.file, name_def_index);
+                    node_ref.insert_complex(complex, Locality::Todo);
+                    Self::load_cached_type(node_ref)
                 } else {
                     todo!()
                 }
@@ -664,7 +665,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         TypeLike::Assignment(assignment) => {
                             // Name must be a NameDefinition
                             let name_def_index = new_name.name_definition().unwrap().index();
-                            let node_ref = NodeRef::new(self.file, name_def_index);
+                            let node_ref = NodeRef::new(file, name_def_index);
                             if node_ref.point().calculated() {
                                 Self::load_cached_type(node_ref)
                             } else {
