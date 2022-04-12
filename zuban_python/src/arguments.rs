@@ -1,6 +1,9 @@
 use std::mem;
 
-use crate::database::{Database, Execution, MroIndex, PointLink, TypeVar};
+use crate::database::{
+    ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
+    TypeVar,
+};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
@@ -287,7 +290,18 @@ impl<'db> Argument<'db, '_> {
                 .file
                 .inference(i_s)
                 .infer_expression(reference.as_expression()),
-            Self::SlicesTuple(slices) => todo!(),
+            Self::SlicesTuple(slices) => {
+                let parts = slices
+                    .iter()
+                    .map(|x| x.infer(i_s).class_as_db_type(i_s))
+                    .collect();
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
+                    TupleContent {
+                        generics: Some(GenericsList::new(parts)),
+                        arbitrary_length: false,
+                    },
+                ))))
+            }
         }
     }
 

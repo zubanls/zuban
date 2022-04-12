@@ -78,7 +78,11 @@ impl<'db> ComputedType<'db> {
                 }),
                 TypeContent::Module(m) => todo!(),
                 TypeContent::TypeAlias(m) => todo!(),
-                TypeContent::SpecialType(m) => todo!(),
+                TypeContent::SpecialType(s) => match s {
+                    // `Any | something` always is Any
+                    SpecialType::Any => DbType::Any,
+                    _ => todo!("{:?}", s),
+                },
             }),
             has_type_vars: self.has_type_vars | other.has_type_vars,
         }

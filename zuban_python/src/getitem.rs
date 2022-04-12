@@ -110,6 +110,13 @@ pub enum SliceOrSimple<'db> {
 }
 
 impl<'db> SliceOrSimple<'db> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        match self {
+            Self::Simple(simple) => simple.infer(i_s),
+            Self::Slice(slice) => todo!(),
+        }
+    }
+
     pub fn infer_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::Simple(simple) => simple.infer_type(i_s),
