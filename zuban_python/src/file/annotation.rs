@@ -183,7 +183,17 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
             }
             TypeContent::Module(m) => todo!(),
-            TypeContent::TypeAlias(m) => todo!(),
+            TypeContent::TypeAlias(m) => {
+                if m.type_vars.is_empty() {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        m.db_type.as_ref().clone(),
+                    )))
+                    .save_redirect(self.inference.file, annotation_index);
+                    return;
+                } else {
+                    todo!()
+                }
+            }
             TypeContent::SpecialType(_) => todo!(),
         };
         self.inference.file.points.set(
@@ -554,13 +564,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) -> Type<'db, 'db> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated());
-        if point.type_() == PointType::Specific {
+        let complex_index = if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationClassInstance {
                 return Type::ClassLike(ClassLike::Class(
                     self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
                 ));
             } else {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                self.file.points.get(expr.index()).complex_index()
             }
         } else {
             debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", expr);
@@ -568,12 +579,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
             ));
-        }
-        if let ComplexPoint::TypeInstance(db_type) = self
-            .file
-            .complex_points
-            .get_by_node_index(&self.file.points, expr.index())
-        {
+            point.complex_index()
+        };
+        if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
             Type::from_db_type(self.i_s.database, db_type)
         } else {
             unreachable!()
