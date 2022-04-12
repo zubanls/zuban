@@ -194,7 +194,16 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     todo!()
                 }
             }
-            TypeContent::SpecialType(_) => todo!(),
+            TypeContent::SpecialType(s) => match s {
+                SpecialType::Any => {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Any,
+                    )))
+                    .save_redirect(self.inference.file, annotation_index);
+                    return;
+                }
+                _ => todo!("{:?}", s),
+            },
         };
         self.inference.file.points.set(
             annotation_index,

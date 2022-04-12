@@ -133,13 +133,9 @@ fn setup_type_alias(typing: &PythonFile, name: &str, target_file: &PythonFile, t
     debug_assert!(!typing.points.get(node_index).calculated());
     let target_node_index = target_file.symbol_table.lookup_symbol(target_name).unwrap();
     typing.points.set(
-        node_index,
+        node_index - 1, // Set it on name definition
         Point::new_redirect(target_file.file_index(), target_node_index, Locality::Stmt),
     );
-    if name != "SupportsIndex" {
-        // TODO SupportsIndex should not be handled as an alias in the first place.
-        set_assignments_cached(typing, node_index);
-    }
 }
 
 fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
