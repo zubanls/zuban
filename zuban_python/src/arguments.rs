@@ -3,7 +3,7 @@ use std::mem;
 use crate::database::{Database, Execution, MroIndex, PointLink, TypeVar};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::getitem::{SliceType, SliceTypeContent};
+use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -175,6 +175,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                         _ => return None,
                     },
                     Argument::Value(v) => unreachable!(),
+                    Argument::SlicesTuple(slices) => return None,
                 }
             }
             return Some(TypeVar {
@@ -256,6 +257,7 @@ pub enum Argument<'db, 'a> {
     Keyword(&'db str, NodeRef<'db>),
     Value(&'a dyn Value<'db, 'a>),
     Positional(NodeRef<'db>),
+    SlicesTuple(Slices<'db>),
 }
 
 impl<'db> Argument<'db, '_> {
@@ -285,6 +287,7 @@ impl<'db> Argument<'db, '_> {
                 .file
                 .inference(i_s)
                 .infer_expression(reference.as_expression()),
+            Self::SlicesTuple(slices) => todo!(),
         }
     }
 
@@ -295,6 +298,7 @@ impl<'db> Argument<'db, '_> {
             Self::Value(_) => {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }
+            Self::SlicesTuple(slices) => todo!(),
         }
     }
 }
@@ -358,6 +362,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         node_index: named_expr.index(),
                     }))
                 }
+                SliceTypeContent::Slices(slices) => Some(Self::Item::SlicesTuple(slices)),
                 _ => todo!(),
             },
         }
