@@ -331,7 +331,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
                 TypeContent::DbType(d) => todo!(),
                 TypeContent::Module(m) => todo!(),
-                TypeContent::TypeAlias(m) => todo!(),
+                TypeContent::TypeAlias(m) => {
+                    self.compute_type_get_item_on_alias(m, primary.index(), slice_type)
+                }
                 TypeContent::SpecialType(special) => match special {
                     SpecialType::Union => todo!(),
                     SpecialType::Optional => todo!(),
@@ -417,6 +419,68 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         } else {
             todo!()
         }
+    }
+
+    fn compute_type_get_item_on_alias(
+        &mut self,
+        alias: &'db TypeAlias,
+        primary_index: NodeIndex,
+        slice_type: SliceType<'db>,
+    ) -> ComputedType<'db> {
+        let expected_count = alias.type_vars.len();
+        let mut given_count = 1;
+        let result = match slice_type {
+            SliceType::NamedExpression(named_expr) => {
+                let ComputedType {
+                    type_,
+                    has_type_vars,
+                } = self.compute_type(named_expr.expression());
+                match type_ {
+                    TypeContent::ClassWithoutTypeVar(inf) => {
+                        todo!()
+                    }
+                    TypeContent::DbType(d) => ComputedType {
+                        type_: TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
+                            todo!()
+                            /*
+                            if usage.index > 0 {
+                                todo!()
+                            } else {
+                                d
+                            }
+                            */
+                        })),
+                        has_type_vars,
+                    },
+                    TypeContent::Module(m) => todo!(),
+                    TypeContent::TypeAlias(m) => todo!(),
+                    TypeContent::SpecialType(m) => todo!(),
+                }
+            }
+            SliceType::Slice(slice) => todo!(),
+            SliceType::Slices(slices) => {
+                given_count = 0;
+                for slice_content in slices.iter() {
+                    given_count += 1;
+                }
+                todo!()
+            }
+        };
+        if given_count != expected_count {
+            todo!()
+            /*
+            // Should be "Bad number of arguments for type alias, expected: 1, given: 2"
+            NodeRef::new(self.inference.file, primary_index).add_typing_issue(
+                self.inference.i_s.database,
+                IssueType::TypeArgumentIssue(
+                    class.name().to_owned(),
+                    expected_count,
+                    given_count,
+                ),
+            );
+            */
+        }
+        result
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
