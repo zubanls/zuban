@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     ComplexPoint, DbType, FileIndex, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeAlias, TypeVar, TypeVarUsage,
+    TupleContent, TypeAlias, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -728,10 +728,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                         ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
-                        let type_vars = vec![];
-                        let t = TypeComputation::new(self, &mut |x| todo!())
-                            .compute_type(expr)
-                            .into_db_type(self.i_s);
+                        let mut type_vars = TypeVarManager::default();
+                        let t = TypeComputation::new(self, &mut |type_var| {
+                            let index = type_vars.add(type_var.clone());
+                            TypeVarUsage {
+                                type_var,
+                                index,
+                                type_: TypeVarType::Alias,
+                            }
+                        })
+                        .compute_type(expr)
+                        .into_db_type(self.i_s);
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
                             type_vars: type_vars.into_boxed_slice(),
                             db_type: Rc::new(t),

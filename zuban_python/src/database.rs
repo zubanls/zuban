@@ -936,6 +936,7 @@ impl TypeVar {
 pub enum TypeVarType {
     Class,
     Function,
+    Alias,
     LateBound, // Used in Aliases and Callables
 }
 
@@ -948,7 +949,7 @@ pub struct TypeVarUsage {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: Box<[PointLink]>,
+    pub type_vars: Box<[Rc<TypeVar>]>,
     pub db_type: Rc<DbType>,
 }
 
