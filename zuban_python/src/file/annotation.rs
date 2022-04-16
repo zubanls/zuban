@@ -712,7 +712,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match point.type_() {
                 PointType::Specific => todo!(),
                 PointType::Redirect => {
-                    check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.database))
+                    check_type_name(
+                        self.i_s,
+                        point.as_redirected_node_ref(self.i_s.database),
+                        || {
+                            let node_ref = NodeRef::new(self.file, name.index());
+                            node_ref.add_typing_issue(
+                                self.i_s.database,
+                                IssueType::ValidType(format!(
+                                    "Function {:?} is not valid as a type",
+                                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
+                                )),
+                            );
+                            node_ref.add_typing_issue(
+                                self.i_s.database,
+                                IssueType::Note(
+                                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
+                                        .to_owned(),
+                                ),
+                            );
+                        },
+                    )
                 }
                 PointType::FileReference => {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
@@ -774,6 +794,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
 fn check_type_name<'db>(
     i_s: &mut InferenceState<'db, '_>,
     name_node_ref: NodeRef<'db>,
+    mut on_invalid_function: impl FnMut(),
 ) -> TypeNameLookup<'db> {
     let point = name_node_ref.point();
     // First check redirects. These are probably one of the following cases:
@@ -786,7 +807,7 @@ fn check_type_name<'db>(
     if point.type_() == PointType::Redirect {
         let new = point.as_redirected_node_ref(i_s.database);
         if new.maybe_name().is_some() {
-            return check_type_name(i_s, new);
+            return check_type_name(i_s, new, on_invalid_function);
         }
     }
 
@@ -817,25 +838,8 @@ fn check_type_name<'db>(
             }
         }
         TypeLike::Function => {
-            /*
-            let node_ref = NodeRef::new(self.file, name.index());
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::ValidType(format!(
-                    "Function {:?} is not valid as a type",
-                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
-                )),
-            );
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::Note(
-                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
-                        .to_owned(),
-                ),
-            );
+            on_invalid_function();
             TypeNameLookup::Invalid
-            */
-            todo!()
         }
         TypeLike::Import => {
             let mut inference = name_node_ref.file.inference(i_s);
