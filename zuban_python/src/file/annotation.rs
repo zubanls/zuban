@@ -396,10 +396,54 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 SliceType::Slice(slice) => todo!(),
                 SliceType::Slices(slices) => {
                     given_count = 0;
+                    let mut generics = vec![];
+                    let mut has_any_type_vars = false;
                     for slice_content in slices.iter() {
+                        if generics.is_empty() {
+                            match slice_content {
+                                SliceContent::NamedExpression(n) => {
+                                    let ComputedType {
+                                        type_,
+                                        has_type_vars,
+                                    } = self.compute_type(n.expression());
+                                    has_any_type_vars |= has_type_vars;
+                                    match type_ {
+                                        TypeContent::DbType(d) => {
+                                            if given_count > 0 {
+                                                todo!("restart")
+                                            } else {
+                                                generics.push(d);
+                                            }
+                                        }
+                                        TypeContent::ClassWithoutTypeVar(inf) => (),
+                                        _ => todo!(),
+                                    }
+                                }
+                                SliceContent::Slice(n) => todo!(),
+                            }
+                        } else {
+                            match slice_content {
+                                SliceContent::NamedExpression(n) => {
+                                    let t = self.compute_type(n.expression());
+                                    has_any_type_vars |= t.has_type_vars;
+                                    generics.push(t.into_db_type(self.inference.i_s))
+                                }
+                                SliceContent::Slice(n) => todo!(),
+                            }
+                        }
                         given_count += 1;
                     }
-                    todo!()
+                    if generics.is_empty() {
+                        todo!()
+                    } else {
+                        ComputedType {
+                            type_: TypeContent::DbType(DbType::GenericClass(
+                                class.reference.as_link(),
+                                GenericsList::from_vec(generics),
+                            )),
+                            has_type_vars: has_any_type_vars,
+                        }
+                    }
                 }
             };
             if given_count != expected_count {
@@ -685,10 +729,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
                         let type_vars = vec![];
-                        let t = TypeComputation::new(self, &mut |x| todo!()).compute_type(expr);
+                        let t = TypeComputation::new(self, &mut |x| todo!())
+                            .compute_type(expr)
+                            .into_db_type(self.i_s);
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
                             type_vars: type_vars.into_boxed_slice(),
-                            db_type: Rc::new(t.into_db_type(self.i_s)),
+                            db_type: Rc::new(t),
                         }))
                     };
                     let name_def_index = name.name_definition().unwrap().index();
