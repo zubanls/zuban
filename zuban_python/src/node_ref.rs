@@ -79,6 +79,10 @@ impl<'db> NodeRef<'db> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn maybe_name(&self) -> Option<Name<'db>> {
+        Name::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn infer_int(&self) -> Option<i64> {
         Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
             match atom.unpack() {

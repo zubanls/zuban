@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarUsage,
+    ComplexPoint, DbType, FileIndex, GenericsList, Locality, Point, PointType, Specific,
+    TupleContent, TypeAlias, TypeVar, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -694,7 +694,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let name_def_index = name.name_definition().unwrap().index();
                     let node_ref = NodeRef::new(self.file, name_def_index);
                     node_ref.insert_complex(complex, Locality::Todo);
-                    Self::load_cached_type(node_ref)
+                    load_cached_type(node_ref)
                 } else {
                     todo!()
                 }
@@ -706,81 +706,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn load_cached_type(node_ref: NodeRef<'db>) -> TypeNameLookup<'db> {
-        match node_ref.complex().unwrap() {
-            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
-            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
-            _ => unreachable!(),
-        }
-    }
-
     fn lookup_type_name(&mut self, name: Name<'db>) -> TypeNameLookup<'db> {
         let point = self.file.points.get(name.index());
         if point.calculated() {
             match point.type_() {
                 PointType::Specific => todo!(),
                 PointType::Redirect => {
-                    let file = match point.file_index() == self.file.file_index() {
-                        true => self.file,
-                        false => self.i_s.database.loaded_python_file(point.file_index()),
-                    };
-                    let new_name_ref = NodeRef::new(file, point.node_index());
-
-                    if let Some(special) = check_special_type(new_name_ref.point()) {
-                        return TypeNameLookup::SpecialType(special);
-                    }
-
-                    let new_name = new_name_ref.as_name();
-                    match new_name.expect_type() {
-                        TypeLike::ClassDef(c) => {
-                            return TypeNameLookup::Class(Inferred::new_saved(
-                                file,
-                                c.index(),
-                                file.points.get(c.index()),
-                            ))
-                        }
-                        TypeLike::Assignment(assignment) => {
-                            // Name must be a NameDefinition
-                            let name_def_index = new_name.name_definition().unwrap().index();
-                            let node_ref = NodeRef::new(file, name_def_index);
-                            if node_ref.point().calculated() {
-                                Self::load_cached_type(node_ref)
-                            } else {
-                                file.inference(self.i_s).cache_type_assignment(assignment)
-                            }
-                        }
-                        TypeLike::Function => {
-                            let node_ref = NodeRef::new(self.file, name.index());
-                            node_ref.add_typing_issue(
-                                self.i_s.database,
-                                IssueType::ValidType(format!(
-                                    "Function {:?} is not valid as a type",
-                                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
-                                )),
-                            );
-                            node_ref.add_typing_issue(
-                                self.i_s.database,
-                                IssueType::Note(
-                                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
-                                        .to_owned(),
-                                ),
-                            );
-                            TypeNameLookup::Invalid
-                        }
-                        TypeLike::Import => {
-                            if point.type_() == PointType::Redirect {
-                                let mut inference = file.inference(self.i_s);
-                                // Cache
-                                inference.infer_name(new_name);
-                                inference.lookup_type_name(new_name)
-                            } else {
-                                todo!()
-                            }
-                        }
-                        TypeLike::Other => {
-                            todo!()
-                        }
-                    }
+                    check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.database))
                 }
                 PointType::FileReference => {
                     let file = self.i_s.database.loaded_python_file(point.file_index());
@@ -815,6 +747,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 }
 
+#[inline]
 fn check_special_type(point: Point) -> Option<SpecialType> {
     if point.calculated() && point.type_() == PointType::Specific {
         Some(match point.specific() {
@@ -827,5 +760,91 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
         })
     } else {
         None
+    }
+}
+
+fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
+    match node_ref.complex().unwrap() {
+        ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
+        ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
+        _ => unreachable!(),
+    }
+}
+
+fn check_type_name<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    name_node_ref: NodeRef<'db>,
+) -> TypeNameLookup<'db> {
+    let point = name_node_ref.point();
+    // First check redirects. These are probably one of the following cases:
+    //
+    // 1. imports
+    // 2. Typeshed Aliases (special cases, see python_state.rs)
+    // 3. Maybe simple assignments like `Foo = str`, though I'm not sure.
+    //
+    // It's important to check that it's a name. Otherwise it redirects to some random place.
+    if point.type_() == PointType::Redirect {
+        let new = point.as_redirected_node_ref(i_s.database);
+        if new.maybe_name().is_some() {
+            return check_type_name(i_s, new);
+        }
+    }
+
+    if let Some(special) = check_special_type(point) {
+        return TypeNameLookup::SpecialType(special);
+    }
+
+    let new_name = name_node_ref.as_name();
+    match new_name.expect_type() {
+        TypeLike::ClassDef(c) => {
+            return TypeNameLookup::Class(Inferred::new_saved(
+                name_node_ref.file,
+                c.index(),
+                name_node_ref.file.points.get(c.index()),
+            ))
+        }
+        TypeLike::Assignment(assignment) => {
+            // Name must be a NameDefinition
+            let name_def_index = new_name.name_definition().unwrap().index();
+            let node_ref = NodeRef::new(name_node_ref.file, name_def_index);
+            if node_ref.point().calculated() {
+                load_cached_type(node_ref)
+            } else {
+                name_node_ref
+                    .file
+                    .inference(i_s)
+                    .cache_type_assignment(assignment)
+            }
+        }
+        TypeLike::Function => {
+            /*
+            let node_ref = NodeRef::new(self.file, name.index());
+            node_ref.add_typing_issue(
+                i_s.database,
+                IssueType::ValidType(format!(
+                    "Function {:?} is not valid as a type",
+                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
+                )),
+            );
+            node_ref.add_typing_issue(
+                i_s.database,
+                IssueType::Note(
+                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
+                        .to_owned(),
+                ),
+            );
+            TypeNameLookup::Invalid
+            */
+            todo!()
+        }
+        TypeLike::Import => {
+            let mut inference = name_node_ref.file.inference(i_s);
+            // Cache
+            inference.infer_name(new_name);
+            inference.lookup_type_name(new_name)
+        }
+        TypeLike::Other => {
+            todo!()
+        }
     }
 }
