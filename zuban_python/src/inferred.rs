@@ -501,8 +501,13 @@ impl<'db> Inferred<'db> {
                 callable(i_s, &class)
             }
             ComplexPoint::TypeInstance(g) => match g.as_ref() {
-                DbType::Class(t) => todo!(),
+                DbType::Class(link) => {
+                    let inst =
+                        self.use_instance(NodeRef::from_link(i_s.database, *link), Generics::None);
+                    callable(i_s, &inst)
+                }
                 DbType::GenericClass(link, generics) => {
+                    // TODO this should be an instance!
                     let class = Class::from_position(
                         NodeRef::from_link(i_s.database, *link),
                         Generics::new_list(generics),

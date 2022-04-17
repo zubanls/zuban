@@ -363,6 +363,15 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         primary_index: NodeIndex,
         slice_type: SliceType<'db>,
     ) -> ComputedType<'db> {
+        fn found_simple_generic(file: &PythonFile, primary_index: NodeIndex) -> ComputedType {
+            let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
+            file.points.set(primary_index, point);
+            ComputedType::new(TypeContent::ClassWithoutTypeVar(Inferred::new_and_save(
+                file,
+                primary_index,
+                point,
+            )))
+        }
         if matches!(class.generics, Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
@@ -373,13 +382,8 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         has_type_vars,
                     } = self.compute_type(named_expr.expression());
                     match type_ {
-                        TypeContent::ClassWithoutTypeVar(inf) => {
-                            let point =
-                                Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
-                            self.inference.file.points.set(primary_index, point);
-                            ComputedType::new(TypeContent::ClassWithoutTypeVar(
-                                Inferred::new_and_save(self.inference.file, primary_index, point),
-                            ))
+                        TypeContent::ClassWithoutTypeVar(_) => {
+                            found_simple_generic(self.inference.file, primary_index)
                         }
                         TypeContent::DbType(d) => ComputedType {
                             type_: TypeContent::DbType(DbType::GenericClass(
@@ -423,7 +427,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                                             }
                                             generics.push(d);
                                         }
-                                        TypeContent::ClassWithoutTypeVar(inf) => (),
+                                        TypeContent::ClassWithoutTypeVar(_) => (),
                                         _ => todo!(),
                                     }
                                 }
@@ -442,7 +446,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         given_count += 1;
                     }
                     if generics.is_empty() {
-                        todo!()
+                        found_simple_generic(self.inference.file, primary_index)
                     } else {
                         ComputedType {
                             type_: TypeContent::DbType(DbType::GenericClass(
@@ -512,16 +516,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             */
         };
         ComputedType {
-            type_: TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
-                todo!()
-                /*
-                if usage.index > 0 {
-                    todo!()
-                } else {
-                    d
-                }
-                */
-            })),
+            type_: TypeContent::DbType(
+                alias
+                    .db_type
+                    .remap_type_vars(&mut |usage| generics[usage.index.as_usize()].clone()),
+            ),
             has_type_vars,
         }
     }
