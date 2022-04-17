@@ -409,11 +409,19 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                                     has_any_type_vars |= has_type_vars;
                                     match type_ {
                                         TypeContent::DbType(d) => {
-                                            if given_count > 0 {
-                                                todo!("restart")
-                                            } else {
-                                                generics.push(d);
+                                            for slice_content in slices.iter().take(given_count) {
+                                                if let SliceContent::NamedExpression(n) =
+                                                    slice_content
+                                                {
+                                                    generics.push(
+                                                        self.compute_type(n.expression())
+                                                            .into_db_type(self.inference.i_s),
+                                                    );
+                                                } else {
+                                                    unreachable!()
+                                                }
                                             }
+                                            generics.push(d);
                                         }
                                         TypeContent::ClassWithoutTypeVar(inf) => (),
                                         _ => todo!(),
@@ -473,33 +481,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
     ) -> ComputedType<'db> {
         let expected_count = alias.type_vars.len();
         let mut given_count = 1;
-        let result = match slice_type {
+        let mut has_type_vars = false;
+        let generics = match slice_type {
             SliceType::NamedExpression(named_expr) => {
-                let ComputedType {
-                    type_,
-                    has_type_vars,
-                } = self.compute_type(named_expr.expression());
-                match type_ {
-                    TypeContent::ClassWithoutTypeVar(inf) => {
-                        todo!()
-                    }
-                    TypeContent::DbType(d) => ComputedType {
-                        type_: TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
-                            todo!()
-                            /*
-                            if usage.index > 0 {
-                                todo!()
-                            } else {
-                                d
-                            }
-                            */
-                        })),
-                        has_type_vars,
-                    },
-                    TypeContent::Module(m) => todo!(),
-                    TypeContent::TypeAlias(m) => todo!(),
-                    TypeContent::SpecialType(m) => todo!(),
-                }
+                let t = self.compute_type(named_expr.expression());
+                has_type_vars |= t.has_type_vars;
+                vec![t.into_db_type(self.inference.i_s)]
             }
             SliceType::Slice(slice) => todo!(),
             SliceType::Slices(slices) => {
@@ -523,8 +510,20 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 ),
             );
             */
+        };
+        ComputedType {
+            type_: TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
+                todo!()
+                /*
+                if usage.index > 0 {
+                    todo!()
+                } else {
+                    d
+                }
+                */
+            })),
+            has_type_vars,
         }
-        result
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
