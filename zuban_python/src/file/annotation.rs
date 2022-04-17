@@ -93,7 +93,13 @@ impl<'db> ComputedType<'db> {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => todo!(),
-            TypeContent::TypeAlias(m) => todo!(),
+            TypeContent::TypeAlias(a) => {
+                if a.type_vars.is_empty() {
+                    a.db_type.as_ref().clone()
+                } else {
+                    todo!()
+                }
+            }
             TypeContent::SpecialType(m) => todo!(),
         }
     }
@@ -406,29 +412,21 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         if generics.is_empty() {
                             match slice_content {
                                 SliceContent::NamedExpression(n) => {
-                                    let ComputedType {
-                                        type_,
-                                        has_type_vars,
-                                    } = self.compute_type(n.expression());
-                                    has_any_type_vars |= has_type_vars;
-                                    match type_ {
-                                        TypeContent::DbType(d) => {
-                                            for slice_content in slices.iter().take(given_count) {
-                                                if let SliceContent::NamedExpression(n) =
-                                                    slice_content
-                                                {
-                                                    generics.push(
-                                                        self.compute_type(n.expression())
-                                                            .into_db_type(self.inference.i_s),
-                                                    );
-                                                } else {
-                                                    unreachable!()
-                                                }
+                                    let t = self.compute_type(n.expression());
+                                    has_any_type_vars |= t.has_type_vars;
+                                    if !matches!(t.type_, TypeContent::ClassWithoutTypeVar(_)) {
+                                        for slice_content in slices.iter().take(given_count) {
+                                            if let SliceContent::NamedExpression(n) = slice_content
+                                            {
+                                                generics.push(
+                                                    self.compute_type(n.expression())
+                                                        .into_db_type(self.inference.i_s),
+                                                );
+                                            } else {
+                                                unreachable!()
                                             }
-                                            generics.push(d);
                                         }
-                                        TypeContent::ClassWithoutTypeVar(_) => (),
-                                        _ => todo!(),
+                                        generics.push(t.into_db_type(self.inference.i_s));
                                     }
                                 }
                                 SliceContent::Slice(n) => todo!(),
