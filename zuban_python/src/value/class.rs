@@ -1,3 +1,4 @@
+use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSliceType};
@@ -170,7 +171,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct Class<'db, 'a> {
     pub reference: NodeRef<'db>,
     pub class_storage: &'db ClassStorage,
@@ -572,6 +573,17 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::Type(*self)
+    }
+}
+
+impl fmt::Debug for Class<'_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("NodeRef")
+            .field("file", &self.reference.file)
+            .field("name", &self.name())
+            .field("generics", &self.generics)
+            .field("type_var_remap", &self.type_var_remap)
+            .finish()
     }
 }
 
