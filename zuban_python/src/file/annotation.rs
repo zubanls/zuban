@@ -484,19 +484,27 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         let expected_count = alias.type_vars.len();
         let mut given_count = 1;
         let mut has_type_vars = false;
-        let generics = match slice_type {
+        let mut generics = vec![];
+        match slice_type {
             SliceType::NamedExpression(named_expr) => {
                 let t = self.compute_type(named_expr.expression());
                 has_type_vars |= t.has_type_vars;
-                vec![t.into_db_type(self.inference.i_s)]
+                generics.push(t.into_db_type(self.inference.i_s))
             }
             SliceType::Slice(slice) => todo!(),
             SliceType::Slices(slices) => {
                 given_count = 0;
                 for slice_content in slices.iter() {
                     given_count += 1;
+                    match slice_content {
+                        SliceContent::NamedExpression(n) => {
+                            let t = self.compute_type(n.expression());
+                            has_type_vars |= t.has_type_vars;
+                            generics.push(t.into_db_type(self.inference.i_s))
+                        }
+                        SliceContent::Slice(n) => todo!(),
+                    }
                 }
-                todo!()
             }
         };
         if given_count != expected_count {
