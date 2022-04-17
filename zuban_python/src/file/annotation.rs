@@ -137,7 +137,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 BaseClass::Protocol
             }
             TypeContent::SpecialType(SpecialType::Generic | SpecialType::GenericWithGenerics) => {
-                BaseClass::Protocol
+                BaseClass::Generic
             }
             _ => BaseClass::DbType(calculated.into_db_type(self.inference.i_s)),
         }
