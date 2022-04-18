@@ -323,7 +323,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             todo!()
                         }
                     }
-                    TypeContent::DbType(t) => todo!(),
+                    TypeContent::DbType(t) => match t {
+                        DbType::Class(c) => todo!(),
+                        DbType::GenericClass(c, g) => todo!(),
+                        _ => todo!("{:?} {:?}", primary, t),
+                    },
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
                 }
@@ -598,6 +602,25 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+    pub fn compute_type_get_item_on_class(
+        &mut self,
+        class: Class<'db, '_>,
+        slice_type: SliceType<'db>,
+    ) -> Inferred<'db> {
+        match TypeComputation::new(self, &mut |type_var| todo!())
+            .compute_type_get_item_on_class(class, slice_type)
+            .type_
+        {
+            TypeContent::ClassWithoutTypeVar(inf) => inf,
+            TypeContent::DbType(d) => Inferred::new_saved(
+                class.reference.file,
+                class.reference.node_index,
+                class.reference.point(),
+            ),
+            _ => todo!(),
+        }
+    }
+
     /* TODO remove
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation()

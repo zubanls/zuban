@@ -544,12 +544,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        /*
-        let mut inference = self.reference.file.inference(&mut i_s);
-        let base = TypeComputation::new(&mut inference, &mut |type_var| todo!())
-            .compute_type_get_item_on_class(i_s, slice_type);
-        */
-        todo!()
+        self.reference
+            .file
+            .inference(i_s)
+            .compute_type_get_item_on_class(*self, *slice_type)
     }
 
     fn as_class(&self) -> Option<&Self> {
