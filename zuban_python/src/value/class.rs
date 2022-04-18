@@ -332,41 +332,6 @@ impl<'db, 'a> Class<'db, 'a> {
                             BaseClass::Protocol => is_protocol = true,
                             BaseClass::Generic => (),
                         };
-                        /*
-                        inf.type_.run_mut(
-                            &mut i_s,
-                            &mut |i_s, v| {
-                                if let Some(class) = v.as_class() {
-                                    let mro_index = mro.len();
-                                    // TODO handle Tuple and other ClassLike's here
-                                    mro.push(create_mro_class(
-                                        i_s,
-                                        self.reference,
-                                        &type_vars,
-                                        class,
-                                    ));
-                                    for base in class.class_infos(i_s).mro.iter() {
-                                        mro.push(base.remap_type_vars(&mut |t| {
-                                            mro[mro_index]
-                                                .expect_generics()
-                                                .nth(t.index)
-                                                .unwrap()
-                                                .clone()
-                                        }));
-                                    }
-                                } else if let Some(t) = v.as_typing_with_generics(i_s) {
-                                    if t.specific == Specific::TypingProtocol {
-                                        is_protocol = true;
-                                    }
-                                } else if let Some(t) = v.as_typing_class() {
-                                    if t.specific == Specific::TypingProtocol {
-                                        is_protocol = true;
-                                    }
-                                }
-                            },
-                            || incomplete_mro = true,
-                        )
-                        */
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
@@ -655,59 +620,5 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
         } else {
             None
         }
-    }
-}
-
-fn create_type_var_remap<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    original_class: NodeRef<'db>,
-    original_type_vars: &TypeVars,
-    generic: Type<'db, '_>,
-) -> DbType {
-    match generic {
-        Type::ClassLike(class) => create_mro_class(
-            i_s,
-            original_class,
-            original_type_vars,
-            match &class {
-                ClassLike::Class(class) => class,
-                _ => todo!(),
-            },
-        ),
-        Type::TypeVar(t) => {
-            todo!();
-            DbType::TypeVar(t.clone())
-        }
-        Type::Union(list) => todo!(),
-        Type::Unknown | Type::None | Type::Any => todo!(),
-    }
-}
-
-fn create_mro_class<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    original_class: NodeRef<'db>,
-    original_type_vars: &TypeVars,
-    class: &Class<'db, '_>,
-) -> DbType {
-    let type_vars = if class.reference == original_class {
-        // We need to use the original type vars here, because there can be a recursion in there,
-        // like `class str(Sequence[str])`, which means that the class info must not be fetched,
-        // because it does not exist yet, i.e. it would lead to a stack overflow.
-        original_type_vars
-    } else {
-        class.type_vars(i_s)
-    };
-    if type_vars.is_empty() {
-        DbType::Class(class.reference.as_link())
-    } else {
-        let iterator = class.generics.iter();
-        let mut type_var_remap = GenericsList::new_unknown(type_vars.len());
-        let mut i = 0;
-        iterator.run_on_all(i_s, &mut |i_s, type_| {
-            let r = create_type_var_remap(i_s, original_class, original_type_vars, type_);
-            type_var_remap.set_generic(TypeVarIndex::new(i), r);
-            i += 1;
-        });
-        DbType::GenericClass(class.reference.as_link(), type_var_remap)
     }
 }
