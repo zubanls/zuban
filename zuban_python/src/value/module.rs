@@ -1,8 +1,8 @@
 use std::fmt;
 
-use super::{Value, ValueKind};
+use super::{LookupResult, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{Database, FileIndex};
+use crate::database::{Database, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -72,21 +72,25 @@ impl<'db> Value<'db, '_> for Module<'db> {
         self.name().to_owned()
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         self.file
-            .inference(i_s)
-            .infer_module_name(name)
-            .or_else(|| {
-                self.sub_module(i_s.database, name).map(|file_index| {
-                    // TODO this should probably move to the sub_module
-                    i_s.database
-                        .add_invalidates(file_index, self.file.file_index());
-                    Inferred::new_file_reference(file_index)
-                })
+            .symbol_table
+            .lookup_symbol(name)
+            .map(|i| {
+                LookupResult::GotoName(
+                    PointLink::new(self.file.file_index(), i),
+                    self.file.inference(i_s).infer_name_by_index(i),
+                )
+            })
+            .unwrap_or_else(|| {
+                self.sub_module(i_s.database, name)
+                    .map(|file_index| {
+                        // TODO this should probably move to the sub_module
+                        i_s.database
+                            .add_invalidates(file_index, self.file.file_index());
+                        LookupResult::UnknownName(Inferred::new_file_reference(file_index))
+                    })
+                    .unwrap_or_else(|| LookupResult::None)
             })
     }
 

@@ -11,7 +11,7 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{Database, DbType};
+use crate::database::{Database, DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -132,6 +132,30 @@ impl<'db> IteratorContent<'db, '_> {
     }
 }
 
+pub enum LookupResult<'db> {
+    // Locality is part of Inferred
+    GotoName(PointLink, Inferred<'db>),
+    UnknownName(Inferred<'db>),
+    None,
+}
+
+impl<'db> LookupResult<'db> {
+    fn into_maybe_inferred(self) -> Option<Inferred<'db>> {
+        match self {
+            Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),
+            Self::None => None,
+        }
+    }
+
+    fn map(self, c: impl FnOnce(Inferred<'db>) -> Inferred<'db>) -> Self {
+        match self {
+            Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
+            Self::UnknownName(inf) => Self::UnknownName(c(inf)),
+            Self::None => Self::None,
+        }
+    }
+}
+
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
@@ -156,11 +180,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         base_description!(self)
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>>;
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db>;
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         true
@@ -171,8 +191,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         from: NodeRef<'db>,
-    ) -> Inferred<'db> {
-        self.lookup_internal(i_s, name).unwrap_or_else(|| {
+    ) -> LookupResult<'db> {
+        let result = self.lookup_internal(i_s, name);
+        if matches!(result, LookupResult::None) {
             if self.should_add_lookup_error(i_s) {
                 let origin = if self.as_module().is_some() {
                     "Module".to_owned()
@@ -184,8 +205,20 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                     IssueType::AttributeError(origin, name.to_owned()),
                 );
             }
-            Inferred::new_unknown()
-        })
+        }
+        result
+    }
+
+    fn lookup_implicit(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+        from: NodeRef<'db>,
+    ) -> Inferred<'db> {
+        match self.lookup(i_s, name, from) {
+            LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
+            LookupResult::None => Inferred::new_unknown(),
+        }
     }
 
     fn execute(
@@ -209,7 +242,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
-            self.lookup(i_s, "__iter__", from)
+            self.lookup_implicit(i_s, "__iter__", from)
                 .run_on_value(i_s, &mut |i_s, value| {
                     value.execute(i_s, &NoArguments::new(from))
                 })

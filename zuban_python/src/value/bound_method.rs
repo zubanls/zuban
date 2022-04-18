@@ -1,4 +1,4 @@
-use super::{Instance, Value, ValueKind};
+use super::{Instance, LookupResult, Value, ValueKind};
 use crate::arguments::{Arguments, InstanceArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
@@ -34,11 +34,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         self.function.name()
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         self.function.lookup_internal(i_s, name)
     }
 

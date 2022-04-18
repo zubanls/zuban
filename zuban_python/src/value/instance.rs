@@ -1,7 +1,8 @@
-use super::{Class, ClassLike, Value, ValueKind};
+use super::{Class, ClassLike, LookupResult, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::FormatStyle;
+use crate::database::{FormatStyle, PointLink};
 use crate::diagnostics::IssueType;
+use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -31,32 +32,28 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         self.class.name()
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         for (mro_index, class) in self.class.mro(i_s) {
             if let ClassLike::Class(c) = class {
-                let inf = c
-                    .class_storage
-                    .self_symbol_table
-                    .lookup_symbol(name)
-                    .map(|node_index| {
+                if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
+                    return LookupResult::GotoName(
+                        PointLink::new(c.reference.file.file_index(), self_symbol),
                         c.reference
                             .file
                             .inference(&mut i_s.with_class_context(&c))
-                            .infer_name_by_index(node_index)
-                    });
-                if let Some(inf) = inf {
-                    return Some(inf.resolve_function_return(i_s));
+                            .infer_name_by_index(self_symbol)
+                            .resolve_function_return(i_s),
+                    );
                 }
             }
-            if let Some(inf) = class.lookup_symbol(i_s, name) {
-                return Some(inf.resolve_function_return(i_s).bind(i_s, self, mro_index));
+            let result = class
+                .lookup_symbol(i_s, name)
+                .map(|inf| inf.resolve_function_return(i_s).bind(i_s, self, mro_index));
+            if !matches!(result, LookupResult::None) {
+                return result;
             }
         }
-        None
+        LookupResult::None
     }
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -68,7 +65,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        if let Some(inf) = self.lookup_internal(i_s, "__call__") {
+        if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
             inf.run_on_value(i_s, &mut |i_s, value| value.execute(i_s, args))
         } else {
             args.node_reference().add_typing_issue(
@@ -84,7 +81,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        self.lookup(i_s, "__getitem__", slice_type.as_node_ref())
+        self.lookup_implicit(i_s, "__getitem__", slice_type.as_node_ref())
             .run_on_value(i_s, &mut |i_s, v| v.execute(i_s, &slice_type.as_args()))
     }
 

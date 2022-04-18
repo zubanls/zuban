@@ -1136,10 +1136,12 @@ impl<'db> Inferred<'db> {
         name: &str,
         from: NodeRef<'db>,
     ) -> Inferred<'db> {
-        self.run_on_value(i_s, &mut |i_s, value| value.lookup(i_s, name, from))
-            .run_on_value(i_s, &mut |i_s, value| {
-                value.execute(i_s, &NoArguments::new(from))
-            })
+        self.run_on_value(i_s, &mut |i_s, value| {
+            value.lookup_implicit(i_s, name, from)
+        })
+        .run_on_value(i_s, &mut |i_s, value| {
+            value.execute(i_s, &NoArguments::new(from))
+        })
     }
 
     pub fn iter(

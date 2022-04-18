@@ -1,4 +1,4 @@
-use super::{ClassLike, Value, ValueKind};
+use super::{ClassLike, LookupResult, Value, ValueKind};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -14,11 +14,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         "None"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 

@@ -3,14 +3,18 @@ use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, ValueKind};
+use super::{
+    CallableClass, Function, LookupResult, Module, TupleClass, TypingClass, Value, ValueKind,
+};
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
+    MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
+    TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
+use crate::file_state::File;
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -148,7 +152,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-    ) -> Option<Inferred<'db>> {
+    ) -> LookupResult<'db> {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(c) => todo!(),
@@ -212,7 +216,7 @@ impl<'db, 'a> Class<'db, 'a> {
         args: &dyn Arguments<'db>,
     ) -> (Function<'db, '_>, Option<GenericsList>) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        match init.init_as_function(self) {
+        match init.into_maybe_inferred().unwrap().init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
@@ -381,7 +385,7 @@ impl<'db, 'a> Class<'db, 'a> {
         for c in self.class_infos(i_s).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other.lookup_internal(i_s, class_name) {
+                if let Some(l) = other.lookup_internal(i_s, class_name).into_maybe_inferred() {
                     // TODO check signature details here!
                 } else {
                     return false;
@@ -391,37 +395,39 @@ impl<'db, 'a> Class<'db, 'a> {
         true
     }
 
-    fn lookup_symbol(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        self.class_storage
-            .class_symbol_table
-            .lookup_symbol(name)
-            .map(|node_index| {
-                self.reference
+    fn lookup_symbol(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+        match self.class_storage.class_symbol_table.lookup_symbol(name) {
+            None => LookupResult::None,
+            Some(node_index) => {
+                let inf = self
+                    .reference
                     .file
                     .inference(i_s)
-                    .infer_name_by_index(node_index)
-            })
+                    .infer_name_by_index(node_index);
+                LookupResult::GotoName(
+                    PointLink::new(self.reference.file.file_index(), node_index),
+                    inf,
+                )
+            }
+        }
     }
 
     fn lookup_and_class(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-    ) -> (Inferred<'db>, Option<Class<'db, '_>>) {
+    ) -> (LookupResult<'db>, Option<Class<'db, '_>>) {
         for (mro_index, c) in self.mro(i_s) {
-            if let Some(inf) = c.lookup_symbol(i_s, name) {
+            let result = c.lookup_symbol(i_s, name);
+            if matches!(result, LookupResult::None) {
                 if let ClassLike::Class(c) = c {
-                    return (inf, Some(c));
+                    return (result, Some(c));
                 } else {
-                    return (inf, None);
+                    return (result, None);
                 }
             }
         }
-        (Inferred::new_unknown(), None)
+        (LookupResult::None, None)
     }
 
     pub fn generics(&self) -> Generics<'db, '_> {
@@ -489,12 +495,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         Module::new(db, self.reference.file)
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
-        Some(self.lookup_and_class(i_s, name).0)
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+        self.lookup_and_class(i_s, name).0
     }
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {

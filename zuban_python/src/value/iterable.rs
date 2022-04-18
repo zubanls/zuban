@@ -1,6 +1,6 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
-use super::{Class, ClassLike, IteratorContent, Value, ValueKind};
+use super::{Class, ClassLike, IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality, TypeVarIndex};
 use crate::debug;
 use crate::generics::Generics;
@@ -83,11 +83,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         "list"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -261,11 +257,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         "dict"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 

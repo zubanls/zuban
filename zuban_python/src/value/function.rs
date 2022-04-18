@@ -3,7 +3,7 @@ use parsa_python_ast::{
 };
 use std::fmt;
 
-use super::{ClassLike, Module, Value, ValueKind};
+use super::{ClassLike, LookupResult, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -262,11 +262,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         func.name().as_str()
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -574,11 +570,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         self.reference.as_name().as_str()
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 

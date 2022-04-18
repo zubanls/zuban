@@ -1,4 +1,4 @@
-use super::{ClassLike, Value, ValueKind};
+use super::{ClassLike, LookupResult, Value, ValueKind};
 use crate::database::{ComplexPoint, TypeAlias as DbTypeAlias};
 use crate::diagnostics::IssueType;
 use crate::generics::Generics;
@@ -27,11 +27,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         "TypeAlias"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 

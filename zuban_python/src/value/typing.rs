@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::PrimaryContent;
 
-use super::{ClassLike, IteratorContent, Value, ValueKind};
+use super::{ClassLike, IteratorContent, LookupResult, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
@@ -56,11 +56,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         }
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -237,11 +233,7 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
         }
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -293,11 +285,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         "tuple"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -344,11 +332,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         "tuple"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -430,11 +414,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         "ClassVar"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -478,11 +458,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
         "Type"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -520,11 +496,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         "cast"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -563,11 +535,7 @@ impl<'db, 'a> Value<'db, 'a> for Any {
         true
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -612,11 +580,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
         "Callable"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -663,11 +627,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         "Callable"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -735,11 +695,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         "reveal_type"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 
@@ -792,11 +748,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
         //self.type_var_usage.type_var.name(self.db)
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> Option<Inferred<'db>> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         todo!()
     }
 

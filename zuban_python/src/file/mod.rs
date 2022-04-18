@@ -27,7 +27,7 @@ use crate::name::{Names, TreeName, TreePosition};
 use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Function, Module, Value};
+use crate::value::{Function, LookupResult, Module, Value};
 use crate::workspaces::DirContent;
 
 #[derive(Default, Debug)]
@@ -723,7 +723,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary_index))
+                match value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary_index)) {
+                    LookupResult::GotoName(link, inferred) => {
+                        // TODO this is not correct, because there can be multiple runs, so setting
+                        // it here can be overwritten.
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                        );
+                        inferred
+                    }
+                    LookupResult::UnknownName(inferred) => {
+                        todo!("This should obviously just return inferred")
+                    }
+                    LookupResult::None => Inferred::new_unknown(),
+                }
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -1075,12 +1089,5 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
         self.check_point_cache(node_index)
             .unwrap_or_else(|| todo!())
-    }
-
-    pub fn infer_module_name(&mut self, name: &str) -> Option<Inferred<'db>> {
-        self.file
-            .symbol_table
-            .lookup_symbol(name)
-            .map(|i| self.infer_name_by_index(i))
     }
 }
