@@ -11,6 +11,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
 use crate::generics::{Generics, Type};
+use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -330,43 +331,43 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             PrimaryContent::Execution(details) => {
                 todo!("{:?}", primary)
             }
-            PrimaryContent::GetItem(slice_type) => match base.type_ {
-                TypeContent::ClassWithoutTypeVar(i) => {
-                    let cls = i.maybe_class(self.inference.i_s).unwrap();
-                    self.compute_type_get_item_on_class(cls, primary.index(), slice_type)
-                }
-                TypeContent::DbType(d) => todo!(),
-                TypeContent::Module(m) => todo!(),
-                TypeContent::TypeAlias(m) => {
-                    self.compute_type_get_item_on_alias(m, primary.index(), slice_type)
-                }
-                TypeContent::SpecialType(special) => match special {
-                    SpecialType::Union => todo!(),
-                    SpecialType::Optional => todo!(),
-                    SpecialType::Any => todo!(),
-                    SpecialType::Protocol => {
-                        self.expect_type_var_args(slice_type);
-                        ComputedType::new(TypeContent::SpecialType(
-                            SpecialType::ProtocolWithGenerics,
-                        ))
+            PrimaryContent::GetItem(slice_type) => {
+                let s = SliceType::new(self.inference.file, primary.index(), slice_type);
+                match base.type_ {
+                    TypeContent::ClassWithoutTypeVar(i) => {
+                        let cls = i.maybe_class(self.inference.i_s).unwrap();
+                        self.compute_type_get_item_on_class(cls, s)
                     }
-                    SpecialType::ProtocolWithGenerics => todo!(),
-                    SpecialType::Generic => {
-                        self.expect_type_var_args(slice_type);
-                        ComputedType::new(TypeContent::SpecialType(
-                            SpecialType::GenericWithGenerics,
-                        ))
-                    }
-                    SpecialType::GenericWithGenerics => todo!(),
-                },
-            },
+                    TypeContent::DbType(d) => todo!(),
+                    TypeContent::Module(m) => todo!(),
+                    TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
+                    TypeContent::SpecialType(special) => match special {
+                        SpecialType::Union => todo!(),
+                        SpecialType::Optional => todo!(),
+                        SpecialType::Any => todo!(),
+                        SpecialType::Protocol => {
+                            self.expect_type_var_args(s);
+                            ComputedType::new(TypeContent::SpecialType(
+                                SpecialType::ProtocolWithGenerics,
+                            ))
+                        }
+                        SpecialType::ProtocolWithGenerics => todo!(),
+                        SpecialType::Generic => {
+                            self.expect_type_var_args(s);
+                            ComputedType::new(TypeContent::SpecialType(
+                                SpecialType::GenericWithGenerics,
+                            ))
+                        }
+                        SpecialType::GenericWithGenerics => todo!(),
+                    },
+                }
+            }
         }
     }
 
     fn compute_type_get_item_on_class(
         &mut self,
         class: Class<'db, '_>,
-        primary_index: NodeIndex,
         slice_type: SliceType<'db>,
     ) -> ComputedType<'db> {
         fn found_simple_generic(file: &PythonFile, primary_index: NodeIndex) -> ComputedType {
@@ -381,15 +382,15 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         if matches!(class.generics, Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
-            let result = match slice_type {
-                SliceType::NamedExpression(named_expr) => {
+            let result = match slice_type.unpack() {
+                SliceTypeContent::Simple(s) => {
                     let ComputedType {
                         type_,
                         has_type_vars,
-                    } = self.compute_type(named_expr.expression());
+                    } = self.compute_type(s.named_expr.expression());
                     match type_ {
                         TypeContent::ClassWithoutTypeVar(_) => {
-                            found_simple_generic(self.inference.file, primary_index)
+                            found_simple_generic(self.inference.file, slice_type.primary_index)
                         }
                         TypeContent::DbType(d) => ComputedType {
                             type_: TypeContent::DbType(DbType::GenericClass(
@@ -403,23 +404,22 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         TypeContent::SpecialType(m) => todo!(),
                     }
                 }
-                SliceType::Slice(slice) => todo!(),
-                SliceType::Slices(slices) => {
+                SliceTypeContent::Slice(slice) => todo!(),
+                SliceTypeContent::Slices(slices) => {
                     given_count = 0;
                     let mut generics = vec![];
                     let mut has_any_type_vars = false;
                     for slice_content in slices.iter() {
                         if generics.is_empty() {
                             match slice_content {
-                                SliceContent::NamedExpression(n) => {
-                                    let t = self.compute_type(n.expression());
+                                SliceOrSimple::Simple(s) => {
+                                    let t = self.compute_type(s.named_expr.expression());
                                     has_any_type_vars |= t.has_type_vars;
                                     if !matches!(t.type_, TypeContent::ClassWithoutTypeVar(_)) {
                                         for slice_content in slices.iter().take(given_count) {
-                                            if let SliceContent::NamedExpression(n) = slice_content
-                                            {
+                                            if let SliceOrSimple::Simple(n) = slice_content {
                                                 generics.push(
-                                                    self.compute_type(n.expression())
+                                                    self.compute_type(n.named_expr.expression())
                                                         .into_db_type(self.inference.i_s),
                                                 );
                                             } else {
@@ -429,22 +429,22 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                                         generics.push(t.into_db_type(self.inference.i_s));
                                     }
                                 }
-                                SliceContent::Slice(n) => todo!(),
+                                SliceOrSimple::Slice(n) => todo!(),
                             }
                         } else {
                             match slice_content {
-                                SliceContent::NamedExpression(n) => {
-                                    let t = self.compute_type(n.expression());
+                                SliceOrSimple::Simple(s) => {
+                                    let t = self.compute_type(s.named_expr.expression());
                                     has_any_type_vars |= t.has_type_vars;
                                     generics.push(t.into_db_type(self.inference.i_s))
                                 }
-                                SliceContent::Slice(n) => todo!(),
+                                SliceOrSimple::Slice(n) => todo!(),
                             }
                         }
                         given_count += 1;
                     }
                     if generics.is_empty() {
-                        found_simple_generic(self.inference.file, primary_index)
+                        found_simple_generic(self.inference.file, slice_type.primary_index)
                     } else {
                         ComputedType {
                             type_: TypeContent::DbType(DbType::GenericClass(
@@ -460,7 +460,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 // TODO both the type argument issues and are not implemented for other classlikes
                 // like tuple/callable/type, which can also have late bound type vars and too
                 // many/few given type vars!
-                NodeRef::new(self.inference.file, primary_index).add_typing_issue(
+                NodeRef::new(self.inference.file, slice_type.primary_index).add_typing_issue(
                     self.inference.i_s.database,
                     IssueType::TypeArgumentIssue(
                         class.name().to_owned(),
@@ -478,31 +478,30 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &'db TypeAlias,
-        primary_index: NodeIndex,
         slice_type: SliceType<'db>,
     ) -> ComputedType<'db> {
         let expected_count = alias.type_vars.len();
         let mut given_count = 1;
         let mut has_type_vars = false;
         let mut generics = vec![];
-        match slice_type {
-            SliceType::NamedExpression(named_expr) => {
-                let t = self.compute_type(named_expr.expression());
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(s) => {
+                let t = self.compute_type(s.named_expr.expression());
                 has_type_vars |= t.has_type_vars;
                 generics.push(t.into_db_type(self.inference.i_s))
             }
-            SliceType::Slice(slice) => todo!(),
-            SliceType::Slices(slices) => {
+            SliceTypeContent::Slice(slice) => todo!(),
+            SliceTypeContent::Slices(slices) => {
                 given_count = 0;
-                for slice_content in slices.iter() {
+                for slice_or_simple in slices.iter() {
                     given_count += 1;
-                    match slice_content {
-                        SliceContent::NamedExpression(n) => {
-                            let t = self.compute_type(n.expression());
+                    match slice_or_simple {
+                        SliceOrSimple::Simple(s) => {
+                            let t = self.compute_type(s.named_expr.expression());
                             has_type_vars |= t.has_type_vars;
                             generics.push(t.into_db_type(self.inference.i_s))
                         }
-                        SliceContent::Slice(n) => todo!(),
+                        SliceOrSimple::Slice(n) => todo!(),
                     }
                 }
             }
@@ -532,24 +531,24 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
-        match slice_type {
-            SliceType::NamedExpression(named_expr) => {
-                match self.compute_type(named_expr.expression()).type_ {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(n) => {
+                match self.compute_type(n.named_expr.expression()).type_ {
                     TypeContent::DbType(DbType::TypeVar(_)) => (),
                     _ => todo!(),
                 }
             }
-            SliceType::Slice(slice) => todo!(),
-            SliceType::Slices(slices) => {
-                for slice_content in slices.iter() {
-                    match slice_content {
-                        SliceContent::NamedExpression(n) => {
-                            match self.compute_type(n.expression()).type_ {
+            SliceTypeContent::Slice(slice) => todo!(),
+            SliceTypeContent::Slices(slices) => {
+                for s in slices.iter() {
+                    match s {
+                        SliceOrSimple::Simple(n) => {
+                            match self.compute_type(n.named_expr.expression()).type_ {
                                 TypeContent::DbType(DbType::TypeVar(_)) => (),
                                 _ => todo!(),
                             }
                         }
-                        SliceContent::Slice(n) => todo!(),
+                        SliceOrSimple::Slice(n) => todo!(),
                     }
                 }
             }
