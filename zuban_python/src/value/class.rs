@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef, SliceType as ASTSliceType};
+use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{CallableClass, Function, Module, TupleClass, TypingClass, Value, ValueKind};
 use crate::arguments::{Arguments, ArgumentsType};
@@ -10,7 +10,6 @@ use crate::database::{
     MroIndex, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
-use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
@@ -545,14 +544,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        Inferred::new_saved(
-            self.reference.file,
-            self.reference.node_index,
-            self.reference.point(),
-        )
-        /*
-         * TODO above we just ignore everything that happens within the brackets
-         */
+        let mut inference = self.reference.file.inference(&mut i_s);
+        let base = TypeComputation::new(&mut inference, &mut |type_var| todo!())
+            .compute_type_get_item_on_class(n.expression());
+        todo!()
     }
 
     fn as_class(&self) -> Option<&Self> {

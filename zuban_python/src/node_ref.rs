@@ -149,7 +149,10 @@ impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("NodeRef")
             .field("file_index", &self.file.file_index())
-            .field("node", &self.as_code())
+            .field(
+                "node",
+                &self.file.tree.short_debug_of_index(self.node_index),
+            )
             .finish()
     }
 }

@@ -508,7 +508,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
         };
         if given_count != expected_count {
-            todo!()
+            todo!("{} {}", given_count, expected_count)
             /*
             // Should be "Bad number of arguments for type alias, expected: 1, given: 2"
             NodeRef::new(self.inference.file, primary_index).add_typing_issue(
@@ -741,12 +741,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 type_: TypeVarType::Alias,
                             }
                         })
-                        .compute_type(expr)
-                        .into_db_type(self.i_s);
-                        ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                            type_vars: type_vars.into_boxed_slice(),
-                            db_type: Rc::new(t),
-                        }))
+                        .compute_type(expr);
+                        if let TypeContent::ClassWithoutTypeVar(i) = t.type_ {
+                            return TypeNameLookup::Class(i);
+                        } else {
+                            ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                                type_vars: type_vars.into_boxed_slice(),
+                                db_type: Rc::new(t.into_db_type(self.i_s)),
+                            }))
+                        }
                     };
                     let name_def_index = name.name_definition().unwrap().index();
                     let node_ref = NodeRef::new(self.file, name_def_index);
