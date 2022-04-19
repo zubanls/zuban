@@ -1043,43 +1043,56 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(pub infer_name, Self::_infer_name, Name);
     fn _infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
-        let stmt_like = name.expect_stmt_like_ancestor();
-
-        if !self.file.points.get(stmt_like.index()).calculated() {
-            match stmt_like {
-                StmtLike::Stmt(stmt) => {
-                    if name.is_reference() {
+        if let PointType::MultiDefinition = self.file.points.get(name.index()).type_() {
+            // We are trying to infer the name here. We don't have to follow the multi definition,
+            // because the cache handling takes care of that.
+            todo!("Is this branch still needed???");
+            //self.infer_multi_definition(name.name_definition().unwrap())
+        } else {
+            match name.name_definition() {
+                Some(name_def) => self.infer_name_definition(name_def),
+                None => {
+                    todo!()
+                    /* TODO maybe use this???
+                    if name_def.is_reference() {
                         // References are not calculated by the name binder for star imports and
                         // lookups.
-                        if let Some(primary) = name.maybe_primary_parent() {
+                        if let Some(primary) = name_def.maybe_primary_parent() {
                             return self.infer_primary(primary);
                         } else {
                             todo!(
                                 "star import {} {:?} {:?}",
                                 self.file.file_path(self.i_s.database),
-                                name,
-                                self.file.byte_to_line_column(name.start())
+                                name_def,
+                                self.file.byte_to_line_column(name_def.start())
                             )
                         }
                     } else {
-                        self.cache_stmt_name(stmt);
                     }
+                    */
+                }
+            }
+        }
+    }
+
+    check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
+    fn _infer_name_definition(&mut self, name_def: NameDefinition<'db>) -> Inferred<'db> {
+        let stmt_like = name_def.expect_stmt_like_ancestor();
+
+        if !self.file.points.get(stmt_like.index()).calculated() {
+            match stmt_like {
+                StmtLike::Stmt(stmt) => {
+                    self.cache_stmt_name(stmt);
                 }
                 _ => todo!("{:?}", stmt_like),
             }
         }
         debug_assert!(
-            self.file.points.get(name.index()).calculated(),
+            self.file.points.get(name_def.index()).calculated(),
             "{:?}",
-            name
+            name_def
         );
-        if let PointType::MultiDefinition = self.file.points.get(name.index()).type_() {
-            // We are trying to infer the name here. We don't have to follow the multi definition,
-            // because the cache handling takes care of that.
-            self.infer_multi_definition(name.name_definition().unwrap())
-        } else {
-            self.infer_name(name)
-        }
+        self.infer_name_definition(name_def)
     }
 
     pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {

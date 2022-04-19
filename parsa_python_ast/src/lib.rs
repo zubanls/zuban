@@ -340,44 +340,12 @@ impl<'db> Name<'db> {
         self.index() - 1
     }
 
-    pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
-        let parent = self.node.parent().unwrap();
-        if parent.is_type(Nonterminal(primary)) {
-            Some(Primary::new(parent))
-        } else {
-            None
-        }
-    }
-
     pub fn expect_function_def(&self) -> FunctionDef<'db> {
         FunctionDef::new(self.node.parent().unwrap().parent().unwrap())
     }
 
     pub fn expect_class_def(&self) -> ClassDef<'db> {
         ClassDef::new(self.node.parent().unwrap().parent().unwrap())
-    }
-
-    pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
-        let stmt_node = self
-            .node
-            .parent_until(&[
-                Nonterminal(stmt),
-                Nonterminal(lambda),
-                Nonterminal(comprehension),
-                Nonterminal(dict_comprehension),
-            ])
-            .expect("There should always be a stmt");
-        if stmt_node.is_type(Nonterminal(stmt)) {
-            StmtLike::Stmt(Stmt::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(lambda)) {
-            StmtLike::Lambda(Lambda::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(comprehension)) {
-            StmtLike::Comprehension(Comprehension::new(stmt_node))
-        } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
-            StmtLike::DictComprehension(DictComprehension::new(stmt_node))
-        } else {
-            unreachable!()
-        }
     }
 
     pub fn expect_type(&self) -> TypeLike<'db> {
@@ -2150,6 +2118,38 @@ impl<'db> NameDefinition<'db> {
 
     pub fn is_not_primary(&self) -> bool {
         !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
+    }
+
+    pub fn expect_stmt_like_ancestor(&self) -> StmtLike<'db> {
+        let stmt_node = self
+            .node
+            .parent_until(&[
+                Nonterminal(stmt),
+                Nonterminal(lambda),
+                Nonterminal(comprehension),
+                Nonterminal(dict_comprehension),
+            ])
+            .expect("There should always be a stmt");
+        if stmt_node.is_type(Nonterminal(stmt)) {
+            StmtLike::Stmt(Stmt::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(lambda)) {
+            StmtLike::Lambda(Lambda::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(comprehension)) {
+            StmtLike::Comprehension(Comprehension::new(stmt_node))
+        } else if stmt_node.is_type(Nonterminal(dict_comprehension)) {
+            StmtLike::DictComprehension(DictComprehension::new(stmt_node))
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
+        let parent = self.node.parent().unwrap();
+        if parent.is_type(Nonterminal(primary)) {
+            Some(Primary::new(parent))
+        } else {
+            None
+        }
     }
 }
 
