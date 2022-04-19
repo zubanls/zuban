@@ -384,7 +384,7 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> (LookupResult<'db>, Option<Class<'db, '_>>) {
         for (mro_index, c) in self.mro(i_s) {
             let result = c.lookup_symbol(i_s, name);
-            if matches!(result, LookupResult::None) {
+            if !matches!(result, LookupResult::None) {
                 if let ClassLike::Class(c) = c {
                     return (result, Some(c));
                 } else {

@@ -551,7 +551,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::Name(n) => {
                 let point = self.file.points.get(n.index());
                 if point.calculated() {
-                    // Save on name_definition
                     debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{:?}", target);
                     let mut first_definition = point.node_index();
                     loop {
@@ -574,12 +573,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             },
                         );
                     }
-                    save(n.index() - 1);
-                } else {
-                    save(n.index());
                 }
+                save(n.name_def_index());
             }
-            Target::NameExpression(primary_target, name_node) => {
+            Target::NameExpression(primary_target, name_def_node) => {
                 if primary_target.as_code().contains("self") {
                     // TODO here we should do something as well.
                 } else {
@@ -592,7 +589,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             );
                         });
                 }
-                save(name_node.index()); // TODO why is this needed? document!
+                // This mostly needs to be saved for self names
+                save(name_def_node.index());
             }
             Target::IndexExpression(n) => {
                 todo!("{:?}", n);
@@ -733,9 +731,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                         inferred
                     }
-                    LookupResult::UnknownName(inferred) => {
-                        todo!("This should obviously just return inferred")
-                    }
+                    LookupResult::UnknownName(inferred) => inferred,
                     LookupResult::None => Inferred::new_unknown(),
                 }
             }),

@@ -132,6 +132,7 @@ impl<'db> IteratorContent<'db, '_> {
     }
 }
 
+#[derive(Debug)]
 pub enum LookupResult<'db> {
     // Locality is part of Inferred
     GotoName(PointLink, Inferred<'db>),

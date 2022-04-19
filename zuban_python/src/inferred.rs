@@ -891,7 +891,12 @@ impl<'db> Inferred<'db> {
                 let p = file.points.get(index);
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated() && p.maybe_specific() != Some(Specific::String) {
-                    todo!("{:?} {:?}", file.points.get(index), index);
+                    todo!(
+                        "{:?} {:?}, {}",
+                        file.points.get(index),
+                        index,
+                        file.tree.short_debug_of_index(index)
+                    );
                 }
                 file.points.set(
                     index,

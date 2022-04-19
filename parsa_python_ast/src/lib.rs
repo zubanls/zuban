@@ -335,6 +335,11 @@ impl<'db> Name<'db> {
         }
     }
 
+    pub fn name_def_index(&self) -> NodeIndex {
+        debug_assert!(self.name_definition().is_some());
+        self.index() - 1
+    }
+
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
@@ -2352,7 +2357,7 @@ pub enum NameOrKeywordLookup<'db> {
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
     Name(Name<'db>),
-    NameExpression(PrimaryTarget<'db>, Name<'db>),
+    NameExpression(PrimaryTarget<'db>, NameDefinition<'db>),
     IndexExpression(PrimaryTarget<'db>),
     Starred(StarTarget<'db>),
 }
@@ -2394,7 +2399,7 @@ impl<'db> Target<'db> {
             .iter_children()
             .find(|x| x.is_type(Nonterminal(name_definition)))
             .map(|name_def| {
-                Self::NameExpression(PrimaryTarget::new(t_prim), Name::new(name_def.nth_child(0)))
+                Self::NameExpression(PrimaryTarget::new(t_prim), NameDefinition::new(name_def))
             })
             .unwrap_or_else(|| Self::IndexExpression(PrimaryTarget::new(t_prim)))
     }

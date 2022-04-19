@@ -773,8 +773,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }))
                         }
                     };
-                    let name_def_index = name.name_definition().unwrap().index();
-                    let node_ref = NodeRef::new(self.file, name_def_index);
+                    let node_ref = NodeRef::new(self.file, name.name_def_index());
                     node_ref.insert_complex(complex, Locality::Todo);
                     load_cached_type(node_ref)
                 } else {
