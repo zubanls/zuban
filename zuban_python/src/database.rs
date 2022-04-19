@@ -304,16 +304,6 @@ impl Points {
         self.0[index as usize].set(point);
     }
 
-    pub fn set_on_name(&self, name: &Name, point: Point) {
-        debug_assert!(point.type_() != PointType::MultiDefinition);
-        let mut index = name.index();
-        let current = self.get(index);
-        if current.calculated() && current.type_() == PointType::MultiDefinition {
-            index -= 1 // Set it on NameDefinition
-        }
-        self.set(index, point);
-    }
-
     pub fn invalidate_references_to(&mut self, file_index: FileIndex) {
         for cell in &self.0 {
             let locality = cell.get().locality();

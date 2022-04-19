@@ -345,17 +345,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, _) => {
-                    let name = name_def.name();
-                    self.global_import(name);
+                    self.global_import(name_def.as_code(), name_def.index());
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let inferred = self.infer_import_dotted_name(dotted_name);
-                    debug_assert!(!self
-                        .file
-                        .points
-                        .get(as_name_def.name().index())
-                        .calculated());
-                    inferred.save_redirect(self.file, as_name_def.name().index());
+                    debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
+                    inferred.save_redirect(self.file, as_name_def.index());
                 }
             }
         }
@@ -387,31 +382,31 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .map(|f| self.i_s.database.loaded_python_file(f));
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
-                    let name = import_name.unwrap_or_else(|| name_def.name());
 
                     let point = if let Some(import_file) = import_file {
                         let module = Module::new(self.i_s.database, import_file);
 
-                        if let Some(link) = import_file.lookup_global(name.as_str()) {
+                        if let Some(link) = import_file.lookup_global(import_name.as_str()) {
                             debug_assert!(
-                                link.file != self.file_index || link.node_index != name.index()
+                                link.file != self.file_index
+                                    || link.node_index != import_name.index()
                             );
                             link.into_point_redirect()
                         } else if let Some(Some(file_index)) = import_file
                             .package_dir
                             .as_ref()
-                            .map(|dir| module.sub_module(self.i_s.database, name.as_str()))
+                            .map(|dir| module.sub_module(self.i_s.database, import_name.as_str()))
                         {
                             self.i_s
                                 .database
                                 .add_invalidates(file_index, self.file.file_index());
                             Point::new_file_reference(file_index, Locality::Todo)
                         } else {
-                            NodeRef::new(self.file, name.index()).add_typing_issue(
+                            NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::AttributeError(
                                     format!("Module {:?}", module.name()),
-                                    name.as_str().to_owned(),
+                                    import_name.as_str().to_owned(),
                                 ),
                             );
                             Point::new_unknown(import_file.file_index(), Locality::Todo)
@@ -419,10 +414,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         Point::new_unknown(self.file.file_index(), Locality::Todo)
                     };
-                    if let Some(import_name) = import_name {
-                        self.file.points.set_on_name(&import_name, point);
-                    }
-                    self.file.points.set_on_name(&name_def.name(), point);
+                    self.file.points.set(import_name.index(), point);
+                    self.file.points.set(name_def.index(), point);
                 }
             }
         }
@@ -431,32 +424,32 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
     }
 
-    fn global_import(&self, name: Name<'db>) -> Inferred<'db> {
-        let file_index = global_import(self.i_s.database, self.file.file_index(), name.as_str());
+    fn global_import(&self, name: &str, index: NodeIndex) -> Inferred<'db> {
+        let file_index = global_import(self.i_s.database, self.file.file_index(), name);
         let point = if let Some(file_index) = file_index {
             self.i_s
                 .database
                 .add_invalidates(file_index, self.file.file_index());
             debug!(
                 "Global import {:?}: {:?}",
-                name.as_str(),
+                name,
                 self.i_s.database.file_path(file_index)
             );
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
-            let node_ref = NodeRef::new(self.file, name.index());
+            let node_ref = NodeRef::new(self.file, index);
             node_ref.add_typing_issue(
                 self.i_s.database,
-                IssueType::ModuleNotFound(name.as_str().to_owned()),
+                IssueType::ModuleNotFound(name.to_owned()),
             );
             Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
-        Inferred::new_and_save(self.file, name.index(), point)
+        Inferred::new_and_save(self.file, index, point)
     }
 
     fn infer_import_dotted_name(&mut self, dotted: DottedName<'db>) -> Inferred<'db> {
         match dotted.unpack() {
-            DottedNameContent::Name(name) => self.global_import(name),
+            DottedNameContent::Name(name) => self.global_import(name.as_str(), name.index()),
             DottedNameContent::DottedName(dotted_name, name) => {
                 let base = self.infer_import_dotted_name(dotted_name);
                 base.run_on_value(self.i_s, &mut |i_s, value| match value.as_module() {
@@ -548,10 +541,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         save: impl Fn(NodeIndex),
     ) {
         match target {
-            Target::Name(n) => {
-                let point = self.file.points.get(n.index());
+            Target::Name(name_def) => {
+                let point = self.file.points.get(name_def.index());
                 if point.calculated() {
                     debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{:?}", target);
+                    todo!()
+                    /*
                     let mut first_definition = point.node_index();
                     loop {
                         let point = self.file.points.get(first_definition);
@@ -573,8 +568,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             },
                         );
                     }
+                    */
                 }
-                save(n.name_def_index());
+                save(name_def.index());
             }
             Target::NameExpression(primary_target, name_def_node) => {
                 if primary_target.as_code().contains("self") {
@@ -903,7 +899,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 Point::new_unknown(self.file_index, Locality::Todo)
             }
         };
-        self.file.points.set_on_name(&name, point);
+        self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());
         self.infer_name_reference(name)
     }

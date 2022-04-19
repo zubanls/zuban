@@ -1761,13 +1761,15 @@ impl<'db> ImportFromAsName<'db> {
         }
     }
 
-    pub fn unpack(&self) -> (Option<Name<'db>>, NameDefinition<'db>) {
+    pub fn unpack(&self) -> (Name<'db>, NameDefinition<'db>) {
         let first = self.node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            (None, NameDefinition::new(first))
+            let name_def = NameDefinition::new(first);
+            (name_def.name(), name_def)
         } else {
+            // foo as bar
             let def = first.next_sibling().unwrap().next_sibling().unwrap();
-            (Some(Name::new(first)), NameDefinition::new(def))
+            (Name::new(first), NameDefinition::new(def))
         }
     }
 }
@@ -2356,7 +2358,7 @@ pub enum NameOrKeywordLookup<'db> {
 #[derive(Debug)]
 pub enum Target<'db> {
     Tuple(TargetIterator<'db>),
-    Name(Name<'db>),
+    Name(NameDefinition<'db>),
     NameExpression(PrimaryTarget<'db>, NameDefinition<'db>),
     IndexExpression(PrimaryTarget<'db>),
     Starred(StarTarget<'db>),
@@ -2381,7 +2383,7 @@ impl<'db> Target<'db> {
 
     fn new_non_iterator(node: PyNode<'db>) -> Self {
         if node.is_type(Nonterminal(name_definition)) {
-            Self::Name(Name::new(node.nth_child(0)))
+            Self::Name(NameDefinition::new(node))
         } else if node.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(node)
         } else if node.is_type(Nonterminal(star_target_brackets)) {
@@ -2410,7 +2412,7 @@ impl<'db> Target<'db> {
         // t_primary | name_definition | "(" single_target ")"
         let first = node.nth_child(0);
         if first.is_type(Nonterminal(name_definition)) {
-            Self::Name(NameDefinition::new(first).name())
+            Self::Name(NameDefinition::new(first))
         } else if first.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(first)
         } else {

@@ -744,8 +744,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if targets.next().is_some() {
                         return TypeNameLookup::Invalid;
                     }
-                    let name = if let Target::Name(n) = first_target {
-                        n
+                    let name = if let Target::Name(name_def) = first_target {
+                        name_def.name()
                     } else {
                         unreachable!()
                     };
