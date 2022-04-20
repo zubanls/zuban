@@ -744,13 +744,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if targets.next().is_some() {
                         return TypeNameLookup::Invalid;
                     }
-                    let name = if let Target::Name(name_def) = first_target {
-                        name_def.name()
+                    let name_def = if let Target::Name(name_def) = first_target {
+                        name_def
                     } else {
                         unreachable!()
                     };
-                    debug_assert!(self.file.points.get(name.index()).calculated());
-                    let inferred = self.check_point_cache(name.index()).unwrap();
+                    debug_assert!(self.file.points.get(name_def.index()).calculated());
+                    let inferred = self.check_point_cache(name_def.index()).unwrap();
                     let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                         ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
@@ -773,7 +773,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }))
                         }
                     };
-                    let node_ref = NodeRef::new(self.file, name.name_def_index());
+                    let node_ref = NodeRef::new(self.file, name_def.name().index());
                     node_ref.insert_complex(complex, Locality::Todo);
                     load_cached_type(node_ref)
                 } else {
@@ -907,8 +907,8 @@ fn check_type_name<'db>(
         }
         TypeLike::Assignment(assignment) => {
             // Name must be a NameDefinition
-            let name_def_index = new_name.name_definition().unwrap().index();
-            let node_ref = NodeRef::new(name_node_ref.file, name_def_index);
+            let name_index = new_name.index();
+            let node_ref = NodeRef::new(name_node_ref.file, name_index);
             if node_ref.point().calculated() {
                 load_cached_type(node_ref)
             } else {

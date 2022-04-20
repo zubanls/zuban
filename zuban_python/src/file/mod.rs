@@ -911,30 +911,38 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .then(|| match point.type_() {
                 PointType::Redirect => {
                     let file_index = point.file_index();
-                    let node_index = point.node_index();
+                    let next_node_index = point.node_index();
+                    debug_assert!(
+                        file_index != self.file.file_index() || next_node_index != node_index
+                    );
                     let infer = |inference: &mut PythonInference<'db, '_, '_>| {
-                        let point = inference.file.points.get(point.node_index());
-                        inference.check_point_cache(node_index).unwrap_or_else(|| {
-                            let name = Name::maybe_by_index(&inference.file.tree, node_index);
-                            if let Some(name) = name {
-                                inference._infer_name(name)
-                            } else if let Some(expr) =
-                                Expression::maybe_by_index(&inference.file.tree, node_index)
-                            {
-                                inference._infer_expression(expr)
-                            } else if let Some(annotation) =
-                                Annotation::maybe_by_index(&inference.file.tree, node_index)
-                            {
-                                todo!()
-                                // inference.compute_annotation(annotation)
-                            } else {
-                                todo!(
-                                    "{}",
-                                    NodeRef::new(inference.file, node_index)
-                                        .debug_info(self.i_s.database)
-                                )
-                            }
-                        })
+                        let point = inference.file.points.get(next_node_index);
+                        inference
+                            .check_point_cache(next_node_index)
+                            .unwrap_or_else(|| {
+                                let name =
+                                    Name::maybe_by_index(&inference.file.tree, next_node_index);
+                                if let Some(name) = name {
+                                    inference._infer_name(name)
+                                } else if let Some(expr) = Expression::maybe_by_index(
+                                    &inference.file.tree,
+                                    next_node_index,
+                                ) {
+                                    inference._infer_expression(expr)
+                                } else if let Some(annotation) = Annotation::maybe_by_index(
+                                    &inference.file.tree,
+                                    next_node_index,
+                                ) {
+                                    todo!()
+                                    // inference.compute_annotation(annotation)
+                                } else {
+                                    todo!(
+                                        "{}",
+                                        NodeRef::new(inference.file, next_node_index)
+                                            .debug_info(self.i_s.database)
+                                    )
+                                }
+                            })
                     };
                     if file_index == self.file_index {
                         infer(self)
