@@ -350,7 +350,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let inferred = self.infer_import_dotted_name(dotted_name);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
-                    inferred.save_redirect(self.file, as_name_def.index());
+                    inferred
+                        .clone()
+                        .save_redirect(self.file, as_name_def.index());
                 }
             }
         }

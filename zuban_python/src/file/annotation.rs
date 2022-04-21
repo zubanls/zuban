@@ -568,7 +568,10 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
 
     fn compute_type_atom(&mut self, atom: Atom<'db>) -> ComputedType<'db> {
         match atom.unpack() {
-            AtomContent::Name(n) => self.compute_type_name(n),
+            AtomContent::Name(n) => {
+                self.inference.infer_name_reference(n);
+                self.compute_type_name(n)
+            }
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
                     self.compute_annotation_string(start, s.to_owned())
@@ -789,44 +792,39 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn lookup_type_name(&mut self, name: Name<'db>) -> TypeNameLookup<'db> {
         let point = self.file.points.get(name.index());
-        if point.calculated() {
-            match point.type_() {
-                PointType::Specific => todo!(),
-                PointType::Redirect => {
-                    check_type_name(
-                        self.i_s,
-                        point.as_redirected_node_ref(self.i_s.database),
-                        || {
-                            let node_ref = NodeRef::new(self.file, name.index());
-                            node_ref.add_typing_issue(
-                                self.i_s.database,
-                                IssueType::ValidType(format!(
-                                    "Function {:?} is not valid as a type",
-                                    "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
-                                )),
-                            );
-                            node_ref.add_typing_issue(
-                                self.i_s.database,
-                                IssueType::Note(
-                                    "Perhaps you need \"Callable[...]\" or a callback protocol?"
-                                        .to_owned(),
-                                ),
-                            );
-                        },
-                    )
-                }
-                PointType::FileReference => {
-                    let file = self.i_s.database.loaded_python_file(point.file_index());
-                    TypeNameLookup::Module(file)
-                }
-                PointType::Unknown => TypeNameLookup::Invalid,
-                _ => todo!("{:?}", point),
+        debug_assert!(self.file.points.get(name.index()).calculated());
+        match point.type_() {
+            PointType::Specific => todo!(),
+            PointType::Redirect => {
+                check_type_name(
+                    self.i_s,
+                    point.as_redirected_node_ref(self.i_s.database),
+                    || {
+                        let node_ref = NodeRef::new(self.file, name.index());
+                        node_ref.add_typing_issue(
+                            self.i_s.database,
+                            IssueType::ValidType(format!(
+                                "Function {:?} is not valid as a type",
+                                "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
+                            )),
+                        );
+                        node_ref.add_typing_issue(
+                            self.i_s.database,
+                            IssueType::Note(
+                                "Perhaps you need \"Callable[...]\" or a callback protocol?"
+                                    .to_owned(),
+                            ),
+                        );
+                    },
+                )
             }
-        } else {
-            // Make sure the name is cached.
-            self.infer_name_reference(name);
-            debug_assert!(self.file.points.get(name.index()).calculated());
-            self.lookup_type_name(name)
+            PointType::FileReference => {
+                todo!();
+                let file = self.i_s.database.loaded_python_file(point.file_index());
+                TypeNameLookup::Module(file)
+            }
+            PointType::Unknown => TypeNameLookup::Invalid,
+            _ => todo!("{:?}", point),
         }
     }
 
@@ -890,6 +888,9 @@ fn check_type_name<'db>(
         if new.maybe_name().is_some() {
             return check_type_name(i_s, new, on_invalid_function);
         }
+    } else if point.type_() == PointType::FileReference {
+        let file = i_s.database.loaded_python_file(point.file_index());
+        return TypeNameLookup::Module(file);
     }
 
     if let Some(special) = check_special_type(point) {
@@ -925,7 +926,12 @@ fn check_type_name<'db>(
         TypeLike::Import => {
             let mut inference = name_node_ref.file.inference(i_s);
             // Cache
-            inference.infer_name(new_name);
+            //inference.infer_name(new_name);
+            dbg!(
+                point,
+                NodeRef::new(name_node_ref.file, name_node_ref.node_index - 1).point()
+            );
+            todo!();
             inference.lookup_type_name(new_name)
         }
         TypeLike::Other => {
