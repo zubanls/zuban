@@ -744,7 +744,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         inferred
                     }
                     LookupResult::FileReference(file_index) => {
-                        todo!()
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_file_reference(file_index, Locality::Todo),
+                        );
+                        Inferred::new_file_reference(file_index)
                     }
                     LookupResult::UnknownName(inferred) => inferred,
                     LookupResult::None => Inferred::new_unknown(),

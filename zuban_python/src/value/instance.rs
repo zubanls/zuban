@@ -41,8 +41,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                         c.reference
                             .file
                             .inference(&mut i_s.with_class_context(&c))
-                            // Use name_def instead of name
-                            .infer_name_by_index(self_symbol - 1)
+                            .infer_name_by_index(self_symbol)
                             .resolve_function_return(i_s),
                     );
                 }
