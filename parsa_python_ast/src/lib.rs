@@ -2118,6 +2118,11 @@ impl<'db> NameDefinition<'db> {
         Name::new(self.node.nth_child(0))
     }
 
+    pub fn name_index(&self) -> NodeIndex {
+        debug_assert!(self.name().index() == self.index() + 1);
+        self.index() + 1
+    }
+
     pub fn is_not_primary(&self) -> bool {
         !self.node.parent().unwrap().is_type(Nonterminal(t_primary))
     }

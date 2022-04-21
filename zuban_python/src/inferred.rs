@@ -82,6 +82,7 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn new_file_reference(index: FileIndex) -> Self {
+        // TODO maybe remove this and UnsavedFileReference??? unused??
         Self {
             state: InferredState::UnsavedFileReference(index),
         }
@@ -994,15 +995,6 @@ impl<'db> Inferred<'db> {
             });
         });
         result.unwrap_or_else(|| todo!())
-    }
-
-    pub fn as_file_index(&self) -> Option<FileIndex> {
-        if let InferredState::Saved(reference, point) = self.state {
-            if matches!(point.type_(), PointType::FileReference) {
-                return Some(point.file_index());
-            }
-        }
-        None
     }
 
     #[inline]

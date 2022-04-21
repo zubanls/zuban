@@ -88,7 +88,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
                         // TODO this should probably move to the sub_module
                         i_s.database
                             .add_invalidates(file_index, self.file.file_index());
-                        LookupResult::UnknownName(Inferred::new_file_reference(file_index))
+                        LookupResult::FileReference(file_index)
                     })
                     .unwrap_or_else(|| LookupResult::None)
             })

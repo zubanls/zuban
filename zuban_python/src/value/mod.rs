@@ -11,7 +11,7 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{Database, DbType, PointLink};
+use crate::database::{Database, DbType, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -136,6 +136,7 @@ impl<'db> IteratorContent<'db, '_> {
 pub enum LookupResult<'db> {
     // Locality is part of Inferred
     GotoName(PointLink, Inferred<'db>),
+    FileReference(FileIndex),
     UnknownName(Inferred<'db>),
     None,
 }
@@ -144,7 +145,7 @@ impl<'db> LookupResult<'db> {
     fn into_maybe_inferred(self) -> Option<Inferred<'db>> {
         match self {
             Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),
-            Self::None => None,
+            Self::None | Self::FileReference(_) => None,
         }
     }
 
@@ -152,7 +153,7 @@ impl<'db> LookupResult<'db> {
         match self {
             Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
             Self::UnknownName(inf) => Self::UnknownName(c(inf)),
-            Self::None => Self::None,
+            _ => self,
         }
     }
 }
@@ -218,6 +219,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> Inferred<'db> {
         match self.lookup(i_s, name, from) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
+            LookupResult::FileReference(f) => todo!(),
             LookupResult::None => Inferred::new_unknown(),
         }
     }
