@@ -78,11 +78,11 @@ impl<'db, 'a> Function<'db, 'a> {
     pub fn infer_param(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        param_name_index: NodeIndex,
+        param_name_def_index: NodeIndex,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         let func_node =
-            FunctionDef::from_param_name_index(&self.reference.file.tree, param_name_index);
+            FunctionDef::from_param_name_def_index(&self.reference.file.tree, param_name_def_index);
         let temporary_args;
         let temporary_func;
         let (check_args, func) = if func_node.index() == self.reference.node_index {
@@ -102,11 +102,11 @@ impl<'db, 'a> Function<'db, 'a> {
             }
         };
         for param in func.iter_inferrable_params(check_args, false) {
-            if param.is_at(param_name_index) {
-                return param.infer(i_s).unwrap_or_else(|| Inferred::new_unknown());
+            if param.is_at(param_name_def_index) {
+                return param.infer(i_s).unwrap_or_else(Inferred::new_unknown);
             }
         }
-        unreachable!("{:?}", param_name_index);
+        unreachable!("{:?}", param_name_def_index);
     }
 
     fn execute_without_annotation(
@@ -452,7 +452,7 @@ pub struct InferrableParam<'db, 'a> {
 
 impl<'db> InferrableParam<'db, '_> {
     fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.name_definition().name().index() == index
+        self.param.name_definition().index() == index
     }
 
     pub fn has_argument(&self) -> bool {

@@ -482,21 +482,24 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             _ => unreachable!(),
         };
         for (self_name, name) in class.search_potential_self_assignments() {
-            if self.is_self_param(self_name.index()) {
+            if self.is_self_param(self_name) {
                 symbol_table.add_or_replace_symbol(name);
             }
         }
     }
 
-    fn is_self_param(&self, name_index: NodeIndex) -> bool {
-        let point = self.points.get(name_index);
-        if let PointType::Redirect = point.type_() {
+    fn is_self_param(&self, name: Name<'db>) -> bool {
+        let point = self.points.get(name.index());
+        if point.type_() == PointType::Redirect {
             let param_index = point.node_index();
-            let param_point = self.points.get(param_index);
-            if let PointType::Specific = param_point.type_() {
+            // Points to the name and not the name definition, therefore check that.
+            // It should be safe to check the index before, because the name binder only ever
+            // redirects to ame definitions.
+            let param_point = self.points.get(param_index - 1);
+            if param_point.calculated() && param_point.type_() == PointType::Specific {
                 if param_point.specific() == Specific::Param {
-                    let name = Name::by_index(self.tree, param_index);
-                    return name.has_self_param_position();
+                    let n = Name::by_index(self.tree, param_index);
+                    return n.has_self_param_position();
                 }
             }
         }

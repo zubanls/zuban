@@ -1386,7 +1386,7 @@ impl<'db> FunctionDef<'db> {
         self.name_definition().name()
     }
 
-    pub fn from_param_name_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
+    pub fn from_param_name_def_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {
         Self::new(
             tree.0
                 .node_by_index(param_name_index)
