@@ -635,7 +635,7 @@ impl<'db> Inferred<'db> {
         name: &'static str,
     ) -> Instance<'db, '_> {
         let builtins = database.python_state.builtins();
-        let node_index = builtins.lookup_global(name).unwrap().node_index;
+        let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.type_(), PointType::Redirect);
         debug_assert_eq!(v.file_index(), builtins.file_index());

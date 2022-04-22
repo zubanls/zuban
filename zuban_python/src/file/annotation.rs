@@ -848,7 +848,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
 #[inline]
 fn check_special_type(point: Point) -> Option<SpecialType> {
-    if point.calculated() && point.type_() == PointType::Specific {
+    if point.type_() == PointType::Specific {
         Some(match point.specific() {
             Specific::TypingUnion => SpecialType::Union,
             Specific::TypingOptional => SpecialType::Optional,
@@ -883,18 +883,20 @@ fn check_type_name<'db>(
     // 3. Maybe simple assignments like `Foo = str`, though I'm not sure.
     //
     // It's important to check that it's a name. Otherwise it redirects to some random place.
-    if point.type_() == PointType::Redirect {
-        let new = point.as_redirected_node_ref(i_s.database);
-        if new.maybe_name().is_some() {
-            return check_type_name(i_s, new, on_invalid_function);
+    if point.calculated() {
+        if point.type_() == PointType::Redirect {
+            let new = point.as_redirected_node_ref(i_s.database);
+            if new.maybe_name().is_some() {
+                return check_type_name(i_s, new, on_invalid_function);
+            }
+        } else if point.type_() == PointType::FileReference {
+            let file = i_s.database.loaded_python_file(point.file_index());
+            return TypeNameLookup::Module(file);
         }
-    } else if point.type_() == PointType::FileReference {
-        let file = i_s.database.loaded_python_file(point.file_index());
-        return TypeNameLookup::Module(file);
-    }
 
-    if let Some(special) = check_special_type(point) {
-        return TypeNameLookup::SpecialType(special);
+        if let Some(special) = check_special_type(point) {
+            return TypeNameLookup::SpecialType(special);
+        }
     }
 
     let new_name = name_node_ref.as_name();

@@ -40,8 +40,8 @@ impl PythonState {
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
 
-        s.builtins_object_node_index = s.builtins().points.get(object_name_index).node_index();
-        s.builtins_list_index = s.builtins().points.get(list_name_index).node_index();
+        s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
+        s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }

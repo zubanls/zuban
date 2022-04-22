@@ -148,15 +148,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         mut point: Point,
         in_base_scope: bool,
     ) {
-        let name = name_def.name();
-        let replaced = self.symbol_table.add_or_replace_symbol(name);
+        let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
         if !in_base_scope {
             if let Some(replaced) = replaced {
                 self.points.set(name_def.index(), point);
                 point = Point::new_multi_definition(replaced, Locality::File);
             }
         }
-        self.points.set(name.index(), point);
+        self.points.set(name_def.index(), point);
     }
 
     fn add_point_definition(
@@ -690,8 +689,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
-        let name = name_def.name();
-        let maybe_overload = self.maybe_overload(name.as_str());
+        let maybe_overload = self.maybe_overload(name_def.as_code());
         if is_overload {
             let current_link = PointLink::new(self.file_index, func.index());
 
@@ -707,11 +705,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             };
             self.complex_points.insert(
                 self.points,
-                name.index(),
+                name_def.index(),
                 ComplexPoint::FunctionOverload(Box::new(new_overload)),
                 Locality::File,
             );
-            self.symbol_table.add_or_replace_symbol(name);
+            self.symbol_table.add_or_replace_symbol(name_def.name());
         } else {
             // Check for implementing functions of overloads
             if let Some(o) = maybe_overload {
@@ -724,11 +722,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
 
             if !is_overload {
-                self.add_new_definition(
-                    name_def,
-                    Point::new_redirect(self.file_index, func.index(), Locality::Stmt),
-                    true,
-                );
+                self.add_redirect_definition(name_def, func.index(), true);
             }
         }
         self.points.set(

@@ -179,6 +179,7 @@ impl Point {
     }
 
     pub fn type_(self) -> PointType {
+        debug_assert!(self.calculated());
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
     }
 
@@ -218,7 +219,7 @@ impl Point {
     }
 
     pub fn maybe_complex_index(self) -> Option<usize> {
-        if self.type_() == PointType::Complex {
+        if self.calculated() && self.type_() == PointType::Complex {
             return Some(self.complex_index());
         }
         None

@@ -946,7 +946,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 let name =
                                     Name::maybe_by_index(&inference.file.tree, next_node_index);
                                 if let Some(name) = name {
-                                    inference._infer_name(name)
+                                    inference.infer_name(name)
                                 } else if let Some(expr) = Expression::maybe_by_index(
                                     &inference.file.tree,
                                     next_node_index,
@@ -1061,43 +1061,42 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         NameDefinition
     );
     fn _infer_multi_definition(&mut self, name_def: NameDefinition<'db>) -> Inferred<'db> {
-        self._infer_name(name_def.name())
+        self.infer_name_definition(name_def)
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
         self.infer_name(Name::by_index(&self.file.tree, node_index))
     }
 
-    check_point_cache_with!(pub infer_name, Self::_infer_name, Name);
-    fn _infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
-        if let PointType::MultiDefinition = self.file.points.get(name.index()).type_() {
+    pub fn infer_name(&mut self, name: Name<'db>) -> Inferred<'db> {
+        let point = self.file.points.get(name.index());
+        if point.calculated() && point.type_() == PointType::MultiDefinition {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.
             todo!("Is this branch still needed???");
             //self.infer_multi_definition(name.name_definition().unwrap())
-        } else {
-            match name.name_definition() {
-                Some(name_def) => self.infer_name_definition(name_def),
-                None => {
-                    todo!()
-                    /* TODO maybe use this???
-                    if name_def.is_reference() {
-                        // References are not calculated by the name binder for star imports and
-                        // lookups.
-                        if let Some(primary) = name_def.maybe_primary_parent() {
-                            return self.infer_primary(primary);
-                        } else {
-                            todo!(
-                                "star import {} {:?} {:?}",
-                                self.file.file_path(self.i_s.database),
-                                name_def,
-                                self.file.byte_to_line_column(name_def.start())
-                            )
-                        }
+        }
+        match name.name_definition() {
+            Some(name_def) => self.infer_name_definition(name_def),
+            None => {
+                todo!()
+                /* TODO maybe use this???
+                if name_def.is_reference() {
+                    // References are not calculated by the name binder for star imports and
+                    // lookups.
+                    if let Some(primary) = name_def.maybe_primary_parent() {
+                        return self.infer_primary(primary);
                     } else {
+                        todo!(
+                            "star import {} {:?} {:?}",
+                            self.file.file_path(self.i_s.database),
+                            name_def,
+                            self.file.byte_to_line_column(name_def.start())
+                        )
                     }
-                    */
+                } else {
                 }
+                */
             }
         }
     }
