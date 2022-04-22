@@ -981,11 +981,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 PointType::Specific => match point.specific() {
                     Specific::Param => {
-                        let name = Name::by_index(&self.file.tree, node_index);
+                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
                         if let FunctionOrLambda::Function(func) =
-                            name.function_or_lambda_ancestor().unwrap()
+                            name_def.function_or_lambda_ancestor().unwrap()
                         {
                             let func = Function::new(
                                 NodeRef::new(self.file, func.index()),
@@ -994,7 +994,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             func.calculated_type_vars(self.i_s);
                         }
 
-                        if let Some(annotation) = name.maybe_param_annotation() {
+                        if let Some(annotation) = name_def.maybe_param_annotation() {
                             self.use_cached_annotation(annotation)
                         } else if let Some((function, args)) = self.i_s.current_execution {
                             function

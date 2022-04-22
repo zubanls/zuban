@@ -336,7 +336,7 @@ impl<'db> Name<'db> {
     }
 
     pub fn name_def_index(&self) -> NodeIndex {
-        debug_assert!(self.name_definition().is_some());
+        debug_assert_eq!(self.name_definition().unwrap().index(), self.index() - 1);
         self.index() - 1
     }
 
@@ -373,19 +373,6 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn function_or_lambda_ancestor(&self) -> Option<FunctionOrLambda<'db>> {
-        self.node
-            .parent_until(&[Nonterminal(function_def), Nonterminal(lambda)])
-            .map(|node| {
-                if node.is_type(Nonterminal(function_def)) {
-                    FunctionOrLambda::Function(FunctionDef::new(node))
-                } else {
-                    debug_assert_eq!(node.type_(), Nonterminal(lambda));
-                    FunctionOrLambda::Lambda(Lambda::new(node))
-                }
-            })
-    }
-
     pub fn has_self_param_position(&self) -> bool {
         // Parents are name_definition/param_no_default/parameters
         let param = self.node.parent().unwrap().parent().unwrap();
@@ -409,15 +396,6 @@ impl<'db> Name<'db> {
         } else {
             NameParent::Other
         }
-    }
-
-    pub fn maybe_param_annotation(&self) -> Option<Annotation<'db>> {
-        if let Some(next) = self.node.parent().unwrap().next_sibling() {
-            if next.is_type(Nonterminal(annotation)) {
-                return Some(Annotation::new(next));
-            }
-        }
-        None
     }
 
     pub fn simple_param_type(&self) -> SimpleParamType {
@@ -2157,6 +2135,28 @@ impl<'db> NameDefinition<'db> {
         } else {
             None
         }
+    }
+
+    pub fn function_or_lambda_ancestor(&self) -> Option<FunctionOrLambda<'db>> {
+        self.node
+            .parent_until(&[Nonterminal(function_def), Nonterminal(lambda)])
+            .map(|node| {
+                if node.is_type(Nonterminal(function_def)) {
+                    FunctionOrLambda::Function(FunctionDef::new(node))
+                } else {
+                    debug_assert_eq!(node.type_(), Nonterminal(lambda));
+                    FunctionOrLambda::Lambda(Lambda::new(node))
+                }
+            })
+    }
+
+    pub fn maybe_param_annotation(&self) -> Option<Annotation<'db>> {
+        if let Some(next) = self.node.next_sibling() {
+            if next.is_type(Nonterminal(annotation)) {
+                return Some(Annotation::new(next));
+            }
+        }
+        None
     }
 }
 
