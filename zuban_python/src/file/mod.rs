@@ -558,33 +558,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) {
         match target {
             Target::Name(name_def) => {
-                let point = self.file.points.get(name_def.index());
+                let point = self.file.points.get(name_def.name_index());
                 if point.calculated() {
                     debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{:?}", target);
-                    todo!()
-                    /*
                     let mut first_definition = point.node_index();
                     loop {
                         let point = self.file.points.get(first_definition);
-                        if point.type_() == PointType::MultiDefinition {
+                        if point.calculated() && point.type_() == PointType::MultiDefinition {
                             first_definition = point.node_index();
                         } else {
                             break;
                         }
                     }
-                    if let Some(inferred) = self.check_point_cache(first_definition) {
-                        inferred.class_as_type(self.i_s).error_if_not_matches(
-                            self.i_s,
-                            value,
-                            |t1, t2| {
-                                NodeRef::new(self.file, n.index()).add_typing_issue(
-                                    self.i_s.database,
-                                    IssueType::IncompatibleAssignment(t1, t2),
-                                );
-                            },
-                        );
-                    }
-                    */
+                    let inferred = self.infer_name_by_index(first_definition);
+                    inferred.class_as_type(self.i_s).error_if_not_matches(
+                        self.i_s,
+                        value,
+                        |t1, t2| {
+                            NodeRef::new(self.file, name_def.index()).add_typing_issue(
+                                self.i_s.database,
+                                IssueType::IncompatibleAssignment(t1, t2),
+                            );
+                        },
+                    );
                 }
                 save(name_def.index());
             }

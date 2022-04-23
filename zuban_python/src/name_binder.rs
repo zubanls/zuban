@@ -142,17 +142,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.issues.push(Box::pin(issue));
     }
 
-    fn add_new_definition(
-        &self,
-        name_def: NameDefinition<'db>,
-        mut point: Point,
-        in_base_scope: bool,
-    ) {
+    fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
         let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
         if !in_base_scope {
             if let Some(replaced) = replaced {
-                self.points.set(name_def.index(), point);
-                point = Point::new_multi_definition(replaced, Locality::File);
+                self.points.set(
+                    name_def.name_index(),
+                    Point::new_multi_definition(replaced, Locality::File),
+                );
             }
         }
         self.points.set(name_def.index(), point);
