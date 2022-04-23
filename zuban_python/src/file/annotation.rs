@@ -926,15 +926,10 @@ fn check_type_name<'db>(
             TypeNameLookup::Invalid
         }
         TypeLike::Import => {
-            let mut inference = name_node_ref.file.inference(i_s);
-            // Cache
-            //inference.infer_name(new_name);
-            dbg!(
-                point,
-                NodeRef::new(name_node_ref.file, name_node_ref.node_index - 1).point()
-            );
-            todo!();
-            inference.lookup_type_name(new_name)
+            // When an import appears, this means that there's no redirect and the import leads
+            // nowhere.
+            debug_assert_eq!(point.type_(), PointType::Unknown);
+            TypeNameLookup::Invalid
         }
         TypeLike::Other => {
             todo!()
