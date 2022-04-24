@@ -910,6 +910,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             } else if name_str == "reveal_type" {
                 Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
             } else {
+                // The builtin module should really not have any issues.
+                debug_assert!(
+                    self.file_index != self.i_s.database.python_state.builtins().file_index(),
+                    "{:?}",
+                    name
+                );
                 // TODO check star imports
                 NodeRef::new(self.file, name.index()).add_typing_issue(
                     self.i_s.database,

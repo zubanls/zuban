@@ -326,6 +326,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     TypeContent::DbType(t) => match t {
                         DbType::Class(c) => todo!(),
                         DbType::GenericClass(c, g) => todo!(),
+                        //DbType::Any => ComputedType::new(TypeContent::DbType(DbType::Any)),
                         _ => todo!("{:?} {:?}", primary, t),
                     },
                     TypeContent::TypeAlias(m) => todo!(),

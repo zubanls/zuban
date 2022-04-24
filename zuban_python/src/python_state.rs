@@ -78,7 +78,7 @@ impl PythonState {
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         let builtins = self.builtins();
-        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
+        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap() - 1;
         let point = builtins.points.get(node_index);
         debug_assert_eq!(point.type_(), PointType::Redirect);
         PointLink::new(builtins.file_index(), point.node_index())
