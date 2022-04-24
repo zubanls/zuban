@@ -384,11 +384,18 @@ macro_rules! __create_node {
                     x = code[..40].to_owned() + "...";
                     code = &x;
                 }
+                let until_code = &self.internal_tree.code.as_str()[..self.start() as usize];
+                // This is pretty slow, but should be fine, because this is only the Debug
+                // implementation.
+                let line = until_code.chars().filter(|&c| c == '\n').count() + 1;
+                let column = until_code.chars().rev().take_while(|&c| c != '\n').count() + 1;
                 f.debug_struct(stringify!($Node))
                  .field("node_index", &self.index)
                  .field("type", &self.type_str())
                  .field("content", &code)
                  .field("internal_node", &self.internal_node)
+                 .field("line", &line)
+                 .field("column", &column)
                  .finish()
             }
         }
