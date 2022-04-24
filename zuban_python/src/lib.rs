@@ -99,8 +99,9 @@ impl Project {
         for file_index in file_indexes {
             let file = self.database.loaded_file(file_index);
             debug!(
-                "Calculate Diagnostics for {}",
-                file.file_path(&self.database)
+                "Calculate Diagnostics for {} ({})",
+                file.file_path(&self.database),
+                file.file_index(),
             );
 
             let array: [i32; 3] = [0; 3];
