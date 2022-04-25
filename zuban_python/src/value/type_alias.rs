@@ -41,12 +41,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             _ => 1,
         };
         let expected = self.alias.type_vars.len();
-        if count_given != expected {
-            slice_type.as_node_ref().add_typing_issue(
-                i_s.database,
-                IssueType::TypeAliasArgumentIssue(expected, count_given),
-            );
-        }
         let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
         /*
         let replaced = self

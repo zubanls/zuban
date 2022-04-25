@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    ComplexPoint, DbType, FileIndex, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeAlias, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TypeAlias, TypeVar,
+    TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -515,26 +515,20 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
         };
         if given_count != expected_count {
-            todo!("{} {}", given_count, expected_count)
-            /*
-            // Should be "Bad number of arguments for type alias, expected: 1, given: 2"
-            NodeRef::new(self.inference.file, primary_index).add_typing_issue(
+            slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.database,
-                IssueType::TypeArgumentIssue(
-                    class.name().to_owned(),
-                    expected_count,
-                    given_count,
-                ),
+                IssueType::TypeAliasArgumentIssue(expected_count, given_count),
             );
-            */
-        };
-        ComputedType {
-            type_: TypeContent::DbType(
-                alias
-                    .db_type
-                    .remap_type_vars(&mut |usage| generics[usage.index.as_usize()].clone()),
-            ),
-            has_type_vars,
+            ComputedType::new(TypeContent::DbType(DbType::Any))
+        } else {
+            ComputedType {
+                type_: TypeContent::DbType(
+                    alias
+                        .db_type
+                        .remap_type_vars(&mut |usage| generics[usage.index.as_usize()].clone()),
+                ),
+                has_type_vars,
+            }
         }
     }
 
@@ -614,9 +608,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        match TypeComputation::new(self, &mut |type_var| todo!())
-            .compute_type_get_item_on_class(class, slice_type)
-            .type_
+        match TypeComputation::new(self, &mut |type_var| TypeVarUsage {
+            type_var,
+            // TODO this shouldn't be always 0...
+            index: TypeVarIndex::new(0),
+            type_: TypeVarType::Alias,
+        })
+        .compute_type_get_item_on_class(class, slice_type)
+        .type_
         {
             TypeContent::ClassWithoutTypeVar(inf) => inf,
             TypeContent::DbType(d) => Inferred::new_saved(
