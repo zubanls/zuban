@@ -929,10 +929,15 @@ fn check_type_name<'db>(
             TypeNameLookup::Invalid
         }
         TypeLike::Import => {
-            // When an import appears, this means that there's no redirect and the import leads
-            // nowhere.
-            debug_assert_eq!(point.type_(), PointType::Unknown);
-            TypeNameLookup::Invalid
+            if point.calculated() {
+                // When an import appears, this means that there's no redirect and the import leads
+                // nowhere.
+                debug_assert_eq!(point.type_(), PointType::Unknown);
+                TypeNameLookup::Invalid
+            } else {
+                name_node_ref.file.inference(i_s).infer_name(new_name);
+                check_type_name(i_s, name_node_ref, on_invalid_function)
+            }
         }
         TypeLike::Other => {
             todo!()
