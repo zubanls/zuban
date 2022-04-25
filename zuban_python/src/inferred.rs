@@ -893,7 +893,8 @@ impl<'db> Inferred<'db> {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated() && p.maybe_specific() != Some(Specific::String) {
                     todo!(
-                        "{:?} {:?}, {}",
+                        "{:?} {:?} {:?}, {}",
+                        self,
                         file.points.get(index),
                         index,
                         file.tree.short_debug_of_index(index)
@@ -924,6 +925,14 @@ impl<'db> Inferred<'db> {
         };
         file.points.set(index, point);
         Self::new_saved(file, index, point)
+    }
+
+    pub fn save_if_unsaved(self, file: &'db PythonFile, index: NodeIndex) -> Self {
+        if matches!(self.state, InferredState::Saved(_, _)) {
+            self
+        } else {
+            self.save_redirect(file, index)
+        }
     }
 
     pub fn init_as_function<'a>(

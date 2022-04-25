@@ -511,7 +511,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        self.reference
+        slice_type
             .file
             .inference(i_s)
             .compute_type_get_item_on_class(*self, *slice_type)

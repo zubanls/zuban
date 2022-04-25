@@ -341,7 +341,14 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 match base.type_ {
                     TypeContent::ClassWithoutTypeVar(i) => {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
-                        self.compute_type_get_item_on_class(cls, s)
+                        let t = self.compute_type_get_item_on_class(cls, s);
+                        if let TypeContent::ClassWithoutTypeVar(i) = t.type_ {
+                            ComputedType::new(TypeContent::ClassWithoutTypeVar(
+                                i.save_if_unsaved(self.inference.file, primary.index()),
+                            ))
+                        } else {
+                            t
+                        }
                     }
                     TypeContent::DbType(d) => todo!(),
                     TypeContent::Module(m) => todo!(),
@@ -376,13 +383,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         slice_type: SliceType<'db>,
     ) -> ComputedType<'db> {
         fn found_simple_generic(file: &PythonFile, primary_index: NodeIndex) -> ComputedType {
-            let point = Point::new_simple_specific(Specific::SimpleGeneric, Locality::Todo);
-            file.points.set(primary_index, point);
-            ComputedType::new(TypeContent::ClassWithoutTypeVar(Inferred::new_and_save(
-                file,
-                primary_index,
-                point,
-            )))
+            ComputedType::new(TypeContent::ClassWithoutTypeVar(
+                Inferred::new_unsaved_specific(Specific::SimpleGeneric),
+            ))
         }
         if matches!(class.generics, Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
