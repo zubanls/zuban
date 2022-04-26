@@ -109,6 +109,7 @@ impl<'db> ComputedType<'db> {
 pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_callback: &'c mut C,
+    errors_already_calculated: bool,
 }
 
 impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a, 'b, 'c, C> {
@@ -119,6 +120,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         Self {
             inference,
             type_var_callback,
+            errors_already_calculated: false,
         }
     }
 
@@ -129,8 +131,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 .file
                 .new_annotation_file(self.inference.i_s.database, start, string);
         if let Some(expr) = f.tree.maybe_expression() {
-            TypeComputation::new(&mut f.inference(self.inference.i_s), self.type_var_callback)
-                .compute_type(expr)
+            TypeComputation {
+                inference: &mut f.inference(self.inference.i_s),
+                type_var_callback: self.type_var_callback,
+                errors_already_calculated: self.errors_already_calculated,
+            }
+            .compute_type(expr)
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
@@ -291,14 +297,16 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             self.compute_type_name(name)
                         } else {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            node_ref.add_typing_issue(
-                                self.inference.i_s.database,
-                                IssueType::TypeNotFound,
-                            );
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_unknown(f.file_index(), Locality::Todo),
-                            );
+                            if !self.errors_already_calculated {
+                                node_ref.add_typing_issue(
+                                    self.inference.i_s.database,
+                                    IssueType::TypeNotFound,
+                                );
+                                self.inference.file.points.set(
+                                    name.index(),
+                                    Point::new_unknown(f.file_index(), Locality::Todo),
+                                );
+                            }
                             ComputedType::new(TypeContent::DbType(DbType::Unknown))
                         }
                     }
@@ -761,14 +769,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ComplexPoint::TypeVar(Rc::new(tv))
                     } else {
                         let mut type_vars = TypeVarManager::default();
-                        let t = TypeComputation::new(self, &mut |type_var| {
-                            let index = type_vars.add(type_var.clone());
-                            TypeVarUsage {
-                                type_var,
-                                index,
-                                type_: TypeVarType::Alias,
-                            }
-                        })
+                        let p = self.file.points.get(expr.index());
+                        let t = TypeComputation {
+                            inference: self,
+                            errors_already_calculated: p.calculated(),
+                            type_var_callback: &mut |type_var: Rc<TypeVar>| {
+                                let index = type_vars.add(type_var.clone());
+                                TypeVarUsage {
+                                    type_var,
+                                    index,
+                                    type_: TypeVarType::Alias,
+                                }
+                            },
+                        }
                         .compute_type(expr);
                         if let TypeContent::ClassWithoutTypeVar(i) = t.type_ {
                             return TypeNameLookup::Class(i);
