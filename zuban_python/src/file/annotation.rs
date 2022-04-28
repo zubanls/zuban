@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TypeAlias, TypeVar,
-    TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TupleContent,
+    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -495,8 +495,47 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
     }
 
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType<'db>) -> ComputedType<'db> {
-        ComputedType::new(TypeContent::DbType(DbType::Any));
-        todo!()
+        let content = match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
+                // TODO if it is a (), it's an empty tuple
+                let t = self
+                    .compute_type(simple.named_expr.expression())
+                    .into_db_type(self.inference.i_s);
+                TupleContent {
+                    generics: Some(GenericsList::new(Box::new([t]))),
+                    arbitrary_length: false,
+                }
+            }
+            SliceTypeContent::Slice(x) => {
+                todo!()
+            }
+            SliceTypeContent::Slices(slices) => {
+                let mut arbitrary_length = false;
+                TupleContent {
+                    generics: Some(GenericsList::new(
+                        slices
+                            .iter()
+                            .filter_map(|slice_content| match slice_content {
+                                SliceOrSimple::Simple(s) => {
+                                    if s.named_expr.is_ellipsis_literal() {
+                                        arbitrary_length = true;
+                                        None
+                                    } else {
+                                        Some(
+                                            self.compute_type(s.named_expr.expression())
+                                                .into_db_type(self.inference.i_s),
+                                        )
+                                    }
+                                }
+                                SliceOrSimple::Slice(s) => todo!(),
+                            })
+                            .collect(),
+                    )),
+                    arbitrary_length,
+                }
+            }
+        };
+        ComputedType::new(TypeContent::DbType(DbType::Tuple(content)))
     }
 
     fn compute_type_get_item_on_alias(

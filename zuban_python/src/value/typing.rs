@@ -75,43 +75,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 todo!()
             }
             Specific::TypingTuple => {
-                let content = match slice_type.unpack() {
-                    SliceTypeContent::Simple(simple) => {
-                        // TODO if it is a (), it's an empty tuple
-                        TupleContent {
-                            generics: Some(GenericsList::new(Box::new([simple.infer_type(i_s)]))),
-                            arbitrary_length: false,
-                        }
-                    }
-                    SliceTypeContent::Slice(x) => {
-                        todo!()
-                    }
-                    SliceTypeContent::Slices(slices) => {
-                        let mut arbitrary_length = false;
-                        TupleContent {
-                            generics: Some(GenericsList::new(
-                                slices
-                                    .iter()
-                                    .filter_map(|slice_content| match slice_content {
-                                        SliceOrSimple::Simple(n) => {
-                                            let result = n.infer_type(i_s);
-                                            if let DbType::Unknown = result {
-                                                if n.named_expr.is_ellipsis_literal() {
-                                                    arbitrary_length = true;
-                                                    return None;
-                                                }
-                                            }
-                                            Some(result)
-                                        }
-                                        SliceOrSimple::Slice(s) => todo!(),
-                                    })
-                                    .collect(),
-                            )),
-                            arbitrary_length,
-                        }
-                    }
-                };
-                DbType::Tuple(content)
+                todo!()
             }
             Specific::TypingCallable => {
                 let content = match slice_type.unpack() {
