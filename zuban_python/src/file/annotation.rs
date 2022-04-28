@@ -371,7 +371,15 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => todo!(),
-                        SpecialType::Optional => todo!(),
+                        SpecialType::Optional => match s.unpack() {
+                            SliceTypeContent::Simple(simple) => {
+                                let t = self
+                                    .compute_type(simple.named_expr.expression())
+                                    .into_db_type(self.inference.i_s);
+                                ComputedType::new(TypeContent::DbType(t.union(DbType::None)))
+                            }
+                            _ => todo!(),
+                        },
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_args(s);

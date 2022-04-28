@@ -94,10 +94,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                     todo!()
                 }
             },
-            Specific::TypingOptional => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => simple.infer_type(i_s).union(DbType::None),
-                _ => todo!(),
-            },
+            Specific::TypingOptional => todo!(),
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     let g = simple.infer_type(i_s);
