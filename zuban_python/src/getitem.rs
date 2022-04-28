@@ -75,15 +75,6 @@ impl<'db> Simple<'db> {
             .inference(i_s)
             .infer_named_expression(self.named_expr)
     }
-
-    pub fn infer_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        /*
-        self.file
-            .inference(i_s)
-            .compute_annotation_expression_class(self.named_expr.expression())
-        */
-        todo!()
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -113,13 +104,6 @@ impl<'db> SliceOrSimple<'db> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
-            Self::Slice(slice) => todo!(),
-        }
-    }
-
-    pub fn infer_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        match self {
-            Self::Simple(simple) => simple.infer_type(i_s),
             Self::Slice(slice) => todo!(),
         }
     }

@@ -81,14 +81,14 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 todo!()
             }
             Specific::TypingUnion => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => todo!(), //simple.infer_type(i_s),
+                SliceTypeContent::Simple(simple) => todo!(),
                 SliceTypeContent::Slice(x) => {
                     todo!()
                 }
                 SliceTypeContent::Slices(slices) => {
                     for slice_content in slices.iter() {
                         if let SliceOrSimple::Simple(n) = slice_content {
-                            n.infer_type(i_s);
+                            todo!()
                         }
                     }
                     todo!()
@@ -97,8 +97,9 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingOptional => todo!(),
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
-                    let g = simple.infer_type(i_s);
-                    DbType::Type(Box::new(g))
+                    todo!()
+                    // let g = simple.infer_type(i_s);
+                    // DbType::Type(Box::new(g))
                 }
                 _ => todo!(),
             },
