@@ -396,6 +396,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             ))
         }
         if matches!(class.generics, Generics::None) {
+            if class.reference == self.inference.i_s.database.python_state.tuple() {
+                return self.compute_type_get_item_on_tuple(slice_type);
+            }
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
             let result = match slice_type.unpack() {
@@ -489,6 +492,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         } else {
             todo!()
         }
+    }
+
+    fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType<'db>) -> ComputedType<'db> {
+        ComputedType::new(TypeContent::DbType(DbType::Any));
+        todo!()
     }
 
     fn compute_type_get_item_on_alias(
@@ -587,7 +595,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 None => todo!(),
             },
             AtomContent::NoneLiteral => ComputedType::new(TypeContent::DbType(DbType::None)),
-            _ => todo!(),
+            _ => todo!("{:?}", atom),
         }
     }
 

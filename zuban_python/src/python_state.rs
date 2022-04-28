@@ -12,6 +12,7 @@ pub struct PythonState {
     collections: *const PythonFile,
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
+    builtins_tuple_index: NodeIndex,
 }
 
 impl PythonState {
@@ -22,6 +23,7 @@ impl PythonState {
             collections: null(),
             builtins_object_node_index: 0,
             builtins_list_index: 0,
+            builtins_tuple_index: 0,
         }
     }
 
@@ -39,9 +41,11 @@ impl PythonState {
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
+        let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
 
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
+        s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }
@@ -74,6 +78,12 @@ impl PythonState {
     pub fn list(&self) -> NodeRef {
         debug_assert!(self.builtins_list_index != 0);
         NodeRef::new(self.builtins(), self.builtins_list_index)
+    }
+
+    #[inline]
+    pub fn tuple(&self) -> NodeRef {
+        debug_assert!(self.builtins_tuple_index != 0);
+        NodeRef::new(self.builtins(), self.builtins_tuple_index)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
