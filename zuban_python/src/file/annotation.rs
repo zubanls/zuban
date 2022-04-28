@@ -3,8 +3,8 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
+    CallableContent, ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific,
+    TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -26,6 +26,7 @@ enum SpecialType {
     ProtocolWithGenerics,
     Generic,
     GenericWithGenerics,
+    Callable,
 }
 
 #[derive(Debug)]
@@ -379,6 +380,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                             ))
                         }
                         SpecialType::GenericWithGenerics => todo!(),
+                        SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                     },
                 }
             }
@@ -536,6 +538,56 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
         };
         ComputedType::new(TypeContent::DbType(DbType::Tuple(content)))
+    }
+
+    fn compute_type_get_item_on_callable(
+        &mut self,
+        slice_type: SliceType<'db>,
+    ) -> ComputedType<'db> {
+        let content = match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => {
+                todo!()
+            }
+            SliceTypeContent::Slice(x) => {
+                todo!()
+            }
+            SliceTypeContent::Slices(slices) => {
+                // TODO has_type_vars is not properly calculated...
+                let mut params = Some(vec![]);
+                let mut iterator = slices.iter();
+                let param_node = iterator.next().map(|slice_content| match slice_content {
+                    SliceOrSimple::Simple(n) => {
+                        if n.named_expr.as_code() == "..." {
+                            params = None
+                        } else {
+                            let i = n.infer(self.inference.i_s);
+                            let mut list = i.iter(self.inference.i_s, slice_type.as_node_ref());
+                            while let Some(next) = list.next(self.inference.i_s) {
+                                if let Some(params) = &mut params {
+                                    params.push(next.as_db_type(self.inference.i_s));
+                                }
+                            }
+                        }
+                    }
+                    SliceOrSimple::Slice(s) => todo!(),
+                });
+                let return_class = iterator
+                    .next()
+                    .map(|slice_content| match slice_content {
+                        SliceOrSimple::Simple(n) => self
+                            .compute_type(n.named_expr.expression())
+                            .into_db_type(self.inference.i_s),
+                        SliceOrSimple::Slice(s) => todo!(),
+                    })
+                    .unwrap_or(DbType::Unknown);
+                CallableContent {
+                    params: params.map(GenericsList::from_vec),
+                    return_class: Box::new(return_class),
+                }
+            }
+        };
+        // TODO has_type_vars is not properly used
+        ComputedType::new(TypeContent::DbType(DbType::Callable(content)))
     }
 
     fn compute_type_get_item_on_alias(
@@ -926,10 +978,18 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
 }
 
 fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
-    match node_ref.complex().unwrap() {
-        ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
-        ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
-        _ => unreachable!(),
+    if let Some(complex) = node_ref.complex() {
+        match complex {
+            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
+            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
+            _ => unreachable!(),
+        }
+    } else {
+        debug_assert_eq!(
+            node_ref.point().maybe_specific().unwrap(),
+            Specific::TypingCallable
+        );
+        TypeNameLookup::SpecialType(SpecialType::Callable)
     }
 }
 

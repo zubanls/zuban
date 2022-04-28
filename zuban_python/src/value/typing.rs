@@ -78,43 +78,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 todo!()
             }
             Specific::TypingCallable => {
-                let content = match slice_type.unpack() {
-                    SliceTypeContent::Simple(simple) => {
-                        todo!()
-                    }
-                    SliceTypeContent::Slice(x) => {
-                        todo!()
-                    }
-                    SliceTypeContent::Slices(slices) => {
-                        let mut params = Some(vec![]);
-                        let mut iterator = slices.iter();
-                        let param_node = iterator.next().map(|slice_content| match slice_content {
-                            SliceOrSimple::Simple(n) => {
-                                let i = n.infer(i_s);
-                                if n.named_expr.as_code() == "..." {
-                                    params = None
-                                } else {
-                                    let mut list = i.iter(i_s, slice_type.as_node_ref());
-                                    while let Some(next) = list.next(i_s) {
-                                        if let Some(params) = &mut params {
-                                            params.push(next.as_db_type(i_s));
-                                        }
-                                    }
-                                }
-                            }
-                            SliceOrSimple::Slice(s) => todo!(),
-                        });
-                        let return_class = iterator
-                            .next()
-                            .map(|n| n.infer_type(i_s))
-                            .unwrap_or(DbType::Unknown);
-                        CallableContent {
-                            params: params.map(GenericsList::from_vec),
-                            return_class: Box::new(return_class),
-                        }
-                    }
-                };
-                DbType::Callable(content)
+                todo!()
             }
             Specific::TypingUnion => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => todo!(), //simple.infer_type(i_s),
