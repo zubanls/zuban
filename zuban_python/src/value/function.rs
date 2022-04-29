@@ -175,14 +175,15 @@ impl<'db, 'a> Function<'db, 'a> {
         let func_node = self.node();
         let mut inference = self.reference.file.inference(i_s);
         let mut on_type_var = |_| todo!("blablablblalblalbalblal");
-        let mut type_computation = TypeComputation::new(&mut inference, &mut on_type_var);
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                type_computation.compute_annotation(annotation);
+                TypeComputation::new(&mut inference, &mut on_type_var)
+                    .compute_annotation(annotation)
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            type_computation.compute_return_annotation(return_annot);
+            TypeComputation::new(&mut inference, &mut on_type_var)
+                .compute_return_annotation(return_annot);
         }
         match found_type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),

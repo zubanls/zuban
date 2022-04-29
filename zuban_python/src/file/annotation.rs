@@ -95,6 +95,7 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_callback: &'c mut C,
     errors_already_calculated: bool,
+    pub has_type_vars: bool,
 }
 
 impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a, 'b, 'c, C> {
@@ -106,6 +107,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             inference,
             type_var_callback,
             errors_already_calculated: false,
+            has_type_vars: false,
         }
     }
 
@@ -116,12 +118,15 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 .file
                 .new_annotation_file(self.inference.i_s.database, start, string);
         if let Some(expr) = f.tree.maybe_expression() {
-            TypeComputation {
+            let mut comp = TypeComputation {
                 inference: &mut f.inference(self.inference.i_s),
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
-            }
-            .compute_type(expr)
+                has_type_vars: false,
+            };
+            let type_ = comp.compute_type(expr);
+            self.has_type_vars = comp.has_type_vars;
+            type_
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
@@ -821,6 +826,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     type_: TypeVarType::Alias,
                                 }
                             },
+                            has_type_vars: false,
                         }
                         .compute_type(expr);
                         if let TypeContent::ClassWithoutTypeVar(i) = t {
