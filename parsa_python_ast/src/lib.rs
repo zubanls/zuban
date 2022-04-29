@@ -1943,6 +1943,7 @@ impl<'db> Slices<'db> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub enum SliceContent<'db> {
     Slice(Slice<'db>),
     NamedExpression(NamedExpression<'db>),

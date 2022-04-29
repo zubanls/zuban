@@ -75,12 +75,22 @@ impl<'db> Simple<'db> {
             .inference(i_s)
             .infer_named_expression(self.named_expr)
     }
+
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
+        NodeRef::new(self.file, self.named_expr.index())
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Slice<'db> {
     file: &'db PythonFile,
     slice: ASTSlice<'db>,
+}
+
+impl<'db> Slice<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
+        NodeRef::new(self.file, self.slice.index())
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -95,6 +105,7 @@ impl<'db> Slices<'db> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub enum SliceOrSimple<'db> {
     Simple(Simple<'db>),
     Slice(Slice<'db>),
@@ -105,6 +116,13 @@ impl<'db> SliceOrSimple<'db> {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
             Self::Slice(slice) => todo!(),
+        }
+    }
+
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
+        match self {
+            SliceOrSimple::Simple(simple) => simple.as_node_ref(),
+            SliceOrSimple::Slice(slice) => slice.as_node_ref(),
         }
     }
 }
