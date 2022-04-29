@@ -144,6 +144,17 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         self.cache_annotation_internal(annotation.index(), annotation.expression());
     }
 
+    fn add_module_issue(&self, file: &'db PythonFile, node_ref: NodeRef<'db>) {
+        node_ref.add_typing_issue(
+            self.inference.i_s.database,
+            IssueType::ValidType(format!(
+                "Module {:?} is not valid as a type",
+                Module::new(self.inference.i_s.database, file)
+                    .qualified_name(self.inference.i_s.database),
+            )),
+        );
+    }
+
     #[inline]
     fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression<'db>) {
         let point = self.inference.file.points.get(annotation_index);
@@ -177,14 +188,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                 }
             }
             TypeContent::Module(m) => {
-                NodeRef::new(self.inference.file, expr.index()).add_typing_issue(
-                    self.inference.i_s.database,
-                    IssueType::ValidType(format!(
-                        "Module {:?} is not valid as a type",
-                        Module::new(self.inference.i_s.database, m)
-                            .qualified_name(self.inference.i_s.database),
-                    )),
-                );
+                self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                     DbType::Unknown,
                 )))
@@ -223,7 +227,10 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         match type_ {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.inference.i_s),
             TypeContent::DbType(d) => d,
-            TypeContent::Module(m) => DbType::Unknown,
+            TypeContent::Module(m) => {
+                self.add_module_issue(m, node_ref);
+                DbType::Unknown
+            }
             TypeContent::TypeAlias(a) => {
                 if a.type_vars.is_empty() {
                     a.db_type.as_ref().clone()
@@ -273,30 +280,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
             }
             _ => todo!("Not handled yet {:?}", node),
         }
-        /*
-        let node_ref = NodeRef::new(self.file, expr.index());
-        if let Some(func) = inferred.maybe_simple(inference.i_s, |v| v.as_function().cloned()) {
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::ValidType(format!(
-                    "Function {:?} is not valid as a type",
-                    func.qualified_name(i_s.database),
-                )),
-            );
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::Note(
-                    "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
-                ),
-            )
-        } else if let Some(module) =
-            inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
-        {
-        } else {
-            debug!("Unknown annotation expression {}", expr.short_debug());
-        }
-        Point::new_unknown(self.file.file_index(), Locality::Todo)
-        */
     }
 
     fn compute_type_primary(&mut self, primary: Primary<'db>) -> TypeContent<'db> {

@@ -140,6 +140,10 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
+        for file_index in self.sub_files.borrow().values() {
+            let file = db.loaded_python_file(*file_index);
+            vec.extend(file.diagnostics(db, config).into_vec().into_iter());
+        }
         vec.sort_by_key(|diag| diag.issue.node_index);
         vec.into_boxed_slice()
     }
