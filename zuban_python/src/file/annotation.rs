@@ -15,7 +15,7 @@ use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike, Value};
+use crate::value::{Class, ClassLike, Module, Value};
 
 #[derive(Debug)]
 enum SpecialType {
@@ -200,7 +200,21 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                     return;
                 }
             }
-            TypeContent::Module(m) => todo!(),
+            TypeContent::Module(m) => {
+                NodeRef::new(self.inference.file, expr.index()).add_typing_issue(
+                    self.inference.i_s.database,
+                    IssueType::ValidType(format!(
+                        "Module {:?} is not valid as a type",
+                        Module::new(self.inference.i_s.database, m)
+                            .qualified_name(self.inference.i_s.database),
+                    )),
+                );
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                    DbType::Unknown,
+                )))
+                .save_redirect(self.inference.file, annotation_index);
+                return;
+            }
             TypeContent::TypeAlias(m) => {
                 if m.type_vars.is_empty() {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
@@ -276,13 +290,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         } else if let Some(module) =
             inferred.maybe_simple(inference.i_s, |v| v.as_module().cloned())
         {
-            node_ref.add_typing_issue(
-                i_s.database,
-                IssueType::ValidType(format!(
-                    "Module {:?} is not valid as a type",
-                    module.qualified_name(i_s.database),
-                )),
-            );
         } else {
             debug!("Unknown annotation expression {}", expr.short_debug());
         }
