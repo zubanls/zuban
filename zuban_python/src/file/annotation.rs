@@ -778,6 +778,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
         self.cache_assignment_nodes(assignment);
+        if let Some(name) = assignment.maybe_simple_type_reassignment() {
+            // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
+            let node_ref = NodeRef::new(self.file, name.index());
+            debug_assert!(node_ref.point().calculated());
+            return check_type_name(self.i_s, node_ref, || todo!());
+        }
         match assignment.unpack() {
             AssignmentContent::Normal(mut targets, AssignmentRightSide::StarExpressions(right)) => {
                 if let StarExpressionContent::Expression(expr) = right.unpack() {

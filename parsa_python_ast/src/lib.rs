@@ -632,6 +632,20 @@ impl<'db> Expression<'db> {
     pub fn search_names(&self) -> NameIterator<'db> {
         NameIterator(self.node.search(&[Terminal(TerminalType::Name)]))
     }
+
+    fn maybe_name_or_last_primary_name(&self) -> Option<Name<'db>> {
+        match self.unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
+                if let AtomContent::Name(n) = a.unpack() {
+                    Some(n)
+                } else {
+                    None
+                }
+            }
+            ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => p.is_only_attributes(),
+            _ => None,
+        }
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -1638,6 +1652,26 @@ impl<'db> Assignment<'db> {
             return AssignmentRightSide::YieldExpr(YieldExpr::new(child));
         }
     }
+
+    pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
+        match self.unpack() {
+            AssignmentContent::Normal(mut targets_, right) => {
+                targets_.next();
+                if targets_.next().is_some() {
+                    return None;
+                }
+
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right {
+                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+                        return expr.maybe_name_or_last_primary_name();
+                    }
+                }
+                None
+            }
+            AssignmentContent::WithAnnotation(_, _, _) => todo!(),
+            AssignmentContent::AugAssign(_, _, _) => None,
+        }
+    }
 }
 
 pub enum AssignmentContent<'db> {
@@ -1894,6 +1928,21 @@ impl<'db> Primary<'db> {
             PrimaryParent::Primary(Primary::new(parent))
         } else {
             PrimaryParent::Other
+        }
+    }
+
+    fn is_only_attributes(&self) -> Option<Name<'db>> {
+        match self.first() {
+            PrimaryOrAtom::Atom(_) => (),
+            PrimaryOrAtom::Primary(p) => {
+                if p.is_only_attributes().is_none() {
+                    return None;
+                }
+            }
+        }
+        match self.second() {
+            PrimaryContent::Attribute(name) => Some(name),
+            _ => None,
         }
     }
 }
