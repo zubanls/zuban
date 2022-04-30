@@ -359,7 +359,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let file_index = self.infer_import_dotted_name(dotted_name);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
                     if let Some(file_index) = file_index {
-                        todo!()
+                        let point = Point::new_file_reference(file_index, Locality::Todo);
+                        self.file.points.set(as_name_def.index(), point);
+                        self.file.points.set(as_name_def.name().index(), point);
                     } else {
                         todo!()
                     }

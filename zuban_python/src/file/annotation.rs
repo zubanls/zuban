@@ -359,7 +359,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
                         }
                     }
                     TypeContent::DbType(d) => todo!(),
-                    TypeContent::Module(m) => todo!(),
+                    TypeContent::Module(m) => todo!("{:?}", primary),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => todo!(),
