@@ -2,12 +2,14 @@ use parsa_python_ast::{
     FunctionDef, NodeIndex, Param, ParamIterator, ParamType, ReturnAnnotation, ReturnOrYield,
 };
 use std::fmt;
+use std::rc::Rc;
 
 use super::{ClassLike, LookupResult, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
-    Point, PointLink, Specific, TupleContent, TypeVarType, TypeVars,
+    Point, TupleContent, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
+    TypeVars,
 };
 use crate::debug;
 use crate::file::{PythonFile, TypeComputation};
@@ -171,10 +173,26 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             return None;
         }
-        let mut found_type_vars = vec![];
+        let mut type_vars = TypeVarManager::default();
         let func_node = self.node();
         let mut inference = self.reference.file.inference(i_s);
-        let mut on_type_var = |_| todo!("blablablblalblalbalblal");
+        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>| {
+            if let Some(class) = self.class {
+                if let Some(index) = class.type_vars(i_s).iter().position(|t| t == &type_var) {
+                    return TypeVarUsage {
+                        type_var,
+                        index: TypeVarIndex::new(index),
+                        type_: TypeVarType::Class,
+                    };
+                }
+            }
+            let index = type_vars.add(type_var.clone());
+            TypeVarUsage {
+                type_var,
+                index,
+                type_: TypeVarType::Function,
+            }
+        };
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 TypeComputation::new(&mut inference, &mut on_type_var)
@@ -185,12 +203,11 @@ impl<'db, 'a> Function<'db, 'a> {
             TypeComputation::new(&mut inference, &mut on_type_var)
                 .compute_return_annotation(return_annot);
         }
-        match found_type_vars.len() {
+        let type_vars = type_vars.into_boxed_slice();
+        match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
-            _ => type_var_reference.insert_complex(
-                ComplexPoint::FunctionTypeVars(found_type_vars.into_boxed_slice()),
-                Locality::Todo,
-            ),
+            _ => type_var_reference
+                .insert_complex(ComplexPoint::FunctionTypeVars(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());
         self.calculated_type_vars(i_s)

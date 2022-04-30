@@ -283,7 +283,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let mut inference = self.reference.file.inference(&mut i_s);
-                        let base = TypeComputation::new(&mut inference, &mut |type_var| {
+                        let base = TypeComputation::new(&mut inference, &mut |_, type_var| {
                             let index = type_vars.add(type_var.clone());
                             TypeVarUsage {
                                 type_var,

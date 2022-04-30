@@ -82,7 +82,9 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     pub has_type_vars: bool,
 }
 
-impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db, 'a, 'b, 'c, C> {
+impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> TypeVarUsage>
+    TypeComputation<'db, 'a, 'b, 'c, C>
+{
     pub fn new(
         inference: &'c mut PythonInference<'db, 'a, 'b>,
         type_var_callback: &'c mut C,
@@ -628,9 +630,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(Rc<TypeVar>) -> TypeVarUsage> TypeComputation<'db
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
-            TypeNameLookup::TypeVar(t) => {
-                TypeContent::DbType(DbType::TypeVar((self.type_var_callback)(t)))
-            }
+            TypeNameLookup::TypeVar(t) => TypeContent::DbType(DbType::TypeVar((self
+                .type_var_callback)(
+                self.inference.i_s,
+                t,
+            ))),
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::Invalid => TypeContent::DbType(DbType::Any),
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
@@ -644,7 +648,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        match TypeComputation::new(self, &mut |type_var| TypeVarUsage {
+        match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
             type_var,
             // TODO this shouldn't be always 0...
             index: TypeVarIndex::new(0),
@@ -806,14 +810,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let mut comp = TypeComputation {
                             inference: self,
                             errors_already_calculated: p.calculated(),
-                            type_var_callback: &mut |type_var: Rc<TypeVar>| {
-                                let index = type_vars.add(type_var.clone());
-                                TypeVarUsage {
-                                    type_var,
-                                    index,
-                                    type_: TypeVarType::Alias,
-                                }
-                            },
+                            type_var_callback:
+                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>| {
+                                    let index = type_vars.add(type_var.clone());
+                                    TypeVarUsage {
+                                        type_var,
+                                        index,
+                                        type_: TypeVarType::Alias,
+                                    }
+                                },
                             has_type_vars: false,
                         };
                         let t = comp.compute_type(expr);
@@ -881,14 +886,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub(super) fn compute_type_comment(&mut self, start: CodeIndex, string: String) -> DbType {
-        let mut on_type_var = |type_var| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var| todo!();
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let (file, t) = comp.compute_annotation_string(start, string);
         comp.to_db_type(t, NodeRef::new(file, 0))
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
-        let mut on_type_var = |type_var| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var| todo!();
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let db_type = comp.compute_db_type(expr);
         (!comp.has_type_vars).then(|| db_type)

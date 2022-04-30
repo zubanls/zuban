@@ -511,7 +511,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                TypeComputation::new(self, &mut |_| todo!()).compute_annotation(annotation);
+                TypeComputation::new(self, &mut |_: &mut InferenceState, _| todo!())
+                    .compute_annotation(annotation);
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
