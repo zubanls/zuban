@@ -238,7 +238,13 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     todo!()
                 }
             }
-            TypeContent::SpecialType(m) => todo!(),
+            TypeContent::SpecialType(m) => match m {
+                SpecialType::Callable => DbType::Callable(CallableContent {
+                    params: None,
+                    return_class: Box::new(DbType::Any),
+                }),
+                _ => todo!("{:?}", m),
+            },
         }
     }
 
