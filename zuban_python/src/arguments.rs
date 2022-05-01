@@ -141,7 +141,9 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                 match arg {
                     Argument::Positional(node) => {
                         let mut inference = node.file.inference(i_s);
-                        if let Some(t) = inference.compute_type_var_bound(node.as_expression()) {
+                        if let Some(t) = inference
+                            .compute_type_var_bound(node.as_named_expression().expression())
+                        {
                             constraints.push(t);
                         } else {
                             return None;
