@@ -312,14 +312,11 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
-                todo!("Probably move this into use_return_annotation")
-                /*
                 self.reference
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
                     .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
-                */
             } else {
                 self.reference
                     .file
