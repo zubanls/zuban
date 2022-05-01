@@ -8,8 +8,7 @@ use super::{ClassLike, LookupResult, Module, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
-    Point, TupleContent, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
-    TypeVars,
+    Point, TupleContent, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::file::{PythonFile, TypeComputation};
@@ -178,12 +177,8 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut inference = self.reference.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>| {
             if let Some(class) = self.class {
-                if let Some(index) = class.type_vars(i_s).iter().position(|t| t == &type_var) {
-                    return TypeVarUsage {
-                        type_var,
-                        index: TypeVarIndex::new(index),
-                        type_: TypeVarType::Class,
-                    };
+                if let Some(usage) = class.maybe_in_type_vars(i_s, type_var.clone()) {
+                    return usage;
                 }
             }
             let index = type_vars.add(type_var.clone());
