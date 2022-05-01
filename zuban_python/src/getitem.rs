@@ -61,6 +61,16 @@ impl<'db> SliceType<'db> {
             }),
         }
     }
+
+    pub fn iter(&self) -> SliceTypeIterator<'db> {
+        match self.unpack() {
+            SliceTypeContent::Simple(s) => {
+                SliceTypeIterator::SliceOrSimple(SliceOrSimple::Simple(s))
+            }
+            SliceTypeContent::Slice(s) => SliceTypeIterator::SliceOrSimple(SliceOrSimple::Slice(s)),
+            SliceTypeContent::Slices(s) => SliceTypeIterator::SliceIterator(s.iter()),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -147,7 +157,30 @@ impl<'db> Iterator for SliceIterator<'db> {
     }
 }
 
-impl<'db> SliceIterator<'db> {}
+pub enum SliceTypeIterator<'db> {
+    SliceIterator(SliceIterator<'db>),
+    SliceOrSimple(SliceOrSimple<'db>),
+    Finished,
+}
+
+impl<'db> Iterator for SliceTypeIterator<'db> {
+    type Item = SliceOrSimple<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            Self::SliceIterator(s) => s.next(),
+            Self::SliceOrSimple(_) => {
+                let result = std::mem::replace(self, Self::Finished);
+                if let Self::SliceOrSimple(s) = result {
+                    Some(s)
+                } else {
+                    unreachable!()
+                }
+            }
+            Self::Finished => None,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);

@@ -362,7 +362,16 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     TypeContent::Module(m) => todo!("{:?}", primary),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
-                        SpecialType::Union => todo!(),
+                        SpecialType::Union => {
+                            TypeContent::DbType(DbType::Union(GenericsList::new(
+                                s.iter()
+                                    .map(|slice_or_simple| {
+                                        let t = self.compute_slice_type(slice_or_simple);
+                                        self.to_db_type(t, slice_or_simple.as_node_ref())
+                                    })
+                                    .collect(),
+                            )))
+                        }
                         SpecialType::Optional => match s.unpack() {
                             SliceTypeContent::Simple(simple) => TypeContent::DbType(
                                 self.compute_db_type(simple.named_expr.expression())
