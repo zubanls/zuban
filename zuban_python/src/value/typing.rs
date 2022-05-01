@@ -670,8 +670,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn name(&self) -> &'db str {
-        todo!();
-        //self.type_var_usage.type_var.name(self.db)
+        self.type_var_usage.type_var.name(self.db)
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {

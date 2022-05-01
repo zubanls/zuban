@@ -642,7 +642,7 @@ impl DbType {
                 if let Some(type_var_generics) = type_var_generics {
                     return type_var_generics(t.index).as_type_string(db, None, style);
                 }
-                t.type_var.name(db)
+                t.type_var.name(db).to_owned()
             }
             Self::Type(db_type) => format!(
                 "Type[{}]",
@@ -914,12 +914,11 @@ impl PartialEq for TypeVar {
 }
 
 impl TypeVar {
-    pub fn name(&self, db: &Database) -> String {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         NodeRef::from_link(db, self.name_string)
             .maybe_str()
             .unwrap()
             .as_code()
-            .to_owned()
     }
 }
 
