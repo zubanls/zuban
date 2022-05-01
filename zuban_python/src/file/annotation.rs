@@ -178,10 +178,8 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             }
             TypeContent::DbType(d) => {
                 if self.has_type_vars {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Type(Box::new(d)),
-                    )))
-                    .save_redirect(self.inference.file, expr.index());
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+                        .save_redirect(self.inference.file, expr.index());
                     Specific::AnnotationWithTypeVars
                 } else {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))

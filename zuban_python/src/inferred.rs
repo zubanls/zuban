@@ -122,7 +122,7 @@ impl<'db> Inferred<'db> {
                     todo!()
                 }
                 DbType::Any => return Self::new_any(),
-                _ => todo!(),
+                _ => todo!("{:?}", c),
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
