@@ -730,6 +730,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary);
     fn _infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
+        debug!("Infer primary {}", primary.short_debug());
         self.infer_primary_content(base, primary.index(), primary.second())
             .save_redirect(self.file, primary.index())
     }

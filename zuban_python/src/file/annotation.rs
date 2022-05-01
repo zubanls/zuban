@@ -630,11 +630,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
-            TypeNameLookup::TypeVar(t) => TypeContent::DbType(DbType::TypeVar((self
-                .type_var_callback)(
-                self.inference.i_s,
-                t,
-            ))),
+            TypeNameLookup::TypeVar(t) => {
+                let usage = (self.type_var_callback)(self.inference.i_s, t);
+                self.has_type_vars = true;
+                TypeContent::DbType(DbType::TypeVar(usage))
+            }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::Invalid => TypeContent::DbType(DbType::Any),
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
