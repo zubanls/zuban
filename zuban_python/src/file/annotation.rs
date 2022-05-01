@@ -778,6 +778,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {
+        debug_assert_eq!(
+            self.file.points.get(node_index).specific(),
+            Specific::AnnotationWithTypeVars
+        );
+        // annotations look like `":" expr`
+        let complex_index = self.file.points.get(node_index + 2).complex_index();
+        if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
+            db_type
+        } else {
+            unreachable!()
+        }
+    }
+
     fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
         self.cache_assignment_nodes(assignment);
         if let Some(name) = assignment.maybe_simple_type_reassignment() {

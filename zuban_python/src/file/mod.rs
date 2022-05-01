@@ -12,12 +12,13 @@ use parsa_python_ast::*;
 use crate::arguments::SimpleArguments;
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
-    Point, PointType, Points, Specific, TupleContent, TypeAlias, TypeVar, TypeVarUsage,
+    Point, PointType, Points, Specific, TupleContent, TypeVarType,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 pub use crate::file::annotation::{BaseClass, TypeComputation};
 use crate::file_state::{File, Leaf};
+use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::InferenceState;
@@ -1039,6 +1040,31 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());
                         self.check_point_cache(node_index).unwrap()
+                    }
+                    Specific::AnnotationWithTypeVars => {
+                        // For variable annotations like a: int
+                        // TODO is this really the right place?
+                        let d =
+                            self.use_db_type_of_annotation(node_index)
+                                .remap_type_vars(&mut |t| {
+                                    match t.type_ {
+                                        TypeVarType::Class => {
+                                            if let Some(class) = self.i_s.current_class {
+                                                dbg!(&class);
+                                                // For now assert this.
+                                                debug_assert!(!matches!(
+                                                    class.generics,
+                                                    Generics::None
+                                                ));
+                                                class.generics.nth(self.i_s, t.index)
+                                            } else {
+                                                todo!()
+                                            }
+                                        }
+                                        _ => todo!(),
+                                    }
+                                });
+                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }
                     _ => Inferred::new_saved(self.file, node_index, point),
                 },
