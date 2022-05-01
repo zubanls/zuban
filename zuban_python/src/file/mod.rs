@@ -473,16 +473,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_import_dotted_name(&mut self, dotted: DottedName<'db>) -> Option<FileIndex> {
         match dotted.unpack() {
             DottedNameContent::Name(name) => self.global_import(name.as_str(), name.index(), None),
-            DottedNameContent::DottedName(dotted_name, name) => {
-                /*
-                let base = self.infer_import_dotted_name(dotted_name);
-                base.run_on_value(self.i_s, &mut |i_s, value| match value.as_module() {
-                    Some(module) => module.sub_module(i_s.database, name.as_str()),
-                    None => unreachable!(),
+            DottedNameContent::DottedName(dotted_name, name) => self
+                .infer_import_dotted_name(dotted_name)
+                .map(|file_index| {
+                    let file = self.i_s.database.loaded_python_file(file_index);
+                    let module = Module::new(self.i_s.database, file);
+                    module.sub_module(self.i_s.database, name.as_str())
                 })
-                */
-                todo!()
-            }
+                .flatten(),
         }
     }
 
