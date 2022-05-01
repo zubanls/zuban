@@ -69,6 +69,7 @@ testInlineConfigFineGrained*
 testWrongNumberOfArguments
 *NewAnalyzer
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
+testStubFixupIssues
 testDunderCallAddition
 # check-generic-alias test stuff
 testGenericAliasImportRe
