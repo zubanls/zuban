@@ -83,6 +83,7 @@ impl PythonState {
     #[inline]
     pub fn tuple(&self) -> NodeRef {
         debug_assert!(self.builtins_tuple_index != 0);
+        // TODO might be unused???
         NodeRef::new(self.builtins(), self.builtins_tuple_index)
     }
 

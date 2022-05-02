@@ -28,6 +28,7 @@ enum SpecialType {
     GenericWithGenerics,
     Callable,
     Type,
+    Tuple,
 }
 
 #[derive(Debug)]
@@ -213,6 +214,10 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     SpecialType::Type => DbType::Type(Box::new(DbType::Class(
                         self.inference.i_s.database.python_state.object().as_link(),
                     ))),
+                    SpecialType::Tuple => DbType::Tuple(TupleContent {
+                        generics: None,
+                        arbitrary_length: true,
+                    }),
                     _ => todo!("{:?}", special),
                 };
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)))
@@ -394,6 +399,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                             )),
                             _ => todo!(),
                         },
+                        SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_args(s);
@@ -423,9 +429,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             ))
         }
         if matches!(class.generics, Generics::None) {
-            if class.reference == self.inference.i_s.database.python_state.tuple() {
-                return self.compute_type_get_item_on_tuple(slice_type);
-            }
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
             let result = match slice_type.unpack() {
@@ -1001,8 +1004,16 @@ fn check_type_name<'db>(
     match new_name.expect_type() {
         TypeLike::ClassDef(c) => {
             let point = name_node_ref.point();
-            if point.calculated() && point.maybe_specific() == Some(Specific::TypingType) {
-                return TypeNameLookup::SpecialType(SpecialType::Type);
+            if point.calculated() {
+                match point.maybe_specific() {
+                    Some(Specific::TypingType) => {
+                        return TypeNameLookup::SpecialType(SpecialType::Type);
+                    }
+                    Some(Specific::TypingTuple) => {
+                        return TypeNameLookup::SpecialType(SpecialType::Tuple);
+                    }
+                    _ => (),
+                }
             }
             return TypeNameLookup::Class(Inferred::new_saved(
                 name_node_ref.file,
