@@ -27,6 +27,7 @@ enum SpecialType {
     Generic,
     GenericWithGenerics,
     Callable,
+    Type,
 }
 
 #[derive(Debug)]
@@ -206,16 +207,18 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     todo!()
                 }
             }
-            TypeContent::SpecialType(s) => match s {
-                SpecialType::Any => {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Any,
-                    )))
+            TypeContent::SpecialType(special) => {
+                let db_type = match special {
+                    SpecialType::Any => DbType::Any,
+                    SpecialType::Type => DbType::Type(Box::new(DbType::Class(
+                        self.inference.i_s.database.python_state.object().as_link(),
+                    ))),
+                    _ => todo!("{:?}", special),
+                };
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)))
                     .save_redirect(self.inference.file, annotation_index);
-                    return;
-                }
-                _ => todo!("{:?}", s),
-            },
+                return;
+            }
         };
         self.inference.file.points.set(
             annotation_index,
@@ -383,6 +386,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                 self.compute_db_type(simple.named_expr.expression())
                                     .union(DbType::None),
                             ),
+                            _ => todo!(),
+                        },
+                        SpecialType::Type => match s.unpack() {
+                            SliceTypeContent::Simple(simple) => TypeContent::DbType(DbType::Type(
+                                Box::new(self.compute_db_type(simple.named_expr.expression())),
+                            )),
                             _ => todo!(),
                         },
                         SpecialType::Any => todo!(),
@@ -991,11 +1000,15 @@ fn check_type_name<'db>(
     let new_name = name_node_ref.as_name();
     match new_name.expect_type() {
         TypeLike::ClassDef(c) => {
+            let point = name_node_ref.point();
+            if point.calculated() && point.maybe_specific() == Some(Specific::TypingType) {
+                return TypeNameLookup::SpecialType(SpecialType::Type);
+            }
             return TypeNameLookup::Class(Inferred::new_saved(
                 name_node_ref.file,
                 c.index(),
                 name_node_ref.file.points.get(c.index()),
-            ))
+            ));
         }
         TypeLike::Assignment(assignment) => {
             // Name must be a NameDefinition
