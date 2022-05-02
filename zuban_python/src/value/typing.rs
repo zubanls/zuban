@@ -6,11 +6,11 @@ use super::{ClassLike, IteratorContent, LookupResult, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Specific,
-    TupleContent, TypeVarIndex, TypeVarType, TypeVarUsage,
+    CallableContent, ComplexPoint, Database, DbType, FormatStyle, Specific, TupleContent,
+    TypeVarIndex, TypeVarUsage,
 };
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::generics::Generics;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;

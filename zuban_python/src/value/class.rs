@@ -10,7 +10,7 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
     MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
-    TypeVarUsage, TypeVars,
+    TypeVarUsage,
 };
 use crate::debug;
 use crate::file::{BaseClass, PythonFile, TypeComputation};

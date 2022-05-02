@@ -1,6 +1,5 @@
 use super::{ClassLike, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, TypeAlias as DbTypeAlias};
-use crate::diagnostics::IssueType;
+use crate::database::TypeAlias as DbTypeAlias;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;

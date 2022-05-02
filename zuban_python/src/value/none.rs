@@ -1,6 +1,5 @@
 use super::{ClassLike, LookupResult, Value, ValueKind};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct NoneInstance();

@@ -1,12 +1,11 @@
 use parsa_python_ast::{
-    Expression, Name, NameParent, NodeIndex, ParamIterator, ParamType, PrimaryParent, SliceContent,
-    SliceIterator, SliceType, Slices,
+    Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, Locality, Point, PointLink, Specific,
-    TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
+    Database, DbType, FormatStyle, GenericsList, Specific, TypeVarIndex, TypeVarType, TypeVarUsage,
+    TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
