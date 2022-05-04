@@ -74,9 +74,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
                 todo!()
             }
-            Specific::TypingTuple => {
-                todo!()
-            }
+            Specific::TypingTuple => DbType::Type(Box::new(
+                slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_get_item_on_tuple(*slice_type),
+            )),
             Specific::TypingCallable => {
                 todo!()
             }

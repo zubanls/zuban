@@ -691,6 +691,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    pub fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType<'db>) -> DbType {
+        match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
+            type_var,
+            // TODO this shouldn't be always 0...
+            index: TypeVarIndex::new(0),
+            type_: TypeVarType::Alias,
+        })
+        .compute_type_get_item_on_tuple(slice_type)
+        {
+            TypeContent::ClassWithoutTypeVar(inf) => unreachable!(),
+            TypeContent::DbType(d) => d,
+            _ => todo!(),
+        }
+    }
     /* TODO remove
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation()
