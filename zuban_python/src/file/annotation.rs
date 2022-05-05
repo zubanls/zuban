@@ -17,6 +17,8 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, ClassLike, Module, Value};
 
+const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
+
 #[derive(Debug)]
 enum SpecialType {
     Union,
@@ -111,34 +113,25 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         }
     }
 
-    // TODO this should not be a string, but probably cow
     fn compute_forward_reference(&mut self, start: CodeIndex, string: String) -> TypeContent<'db> {
-        let f: &'db PythonFile =
-            self.inference
-                .file
-                .new_annotation_file(self.inference.i_s.database, start, string);
-        if let Some(expr) = f.tree.maybe_expression() {
-            let mut comp = TypeComputation {
-                inference: &mut f.inference(self.inference.i_s),
-                type_var_callback: self.type_var_callback,
-                errors_already_calculated: self.errors_already_calculated,
-                has_type_vars: false,
-            };
-            let type_ = comp.compute_type(expr);
-            self.has_type_vars |= comp.has_type_vars;
-            type_
-        } else {
-            debug!("Found non-expression in annotation: {}", f.tree.code());
-            todo!()
-        }
+        self.cache_code_string(start, string, |comp, expr| comp.compute_type(expr))
+    }
+
+    fn cache_type_comment(&mut self, start: CodeIndex, string: String) -> Inferred<'db> {
+        self.cache_code_string(start, string, |comp, expr| {
+            let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+            comp.cache_annotation_internal(index, expr);
+            Inferred::new_saved2(comp.inference.file, index)
+        })
     }
 
     // TODO this should not be a string, but probably cow
-    fn cache_type_comment(
+    fn cache_code_string<T>(
         &mut self,
         start: CodeIndex,
         string: String,
-    ) -> (&'db PythonFile, TypeContent<'db>) {
+        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_, C>, Expression<'db>) -> T,
+    ) -> T {
         let f: &'db PythonFile =
             self.inference
                 .file
@@ -150,9 +143,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
             };
-            let type_ = comp.compute_type(expr);
+            let type_ = callback(&mut comp, expr);
             self.has_type_vars |= comp.has_type_vars;
-            (f, type_)
+            type_
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
@@ -193,7 +186,6 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         );
     }
 
-    #[inline]
     fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression<'db>) {
         let point = self.inference.file.points.get(annotation_index);
         if point.calculated() {
@@ -859,7 +851,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Specific::AnnotationWithTypeVars
         );
         // annotations look like `":" expr`
-        let complex_index = self.file.points.get(node_index + 2).complex_index();
+        let complex_index = self
+            .file
+            .points
+            .get(node_index + ANNOTATION_TO_EXPR_DIFFERENCE)
+            .complex_index();
         if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
             db_type
         } else {
@@ -981,20 +977,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
         };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
-        let (file, t) = comp.cache_type_comment(start, string);
-        let g = comp.to_db_type(t, NodeRef::new(file, 0));
-        Inferred::execute_db_type(self.i_s, g)
-        /*
-        match t {
-            TypeContent::ClassWithoutTypeVar(i) => {
-                todo!()
-            }
-            TypeContent::DbType(d) => {
-                todo!()
-            }
-            _ => todo!(),
-        }
-        */
+        comp.cache_type_comment(start, string)
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
