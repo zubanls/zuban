@@ -317,6 +317,15 @@ impl<'db> Argument<'db, '_> {
             Self::SlicesTuple(slices) => todo!(),
         }
     }
+
+    pub fn index(&self) -> usize {
+        match self {
+            Self::Positional(_) => 1,
+            Self::Keyword(_, _) => todo!(),
+            Self::Value(_) => 1,
+            Self::SlicesTuple(_) => todo!(),
+        }
+    }
 }
 
 pub enum ArgumentIteratorBase<'db> {

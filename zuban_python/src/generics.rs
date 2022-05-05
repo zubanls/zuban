@@ -367,7 +367,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                     i_s.database,
                                     IssueType::ArgumentIssue(format!(
                                         "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                        1,
+                                        p.argument_index(),
                                         function.diagnostic_string(),
                                         value_class.as_string(i_s, FormatStyle::Short),
                                         annotation_g.as_string(i_s, FormatStyle::Short),

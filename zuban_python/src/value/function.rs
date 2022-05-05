@@ -454,6 +454,16 @@ enum ParamInput<'db, 'a> {
     None,
 }
 
+impl ParamInput<'_, '_> {
+    fn argument_index(&self) -> usize {
+        match self {
+            Self::Argument(arg) => arg.index(),
+            Self::Tuple(_) => todo!(),
+            Self::None => todo!(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: Param<'db>,
@@ -478,6 +488,10 @@ impl<'db> InferrableParam<'db, '_> {
                 .unwrap_or_else(|| todo!()),
             ParamInput::None => todo!(),
         }
+    }
+
+    pub fn argument_index(&self) -> usize {
+        self.argument.argument_index()
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
