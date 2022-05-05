@@ -16,7 +16,6 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
-pub use crate::file::annotation::{BaseClass, TypeComputation};
 use crate::file_state::{File, Leaf};
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -30,6 +29,8 @@ use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Function, LookupResult, Module, Value};
 use crate::workspaces::DirContent;
+use annotation::type_computation_for_variable_annotation;
+pub use annotation::{BaseClass, TypeComputation};
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -511,12 +512,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 TypeComputation::new(self, &mut |i_s, type_var| {
-                    if let Some(class) = i_s.current_class {
-                        if let Some(usage) = class.maybe_in_type_vars(i_s, type_var) {
-                            return usage;
-                        }
-                    }
-                    todo!()
+                    type_computation_for_variable_annotation(i_s, type_var)
+                        .unwrap_or_else(|| todo!())
                 })
                 .compute_annotation(annotation);
                 if let Some(right_side) = right_side {

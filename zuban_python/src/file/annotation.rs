@@ -77,6 +77,18 @@ impl<'db> TypeContent<'db> {
     }
 }
 
+pub(super) fn type_computation_for_variable_annotation(
+    i_s: &mut InferenceState,
+    type_var: Rc<TypeVar>,
+) -> Option<TypeVarUsage> {
+    if let Some(class) = i_s.current_class {
+        if let Some(usage) = class.maybe_in_type_vars(i_s, type_var) {
+            return Some(usage);
+        }
+    }
+    None
+}
+
 pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_callback: &'c mut C,
@@ -939,7 +951,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub(super) fn compute_type_comment(&mut self, start: CodeIndex, string: String) -> DbType {
-        let mut on_type_var = |_: &mut InferenceState, type_var| todo!();
+        let mut on_type_var = |i_s: &mut InferenceState, type_var| {
+            type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
+        };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let (file, t) = comp.compute_annotation_string(start, string);
         comp.to_db_type(t, NodeRef::new(file, 0))
