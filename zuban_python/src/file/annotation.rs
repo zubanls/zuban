@@ -112,7 +112,29 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
     }
 
     // TODO this should not be a string, but probably cow
-    fn compute_annotation_string(
+    fn compute_forward_reference(&mut self, start: CodeIndex, string: String) -> TypeContent<'db> {
+        let f: &'db PythonFile =
+            self.inference
+                .file
+                .new_annotation_file(self.inference.i_s.database, start, string);
+        if let Some(expr) = f.tree.maybe_expression() {
+            let mut comp = TypeComputation {
+                inference: &mut f.inference(self.inference.i_s),
+                type_var_callback: self.type_var_callback,
+                errors_already_calculated: self.errors_already_calculated,
+                has_type_vars: false,
+            };
+            let type_ = comp.compute_type(expr);
+            self.has_type_vars |= comp.has_type_vars;
+            type_
+        } else {
+            debug!("Found non-expression in annotation: {}", f.tree.code());
+            todo!()
+        }
+    }
+
+    // TODO this should not be a string, but probably cow
+    fn cache_type_comment(
         &mut self,
         start: CodeIndex,
         string: String,
@@ -652,7 +674,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             }
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
-                    self.compute_annotation_string(start, s.to_owned()).1
+                    self.compute_forward_reference(start, s.to_owned())
                 }
                 Some(PythonString::String(start, s)) => todo!(),
                 Some(PythonString::FString) => todo!(),
@@ -950,13 +972,29 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub(super) fn compute_type_comment(&mut self, start: CodeIndex, string: String) -> DbType {
+    pub(super) fn compute_type_comment(
+        &mut self,
+        start: CodeIndex,
+        string: String,
+    ) -> Inferred<'db> {
         let mut on_type_var = |i_s: &mut InferenceState, type_var| {
             type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
         };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
-        let (file, t) = comp.compute_annotation_string(start, string);
-        comp.to_db_type(t, NodeRef::new(file, 0))
+        let (file, t) = comp.cache_type_comment(start, string);
+        let g = comp.to_db_type(t, NodeRef::new(file, 0));
+        Inferred::execute_db_type(self.i_s, g)
+        /*
+        match t {
+            TypeContent::ClassWithoutTypeVar(i) => {
+                todo!()
+            }
+            TypeContent::DbType(d) => {
+                todo!()
+            }
+            _ => todo!(),
+        }
+        */
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
