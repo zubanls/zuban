@@ -383,7 +383,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 let inf = self
                     .reference
                     .file
-                    .inference(i_s)
+                    .inference(&mut i_s.with_class_context(self))
                     .infer_name_by_index(node_index);
                 LookupResult::GotoName(
                     PointLink::new(self.reference.file.file_index(), node_index),
