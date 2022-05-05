@@ -326,6 +326,10 @@ impl<'db> Argument<'db, '_> {
             Self::SlicesTuple(_) => todo!(),
         }
     }
+
+    pub fn is_keyword_argument(&self) -> bool {
+        matches!(self, Argument::Value(_) | Argument::Positional(_))
+    }
 }
 
 pub enum ArgumentIteratorBase<'db> {

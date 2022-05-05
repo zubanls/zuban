@@ -414,12 +414,11 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             ParamType::Starred => {
                 let mut args = vec![];
                 for argument in &mut self.arguments {
-                    if matches!(argument, Argument::Value(_) | Argument::Positional(_)) {
-                        args.push(argument)
-                    } else {
+                    if argument.is_keyword_argument() {
                         self.unused_keyword_arguments.push(argument);
                         break;
                     }
+                    args.push(argument)
                 }
                 return ParamInput::Tuple(args.into_boxed_slice());
             }
