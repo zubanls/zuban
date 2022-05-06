@@ -356,25 +356,26 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         }
                         if let Some(value) = p.infer(i_s) {
                             let value_class = value.class_as_type(i_s);
+                            let mut matches = true;
                             let annotation_g = function
                                 .reference
                                 .file
                                 .inference(i_s)
-                                .use_cached_annotation_type(annotation);
-                            if !annotation_g.matches(i_s, Some(self), value_class) {
-                                let value_class = value.class_as_type(i_s);
-                                p.as_argument_node_reference().add_typing_issue(
-                                    i_s.database,
-                                    IssueType::ArgumentIssue(format!(
-                                        "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                        p.argument_index(),
-                                        function.diagnostic_string(),
-                                        value_class.as_string(i_s, FormatStyle::Short),
-                                        annotation_g.as_string(i_s, FormatStyle::Short),
-                                    )),
-                                );
-                                self.matches = false;
-                            }
+                                .use_cached_annotation_type(annotation)
+                                .error_if_not_matches(i_s, Some(self), &value, |t1, t2| {
+                                    p.as_argument_node_reference().add_typing_issue(
+                                        i_s.database,
+                                        IssueType::ArgumentIssue(format!(
+                                            "Argument {} to {} has incompatible type {:?}; expected {:?}",
+                                            p.argument_index(),
+                                            function.diagnostic_string(),
+                                            t1,
+                                            t2,
+                                        )),
+                                    );
+                                    matches = false;
+                                });
+                            self.matches &= matches;
                         }
                     }
                 }
@@ -530,7 +531,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn matches(
+    fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -620,11 +621,12 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn error_if_not_matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
         mut callback: impl FnMut(String, String),
     ) {
         let value_type = value.class_as_type(i_s);
-        if !self.matches(i_s, None, value_type) {
+        if !self.matches(i_s, matcher, value_type) {
             callback(
                 value.class_as_type(i_s).as_string(i_s, FormatStyle::Short),
                 self.as_string(i_s, FormatStyle::Short),

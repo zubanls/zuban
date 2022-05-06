@@ -518,7 +518,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, &right, |t1, t2| {
+                        .error_if_not_matches(self.i_s, None, &right, |t1, t2| {
                             NodeRef::new(self.file, annotation.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
@@ -582,6 +582,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let inferred = self.infer_name_by_index(first_definition);
                     inferred.class_as_type(self.i_s).error_if_not_matches(
                         self.i_s,
+                        None,
                         value,
                         |t1, t2| {
                             NodeRef::new(self.file, name_def.index()).add_typing_issue(
@@ -599,7 +600,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 } else {
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, value, |t1, t2| {
+                        .error_if_not_matches(self.i_s, None, value, |t1, t2| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
