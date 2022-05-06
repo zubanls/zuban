@@ -105,7 +105,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
         match self.details {
             ArgumentsDetails::Node(arguments) => {
-                ArgumentIteratorBase::Iterator(self.file, arguments.iter())
+                ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
             }
             ArgumentsDetails::Comprehension(comprehension) => {
                 ArgumentIteratorBase::Comprehension(self.file, comprehension)
@@ -127,7 +127,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
         let mut iterator = self.iter_arguments();
-        if let Some(Argument::Positional(name_node)) = iterator.next() {
+        if let Some(Argument::Positional(_, name_node)) = iterator.next() {
             let name_expr = name_node.as_named_expression();
             let py_string = match name_expr.maybe_single_string_literal() {
                 Some(py_string) => py_string,
@@ -139,7 +139,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
             let mut contravariant = false;
             for arg in iterator {
                 match arg {
-                    Argument::Positional(node) => {
+                    Argument::Positional(_, node) => {
                         let mut inference = node.file.inference(i_s);
                         if let Some(t) = inference
                             .compute_type_var_bound(node.as_named_expression().expression())
@@ -261,13 +261,14 @@ pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(&'db str, NodeRef<'db>),
     Value(&'a dyn Value<'db, 'a>),
-    Positional(NodeRef<'db>),
+    // The first argument is the position as a 1-based index
+    Positional(usize, NodeRef<'db>),
     SlicesTuple(Slices<'db>),
 }
 
 impl<'db> Argument<'db, '_> {
-    fn new_argument(file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        Self::Positional(NodeRef { file, node_index })
+    fn new_argument(position: usize, file: &'db PythonFile, node_index: NodeIndex) -> Self {
+        Self::Positional(position, NodeRef { file, node_index })
     }
 
     fn new_keyword_argument(file: &'db PythonFile, name: &'db str, node_index: NodeIndex) -> Self {
@@ -281,7 +282,7 @@ impl<'db> Argument<'db, '_> {
                 .unwrap_or_else(|| todo!())
                 .as_inferred()
                 .clone(),
-            Self::Positional(reference) => {
+            Self::Positional(_, reference) => {
                 reference
                     .file
                     // TODO this execution is wrong
@@ -309,7 +310,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn as_node_reference(&self) -> NodeRef<'db> {
         match self {
-            Self::Positional(node_ref) => *node_ref,
+            Self::Positional(_, node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,
             Self::Value(_) => {
                 todo!("Probably happens with something weird like def foo(self: int)")
@@ -320,7 +321,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn index(&self) -> usize {
         match self {
-            Self::Positional(_) => 1,
+            Self::Positional(index, _) => *index,
             Self::Keyword(_, _) => todo!(),
             Self::Value(_) => 1,
             Self::SlicesTuple(_) => todo!(),
@@ -328,12 +329,15 @@ impl<'db> Argument<'db, '_> {
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Argument::Value(_) | Argument::Positional(_))
+        matches!(self, Argument::Value(_) | Argument::Positional(_, _))
     }
 }
 
 pub enum ArgumentIteratorBase<'db> {
-    Iterator(&'db PythonFile, ArgumentsIterator<'db>),
+    Iterator(
+        &'db PythonFile,
+        std::iter::Enumerate<ArgumentsIterator<'db>>,
+    ),
     Comprehension(&'db PythonFile, Comprehension<'db>),
     Finished,
 }
@@ -359,10 +363,14 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 }
             }
             Self::Normal(Iterator(python_file, iterator)) => {
-                for arg in iterator {
+                for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
-                            return Some(Self::Item::new_argument(python_file, named_expr.index()))
+                            return Some(Self::Item::new_argument(
+                                i + 1,
+                                python_file,
+                                named_expr.index(),
+                            ))
                         }
                         ASTArgument::Keyword(name, expr) => {
                             return Some(Self::Item::new_keyword_argument(
@@ -378,7 +386,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 None
             }
             Self::Normal(Comprehension(file, comprehension)) => {
-                Some(Argument::new_argument(file, comprehension.index()))
+                Some(Argument::new_argument(1, file, comprehension.index()))
             }
             Self::Normal(Finished) => None,
             Self::SliceType(slice_type) => match slice_type.unpack() {
@@ -386,10 +394,13 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     let file = s.file;
                     let named_expr = s.named_expr;
                     *self = Self::Normal(Finished);
-                    Some(Self::Item::Positional(NodeRef {
-                        file,
-                        node_index: named_expr.index(),
-                    }))
+                    Some(Self::Item::Positional(
+                        1,
+                        NodeRef {
+                            file,
+                            node_index: named_expr.index(),
+                        },
+                    ))
                 }
                 SliceTypeContent::Slices(slices) => Some(Self::Item::SlicesTuple(slices)),
                 _ => todo!(),
