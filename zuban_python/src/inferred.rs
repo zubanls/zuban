@@ -4,7 +4,7 @@ use std::fmt;
 use crate::arguments::{Arguments, InstanceArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVar, TypeVarIndex, TypeVarType,
+    PointLink, PointType, Specific, TypeVar, TypeVarType,
 };
 use crate::debug;
 use crate::file::PythonFile;

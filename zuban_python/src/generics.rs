@@ -4,8 +4,7 @@ use parsa_python_ast::{
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, Specific, TypeVarIndex, TypeVarType, TypeVarUsage,
-    TypeVars,
+    Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
