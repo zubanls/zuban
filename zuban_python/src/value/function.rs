@@ -219,6 +219,50 @@ impl<'db, 'a> Function<'db, 'a> {
             .unwrap_or(Generics::None)
     }
 
+    fn execute_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> Inferred<'db> {
+        let return_annotation = self.return_annotation();
+        let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
+        let mut finder =
+            TypeVarMatcher::new(self, args, false, func_type_vars, TypeVarType::Function);
+        finder.matches_signature(i_s); // TODO this should be different
+        if let Some(return_annotation) = return_annotation {
+            let i_s = &mut i_s.with_annotation_instance();
+            // We check first if type vars are involved, because if they aren't we can reuse the
+            // annotation expression cache instead of recalculating.
+            if func_type_vars.is_some()
+                || self
+                    .class
+                    .map(|c| !c.class_infos(i_s).type_vars.is_empty())
+                    .unwrap_or(false)
+            {
+                // TODO this could also be a tuple...
+                debug!(
+                    "Inferring generics for {}{}",
+                    self.class
+                        .map(|c| format!("{}.", c.as_string(i_s, FormatStyle::Short)))
+                        .unwrap_or_else(|| "".to_owned()),
+                    self.name()
+                );
+                self.reference
+                    .file
+                    .inference(i_s)
+                    .use_cached_return_annotation_type(return_annotation)
+                    .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
+            } else {
+                self.reference
+                    .file
+                    .inference(i_s)
+                    .use_cached_return_annotation(return_annotation)
+            }
+        } else {
+            self.execute_without_annotation(i_s, args)
+        }
+    }
+
     pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         // Make sure annotations/type vars are calculated
         self.calculated_type_vars(i_s);
@@ -284,42 +328,10 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let return_annotation = self.return_annotation();
-        let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
-        let mut finder =
-            TypeVarMatcher::new(self, args, false, func_type_vars, TypeVarType::Function);
-        finder.matches_signature(i_s); // TODO this should be different
-        if let Some(return_annotation) = return_annotation {
-            let i_s = &mut i_s.with_annotation_instance();
-            // We check first if type vars are involved, because if they aren't we can reuse the
-            // annotation expression cache instead of recalculating.
-            if func_type_vars.is_some()
-                || self
-                    .class
-                    .map(|c| !c.class_infos(i_s).type_vars.is_empty())
-                    .unwrap_or(false)
-            {
-                // TODO this could also be a tuple...
-                debug!(
-                    "Inferring generics for {}{}",
-                    self.class
-                        .map(|c| format!("{}.", c.as_string(i_s, FormatStyle::Short)))
-                        .unwrap_or_else(|| "".to_owned()),
-                    self.name()
-                );
-                self.reference
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
-            } else {
-                self.reference
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation(return_annotation)
-            }
+        if let Some(class) = self.class {
+            self.execute_internal(&mut i_s.with_class_context(class), args)
         } else {
-            self.execute_without_annotation(i_s, args)
+            self.execute_internal(i_s, args)
         }
     }
 

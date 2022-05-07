@@ -721,7 +721,20 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
-            Self::TypeVar(t) => t.type_var.name(i_s.database).to_owned(),
+            Self::TypeVar(t) => {
+                if t.type_ == TypeVarType::Class {
+                    if let Some(class) = i_s.current_class {
+                        class
+                            .generics
+                            .nth(i_s, t.index)
+                            .as_type_string(i_s.database, None, style)
+                    } else {
+                        t.type_var.name(i_s.database).to_owned()
+                    }
+                } else {
+                    t.type_var.name(i_s.database).to_owned()
+                }
+            }
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
                     a + &b.as_type_string(i_s.database, None, style)
