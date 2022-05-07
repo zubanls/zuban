@@ -356,7 +356,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         if let Some(value) = p.infer(i_s) {
                             let value_class = value.class_as_type(i_s);
                             let mut matches = true;
-                            let annotation_g = function
+                            function
                                 .reference
                                 .file
                                 .inference(i_s)
@@ -543,7 +543,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     if let Some(matcher) = matcher {
                         matcher.match_or_add_type_var(i_s, t, value_class)
                     } else {
-                        true
+                        todo!()
                     }
                 }
                 Type::TypeVar(_) | Type::Unknown => {
@@ -553,7 +553,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     if let Some(matcher) = matcher {
                         matcher.match_or_add_type_var(i_s, t, value_class)
                     } else {
-                        true
+                        todo!()
                     }
                 }
                 Type::Any => {

@@ -556,7 +556,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 
 impl fmt::Debug for Class<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("NodeRef")
+        f.debug_struct("Class")
             .field("file", &self.reference.file)
             .field("name", &self.name())
             .field("generics", &self.generics)
