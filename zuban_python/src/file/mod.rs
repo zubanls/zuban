@@ -1034,6 +1034,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             Point::new_redirect(self.file_index, class.index(), Locality::Todo),
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());
+                        todo!();
                         self.check_point_cache(node_index).unwrap()
                     }
                     Specific::AnnotationWithTypeVars => {
