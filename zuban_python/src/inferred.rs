@@ -357,9 +357,6 @@ impl<'db> Inferred<'db> {
             Specific::TypingAny => callable(i_s, &Any()),
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
-            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar => {
-                todo!("Is this really still necessary? Does this even happen?")
-            }
             Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
             Specific::None => callable(i_s, &NoneInstance()),
             _ => {

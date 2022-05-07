@@ -60,12 +60,10 @@ const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
 const IN_MODULE_SCOPE_BIT_INDEX: usize = 26;
 const IS_NULLABLE_BIT_INDEX: usize = 25;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
-const TYPE_VAR_BIT_INDEX: usize = 8;
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const SPECIFIC_MASK: u32 = 0xFF; // 8 bits
 const MAX_TYPE_VAR: u32 = 0xFF; // 256
-const TYPE_VAR_MASK: u32 = MAX_TYPE_VAR << TYPE_VAR_BIT_INDEX; // 8 bits
 const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
 const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
@@ -157,27 +155,6 @@ impl Point {
         }
     }
 
-    pub fn new_numbered_type_var(
-        specific: Specific,
-        index: TypeVarIndex,
-        locality: Locality,
-    ) -> Self {
-        assert!(index.0 <= MAX_TYPE_VAR);
-        debug_assert!(matches!(
-            specific,
-            Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar
-        ));
-        let flags = Self::calculate_flags(
-            PointType::Specific,
-            specific as u32 | index.0 << TYPE_VAR_BIT_INDEX,
-            locality,
-        );
-        Self {
-            flags,
-            node_index: 0,
-        }
-    }
-
     pub fn type_(self) -> PointType {
         debug_assert!(self.calculated());
         unsafe { mem::transmute((self.flags & TYPE_MASK) >> TYPE_BIT_INDEX) }
@@ -252,11 +229,6 @@ impl Point {
         debug_assert!(self.type_() == PointType::Specific);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
-
-    pub fn type_var_index(self) -> TypeVarIndex {
-        debug_assert!(self.type_() == PointType::Specific);
-        TypeVarIndex(unsafe { mem::transmute((self.flags & TYPE_VAR_MASK) >> TYPE_VAR_BIT_INDEX) })
-    }
 }
 
 impl fmt::Debug for Point {
@@ -272,12 +244,6 @@ impl fmt::Debug for Point {
                 .field("node_index", &self.node_index);
             if self.type_() == PointType::Specific {
                 s.field("specific", &self.specific());
-                if matches!(
-                    self.specific(),
-                    Specific::ClassTypeVar | Specific::FunctionTypeVar | Specific::LateBoundTypeVar
-                ) {
-                    s.field("type_var_index", &self.type_var_index());
-                }
             }
             if self.type_() == PointType::Redirect || self.type_() == PointType::FileReference {
                 s.field("file_index", &self.file_index().0);
@@ -386,10 +352,6 @@ pub enum Specific {
     //TypingAliasInstance,
     TypingAny,
     //TypedDict,
-    ClassTypeVar,
-    FunctionTypeVar,
-    LateBoundTypeVar,
-
     RevealTypeFunction,
 }
 
