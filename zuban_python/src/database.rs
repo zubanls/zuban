@@ -1115,18 +1115,6 @@ pub struct ClassInfos {
     pub incomplete_mro: bool,
 }
 
-impl ClassInfos {
-    pub fn find_type_var_index(&self, link: PointLink) -> Option<TypeVarIndex> {
-        todo!("currently not used")
-        /*
-        self.type_vars
-            .iter()
-            .position(|&r| r == link)
-            .map(|i| TypeVarIndex(i as u32))
-        */
-    }
-}
-
 impl std::clone::Clone for ClassStorage {
     fn clone(&self) -> Self {
         unreachable!("This should never happen, because should never be cloned");
