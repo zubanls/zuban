@@ -1065,11 +1065,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     _ => Inferred::new_saved(self.file, node_index, point),
                 },
                 PointType::MultiDefinition => {
-                    let inferred =
-                        self.infer_name(Name::by_index(&self.file.tree, point.node_index()));
+                    // TODO for now we use Mypy's way of resolving multiple names, which means that
+                    // it always uses the first name.
+                    /*
+                    let inferred = self.infer_name(Name::by_index(&self.file.tree, point.node_index()));
                     // Check for the cache of name_definition
                     let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
                     inferred.union(self.infer_multi_definition(name_def))
+                    */
+                    self.check_point_cache(point.node_index())
+                        .unwrap_or_else(|| {
+                            self.infer_name(Name::by_index(&self.file.tree, point.node_index()))
+                        })
                 }
                 PointType::Complex | PointType::Unknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node_index, point)
