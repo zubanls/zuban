@@ -756,24 +756,4 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Unknown => "Unknown".to_owned(),
         }
     }
-
-    pub fn maybe_execute(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        match self {
-            Self::ClassLike(c) => {
-                let g = c.as_db_type(i_s);
-                Inferred::execute_db_type(i_s, g)
-            }
-            Self::Union(list) => Inferred::gather_union(|callable| {
-                for db_type in list.iter() {
-                    callable(Inferred::execute_db_type(i_s, db_type.clone()))
-                }
-            }),
-            Self::TypeVar(usage) => {
-                Inferred::execute_db_type(i_s, DbType::TypeVar((*usage).clone()))
-            }
-            Self::None => Inferred::new_unsaved_specific(Specific::None),
-            Self::Any => todo!(),
-            Self::Unknown => unreachable!(), // Was checked earlier
-        }
-    }
 }
