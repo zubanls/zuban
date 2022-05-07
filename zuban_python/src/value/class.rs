@@ -10,7 +10,7 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
     MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
-    TypeVarUsage,
+    TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
@@ -39,6 +39,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         value_class: Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        variance: Variance,
     ) -> bool {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
@@ -47,7 +48,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match value_class {
             Type::ClassLike(c) => {
                 for (mro_index, class_like) in c.mro(i_s) {
-                    if self.check_match(i_s, matcher.as_deref_mut(), &class_like) {
+                    if self.check_match(i_s, matcher.as_deref_mut(), &class_like, variance) {
                         return true;
                     }
                 }
@@ -74,6 +75,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &Self,
+        variance: Variance,
     ) -> bool {
         let mut matches = match self {
             Self::Class(c1) => match other {
@@ -96,11 +98,16 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (class_generics, class_result_generics) = self.generics();
             let (value_generics, value_result_generics) = other.generics();
 
-            matches &= class_generics.matches(i_s, matcher.as_deref_mut(), value_generics);
+            matches &=
+                class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance);
             // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
-                matches &=
-                    class_result_generics.matches(i_s, matcher, value_result_generics.unwrap());
+                matches &= class_result_generics.matches(
+                    i_s,
+                    matcher,
+                    value_result_generics.unwrap(),
+                    variance,
+                );
             }
         }
         matches

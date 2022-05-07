@@ -5,6 +5,7 @@ use parsa_python_ast::{
 use crate::arguments::Arguments;
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -174,12 +175,13 @@ impl<'db, 'a> Generics<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_generics: Self,
+        variance: Variance,
     ) -> bool {
         let mut value_generics = value_generics.iter();
         let mut matches = true;
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                matches &= type_.matches(i_s, matcher.as_deref_mut(), g);
+                matches &= type_.matches(i_s, matcher.as_deref_mut(), g, variance);
             });
             if appeared.is_none() {
                 debug!("Generic not found for: {:?}", type_);
@@ -398,6 +400,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             i_s,
                             Some(self),
                             value_class,
+                            Variance::Invariant,
                         );
                         self.matches &= m;
                     }
@@ -448,7 +451,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
                     let g = Type::from_db_type(i_s.database, &g);
-                    g.matches(i_s, Some(self), class)
+                    g.matches(i_s, Some(self), class, type_var_usage.type_var.variance)
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
             }
@@ -535,9 +538,10 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_class: Self,
+        variance: Variance,
     ) -> bool {
         match self {
-            Self::ClassLike(class) => class.matches(i_s, value_class, matcher),
+            Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
             Self::TypeVar(t) => match value_class {
                 Type::ClassLike(class) => {
                     if let Some(matcher) = matcher {
@@ -565,6 +569,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
             },
             Self::Union(list1) => match value_class {
+                // TODO this should use the variance argument
                 Self::Union(mut list2) => {
                     let mut type_var_usage = None;
                     for g1 in list1 {
@@ -608,6 +613,7 @@ impl<'db, 'a> Type<'db, 'a> {
                         i_s,
                         matcher.as_deref_mut(),
                         value_class.clone(),
+                        variance,
                     )
                 }),
             },
@@ -625,7 +631,7 @@ impl<'db, 'a> Type<'db, 'a> {
         mut callback: impl FnMut(String, String),
     ) {
         let value_type = value.class_as_type(i_s);
-        if !self.matches(i_s, matcher, value_type) {
+        if !self.matches(i_s, matcher, value_type, Variance::Covariant) {
             callback(
                 value.class_as_type(i_s).as_string(i_s, FormatStyle::Short),
                 self.as_string(i_s, FormatStyle::Short),

@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
-    TypeVar,
+    TypeVar, Variance,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -190,8 +190,12 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                 },
                 constraints: constraints.into_boxed_slice(),
                 bound,
-                covariant,
-                contravariant,
+                variance: match (covariant, contravariant) {
+                    (false, false) => Variance::Invariant,
+                    (true, false) => Variance::Covariant,
+                    (false, true) => Variance::Contravariant,
+                    (true, true) => Variance::Bivariant,
+                },
             });
         }
         None

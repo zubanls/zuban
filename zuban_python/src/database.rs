@@ -842,6 +842,14 @@ impl TypeVarManager {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Variance {
+    Invariant,
+    Covariant,
+    Contravariant,
+    Bivariant,
+}
+
 pub type TypeVars = [Rc<TypeVar>];
 
 #[derive(Debug, Clone)]
@@ -849,8 +857,7 @@ pub struct TypeVar {
     pub name_string: PointLink,
     pub constraints: Box<[DbType]>,
     pub bound: Option<DbType>,
-    pub covariant: bool,
-    pub contravariant: bool,
+    pub variance: Variance,
 }
 
 impl PartialEq for TypeVar {
