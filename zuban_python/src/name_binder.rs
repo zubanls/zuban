@@ -7,12 +7,12 @@ use crate::diagnostics::{Issue, IssueType};
 use crate::file::ComplexValues;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use parsa_python_ast::{
-    AsyncStmtContent, AtomContent, Block, BlockContent, ClassDef, CommonComprehensionExpression,
-    Comprehension, Decoratee, Decorators, DictComprehension, Expression, ExpressionContent,
-    ExpressionPart, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType,
-    IfStmt, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition,
-    NameParent, NodeIndex, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt,
-    WithStmt,
+    AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
+    BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
+    DictComprehension, Expression, ExpressionContent, ExpressionPart, File, ForIfClause,
+    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, InterestingNode,
+    InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex,
+    SimpleStmts, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
@@ -210,9 +210,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut latest_return_or_yield = 0;
         for stmt in stmts {
             let return_or_yield = match stmt.unpack() {
-                StmtContent::SimpleStmts(simple) => {
-                    self.index_non_block_node(&simple, ordered, in_base_scope)
-                }
+                StmtContent::SimpleStmts(s) => self.index_simple_stmts(s, ordered, in_base_scope),
                 StmtContent::FunctionDef(func) => {
                     self.index_function_name_and_param_defaults(
                         func,
@@ -340,6 +338,59 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
         }
         debug_assert_eq!(self.unordered_references.len(), 0);
+    }
+
+    fn index_simple_stmts(
+        &mut self,
+        simple_stmts: SimpleStmts<'db>,
+        ordered: bool,
+        in_base_scope: bool,
+    ) -> NodeIndex {
+        let mut latest_return_or_yield = 0;
+        for simple_stmt in simple_stmts.iter() {
+            let r = if let Some(assignment) = simple_stmt.maybe_assignment() {
+                let unpacked = assignment.unpack_with_simple_targets();
+                // First we have to index the right side, before we can begin indexing the left
+                // side.
+                match &unpacked {
+                    AssignmentContentWithSimpleTargets::Normal(_, right)
+                    | AssignmentContentWithSimpleTargets::WithAnnotation(_, _, Some(right))
+                    | AssignmentContentWithSimpleTargets::AugAssign(_, _, right) => {
+                        let latest = match right {
+                            AssignmentRightSide::YieldExpr(yield_expr) => {
+                                self.index_non_block_node(yield_expr, ordered, in_base_scope)
+                            }
+                            AssignmentRightSide::StarExpressions(star_exprs) => {
+                                self.index_non_block_node(star_exprs, ordered, in_base_scope)
+                            }
+                        };
+                        latest_return_or_yield =
+                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                    }
+                    _ => (),
+                };
+                match unpacked {
+                    AssignmentContentWithSimpleTargets::Normal(targets, _) => {
+                        for target in targets {
+                            let l = self.index_non_block_node(&target, ordered, in_base_scope);
+                            latest_return_or_yield =
+                                self.merge_latest_return_or_yield(latest_return_or_yield, l);
+                        }
+                        0
+                    }
+                    AssignmentContentWithSimpleTargets::WithAnnotation(target, annotation, _) => {
+                        self.index_non_block_node(&target, ordered, in_base_scope)
+                    }
+                    AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
+                        self.index_non_block_node(&target, ordered, in_base_scope)
+                    }
+                }
+            } else {
+                self.index_non_block_node(&simple_stmt, ordered, in_base_scope)
+            };
+            latest_return_or_yield = self.merge_latest_return_or_yield(latest_return_or_yield, r);
+        }
+        latest_return_or_yield
     }
 
     fn index_for_stmt(&mut self, for_stmt: ForStmt<'db>, ordered: bool) -> NodeIndex {

@@ -1111,7 +1111,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if point.calculated() && point.type_() == PointType::MultiDefinition {
             // We are trying to infer the name here. We don't have to follow the multi definition,
             // because the cache handling takes care of that.
-            todo!("Is this branch still needed???");
+            println!("TODO Is this branch still needed???");
             //self.infer_multi_definition(name.name_definition().unwrap())
         }
         match name.name_definition() {

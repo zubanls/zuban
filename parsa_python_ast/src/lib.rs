@@ -1215,6 +1215,13 @@ impl<'db> SimpleStmt<'db> {
             unreachable!()
         }
     }
+
+    pub fn maybe_assignment(&self) -> Option<Assignment<'db>> {
+        let child = self.node.nth_child(0);
+        child
+            .is_type(Nonterminal(assignment))
+            .then(|| Assignment::new(child))
+    }
 }
 
 pub enum SimpleStmtContent<'db> {
@@ -1645,6 +1652,38 @@ impl<'db> Assignment<'db> {
         unreachable!()
     }
 
+    pub fn unpack_with_simple_targets(&self) -> AssignmentContentWithSimpleTargets<'db> {
+        // | (star_targets "=" )+ (yield_expr | star_expressions)
+        // | single_target annotation ["=" (yield_expr | star_expressions)]
+        // | single_target augassign (yield_expr | star_expressions)
+        let mut iterator = self.node.iter_children().skip(1);
+        while let Some(child) = iterator.next() {
+            if child.is_type(Nonterminal(yield_expr))
+                || child.is_type(Nonterminal(star_expressions))
+            {
+                let iter = StarTargetsIterator(self.node.iter_children().step_by(2));
+                return AssignmentContentWithSimpleTargets::Normal(iter, Self::right_side(child));
+            } else if child.is_type(Nonterminal(annotation)) {
+                iterator.next();
+                let right = iterator.next().map(Self::right_side);
+                return AssignmentContentWithSimpleTargets::WithAnnotation(
+                    SingleTarget::new(self.node.nth_child(0)),
+                    Annotation::new(child),
+                    right,
+                );
+            } else if child.is_type(Nonterminal(augassign)) {
+                iterator.next();
+                let right = Self::right_side(iterator.next().unwrap());
+                return AssignmentContentWithSimpleTargets::AugAssign(
+                    SingleTarget::new(self.node.nth_child(0)),
+                    AugAssign::new(child),
+                    right,
+                );
+            }
+        }
+        unreachable!()
+    }
+
     fn right_side(child: PyNode) -> AssignmentRightSide {
         if child.is_type(Nonterminal(star_expressions)) {
             return AssignmentRightSide::StarExpressions(StarExpressions::new(child));
@@ -1684,9 +1723,34 @@ pub enum AssignmentContent<'db> {
     AugAssign(Target<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
 }
 
+pub enum AssignmentContentWithSimpleTargets<'db> {
+    Normal(StarTargetsIterator<'db>, AssignmentRightSide<'db>),
+    WithAnnotation(
+        SingleTarget<'db>,
+        Annotation<'db>,
+        Option<AssignmentRightSide<'db>>,
+    ),
+    AugAssign(SingleTarget<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
+}
+
 pub enum AssignmentRightSide<'db> {
     YieldExpr(YieldExpr<'db>),
     StarExpressions(StarExpressions<'db>),
+}
+
+pub struct StarTargetsIterator<'db>(StepBy<SiblingIterator<'db>>);
+
+impl<'db> Iterator for StarTargetsIterator<'db> {
+    type Item = StarTargets<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.0.next() {
+            if node.is_type(Nonterminal(star_targets)) {
+                return Some(StarTargets::new(node));
+            }
+        }
+        None
+    }
 }
 
 pub struct AssignmentTargetIterator<'db>(StepBy<SiblingIterator<'db>>);
