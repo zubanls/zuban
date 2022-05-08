@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
@@ -268,7 +269,20 @@ impl Replacer for TypeStuffReplacer {
     }
 }
 
+fn calculate_filters(args: Vec<String>) -> Vec<String> {
+    let mut filters = vec![];
+    for s in args.into_iter().skip(1) {
+        if s != "mypy" {
+            filters.push(s)
+        }
+    }
+    filters
+}
+
 fn main() {
+    let cli_args: Vec<String> = env::args().collect();
+    let filters = calculate_filters(cli_args);
+
     let mut project = zuban_python::Project::new(BASE_PATH.to_owned());
 
     let skipped = skipped();
@@ -285,6 +299,9 @@ fn main() {
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code) {
             full_count += 1;
+            if !filters.is_empty() && !filters.contains(&case.name) {
+                continue;
+            }
             if skipped.iter().any(|s| s.is_skip(&case.name)) {
                 println!("Skipped: {}", case.name);
                 continue;
