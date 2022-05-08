@@ -2376,6 +2376,32 @@ pub enum AtomContent<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
+impl<'db> PyString<'db> {
+    pub fn content(&self) -> &'db str {
+        let code = self.node.as_code();
+        let bytes = code.as_bytes();
+        let mut start = 0;
+        let mut quote = None;
+        for (i, b) in bytes.iter().enumerate() {
+            if *b == b'"' || *b == b'\'' {
+                if let Some(quote) = quote {
+                    if *b == quote && i == start + 3 {
+                        return &code[start + 3..code.len() - 3];
+                    }
+                    break;
+                } else {
+                    quote = Some(*b);
+                }
+            } else if quote.is_some() {
+                break;
+            } else {
+                start += 1;
+            }
+        }
+        &code[start + 1..code.len() - 1]
+    }
+}
+
 impl<'db> StringsOrBytes<'db> {
     pub fn as_python_string(&self) -> Option<PythonString<'db>> {
         PythonString::new(self.node.iter_children())

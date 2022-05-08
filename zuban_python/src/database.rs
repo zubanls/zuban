@@ -881,7 +881,7 @@ impl TypeVar {
         NodeRef::from_link(db, self.name_string)
             .maybe_str()
             .unwrap()
-            .as_code()
+            .content()
     }
 }
 

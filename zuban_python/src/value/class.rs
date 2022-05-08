@@ -154,9 +154,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
-            Self::TypeWithDbType(g) => {
-                format!("Type[{}]", g.as_type_string(i_s.database, None, style))
-            }
+            Self::TypeWithDbType(g) => g.as_type_string(i_s.database, None, style),
             Self::Tuple(c) => c.as_type_string(i_s.database, style),
             Self::Callable(c) => c.description(i_s),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
@@ -196,7 +194,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_db_type(i_s),
             Self::Type(c) => DbType::Type(Box::new(c.as_db_type(i_s))),
-            Self::TypeWithDbType(g) => DbType::Type(Box::new((*g).clone())),
+            Self::TypeWithDbType(g) => (*g).clone(),
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => todo!(),
