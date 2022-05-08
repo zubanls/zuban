@@ -20,7 +20,7 @@ use crate::file_state::{File, Leaf};
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
-use crate::inference_state::InferenceState;
+use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
@@ -1042,22 +1042,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         // TODO is this really the right place?
                         let d =
                             self.use_db_type_of_annotation(node_index)
-                                .remap_type_vars(&mut |t| {
-                                    match t.type_ {
-                                        TypeVarType::Class => {
-                                            if let Some(class) = self.i_s.current_class {
-                                                // For now assert this.
-                                                debug_assert!(!matches!(
-                                                    class.generics,
-                                                    Generics::None
-                                                ));
-                                                class.generics.nth(self.i_s, t.index)
-                                            } else {
-                                                todo!()
+                                .remap_type_vars(&mut |t| match t.type_ {
+                                    TypeVarType::Class => {
+                                        if let Some(class) = self.i_s.current_class {
+                                            match self.i_s.context {
+                                                Context::Diagnostics => DbType::TypeVar(t.clone()),
+                                                Context::Inference => {
+                                                    class.generics.nth(self.i_s, t.index)
+                                                }
                                             }
+                                        } else {
+                                            todo!()
                                         }
-                                        _ => todo!(),
                                     }
+                                    _ => todo!(),
                                 });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }

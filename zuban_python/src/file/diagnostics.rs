@@ -109,7 +109,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // Make sure the type vars are properly pre-calculated
         class.class_infos(self.i_s);
         self.file
-            .inference(&mut self.i_s.with_class_context(&class))
+            .inference(&mut self.i_s.with_diagnostic_class_context(&class))
             .calc_block_diagnostics(block, Some(&class), None)
     }
 
@@ -146,7 +146,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else {
             &a
         };
-        let function_i_s = &mut self.i_s.with_func_and_args(&function, args);
+        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, args);
         let mut inference = self.file.inference(function_i_s);
         inference.calc_block_diagnostics(block, None, Some(&function))
     }

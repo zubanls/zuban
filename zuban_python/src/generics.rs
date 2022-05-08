@@ -560,7 +560,8 @@ impl<'db, 'a> Type<'db, 'a> {
                         todo!()
                     }
                 }
-                Type::TypeVar(_) | Type::Unknown => {
+                Type::TypeVar(t2) => t.index == t2.index && t.type_ == t2.type_,
+                Type::Unknown => {
                     todo!("{:?}", value_class)
                 }
                 Type::Union(ref list) => {

@@ -2,11 +2,16 @@ use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
 use crate::value::{Class, Function};
 
+pub enum Context {
+    Diagnostics,
+    Inference,
+}
+
 pub struct InferenceState<'db, 'a> {
     pub database: &'db Database,
     pub current_execution: Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)>,
     pub current_class: Option<&'a Class<'db, 'a>>,
-    pub in_diagnostic_context: bool,
+    pub context: Context,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -15,7 +20,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database,
             current_execution: None,
             current_class: None,
-            in_diagnostic_context: false,
+            context: Context::Inference,
         }
     }
 
@@ -28,7 +33,20 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: Some((func, args)),
             current_class: func.class,
-            in_diagnostic_context: false,
+            context: Context::Inference,
+        }
+    }
+
+    pub fn with_diagnostic_func_and_args(
+        &self,
+        func: &'a Function<'db, 'a>,
+        args: &'a dyn Arguments<'db>,
+    ) -> Self {
+        Self {
+            database: self.database,
+            current_execution: Some((func, args)),
+            current_class: func.class,
+            context: Context::Diagnostics,
         }
     }
 
@@ -37,7 +55,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: None,
             current_class: None,
-            in_diagnostic_context: false,
+            context: Context::Inference,
         }
     }
 
@@ -46,7 +64,16 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             database: self.database,
             current_execution: self.current_execution,
             current_class: Some(current_class),
-            in_diagnostic_context: false,
+            context: Context::Inference,
+        }
+    }
+
+    pub fn with_diagnostic_class_context(&self, current_class: &'a Class<'db, 'a>) -> Self {
+        Self {
+            database: self.database,
+            current_execution: self.current_execution,
+            current_class: Some(current_class),
+            context: Context::Diagnostics,
         }
     }
 
