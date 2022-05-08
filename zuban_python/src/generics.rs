@@ -1,11 +1,14 @@
+use std::ops::BitAnd;
+use std::rc::Rc;
+
 use parsa_python_ast::{
     Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
-    Variance,
+    Database, DbType, FormatStyle, GenericsList, TypeVar, TypeVarIndex, TypeVarType, TypeVarUsage,
+    TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -176,12 +179,19 @@ impl<'db, 'a> Generics<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_generics: Self,
         variance: Variance,
+        type_vars: Option<&[Rc<TypeVar>]>,
     ) -> bool {
         let mut value_generics = value_generics.iter();
         let mut matches = true;
+        let mut type_var_iterator = type_vars.map(|t| t.iter());
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                matches &= type_.matches(i_s, matcher.as_deref_mut(), g, variance);
+                let v = if let Some(t) = type_var_iterator.as_mut().map(|t| t.next()).flatten() {
+                    variance & t.variance
+                } else {
+                    variance
+                };
+                matches &= type_.matches(i_s, matcher.as_deref_mut(), g, v);
             });
             if appeared.is_none() {
                 debug!("Generic not found for: {:?}", type_);

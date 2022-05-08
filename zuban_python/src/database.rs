@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::iter::repeat;
 use std::mem;
+use std::ops::BitAnd;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -843,11 +844,20 @@ impl TypeVarManager {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[repr(u32)]
 pub enum Variance {
-    Invariant,
+    Invariant = 0,
     Covariant,
     Contravariant,
     Bivariant,
+}
+
+impl BitAnd for Variance {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        unsafe { std::mem::transmute(self as u32 & rhs as u32) }
+    }
 }
 
 pub type TypeVars = [Rc<TypeVar>];

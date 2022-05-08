@@ -91,7 +91,20 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     ) -> bool {
         let mut matches = match self {
             Self::Class(c1) => match other {
-                Self::Class(c2) => c1.reference == c2.reference,
+                Self::Class(c2) => {
+                    dbg!(c1.type_vars(i_s));
+                    if c1.reference == c2.reference {
+                        let type_vars = c1.type_vars(i_s);
+                        return c1.generics().matches(
+                            i_s,
+                            matcher.as_deref_mut(),
+                            c2.generics(),
+                            variance,
+                            Some(type_vars),
+                        );
+                    }
+                    false
+                }
                 _ => false,
             },
             Self::Type(_) | Self::TypeWithDbType(_) => {
@@ -111,7 +124,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (value_generics, value_result_generics) = other.generics();
 
             matches &=
-                class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance);
+                class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance, None);
             // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
                 matches &= class_result_generics.matches(
@@ -119,13 +132,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     matcher,
                     value_result_generics.unwrap(),
                     variance,
+                    None,
                 );
             }
         }
         matches
     }
 
-    pub fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
+    fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
         match self {
             Self::Class(c) => (c.generics(), None),
             Self::Type(c) => (Generics::Class(c), None),
