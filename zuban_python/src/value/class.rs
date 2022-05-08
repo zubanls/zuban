@@ -47,10 +47,22 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // TODO use type_var_remap
         match value_class {
             Type::ClassLike(c) => {
-                for (mro_index, class_like) in c.mro(i_s) {
-                    if self.check_match(i_s, matcher.as_deref_mut(), &class_like, variance) {
-                        return true;
+                match variance {
+                    Variance::Covariant => {
+                        for (mro_index, class_like) in c.mro(i_s) {
+                            if self.check_match(i_s, matcher.as_deref_mut(), &class_like, variance)
+                            {
+                                return true;
+                            }
+                        }
                     }
+                    Variance::Invariant => {
+                        if self.check_match(i_s, matcher.as_deref_mut(), &c, variance) {
+                            return true;
+                        }
+                    }
+                    Variance::Contravariant => todo!(),
+                    Variance::Bivariant => todo!(),
                 }
                 // TODO this should probably be checked before normal mro checking?!
                 if let Self::Class(c1) = self {

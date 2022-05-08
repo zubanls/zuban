@@ -1046,7 +1046,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     match t.type_ {
                                         TypeVarType::Class => {
                                             if let Some(class) = self.i_s.current_class {
-                                                dbg!(&class);
                                                 // For now assert this.
                                                 debug_assert!(!matches!(
                                                     class.generics,
