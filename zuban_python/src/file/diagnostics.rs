@@ -108,7 +108,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .unwrap();
         // Make sure the type vars are properly pre-calculated
         class.class_infos(self.i_s);
-        self.calc_block_diagnostics(block, Some(&class), None)
+        self.file
+            .inference(&mut self.i_s.with_class_context(&class))
+            .calc_block_diagnostics(block, Some(&class), None)
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {

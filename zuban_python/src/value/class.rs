@@ -92,7 +92,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         let mut matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => {
-                    dbg!(c1.type_vars(i_s));
                     if c1.reference == c2.reference {
                         let type_vars = c1.type_vars(i_s);
                         return c1.generics().matches(

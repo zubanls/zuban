@@ -27,7 +27,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
-            current_class: None,
+            current_class: func.class,
             from_annotation: false,
         }
     }
