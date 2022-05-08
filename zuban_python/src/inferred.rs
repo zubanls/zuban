@@ -436,7 +436,6 @@ impl<'db> Inferred<'db> {
                     ClassLike::Class(c) => c,
                     _ => unreachable!(),
                 };
-                //let mut i_s = i_s.with_class_context(&class); // TODO?!
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, Some(&class));
                     callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
