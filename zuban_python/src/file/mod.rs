@@ -496,7 +496,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(start) = suffix.find("# type: ") {
                     let s = &suffix[start + "# type: ".len()..];
                     if s != "ignore" {
-                        dbg!(right);
                         right = self.compute_type_comment(
                             assignment.end() + "# type: ".len() as CodeIndex,
                             s.to_owned(),

@@ -764,11 +764,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub(super) fn use_cached_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
         let point = self.file.points.get(annotation.index());
         if point.type_() == PointType::Specific {
-            if point.specific() == Specific::AnnotationClassInstance {
-                Inferred::new_saved(self.file, annotation.index(), point)
-            } else {
+            if point.specific() != Specific::AnnotationClassInstance {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
-                Inferred::new_saved(self.file, annotation.expression().index(), point)
             }
         } else {
             debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
@@ -776,8 +773,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
             ));
-            Inferred::new_saved(self.file, annotation.index(), point)
         }
+        Inferred::new_saved(self.file, annotation.index(), point)
     }
 
     pub fn use_cached_return_annotation(
@@ -787,11 +784,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let point = self.file.points.get(annotation.index());
         assert!(point.calculated());
         if point.type_() == PointType::Specific {
-            if point.specific() == Specific::AnnotationClassInstance {
-                Inferred::new_saved(self.file, annotation.index(), point)
-            } else {
+            if point.specific() != Specific::AnnotationClassInstance {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
-                todo!()
             }
         } else {
             debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
@@ -799,8 +793,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
             ));
-            Inferred::new_saved(self.file, annotation.index(), point)
         }
+        Inferred::new_saved(self.file, annotation.index(), point)
     }
 
     pub fn use_cached_return_annotation_type(
