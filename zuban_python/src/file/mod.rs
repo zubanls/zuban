@@ -496,10 +496,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(start) = suffix.find("# type: ") {
                     let s = &suffix[start + "# type: ".len()..];
                     if s != "ignore" {
-                        right = self.compute_type_comment(
+                        let (r, type_) = self.compute_type_comment(
                             assignment.end() + "# type: ".len() as CodeIndex,
                             s.to_owned(),
-                        )
+                        );
+                        type_.error_if_not_matches(self.i_s, None, &right, |t1, t2| {
+                            NodeRef::new(self.file, assignment.index()).add_typing_issue(
+                                self.i_s.database,
+                                IssueType::IncompatibleAssignment(t1, t2),
+                            );
+                        });
+                        right = r;
                     }
                 }
                 for target in targets {

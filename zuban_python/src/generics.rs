@@ -575,8 +575,11 @@ impl<'db, 'a> Type<'db, 'a> {
                     todo!()
                 }
                 Type::None => {
-                    //matcher.match_or_add_type_var(i_s, *type_var_index, node_ref, value_class)
-                    todo!()
+                    if let Some(matcher) = matcher {
+                        matcher.match_or_add_type_var(i_s, t, value_class)
+                    } else {
+                        todo!()
+                    }
                 }
             },
             Self::Union(list1) => match value_class {

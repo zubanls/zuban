@@ -117,11 +117,19 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         self.cache_code_string(start, string, |comp, expr| comp.compute_type(expr))
     }
 
-    fn cache_type_comment(&mut self, start: CodeIndex, string: String) -> Inferred<'db> {
+    fn cache_type_comment(
+        &mut self,
+        start: CodeIndex,
+        string: String,
+    ) -> (Inferred<'db>, Type<'db, 'db>) {
         self.cache_code_string(start, string, |comp, expr| {
             let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
             comp.cache_annotation_internal(index, expr);
-            Inferred::new_saved2(comp.inference.file, index)
+            (
+                Inferred::new_saved2(comp.inference.file, index),
+                comp.inference
+                    .use_cached_annotation_type_internal(index, expr),
+            )
         })
     }
 
@@ -966,7 +974,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         start: CodeIndex,
         string: String,
-    ) -> Inferred<'db> {
+    ) -> (Inferred<'db>, Type<'db, 'db>) {
         let mut on_type_var = |i_s: &mut InferenceState, type_var| {
             type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
         };
