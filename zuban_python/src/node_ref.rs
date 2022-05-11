@@ -147,12 +147,20 @@ impl<'db> NodeRef<'db> {
 
 impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("NodeRef")
-            .field("file_index", &self.file.file_index())
-            .field(
-                "node",
-                &self.file.tree.short_debug_of_index(self.node_index),
-            )
-            .finish()
+        let mut s = f.debug_struct("NodeRef");
+        s.field("file_index", &self.file.file_index());
+        s.field(
+            "node",
+            &self.file.tree.short_debug_of_index(self.node_index),
+        );
+        let point = self.point();
+        s.field("point", &point);
+        if let Some(complex_index) = point.maybe_complex_index() {
+            s.field(
+                "complex",
+                self.file.complex_points.get(point.complex_index()),
+            );
+        }
+        s.finish()
     }
 }
