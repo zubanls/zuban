@@ -1,7 +1,10 @@
 use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, InstanceArguments, NoArguments};
-use crate::database::{ComplexPoint, Locality, Point, PointType};
+use crate::database::{
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
+    TypeVarUsage,
+};
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::generics::Generics;
@@ -138,7 +141,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let args: &dyn Arguments = if let Some(class) = class {
             i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 class.reference.as_link(),
-                None,
+                Some(GenericsList::new(
+                    class
+                        .type_vars(self.i_s)
+                        .iter()
+                        .enumerate()
+                        .map(|(i, t)| {
+                            DbType::TypeVar(TypeVarUsage {
+                                type_var: t.clone(),
+                                index: TypeVarIndex::new(i),
+                                type_: TypeVarType::Class,
+                            })
+                        })
+                        .collect(),
+                )),
             ));
             inst = Instance::new(*class, &i);
             i_a = InstanceArguments::new(&inst, &a);

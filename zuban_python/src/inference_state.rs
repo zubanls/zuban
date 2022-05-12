@@ -2,6 +2,7 @@ use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
 use crate::value::{Class, Function};
 
+#[derive(PartialEq)]
 pub enum Context {
     Diagnostics,
     Inference,

@@ -17,7 +17,6 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 use crate::file_state::{File, Leaf};
-use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::imports::global_import;
 use crate::inference_state::{Context, InferenceState};

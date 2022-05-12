@@ -1,4 +1,3 @@
-use std::ops::BitAnd;
 use std::rc::Rc;
 
 use parsa_python_ast::{
@@ -13,7 +12,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
-use crate::inference_state::InferenceState;
+use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
@@ -222,7 +221,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 let inferred = file.inference(i_s).infer_expression(*expr);
                 let g = inferred.as_type(i_s);
                 let result = callable(i_s, g);
-                *self = GenericsIterator::None;
+                *self = Self::None;
                 Some(result)
             }
             Self::SliceIterator(file, iter) => {
@@ -256,7 +255,7 @@ impl<'db> GenericsIterator<'db, '_> {
                     })
                     .unwrap_or_else(|| callable(i_s, Type::None))
             }),
-            GenericsIterator::None => None,
+            Self::None => None,
         }
     }
 
@@ -576,9 +575,10 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 Type::None => {
                     if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
                         todo!()
+                        //matcher.match_or_add_type_var(i_s, t, value_class)
+                    } else {
+                        true // TODO is this correct? Maybe depending on strict options?
                     }
                 }
             },
@@ -742,7 +742,7 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
             Self::TypeVar(t) => {
-                if t.type_ == TypeVarType::Class {
+                if t.type_ == TypeVarType::Class && i_s.context == Context::Inference {
                     if let Some(class) = i_s.current_class {
                         class
                             .generics
