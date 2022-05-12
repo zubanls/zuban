@@ -716,12 +716,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
-            ExpressionPart::BitwiseOr(bitwise_or) => {
-                let (a, b) = bitwise_or.unpack();
-                // TODO this should only merge in annotation contexts
-                self.infer_expression_part(a)
-                    .union(self.infer_expression_part(b))
-            }
             _ => todo!("Not handled yet {:?}", node),
         }
     }
