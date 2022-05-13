@@ -245,6 +245,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> (Function<'db, '_>, Option<GenericsList>) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         match init.into_maybe_inferred().unwrap().init_as_function(self) {
@@ -258,13 +259,17 @@ impl<'db, 'a> Class<'db, 'a> {
                     true,
                     Some(type_vars),
                     TypeVarType::Class,
+                    on_type_error,
                 );
                 return (func, list);
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => {
-                if let Some((func, list)) =
-                    overloaded_function.find_matching_function(i_s, args, class.as_ref())
-                {
+                if let Some((func, list)) = overloaded_function.find_matching_function(
+                    i_s,
+                    args,
+                    class.as_ref(),
+                    on_type_error,
+                ) {
                     return (func, list);
                 } else {
                     todo!()
@@ -273,6 +278,17 @@ impl<'db, 'a> Class<'db, 'a> {
             None => (),
         };
         unreachable!("Should never happen, because there's always object.__init__")
+    }
+
+    pub fn todo_init_func(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+    ) -> (Function<'db, '_>, Option<GenericsList>) {
+        // TODO This func is a bit weird and probably slow, because it recalculates errors.
+        self.init_func(i_s, args, &|_, _, _, t1, t2| {
+            dbg!(t1, t2);
+        })
     }
 
     pub fn node(&self) -> ClassDef<'db> {
@@ -526,7 +542,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             if !matches!(self.generics, Generics::None) {
                 todo!()
             }
-            let (func, generics_list) = self.init_func(i_s, args);
+            let (func, generics_list) = self.init_func(i_s, args, on_type_error);
             debug!(
                 "Class execute: {}{}",
                 self.name(),
@@ -546,6 +562,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             })
         } else {
+            // TODO this is weird.
             match args.type_() {
                 ArgumentsType::Normal(file, primary_node_index) => {
                     Inferred::new_unsaved_specific(Specific::InstanceWithArguments)

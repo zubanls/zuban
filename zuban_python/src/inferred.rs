@@ -322,7 +322,7 @@ impl<'db> Inferred<'db> {
                     None,
                     Some(class),
                 );
-                let (init, generics) = class.init_func(i_s, &args);
+                let (init, generics) = class.todo_init_func(i_s, &args);
                 debug_assert!(generics.is_none());
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
@@ -661,7 +661,7 @@ impl<'db> Inferred<'db> {
                             None,
                             Some(class),
                         );
-                        let (init, generics) = class.init_func(i_s, &args);
+                        let (init, generics) = class.todo_init_func(i_s, &args);
                         debug_assert!(generics.is_none());
                         return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                             inf_cls.get_saved().unwrap().0.as_link(),

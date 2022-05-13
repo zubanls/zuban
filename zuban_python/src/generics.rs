@@ -15,7 +15,9 @@ use crate::file::PythonFile;
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Callable, CallableClass, Class, ClassLike, Function, TupleClass, Value};
+use crate::value::{
+    Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
+};
 
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
@@ -281,6 +283,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     matches: bool,
     type_vars: Option<&'a TypeVars>,
     match_type: TypeVarType,
+    on_type_error: OnTypeError<'a>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -290,6 +293,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first: bool,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
+        on_type_error: OnTypeError<'a>,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Function(function),
@@ -299,6 +303,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             matches: true,
             type_vars,
             match_type,
+            on_type_error,
         }
     }
     // TODO the structure of this impl looks very weird, strange funcs
@@ -308,6 +313,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         args: &'a dyn Arguments<'db>,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
+        on_type_error: OnTypeError<'a>,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Callable(callable),
@@ -317,6 +323,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             matches: true,
             type_vars,
             match_type,
+            on_type_error,
         }
     }
 
@@ -327,8 +334,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first: bool,
         type_vars: Option<&'db TypeVars>,
         match_type: TypeVarType,
+        on_type_error: OnTypeError<'a>,
     ) -> Option<GenericsList> {
-        let mut self_ = Self::new(function, args, skip_first, type_vars, match_type);
+        let mut self_ = Self::new(
+            function,
+            args,
+            skip_first,
+            type_vars,
+            match_type,
+            on_type_error,
+        );
         self_.calculate_type_vars(i_s);
         self_.calculated_type_vars
     }
@@ -367,21 +382,19 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         if let Some(value) = p.infer(i_s) {
                             let value_class = value.class_as_type(i_s);
                             let mut matches = true;
+                            let on_type_error = self.on_type_error;
                             function
                                 .reference
                                 .file
                                 .inference(i_s)
                                 .use_cached_annotation_type(annotation)
                                 .error_if_not_matches(i_s, Some(self), &value, |t1, t2| {
-                                    p.as_argument_node_reference().add_typing_issue(
-                                        i_s.database,
-                                        IssueType::ArgumentIssue(format!(
-                                            "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                            p.argument_index(),
-                                            function.diagnostic_string(),
-                                            t1,
-                                            t2,
-                                        )),
+                                    on_type_error(
+                                        p.as_argument_node_reference(),
+                                        function,
+                                        &p,
+                                        t1,
+                                        t2,
                                     );
                                     matches = false;
                                 });

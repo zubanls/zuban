@@ -223,11 +223,18 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
-        let mut finder =
-            TypeVarMatcher::new(self, args, false, func_type_vars, TypeVarType::Function);
+        let mut finder = TypeVarMatcher::new(
+            self,
+            args,
+            false,
+            func_type_vars,
+            TypeVarType::Function,
+            on_type_error,
+        );
         finder.matches_signature(i_s); // TODO this should be different
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
@@ -330,9 +337,9 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         if let Some(class) = self.class {
-            self.execute_internal(&mut i_s.with_class_context(class), args)
+            self.execute_internal(&mut i_s.with_class_context(class), args, on_type_error)
         } else {
-            self.execute_internal(i_s, args)
+            self.execute_internal(i_s, args, on_type_error)
         }
     }
 
@@ -558,6 +565,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
+        on_type_error: OnTypeError,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
@@ -568,6 +576,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     true,
                     Some(c.type_vars(i_s)),
                     TypeVarType::Class,
+                    on_type_error,
                 ),
                 None => {
                     let func_type_vars = function.calculated_type_vars(i_s);
@@ -577,6 +586,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         false,
                         func_type_vars,
                         TypeVarType::Function,
+                        on_type_error,
                     )
                 }
             };
@@ -617,7 +627,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, None)
+        self.find_matching_function(i_s, args, None, on_type_error)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
             .unwrap_or_else(Inferred::new_unknown)
     }

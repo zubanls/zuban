@@ -31,7 +31,7 @@ pub use typing::{
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
-type OnTypeError<'a> = &'a dyn Fn(NodeRef, &Function, &InferrableParam, String, String);
+pub type OnTypeError<'a> = &'a dyn Fn(NodeRef, &Function, &InferrableParam, String, String);
 
 enum ArrayType {
     None,
