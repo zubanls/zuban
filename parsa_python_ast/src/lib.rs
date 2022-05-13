@@ -2018,11 +2018,40 @@ pub enum PrimaryParent<'db> {
 
 impl<'db> BitwiseOr<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
+        // TODO this is probably unused
         let mut iter = self.node.iter_children();
         let first = iter.next().unwrap();
         iter.next();
         let third = iter.next().unwrap();
         (ExpressionPart::new(first), ExpressionPart::new(third))
+    }
+}
+
+pub struct Operation<'db> {
+    pub left: ExpressionPart<'db>,
+    pub operation: &'static str,
+    pub right: ExpressionPart<'db>,
+    pub index: NodeIndex,
+}
+
+impl<'db> Operation<'db> {
+    fn new(node: PyNode<'db>, operation: &'static str) -> Self {
+        let mut iter = node.iter_children();
+        let left = iter.next().unwrap();
+        iter.next();
+        let right = iter.next().unwrap();
+        Self {
+            left: ExpressionPart::new(left),
+            operation,
+            right: ExpressionPart::new(right),
+            index: node.index,
+        }
+    }
+}
+
+impl<'db> Sum<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__add__")
     }
 }
 

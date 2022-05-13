@@ -716,8 +716,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
+            ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             _ => todo!("Not handled yet {:?}", node),
         }
+    }
+
+    fn infer_operation(&mut self, op: Operation<'db>) -> Inferred<'db> {
+        let left = self.infer_expression_part(op.left);
+        let right = self.infer_expression_part(op.right);
+        let node_ref = NodeRef::new(self.file, op.index);
+        left.run_on_value(self.i_s, &mut |i_s, value| {
+            value.lookup_implicit(i_s, op.operation, node_ref)
+        })
+        .run_on_value(self.i_s, &mut |i_s, value| {
+            value.execute(i_s, &NoArguments::new(from))
+        })
     }
 
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary);
