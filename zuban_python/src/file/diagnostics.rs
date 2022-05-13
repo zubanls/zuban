@@ -1,6 +1,6 @@
 use parsa_python_ast::*;
 
-use crate::arguments::{Arguments, InstanceArguments, NoArguments};
+use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
     ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
     TypeVarUsage,
@@ -10,7 +10,7 @@ use crate::file::PythonInference;
 use crate::generics::Generics;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Instance};
+use crate::value::{Class, Function};
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn calculate_diagnostics(&mut self) {
@@ -135,7 +135,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
         let i_a;
         let i;
-        let inst;
         let node_ref = NodeRef::new(self.file, f.index());
         let a = NoArguments::new(node_ref);
         let args: &dyn Arguments = if let Some(class) = class {
@@ -156,8 +155,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .collect(),
                 )),
             ));
-            inst = Instance::new(*class, &i);
-            i_a = InstanceArguments::new(&inst, &a);
+            i_a = KnownArguments::new(&i, &a);
             &i_a
         } else {
             &a

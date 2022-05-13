@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::*;
 
-use crate::arguments::SimpleArguments;
+use crate::arguments::{KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
     Point, PointType, Points, Specific, TupleContent, TypeVarType,
@@ -729,7 +729,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.lookup_implicit(i_s, op.operation, node_ref)
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
-            value.execute(i_s, &NoArguments::new(from))
+            value.execute(
+                i_s,
+                &KnownArguments::new(&right, &NoArguments::new(node_ref)),
+            )
         })
     }
 

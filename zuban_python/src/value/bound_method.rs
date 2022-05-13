@@ -1,5 +1,5 @@
 use super::{Instance, LookupResult, Value, ValueKind};
-use crate::arguments::{Arguments, InstanceArguments};
+use crate::arguments::{Arguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -43,7 +43,8 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
-        let args = InstanceArguments::with_mro_index(self.instance, self.mro_index, args);
+        let args =
+            KnownArguments::with_mro_index(self.instance.as_inferred(), self.mro_index, args);
         self.function.execute(i_s, &args)
     }
 }

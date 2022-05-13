@@ -10,7 +10,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Value};
+use crate::value::{Class, Function};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -179,7 +179,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                         }
                         _ => return None,
                     },
-                    Argument::Value(v) => unreachable!(),
+                    Argument::Inferred(v) => unreachable!(),
                     Argument::SlicesTuple(slices) => return None,
                 }
             }
@@ -203,22 +203,15 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct InstanceArguments<'db, 'a, 'b> {
-    instance: &'a dyn Value<'db, 'b>,
+pub struct KnownArguments<'db, 'a> {
+    inferred: &'a Inferred<'db>,
     mro_index: MroIndex,
     arguments: &'a dyn Arguments<'db>,
 }
 
-impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
+impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        let args = self.arguments.iter_arguments();
-        // Transmute is necessary, because lifetimes in traits are invariant, see also:
-        // https://stackoverflow.com/questions/70425773/why-does-lifetime-coercion-work-with-structs-but-not-with-traits/70427218#70427218
-        // But, we know that all Values only work with coariant 'b, so it's ok.
-        ArgumentIterator::Instance(
-            unsafe { std::mem::transmute(self.instance) },
-            self.arguments,
-        )
+        ArgumentIterator::Inferred(self.inferred, self.arguments)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -238,23 +231,23 @@ impl<'db, 'a> Arguments<'db> for InstanceArguments<'db, 'a, '_> {
     }
 }
 
-impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
-    pub fn new(instance: &'a dyn Value<'db, 'b>, arguments: &'a dyn Arguments<'db>) -> Self {
+impl<'db, 'a> KnownArguments<'db, 'a> {
+    pub fn new(inferred: &'a Inferred<'db>, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             arguments,
-            instance,
+            inferred,
             mro_index: MroIndex(0),
         }
     }
 
     pub fn with_mro_index(
-        instance: &'a dyn Value<'db, 'b>,
+        inferred: &'a Inferred<'db>,
         mro_index: MroIndex,
         arguments: &'a dyn Arguments<'db>,
     ) -> Self {
         Self {
             arguments,
-            instance,
+            inferred,
             mro_index,
         }
     }
@@ -264,7 +257,7 @@ impl<'db, 'a, 'b> InstanceArguments<'db, 'a, 'b> {
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(&'db str, NodeRef<'db>),
-    Value(&'a dyn Value<'db, 'a>),
+    Inferred(&'a Inferred<'db>),
     // The first argument is the position as a 1-based index
     Positional(usize, NodeRef<'db>),
     SlicesTuple(Slices<'db>),
@@ -281,11 +274,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::Value(instance) => instance
-                .as_instance()
-                .unwrap_or_else(|| todo!())
-                .as_inferred()
-                .clone(),
+            Self::Inferred(inferred) => (*inferred).clone(),
             Self::Positional(_, reference) => {
                 reference
                     .file
@@ -316,7 +305,7 @@ impl<'db> Argument<'db, '_> {
         match self {
             Self::Positional(_, node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,
-            Self::Value(_) => {
+            Self::Inferred(_) => {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }
             Self::SlicesTuple(slices) => todo!(),
@@ -327,13 +316,13 @@ impl<'db> Argument<'db, '_> {
         match self {
             Self::Positional(index, _) => *index,
             Self::Keyword(_, _) => todo!(),
-            Self::Value(_) => 1,
+            Self::Inferred(_) => 1, // TODO this is not correct
             Self::SlicesTuple(_) => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Argument::Value(_) | Argument::Positional(_, _))
+        matches!(self, Argument::Inferred(_) | Argument::Positional(_, _))
     }
 }
 
@@ -348,7 +337,7 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Instance(&'a dyn Value<'db, 'a>, &'a dyn Arguments<'db>),
+    Inferred(&'a Inferred<'db>, &'a dyn Arguments<'db>),
     SliceType(SliceType<'db>),
 }
 
@@ -358,10 +347,10 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         use ArgumentIteratorBase::*;
         match self {
-            Self::Instance(_, _) => {
-                if let Self::Instance(instance, args) = mem::replace(self, Self::Normal(Finished)) {
+            Self::Inferred(_, _) => {
+                if let Self::Inferred(inf, args) = mem::replace(self, Self::Normal(Finished)) {
                     *self = args.iter_arguments();
-                    Some(Argument::Value(instance))
+                    Some(Argument::Inferred(inf))
                 } else {
                     unreachable!()
                 }
