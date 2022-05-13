@@ -30,6 +30,8 @@ pub use typing::{
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
+type OnTypeError<'foo> = &'foo dyn Fn(NodeRef<'foo>);
+
 enum ArrayType {
     None,
     Tuple,
@@ -228,9 +230,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         todo!("execute not implemented for {:?}", self)
     }
+
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -247,7 +251,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", from)
                 .run_on_value(i_s, &mut |i_s, value| {
-                    value.execute(i_s, &NoArguments::new(from))
+                    value.execute(i_s, &NoArguments::new(from), &|_| unreachable!())
                 })
                 .execute_function(i_s, "__next__", from),
         )

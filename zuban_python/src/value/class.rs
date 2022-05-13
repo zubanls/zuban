@@ -4,7 +4,8 @@ use std::rc::Rc;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{
-    CallableClass, Function, LookupResult, Module, TupleClass, TypingClass, Value, ValueKind,
+    CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
+    ValueKind,
 };
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
@@ -518,6 +519,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         // TODO locality!!!
         if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() {

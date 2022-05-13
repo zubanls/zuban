@@ -1,4 +1,4 @@
-use super::{Class, ClassLike, LookupResult, Value, ValueKind};
+use super::{Class, ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{FormatStyle, PointLink};
 use crate::diagnostics::IssueType;
@@ -64,9 +64,12 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
-            inf.run_on_value(i_s, &mut |i_s, value| value.execute(i_s, args))
+            inf.run_on_value(i_s, &mut |i_s, value| {
+                value.execute(i_s, args, on_type_error)
+            })
         } else {
             args.node_reference().add_typing_issue(
                 i_s.database,
@@ -82,7 +85,9 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
         self.lookup_implicit(i_s, "__getitem__", slice_type.as_node_ref())
-            .run_on_value(i_s, &mut |i_s, v| v.execute(i_s, &slice_type.as_args()))
+            .run_on_value(i_s, &mut |i_s, v| {
+                v.execute(i_s, &slice_type.as_args(), &|_| todo!())
+            })
     }
 
     fn as_instance(&self) -> Option<&Instance<'db, 'a>> {

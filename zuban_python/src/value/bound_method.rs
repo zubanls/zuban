@@ -1,4 +1,4 @@
-use super::{Instance, LookupResult, Value, ValueKind};
+use super::{Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{Arguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
@@ -42,9 +42,10 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         let args =
             KnownArguments::with_mro_index(self.instance.as_inferred(), self.mro_index, args, None);
-        self.function.execute(i_s, &args)
+        self.function.execute(i_s, &args, on_type_error)
     }
 }

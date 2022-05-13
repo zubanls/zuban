@@ -4,7 +4,7 @@ use parsa_python_ast::{
 use std::fmt;
 use std::rc::Rc;
 
-use super::{ClassLike, LookupResult, Module, Value, ValueKind};
+use super::{ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -327,6 +327,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         if let Some(class) = self.class {
             self.execute_internal(&mut i_s.with_class_context(class), args)
@@ -613,10 +614,11 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None)
-            .map(|(function, _)| function.execute(i_s, args))
+            .map(|(function, _)| function.execute(i_s, args, on_type_error))
             .unwrap_or_else(Inferred::new_unknown)
     }
 }

@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{LookupResult, Value, ValueKind};
+use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Database, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
@@ -98,6 +98,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         args.node_reference()
             .add_typing_issue(i_s.database, IssueType::NotCallable("Module".to_owned()));
