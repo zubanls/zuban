@@ -326,7 +326,7 @@ impl<'db> Inferred<'db> {
                 debug_assert!(generics.is_none());
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
-                    let args = KnownArguments::new(instance.as_inferred(), &args);
+                    let args = KnownArguments::new(instance.as_inferred(), &args, None);
                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
                 })
             }
@@ -386,7 +386,7 @@ impl<'db> Inferred<'db> {
                     debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
                     // TODO is this MroIndex fine? probably not!
-                    let args = KnownArguments::new(self, &args);
+                    let args = KnownArguments::new(self, &args, None);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()

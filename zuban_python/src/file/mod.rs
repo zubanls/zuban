@@ -731,7 +731,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
-                &KnownArguments::new(&right, &NoArguments::new(node_ref)),
+                &KnownArguments::new(&right, &NoArguments::new(node_ref), Some(node_ref)),
             )
         })
     }

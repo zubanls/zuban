@@ -179,7 +179,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                         }
                         _ => return None,
                     },
-                    Argument::Inferred(v) => unreachable!(),
+                    Argument::Inferred(v, _) => unreachable!(),
                     Argument::SlicesTuple(slices) => return None,
                 }
             }
@@ -207,11 +207,12 @@ pub struct KnownArguments<'db, 'a> {
     inferred: &'a Inferred<'db>,
     mro_index: MroIndex,
     arguments: &'a dyn Arguments<'db>,
+    node_ref: Option<NodeRef<'db>>,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::Inferred(self.inferred, self.arguments)
+        ArgumentIterator::Inferred(self.inferred, self.node_ref, self.arguments)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -232,10 +233,15 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
 }
 
 impl<'db, 'a> KnownArguments<'db, 'a> {
-    pub fn new(inferred: &'a Inferred<'db>, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(
+        inferred: &'a Inferred<'db>,
+        arguments: &'a dyn Arguments<'db>,
+        node_ref: Option<NodeRef<'db>>,
+    ) -> Self {
         Self {
             arguments,
             inferred,
+            node_ref,
             mro_index: MroIndex(0),
         }
     }
@@ -244,10 +250,12 @@ impl<'db, 'a> KnownArguments<'db, 'a> {
         inferred: &'a Inferred<'db>,
         mro_index: MroIndex,
         arguments: &'a dyn Arguments<'db>,
+        node_ref: Option<NodeRef<'db>>,
     ) -> Self {
         Self {
             arguments,
             inferred,
+            node_ref,
             mro_index,
         }
     }
@@ -257,7 +265,7 @@ impl<'db, 'a> KnownArguments<'db, 'a> {
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(&'db str, NodeRef<'db>),
-    Inferred(&'a Inferred<'db>),
+    Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
     // The first argument is the position as a 1-based index
     Positional(usize, NodeRef<'db>),
     SlicesTuple(Slices<'db>),
@@ -274,7 +282,7 @@ impl<'db> Argument<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
-            Self::Inferred(inferred) => (*inferred).clone(),
+            Self::Inferred(inferred, _) => (*inferred).clone(),
             Self::Positional(_, reference) => {
                 reference
                     .file
@@ -305,9 +313,9 @@ impl<'db> Argument<'db, '_> {
         match self {
             Self::Positional(_, node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,
-            Self::Inferred(_) => {
+            Self::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
-            }
+            }),
             Self::SlicesTuple(slices) => todo!(),
         }
     }
@@ -316,13 +324,13 @@ impl<'db> Argument<'db, '_> {
         match self {
             Self::Positional(index, _) => *index,
             Self::Keyword(_, _) => todo!(),
-            Self::Inferred(_) => 1, // TODO this is not correct
+            Self::Inferred(_, _) => 1, // TODO this is not correct
             Self::SlicesTuple(_) => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Argument::Inferred(_) | Argument::Positional(_, _))
+        matches!(self, Argument::Inferred(_, _) | Argument::Positional(_, _))
     }
 }
 
@@ -337,7 +345,11 @@ pub enum ArgumentIteratorBase<'db> {
 
 pub enum ArgumentIterator<'db, 'a> {
     Normal(ArgumentIteratorBase<'db>),
-    Inferred(&'a Inferred<'db>, &'a dyn Arguments<'db>),
+    Inferred(
+        &'a Inferred<'db>,
+        Option<NodeRef<'db>>,
+        &'a dyn Arguments<'db>,
+    ),
     SliceType(SliceType<'db>),
 }
 
@@ -347,10 +359,12 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         use ArgumentIteratorBase::*;
         match self {
-            Self::Inferred(_, _) => {
-                if let Self::Inferred(inf, args) = mem::replace(self, Self::Normal(Finished)) {
+            Self::Inferred(_, _, _) => {
+                if let Self::Inferred(inf, node_ref, args) =
+                    mem::replace(self, Self::Normal(Finished))
+                {
                     *self = args.iter_arguments();
-                    Some(Argument::Inferred(inf))
+                    Some(Argument::Inferred(inf, node_ref))
                 } else {
                     unreachable!()
                 }

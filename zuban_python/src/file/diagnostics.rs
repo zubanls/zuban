@@ -155,7 +155,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .collect(),
                 )),
             ));
-            i_a = KnownArguments::new(&i, &a);
+            i_a = KnownArguments::new(&i, &a, None);
             &i_a
         } else {
             &a
