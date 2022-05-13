@@ -86,7 +86,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     ) -> Inferred<'db> {
         self.lookup_implicit(i_s, "__getitem__", slice_type.as_node_ref())
             .run_on_value(i_s, &mut |i_s, v| {
-                v.execute(i_s, &slice_type.as_args(), &|_| todo!())
+                v.execute(i_s, &slice_type.as_args(), &|_, _, _, _, _| todo!())
             })
     }
 

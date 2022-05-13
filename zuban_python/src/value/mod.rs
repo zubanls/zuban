@@ -19,6 +19,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use class::{Class, ClassLike};
+use function::InferrableParam;
 pub use function::{Function, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
@@ -30,7 +31,7 @@ pub use typing::{
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
-type OnTypeError<'foo> = &'foo dyn Fn(NodeRef<'foo>);
+type OnTypeError<'a> = &'a dyn Fn(NodeRef, &Function, &InferrableParam, String, String);
 
 enum ArrayType {
     None,
@@ -251,7 +252,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", from)
                 .run_on_value(i_s, &mut |i_s, value| {
-                    value.execute(i_s, &NoArguments::new(from), &|_| unreachable!())
+                    value.execute(
+                        i_s,
+                        &NoArguments::new(from),
+                        &|_, _, _, _, _| unreachable!(),
+                    )
                 })
                 .execute_function(i_s, "__next__", from),
         )

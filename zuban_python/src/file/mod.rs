@@ -732,7 +732,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, &NoArguments::new(node_ref), Some(node_ref)),
-                &|_| todo!(),
+                &|_, _, _, _, _| todo!(),
             )
         })
     }
@@ -789,16 +789,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             x.as_ref(),
                             value.as_class().cloned(),
                         ),
-                        &|node_ref| todo!(), /*node_ref.add_typing_issue(
-                                                 i_s.database,
-                                                 IssueType::ArgumentIssue(format!(
-                                                     "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                                     p.argument_index(),
-                                                     function.diagnostic_string(),
-                                                     t1,
-                                                     t2,
-                                                 )),
-                                             )*/
+                        &|node_ref, function, p, t1, t2| {
+                            node_ref.add_typing_issue(
+                                i_s.database,
+                                IssueType::ArgumentIssue(format!(
+                                    "Argument {} to {} has incompatible type {:?}; expected {:?}",
+                                    p.argument_index(),
+                                    function.diagnostic_string(),
+                                    t1,
+                                    t2,
+                                )),
+                            )
+                        },
                     )
                 })
             }
