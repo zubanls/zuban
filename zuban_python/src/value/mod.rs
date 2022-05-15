@@ -31,7 +31,8 @@ pub use typing::{
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
-pub type OnTypeError<'a> = &'a dyn Fn(NodeRef, &Function, &InferrableParam, String, String);
+pub type OnTypeError<'db, 'a> =
+    &'a dyn Fn(NodeRef<'db>, &Function<'db, '_>, &InferrableParam<'db, '_>, String, String);
 
 enum ArrayType {
     None,
@@ -231,7 +232,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         todo!("execute not implemented for {:?}", self)
     }

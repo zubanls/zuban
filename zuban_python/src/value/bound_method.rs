@@ -42,7 +42,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let args =
             KnownArguments::with_mro_index(self.instance.as_inferred(), self.mro_index, args, None);

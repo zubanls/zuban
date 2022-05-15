@@ -98,7 +98,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.node_reference()
             .add_typing_issue(i_s.database, IssueType::NotCallable("Module".to_owned()));

@@ -251,7 +251,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         match init.into_maybe_inferred().unwrap().init_as_function(self) {
@@ -541,7 +541,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!
         let (func, generics_list, is_overload) = self.init_func(i_s, args, on_type_error);

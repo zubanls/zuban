@@ -223,7 +223,7 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
@@ -334,7 +334,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         if let Some(class) = self.class {
             self.execute_internal(&mut i_s.with_class_context(class), args, on_type_error)
@@ -565,7 +565,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
@@ -624,7 +624,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None, on_type_error)

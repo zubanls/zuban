@@ -283,7 +283,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     matches: bool,
     type_vars: Option<&'a TypeVars>,
     match_type: TypeVarType,
-    on_type_error: OnTypeError<'a>,
+    on_type_error: OnTypeError<'db, 'a>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -293,7 +293,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first: bool,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
-        on_type_error: OnTypeError<'a>,
+        on_type_error: OnTypeError<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Function(function),
@@ -313,7 +313,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         args: &'a dyn Arguments<'db>,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
-        on_type_error: OnTypeError<'a>,
+        on_type_error: OnTypeError<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Callable(callable),
@@ -334,7 +334,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first: bool,
         type_vars: Option<&'db TypeVars>,
         match_type: TypeVarType,
-        on_type_error: OnTypeError<'a>,
+        on_type_error: OnTypeError<'db, 'a>,
     ) -> Option<GenericsList> {
         let mut self_ = Self::new(
             function,
