@@ -562,6 +562,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             })
         } else {
+            self.init_func(i_s, args, on_type_error);
             // TODO this is weird.
             match args.type_() {
                 ArgumentsType::Normal(file, primary_node_index) => {

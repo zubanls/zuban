@@ -1692,7 +1692,7 @@ impl<'db> Assignment<'db> {
         }
     }
 
-    pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
+    pub fn maybe_simple_type_expression_assignment(&self) -> Option<Expression<'db>> {
         match self.unpack() {
             AssignmentContent::Normal(mut targets_, right) => {
                 targets_.next();
@@ -1702,7 +1702,7 @@ impl<'db> Assignment<'db> {
 
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return expr.maybe_name_or_last_primary_name();
+                        return Some(expr);
                     }
                 }
                 None
@@ -1710,6 +1710,11 @@ impl<'db> Assignment<'db> {
             AssignmentContent::WithAnnotation(_, _, _) => todo!(),
             AssignmentContent::AugAssign(_, _, _) => None,
         }
+    }
+
+    pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
+        self.maybe_simple_type_expression_assignment()
+            .and_then(|expr| expr.maybe_name_or_last_primary_name())
     }
 }
 

@@ -1,4 +1,4 @@
-use parsa_python_ast::{NodeIndex, TypeLike};
+use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
 use std::ptr::null;
 
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
@@ -46,6 +46,11 @@ impl PythonState {
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
         s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
+
+        // Needed because there's a loop for calculating the type var _T_co, which defines string
+        // literal arguments arguments, which means that the class of those is str, which is a sub
+        // class of Sequence[_T_co], which uses _T_co again.
+        precalculate_type_var_instance(s.typing(), "_T_co");
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }
@@ -156,6 +161,25 @@ fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
     if let TypeLike::Assignment(assignment) = name.expect_type() {
         file.points
             .set(assignment.index(), Point::new_node_analysis(Locality::Stmt));
+    } else {
+        unreachable!();
+    }
+}
+
+fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
+    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let name = NodeRef::new(file, node_index).as_name();
+    if let TypeLike::Assignment(assignment) = name.expect_type() {
+        if let Some(expr) = assignment.maybe_simple_type_expression_assignment() {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack() {
+                file.points.set(
+                    p.index(),
+                    Point::new_simple_specific(Specific::InstanceWithArguments, Locality::File),
+                )
+            }
+        } else {
+            unreachable!()
+        }
     } else {
         unreachable!();
     }
