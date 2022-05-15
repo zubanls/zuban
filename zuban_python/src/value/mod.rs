@@ -31,8 +31,14 @@ pub use typing::{
     TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
-pub type OnTypeError<'db, 'a> =
-    &'a dyn Fn(NodeRef<'db>, &Function<'db, '_>, &InferrableParam<'db, '_>, String, String);
+pub type OnTypeError<'db, 'a> = &'a dyn Fn(
+    &mut InferenceState<'db, '_>,
+    NodeRef<'db>,
+    &Function<'db, '_>,
+    &InferrableParam<'db, '_>,
+    String,
+    String,
+);
 
 enum ArrayType {
     None,
@@ -253,11 +259,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", from)
                 .run_on_value(i_s, &mut |i_s, value| {
-                    value.execute(
-                        i_s,
-                        &NoArguments::new(from),
-                        &|_, _, _, _, _| unreachable!(),
-                    )
+                    value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _| todo!())
                 })
                 .execute_function(i_s, "__next__", from),
         )

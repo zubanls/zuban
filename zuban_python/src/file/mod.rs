@@ -499,9 +499,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             assignment.end() + "# type: ".len() as CodeIndex,
                             s.to_owned(),
                         );
-                        type_.error_if_not_matches(self.i_s, None, &right, |t1, t2| {
+                        type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             NodeRef::new(self.file, assignment.index()).add_typing_issue(
-                                self.i_s.database,
+                                i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         });
@@ -521,9 +521,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, None, &right, |t1, t2| {
+                        .error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             NodeRef::new(self.file, annotation.index()).add_typing_issue(
-                                self.i_s.database,
+                                i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         })
@@ -587,9 +587,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.i_s,
                         None,
                         value,
-                        |t1, t2| {
+                        |i_s, t1, t2| {
                             NodeRef::new(self.file, name_def.index()).add_typing_issue(
-                                self.i_s.database,
+                                i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         },
@@ -603,7 +603,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 } else {
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, None, value, |t1, t2| {
+                        .error_if_not_matches(self.i_s, None, value, |i_s, t1, t2| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
                                 self.i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
@@ -732,7 +732,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, &NoArguments::new(node_ref), Some(node_ref)),
-                &|node_ref, function, p, input, _| {
+                &|i_s, node_ref, function, p, input, _| {
                     node_ref.add_typing_issue(
                         i_s.database,
                         IssueType::UnsupportedOperand(
@@ -798,7 +798,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             x.as_ref(),
                             value.as_class().cloned(),
                         ),
-                        &|node_ref, function, p, t1, t2| {
+                        &|i_s, node_ref, function, p, t1, t2| {
                             node_ref.add_typing_issue(
                                 i_s.database,
                                 IssueType::ArgumentIssue(format!(

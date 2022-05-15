@@ -89,7 +89,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 v.execute(
                     i_s,
                     &slice_type.as_args(),
-                    &|node_ref, function, p, t1, t2| {
+                    &|i_s, node_ref, function, p, t1, t2| {
                         node_ref.add_typing_issue(
                             i_s.database,
                             IssueType::ArgumentIssue(format!(

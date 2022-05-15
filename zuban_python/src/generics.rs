@@ -388,8 +388,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .file
                                 .inference(i_s)
                                 .use_cached_annotation_type(annotation)
-                                .error_if_not_matches(i_s, Some(self), &value, |t1, t2| {
+                                .error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
                                     on_type_error(
+                                        i_s,
                                         p.as_argument_node_reference(),
                                         function,
                                         &p,
@@ -655,14 +656,13 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(String, String),
+        mut callback: impl FnMut(&mut InferenceState<'db, '_>, String, String),
     ) {
         let value_type = value.class_as_type(i_s);
         if !self.matches(i_s, matcher, value_type, Variance::Covariant) {
-            callback(
-                value.class_as_type(i_s).as_string(i_s, FormatStyle::Short),
-                self.as_string(i_s, FormatStyle::Short),
-            )
+            let input = value.class_as_type(i_s).as_string(i_s, FormatStyle::Short);
+            let wanted = self.as_string(i_s, FormatStyle::Short);
+            callback(i_s, input, wanted)
         }
     }
 
