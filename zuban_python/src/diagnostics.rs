@@ -108,7 +108,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::NotCallable(s) => format!("{} not callable", s),
             IssueType::UnsupportedOperand(operand, left, right) => {
                 format!(
-                    "Unsupported operand types for {} ({:?} and  {:?})",
+                    "Unsupported operand types for {} ({:?} and {:?})",
                     operand, left, right
                 )
             }
