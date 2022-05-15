@@ -1640,7 +1640,6 @@ impl<'db> Assignment<'db> {
                     right,
                 );
             } else if child.is_type(Nonterminal(augassign)) {
-                iterator.next();
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContent::AugAssign(
                     Target::new_single_target(self.node.nth_child(0)),
@@ -1672,7 +1671,6 @@ impl<'db> Assignment<'db> {
                     right,
                 );
             } else if child.is_type(Nonterminal(augassign)) {
-                iterator.next();
                 let right = Self::right_side(iterator.next().unwrap());
                 return AssignmentContentWithSimpleTargets::AugAssign(
                     SingleTarget::new(self.node.nth_child(0)),
