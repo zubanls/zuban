@@ -86,7 +86,22 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     ) -> Inferred<'db> {
         self.lookup_implicit(i_s, "__getitem__", slice_type.as_node_ref())
             .run_on_value(i_s, &mut |i_s, v| {
-                v.execute(i_s, &slice_type.as_args(), &|_, _, _, _, _| todo!())
+                v.execute(
+                    i_s,
+                    &slice_type.as_args(),
+                    &|node_ref, function, p, t1, t2| {
+                        node_ref.add_typing_issue(
+                            i_s.database,
+                            IssueType::ArgumentIssue(format!(
+                                "Argument {} to {} has incompatible type {:?}; expected {:?}",
+                                p.argument_index(),
+                                function.diagnostic_string(),
+                                t1,
+                                t2,
+                            )),
+                        )
+                    },
+                )
             })
     }
 

@@ -2034,20 +2034,22 @@ impl<'db> BitwiseOr<'db> {
 
 pub struct Operation<'db> {
     pub left: ExpressionPart<'db>,
-    pub operation: &'static str,
+    pub magic_method: &'static str,
+    pub operand: &'static str,
     pub right: ExpressionPart<'db>,
     pub index: NodeIndex,
 }
 
 impl<'db> Operation<'db> {
-    fn new(node: PyNode<'db>, operation: &'static str) -> Self {
+    fn new(node: PyNode<'db>, magic_method: &'static str, operand: &'static str) -> Self {
         let mut iter = node.iter_children();
         let left = iter.next().unwrap();
         iter.next();
         let right = iter.next().unwrap();
         Self {
             left: ExpressionPart::new(left),
-            operation,
+            magic_method,
+            operand,
             right: ExpressionPart::new(right),
             index: node.index,
         }
@@ -2056,7 +2058,7 @@ impl<'db> Operation<'db> {
 
 impl<'db> Sum<'db> {
     pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__add__")
+        Operation::new(self.node, "__add__", "+")
     }
 }
 

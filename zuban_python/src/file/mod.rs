@@ -726,13 +726,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.operation, node_ref)
+            value.lookup_implicit(i_s, op.magic_method, node_ref)
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, &NoArguments::new(node_ref), Some(node_ref)),
-                &|_, _, _, _, _| todo!(),
+                &|node_ref, function, p, input, _| {
+                    node_ref.add_typing_issue(
+                        i_s.database,
+                        IssueType::UnsupportedOperand(
+                            op.operand,
+                            function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                            input,
+                        ),
+                    )
+                },
             )
         })
     }

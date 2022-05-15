@@ -19,6 +19,7 @@ pub enum IssueType {
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
+    UnsupportedOperand(&'static str, String, String),
 
     MethodWithoutArguments,
 
@@ -104,6 +105,12 @@ impl<'db> Diagnostic<'db> {
                  s, path, line
             ),
             IssueType::NotCallable(s) => format!("{} not callable", s),
+            IssueType::UnsupportedOperand(operand, left, right) => {
+                format!(
+                    "Unsupported operand types for {} ({:?} and  {:?})",
+                    operand, left, right
+                )
+            }
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }
