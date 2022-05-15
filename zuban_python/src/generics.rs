@@ -651,12 +651,12 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn error_if_not_matches(
+    pub fn error_if_not_matches<'x>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState<'db, 'x>,
         matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, '_>, String, String),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, String, String),
     ) {
         let value_type = value.class_as_type(i_s);
         if !self.matches(i_s, matcher, value_type, Variance::Covariant) {
