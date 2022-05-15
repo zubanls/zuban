@@ -115,6 +115,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         Some(ClassLike::TypingClass(*self))
     }
 
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::TypingClassType(*self)
+    }
+
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,

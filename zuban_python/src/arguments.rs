@@ -330,7 +330,7 @@ impl<'db> Argument<'db, '_> {
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Argument::Inferred(_, _) | Argument::Positional(_, _))
+        matches!(self, Argument::Keyword(_, _))
     }
 }
 
