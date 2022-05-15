@@ -89,15 +89,14 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 v.execute(
                     i_s,
                     &slice_type.as_args(),
-                    &|i_s, node_ref, function, p, t1, t2| {
+                    &|i_s, node_ref, function, p, input, wanted| {
                         node_ref.add_typing_issue(
                             i_s.database,
-                            IssueType::ArgumentIssue(format!(
-                                "Argument {} to {} has incompatible type {:?}; expected {:?}",
-                                p.argument_index(),
-                                function.diagnostic_string(),
-                                t1,
-                                t2,
+                            IssueType::InvalidGetItem(format!(
+                                "Invalid index type {:?} for {:?}; expected type {:?}",
+                                input,
+                                function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                                wanted,
                             )),
                         )
                     },

@@ -20,6 +20,7 @@ pub enum IssueType {
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
     UnsupportedOperand(&'static str, String, String),
+    InvalidGetItem(String),
 
     MethodWithoutArguments,
 
@@ -111,8 +112,9 @@ impl<'db> Diagnostic<'db> {
                     operand, left, right
                 )
             }
-            IssueType::MethodWithoutArguments => {
-                "Method must have at least one argument".to_owned()
+            IssueType::InvalidGetItem(s) => s.clone(),
+                IssueType::MethodWithoutArguments => {
+                    "Method must have at least one argument".to_owned()
             }
             IssueType::Note(s) => {
                 type_ = "note";
