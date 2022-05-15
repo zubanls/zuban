@@ -305,15 +305,14 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         type_var: Rc<TypeVar>,
     ) -> Option<TypeVarUsage> {
-        if let Some(index) = self.type_vars(i_s).iter().position(|t| t == &type_var) {
-            Some(TypeVarUsage {
+        self.type_vars(i_s)
+            .iter()
+            .position(|t| t == &type_var)
+            .map(|index| TypeVarUsage {
                 type_var,
                 index: TypeVarIndex::new(index),
                 type_: TypeVarType::Class,
             })
-        } else {
-            None
-        }
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
