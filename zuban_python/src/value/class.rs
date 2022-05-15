@@ -241,12 +241,12 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn init_func(
+    fn init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError,
-    ) -> (Function<'db, '_>, Option<GenericsList>) {
+    ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         match init.into_maybe_inferred().unwrap().init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
@@ -261,7 +261,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     TypeVarType::Class,
                     on_type_error,
                 );
-                return (func, list);
+                return (func, list, false);
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => {
                 if let Some((func, list)) = overloaded_function.find_matching_function(
@@ -270,7 +270,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     class.as_ref(),
                     on_type_error,
                 ) {
-                    return (func, list);
+                    return (func, list, true);
                 } else {
                     todo!()
                 }
@@ -280,15 +280,16 @@ impl<'db, 'a> Class<'db, 'a> {
         unreachable!("Should never happen, because there's always object.__init__")
     }
 
-    pub fn todo_init_func(
+    pub fn simple_init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> (Function<'db, '_>, Option<GenericsList>) {
-        // TODO This func is a bit weird and probably slow, because it recalculates errors.
-        self.init_func(i_s, args, &|_, _, _, t1, t2| {
-            dbg!(t1, t2);
-        })
+    ) -> Function<'db, '_> {
+        let (init, class) = self.lookup_and_class(i_s, "__init__");
+        match init.into_maybe_inferred().unwrap().init_as_function(self) {
+            Some(FunctionOrOverload::Function(func)) => func,
+            _ => unreachable!(),
+        }
     }
 
     pub fn node(&self) -> ClassDef<'db> {
@@ -538,11 +539,11 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         on_type_error: OnTypeError,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() {
+        let (func, generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
+        if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() || is_overload {
             if !matches!(self.generics, Generics::None) {
                 todo!()
             }
-            let (func, generics_list) = self.init_func(i_s, args, on_type_error);
             debug!(
                 "Class execute: {}{}",
                 self.name(),
@@ -562,7 +563,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             })
         } else {
-            self.init_func(i_s, args, on_type_error);
             // TODO this is weird.
             match args.type_() {
                 ArgumentsType::Normal(file, primary_node_index) => {

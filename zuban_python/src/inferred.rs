@@ -322,8 +322,7 @@ impl<'db> Inferred<'db> {
                     None,
                     Some(class),
                 );
-                let (init, generics) = class.todo_init_func(i_s, &args);
-                debug_assert!(generics.is_none());
+                let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
                     let args = KnownArguments::new(instance.as_inferred(), &args, None);
@@ -661,8 +660,7 @@ impl<'db> Inferred<'db> {
                             None,
                             Some(class),
                         );
-                        let (init, generics) = class.todo_init_func(i_s, &args);
-                        debug_assert!(generics.is_none());
+                        let init = class.simple_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
                             inf_cls.get_saved().unwrap().0.as_link(),
                             Box::new(args.as_execution(&init).unwrap()),
