@@ -488,6 +488,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if self.file.points.get(assignment.index()).calculated() {
             return;
         }
+        let node_ref = NodeRef::new(self.file, assignment.index());
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
@@ -500,7 +501,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             s.to_owned(),
                         );
                         type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
-                            NodeRef::new(self.file, assignment.index()).add_typing_issue(
+                            node_ref.add_typing_issue(
                                 i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
@@ -509,7 +510,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 for target in targets {
-                    self.assign_targets(target, &right, NodeRef::new(self.file, assignment.index()))
+                    self.assign_targets(target, &right, node_ref)
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -522,7 +523,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
                         .error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
-                            NodeRef::new(self.file, annotation.index()).add_typing_issue(
+                            node_ref.add_typing_issue(
                                 i_s.database,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
@@ -541,8 +542,43 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 })
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
+                let (inplace, normal, reverse) = aug_assign.magic_methods();
                 let right = self.infer_assignment_right_side(right_side);
-                todo!()
+                let left = self.infer_target(target);
+                let result =
+                    left.run_on_value(self.i_s, &mut |i_s, value| {
+                        value.lookup_implicit(i_s, normal, node_ref).run_on_value(
+                            i_s,
+                            &mut |i_s, v| {
+                                v.execute(
+                                    i_s,
+                                    &KnownArguments::new(
+                                        &right,
+                                        &NoArguments::new(node_ref),
+                                        Some(node_ref),
+                                    ),
+                                    &|i_s, node_ref, function, p, input, wanted| {
+                                        node_ref.add_typing_issue(
+                                            i_s.database,
+                                            IssueType::InvalidGetItem(format!(
+                                        "Invalid index type {:?} for {:?}; expected type {:?}",
+                                        input,
+                                        function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                                        wanted,
+                                    )),
+                                        )
+                                    },
+                                )
+                            },
+                        )
+                    });
+                if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
+                    self.assign_single_target(target, &result, |index| {
+                        // There is no need to save this, because it's never used
+                    })
+                } else {
+                    unreachable!()
+                }
             }
         }
         self.file
@@ -560,6 +596,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 YieldExprContent::YieldFrom(y) => todo!(),
             },
         }
+    }
+
+    fn infer_target(&mut self, target: Target<'db>) -> Inferred<'db> {
+        todo!()
     }
 
     fn assign_single_target(

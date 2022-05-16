@@ -2002,9 +2002,7 @@ impl<'db> Primary<'db> {
         match self.first() {
             PrimaryOrAtom::Atom(_) => (),
             PrimaryOrAtom::Primary(p) => {
-                if p.is_only_attributes().is_none() {
-                    return None;
-                }
+                p.is_only_attributes()?;
             }
         }
         match self.second() {
@@ -2050,6 +2048,38 @@ impl<'db> Operation<'db> {
             operand,
             right: ExpressionPart::new(right),
             index: node.index,
+        }
+    }
+}
+
+impl<'db> AugAssign<'db> {
+    pub fn magic_methods(&self) -> (&'static str, &'static str, &'static str) {
+        let code = self.node.as_code();
+        match code.as_bytes().get(0).unwrap() {
+            b'+' => ("__iadd__", "__add__", "__radd__"),
+            b'-' => ("__isub__", "__sub__", "__rsub__"),
+            b'*' => {
+                if code.as_bytes().get(1).unwrap() == &b'*' {
+                    ("__ipow__", "__pow__", "__rpow__")
+                } else {
+                    ("__imul__", "__mul__", "__rmul__")
+                }
+            }
+            b'/' => {
+                if code.as_bytes().get(1).unwrap() == &b'/' {
+                    ("__itruediv__", "__truediv__", "__rtruediv__")
+                } else {
+                    ("__idiv__", "__div__", "__rdiv__")
+                }
+            }
+            b'%' => ("__imod__", "__mod__", "__rmod__"),
+            b'&' => ("__iand__", "__and__", "__rand__"),
+            b'|' => ("__ior__", "__or__", "__ror__"),
+            b'^' => ("__ixor__", "__xor__", "__rxor__"),
+            b'<' => ("__ilshift__", "__lshift__", "__rlshift__"),
+            b'>' => ("__irshift__", "__rshift__", "__rrshift__"),
+            b'@' => ("__imatmul__", "__matmul__", "__rmatmul__"),
+            _ => unreachable!(),
         }
     }
 }
