@@ -1,6 +1,7 @@
 mod strings;
 
 use std::iter::{Skip, StepBy};
+use std::str::from_utf8;
 
 use parsa_python::{
     parse,
@@ -2081,6 +2082,12 @@ impl<'db> AugAssign<'db> {
             b'@' => ("__imatmul__", "__matmul__", "__rmatmul__"),
             _ => unreachable!(),
         }
+    }
+
+    pub fn operand(&self) -> &'db str {
+        // For example: += -> +
+        let s = self.node.as_code();
+        from_utf8(&s.as_bytes()[..s.len() - 1]).unwrap()
     }
 }
 

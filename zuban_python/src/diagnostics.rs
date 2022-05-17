@@ -19,7 +19,7 @@ pub enum IssueType {
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
-    UnsupportedOperand(&'static str, String, String),
+    UnsupportedOperand(String, String, String),
     InvalidGetItem(String),
 
     MethodWithoutArguments,

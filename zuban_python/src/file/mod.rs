@@ -544,34 +544,34 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();
                 let right = self.infer_assignment_right_side(right_side);
-                let left = self.infer_target(target);
-                let result =
-                    left.run_on_value(self.i_s, &mut |i_s, value| {
-                        value.lookup_implicit(i_s, normal, node_ref).run_on_value(
-                            i_s,
-                            &mut |i_s, v| {
-                                v.execute(
-                                    i_s,
-                                    &KnownArguments::new(
-                                        &right,
-                                        &NoArguments::new(node_ref),
-                                        Some(node_ref),
-                                    ),
-                                    &|i_s, node_ref, function, p, input, wanted| {
-                                        node_ref.add_typing_issue(
-                                            i_s.database,
-                                            IssueType::InvalidGetItem(format!(
-                                        "Invalid index type {:?} for {:?}; expected type {:?}",
-                                        input,
-                                        function.class.unwrap().as_string(i_s, FormatStyle::Short),
-                                        wanted,
-                                    )),
-                                        )
-                                    },
-                                )
-                            },
-                        )
-                    });
+                let left = self.infer_single_target(target);
+                let result = left.run_on_value(self.i_s, &mut |i_s, value| {
+                    value
+                        .lookup_implicit(i_s, normal, node_ref)
+                        .run_on_value(i_s, &mut |i_s, v| {
+                            v.execute(
+                                i_s,
+                                &KnownArguments::new(
+                                    &right,
+                                    &NoArguments::new(node_ref),
+                                    Some(node_ref),
+                                ),
+                                &|i_s, node_ref, function, p, input, wanted| {
+                                    node_ref.add_typing_issue(
+                                        i_s.database,
+                                        IssueType::UnsupportedOperand(
+                                            aug_assign.operand().to_owned(),
+                                            function
+                                                .class
+                                                .unwrap()
+                                                .as_string(i_s, FormatStyle::Short),
+                                            input,
+                                        ),
+                                    )
+                                },
+                            )
+                        })
+                });
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
                     self.assign_single_target(target, &result, |index| {
                         // There is no need to save this, because it's never used
@@ -598,8 +598,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_target(&mut self, target: Target<'db>) -> Inferred<'db> {
-        todo!()
+    fn infer_single_target(&mut self, target: Target<'db>) -> Inferred<'db> {
+        match target {
+            Target::Name(name_def) => {
+                todo!()
+            }
+            Target::NameExpression(primary_target, name_def_node) => {
+                todo!()
+            }
+            Target::IndexExpression(t) => self.infer_primary_target(t),
+            Target::Tuple(_) | Target::Starred(_) => unreachable!(),
+        }
     }
 
     fn assign_single_target(
@@ -653,8 +662,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // This mostly needs to be saved for self names
                 save(name_def_node.index());
             }
-            Target::IndexExpression(n) => {
-                todo!("{:?}", n);
+            Target::IndexExpression(primary_target) => {
+                let base = match primary_target.first() {
+                    PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
+                    PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
+                };
+                if let PrimaryContent::GetItem(slice_type) = primary_target.second() {
+                    base.run_on_value(self.i_s, &mut |i_s, value| {
+                        debug!("Set Item on {}", value.name());
+                        // TODO!
+                        //value.set_item(i_s, &SliceType::new(self.file, primary_target.index(), slice_type))
+                        Inferred::new_unknown()
+                    });
+                } else {
+                    unreachable!();
+                }
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
@@ -776,7 +798,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     node_ref.add_typing_issue(
                         i_s.database,
                         IssueType::UnsupportedOperand(
-                            op.operand,
+                            op.operand.to_owned(),
                             function.class.unwrap().as_string(i_s, FormatStyle::Short),
                             input,
                         ),
@@ -794,7 +816,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .save_redirect(self.file, primary.index())
     }
 
-    pub fn infer_primary_content(
+    fn infer_primary_content(
         &mut self,
         base: Inferred<'db>,
         primary_index: NodeIndex,
@@ -857,7 +879,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item on {}", value.name());
-                    let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
                     value.get_item(i_s, &SliceType::new(f, primary_index, slice_type))
                 })
             }
@@ -956,12 +977,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Inferred::new_and_save(self.file, atom.index(), point)
     }
 
-    fn infer_primary_target(&mut self, primary_target: PrimaryTarget<'db>) -> Inferred<'db> {
+    check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
+    fn _infer_primary_target(&mut self, primary_target: PrimaryTarget<'db>) -> Inferred<'db> {
         let first = match primary_target.first() {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
         };
         self.infer_primary_content(first, primary_target.index(), primary_target.second())
+            .save_redirect(self.file, primary_target.index())
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
