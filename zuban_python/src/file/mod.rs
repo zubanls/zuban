@@ -668,11 +668,30 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
                 };
                 if let PrimaryContent::GetItem(slice_type) = primary_target.second() {
+                    let node_ref = NodeRef::new(self.file, primary_target.index());
+                    let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                     base.run_on_value(self.i_s, &mut |i_s, value| {
                         debug!("Set Item on {}", value.name());
-                        // TODO!
-                        //value.set_item(i_s, &SliceType::new(self.file, primary_target.index(), slice_type))
-                        Inferred::new_unknown()
+                        value
+                            .lookup_implicit(i_s, "__setitem__", node_ref)
+                            .run_on_value(i_s, &mut |i_s, v| {
+                                v.execute(
+                                    i_s,
+                                    &slice.as_args(),
+                                    &|i_s, node_ref, function, p, input, wanted| {
+                                        node_ref.add_typing_issue(
+                                            i_s.database,
+                                            IssueType::InvalidGetItem(format!(
+                                                "Invalid index type {:?} for {:?}; expected type {:?}",
+                                                input,
+                                                function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                                                wanted,
+                                            )),
+                                        )
+                                    },
+                                )
+                            })
+                        //value.set_item(i_s, &)
                     });
                 } else {
                     unreachable!();
