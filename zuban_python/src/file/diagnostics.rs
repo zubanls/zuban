@@ -133,10 +133,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
         */
 
-        let i_a;
-        let i;
+        let (i_a, a, i);
         let node_ref = NodeRef::new(self.file, f.index());
-        let a = NoArguments::new(node_ref);
         let args: &dyn Arguments = if let Some(class) = class {
             i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 class.reference.as_link(),
@@ -155,9 +153,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .collect(),
                 )),
             ));
-            i_a = KnownArguments::new(&i, &a, None);
+            i_a = KnownArguments::new(&i, None);
             &i_a
         } else {
+            a = NoArguments::new(node_ref);
             &a
         };
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, args);

@@ -41,7 +41,15 @@ pub struct SimpleArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::Normal(self.argument_iterator_base())
+        ArgumentIterator::new(match self.details {
+            ArgumentsDetails::Node(arguments) => {
+                ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
+            }
+            ArgumentsDetails::Comprehension(comprehension) => {
+                ArgumentIteratorBase::Comprehension(self.file, comprehension)
+            }
+            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
+        })
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -100,18 +108,6 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         let f = database.loaded_python_file(execution.argument_node.file);
         let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
         Self::from_primary(f, primary, execution.in_.as_deref(), None)
-    }
-
-    pub fn argument_iterator_base(&self) -> ArgumentIteratorBase<'db> {
-        match self.details {
-            ArgumentsDetails::Node(arguments) => {
-                ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
-            }
-            ArgumentsDetails::Comprehension(comprehension) => {
-                ArgumentIteratorBase::Comprehension(self.file, comprehension)
-            }
-            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
-        }
     }
 
     fn with_class_method(&self, class: Class<'db, 'a>) -> Self {
@@ -206,40 +202,34 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 pub struct KnownArguments<'db, 'a> {
     inferred: &'a Inferred<'db>,
     mro_index: MroIndex,
-    arguments: &'a dyn Arguments<'db>,
     node_ref: Option<NodeRef<'db>>,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::Inferred(self.inferred, self.node_ref, self.arguments)
+        ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
-        self.arguments.outer_execution()
+        todo!()
     }
 
     fn as_execution(&self, function: &Function) -> Option<Execution> {
-        self.arguments.as_execution(function)
+        None
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
-        self.arguments.type_()
+        todo!()
     }
 
     fn node_reference(&self) -> NodeRef<'db> {
-        self.arguments.node_reference()
+        todo!()
     }
 }
 
 impl<'db, 'a> KnownArguments<'db, 'a> {
-    pub fn new(
-        inferred: &'a Inferred<'db>,
-        arguments: &'a dyn Arguments<'db>,
-        node_ref: Option<NodeRef<'db>>,
-    ) -> Self {
+    pub fn new(inferred: &'a Inferred<'db>, node_ref: Option<NodeRef<'db>>) -> Self {
         Self {
-            arguments,
             inferred,
             node_ref,
             mro_index: MroIndex(0),
@@ -249,15 +239,50 @@ impl<'db, 'a> KnownArguments<'db, 'a> {
     pub fn with_mro_index(
         inferred: &'a Inferred<'db>,
         mro_index: MroIndex,
-        arguments: &'a dyn Arguments<'db>,
         node_ref: Option<NodeRef<'db>>,
     ) -> Self {
         Self {
-            arguments,
             inferred,
             node_ref,
             mro_index,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct CombinedArguments<'db, 'a> {
+    args1: &'a dyn Arguments<'db>,
+    args2: &'a dyn Arguments<'db>,
+}
+
+impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
+    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
+        let mut iterator = self.args1.iter_arguments();
+        debug_assert!(iterator.next.is_none()); // For now this is not supported
+        iterator.next = Some(self.args2);
+        iterator
+    }
+
+    fn outer_execution(&self) -> Option<&Execution> {
+        todo!()
+    }
+
+    fn as_execution(&self, function: &Function) -> Option<Execution> {
+        None
+    }
+
+    fn type_(&self) -> ArgumentsType<'db> {
+        todo!()
+    }
+
+    fn node_reference(&self) -> NodeRef<'db> {
+        self.args2.node_reference()
+    }
+}
+
+impl<'db, 'a> CombinedArguments<'db, 'a> {
+    pub fn new(args1: &'a dyn Arguments<'db>, args2: &'a dyn Arguments<'db>) -> Self {
+        Self { args1, args2 }
     }
 }
 
@@ -334,42 +359,30 @@ impl<'db> Argument<'db, '_> {
     }
 }
 
-pub enum ArgumentIteratorBase<'db> {
+enum ArgumentIteratorBase<'db, 'a> {
     Iterator(
         &'db PythonFile,
         std::iter::Enumerate<ArgumentsIterator<'db>>,
     ),
     Comprehension(&'db PythonFile, Comprehension<'db>),
+    Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
+    SliceType(SliceType<'db>),
     Finished,
 }
 
-pub enum ArgumentIterator<'db, 'a> {
-    Normal(ArgumentIteratorBase<'db>),
-    Inferred(
-        &'a Inferred<'db>,
-        Option<NodeRef<'db>>,
-        &'a dyn Arguments<'db>,
-    ),
-    SliceType(SliceType<'db>),
-}
-
-impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        use ArgumentIteratorBase::*;
         match self {
-            Self::Inferred(_, _, _) => {
-                if let Self::Inferred(inf, node_ref, args) =
-                    mem::replace(self, Self::Normal(Finished))
-                {
-                    *self = args.iter_arguments();
+            Self::Inferred(_, _) => {
+                if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
                     Some(Argument::Inferred(inf, node_ref))
                 } else {
                     unreachable!()
                 }
             }
-            Self::Normal(Iterator(python_file, iterator)) => {
+            Self::Iterator(python_file, iterator) => {
                 for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
@@ -392,15 +405,15 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 }
                 None
             }
-            Self::Normal(Comprehension(file, comprehension)) => {
+            Self::Comprehension(file, comprehension) => {
                 Some(Argument::new_argument(1, file, comprehension.index()))
             }
-            Self::Normal(Finished) => None,
+            Self::Finished => None,
             Self::SliceType(slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     let file = s.file;
                     let named_expr = s.named_expr;
-                    *self = Self::Normal(Finished);
+                    *self = Self::Finished;
                     Some(Self::Item::Positional(
                         1,
                         NodeRef {
@@ -416,6 +429,42 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     }
 }
 
+pub struct ArgumentIterator<'db, 'a> {
+    current: ArgumentIteratorBase<'db, 'a>,
+    next: Option<&'a dyn Arguments<'db>>,
+}
+
+impl<'db, 'a> ArgumentIterator<'db, 'a> {
+    fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
+        Self {
+            current,
+            next: None,
+        }
+    }
+
+    pub fn new_slice(slice_type: SliceType<'db>) -> Self {
+        Self {
+            current: ArgumentIteratorBase::SliceType(slice_type),
+            next: None,
+        }
+    }
+}
+
+impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+    type Item = Argument<'db, 'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.current.next().or_else(|| {
+            if let Some(next) = self.next {
+                *self = next.iter_arguments();
+                self.next()
+            } else {
+                None
+            }
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct NoArguments<'db>(NodeRef<'db>);
 
@@ -427,7 +476,7 @@ impl<'db> NoArguments<'db> {
 
 impl<'db> Arguments<'db> for NoArguments<'db> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::Normal(ArgumentIteratorBase::Finished)
+        ArgumentIterator::new(ArgumentIteratorBase::Finished)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

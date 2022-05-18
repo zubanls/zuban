@@ -551,11 +551,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
-                                &KnownArguments::new(
-                                    &right,
-                                    &NoArguments::new(node_ref),
-                                    Some(node_ref),
-                                ),
+                                &KnownArguments::new(&right, Some(node_ref)),
                                 &|i_s, node_ref, function, p, input, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.database,
@@ -812,7 +808,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
-                &KnownArguments::new(&right, &NoArguments::new(node_ref), Some(node_ref)),
+                &KnownArguments::new(&right, Some(node_ref)),
                 &|i_s, node_ref, function, p, input, _| {
                     node_ref.add_typing_issue(
                         i_s.database,

@@ -1,7 +1,9 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::fmt;
 
-use crate::arguments::{Arguments, KnownArguments, NoArguments, SimpleArguments};
+use crate::arguments::{
+    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
+};
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
     PointLink, PointType, Specific, TypeVar, TypeVarType,
@@ -325,7 +327,8 @@ impl<'db> Inferred<'db> {
                 let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
-                    let args = KnownArguments::new(instance.as_inferred(), &args, None);
+                    let instance_arg = KnownArguments::new(instance.as_inferred(), None);
+                    let args = CombinedArguments::new(&instance_arg, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
                 })
             }
@@ -385,7 +388,8 @@ impl<'db> Inferred<'db> {
                     debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
                     // TODO is this MroIndex fine? probably not!
-                    let args = KnownArguments::new(self, &args, None);
+                    let instance_arg = KnownArguments::new(self, None);
+                    let args = CombinedArguments::new(&instance_arg, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
                 } else {
                     unreachable!()
