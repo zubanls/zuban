@@ -413,7 +413,7 @@ pub enum ComplexPoint {
     GenericClass(PointLink, GenericsList),
     Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
-    FunctionTypeVars(Box<TypeVars>),
+    FunctionTypeVars(TypeVars),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
 
@@ -838,8 +838,8 @@ impl TypeVarManager {
         }
     }
 
-    pub fn into_boxed_slice(self) -> Box<TypeVars> {
-        self.0.into_boxed_slice()
+    pub fn into_boxed_slice(self) -> TypeVars {
+        TypeVars(self.0.into_boxed_slice())
     }
 }
 
@@ -860,7 +860,22 @@ impl BitAnd for Variance {
     }
 }
 
-pub type TypeVars = [Rc<TypeVar>];
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypeVars(Box<[Rc<TypeVar>]>);
+
+impl TypeVars {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Rc<TypeVar>> {
+        self.0.iter()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct TypeVar {
@@ -902,7 +917,7 @@ pub struct TypeVarUsage {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: Box<TypeVars>,
+    pub type_vars: TypeVars,
     pub db_type: Rc<DbType>,
 }
 
@@ -1126,7 +1141,7 @@ impl ClassStorage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub type_vars: Box<TypeVars>,
+    pub type_vars: TypeVars,
     pub mro: Box<[DbType]>, // Does never include `object`
     pub is_protocol: bool,
     pub incomplete_mro: bool,
