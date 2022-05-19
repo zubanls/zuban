@@ -141,6 +141,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         matches
     }
 
+    pub fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
+        if let ClassLike::TypeWithDbType(DbType::TypeVar(t2)) = self {
+            t1.index == t2.index && t1.type_ == t2.type_
+        } else {
+            false
+        }
+    }
+
     fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
         match self {
             Self::Class(c) => (c.generics(), None),
