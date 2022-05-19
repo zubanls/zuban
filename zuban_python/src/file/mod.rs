@@ -1155,17 +1155,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::AnnotationWithTypeVars => {
                         // For variable annotations like a: int
                         // TODO is this really the right place?
+                        match self.i_s.context {
+                            Context::Diagnostics => {
+                                return self.use_instance_of_annotation(node_index)
+                            }
+                            Context::Inference => (),
+                        }
                         let d =
                             self.use_db_type_of_annotation(node_index)
                                 .remap_type_vars(&mut |t| match t.type_ {
                                     TypeVarType::Class => {
                                         if let Some(class) = self.i_s.current_class {
-                                            match self.i_s.context {
-                                                Context::Diagnostics => DbType::TypeVar(t.clone()),
-                                                Context::Inference => {
-                                                    class.generics.nth(self.i_s, t.index)
-                                                }
-                                            }
+                                            class.generics.nth(self.i_s, t.index)
                                         } else {
                                             todo!()
                                         }
