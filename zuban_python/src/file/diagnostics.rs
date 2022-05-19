@@ -119,7 +119,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
-        function.calculated_type_vars(self.i_s);
+        function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
         /*
          * TODO I think this is not needed anymore

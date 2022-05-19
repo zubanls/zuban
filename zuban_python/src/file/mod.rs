@@ -1119,7 +1119,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 NodeRef::new(self.file, func.index()),
                                 self.i_s.current_class,
                             );
-                            func.calculated_type_vars(self.i_s);
+                            func.type_vars(self.i_s);
                         }
 
                         if let Some(annotation) = name_def.maybe_param_annotation() {

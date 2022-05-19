@@ -159,7 +159,7 @@ impl<'db, 'a> Function<'db, 'a> {
         false
     }
 
-    pub fn calculated_type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.reference.add_to_node_index(4);
@@ -205,7 +205,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .insert_complex(ComplexPoint::FunctionTypeVars(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());
-        self.calculated_type_vars(i_s)
+        self.type_vars(i_s)
     }
 
     pub fn iter_params(&self) -> ParamIterator<'db> {
@@ -226,7 +226,7 @@ impl<'db, 'a> Function<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
-        let func_type_vars = return_annotation.and_then(|_| self.calculated_type_vars(i_s));
+        let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let mut finder = TypeVarMatcher::new(
             self,
             args,
@@ -272,7 +272,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         // Make sure annotations/type vars are calculated
-        self.calculated_type_vars(i_s);
+        self.type_vars(i_s);
 
         let node = self.node();
         let mut result = "def (".to_owned();
@@ -579,7 +579,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     on_type_error,
                 ),
                 None => {
-                    let func_type_vars = function.calculated_type_vars(i_s);
+                    let func_type_vars = function.type_vars(i_s);
                     TypeVarMatcher::new(
                         &function,
                         args,
