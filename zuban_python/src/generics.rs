@@ -180,7 +180,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_generics: Self,
         variance: Variance,
-        type_vars: Option<&[Rc<TypeVar>]>,
+        type_vars: Option<&TypeVars>,
     ) -> bool {
         let mut value_generics = value_generics.iter();
         let mut matches = true;

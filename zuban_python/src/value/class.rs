@@ -11,7 +11,7 @@ use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
     MroIndex, PointLink, Specific, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
-    TypeVarUsage, Variance,
+    TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
@@ -302,7 +302,7 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db [Rc<TypeVar>] {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db TypeVars {
         &self.class_infos(i_s).type_vars
     }
 

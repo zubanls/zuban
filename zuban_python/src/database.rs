@@ -838,7 +838,7 @@ impl TypeVarManager {
         }
     }
 
-    pub fn into_boxed_slice(self) -> Box<[Rc<TypeVar>]> {
+    pub fn into_boxed_slice(self) -> Box<TypeVars> {
         self.0.into_boxed_slice()
     }
 }
@@ -902,7 +902,7 @@ pub struct TypeVarUsage {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: Box<[Rc<TypeVar>]>,
+    pub type_vars: Box<TypeVars>,
     pub db_type: Rc<DbType>,
 }
 
@@ -1126,7 +1126,7 @@ impl ClassStorage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub type_vars: Box<[Rc<TypeVar>]>,
+    pub type_vars: Box<TypeVars>,
     pub mro: Box<[DbType]>, // Does never include `object`
     pub is_protocol: bool,
     pub incomplete_mro: bool,
