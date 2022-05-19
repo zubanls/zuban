@@ -177,7 +177,10 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut inference = self.reference.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>| {
             if let Some(class) = self.class {
-                if let Some(usage) = class.maybe_in_type_vars(i_s, type_var.clone()) {
+                if let Some(usage) = class
+                    .type_vars(i_s)
+                    .find(type_var.clone(), TypeVarType::Class)
+                {
                     return usage;
                 }
             }

@@ -306,21 +306,6 @@ impl<'db, 'a> Class<'db, 'a> {
         &self.class_infos(i_s).type_vars
     }
 
-    pub fn maybe_in_type_vars(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        type_var: Rc<TypeVar>,
-    ) -> Option<TypeVarUsage> {
-        self.type_vars(i_s)
-            .iter()
-            .position(|t| t == &type_var)
-            .map(|index| TypeVarUsage {
-                type_var,
-                index: TypeVarIndex::new(index),
-                type_: TypeVarType::Class,
-            })
-    }
-
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let reference = self.reference.add_to_node_index(1);
         let point = reference.point();
