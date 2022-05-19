@@ -357,6 +357,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         match self.func_or_callable {
             FunctionOrCallable::Function(function) => {
+                // Make sure the type vars are properly pre-calculated, because we are using type
+                // vars from in use_cached_annotation_type.
                 function.calculated_type_vars(i_s);
                 let mut iter = function.iter_inferrable_params(self.args, self.skip_first);
                 while let Some(p) = iter.next() {
