@@ -11,8 +11,10 @@ use crate::database::{
     Point, TupleContent, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
 use crate::generics::{Generics, GenericsIterator, TypeVarMatcher};
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -346,6 +348,17 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         }
     }
 
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        slice_type
+            .as_node_ref()
+            .add_typing_issue(i_s.database, IssueType::FunctionGetItem);
+        Inferred::new_unknown()
+    }
+
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::FunctionType(*self)
     }
@@ -633,5 +646,17 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         self.find_matching_function(i_s, args, None, on_type_error)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
             .unwrap_or_else(Inferred::new_unknown)
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        slice_type
+            .as_node_ref()
+            .add_typing_issue(i_s.database, IssueType::FunctionGetItem);
+        todo!("Please write a test that checks this");
+        Inferred::new_unknown()
     }
 }

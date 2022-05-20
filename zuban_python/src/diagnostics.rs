@@ -21,6 +21,7 @@ pub enum IssueType {
     NotCallable(String),
     UnsupportedOperand(String, String, String),
     InvalidGetItem(String),
+    FunctionGetItem,
 
     MethodWithoutArguments,
 
@@ -113,8 +114,11 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::InvalidGetItem(s) => s.clone(),
-                IssueType::MethodWithoutArguments => {
-                    "Method must have at least one argument".to_owned()
+            IssueType::MethodWithoutArguments => {
+                "Method must have at least one argument".to_owned()
+            }
+            IssueType::FunctionGetItem => {
+                "Type application is only supported for generic classes".to_owned()
             }
             IssueType::Note(s) => {
                 type_ = "note";
