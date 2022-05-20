@@ -84,10 +84,14 @@ pub(super) fn type_computation_for_variable_annotation(
     type_var: Rc<TypeVar>,
 ) -> Option<TypeVarUsage> {
     if let Some(class) = i_s.current_class {
-        if let Some(usage) = class.type_vars(i_s).find(type_var, TypeVarType::Class) {
+        if let Some(usage) = class
+            .type_vars(i_s)
+            .find(type_var.clone(), TypeVarType::Class)
+        {
             return Some(usage);
         }
-    } else if let Some((func, _)) = i_s.current_execution {
+    }
+    if let Some((func, _)) = i_s.current_execution {
         if let Some(type_vars) = func.type_vars(i_s) {
             let usage = type_vars.find(type_var, TypeVarType::Function);
             if usage.is_some() {
