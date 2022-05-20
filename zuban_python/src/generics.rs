@@ -1,13 +1,11 @@
-use std::rc::Rc;
-
 use parsa_python_ast::{
     Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
 };
 
 use crate::arguments::Arguments;
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, TypeVar, TypeVarIndex, TypeVarType, TypeVarUsage,
-    TypeVars, Variance,
+    Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
