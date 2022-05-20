@@ -495,6 +495,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut right = self.infer_assignment_right_side(right_side);
                 if let Some(start) = suffix.find("# type: ") {
                     let s = &suffix[start + "# type: ".len()..];
+                    debug!("Infer type comment {:?} on {:?}", s, assignment.as_code());
                     if s != "ignore" {
                         let (r, type_) = self.compute_type_comment(
                             assignment.end() + "# type: ".len() as CodeIndex,
