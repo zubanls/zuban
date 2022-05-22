@@ -3,8 +3,8 @@ use std::fmt;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{
-    CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
-    ValueKind,
+    BoundMethod, CallableClass, Function, Instance, LookupResult, Module, OnTypeError, TupleClass,
+    TypingClass, Value, ValueKind,
 };
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
@@ -260,19 +260,24 @@ impl<'db, 'a> Class<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
+        let has_generics = !matches!(self.generics, Generics::None);
         match init.into_maybe_inferred().unwrap().init_as_function(self) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
-                let list = TypeVarMatcher::calculate_and_return(
-                    i_s,
-                    &func,
-                    args,
-                    true,
-                    Some(type_vars),
-                    TypeVarType::Class,
-                    on_type_error,
-                );
+                let list = if has_generics {
+                    self.generics.as_generics_list(i_s)
+                } else {
+                    TypeVarMatcher::calculate_and_return(
+                        i_s,
+                        &func,
+                        args,
+                        true,
+                        Some(type_vars),
+                        TypeVarType::Class,
+                        on_type_error,
+                    )
+                };
                 return (func, list, false);
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => {
@@ -282,6 +287,9 @@ impl<'db, 'a> Class<'db, 'a> {
                     class.as_ref(),
                     on_type_error,
                 ) {
+                    if has_generics {
+                        todo!()
+                    }
                     return (func, list, true);
                 } else {
                     todo!()
@@ -537,10 +545,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         // TODO locality!!!
         let (func, mut generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
         if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() || is_overload {
-            if !matches!(self.generics, Generics::None) {
-                generics_list = self.generics.as_generics_list(i_s);
-                // TODO here we should type check if the generics match with args
-            }
             debug!(
                 "Class execute: {}{}",
                 self.name(),
@@ -550,7 +554,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                     None => "".to_owned(),
                 }
             );
-            Inferred::new_unsaved_complex(match generics_list {
+            let inf = Inferred::new_unsaved_complex(match generics_list {
                 None => ComplexPoint::ExecutionInstance(
                     self.reference.as_link(),
                     Box::new(args.as_execution(&func).unwrap()),
@@ -558,7 +562,13 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 Some(generics_list) => {
                     ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
                 }
-            })
+            });
+            if !matches!(self.generics, Generics::None) {
+                let instance = Instance::new(*self, &inf);
+                let m = BoundMethod::new(&instance, MroIndex(0), &func);
+                m.execute(i_s, args, on_type_error);
+            }
+            inf
         } else {
             // TODO this is weird.
             match args.type_() {
