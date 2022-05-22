@@ -84,9 +84,11 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        self.lookup_implicit(i_s, "__getitem__", &mut |i_s| {
-            slice_type.as_node_ref();
-            todo!()
+        self.lookup_implicit(i_s, "__getitem__", &|i_s| {
+            slice_type.as_node_ref().add_typing_issue(
+                i_s.database,
+                IssueType::NotIndexable(self.class.as_string(i_s, FormatStyle::Short)),
+            )
         })
         .run_on_value(i_s, &mut |i_s, v| {
             v.execute(

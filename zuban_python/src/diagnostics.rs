@@ -21,6 +21,7 @@ pub enum IssueType {
     NotCallable(String),
     UnsupportedOperand(String, String, String),
     InvalidGetItem(String),
+    NotIndexable(String),
     FunctionGetItem,
 
     MethodWithoutArguments,
@@ -114,6 +115,7 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::InvalidGetItem(s) => s.clone(),
+            IssueType::NotIndexable(s) => format!("Value of type {:?} is not indexable", s),
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }
