@@ -548,7 +548,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, normal, node_ref)
+                        .lookup_implicit(i_s, normal, &mut |i_s| todo!())
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
@@ -670,7 +670,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
                         v
-                            .lookup_implicit(i_s, "__setitem__", node_ref)
+                            .lookup_implicit(i_s, "__setitem__", &mut |i_s| todo!())
                             .run_on_value(i_s, &mut |i_s, v| {
                                 v.execute(
                                     i_s,
@@ -806,7 +806,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.magic_method, node_ref)
+            value.lookup_implicit(i_s, op.magic_method, &mut |i_s| todo!())
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
@@ -843,7 +843,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, name.as_str(), NodeRef::new(self.file, primary_index)) {
+                match value.lookup(i_s, name.as_str(), &mut |i_s| {
+                    let origin = if value.as_module().is_some() {
+                        "Module".to_owned()
+                    } else {
+                        format!("{:?}", value.name())
+                    };
+                    NodeRef::new(self.file, primary_index).add_typing_issue(
+                        i_s.database,
+                        IssueType::AttributeError(origin, name.as_str().to_owned()),
+                    );
+                }) {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
                         // it here can be overwritten.

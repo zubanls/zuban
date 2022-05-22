@@ -84,24 +84,27 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        self.lookup_implicit(i_s, "__getitem__", slice_type.as_node_ref())
-            .run_on_value(i_s, &mut |i_s, v| {
-                v.execute(
-                    i_s,
-                    &slice_type.as_args(),
-                    &|i_s, node_ref, function, p, input, wanted| {
-                        node_ref.add_typing_issue(
-                            i_s.database,
-                            IssueType::InvalidGetItem(format!(
-                                "Invalid index type {:?} for {:?}; expected type {:?}",
-                                input,
-                                function.class.unwrap().as_string(i_s, FormatStyle::Short),
-                                wanted,
-                            )),
-                        )
-                    },
-                )
-            })
+        self.lookup_implicit(i_s, "__getitem__", &mut |i_s| {
+            slice_type.as_node_ref();
+            todo!()
+        })
+        .run_on_value(i_s, &mut |i_s, v| {
+            v.execute(
+                i_s,
+                &slice_type.as_args(),
+                &|i_s, node_ref, function, p, input, wanted| {
+                    node_ref.add_typing_issue(
+                        i_s.database,
+                        IssueType::InvalidGetItem(format!(
+                            "Invalid index type {:?} for {:?}; expected type {:?}",
+                            input,
+                            function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                            wanted,
+                        )),
+                    )
+                },
+            )
+        })
     }
 
     fn as_instance(&self) -> Option<&Instance<'db, 'a>> {

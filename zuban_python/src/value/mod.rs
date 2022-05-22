@@ -12,7 +12,6 @@ use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::{Database, DbType, FileIndex, PointLink};
-use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -39,6 +38,7 @@ pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     String,
     String,
 );
+pub type OnLookupError<'db, 'a> = &'a dyn Fn(&mut InferenceState<'db, '_>);
 
 enum ArrayType {
     None,
@@ -202,20 +202,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        from: NodeRef<'db>,
+        on_error: OnLookupError<'db, '_>,
     ) -> LookupResult<'db> {
         let result = self.lookup_internal(i_s, name);
         if matches!(result, LookupResult::None) {
             if self.should_add_lookup_error(i_s) {
-                let origin = if self.as_module().is_some() {
-                    "Module".to_owned()
-                } else {
-                    format!("{:?}", self.name())
-                };
-                from.add_typing_issue(
-                    i_s.database,
-                    IssueType::AttributeError(origin, name.to_owned()),
-                );
+                on_error(i_s);
             }
         }
         result
@@ -225,9 +217,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        from: NodeRef<'db>,
+        on_error: OnLookupError<'db, '_>,
     ) -> Inferred<'db> {
-        match self.lookup(i_s, name, from) {
+        match self.lookup(i_s, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
             LookupResult::FileReference(f) => todo!(),
             LookupResult::None => Inferred::new_unknown(),
@@ -257,7 +249,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
-            self.lookup_implicit(i_s, "__iter__", from)
+            self.lookup_implicit(i_s, "__iter__", &mut |i_s| todo!())
                 .run_on_value(i_s, &mut |i_s, value| {
                     value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _| todo!())
                 })
