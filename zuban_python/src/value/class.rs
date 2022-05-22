@@ -543,7 +543,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        let (func, mut generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
+        let (func, generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
         if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() || is_overload {
             debug!(
                 "Class execute: {}{}",
