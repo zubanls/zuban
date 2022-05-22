@@ -57,10 +57,13 @@ impl<'db> Diagnostic<'db> {
     pub fn as_string(&self) -> String {
         let mut type_ = "error";
         // TODO REMOVE mypy removal
-        let path = self
+        let mut path = self
             .db
             .file_path(self.file.file_index())
             .trim_start_matches("/mypylike/");
+        if path == "__main__" {
+            path = "main";
+        }
         let line = self.start_position().line_and_column().0;
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {

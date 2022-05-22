@@ -89,7 +89,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
 
             for (&path, &code) in &step.files {
-                specified_lines.extend(ErrorCommentsOnCode(path, code.split("\n").enumerate()));
+                let p = if path == "__main__" {
+                    // TODO this if is so weird. Why is this shit needed???
+                    "main"
+                } else {
+                    path
+                };
+                specified_lines.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
                 project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
             }
             specified_lines.sort();
@@ -142,7 +148,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         steps.insert(1, Default::default());
         let mut current_step_index = 1;
         let mut current_type = "file";
-        let mut current_rest = "main";
+        let mut current_rest = "__main__";
         let mut current_step_start = 0;
         let mut flags = vec![];
 
@@ -173,7 +179,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             } else {
                 process_step_part2(step_index, type_, in_between, rest)
             }
-            if rest == "main" {
+            if rest == "__main__" {
                 if in_between.starts_with("# flags: ") {
                     let all_flags = &in_between[9..in_between.find("\n").unwrap()];
                     flags = all_flags.split(' ').collect();
