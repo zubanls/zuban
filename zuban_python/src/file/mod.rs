@@ -1128,7 +1128,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         {
                             let func = Function::new(
                                 NodeRef::new(self.file, func.index()),
-                                self.i_s.current_class,
+                                self.i_s.current_class.copied(),
                             );
                             func.type_vars(self.i_s);
                         }

@@ -440,10 +440,10 @@ impl<'db> Inferred<'db> {
                     _ => unreachable!(),
                 };
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
-                    let func = OverloadedFunction::new(reference, overload, Some(&class));
+                    let func = OverloadedFunction::new(reference, overload, Some(class));
                     callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
                 } else {
-                    let func = Function::new(reference, Some(&class));
+                    let func = Function::new(reference, Some(class));
                     callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
                 }
             }
@@ -912,7 +912,7 @@ impl<'db> Inferred<'db> {
 
     pub fn init_as_function<'a>(
         &self,
-        class: &'a Class<'db, 'a>,
+        class: Class<'db, 'a>,
     ) -> Option<FunctionOrOverload<'db, 'a>> {
         if let InferredState::Saved(definition, point) = &self.state {
             if let Some(Specific::Function) = point.maybe_specific() {

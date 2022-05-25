@@ -463,12 +463,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     ) -> bool {
         // TODO we should be able to remove the match part here!
         if self.match_type == type_var_usage.type_ {
-            self.calculated_type_vars
-                .as_mut()
-                .unwrap()
-                .set_generic(type_var_usage.index, class.into_db_type(i_s));
-            true
-        } else if type_var_usage.type_ == TypeVarType::Class {
+            if let Some(calculated) = self.calculated_type_vars.as_mut() {
+                calculated.set_generic(type_var_usage.index, class.into_db_type(i_s));
+                return true;
+            }
+        }
+        if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
                 FunctionOrCallable::Function(f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);

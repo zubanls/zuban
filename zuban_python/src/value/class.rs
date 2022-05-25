@@ -261,7 +261,8 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let has_generics = !matches!(self.generics, Generics::None);
-        match init.into_maybe_inferred().unwrap().init_as_function(self) {
+        let cls = class.unwrap_or_else(|| todo!());
+        match init.into_maybe_inferred().unwrap().init_as_function(cls) {
             Some(FunctionOrOverload::Function(func)) => {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
@@ -306,7 +307,8 @@ impl<'db, 'a> Class<'db, 'a> {
         args: &dyn Arguments<'db>,
     ) -> Function<'db, '_> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        match init.into_maybe_inferred().unwrap().init_as_function(self) {
+        let class = class.unwrap_or_else(|| todo!());
+        match init.into_maybe_inferred().unwrap().init_as_function(class) {
             Some(FunctionOrOverload::Function(func)) => func,
             _ => unreachable!(),
         }
@@ -456,7 +458,8 @@ impl<'db, 'a> Class<'db, 'a> {
                 if let ClassLike::Class(c) = c {
                     return (result, Some(c));
                 } else {
-                    return (result, None);
+                    todo!()
+                    //return (result, None);
                 }
             }
         }

@@ -20,7 +20,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_stmts_diagnostics(
         &mut self,
         stmts: StmtIterator<'db>,
-        class: Option<&Class<'db, '_>>,
+        class: Option<Class<'db, '_>>,
         func: Option<&Function<'db, '_>>,
     ) {
         // TODO In general all {} blocks are todos
@@ -95,7 +95,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_block_diagnostics(
         &mut self,
         block: Block<'db>,
-        class: Option<&Class<'db, '_>>,
+        class: Option<Class<'db, '_>>,
         func: Option<&Function<'db, '_>>,
     ) {
         match block.unpack() {
@@ -113,10 +113,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class.class_infos(self.i_s);
         self.file
             .inference(&mut self.i_s.with_diagnostic_class_context(&class))
-            .calc_block_diagnostics(block, Some(&class), None)
+            .calc_block_diagnostics(block, Some(class), None)
     }
 
-    fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<&Class<'db, '_>>) {
+    fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<Class<'db, '_>>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);

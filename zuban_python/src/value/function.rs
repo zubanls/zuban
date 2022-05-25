@@ -23,7 +23,7 @@ use crate::value::Class;
 #[derive(Clone, Copy)]
 pub struct Function<'db, 'a> {
     pub reference: NodeRef<'db>,
-    pub class: Option<&'a Class<'db, 'a>>,
+    pub class: Option<Class<'db, 'a>>,
 }
 
 impl<'db> fmt::Debug for Function<'db, '_> {
@@ -39,14 +39,14 @@ impl<'db, 'a> Function<'db, 'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(reference: NodeRef<'db>, class: Option<&'a Class<'db, 'a>>) -> Self {
+    pub fn new(reference: NodeRef<'db>, class: Option<Class<'db, 'a>>) -> Self {
         Self { reference, class }
     }
 
     pub fn from_execution(
         database: &'db Database,
         execution: &Execution,
-        class: Option<&'a Class<'db, 'a>>,
+        class: Option<Class<'db, 'a>>,
     ) -> Self {
         let f_func = database.loaded_python_file(execution.function.file);
         Function::new(
@@ -263,7 +263,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(i_s, self.class, Some(&mut finder))
+                    .execute_and_resolve_type_vars(i_s, self.class.as_ref(), Some(&mut finder))
             } else {
                 self.reference
                     .file
@@ -342,7 +342,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         if let Some(class) = self.class {
-            self.execute_internal(&mut i_s.with_class_context(class), args, on_type_error)
+            self.execute_internal(&mut i_s.with_class_context(&class), args, on_type_error)
         } else {
             self.execute_internal(i_s, args, on_type_error)
         }
@@ -560,14 +560,14 @@ impl<'db> InferrableParam<'db, '_> {
 pub struct OverloadedFunction<'db, 'a> {
     reference: NodeRef<'db>,
     overload: &'a Overload,
-    class: Option<&'a Class<'db, 'a>>,
+    class: Option<Class<'db, 'a>>,
 }
 
 impl<'db, 'a> OverloadedFunction<'db, 'a> {
     pub fn new(
         reference: NodeRef<'db>,
         overload: &'a Overload,
-        class: Option<&'a Class<'db, 'a>>,
+        class: Option<Class<'db, 'a>>,
     ) -> Self {
         Self {
             reference,

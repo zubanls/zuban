@@ -33,7 +33,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
-            current_class: func.class,
+            current_class: func.class.as_ref(),
             context: Context::Inference,
         }
     }
@@ -46,7 +46,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             database: self.database,
             current_execution: Some((func, args)),
-            current_class: func.class,
+            current_class: func.class.as_ref(),
             context: Context::Diagnostics,
         }
     }
