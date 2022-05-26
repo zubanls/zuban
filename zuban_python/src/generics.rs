@@ -661,7 +661,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let value_type = value.class_as_type(i_s);
         if !self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant) {
             let class = matcher.and_then(|matcher| match matcher.func_or_callable {
-                FunctionOrCallable::Function(c, _) => c,
+                FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
             });
             let input = value
