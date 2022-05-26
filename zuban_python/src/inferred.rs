@@ -1119,7 +1119,7 @@ impl<'db> Inferred<'db> {
             value.lookup_implicit(i_s, name, &mut |i_s| todo!())
         })
         .run_on_value(i_s, &mut |i_s, value| {
-            value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _| {
+            value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| {
                 todo!("currently only used for __next__")
             })
         })

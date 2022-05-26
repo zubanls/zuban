@@ -33,6 +33,7 @@ pub use typing::{
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
     NodeRef<'db>,
+    Option<&Class<'db, '_>>,
     &Function<'db, '_>,
     &InferrableParam<'db, '_>,
     String,
@@ -251,7 +252,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", &mut |i_s| todo!())
                 .run_on_value(i_s, &mut |i_s, value| {
-                    value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _| todo!())
+                    value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| todo!())
                 })
                 .execute_function(i_s, "__next__", from),
         )

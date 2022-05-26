@@ -553,15 +553,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             v.execute(
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
-                                &|i_s, node_ref, function, p, input, wanted| {
+                                &|i_s, node_ref, class, function, p, input, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.database,
                                         IssueType::UnsupportedOperand(
                                             aug_assign.operand().to_owned(),
-                                            function
-                                                .class
-                                                .unwrap()
-                                                .as_string(i_s, FormatStyle::Short),
+                                            class.unwrap().as_string(i_s, FormatStyle::Short),
                                             input,
                                         ),
                                     )
@@ -678,13 +675,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         &slice.as_args(),
                                         &KnownArguments::new(value, None),
                                     ),
-                                    &|i_s, node_ref, function, p, input, wanted| {
+                                    &|i_s, node_ref, class, function, p, input, wanted| {
                                         node_ref.add_typing_issue(
                                             i_s.database,
                                             IssueType::InvalidGetItem(format!(
                                                 "Invalid index type {:?} for {:?}; expected type {:?}",
                                                 input,
-                                                function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                                                class.unwrap().as_string(i_s, FormatStyle::Short),
                                                 wanted,
                                             )),
                                         )
@@ -812,12 +809,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
-                &|i_s, node_ref, function, p, input, _| {
+                &|i_s, node_ref, class, function, p, input, _| {
                     node_ref.add_typing_issue(
                         i_s.database,
                         IssueType::UnsupportedOperand(
                             op.operand.to_owned(),
-                            function.class.unwrap().as_string(i_s, FormatStyle::Short),
+                            class.unwrap().as_string(i_s, FormatStyle::Short),
                             input,
                         ),
                     )
@@ -888,13 +885,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             x.as_ref(),
                             value.as_class().cloned(),
                         ),
-                        &|i_s, node_ref, function, p, t1, t2| {
+                        &|i_s, node_ref, class, function, p, t1, t2| {
                             node_ref.add_typing_issue(
                                 i_s.database,
                                 IssueType::ArgumentIssue(format!(
                                     "Argument {} to {} has incompatible type {:?}; expected {:?}",
                                     p.argument_index(),
-                                    function.diagnostic_string(function.class.as_ref()),
+                                    function.diagnostic_string(class),
                                     t1,
                                     t2,
                                 )),

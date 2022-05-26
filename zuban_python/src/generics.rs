@@ -395,6 +395,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                     on_type_error(
                                         i_s,
                                         p.as_argument_node_reference(),
+                                        class,
                                         function,
                                         &p,
                                         t1,
