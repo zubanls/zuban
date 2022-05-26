@@ -556,6 +556,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 }
             });
             if !matches!(self.generics, Generics::None) {
+                // If generics were given, the init_func call will not actually typecheck, so we
+                // have to do this here.
                 let instance = Instance::new(*self, &inf);
                 let m = BoundMethod::new(&instance, MroIndex(0), &func);
                 m.execute(i_s, args, on_type_error);
