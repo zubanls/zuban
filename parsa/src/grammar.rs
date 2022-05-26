@@ -167,18 +167,15 @@ impl<'a, T: Token> Grammar<T> {
 
         while stack.len() > 0 {
             while let Some(token) = backtracking_tokenizer.next() {
-                let transition;
-                if token.can_contain_syntax() {
+                let transition = if token.can_contain_syntax() {
                     let start = token.start_index() as usize;
                     let token_str = &code[start..start + token.length() as usize];
-                    transition = self
-                        .keywords
+                    self.keywords
                         .squashed(token_str)
-                        .unwrap_or_else(|| token.type_().to_squashed());
+                        .unwrap_or_else(|| token.type_().to_squashed())
                 } else {
-                    transition = token.type_().to_squashed();
-                }
-
+                    token.type_().to_squashed()
+                };
                 self.apply_transition(&mut stack, &mut backtracking_tokenizer, transition, &token);
             }
 

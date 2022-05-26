@@ -563,8 +563,7 @@ impl RuleAutomaton {
                 let alt = self
                     .dfa_states
                     .get(i)
-                    .map(|d: &Pin<Box<DFAState>>| d.from_alternative_list_index)
-                    .flatten();
+                    .and_then(|d: &Pin<Box<DFAState>>| d.from_alternative_list_index);
                 if let Some(a) = alt {
                     format!("(alt from {})", a.0)
                 } else {

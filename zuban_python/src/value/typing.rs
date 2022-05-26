@@ -608,15 +608,12 @@ pub struct CallableParamIterator<'db, 'a, 'b> {
 impl<'db, 'a, 'b> Iterator for CallableParamIterator<'db, 'a, 'b> {
     type Item = CallableParam<'db, 'a, 'b>;
     fn next(&mut self) -> Option<Self::Item> {
-        self.params
-            .as_mut()
-            .map(|params| {
-                params.next().map(|param_type| Self::Item {
-                    param_type,
-                    argument: self.arguments.next(),
-                })
+        self.params.as_mut().and_then(|params| {
+            params.next().map(|param_type| Self::Item {
+                param_type,
+                argument: self.arguments.next(),
             })
-            .flatten()
+        })
     }
 }
 

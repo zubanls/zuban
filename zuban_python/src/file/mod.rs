@@ -474,12 +474,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             DottedNameContent::Name(name) => self.global_import(name.as_str(), name.index(), None),
             DottedNameContent::DottedName(dotted_name, name) => self
                 .infer_import_dotted_name(dotted_name)
-                .map(|file_index| {
+                .and_then(|file_index| {
                     let file = self.i_s.database.loaded_python_file(file_index);
                     let module = Module::new(self.i_s.database, file);
                     module.sub_module(self.i_s.database, name.as_str())
-                })
-                .flatten(),
+                }),
         }
     }
 
@@ -547,7 +546,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, normal, &mut |i_s| todo!())
+                        .lookup_implicit(i_s, normal, &|i_s| todo!())
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
@@ -666,7 +665,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
                         v
-                            .lookup_implicit(i_s, "__setitem__", &mut |i_s| todo!())
+                            .lookup_implicit(i_s, "__setitem__", &|i_s| todo!())
                             .run_on_value(i_s, &mut |i_s, v| {
                                 v.execute(
                                     i_s,
@@ -800,7 +799,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.magic_method, &mut |i_s| todo!())
+            value.lookup_implicit(i_s, op.magic_method, &|i_s| todo!())
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
@@ -837,7 +836,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, name.as_str(), &mut |i_s| {
+                match value.lookup(i_s, name.as_str(), &|i_s| {
                     let origin = if value.as_module().is_some() {
                         "Module".to_owned()
                     } else {
@@ -977,7 +976,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 let content = TupleContent {
-                    generics: (generics.len() != 0).then(|| GenericsList::from_vec(generics)),
+                    generics: (!generics.is_empty()).then(|| GenericsList::from_vec(generics)),
                     arbitrary_length: false,
                 };
                 debug!(

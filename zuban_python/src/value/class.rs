@@ -3,8 +3,8 @@ use std::fmt;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{
-    BoundMethod, CallableClass, Function, Instance, LookupResult, Module, OnTypeError, TupleClass,
-    TypingClass, Value, ValueKind,
+    CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
+    ValueKind,
 };
 use crate::arguments::{Arguments, ArgumentsType};
 use crate::database::{
@@ -556,7 +556,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                     None => "".to_owned(),
                 }
             );
-            let inf = Inferred::new_unsaved_complex(match generics_list {
+            Inferred::new_unsaved_complex(match generics_list {
                 None => ComplexPoint::ExecutionInstance(
                     self.reference.as_link(),
                     Box::new(args.as_execution(&func).unwrap()),
@@ -564,8 +564,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 Some(generics_list) => {
                     ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
                 }
-            });
-            inf
+            })
         } else {
             // TODO this is weird.
             match args.type_() {

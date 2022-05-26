@@ -183,7 +183,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut type_var_iterator = type_vars.map(|t| t.iter());
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                let v = if let Some(t) = type_var_iterator.as_mut().map(|t| t.next()).flatten() {
+                let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
                     variance & t.variance
                 } else {
                     variance
@@ -632,10 +632,8 @@ impl<'db, 'a> Type<'db, 'a> {
                         } else {
                             true
                         }
-                    } else if !list2.is_empty() {
-                        false
                     } else {
-                        true
+                        list2.is_empty()
                     }
                 }
                 _ => list1.iter().any(|g| {
