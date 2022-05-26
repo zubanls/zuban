@@ -499,8 +499,8 @@ impl<'db, 'a> Class<'db, 'a> {
         result
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        let lst = self.generics.as_generics_list(i_s);
+    fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+        let lst = self.generics().as_generics_list(i_s);
         let link = self.reference.as_link();
         lst.map(|lst| DbType::GenericClass(link, lst))
             .unwrap_or_else(|| DbType::Class(link))
