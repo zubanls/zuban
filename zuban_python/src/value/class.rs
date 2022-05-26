@@ -494,19 +494,7 @@ impl<'db, 'a> Class<'db, 'a> {
         };
         let type_var_count = self.class_infos(i_s).type_vars.len();
         if type_var_count > 0 {
-            let generics_string = match self.type_var_remap {
-                Some(type_var_remap) => format!(
-                    "[{}]",
-                    type_var_remap.as_string(
-                        i_s.database,
-                        Some(&mut |index| self.generics.nth(i_s, index)),
-                        style,
-                    )
-                ),
-                None => self.generics.as_string(i_s, style, Some(type_var_count)),
-            };
-
-            result += &generics_string;
+            result += &self.generics().as_string(i_s, style, Some(type_var_count));
         }
         result
     }
