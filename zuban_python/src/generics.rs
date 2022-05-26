@@ -696,16 +696,7 @@ impl<'db, 'a> Type<'db, 'a> {
             match usage.type_ {
                 TypeVarType::Class => {
                     if let Some(c) = class {
-                        let mut generic = |usage: &TypeVarUsage| c.generics().nth(i_s, usage.index);
-                        c.type_var_remap
-                            .map(|remaps| {
-                                remaps
-                                    .nth(usage.index)
-                                    .map(|x| x.remap_type_vars(&mut generic))
-                                    // This means that no generic was provided
-                                    .unwrap_or(DbType::Unknown)
-                            })
-                            .unwrap_or_else(|| generic(usage))
+                        c.generics().nth(i_s, usage.index)
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
                         DbType::TypeVar(usage.clone())
