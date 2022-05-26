@@ -757,7 +757,7 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
             Self::TypeVar(t) => {
-                if t.type_ == TypeVarType::Class && i_s.context == Context::Inference {
+                if t.type_ == TypeVarType::Class {
                     if let Some(class) = class {
                         class
                             .generics()
