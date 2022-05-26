@@ -190,8 +190,7 @@ impl Point {
     pub fn complex_index(self) -> usize {
         debug_assert!(
             self.type_() == PointType::Complex,
-            "Expected complex, got {:?}",
-            self
+            "Expected complex, got {self:?}",
         );
         (self.flags & REST_MASK) as usize
     }
@@ -796,9 +795,9 @@ impl TupleContent {
         if let Some(generics) = self.generics.as_ref() {
             let list = generics.as_string(db, None, style);
             if self.arbitrary_length {
-                format!("[{}, ...]", list)
+                format!("[{list}, ...]")
             } else {
-                format!("[{}]", list)
+                format!("[{list}]")
             }
         } else {
             "[Any, ...]".to_owned()

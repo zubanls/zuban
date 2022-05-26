@@ -169,7 +169,7 @@ impl<'a> Script<'a> {
         let pos = self.to_byte_position(position);
         let leaf = self.file().leaf(&self.project.database, pos);
         debug!("File {}", self.file().file_path(&self.project.database));
-        debug!("Position {:?} is on leaf {:?}", position, leaf);
+        debug!("Position {position:?} is on leaf {leaf:?}");
         leaf
     }
 

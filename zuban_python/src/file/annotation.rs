@@ -73,7 +73,7 @@ impl<'db> TypeContent<'db> {
             TypeContent::SpecialType(s) => match s {
                 // `Any | something` always is Any
                 SpecialType::Any => DbType::Any,
-                _ => todo!("{:?}", s),
+                _ => todo!("{s:?}"),
             },
         })
     }
@@ -263,7 +263,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                         generics: None,
                         arbitrary_length: true,
                     }),
-                    _ => todo!("{:?}", special),
+                    _ => todo!("{special:?}"),
                 };
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)))
                     .save_redirect(self.inference.file, annotation_index);
@@ -296,7 +296,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     params: None,
                     return_class: Box::new(DbType::Any),
                 }),
-                _ => todo!("{:?}", m),
+                _ => todo!("{m:?}"),
             },
         }
     }
@@ -337,7 +337,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 self.compute_type_expression_part(a)
                     .union(self.inference.i_s, other)
             }
-            _ => todo!("Not handled yet {:?}", node),
+            _ => todo!("Not handled yet {node:?}"),
         }
     }
 
@@ -394,14 +394,14 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                         DbType::Class(c) => todo!(),
                         DbType::GenericClass(c, g) => todo!(),
                         //DbType::Any => ComputedType::new(TypeContent::DbType(DbType::Any)),
-                        _ => todo!("{:?} {:?}", primary, t),
+                        _ => todo!("{primary:?} {t:?}"),
                     },
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
                 }
             }
             PrimaryContent::Execution(details) => {
-                todo!("{:?}", primary)
+                todo!("{primary:?}")
             }
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
@@ -418,7 +418,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                         }
                     }
                     TypeContent::DbType(d) => todo!(),
-                    TypeContent::Module(m) => todo!("{:?}", primary),
+                    TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => {
@@ -692,7 +692,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 None => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
-            _ => todo!("{:?}", atom),
+            _ => todo!("{atom:?}"),
         }
     }
 
@@ -787,7 +787,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
             }
         } else {
-            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
+            debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
@@ -807,7 +807,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
             }
         } else {
-            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", annotation);
+            debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
@@ -844,7 +844,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 self.file.points.get(expr.index()).complex_index()
             }
         } else {
-            debug_assert_eq!(point.type_(), PointType::Complex, "{:?}", expr);
+            debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
                 ComplexPoint::TypeInstance(_)
@@ -945,7 +945,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                todo!("{:?}", target)
+                todo!("{target:?}")
             }
             _ => todo!(),
         }
@@ -985,7 +985,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 TypeNameLookup::Module(file)
             }
             PointType::Unknown => TypeNameLookup::Invalid,
-            _ => todo!("{:?}", point),
+            _ => todo!("{point:?}"),
         }
     }
 

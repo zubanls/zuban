@@ -109,7 +109,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 return param.infer(i_s).unwrap_or_else(Inferred::new_unknown);
             }
         }
-        unreachable!("{:?}", param_name_def_index);
+        unreachable!("{param_name_def_index:?}");
     }
 
     fn execute_without_annotation(

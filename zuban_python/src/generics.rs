@@ -63,9 +63,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                     file.inference(i_s).infer_expression(*expr).as_db_type(i_s)
                 } else {
                     debug!(
-                        "Generic expr {:?} has one item, but {:?} was requested",
+                        "Generic expr {:?} has one item, but {n:?} was requested",
                         expr.short_debug(),
-                        n
                     );
                     DbType::Unknown
                 }
@@ -86,9 +85,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                     replace_class_vars!(i_s, g, type_var_generics)
                 } else {
                     debug!(
-                        "Generic list {} given, but item {:?} was requested",
+                        "Generic list {} given, but item {n:?} was requested",
                         self.as_string(i_s, FormatStyle::Short, None),
-                        n
                     );
                     DbType::Unknown
                 }
@@ -97,7 +95,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
             Self::None => {
-                debug!("No generics given, but {:?} was requested", n);
+                debug!("No generics given, but {n:?} was requested");
                 DbType::Unknown
             }
         }
@@ -193,7 +191,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 matches &= type_.matches(i_s, matcher.as_deref_mut(), g, v);
             });
             if appeared.is_none() {
-                debug!("Generic not found for: {:?}", type_);
+                debug!("Generic not found for: {type_:?}");
             }
         });
         matches
@@ -579,7 +577,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 Type::TypeVar(t2) => t.index == t2.index && t.type_ == t2.type_,
                 Type::Unknown => {
-                    todo!("{:?}", value_class)
+                    todo!("{value_class:?}")
                 }
                 Type::Union(ref list) => {
                     if let Some(matcher) = matcher {

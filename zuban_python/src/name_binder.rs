@@ -134,10 +134,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     pub fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
         if self.tree.node_has_type_ignore_comment(node_index) {
-            debug!("New ignored name binder issue: {:?}", type_);
+            debug!("New ignored name binder issue: {type_:?}");
             return;
         }
-        debug!("New name binder issue: {:?}", type_);
+        debug!("New name binder issue: {type_:?}");
         let issue = Issue { type_, node_index };
         self.issues.push(Box::pin(issue));
     }

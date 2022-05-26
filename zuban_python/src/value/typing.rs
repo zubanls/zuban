@@ -651,7 +651,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
             .as_string(i_s, None, FormatStyle::Qualified);
         args.node_reference().add_typing_issue(
             i_s.database,
-            IssueType::Note(format!("Revealed type is {:?}", &s)),
+            IssueType::Note(format!("Revealed type is {s:?}")),
         );
         if iterator.next().is_some() {
             todo!()

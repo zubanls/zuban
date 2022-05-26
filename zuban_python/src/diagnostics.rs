@@ -67,21 +67,19 @@ impl<'db> Diagnostic<'db> {
         let line = self.start_position().line_and_column().0;
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
-                format!("{} has no attribute {:?}", object, name)
+                format!("{object} has no attribute {name:?}")
             }
             IssueType::NameError(name) => {
-                format!("Name {:?} is not defined", name)
+                format!("Name {name:?} is not defined")
             }
             IssueType::IncompatibleReturn(got, expected) => {
                 format!(
-                    "Incompatible return value type (got {:?}, expected {:?})",
-                    got, expected
+                    "Incompatible return value type (got {got:?}, expected {expected:?})",
                 )
             }
             IssueType::IncompatibleAssignment(got, expected) => {
                 format!(
-                    "Incompatible types in assignment (expression has type {:?}, variable has type {:?})",
-                    got, expected
+                    "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
                 )
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
@@ -91,34 +89,30 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::TypeArgumentIssue(class, expected, given) => {
                 if *expected == 0 {
-                    format!("{:?} expects no type arguments, but {} given", class, given)
+                    format!("{class:?} expects no type arguments, but {given} given")
                 } else {
                     format!(
-                        "{:?} expects {} type arguments, but {} given",
-                        class, expected, given
+                        "{class:?} expects {expected} type arguments, but {given} given",
                     )
                 }
             }
             IssueType::TypeAliasArgumentIssue(expected, given) => {
                 format!(
-                    "Bad number of arguments for type alias, expected: {}, given: {}",
-                    expected, given
+                    "Bad number of arguments for type alias, expected: {expected}, given: {given}",
                 )
             }
             IssueType::ModuleNotFound(s) => format!(
-                "Cannot find implementation or library stub for module named {:?}\n\
-                 {}:{}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
-                 s, path, line
+                "Cannot find implementation or library stub for module named {s:?}\n\
+                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
             ),
             IssueType::NotCallable(s) => format!("{} not callable", s),
             IssueType::UnsupportedOperand(operand, left, right) => {
                 format!(
-                    "Unsupported operand types for {} ({:?} and {:?})",
-                    operand, left, right
+                    "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
             }
             IssueType::InvalidGetItem(s) => s.clone(),
-            IssueType::NotIndexable(s) => format!("Value of type {:?} is not indexable", s),
+            IssueType::NotIndexable(s) => format!("Value of type {s:?} is not indexable"),
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }
@@ -131,7 +125,7 @@ impl<'db> Diagnostic<'db> {
             }
         };
         let string = String::new();
-        format!("{}:{}: {}: {}", path, line, type_, error)
+        format!("{path}:{line}: {type_}: {error}")
     }
 }
 

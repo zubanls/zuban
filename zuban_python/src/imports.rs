@@ -51,12 +51,8 @@ pub fn python_import(
                                         database.load_file_from_workspace(
                                             content.clone(),
                                             format!(
-                                                "{}{}{}{}{}",
-                                                dir_path,
-                                                separator,
-                                                directory.name,
-                                                separator,
-                                                child.name
+                                                "{dir_path}{separator}{}{separator}{}",
+                                                directory.name, child.name
                                             ),
                                             file_index,
                                         );
@@ -73,13 +69,12 @@ pub fn python_import(
                 }
             }
             DirOrFile::File(file_index) => {
-                if directory.name == format!("{}.py", name)
-                    || directory.name == format!("{}.pyi", name)
+                if directory.name == format!("{name}.py") || directory.name == format!("{name}.pyi")
                 {
                     if file_index.get().is_none() {
                         database.load_file_from_workspace(
                             dir.clone(),
-                            format!("{}{}{}", dir_path, separator, directory.name),
+                            format!("{dir_path}{separator}{}", directory.name),
                             file_index,
                         );
                     }

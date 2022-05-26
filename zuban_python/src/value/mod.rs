@@ -233,7 +233,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!("execute not implemented for {:?}", self)
+        todo!("execute not implemented for {self:?}")
     }
 
     fn get_item(
@@ -291,6 +291,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        todo!("{:?}", self)
+        todo!("{self:?}")
     }
 }

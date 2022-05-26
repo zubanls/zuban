@@ -132,7 +132,7 @@ impl<'db> Inferred<'db> {
                     todo!()
                 }
                 DbType::Any => return Self::new_any(),
-                _ => todo!("{:?}", c),
+                _ => todo!("{c:?}"),
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
@@ -516,7 +516,7 @@ impl<'db> Inferred<'db> {
             },
             ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
             _ => {
-                unreachable!("Classes are handled earlier {:?}", complex)
+                unreachable!("Classes are handled earlier {complex:?}")
             }
         }
     }
@@ -600,7 +600,7 @@ impl<'db> Inferred<'db> {
                 Specific::Bytes => "bytes",
                 Specific::Complex => "complex",
                 Specific::Ellipsis => "ellipsis", // TODO this should not even be public
-                actual => todo!("{:?}", actual),
+                actual => todo!("{actual:?}"),
             },
         )
     }
@@ -721,7 +721,7 @@ impl<'db> Inferred<'db> {
                             callable,
                         )
                     } else {
-                        unreachable!("{:?}", point)
+                        unreachable!("{point:?}")
                     }
                 } else {
                     callable(
@@ -834,7 +834,7 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::TypeInstance(g) = complex {
                     todo!() // This was originally a return None for tuple class
                 }
-                todo!("{:?}", complex)
+                todo!("{complex:?}")
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
@@ -868,10 +868,8 @@ impl<'db> Inferred<'db> {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated() && p.maybe_specific() != Some(Specific::String) {
                     todo!(
-                        "{:?} {:?} {:?}, {}",
-                        self,
+                        "{self:?} {:?} {index:?}, {}",
                         file.points.get(index),
-                        index,
                         file.tree.short_debug_of_index(index)
                     );
                 }
@@ -1026,7 +1024,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.description(i_s),
-            &|_, i1, i2| format!("{}|{}", i1, i2),
+            &|_, i1, i2| format!("{i1}|{i2}"),
             &mut |i_s, inferred| "Unknown".to_owned(),
         )
     }
@@ -1043,10 +1041,8 @@ impl<'db> Inferred<'db> {
             _ => "".to_owned(),
         };
         format!(
-            "description = {}\ndebug = {:?}\ndetails = {}",
+            "description = {}\ndebug = {self:?}\ndetails = {details}",
             self.description(i_s),
-            self,
-            details
         )
     }
 

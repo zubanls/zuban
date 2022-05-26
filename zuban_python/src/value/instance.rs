@@ -98,10 +98,8 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                     node_ref.add_typing_issue(
                         i_s.database,
                         IssueType::InvalidGetItem(format!(
-                            "Invalid index type {:?} for {:?}; expected type {:?}",
-                            input,
+                            "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
                             class.unwrap().as_string(i_s, FormatStyle::Short),
-                            wanted,
                         )),
                     )
                 },

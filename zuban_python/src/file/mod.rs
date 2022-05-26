@@ -321,7 +321,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         SimpleStmtContent::ImportName(import_name) => {
                             self.cache_import_name(import_name);
                         }
-                        _ => unreachable!("Found {:?}", simple_stmt),
+                        _ => unreachable!("Found {simple_stmt:?}"),
                     }
                 }
             }
@@ -450,8 +450,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .database
                 .add_invalidates(file_index, self.file.file_index());
             debug!(
-                "Global import {:?}: {:?}",
-                name,
+                "Global import {name:?}: {:?}",
                 self.i_s.database.file_path(file_index)
             );
             Point::new_file_reference(file_index, Locality::DirectExtern)
@@ -495,7 +494,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let mut right = self.infer_assignment_right_side(right_side);
                 if let Some(start) = suffix.find("# type: ") {
                     let s = &suffix[start + "# type: ".len()..];
-                    debug!("Infer type comment {:?} on {:?}", s, assignment.as_code());
+                    debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
                         let (r, type_) = self.compute_type_comment(
                             assignment.end() + "# type: ".len() as CodeIndex,
@@ -615,7 +614,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::Name(name_def) => {
                 let point = self.file.points.get(name_def.name_index());
                 if point.calculated() {
-                    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{:?}", target);
+                    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{target:?}");
                     let mut first_definition = point.node_index();
                     loop {
                         let point = self.file.points.get(first_definition);
@@ -679,10 +678,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         node_ref.add_typing_issue(
                                             i_s.database,
                                             IssueType::InvalidGetItem(format!(
-                                                "Invalid index type {:?} for {:?}; expected type {:?}",
-                                                input,
+                                                "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
                                                 class.unwrap().as_string(i_s, FormatStyle::Short),
-                                                wanted,
                                             )),
                                         )
                                     },
@@ -794,7 +791,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
-            _ => todo!("Not handled yet {:?}", node),
+            _ => todo!("Not handled yet {node:?}"),
         }
     }
 
@@ -889,11 +886,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             node_ref.add_typing_issue(
                                 i_s.database,
                                 IssueType::ArgumentIssue(format!(
-                                    "Argument {} to {} has incompatible type {:?}; expected {:?}",
+                                    "Argument {} to {} has incompatible type {t1:?}; expected {t2:?}",
                                     p.argument_index(),
                                     function.diagnostic_string(class),
-                                    t1,
-                                    t2,
                                 )),
                             )
                         },
@@ -1203,7 +1198,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Inferred::new_saved(self.file, node_index, point)
                 }
                 PointType::NodeAnalysis => {
-                    panic!("Invalid state, should not happen {:?}", node_index);
+                    panic!("Invalid state, should not happen {node_index:?}");
                 }
             })
             .or_else(|| {
@@ -1215,7 +1210,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if cfg!(feature = "zuban_debug") {
             if let Some(inferred) = result.as_ref() {
                 if inferred.is_unknown() {
-                    debug!("Found unknown cache result: {}", node_index);
+                    debug!("Found unknown cache result: {node_index}");
                 }
             }
         }
@@ -1255,9 +1250,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         return self.infer_primary(primary);
                     } else {
                         todo!(
-                            "star import {} {:?} {:?}",
+                            "star import {} {name_def:?} {:?}",
                             self.file.file_path(self.i_s.database),
-                            name_def,
                             self.file.byte_to_line_column(name_def.start())
                         )
                     }
@@ -1277,13 +1271,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StmtLike::Stmt(stmt) => {
                     self.cache_stmt_name(stmt);
                 }
-                _ => todo!("{:?}", stmt_like),
+                _ => todo!("{stmt_like:?}"),
             }
         }
         debug_assert!(
             self.file.points.get(name_def.index()).calculated(),
-            "{:?}",
-            name_def
+            "{name_def:?}",
         );
         self.infer_name_definition(name_def)
     }

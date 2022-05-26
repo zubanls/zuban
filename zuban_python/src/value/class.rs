@@ -249,7 +249,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let complex = reference.complex().unwrap();
         match complex {
             ComplexPoint::Class(c) => Some(Self::new(reference, c, generics, type_var_remap)),
-            _ => unreachable!("Probably an issue with indexing: {:?}", &complex),
+            _ => unreachable!("Probably an issue with indexing: {complex:?}"),
         }
     }
 
@@ -632,7 +632,7 @@ impl<'db> BasesIterator<'db> {
                     return Some(self.file.inference(i_s).infer_named_expression(p))
                 }
                 None => (),
-                other => todo!("{:?}", other),
+                other => todo!("{other:?}"),
             }
         }
         None
@@ -678,7 +678,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                         )
                         .unwrap(),
                     ),
-                    _ => todo!("{:?}", c),
+                    _ => todo!("{c:?}"),
                 },
             ));
             self.mro_index += 1;
