@@ -181,7 +181,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 BaseClass::Generic
             }
             _ => BaseClass::DbType(
-                self.to_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
+                self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
             ),
         }
     }
@@ -276,7 +276,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         );
     }
 
-    fn to_db_type(&mut self, type_: TypeContent<'db>, node_ref: NodeRef<'db>) -> DbType {
+    fn as_db_type(&mut self, type_: TypeContent<'db>, node_ref: NodeRef<'db>) -> DbType {
         match type_ {
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.inference.i_s),
             TypeContent::DbType(d) => d,
@@ -318,12 +318,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
 
     fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'db>) -> DbType {
         let t = self.compute_slice_type(slice);
-        self.to_db_type(t, slice.as_node_ref())
+        self.as_db_type(t, slice.as_node_ref())
     }
 
     fn compute_db_type(&mut self, expr: Expression<'db>) -> DbType {
         let t = self.compute_type(expr);
-        self.to_db_type(t, NodeRef::new(self.inference.file, expr.index()))
+        self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
     }
 
     fn compute_type_expression_part(&mut self, node: ExpressionPart<'db>) -> TypeContent<'db> {
@@ -426,7 +426,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                 s.iter()
                                     .map(|slice_or_simple| {
                                         let t = self.compute_slice_type(slice_or_simple);
-                                        self.to_db_type(t, slice_or_simple.as_node_ref())
+                                        self.as_db_type(t, slice_or_simple.as_node_ref())
                                     })
                                     .collect(),
                             )))
@@ -500,7 +500,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                 for slice_content in slices.iter().take(given_count) {
                                     generics.push(self.compute_slice_db_type(slice_content));
                                 }
-                                generics.push(self.to_db_type(t, slice_content.as_node_ref()));
+                                generics.push(self.as_db_type(t, slice_content.as_node_ref()));
                             }
                         } else {
                             generics.push(self.compute_slice_db_type(slice_content))
@@ -930,7 +930,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             return TypeNameLookup::Class(i);
                         } else {
                             let node_ref = NodeRef::new(comp.inference.file, expr.index());
-                            let db_type = Rc::new(comp.to_db_type(t, node_ref));
+                            let db_type = Rc::new(comp.as_db_type(t, node_ref));
                             ComplexPoint::TypeAlias(Box::new(TypeAlias {
                                 type_vars: type_vars.into_boxed_slice(),
                                 db_type,
