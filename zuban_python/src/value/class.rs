@@ -57,7 +57,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         }
                     }
                     Variance::Invariant => {
-                        if self.check_match(i_s, matcher.as_deref_mut(), &c, variance) {
+                        if self.check_match(i_s, matcher, &c, variance) {
                             return true;
                         }
                     }
@@ -96,7 +96,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         let type_vars = c1.type_vars(i_s);
                         return c1.generics().matches(
                             i_s,
-                            matcher.as_deref_mut(),
+                            matcher,
                             c2.generics(),
                             variance,
                             Some(type_vars),
