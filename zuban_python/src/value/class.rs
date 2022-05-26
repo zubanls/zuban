@@ -267,6 +267,17 @@ impl<'db, 'a> Class<'db, 'a> {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
                 let list = if has_generics {
+                    let mut finder = TypeVarMatcher::new(
+                        Some(self),
+                        &func,
+                        args,
+                        true,
+                        func.type_vars(i_s),
+                        TypeVarType::Function,
+                        on_type_error,
+                    );
+                    // TODO why do we need to set the class context here?
+                    finder.matches_signature(&mut i_s.with_class_context(self)); // TODO this should be different
                     self.generics.as_generics_list(i_s)
                 } else {
                     TypeVarMatcher::calculate_and_return(
@@ -555,21 +566,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                     ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
                 }
             });
-            if !matches!(self.generics, Generics::None) {
-                // If generics were given, the init_func call will not actually typecheck, so we
-                // have to do this here.
-                let mut finder = TypeVarMatcher::new(
-                    Some(self),
-                    &func,
-                    args,
-                    true,
-                    func.type_vars(i_s),
-                    TypeVarType::Function,
-                    on_type_error,
-                );
-                // TODO why do we need to set the class context here?
-                finder.matches_signature(&mut i_s.with_class_context(self)); // TODO this should be different
-            }
             inf
         } else {
             // TODO this is weird.
