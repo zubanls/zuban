@@ -475,7 +475,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
                 FunctionOrCallable::Function(_, f) => {
-                    let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
+                    let g = f.class.unwrap().generics().nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
                     let g = Type::from_db_type(i_s.database, &g);
                     g.matches(i_s, Some(self), class, type_var_usage.type_var.variance)
@@ -762,7 +762,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 if t.type_ == TypeVarType::Class && i_s.context == Context::Inference {
                     if let Some(class) = i_s.current_class {
                         class
-                            .generics
+                            .generics()
                             .nth(i_s, t.index)
                             .as_type_string(i_s.database, None, style)
                     } else {

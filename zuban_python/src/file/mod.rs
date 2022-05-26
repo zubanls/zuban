@@ -1174,7 +1174,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 .remap_type_vars(&mut |t| match t.type_ {
                                     TypeVarType::Class => {
                                         if let Some(class) = self.i_s.current_class {
-                                            class.generics.nth(self.i_s, t.index)
+                                            class.generics().nth(self.i_s, t.index)
                                         } else {
                                             todo!()
                                         }

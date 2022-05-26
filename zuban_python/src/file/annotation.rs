@@ -473,7 +473,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 Specific::SimpleGeneric,
             ))
         }
-        if matches!(class.generics, Generics::None) {
+        if matches!(class.generics(), Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
             let result = match slice_type.unpack() {
