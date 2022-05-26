@@ -894,7 +894,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 IssueType::ArgumentIssue(format!(
                                     "Argument {} to {} has incompatible type {:?}; expected {:?}",
                                     p.argument_index(),
-                                    function.diagnostic_string(),
+                                    function.diagnostic_string(function.class.as_ref()),
                                     t1,
                                     t2,
                                 )),

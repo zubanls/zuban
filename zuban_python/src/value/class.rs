@@ -271,6 +271,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 } else {
                     TypeVarMatcher::calculate_and_return(
                         i_s,
+                        Some(self),
                         &func,
                         args,
                         true,

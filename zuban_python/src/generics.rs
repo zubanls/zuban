@@ -269,7 +269,7 @@ impl<'db> GenericsIterator<'db, '_> {
 }
 
 enum FunctionOrCallable<'db, 'a> {
-    Function(&'a Function<'db, 'a>),
+    Function(Option<&'a Class<'db, 'a>>, &'a Function<'db, 'a>),
     Callable(&'a Callable<'a>),
 }
 
@@ -286,6 +286,7 @@ pub struct TypeVarMatcher<'db, 'a> {
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
+        class: Option<&'a Class<'db, 'a>>,
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
@@ -294,7 +295,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         on_type_error: OnTypeError<'db, 'a>,
     ) -> Self {
         Self {
-            func_or_callable: FunctionOrCallable::Function(function),
+            func_or_callable: FunctionOrCallable::Function(class, function),
             args,
             calculated_type_vars: None,
             skip_first,
@@ -327,6 +328,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
+        class: Option<&'a Class<'db, 'a>>,
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first: bool,
@@ -335,6 +337,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         on_type_error: OnTypeError<'db, 'a>,
     ) -> Option<GenericsList> {
         let mut self_ = Self::new(
+            class,
             function,
             args,
             skip_first,
@@ -354,7 +357,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         }
         match self.func_or_callable {
-            FunctionOrCallable::Function(function) => {
+            FunctionOrCallable::Function(class, function) => {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
@@ -368,7 +371,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             IssueType::ArgumentIssue(format!(
                                 "Missing positional argument {:?} in call to {}",
                                 p.param.name_definition().name().as_str(),
-                                function.diagnostic_string(),
+                                function.diagnostic_string(class),
                             )),
                         );
                         //continue
@@ -408,7 +411,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         i_s.database,
                         IssueType::ArgumentIssue(format!(
                             "Too many arguments for {}",
-                            function.diagnostic_string(),
+                            function.diagnostic_string(class),
                         )),
                     );
                     self.matches = false
@@ -435,7 +438,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             debug!(
                 "Calculated type vars: {}[{}]",
                 match self.func_or_callable {
-                    FunctionOrCallable::Function(function) => function.name(),
+                    FunctionOrCallable::Function(_, function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
                         callable_description = callable.description(i_s);
                         &callable_description
@@ -470,7 +473,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
-                FunctionOrCallable::Function(f) => {
+                FunctionOrCallable::Function(_, f) => {
                     let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
                     let g = Type::from_db_type(i_s.database, &g);

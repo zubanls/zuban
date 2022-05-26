@@ -233,6 +233,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let mut finder = TypeVarMatcher::new(
+            self.class.as_ref(),
             self,
             args,
             false,
@@ -307,8 +308,8 @@ impl<'db, 'a> Function<'db, 'a> {
         result
     }
 
-    pub fn diagnostic_string(&self) -> String {
-        match self.class {
+    pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
+        match class {
             Some(class) => {
                 if self.name() == "__init__" {
                     format!("{:?}", class.name())
@@ -587,6 +588,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
             let mut finder = match class {
                 Some(c) => TypeVarMatcher::new(
+                    class,
                     &function,
                     args,
                     true,
@@ -597,6 +599,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 None => {
                     let func_type_vars = function.type_vars(i_s);
                     TypeVarMatcher::new(
+                        None,
                         &function,
                         args,
                         false,
