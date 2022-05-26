@@ -558,9 +558,17 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             if !matches!(self.generics, Generics::None) {
                 // If generics were given, the init_func call will not actually typecheck, so we
                 // have to do this here.
-                let instance = Instance::new(*self, &inf);
-                let m = BoundMethod::new(&instance, MroIndex(0), &func);
-                m.execute(i_s, args, on_type_error);
+                let mut finder = TypeVarMatcher::new(
+                    Some(self),
+                    &func,
+                    args,
+                    true,
+                    func.type_vars(i_s),
+                    TypeVarType::Function,
+                    on_type_error,
+                );
+                // TODO why do we need to set the class context here?
+                finder.matches_signature(&mut i_s.with_class_context(self)); // TODO this should be different
             }
             inf
         } else {
