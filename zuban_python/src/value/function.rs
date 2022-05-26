@@ -291,7 +291,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             result += params.next().unwrap().name_definition().as_code();
             result += ": ";
-            result += &g.as_string(i_s, style);
+            result += &g.as_string(i_s, self.class.as_ref(), style);
             first = false;
         });
         result += ") -> ";
@@ -301,7 +301,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .as_string(i_s, style)
+                .as_string(i_s, self.class.as_ref(), style)
         } else {
             result += "Any"
         }

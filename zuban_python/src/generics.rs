@@ -160,7 +160,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut i = 0;
         self.iter().run_on_all(i_s, &mut |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
-                strings.push(g.as_string(i_s, style));
+                strings.push(g.as_string(i_s, None, style));
                 i += 1;
             }
         });
@@ -658,14 +658,20 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn error_if_not_matches<'x>(
         &self,
         i_s: &mut InferenceState<'db, 'x>,
-        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
         mut callback: impl FnMut(&mut InferenceState<'db, 'x>, String, String),
     ) {
         let value_type = value.class_as_type(i_s);
-        if !self.matches(i_s, matcher, value_type, Variance::Covariant) {
-            let input = value.class_as_type(i_s).as_string(i_s, FormatStyle::Short);
-            let wanted = self.as_string(i_s, FormatStyle::Short);
+        if !self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant) {
+            let class = matcher.and_then(|matcher| match matcher.func_or_callable {
+                FunctionOrCallable::Function(c, _) => c,
+                FunctionOrCallable::Callable(_) => None,
+            });
+            let input = value
+                .class_as_type(i_s)
+                .as_string(i_s, None, FormatStyle::Short);
+            let wanted = self.as_string(i_s, class, FormatStyle::Short);
             callback(i_s, input, wanted)
         }
     }
@@ -746,12 +752,17 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_string(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class<'db, '_>>,
+        style: FormatStyle,
+    ) -> String {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, style),
             Self::TypeVar(t) => {
                 if t.type_ == TypeVarType::Class && i_s.context == Context::Inference {
-                    if let Some(class) = i_s.current_class {
+                    if let Some(class) = class {
                         class
                             .generics()
                             .nth(i_s, t.index)

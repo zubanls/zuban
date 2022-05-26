@@ -276,8 +276,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         TypeVarType::Function,
                         on_type_error,
                     );
-                    // TODO why do we need to set the class context here?
-                    finder.matches_signature(&mut i_s.with_class_context(self)); // TODO this should be different
+                    finder.matches_signature(i_s); // TODO this should be different
                     self.generics.as_generics_list(i_s)
                 } else {
                     TypeVarMatcher::calculate_and_return(
