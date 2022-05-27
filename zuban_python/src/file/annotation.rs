@@ -242,11 +242,9 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 .save_redirect(self.inference.file, annotation_index);
                 return;
             }
-            TypeContent::TypeAlias(m) => {
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    m.db_type.as_ref().clone(),
-                )))
-                .save_redirect(self.inference.file, annotation_index);
+            TypeContent::TypeAlias(a) => {
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(a.as_db_type())))
+                    .save_redirect(self.inference.file, annotation_index);
                 return;
             }
             TypeContent::SpecialType(special) => {
@@ -280,13 +278,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 self.add_module_issue(m, node_ref);
                 DbType::Unknown
             }
-            TypeContent::TypeAlias(a) => {
-                if a.type_vars.is_empty() {
-                    a.db_type.as_ref().clone()
-                } else {
-                    todo!()
-                }
-            }
+            TypeContent::TypeAlias(a) => a.as_db_type(),
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(CallableContent {
                     params: None,
@@ -746,6 +738,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         .compute_type_get_item_on_alias(alias, slice_type)
         {
             TypeContent::DbType(d) => {
+                // TODO this should be Box::new(DbType::Type(Box::new(d))) ?!
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
             }
             _ => unreachable!(),

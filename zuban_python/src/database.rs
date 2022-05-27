@@ -931,6 +931,19 @@ pub struct TypeAlias {
     pub db_type: Rc<DbType>,
 }
 
+impl TypeAlias {
+    pub fn as_db_type(&self) -> DbType {
+        if self.type_vars.is_empty() {
+            self.db_type.as_ref().clone()
+        } else {
+            self.db_type.remap_type_vars(&mut |t| match t.type_ {
+                TypeVarType::Alias => DbType::Any,
+                _ => DbType::TypeVar(t.clone()),
+            })
+        }
+    }
+}
+
 pub struct Database {
     in_use: bool,
     pub vfs: Box<dyn Vfs>,
