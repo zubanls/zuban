@@ -243,15 +243,11 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 return;
             }
             TypeContent::TypeAlias(m) => {
-                if m.type_vars.is_empty() {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        m.db_type.as_ref().clone(),
-                    )))
-                    .save_redirect(self.inference.file, annotation_index);
-                    return;
-                } else {
-                    todo!()
-                }
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                    m.db_type.as_ref().clone(),
+                )))
+                .save_redirect(self.inference.file, annotation_index);
+                return;
             }
             TypeContent::SpecialType(special) => {
                 let db_type = match special {
@@ -618,7 +614,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
 
     fn compute_type_get_item_on_alias(
         &mut self,
-        alias: &'db TypeAlias,
+        alias: &TypeAlias,
         slice_type: SliceType<'db>,
     ) -> TypeContent<'db> {
         let expected_count = alias.type_vars.len();
@@ -733,6 +729,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 class.reference.point(),
             ),
             _ => todo!(),
+        }
+    }
+
+    pub fn compute_type_get_item_on_alias(
+        &mut self,
+        alias: &TypeAlias,
+        slice_type: SliceType<'db>,
+    ) -> Inferred<'db> {
+        match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
+            type_var,
+            // TODO this shouldn't be always 0...
+            index: TypeVarIndex::new(0),
+            type_: TypeVarType::Alias,
+        })
+        .compute_type_get_item_on_alias(alias, slice_type)
+        {
+            TypeContent::DbType(d) => {
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+            }
+            _ => unreachable!(),
         }
     }
 

@@ -41,18 +41,13 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         };
         let expected = self.alias.type_vars.len();
         let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
-        /*
-        let replaced = self
-            .alias
-            .db_type
-            .clone()
-            .replace_type_vars(&mut |t| given_generics.nth(i_s, t.index));
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(replaced)))
-        */
-        todo!()
+        slice_type
+            .file
+            .inference(i_s)
+            .compute_type_get_item_on_alias(self.alias, *slice_type)
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        todo!()
+        ClassLike::TypeWithDbType(&self.alias.db_type)
     }
 }
