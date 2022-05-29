@@ -77,28 +77,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
-            let mut specified_lines = step
-                .out
-                .trim()
-                .split("\n")
-                .map(|s| cleanup_mypy_issues(s))
-                .collect::<Vec<_>>();
-
-            if specified_lines == [""] {
-                specified_lines.pop();
-            }
-
-            for (&path, &code) in &step.files {
-                let p = if path == "__main__" {
-                    // TODO this if is so weird. Why is this shit needed???
-                    "main"
-                } else {
-                    path
-                };
-                specified_lines.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
-                project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
-            }
-            specified_lines.sort();
+            let wanted = wanted_output(project, step);
 
             for path in &step.deletions {
                 #[allow(unused_must_use)]
@@ -121,15 +100,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
 
             assert_eq!(
                 actual_lines,
-                specified_lines,
+                wanted,
                 "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,
                 i + 1,
                 steps.steps.len(),
-                specified_lines
-                    .iter()
-                    .fold(String::new(), |a, b| a + &b + "\n"),
+                wanted.iter().fold(String::new(), |a, b| a + &b + "\n"),
                 actual,
             );
         }
@@ -228,6 +205,32 @@ impl<'name, 'code> TestCase<'name, 'code> {
             flags,
         }
     }
+}
+
+fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String> {
+    let mut specified_lines = step
+        .out
+        .trim()
+        .split("\n")
+        .map(|s| cleanup_mypy_issues(s))
+        .collect::<Vec<_>>();
+
+    if specified_lines == [""] {
+        specified_lines.pop();
+    }
+
+    for (&path, &code) in &step.files {
+        let p = if path == "__main__" {
+            // TODO this if is so weird. Why is this shit needed???
+            "main"
+        } else {
+            path
+        };
+        specified_lines.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
+        project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
+    }
+    specified_lines.sort();
+    specified_lines
 }
 
 struct ErrorCommentsOnCode<'a>(&'a str, std::iter::Enumerate<std::str::Split<'a, &'a str>>);
