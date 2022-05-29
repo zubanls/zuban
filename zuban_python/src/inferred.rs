@@ -477,47 +477,66 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            ComplexPoint::TypeInstance(g) => match g.as_ref() {
-                DbType::Class(link) => {
-                    let inst =
-                        self.use_instance(NodeRef::from_link(i_s.database, *link), Generics::None);
-                    callable(i_s, &inst)
-                }
-                DbType::GenericClass(link, generics) => {
-                    let g = Generics::new_list(generics);
-                    let inst = self.use_instance(NodeRef::from_link(i_s.database, *link), g);
-                    callable(i_s, &inst)
-                }
-                DbType::Union(lst) => todo!(),
-                DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.database, g, t)),
-                DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
-                DbType::Callable(content) => callable(i_s, &Callable::new(content)),
-                DbType::None => callable(i_s, &NoneInstance()),
-                DbType::Any => todo!(),
-                DbType::Unknown => todo!(),
-                DbType::Type(t) => match t.as_ref() {
-                    DbType::Class(link) => {
-                        let node_ref = NodeRef::from_link(i_s.database, *link);
-                        callable(
-                            i_s,
-                            &Class::from_position(node_ref, Generics::None, None).unwrap(),
-                        )
-                    }
-                    DbType::GenericClass(link, generics) => todo!(),
-                    DbType::Union(lst) => todo!(),
-                    DbType::TypeVar(t) => todo!(),
-                    DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
-                    DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-                    DbType::Callable(content) => callable(i_s, &CallableClass::new(content)),
-                    DbType::None => todo!(),
-                    DbType::Any => todo!(),
-                    DbType::Unknown => todo!(),
-                },
-            },
+            ComplexPoint::TypeInstance(t) => self.run_on_db_type(i_s, t, callable, reducer),
             ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
             _ => {
                 unreachable!("Classes are handled earlier {complex:?}")
             }
+        }
+    }
+
+    fn run_on_db_type<'a, T>(
+        &'a self,
+        i_s: &mut InferenceState<'db, '_>,
+        db_type: &'a DbType,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    ) -> T {
+        match db_type {
+            DbType::Class(link) => {
+                let inst =
+                    self.use_instance(NodeRef::from_link(i_s.database, *link), Generics::None);
+                callable(i_s, &inst)
+            }
+            DbType::GenericClass(link, generics) => {
+                let g = Generics::new_list(generics);
+                let inst = self.use_instance(NodeRef::from_link(i_s.database, *link), g);
+                callable(i_s, &inst)
+            }
+            DbType::Union(lst) => lst
+                .iter()
+                .fold(None, |input, t| match input {
+                    None => Some(self.run_on_db_type(i_s, t, callable, reducer)),
+                    Some(t1) => {
+                        let t2 = self.run_on_db_type(i_s, t, callable, reducer);
+                        Some(reducer(i_s, t1, t2))
+                    }
+                })
+                .unwrap(),
+            DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.database, db_type, t)),
+            DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
+            DbType::Callable(content) => callable(i_s, &Callable::new(content)),
+            DbType::None => callable(i_s, &NoneInstance()),
+            DbType::Any => todo!(),
+            DbType::Unknown => todo!(),
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(link) => {
+                    let node_ref = NodeRef::from_link(i_s.database, *link);
+                    callable(
+                        i_s,
+                        &Class::from_position(node_ref, Generics::None, None).unwrap(),
+                    )
+                }
+                DbType::GenericClass(link, generics) => todo!(),
+                DbType::Union(lst) => todo!(),
+                DbType::TypeVar(t) => todo!(),
+                DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
+                DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
+                DbType::Callable(content) => callable(i_s, &CallableClass::new(content)),
+                DbType::None => todo!(),
+                DbType::Any => todo!(),
+                DbType::Unknown => todo!(),
+            },
         }
     }
 
