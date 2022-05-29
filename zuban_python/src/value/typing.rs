@@ -83,20 +83,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingCallable => {
                 todo!()
             }
-            Specific::TypingUnion => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => todo!(),
-                SliceTypeContent::Slice(x) => {
-                    todo!()
-                }
-                SliceTypeContent::Slices(slices) => {
-                    for slice_content in slices.iter() {
-                        if let SliceOrSimple::Simple(n) = slice_content {
-                            todo!()
-                        }
-                    }
-                    todo!()
-                }
-            },
+            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
+            Specific::TypingUnion => return Inferred::new_any(),
             Specific::TypingOptional => todo!(),
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
