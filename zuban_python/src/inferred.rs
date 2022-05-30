@@ -791,37 +791,6 @@ impl<'db> Inferred<'db> {
         self.maybe_class_internal(i_s, generics)
     }
 
-    pub fn maybe_class_like(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<ClassLike<'db, '_>> {
-        let mut generics = Generics::None;
-        if let InferredState::Saved(definition, point) = &self.state {
-            if point.type_() == PointType::Specific {
-                generics = self.expect_generics().unwrap_or(Generics::None);
-            }
-        }
-        self.maybe_class_internal(i_s, generics)
-            .map(ClassLike::Class)
-            .or_else(|| match &self.state {
-                InferredState::Saved(definition, point) if point.type_() == PointType::Complex => {
-                    let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::TypeInstance(g) = complex {
-                        if let DbType::Type(t) = g.as_ref() {
-                            return Some(ClassLike::TypeWithDbType(t));
-                        }
-                    }
-                    None
-                }
-                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(g)) => {
-                    todo!()
-                    // Was originally:
-                    //Some(ClassLike::Tuple(TupleClass::new(content)))
-                }
-                _ => None,
-            })
-    }
-
     fn maybe_class_internal<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
