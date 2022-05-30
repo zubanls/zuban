@@ -208,15 +208,15 @@ impl<'name, 'code> TestCase<'name, 'code> {
 }
 
 fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String> {
-    let mut specified_lines = step
+    let mut wanted = step
         .out
         .trim()
         .split("\n")
         .map(|s| cleanup_mypy_issues(s))
         .collect::<Vec<_>>();
 
-    if specified_lines == [""] {
-        specified_lines.pop();
+    if wanted == [""] {
+        wanted.pop();
     }
 
     for (&path, &code) in &step.files {
@@ -226,11 +226,47 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         } else {
             path
         };
-        specified_lines.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
+        wanted.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
         project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
     }
-    specified_lines.sort();
-    specified_lines
+    for line in &mut wanted {
+        replace_unions(line)
+    }
+    wanted.sort();
+    wanted
+}
+
+fn replace_unions(line: &mut String) {
+    while let Some(index) = line.rfind("Union[") {
+        let mut brackets = 0;
+        let mut commas = vec![];
+        let mut end = 0;
+        for (i, chr) in line[index..].char_indices() {
+            match chr {
+                '[' => brackets += 1,
+                ']' => {
+                    brackets -= 1;
+                    if brackets == 0 {
+                        end = i;
+                        break;
+                    }
+                }
+                ',' => {
+                    if brackets == 1 {
+                        commas.push(i);
+                    }
+                }
+                _ => (),
+            }
+        }
+        assert_eq!(brackets, 0);
+        assert_ne!(end, 0);
+        line.replace_range(index + end..index + end + 1, "");
+        for i in commas.iter().rev() {
+            line.replace_range(index + i..index + i + 1, " |");
+        }
+        line.replace_range(index..index + "Union[".len(), "");
+    }
 }
 
 struct ErrorCommentsOnCode<'a>(&'a str, std::iter::Enumerate<std::str::Split<'a, &'a str>>);
