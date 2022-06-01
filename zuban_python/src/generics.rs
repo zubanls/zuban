@@ -565,7 +565,7 @@ impl<'db, 'a> Type<'db, 'a> {
         value_class: Self,
         variance: Variance,
     ) -> bool {
-        match self {
+        let result = match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
             Self::TypeVar(t) => match value_class {
                 Type::ClassLike(class) => {
@@ -646,9 +646,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 }),
             },
             Self::None => matches!(value_class, Self::None),
-            Self::Any => true,
-            Self::Unknown => false,
-        }
+            Self::Unknown | Self::Any => true,
+        };
+        result
     }
 
     pub fn error_if_not_matches<'x>(
@@ -664,9 +664,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
             });
-            let input = value
-                .class_as_type(i_s)
-                .as_string(i_s, None, FormatStyle::Short);
+            let value_type = value.class_as_type(i_s);
+            debug!("Mismatch between {self:?} and {value_type:?}");
+            let input = value_type.as_string(i_s, None, FormatStyle::Short);
             let wanted = self.as_string(i_s, class, FormatStyle::Short);
             callback(i_s, input, wanted)
         }

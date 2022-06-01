@@ -77,8 +77,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Type::TypeVar(t) => false,
             Type::Union(list) => false,
-            Type::None | Type::Unknown => true, // TODO should be false
-            Type::Any => true,
+            Type::None => true, // TODO should be false
+            Type::Any | Type::Unknown => true,
         }
     }
 
