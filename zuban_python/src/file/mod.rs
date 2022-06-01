@@ -1159,7 +1159,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         // TODO is this really the right place?
                         match self.i_s.context {
                             Context::Diagnostics => {
-                                return self.use_instance_of_annotation(node_index)
+                                return Inferred::new_saved(self.file, node_index, point)
                             }
                             Context::Inference => (),
                         }

@@ -867,14 +867,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn use_instance_of_annotation(&self, node_index: NodeIndex) -> Inferred<'db> {
-        debug_assert_eq!(
-            self.file.points.get(node_index).specific(),
-            Specific::AnnotationWithTypeVars
-        );
-        Inferred::new_saved2(self.file, node_index + ANNOTATION_TO_EXPR_DIFFERENCE)
-    }
-
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),

@@ -338,6 +338,13 @@ impl<'db> Inferred<'db> {
             }
             Specific::List => callable(i_s, &ListLiteral::new(*definition)),
             Specific::Dict => callable(i_s, &DictLiteral::new(*definition)),
+            Specific::AnnotationWithTypeVars => {
+                let db_type = definition
+                    .file
+                    .inference(i_s)
+                    .use_db_type_of_annotation(definition.node_index);
+                self.run_on_db_type(i_s, db_type, callable, reducer)
+            }
             Specific::TypingProtocol
             | Specific::TypingGeneric
             | Specific::TypingTuple
