@@ -462,7 +462,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         type_var_usage: &TypeVarUsage,
         class: Type<'db, '_>,
     ) -> bool {
-        // TODO we should be able to remove the match part here!
+        // TODO we should be able to remove the match part here! (maybe not, because of __init__)
         if self.match_type == type_var_usage.type_ {
             if let Some(calculated) = self.calculated_type_vars.as_mut() {
                 calculated.set_generic(type_var_usage.index, class.into_db_type(i_s));

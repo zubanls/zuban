@@ -798,7 +798,7 @@ impl<'db> Inferred<'db> {
         let mut generics = Generics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
-                generics = self.expect_generics().unwrap_or(Generics::None);
+                generics = Self::expect_generics(*definition, *point).unwrap_or(Generics::None);
             }
         }
         self.maybe_class_internal(i_s, generics)
@@ -1068,17 +1068,15 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn expect_generics(&self) -> Option<Generics<'db, 'db>> {
-        if let InferredState::Saved(definition, point) = self.state {
-            if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
-                let primary = definition.as_primary();
-                match primary.second() {
-                    PrimaryContent::GetItem(slice_type) => {
-                        return Some(Generics::new_slice(definition.file, slice_type))
-                    }
-                    _ => {
-                        unreachable!()
-                    }
+    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db, 'db>> {
+        if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
+            let primary = definition.as_primary();
+            match primary.second() {
+                PrimaryContent::GetItem(slice_type) => {
+                    return Some(Generics::new_slice(definition.file, slice_type))
+                }
+                _ => {
+                    unreachable!()
                 }
             }
         }
@@ -1139,7 +1137,7 @@ impl fmt::Debug for Inferred<'_> {
                 s.field("definition", &definition).field("point", &point)
             }
             InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
-            InferredState::UnsavedSpecific(specific) => todo!(),
+            InferredState::UnsavedSpecific(specific) => s.field("specific", &specific),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => s.field("unknown", &true),
         }
