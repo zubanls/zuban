@@ -791,7 +791,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn maybe_overload(&self, name: &str) -> Option<&Overload> {
         if let Some(index) = self.symbol_table.lookup_symbol(name) {
-            let point = self.points.get(index);
+            let point = self.points.get(index - 1); // Lookup on NameDefinition
             if let Some(complex_index) = point.maybe_complex_index() {
                 if let ComplexPoint::FunctionOverload(o) = self.complex_points.get(complex_index) {
                     return Some(o);
