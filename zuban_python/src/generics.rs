@@ -274,7 +274,7 @@ enum FunctionOrCallable<'db, 'a> {
 pub struct TypeVarMatcher<'db, 'a> {
     func_or_callable: FunctionOrCallable<'db, 'a>,
     args: &'a dyn Arguments<'db>,
-    skip_first: bool,
+    skip_first_param: bool,
     pub calculated_type_vars: Option<GenericsList>,
     matches: bool,
     type_vars: Option<&'a TypeVars>,
@@ -287,7 +287,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         class: Option<&'a Class<'db, 'a>>,
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
-        skip_first: bool,
+        skip_first_param: bool,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
         on_type_error: OnTypeError<'db, 'a>,
@@ -296,7 +296,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable: FunctionOrCallable::Function(class, function),
             args,
             calculated_type_vars: None,
-            skip_first,
+            skip_first_param,
             matches: true,
             type_vars,
             match_type,
@@ -316,7 +316,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable: FunctionOrCallable::Callable(callable),
             args,
             calculated_type_vars: None,
-            skip_first: false,
+            skip_first_param: false,
             matches: true,
             type_vars,
             match_type,
@@ -329,7 +329,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         class: Option<&'a Class<'db, 'a>>,
         function: &'a Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
-        skip_first: bool,
+        skip_first_param: bool,
         type_vars: Option<&'db TypeVars>,
         match_type: TypeVarType,
         on_type_error: OnTypeError<'db, 'a>,
@@ -338,7 +338,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             class,
             function,
             args,
-            skip_first,
+            skip_first_param,
             type_vars,
             match_type,
             on_type_error,
@@ -359,7 +359,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
-                let mut iter = function.iter_inferrable_params(self.args, self.skip_first);
+                let mut iter = function.iter_inferrable_params(self.args, self.skip_first_param);
                 while let Some(p) = iter.next() {
                     if !p.has_argument() && p.param.default().is_none() {
                         // TODO?! comments?!
