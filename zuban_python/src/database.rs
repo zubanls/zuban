@@ -694,7 +694,13 @@ impl DbType {
             Self::Union(list) => Self::Union(remap_generics(list)),
             Self::TypeVar(t) => resolve_type_var(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),
-            Self::Tuple(content) => todo!(),
+            Self::Tuple(content) => Self::Tuple(TupleContent {
+                generics: content
+                    .generics
+                    .as_ref()
+                    .map(|generics| remap_generics(generics)),
+                arbitrary_length: content.arbitrary_length,
+            }),
             Self::Callable(content) => todo!(),
         }
     }
