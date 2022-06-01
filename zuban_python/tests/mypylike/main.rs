@@ -91,7 +91,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .map(|d| d.as_string())
                 .collect();
 
-            let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
+            let actual =
+                replace_annoyances(diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n"));
             let mut actual_lines = actual
                 .trim()
                 .split("\n")
@@ -214,6 +215,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
     }
 }
 
+fn replace_annoyances(s: String) -> String {
+    s.replace("builtins.", "")
+}
+
 fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String> {
     let mut wanted = step
         .out
@@ -297,13 +302,13 @@ impl Iterator for ErrorCommentsOnCode<'_> {
 
 fn cleanup_mypy_issues(s: &str) -> String {
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
-    if s.contains("Revealed type is") {
+    replace_annoyances(if s.contains("Revealed type is") {
         // For now just skip stars, it's weird. See also
         // https://stackoverflow.com/questions/50498575/what-does-the-asterisk-in-the-output-of-reveal-type-mean
         s.replace("*", "")
     } else {
         s.into_owned()
-    }
+    })
 }
 
 struct TypeStuffReplacer();
