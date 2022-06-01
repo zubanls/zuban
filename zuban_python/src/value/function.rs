@@ -630,9 +630,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     }
 
     fn name(&self) -> &'db str {
-        //let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
-        //func.name().as_str()
-        self.reference.as_name().as_str()
+        self.reference.as_code()
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
