@@ -221,7 +221,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 pub struct Class<'db, 'a> {
     pub reference: NodeRef<'db>,
     pub class_storage: &'db ClassStorage,
-    generics: Generics<'db, 'a>,
+    pub(super) generics: Generics<'db, 'a>,
     type_var_remap: Option<&'db GenericsList>,
 }
 
@@ -260,10 +260,10 @@ impl<'db, 'a> Class<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        let has_generics = !matches!(self.generics, Generics::None);
         let cls = class.unwrap_or_else(|| todo!());
         match init.into_maybe_inferred().unwrap().init_as_function(cls) {
             Some(FunctionOrOverload::Function(func)) => {
+                let has_generics = !matches!(self.generics, Generics::None);
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
                 let list = if has_generics {

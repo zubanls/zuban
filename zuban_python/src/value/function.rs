@@ -586,16 +586,35 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
+            let has_generics = class
+                .map(|class| !matches!(class.generics(), Generics::None))
+                .unwrap_or(false);
             let mut finder = match class {
-                Some(c) => TypeVarMatcher::new(
-                    class,
-                    &function,
-                    args,
-                    true,
-                    Some(c.type_vars(i_s)),
-                    TypeVarType::Class,
-                    on_type_error,
-                ),
+                Some(c) => {
+                    let has_generics = !matches!(c.generics, Generics::None);
+                    if has_generics {
+                        TypeVarMatcher::new(
+                            class,
+                            &function,
+                            args,
+                            true,
+                            Some(c.type_vars(i_s)),
+                            TypeVarType::Class,
+                            on_type_error,
+                        )
+                    } else {
+                        let func_type_vars = function.type_vars(i_s);
+                        TypeVarMatcher::new(
+                            class,
+                            &function,
+                            args,
+                            true,
+                            func_type_vars,
+                            TypeVarType::Function,
+                            on_type_error,
+                        )
+                    }
+                }
                 None => {
                     let func_type_vars = function.type_vars(i_s);
                     TypeVarMatcher::new(
@@ -615,7 +634,15 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     self.name(),
                     function.node().short_debug()
                 );
-                let calculated = finder.calculated_type_vars;
+                let calculated = if has_generics {
+                    if let Some(class) = class {
+                        class.generics.as_generics_list(i_s)
+                    } else {
+                        unreachable!();
+                    }
+                } else {
+                    finder.calculated_type_vars
+                };
                 return Some((function, calculated));
             }
         }
