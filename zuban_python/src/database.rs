@@ -606,7 +606,14 @@ impl DbType {
                 "Type[{}]",
                 db_type.as_type_string(db, type_var_generics, style)
             ),
-            Self::Tuple(content) => format!("Tuple{}", &content.as_string(db, style)),
+            Self::Tuple(content) => format!(
+                "{}{}",
+                match style {
+                    FormatStyle::Short => "tuple",
+                    FormatStyle::Qualified => "builtins.tuple",
+                },
+                &content.as_string(db, style)
+            ),
             Self::Callable(content) => format!("Callable{}", &content.as_string(db, style)),
             Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
