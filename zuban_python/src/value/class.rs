@@ -299,9 +299,6 @@ impl<'db, 'a> Class<'db, 'a> {
                     class.as_ref(),
                     on_type_error,
                 ) {
-                    if has_generics {
-                        todo!()
-                    }
                     return (func, list, true);
                 } else {
                     todo!()

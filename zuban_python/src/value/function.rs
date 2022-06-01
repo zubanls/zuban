@@ -30,7 +30,7 @@ impl<'db> fmt::Debug for Function<'db, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("file", self.reference.file)
-            .field("name", &self.name())
+            .field("node", &self.node())
             .finish()
     }
 }

@@ -362,9 +362,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 let mut iter = function.iter_inferrable_params(self.args, self.skip_first_param);
                 while let Some(p) = iter.next() {
                     if !p.has_argument() && p.param.default().is_none() {
-                        // TODO?! comments?!
-                        //self.matches = false;
-                        dbg!(self.args);
+                        self.matches = false;
                         self.args.node_reference().add_typing_issue(
                             i_s.database,
                             IssueType::ArgumentIssue(format!(
