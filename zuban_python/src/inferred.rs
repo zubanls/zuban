@@ -537,7 +537,15 @@ impl<'db> Inferred<'db> {
                         &Class::from_position(node_ref, Generics::None, None).unwrap(),
                     )
                 }
-                DbType::GenericClass(link, generics) => todo!(),
+                DbType::GenericClass(link, generics) => {
+                    let class = Class::from_position(
+                        NodeRef::from_link(i_s.database, *link),
+                        Generics::new_list(generics),
+                        None,
+                    )
+                    .unwrap();
+                    callable(i_s, &class)
+                }
                 DbType::Union(lst) => todo!(),
                 DbType::TypeVar(t) => todo!(),
                 DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),

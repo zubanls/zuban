@@ -737,10 +737,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         })
         .compute_type_get_item_on_alias(alias, slice_type)
         {
-            TypeContent::DbType(d) => {
-                // TODO this should be Box::new(DbType::Type(Box::new(d))) ?!
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-            }
+            TypeContent::DbType(d) => Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                Box::new(DbType::Type(Box::new(d))),
+            )),
             _ => unreachable!(),
         }
     }
