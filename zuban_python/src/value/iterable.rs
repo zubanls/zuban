@@ -55,7 +55,7 @@ impl<'db> ListLiteral<'db> {
                     .file
                     .inference(i_s)
                     .create_list_or_set_generics(elements),
-                None => todo!(),
+                None => DbType::Any,
             };
             reference.insert_complex(
                 ComplexPoint::GenericClass(
