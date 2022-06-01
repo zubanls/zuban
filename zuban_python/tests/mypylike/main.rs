@@ -92,15 +92,22 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .collect();
 
             let actual = diagnostics.iter().fold(String::new(), |a, b| a + &b + "\n");
-            let mut actual_lines = actual.trim().split("\n").collect::<Vec<_>>();
+            let mut actual_lines = actual
+                .trim()
+                .split("\n")
+                .map(|s| s.to_lowercase())
+                .collect::<Vec<_>>();
             if actual_lines == [""] {
                 actual_lines.pop();
             }
             actual_lines.sort();
 
+            // For now we want to compare lower cases, because mypy mixes up list[] and List[]
+            let wanted_lower: Vec<_> = wanted.iter().map(|s| s.to_lowercase()).collect();
+
             assert_eq!(
                 actual_lines,
-                wanted,
+                wanted_lower,
                 "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,
