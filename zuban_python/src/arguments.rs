@@ -359,6 +359,7 @@ impl<'db> Argument<'db, '_> {
     }
 }
 
+#[derive(Debug)]
 enum ArgumentIteratorBase<'db, 'a> {
     Iterator(
         &'db PythonFile,
@@ -429,6 +430,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     next: Option<&'a dyn Arguments<'db>>,

@@ -2171,6 +2171,7 @@ impl<'db> Iterator for NameIterator<'db> {
     }
 }
 
+#[derive(Debug)]
 pub struct ArgumentsIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> Iterator for ArgumentsIterator<'db> {

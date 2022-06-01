@@ -464,6 +464,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         for argument in &mut self.arguments {
             // TODO check param type here and make sure that it makes sense.
         }
+        dbg!(&self.arguments);
         ParamInput::None
     }
 

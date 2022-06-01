@@ -400,7 +400,7 @@ macro_rules! __create_node {
             }
         }
 
-        #[derive(Debug, Clone, Copy)]
+        #[derive(Clone, Copy)]
         pub struct SiblingIterator<'a> {
             internal_tree: &'a $crate::InternalTree,
             next_index: $crate::NodeIndex,
@@ -425,6 +425,16 @@ macro_rules! __create_node {
                 };
                 self.next_index += current_node.next_node_offset;
                 Some(current)
+            }
+        }
+
+        impl std::fmt::Debug for SiblingIterator<'_> {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.debug_struct("SiblingIterator")
+                 .field("internal_tree", &format!("node count: #{}", self.internal_tree.nodes.len()))
+                 .field("next_index", &self.next_index)
+                 .field("ended", &self.ended)
+                 .finish()
             }
         }
 

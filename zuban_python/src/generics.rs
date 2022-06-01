@@ -364,6 +364,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if !p.has_argument() && p.param.default().is_none() {
                         // TODO?! comments?!
                         //self.matches = false;
+                        dbg!(self.args);
                         self.args.node_reference().add_typing_issue(
                             i_s.database,
                             IssueType::ArgumentIssue(format!(
