@@ -120,6 +120,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                                         // so just stop for now.
                                         break;
                                     }
+                                    StarLikeExpression::Expression(_)
+                                    | StarLikeExpression::StarExpression(_) => unreachable!(),
                                 }
                             }
                         }
@@ -135,6 +137,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                             StarLikeExpression::StarNamedExpression(_) => {
                                 todo!()
                             }
+                            StarLikeExpression::Expression(_)
+                            | StarLikeExpression::StarExpression(_) => unreachable!(),
                         };
                         for child in elements {
                             match child {
@@ -145,6 +149,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                                 StarLikeExpression::StarNamedExpression(_) => {
                                     todo!()
                                 }
+                                StarLikeExpression::Expression(_)
+                                | StarLikeExpression::StarExpression(_) => unreachable!(),
                             }
                         }
                         inferred

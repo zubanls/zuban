@@ -529,7 +529,9 @@ impl<'db> Set<'db> {
 }
 
 pub enum StarLikeExpression<'db> {
+    Expression(Expression<'db>),
     NamedExpression(NamedExpression<'db>),
+    StarExpression(StarExpression<'db>),
     StarNamedExpression(StarNamedExpression<'db>),
 }
 
@@ -554,7 +556,7 @@ impl<'db> Iterator for TupleLikeIterator<'db> {
     type Item = StarLikeExpression<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            TupleLikeIterator::Elements(iterator) => iterator.next().map(|node| {
+            Self::Elements(iterator) => iterator.next().map(|node| {
                 if node.is_type(Nonterminal(named_expression)) {
                     StarLikeExpression::NamedExpression(NamedExpression::new(node))
                 } else if node.is_type(Nonterminal(star_named_expression)) {
@@ -565,8 +567,30 @@ impl<'db> Iterator for TupleLikeIterator<'db> {
                     self.next().unwrap()
                 }
             }),
-            TupleLikeIterator::Empty => None,
+            Self::Empty => None,
         }
+    }
+}
+
+impl<'db> StarExpressionsTuple<'db> {
+    pub fn iter(&self) -> StarExpressionsIterator<'db> {
+        StarExpressionsIterator(self.node.iter_children().step_by(2))
+    }
+}
+
+pub struct StarExpressionsIterator<'db>(StepBy<SiblingIterator<'db>>);
+
+impl<'db> Iterator for StarExpressionsIterator<'db> {
+    type Item = StarLikeExpression<'db>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next().map(|node| {
+            if node.is_type(Nonterminal(expression)) {
+                StarLikeExpression::Expression(Expression::new(node))
+            } else {
+                debug_assert_eq!(node.type_(), Nonterminal(star_expression));
+                StarLikeExpression::StarExpression(StarExpression::new(node))
+            }
+        })
     }
 }
 

@@ -127,6 +127,9 @@ impl<'db> IteratorContent<'db, '_> {
                         list.infer_named_expr(i_s, named_expr)
                     }
                     StarLikeExpression::StarNamedExpression(_) => todo!(),
+                    StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
+                        unreachable!()
+                    }
                 })
             }
             Self::Empty => todo!(),

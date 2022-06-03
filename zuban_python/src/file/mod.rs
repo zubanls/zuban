@@ -760,7 +760,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             StarExpressionContent::StarExpression(expr) => {
                 todo!("Add error: can't use starred expression here")
             }
-            StarExpressionContent::Tuple(expr) => todo!("it's a tuple, cache that!"),
+            StarExpressionContent::Tuple(tuple) => self
+                .infer_tuple_iterator(tuple.iter())
+                .save_redirect(self.file, tuple.index()),
         }
     }
 
@@ -964,38 +966,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             SetComprehension(_) => todo!(),
             Tuple(tuple) => {
-                let mut generics = vec![];
-                for e in tuple.iter() {
-                    match e {
-                        StarLikeExpression::NamedExpression(e) => {
-                            generics.push(self.infer_named_expression(e).class_as_db_type(self.i_s))
-                        }
-                        StarLikeExpression::StarNamedExpression(e) => {
-                            let inferred = self.infer_expression_part(e.expression_part());
-                            let mut iterator =
-                                inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
-                            if iterator.len().is_some() {
-                                while let Some(inf) = iterator.next(self.i_s) {
-                                    generics.push(inf.class_as_db_type(self.i_s))
-                                }
-                            } else {
-                                todo!()
-                            }
-                        }
-                    }
-                }
-                let content = TupleContent {
-                    generics: (!generics.is_empty()).then(|| GenericsList::from_vec(generics)),
-                    arbitrary_length: false,
-                };
-                debug!(
-                    "Inferred literal: Tuple{}",
-                    content.as_string(self.i_s.database, FormatStyle::Short)
-                );
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    DbType::Tuple(content),
-                )))
-                .save_redirect(self.file, atom.index());
+                return self
+                    .infer_tuple_iterator(tuple.iter())
+                    .save_redirect(self.file, atom.index())
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
@@ -1003,6 +976,46 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         let point = Point::new_simple_specific(specific, Locality::Todo);
         Inferred::new_and_save(self.file, atom.index(), point)
+    }
+
+    fn infer_tuple_iterator(
+        &mut self,
+        iterator: impl Iterator<Item = StarLikeExpression<'db>>,
+    ) -> Inferred<'db> {
+        let mut generics = vec![];
+        for e in iterator {
+            match e {
+                StarLikeExpression::NamedExpression(e) => {
+                    generics.push(self.infer_named_expression(e).class_as_db_type(self.i_s))
+                }
+                StarLikeExpression::Expression(e) => {
+                    generics.push(self.infer_expression(e).class_as_db_type(self.i_s))
+                }
+                StarLikeExpression::StarNamedExpression(e) => {
+                    let inferred = self.infer_expression_part(e.expression_part());
+                    let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
+                    if iterator.len().is_some() {
+                        while let Some(inf) = iterator.next(self.i_s) {
+                            generics.push(inf.class_as_db_type(self.i_s))
+                        }
+                    } else {
+                        todo!()
+                    }
+                }
+                StarLikeExpression::StarExpression(e) => {
+                    todo!()
+                }
+            }
+        }
+        let content = TupleContent {
+            generics: (!generics.is_empty()).then(|| GenericsList::from_vec(generics)),
+            arbitrary_length: false,
+        };
+        debug!(
+            "Inferred literal: Tuple{}",
+            content.as_string(self.i_s.database, FormatStyle::Short)
+        );
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
