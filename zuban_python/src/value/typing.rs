@@ -7,11 +7,11 @@ use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FormatStyle, Specific, TupleContent,
-    TypeVarIndex, TypeVarUsage,
+    TypeVarIndex, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
-use crate::generics::Generics;
-use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent};
+use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -184,6 +184,52 @@ impl<'a> TupleClass<'a> {
             .as_ref()
             .map(Generics::new_list)
             .unwrap_or(Generics::None)
+    }
+
+    pub fn matches<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        other: &TupleClass,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        variance: Variance,
+    ) -> bool {
+        if let Some(generics1) = &self.content.generics {
+            if let Some(generics2) = &other.content.generics {
+                return match (
+                    self.content.arbitrary_length,
+                    other.content.arbitrary_length,
+                ) {
+                    (false, false) | (true, true) => {
+                        generics1.len() == generics2.len()
+                            && Generics::new_list(generics1).matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                Generics::new_list(generics2),
+                                variance,
+                                None,
+                            )
+                    }
+                    (false, true) => todo!(),
+                    (true, false) => {
+                        let t1 = Type::from_db_type(
+                            i_s.database,
+                            generics1.nth(TypeVarIndex::new(0)).unwrap(),
+                        );
+                        for g in generics2.iter() {
+                            let t2 = Type::from_db_type(
+                                i_s.database,
+                                generics2.nth(TypeVarIndex::new(0)).unwrap(),
+                            );
+                            if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
+                                return false;
+                            }
+                        }
+                        true
+                    }
+                };
+            }
+        }
+        true
     }
 
     pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {

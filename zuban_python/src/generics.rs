@@ -580,7 +580,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn matches(
+    pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,

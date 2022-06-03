@@ -110,7 +110,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(_) | Self::TypeWithDbType(_) => {
                 matches!(other, Self::Type(_) | Self::TypeWithDbType(_))
             }
-            Self::Tuple(_) => matches!(other, Self::Tuple(_)),
+            Self::Tuple(t1) => {
+                return match other {
+                    Self::Tuple(t2) => t1.matches(i_s, t2, matcher, variance),
+                    _ => false,
+                }
+            }
             Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
             Self::FunctionType(f) => unreachable!(),
             Self::TypingClass(c) => match other {

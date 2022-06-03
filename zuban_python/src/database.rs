@@ -469,6 +469,10 @@ impl GenericsList {
         self.0.iter()
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
     pub fn as_string(
         &self,
         db: &Database,
