@@ -576,7 +576,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Union(list) => DbType::Union(GenericsList::from_vec(list)),
             Self::None => DbType::None,
             Self::Any => DbType::Any,
-            Self::Unknown => todo!(),
+            Self::Unknown => DbType::Unknown,
         }
     }
 

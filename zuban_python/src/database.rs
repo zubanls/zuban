@@ -400,6 +400,7 @@ pub enum AnyLink {
     Reference(PointLink),
     Complex(Box<ComplexPoint>),
     SimpleSpecific(Specific),
+    Unknown,
 }
 
 #[derive(Debug, Clone, PartialEq)]

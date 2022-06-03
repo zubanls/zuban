@@ -20,6 +20,7 @@ pub enum IssueType {
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
     UnsupportedOperand(String, String, String),
+    UnsupportedLeftOperand(String, String, Option<String>),
     InvalidGetItem(String),
     NotIndexable(String),
     FunctionGetItem,
@@ -111,6 +112,15 @@ impl<'db> Diagnostic<'db> {
                 format!(
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
+            }
+            IssueType::UnsupportedLeftOperand(operand, left, note) => {
+                let mut s = format!(
+                    "Unsupported left operand type for {operand} ({left:?})",
+                );
+                if let Some(note) = note {
+                    s += note;
+                }
+                s
             }
             IssueType::InvalidGetItem(s) => s.clone(),
             IssueType::NotIndexable(s) => format!("Value of type {s:?} is not indexable"),

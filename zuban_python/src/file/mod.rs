@@ -799,7 +799,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.magic_method, &|i_s| todo!())
+            value.lookup_implicit(i_s, op.magic_method, &|i_s| {
+                node_ref.add_typing_issue(
+                    i_s.database,
+                    IssueType::UnsupportedLeftOperand(
+                        op.operand.to_owned(),
+                        value.class(i_s).as_string(i_s, FormatStyle::Short),
+                        None, // TODO check for unions and stuff
+                    ),
+                )
+            })
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(

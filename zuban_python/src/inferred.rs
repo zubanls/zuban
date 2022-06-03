@@ -424,6 +424,7 @@ impl<'db> Inferred<'db> {
                             Specific::None => callable(i_s, &NoneInstance()),
                             _ => todo!("not even sure if this should be a separate class"),
                         },
+                        AnyLink::Unknown => on_missing(i_s),
                     };
                     if let Some(p) = previous {
                         previous = Some(reducer(i_s, p, result))
@@ -958,7 +959,7 @@ impl<'db> Inferred<'db> {
                         list.push(AnyLink::SimpleSpecific(specific))
                     }
                     InferredState::UnsavedFileReference(file_index) => todo!(),
-                    InferredState::Unknown => todo!(),
+                    InferredState::Unknown => list.push(AnyLink::Unknown),
                 };
             };
             insert(&mut list, self.state);
@@ -1065,6 +1066,7 @@ impl<'db> Inferred<'db> {
             }
             AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
             AnyLink::SimpleSpecific(_) => todo!(),
+            AnyLink::Unknown => todo!(),
         }
     }
 

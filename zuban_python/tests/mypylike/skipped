@@ -84,3 +84,4 @@ testGenericTypeCompatibilityWithAny
 testGenericTypeBody1
 testTypeApplicationCrash
 testGenericTypeAliasesBasic2
+testGenericTypeAliasesUnion
