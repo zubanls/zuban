@@ -23,6 +23,7 @@ pub enum IssueType {
     UnsupportedLeftOperand(String, String, Option<String>),
     InvalidGetItem(String),
     NotIndexable(String),
+    TooFewValuesToUnpack(usize, usize),
     FunctionGetItem,
     InvalidBaseClass,
 
@@ -130,6 +131,9 @@ impl<'db> Diagnostic<'db> {
             IssueType::FunctionGetItem => {
                 "Type application is only supported for generic classes".to_owned()
             }
+            IssueType::TooFewValuesToUnpack(actual, expected) => format!(
+                "Need more than {actual} values to unpack ({expected} expected)"
+            ),
             IssueType::InvalidBaseClass => {
                 let primary = NodeRef::new(self.file, self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())

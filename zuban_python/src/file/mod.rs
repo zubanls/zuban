@@ -702,6 +702,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match target {
             Target::Tuple(mut targets) => {
                 let mut value_iterator = value.iter(self.i_s, value_node_ref);
+                let mut counter = 0;
                 while let Some(target) = targets.next() {
                     if let Target::Starred(star_target) = target {
                         let (stars, normal) = targets.clone().remaining_stars_and_normal_count();
@@ -727,8 +728,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else if let Some(value) = value_iterator.next(self.i_s) {
                         self.assign_targets(target, &value, value_node_ref)
                     } else {
-                        todo!()
+                        value_node_ref.add_typing_issue(
+                            self.i_s.database,
+                            IssueType::TooFewValuesToUnpack(counter, counter + targets.count() + 1),
+                        );
+                        break;
                     }
+                    counter += 1;
                 }
             }
             Target::Starred(n) => {
