@@ -221,8 +221,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 pub struct Class<'db, 'a> {
     pub reference: NodeRef<'db>,
     pub class_storage: &'db ClassStorage,
-    pub(super) generics: Generics<'db, 'a>,
-    type_var_remap: Option<&'db GenericsList>,
+    pub generics: Generics<'db, 'a>,
+    pub type_var_remap: Option<&'db GenericsList>,
 }
 
 impl<'db, 'a> Class<'db, 'a> {
@@ -269,7 +269,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 let list = if has_generics {
                     let mut finder = TypeVarMatcher::new(
                         Some(self),
-                        &func,
+                        func,
                         args,
                         true,
                         func.type_vars(i_s),
@@ -282,7 +282,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     TypeVarMatcher::calculate_and_return(
                         i_s,
                         Some(self),
-                        &func,
+                        func,
                         args,
                         true,
                         Some(type_vars),

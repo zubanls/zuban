@@ -234,7 +234,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let mut finder = TypeVarMatcher::new(
             self.class.as_ref(),
-            self,
+            *self,
             args,
             false,
             func_type_vars,
@@ -595,7 +595,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     if has_generics {
                         TypeVarMatcher::new(
                             class,
-                            &function,
+                            function,
                             args,
                             true,
                             Some(c.type_vars(i_s)),
@@ -606,7 +606,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         let func_type_vars = function.type_vars(i_s);
                         TypeVarMatcher::new(
                             class,
-                            &function,
+                            function,
                             args,
                             true,
                             func_type_vars,
@@ -619,7 +619,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     let func_type_vars = function.type_vars(i_s);
                     TypeVarMatcher::new(
                         None,
-                        &function,
+                        function,
                         args,
                         false,
                         func_type_vars,

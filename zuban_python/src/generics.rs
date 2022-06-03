@@ -10,7 +10,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
-use crate::inference_state::{Context, InferenceState};
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -20,6 +20,7 @@ use crate::value::{
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
+            None | Some(Generics::None) => $g.clone(),
             Some(type_var_generics) => $g.clone().replace_type_vars(&mut |t| {
                 if t.type_ == TypeVarType::Class {
                     type_var_generics.nth($i_s, t.index)
@@ -27,7 +28,6 @@ macro_rules! replace_class_vars {
                     DbType::Unknown
                 }
             }),
-            None => $g.clone(),
         }
     };
 }
@@ -267,7 +267,7 @@ impl<'db> GenericsIterator<'db, '_> {
 }
 
 enum FunctionOrCallable<'db, 'a> {
-    Function(Option<&'a Class<'db, 'a>>, &'a Function<'db, 'a>),
+    Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
     Callable(&'a Callable<'a>),
 }
 
@@ -285,7 +285,7 @@ pub struct TypeVarMatcher<'db, 'a> {
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
         class: Option<&'a Class<'db, 'a>>,
-        function: &'a Function<'db, 'a>,
+        function: Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first_param: bool,
         type_vars: Option<&'a TypeVars>,
@@ -327,7 +327,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&'a Class<'db, 'a>>,
-        function: &'a Function<'db, 'a>,
+        function: Function<'db, 'a>,
         args: &'a dyn Arguments<'db>,
         skip_first_param: bool,
         type_vars: Option<&'db TypeVars>,
@@ -393,7 +393,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                         i_s,
                                         p.as_argument_node_reference(),
                                         class,
-                                        function,
+                                        &function,
                                         &p,
                                         t1,
                                         t2,
@@ -460,28 +460,54 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
-        class: Type<'db, '_>,
+        value_type: Type<'db, '_>,
     ) -> bool {
-        // TODO we should be able to remove the match part here! (maybe not, because of __init__)
-        if self.match_type == type_var_usage.type_ {
-            if let Some(calculated) = self.calculated_type_vars.as_mut() {
-                calculated.set_generic(type_var_usage.index, class.into_db_type(i_s));
-                return true;
-            }
-        }
         if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
-                FunctionOrCallable::Function(_, f) => {
-                    let g = f.class.unwrap().generics().nth(i_s, type_var_usage.index);
-                    // TODO nth should return a type instead of DbType
-                    let g = Type::from_db_type(i_s.database, &g);
-                    g.matches(i_s, Some(self), class, type_var_usage.type_var.variance)
+                FunctionOrCallable::Function(class, f) => {
+                    if let Some(type_var_remap) = f.class.unwrap().type_var_remap {
+                        let g = type_var_remap.nth(type_var_usage.index).unwrap();
+                        let g = Type::from_db_type(i_s.database, g);
+                        let mut new_func = f;
+                        new_func.class.as_mut().unwrap().type_var_remap = None;
+                        // Since we now used the type_var_remap, it needs to be temporarily
+                        // replaced with no type_var_remap, to avoid looping when we find type vars
+                        // again in the type_var_remap.
+                        let old = std::mem::replace(
+                            &mut self.func_or_callable,
+                            FunctionOrCallable::Function(class, new_func),
+                        );
+                        let result = g.matches(
+                            i_s,
+                            Some(self),
+                            value_type,
+                            type_var_usage.type_var.variance,
+                        );
+                        self.func_or_callable = old;
+                        return result;
+                    } else if !matches!(f.class.unwrap().generics, Generics::None) {
+                        let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
+                        // TODO nth should return a type instead of DbType
+                        let g = Type::from_db_type(i_s.database, &g);
+                        return g.matches(
+                            i_s,
+                            Some(self),
+                            value_type,
+                            type_var_usage.type_var.variance,
+                        );
+                    }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
+            }
+        }
+        if self.match_type == type_var_usage.type_ {
+            if let Some(calculated) = self.calculated_type_vars.as_mut() {
+                calculated.set_generic(type_var_usage.index, value_type.into_db_type(i_s));
             }
         } else {
             todo!()
         }
+        true
     }
 
     pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -546,10 +572,7 @@ impl<'db, 'a> Type<'db, 'a> {
     fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::TypeVar(t) => {
-                todo!();
-                //DbType::TypeVar(t)
-            }
+            Self::TypeVar(t) => DbType::TypeVar(t.clone()),
             Self::Union(list) => DbType::Union(GenericsList::from_vec(list)),
             Self::None => DbType::None,
             Self::Any => DbType::Any,
@@ -574,9 +597,19 @@ impl<'db, 'a> Type<'db, 'a> {
                         class.matches_type_var(t)
                     }
                 }
-                Type::TypeVar(t2) => t.index == t2.index && t.type_ == t2.type_,
+                Type::TypeVar(t2) => {
+                    if let Some(matcher) = matcher {
+                        matcher.match_or_add_type_var(i_s, t, value_class)
+                    } else {
+                        t.index == t2.index && t.type_ == t2.type_
+                    }
+                }
                 Type::Unknown => {
-                    todo!("{value_class:?}")
+                    if let Some(matcher) = matcher {
+                        todo!("{value_class:?}")
+                    } else {
+                        true
+                    }
                 }
                 Type::Union(ref list) => {
                     if let Some(matcher) = matcher {
@@ -659,12 +692,12 @@ impl<'db, 'a> Type<'db, 'a> {
     ) {
         let value_type = value.class_as_type(i_s);
         if !self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant) {
-            let class = matcher.and_then(|matcher| match matcher.func_or_callable {
+            let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
             });
             let value_type = value.class_as_type(i_s);
-            debug!("Mismatch between {self:?} and {value_type:?}");
+            debug!("Mismatch between {value_type:?} and {self:?}");
             let input = value_type.as_string(i_s, None, FormatStyle::Short);
             let wanted = self.as_string(i_s, class, FormatStyle::Short);
             callback(i_s, input, wanted)
