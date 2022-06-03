@@ -107,6 +107,7 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     type_var_callback: &'c mut C,
     errors_already_calculated: bool,
     pub has_type_vars: bool,
+    is_base_class_calculation: bool,
 }
 
 impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> TypeVarUsage>
@@ -121,6 +122,20 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
+            is_base_class_calculation: false,
+        }
+    }
+
+    pub fn new_base_class_calculation(
+        inference: &'c mut PythonInference<'db, 'a, 'b>,
+        type_var_callback: &'c mut C,
+    ) -> Self {
+        Self {
+            inference,
+            type_var_callback,
+            errors_already_calculated: false,
+            has_type_vars: false,
+            is_base_class_calculation: true,
         }
     }
 
@@ -161,6 +176,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
+                is_base_class_calculation: self.is_base_class_calculation,
             };
             let type_ = callback(&mut comp, expr);
             self.has_type_vars |= comp.has_type_vars;
@@ -693,9 +709,32 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 self.has_type_vars = true;
                 TypeContent::DbType(DbType::TypeVar(usage))
             }
-            TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
+            TypeNameLookup::TypeAlias(alias) => {
+                if self.is_base_class_calculation {
+                    if !matches!(
+                        alias.db_type.as_ref(),
+                        DbType::Class(_) | DbType::GenericClass(_, _) | DbType::Tuple(_)
+                    ) {
+                        NodeRef::new(self.inference.file, name.index()).add_typing_issue(
+                            self.inference.i_s.database,
+                            IssueType::InvalidBaseClass,
+                        );
+                    }
+                }
+                TypeContent::TypeAlias(alias)
+            }
             TypeNameLookup::Invalid => TypeContent::DbType(DbType::Any),
-            TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
+            TypeNameLookup::SpecialType(special) => {
+                if self.is_base_class_calculation
+                    && !matches!(
+                        special,
+                        SpecialType::Protocol | SpecialType::Generic | SpecialType::Tuple
+                    )
+                {
+                    todo!()
+                }
+                TypeContent::SpecialType(special)
+            }
         }
     }
 }
@@ -924,6 +963,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     }
                                 },
                             has_type_vars: false,
+                            is_base_class_calculation: false,
                         };
                         let t = comp.compute_type(expr);
                         if let TypeContent::ClassWithoutTypeVar(i) = t {

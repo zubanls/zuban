@@ -23,6 +23,7 @@ pub enum IssueType {
     InvalidGetItem(String),
     NotIndexable(String),
     FunctionGetItem,
+    InvalidBaseClass,
 
     MethodWithoutArguments,
 
@@ -118,6 +119,10 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::FunctionGetItem => {
                 "Type application is only supported for generic classes".to_owned()
+            }
+            IssueType::InvalidBaseClass => {
+                let primary = NodeRef::new(self.file, self.issue.node_index);
+                format!("Invalid base class {:?}", primary.as_code())
             }
             IssueType::Note(s) => {
                 type_ = "note";

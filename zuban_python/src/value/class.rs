@@ -12,6 +12,7 @@ use crate::database::{
     MroIndex, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -361,14 +362,17 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let mut inference = self.reference.file.inference(&mut i_s);
-                        let base = TypeComputation::new(&mut inference, &mut |_, type_var| {
-                            let index = type_vars.add(type_var.clone());
-                            TypeVarUsage {
-                                type_var,
-                                index,
-                                type_: TypeVarType::Class,
-                            }
-                        })
+                        let base = TypeComputation::new_base_class_calculation(
+                            &mut inference,
+                            &mut |_, type_var| {
+                                let index = type_vars.add(type_var.clone());
+                                TypeVarUsage {
+                                    type_var,
+                                    index,
+                                    type_: TypeVarType::Class,
+                                }
+                            },
+                        )
                         .compute_base_class(n.expression());
                         match base {
                             BaseClass::DbType(t) => {
