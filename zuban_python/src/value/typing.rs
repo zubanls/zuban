@@ -513,6 +513,14 @@ impl<'db, 'a> Value<'db, 'a> for Any {
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::AnyType
     }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        Inferred::new_any()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
