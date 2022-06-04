@@ -356,7 +356,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.database, IssueType::FunctionGetItem);
+            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
         Inferred::new_unknown()
     }
 
@@ -683,7 +683,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.database, IssueType::FunctionGetItem);
+            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
         todo!("Please write a test that checks this");
         Inferred::new_unknown()
     }

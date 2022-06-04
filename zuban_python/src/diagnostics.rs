@@ -24,7 +24,7 @@ pub enum IssueType {
     InvalidGetItem(String),
     NotIndexable(String),
     TooFewValuesToUnpack(usize, usize),
-    FunctionGetItem,
+    OnlyClassTypeApplication,
     InvalidBaseClass,
 
     MethodWithoutArguments,
@@ -128,7 +128,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }
-            IssueType::FunctionGetItem => {
+            IssueType::OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_owned()
             }
             IssueType::TooFewValuesToUnpack(actual, expected) => format!(
