@@ -759,12 +759,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match tcomp.compute_type_get_item_on_class(class, slice_type) {
             TypeContent::ClassWithoutTypeVar(inf) => inf,
             TypeContent::DbType(db_type) => Inferred::new_unsaved_complex(if tcomp.has_type_vars {
-                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
-            } else {
                 ComplexPoint::TypeAlias(Box::new(TypeAlias {
                     type_vars: type_vars.into_boxed_slice(),
                     db_type: Rc::new(db_type),
                 }))
+            } else {
+                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
             }),
             _ => todo!(),
         }
