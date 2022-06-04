@@ -780,6 +780,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         alias: &TypeAlias,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
+        if !matches!(
+            alias.db_type.as_ref(),
+            DbType::Class(_) | DbType::GenericClass(_, _)
+        ) {
+            slice_type
+                .as_node_ref()
+                .add_typing_issue(self.i_s.database, IssueType::OnlyClassTypeApplication);
+            return Inferred::new_any();
+        }
         match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
             type_var,
             // TODO this shouldn't be always 0...
