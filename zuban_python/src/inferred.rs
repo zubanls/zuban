@@ -549,7 +549,7 @@ impl<'db> Inferred<'db> {
                     .unwrap();
                     callable(i_s, &class)
                 }
-                DbType::Union(lst) => todo!(),
+                DbType::Union(lst) => todo!("{:?}", lst),
                 DbType::TypeVar(t) => todo!(),
                 DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
                 DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
