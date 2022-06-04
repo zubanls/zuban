@@ -524,6 +524,7 @@ pub enum DbType {
     None,
     Any,
     Unknown,
+    Never,
 }
 
 impl DbType {
@@ -623,6 +624,7 @@ impl DbType {
             Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
+            Self::Never => "<nothing>".to_owned(),
         }
     }
 
@@ -637,7 +639,7 @@ impl DbType {
             }
         };
         match self {
-            Self::Class(_) | Self::Unknown | Self::None | Self::Any => self,
+            Self::Class(_) | Self::Unknown | Self::None | Self::Any | Self::Never => self,
             Self::GenericClass(link, mut generics) => {
                 replace_list(&mut generics.0, callable);
                 Self::GenericClass(link, generics)
@@ -677,6 +679,7 @@ impl DbType {
             | Self::Unknown
             | Self::Any
             | Self::None
+            | Self::Never
             | Self::Union(_)
             | Self::TypeVar(_)
             | Self::Type(_) => unreachable!(),
@@ -700,6 +703,7 @@ impl DbType {
             Self::Unknown => Self::Unknown,
             Self::Any => Self::Any,
             Self::None => Self::None,
+            Self::Never => Self::Never,
             Self::GenericClass(link, generics) => {
                 Self::GenericClass(*link, remap_generics(generics))
             }

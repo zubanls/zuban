@@ -136,6 +136,7 @@ impl<'db> Inferred<'db> {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
+            DbType::Never => todo!(),
             DbType::TypeVar(ref t) => {
                 if t.type_ == TypeVarType::Class {
                     if let Some(class) = i_s.current_class {
@@ -530,6 +531,7 @@ impl<'db> Inferred<'db> {
             DbType::None => callable(i_s, &NoneInstance()),
             DbType::Any => on_missing(i_s),
             DbType::Unknown => todo!(),
+            DbType::Never => todo!(),
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(link) => {
                     let node_ref = NodeRef::from_link(i_s.database, *link);
@@ -555,6 +557,7 @@ impl<'db> Inferred<'db> {
                 DbType::None => todo!(),
                 DbType::Any => todo!(),
                 DbType::Unknown => todo!(),
+                DbType::Never => todo!(),
             },
         }
     }

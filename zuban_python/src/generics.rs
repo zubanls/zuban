@@ -524,6 +524,7 @@ pub enum Type<'db, 'a> {
     None,
     Any,
     Unknown,
+    Never,
 }
 
 impl<'db, 'a> Type<'db, 'a> {
@@ -538,6 +539,7 @@ impl<'db, 'a> Type<'db, 'a> {
             DbType::Unknown => Self::Unknown,
             DbType::None => Type::None,
             DbType::Any => Type::Any,
+            DbType::Never => Type::Never,
             DbType::GenericClass(link, generics) => {
                 let node_ref = NodeRef::from_link(database, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -577,6 +579,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::None => DbType::None,
             Self::Any => DbType::Any,
             Self::Unknown => DbType::Unknown,
+            Self::Never => DbType::Never,
         }
     }
 
@@ -619,6 +622,9 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 Type::Any => {
+                    todo!()
+                }
+                Type::Never => {
                     todo!()
                 }
                 Type::None => {
@@ -679,6 +685,7 @@ impl<'db, 'a> Type<'db, 'a> {
             },
             Self::None => matches!(value_class, Self::None),
             Self::Unknown | Self::Any => true,
+            Self::Never => todo!(),
         };
         result
     }
@@ -777,6 +784,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::None => DbType::None,
             Self::Any => todo!(),
             Self::Unknown => DbType::Unknown,
+            Self::Never => DbType::Never,
         }
     }
 
@@ -812,6 +820,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::None => "None".to_owned(),
             Self::Any => "Any".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
+            Self::Never => "<nothing>".to_owned(),
         }
     }
 }

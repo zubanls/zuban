@@ -80,6 +80,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Type::Union(list) => false,
             Type::None => true, // TODO should be false
             Type::Any | Type::Unknown => true,
+            Type::Never => todo!(),
         }
     }
 
