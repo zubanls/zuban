@@ -1094,11 +1094,13 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             _ => unreachable!(),
         }
     } else {
-        debug_assert_eq!(
-            node_ref.point().maybe_specific().unwrap(),
-            Specific::TypingCallable
-        );
-        TypeNameLookup::SpecialType(SpecialType::Callable)
+        let specific = node_ref.point().maybe_specific().unwrap();
+        if specific == Specific::TypingType {
+            TypeNameLookup::SpecialType(SpecialType::Type)
+        } else {
+            debug_assert_eq!(specific, Specific::TypingCallable);
+            TypeNameLookup::SpecialType(SpecialType::Callable)
+        }
     }
 }
 
