@@ -775,7 +775,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn compute_type_get_item_on_alias(
+    pub fn compute_type_application_on_alias(
         &mut self,
         alias: &TypeAlias,
         slice_type: SliceType<'db>,

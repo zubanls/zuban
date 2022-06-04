@@ -44,7 +44,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_get_item_on_alias(self.alias, *slice_type)
+            .compute_type_application_on_alias(self.alias, *slice_type)
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
