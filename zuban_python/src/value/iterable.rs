@@ -60,7 +60,7 @@ impl<'db> ListLiteral<'db> {
             reference.insert_complex(
                 ComplexPoint::GenericClass(
                     i_s.database.python_state.builtins_point_link("list"),
-                    GenericsList::new(Box::new([result])),
+                    GenericsList::new_generics(Box::new([result])),
                 ),
                 Locality::Todo,
             );
@@ -240,7 +240,7 @@ impl<'db> DictLiteral<'db> {
             reference.insert_complex(
                 ComplexPoint::GenericClass(
                     i_s.database.python_state.builtins_point_link("list"),
-                    GenericsList::new(Box::new([keys, values])),
+                    GenericsList::new_generics(Box::new([keys, values])),
                 ),
                 Locality::Todo,
             );

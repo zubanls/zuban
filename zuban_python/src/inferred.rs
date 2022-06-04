@@ -154,7 +154,7 @@ impl<'db> Inferred<'db> {
     pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::Instance(
             class,
-            generics.map(|lst| GenericsList::from_vec(lst.to_vec())),
+            generics.map(|lst| GenericsList::generics_from_vec(lst.to_vec())),
         ))
     }
 

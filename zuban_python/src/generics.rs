@@ -117,11 +117,11 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         match self {
-            Self::Expression(file, expr) => Some(GenericsList::new(Box::new([file
+            Self::Expression(file, expr) => Some(GenericsList::new_generics(Box::new([file
                 .inference(i_s)
                 .infer_expression(*expr)
                 .as_db_type(i_s)]))),
-            Self::Slices(file, slices) => Some(GenericsList::new(
+            Self::Slices(file, slices) => Some(GenericsList::new_generics(
                 slices
                     .iter()
                     .map(|slice| {
@@ -138,7 +138,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::DbType(g) => todo!(),
             Self::Class(_) => todo!(),
             Self::FunctionParams(f) => todo!(),
-            Self::List(l, type_var_generics) => Some(GenericsList::new(
+            Self::List(l, type_var_generics) => Some(GenericsList::new_generics(
                 l.iter()
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
@@ -575,7 +575,7 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::TypeVar(t) => DbType::TypeVar(t.clone()),
-            Self::Union(list) => DbType::Union(GenericsList::from_vec(list)),
+            Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list)),
             Self::None => DbType::None,
             Self::Any => DbType::Any,
             Self::Unknown => DbType::Unknown,
@@ -772,7 +772,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
             }),
             Self::TypeVar(t) => resolve_type_var(i_s, function_matcher, t),
-            Self::Union(list) => DbType::Union(GenericsList::new(
+            Self::Union(list) => DbType::Union(GenericsList::new_union(
                 list.iter()
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |t| {

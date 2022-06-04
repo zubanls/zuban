@@ -545,7 +545,7 @@ impl<'db> InferrableParam<'db, '_> {
                     list.push(arg.infer(i_s).as_db_type(i_s))
                 }
                 let t = TupleContent {
-                    generics: Some(GenericsList::from_vec(list)),
+                    generics: Some(GenericsList::generics_from_vec(list)),
                     arbitrary_length: false,
                 };
                 Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(

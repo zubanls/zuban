@@ -138,7 +138,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let args: &dyn Arguments = if let Some(class) = class {
             i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 class.reference.as_link(),
-                Some(GenericsList::new(
+                Some(GenericsList::new_generics(
                     class
                         .type_vars(self.i_s)
                         .iter()

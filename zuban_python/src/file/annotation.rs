@@ -426,7 +426,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => {
-                            TypeContent::DbType(DbType::Union(GenericsList::new(
+                            TypeContent::DbType(DbType::Union(GenericsList::new_union(
                                 s.iter()
                                     .map(|slice_or_simple| {
                                         let t = self.compute_slice_type(slice_or_simple);
@@ -487,7 +487,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     }
                     TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
                         class.reference.as_link(),
-                        GenericsList::new(Box::new([d])),
+                        GenericsList::new_generics(Box::new([d])),
                     )),
                     TypeContent::Module(m) => todo!(),
                     TypeContent::TypeAlias(m) => todo!(),
@@ -516,7 +516,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     } else {
                         TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
-                            GenericsList::from_vec(generics),
+                            GenericsList::generics_from_vec(generics),
                         ))
                     }
                 }
@@ -546,7 +546,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 // TODO if it is a (), it's an empty tuple
                 let t = self.compute_db_type(simple.named_expr.expression());
                 TupleContent {
-                    generics: Some(GenericsList::new(Box::new([t]))),
+                    generics: Some(GenericsList::new_generics(Box::new([t]))),
                     arbitrary_length: false,
                 }
             }
@@ -556,7 +556,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             SliceTypeContent::Slices(slices) => {
                 let mut arbitrary_length = false;
                 TupleContent {
-                    generics: Some(GenericsList::new(
+                    generics: Some(GenericsList::new_generics(
                         slices
                             .iter()
                             .filter_map(|slice_content| {
@@ -612,7 +612,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     .map(|slice_content| self.compute_slice_db_type(slice_content))
                     .unwrap_or(DbType::Unknown);
                 CallableContent {
-                    params: params.map(GenericsList::from_vec),
+                    params: params.map(GenericsList::generics_from_vec),
                     return_class: Box::new(return_class),
                 }
             }

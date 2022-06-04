@@ -443,12 +443,21 @@ impl Execution {
 pub struct GenericsList(Box<[DbType]>);
 
 impl GenericsList {
-    pub fn new(parts: Box<[DbType]>) -> Self {
+    pub fn new_generics(parts: Box<[DbType]>) -> Self {
         Self(parts)
     }
 
-    pub fn from_vec(parts: Vec<DbType>) -> Self {
-        Self::new(parts.into_boxed_slice())
+    pub fn new_union(parts: Box<[DbType]>) -> Self {
+        debug_assert!(parts.len() > 1);
+        Self(parts)
+    }
+
+    pub fn union_from_vec(parts: Vec<DbType>) -> Self {
+        Self::new_union(parts.into_boxed_slice())
+    }
+
+    pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
+        Self::new_generics(parts.into_boxed_slice())
     }
 
     pub fn new_unknown(length: usize) -> Self {
@@ -547,7 +556,7 @@ impl DbType {
                         }
                     }
                 };
-                Self::Union(GenericsList::from_vec(vec))
+                Self::Union(GenericsList::union_from_vec(vec))
             }
             Self::Unknown => other,
             _ => match other {
@@ -557,7 +566,7 @@ impl DbType {
                     } else {
                         let mut vec = list.0.into_vec();
                         vec.push(self);
-                        Self::Union(GenericsList::from_vec(vec))
+                        Self::Union(GenericsList::union_from_vec(vec))
                     }
                 }
                 Self::Unknown => self,
@@ -565,7 +574,7 @@ impl DbType {
                     if self == other {
                         self
                     } else {
-                        Self::Union(GenericsList::new(Box::new([self, other])))
+                        Self::Union(GenericsList::new_union(Box::new([self, other])))
                     }
                 }
             },
@@ -691,7 +700,7 @@ impl DbType {
         resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> DbType,
     ) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
-            GenericsList::new(
+            GenericsList::new_generics(
                 generics
                     .iter()
                     .map(|g| g.remap_type_vars(resolve_type_var))

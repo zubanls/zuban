@@ -719,7 +719,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.database.python_state.list().as_link(),
-                                Some(GenericsList::new(Box::new([generic]))),
+                                Some(GenericsList::new_generics(Box::new([generic]))),
                             ));
                             self.assign_targets(star_target.as_target(), &list, value_node_ref);
                         } else {
@@ -961,7 +961,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(elements) = set.unpack() {
                     return Inferred::new_unsaved_complex(ComplexPoint::Instance(
                         self.i_s.database.python_state.builtins_point_link("set"),
-                        Some(GenericsList::new(Box::new([
+                        Some(GenericsList::new_generics(Box::new([
                             self.create_list_or_set_generics(elements)
                         ]))),
                     ))
@@ -1014,7 +1014,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
         let content = TupleContent {
-            generics: (!generics.is_empty()).then(|| GenericsList::from_vec(generics)),
+            generics: (!generics.is_empty()).then(|| GenericsList::generics_from_vec(generics)),
             arbitrary_length: false,
         };
         debug!(
