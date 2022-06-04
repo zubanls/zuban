@@ -536,7 +536,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             }
             result
         } else {
-            todo!()
+            todo!("{:?}", class)
         }
     }
 
@@ -746,20 +746,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
-            type_var,
-            // TODO this shouldn't be always 0...
-            index: TypeVarIndex::new(0),
-            type_: TypeVarType::Alias,
-        })
-        .compute_type_get_item_on_class(class, slice_type)
-        {
+        let mut type_vars = TypeVarManager::default();
+        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>| {
+            let index = type_vars.add(type_var.clone());
+            TypeVarUsage {
+                type_var,
+                index,
+                type_: TypeVarType::Alias,
+            }
+        };
+        let mut tcomp = TypeComputation::new(self, &mut on_type_var);
+        match tcomp.compute_type_get_item_on_class(class, slice_type) {
             TypeContent::ClassWithoutTypeVar(inf) => inf,
-            TypeContent::DbType(d) => Inferred::new_saved(
-                class.reference.file,
-                class.reference.node_index,
-                class.reference.point(),
-            ),
+            TypeContent::DbType(db_type) => Inferred::new_unsaved_complex(if tcomp.has_type_vars {
+                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+            } else {
+                ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                    type_vars: type_vars.into_boxed_slice(),
+                    db_type: Rc::new(db_type),
+                }))
+            }),
             _ => todo!(),
         }
     }
