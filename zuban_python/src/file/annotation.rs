@@ -641,19 +641,20 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 }
             }
         };
-        if given_count != expected_count {
+        let mismatch = given_count != expected_count;
+        if mismatch {
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.database,
                 IssueType::TypeAliasArgumentIssue(expected_count, given_count),
             );
-            TypeContent::DbType(DbType::Any)
-        } else {
-            TypeContent::DbType(
-                alias
-                    .db_type
-                    .remap_type_vars(&mut |usage| generics[usage.index.as_usize()].clone()),
-            )
         }
+        TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
+            if mismatch {
+                DbType::Any
+            } else {
+                generics[usage.index.as_usize()].clone()
+            }
+        }))
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
