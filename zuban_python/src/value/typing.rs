@@ -70,38 +70,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db>,
     ) -> Inferred<'db> {
-        let g = match self.specific {
-            Specific::TypingGeneric | Specific::TypingProtocol => {
-                //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
-                todo!()
-            }
-            Specific::TypingTuple => {
-                return slice_type
-                    .file
-                    .inference(i_s)
-                    .compute_type_application_on_tuple(*slice_type)
-            }
-            Specific::TypingCallable => {
-                return slice_type
-                    .file
-                    .inference(i_s)
-                    .compute_type_application_on_callable(*slice_type)
-            }
-            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
-            Specific::TypingUnion => return Inferred::new_any(),
-            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
-            Specific::TypingOptional => return Inferred::new_any(),
-            Specific::TypingType => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => {
-                    todo!()
-                    // let g = simple.infer_type(i_s);
-                    // DbType::Type(Box::new(g))
-                }
-                _ => todo!(),
-            },
-            _ => unreachable!("{:?}", self.specific),
-        };
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(g)))
+        slice_type
+            .file
+            .inference(i_s)
+            .compute_type_application_on_typing_class(self.specific, *slice_type)
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {

@@ -796,18 +796,36 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         compute_type_application!(self, compute_type_get_item_on_alias(alias, slice_type))
     }
 
-    pub fn compute_type_application_on_tuple(
+    pub fn compute_type_application_on_typing_class(
         &mut self,
+        specific: Specific,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        compute_type_application!(self, compute_type_get_item_on_tuple(slice_type))
-    }
-
-    pub fn compute_type_application_on_callable(
-        &mut self,
-        slice_type: SliceType<'db>,
-    ) -> Inferred<'db> {
-        compute_type_application!(self, compute_type_get_item_on_callable(slice_type))
+        match specific {
+            Specific::TypingGeneric | Specific::TypingProtocol => {
+                //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
+                todo!()
+            }
+            Specific::TypingTuple => {
+                compute_type_application!(self, compute_type_get_item_on_tuple(slice_type))
+            }
+            Specific::TypingCallable => {
+                compute_type_application!(self, compute_type_get_item_on_callable(slice_type))
+            }
+            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
+            Specific::TypingUnion => Inferred::new_any(),
+            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
+            Specific::TypingOptional => Inferred::new_any(),
+            Specific::TypingType => match slice_type.unpack() {
+                SliceTypeContent::Simple(simple) => {
+                    todo!()
+                    // let g = simple.infer_type(i_s);
+                    // DbType::Type(Box::new(g))
+                }
+                _ => todo!(),
+            },
+            _ => unreachable!("{:?}", specific),
+        }
     }
 
     /* TODO remove
