@@ -57,6 +57,33 @@ pub enum BaseClass {
     Generic,
 }
 
+macro_rules! compute_type_application {
+    ($self:ident, $method:ident $args:tt) => {{
+        let mut type_vars = TypeVarManager::default();
+        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>| {
+            let index = type_vars.add(type_var.clone());
+            TypeVarUsage {
+                type_var,
+                index,
+                type_: TypeVarType::Alias,
+            }
+        };
+        let mut tcomp = TypeComputation::new($self, &mut on_type_var);
+        match tcomp.$method $args {
+            TypeContent::ClassWithoutTypeVar(inf) => inf,
+            TypeContent::DbType(db_type) => Inferred::new_unsaved_complex(if tcomp.has_type_vars {
+                ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                    type_vars: type_vars.into_boxed_slice(),
+                    db_type: Rc::new(db_type),
+                }))
+            } else {
+                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+            }),
+            _ => todo!(),
+        }
+    }}
+}
+
 impl<'db> TypeContent<'db> {
     fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         TypeContent::DbType(match self {
@@ -751,28 +778,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        let mut type_vars = TypeVarManager::default();
-        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>| {
-            let index = type_vars.add(type_var.clone());
-            TypeVarUsage {
-                type_var,
-                index,
-                type_: TypeVarType::Alias,
-            }
-        };
-        let mut tcomp = TypeComputation::new(self, &mut on_type_var);
-        match tcomp.compute_type_get_item_on_class(class, slice_type) {
-            TypeContent::ClassWithoutTypeVar(inf) => inf,
-            TypeContent::DbType(db_type) => Inferred::new_unsaved_complex(if tcomp.has_type_vars {
-                ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                    type_vars: type_vars.into_boxed_slice(),
-                    db_type: Rc::new(db_type),
-                }))
-            } else {
-                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
-            }),
-            _ => todo!(),
-        }
+        compute_type_application!(self, compute_type_get_item_on_class(class, slice_type))
     }
 
     pub fn compute_type_application_on_alias(
