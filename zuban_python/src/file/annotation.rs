@@ -450,21 +450,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
-                        SpecialType::Union => {
-                            let iterator = s.iter();
-                            if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-                                self.compute_slice_type(s)
-                            } else {
-                                TypeContent::DbType(DbType::Union(GenericsList::new_union(
-                                    iterator
-                                        .map(|slice_or_simple| {
-                                            let t = self.compute_slice_type(slice_or_simple);
-                                            self.as_db_type(t, slice_or_simple.as_node_ref())
-                                        })
-                                        .collect(),
-                                )))
-                            }
-                        }
+                        SpecialType::Union => self.compute_type_get_item_on_union(s),
                         SpecialType::Optional => match s.unpack() {
                             SliceTypeContent::Simple(simple) => TypeContent::DbType(
                                 self.compute_db_type(simple.named_expr.expression())
@@ -650,6 +636,22 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         TypeContent::DbType(DbType::Callable(content))
     }
 
+    fn compute_type_get_item_on_union(&mut self, slice_type: SliceType<'db>) -> TypeContent<'db> {
+        let iterator = slice_type.iter();
+        if let SliceTypeIterator::SliceOrSimple(s) = iterator {
+            self.compute_slice_type(s)
+        } else {
+            TypeContent::DbType(DbType::Union(GenericsList::new_union(
+                iterator
+                    .map(|slice_or_simple| {
+                        let t = self.compute_slice_type(slice_or_simple);
+                        self.as_db_type(t, slice_or_simple.as_node_ref())
+                    })
+                    .collect(),
+            )))
+        }
+    }
+
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &TypeAlias,
@@ -812,8 +814,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Specific::TypingCallable => {
                 compute_type_application!(self, compute_type_get_item_on_callable(slice_type))
             }
-            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
-            Specific::TypingUnion => Inferred::new_any(),
+            Specific::TypingUnion => {
+                compute_type_application!(self, compute_type_get_item_on_union(slice_type))
+            }
             // TODO this is probably slightly wrong and should return a Type[Union[Any]]
             Specific::TypingOptional => Inferred::new_any(),
             Specific::TypingType => match slice_type.unpack() {
