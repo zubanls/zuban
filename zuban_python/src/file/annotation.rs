@@ -591,6 +591,19 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         &mut self,
         slice_type: SliceType<'db>,
     ) -> TypeContent<'db> {
+        let mut params = Some(vec![]);
+        let mut add_param = |params: &mut Option<Vec<DbType>>, element: StarLikeExpression<'db>| {
+            if let StarLikeExpression::NamedExpression(n) = element {
+                let t = self.compute_type(n.expression());
+                params
+                    .as_mut()
+                    .unwrap()
+                    .push(self.as_db_type(t, NodeRef::new(self.inference.file, n.index())))
+            } else {
+                todo!()
+            }
+        };
+
         let content = match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 todo!()
@@ -599,19 +612,22 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 todo!()
             }
             SliceTypeContent::Slices(slices) => {
-                let mut params = Some(vec![]);
                 let mut iterator = slices.iter();
                 let param_node = iterator.next().map(|slice_content| match slice_content {
                     SliceOrSimple::Simple(n) => {
-                        if n.named_expr.as_code() == "..." {
-                            params = None
-                        } else {
-                            let i = n.infer(self.inference.i_s);
-                            let mut list = i.iter(self.inference.i_s, slice_type.as_node_ref());
-                            while let Some(next) = list.next(self.inference.i_s) {
-                                if let Some(params) = &mut params {
-                                    params.push(next.as_db_type(self.inference.i_s));
+                        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                            n.named_expr.expression().unpack()
+                        {
+                            match atom.unpack() {
+                                AtomContent::List(list) => {
+                                    if let Some(iterator) = list.unpack() {
+                                        for i in iterator {
+                                            add_param(&mut params, i)
+                                        }
+                                    }
                                 }
+                                AtomContent::Ellipsis => params = None,
+                                _ => todo!(),
                             }
                         }
                     }
