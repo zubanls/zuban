@@ -804,7 +804,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType<'db>) -> DbType {
+    pub fn compute_type_application_on_tuple(&mut self, slice_type: SliceType<'db>) -> DbType {
         match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
             type_var,
             // TODO this shouldn't be always 0...

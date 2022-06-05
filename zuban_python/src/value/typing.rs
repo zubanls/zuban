@@ -78,7 +78,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 slice_type
                     .file
                     .inference(i_s)
-                    .compute_type_get_item_on_tuple(*slice_type),
+                    .compute_type_application_on_tuple(*slice_type),
             )),
             Specific::TypingCallable => {
                 todo!()
