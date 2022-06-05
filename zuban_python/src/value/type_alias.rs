@@ -1,6 +1,7 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::TypeAlias as DbTypeAlias;
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
@@ -29,7 +30,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        debug!("TODO this should at least have the object results");
+        LookupResult::None
     }
 
     fn get_item(
