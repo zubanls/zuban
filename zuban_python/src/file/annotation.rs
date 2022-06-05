@@ -804,6 +804,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) -> Inferred<'db> {
         compute_type_application!(self, compute_type_get_item_on_tuple(slice_type))
     }
+
+    pub fn compute_type_application_on_callable(
+        &mut self,
+        slice_type: SliceType<'db>,
+    ) -> Inferred<'db> {
+        compute_type_application!(self, compute_type_get_item_on_callable(slice_type))
+    }
+
     /* TODO remove
     pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
         name.maybe_param_annotation()

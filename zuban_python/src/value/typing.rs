@@ -74,14 +74,17 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
                 todo!()
             }
-            Specific::TypingTuple => DbType::Type(Box::new(
+            Specific::TypingTuple => {
                 return slice_type
                     .file
                     .inference(i_s)
-                    .compute_type_application_on_tuple(*slice_type),
-            )),
+                    .compute_type_application_on_tuple(*slice_type)
+            }
             Specific::TypingCallable => {
-                todo!()
+                return slice_type
+                    .file
+                    .inference(i_s)
+                    .compute_type_application_on_callable(*slice_type)
             }
             // TODO this is probably slightly wrong and should return a Type[Union[Any]]
             Specific::TypingUnion => return Inferred::new_any(),
