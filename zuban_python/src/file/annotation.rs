@@ -795,19 +795,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 .add_typing_issue(self.i_s.database, IssueType::OnlyClassTypeApplication);
             return Inferred::new_any();
         }
-        match TypeComputation::new(self, &mut |_, type_var| TypeVarUsage {
-            type_var,
-            // TODO this shouldn't be always 0...
-            index: TypeVarIndex::new(0),
-            type_: TypeVarType::Alias,
-        })
-        .compute_type_get_item_on_alias(alias, slice_type)
-        {
-            TypeContent::DbType(d) => Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                Box::new(DbType::Type(Box::new(d))),
-            )),
-            _ => unreachable!(),
-        }
+        compute_type_application!(self, compute_type_get_item_on_alias(alias, slice_type))
     }
 
     pub fn compute_type_application_on_tuple(&mut self, slice_type: SliceType<'db>) -> DbType {
