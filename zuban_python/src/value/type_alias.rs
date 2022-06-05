@@ -1,5 +1,7 @@
-use super::{ClassLike, LookupResult, Value, ValueKind};
+use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use crate::arguments::Arguments;
 use crate::database::TypeAlias as DbTypeAlias;
+use crate::diagnostics::IssueType;
 use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -49,5 +51,18 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(&self.alias.db_type)
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred<'db> {
+        args.node_reference().add_typing_issue(
+            i_s.database,
+            IssueType::NotCallable(format!("{:?}", self.name())),
+        );
+        Inferred::new_any()
     }
 }

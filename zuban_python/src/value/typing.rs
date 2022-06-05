@@ -9,6 +9,7 @@ use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FormatStyle, Specific, TupleContent,
     TypeVarIndex, TypeVarUsage, Variance,
 };
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -510,7 +511,8 @@ impl<'db, 'a> Value<'db, 'a> for Any {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        debug!("TODO this should at least have the object results");
+        LookupResult::None
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
@@ -564,7 +566,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        // TODO this should at least have the object results
+        debug!("TODO this should at least have the object results");
         LookupResult::None
     }
 
