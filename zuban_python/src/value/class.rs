@@ -12,7 +12,6 @@ use crate::database::{
     MroIndex, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
-use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -79,7 +78,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Type::TypeVar(t) => false,
             Type::Union(list) => false,
             Type::None => true, // TODO should be false
-            Type::Any | Type::Unknown => true,
+            Type::Any => true,
             Type::Never => todo!(),
         }
     }

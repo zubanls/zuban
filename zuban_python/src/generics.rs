@@ -66,7 +66,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         "Generic expr {:?} has one item, but {n:?} was requested",
                         expr.short_debug(),
                     );
-                    DbType::Unknown
+                    DbType::Any
                 }
             }
             Self::Slices(file, slices) => slices
@@ -79,7 +79,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         .as_db_type(i_s),
                     SliceContent::Slice(s) => todo!(),
                 })
-                .unwrap_or(DbType::Unknown),
+                .unwrap_or(DbType::Any),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n) {
                     replace_class_vars!(i_s, g, type_var_generics)
@@ -88,7 +88,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         "Generic list {} given, but item {n:?} was requested",
                         self.as_string(i_s, FormatStyle::Short, None),
                     );
-                    DbType::Unknown
+                    DbType::Any
                 }
             }
             Self::DbType(g) => todo!(),
@@ -96,7 +96,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::FunctionParams(f) => todo!(),
             Self::None => {
                 debug!("No generics given, but {n:?} was requested");
-                DbType::Unknown
+                DbType::Any
             }
         }
     }
@@ -523,7 +523,6 @@ pub enum Type<'db, 'a> {
     Union(Vec<DbType>),
     None,
     Any,
-    Unknown,
     Never,
 }
 
@@ -536,9 +535,8 @@ impl<'db, 'a> Type<'db, 'a> {
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
             }
-            DbType::Unknown => Self::Unknown,
             DbType::None => Type::None,
-            DbType::Any => Type::Any,
+            DbType::Any | DbType::Unknown => Type::Any,
             DbType::Never => Type::Never,
             DbType::GenericClass(link, generics) => {
                 let node_ref = NodeRef::from_link(database, *link);
@@ -578,7 +576,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list)),
             Self::None => DbType::None,
             Self::Any => DbType::Any,
-            Self::Unknown => DbType::Unknown,
             Self::Never => DbType::Never,
         }
     }
@@ -607,13 +604,6 @@ impl<'db, 'a> Type<'db, 'a> {
                         t.index == t2.index && t.type_ == t2.type_
                     }
                 }
-                Type::Unknown => {
-                    if let Some(matcher) = matcher {
-                        todo!("{value_class:?}")
-                    } else {
-                        true
-                    }
-                }
                 Type::Union(ref list) => {
                     if let Some(matcher) = matcher {
                         matcher.match_or_add_type_var(i_s, t, value_class)
@@ -622,7 +612,11 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 Type::Any => {
-                    todo!()
+                    if let Some(matcher) = matcher {
+                        todo!("{value_class:?}")
+                    } else {
+                        true
+                    }
                 }
                 Type::Never => {
                     todo!()
@@ -684,7 +678,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }),
             },
             Self::None => matches!(value_class, Self::None),
-            Self::Unknown | Self::Any => true,
+            Self::Any => true,
             Self::Never => todo!(),
         };
         result
@@ -783,7 +777,6 @@ impl<'db, 'a> Type<'db, 'a> {
             )),
             Self::None => DbType::None,
             Self::Any => todo!(),
-            Self::Unknown => DbType::Unknown,
             Self::Never => DbType::Never,
         }
     }
@@ -819,7 +812,6 @@ impl<'db, 'a> Type<'db, 'a> {
             }),
             Self::None => "None".to_owned(),
             Self::Any => "Any".to_owned(),
-            Self::Unknown => "Unknown".to_owned(),
             Self::Never => "<nothing>".to_owned(),
         }
     }

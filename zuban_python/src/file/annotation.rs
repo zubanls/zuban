@@ -279,10 +279,8 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             }
             TypeContent::Module(m) => {
                 self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    DbType::Unknown,
-                )))
-                .save_redirect(self.inference.file, annotation_index);
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
+                    .save_redirect(self.inference.file, annotation_index);
                 return;
             }
             TypeContent::TypeAlias(a) => {
@@ -319,7 +317,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 self.add_module_issue(m, node_ref);
-                DbType::Unknown
+                DbType::Any
             }
             TypeContent::TypeAlias(a) => a.as_db_type(),
             TypeContent::SpecialType(m) => match m {
@@ -397,7 +395,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                     Point::new_unknown(f.file_index(), Locality::Todo),
                                 );
                             }
-                            TypeContent::DbType(DbType::Unknown)
+                            TypeContent::DbType(DbType::Any)
                         }
                     }
                     TypeContent::ClassWithoutTypeVar(i) => {
@@ -642,7 +640,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                 let return_class = iterator
                     .next()
                     .map(|slice_content| self.compute_slice_db_type(slice_content))
-                    .unwrap_or(DbType::Unknown);
+                    .unwrap_or(DbType::Any);
                 CallableContent {
                     params: params.map(GenericsList::generics_from_vec),
                     return_class: Box::new(return_class),

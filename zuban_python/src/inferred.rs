@@ -166,13 +166,13 @@ impl<'db> Inferred<'db> {
                     .map(|c| c.as_db_type(i_s))
                     .unwrap_or_else(|| {
                         debug!("Type not resolvable: {}", v.description(i_s));
-                        DbType::Unknown
+                        DbType::Any
                     })
             },
             &|_, g1, g2| g1.union(g2),
             &mut |i_s| {
                 debug!("Type not found: {}", self.description(i_s));
-                DbType::Unknown
+                DbType::Any
             },
         )
     }
@@ -187,13 +187,13 @@ impl<'db> Inferred<'db> {
                     .or_else(|| v.is_any().then(|| Type::Any))
                     .unwrap_or_else(|| {
                         debug!("Generic option not resolvable: {}", v.description(i_s));
-                        Type::Unknown
+                        Type::Any
                     })
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s| {
                 debug!("Generic option is invalid: {}", self.description(i_s));
-                Type::Unknown
+                Type::Any
             },
         )
     }
@@ -209,7 +209,7 @@ impl<'db> Inferred<'db> {
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s| {
                 debug!("Generic class option is unknown: {}", self.description(i_s));
-                Type::Unknown
+                Type::Any
             },
         )
     }
@@ -221,7 +221,7 @@ impl<'db> Inferred<'db> {
             &|_, g1, g2| g1.union(g2),
             &mut |i_s| {
                 debug!("Type not found: {}", self.description(i_s));
-                DbType::Unknown
+                DbType::Any
             },
         )
     }
