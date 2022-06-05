@@ -551,7 +551,7 @@ impl<'db, 'a> Type<'db, 'a> {
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
             DbType::Callable(content) => {
-                Self::ClassLike(ClassLike::Callable(CallableClass::new(content)))
+                Self::ClassLike(ClassLike::Callable(CallableClass::new(db_type, content)))
             }
         }
     }

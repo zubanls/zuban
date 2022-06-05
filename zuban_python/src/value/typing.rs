@@ -529,11 +529,12 @@ impl<'db, 'a> Value<'db, 'a> for Any {
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,
+    db_type: &'a DbType,
 }
 
 impl<'a> CallableClass<'a> {
-    pub fn new(content: &'a CallableContent) -> Self {
-        Self { content }
+    pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
+        Self { db_type, content }
     }
 
     pub fn as_db_type(&self) -> DbType {
@@ -563,22 +564,28 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        // TODO this should at least have the object results
+        LookupResult::None
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Callable(CallableClass::new(self.content)))
+        Some(ClassLike::Callable(*self))
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::TypeWithDbType(self.db_type)
     }
 }
 
 #[derive(Debug)]
 pub struct Callable<'a> {
+    db_type: &'a DbType,
     content: &'a CallableContent,
 }
 
 impl<'a> Callable<'a> {
-    pub fn new(content: &'a CallableContent) -> Self {
-        Self { content }
+    pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
+        Self { db_type, content }
     }
 
     pub fn as_db_type(&self) -> DbType {
@@ -614,7 +621,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Callable(CallableClass::new(self.content))
+        ClassLike::Callable(CallableClass::new(self.db_type, self.content))
     }
 
     fn execute(
