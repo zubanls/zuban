@@ -526,6 +526,15 @@ impl<'db, 'a> Value<'db, 'a> for Any {
     ) -> Inferred<'db> {
         Inferred::new_any()
     }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred<'db> {
+        Inferred::new_any()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -576,6 +585,17 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(self.db_type)
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        slice_type
+            .as_node_ref()
+            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
+        Inferred::new_any()
     }
 }
 
