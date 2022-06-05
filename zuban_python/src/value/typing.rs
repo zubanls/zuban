@@ -75,7 +75,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
                 todo!()
             }
             Specific::TypingTuple => DbType::Type(Box::new(
-                slice_type
+                return slice_type
                     .file
                     .inference(i_s)
                     .compute_type_application_on_tuple(*slice_type),
