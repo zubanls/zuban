@@ -61,7 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     ) -> Inferred<'db> {
         args.node_reference().add_typing_issue(
             i_s.database,
-            IssueType::NotCallable(format!("{:?}", self.name())),
+            IssueType::NotCallable("\"object\"".to_owned()),
         );
         Inferred::new_any()
     }

@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    Any, BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
+    BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
     Tuple, TupleClass, TypeAlias, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
     TypingType, TypingWithGenerics, Value,
@@ -364,7 +364,7 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
-            Specific::TypingAny => callable(i_s, &Any()),
+            Specific::TypingAny => on_missing(i_s),
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
             Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),

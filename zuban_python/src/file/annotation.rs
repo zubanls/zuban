@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
+    TupleContent, TypeAlias, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;

@@ -494,49 +494,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
     }
 }
 
-#[derive(Debug)]
-pub struct Any();
-
-impl<'db, 'a> Value<'db, 'a> for Any {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name(&self) -> &'db str {
-        "Any"
-    }
-
-    fn is_any(&self) -> bool {
-        true
-    }
-
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        debug!("TODO this should at least have the object results");
-        LookupResult::None
-    }
-
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::AnyType
-    }
-
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
-    ) -> Inferred<'db> {
-        Inferred::new_any()
-    }
-
-    fn execute(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
-        Inferred::new_any()
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,
