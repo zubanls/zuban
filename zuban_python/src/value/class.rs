@@ -590,7 +590,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_get_item_on_class(*self, *slice_type)
+            .compute_type_application_on_class(*self, *slice_type)
     }
 
     fn as_class(&self) -> Option<&Self> {

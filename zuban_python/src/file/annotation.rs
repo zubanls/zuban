@@ -773,7 +773,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    pub fn compute_type_get_item_on_class(
+    pub fn compute_type_application_on_class(
         &mut self,
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
