@@ -1,6 +1,6 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::TypeAlias as DbTypeAlias;
+use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::generics::Generics;
@@ -61,6 +61,14 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
+        if matches!(
+            self.alias.db_type.as_ref(),
+            DbType::Class(_) | DbType::GenericClass(_, _)
+        ) {
+            return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                self.alias.db_type.as_ref().clone(),
+            )));
+        }
         args.node_reference().add_typing_issue(
             i_s.database,
             IssueType::NotCallable("\"object\"".to_owned()),
