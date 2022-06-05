@@ -492,6 +492,27 @@ impl<'a> CallableClass<'a> {
     pub fn result_generics<'db>(&self) -> Generics<'db, 'a> {
         Generics::DbType(&self.content.return_class)
     }
+
+    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
+        if let Some(params) = &self.content.params {
+            let p = params
+                .iter()
+                .map(|g| g.as_type_string(db, None, style))
+                .fold(String::new(), |a, b| {
+                    if a.is_empty() {
+                        a + &b
+                    } else {
+                        a + ", " + &b
+                    }
+                });
+            format!(
+                "def ({p}) -> {}",
+                self.content.return_class.as_type_string(db, None, style)
+            )
+        } else {
+            todo!()
+        }
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {

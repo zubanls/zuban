@@ -173,7 +173,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
             Self::TypeWithDbType(g) => g.as_type_string(i_s.database, None, style),
             Self::Tuple(c) => c.as_type_string(i_s.database, style),
-            Self::Callable(c) => c.description(i_s),
+            Self::Callable(c) => c.as_type_string(i_s.database, style),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
