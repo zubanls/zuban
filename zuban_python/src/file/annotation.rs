@@ -771,7 +771,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                         SpecialType::Protocol | SpecialType::Generic | SpecialType::Tuple
                     )
                 {
-                    todo!()
+                    debug!("TODO Invalid base class???")
                 }
                 TypeContent::SpecialType(special)
             }
