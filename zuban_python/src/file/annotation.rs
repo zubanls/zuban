@@ -451,13 +451,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
-                        SpecialType::Optional => match s.unpack() {
-                            SliceTypeContent::Simple(simple) => TypeContent::DbType(
-                                self.compute_db_type(simple.named_expr.expression())
-                                    .union(DbType::None),
-                            ),
-                            _ => todo!(),
-                        },
+                        SpecialType::Optional => self.compute_type_get_item_on_optional(s),
                         SpecialType::Type => match s.unpack() {
                             SliceTypeContent::Simple(simple) => TypeContent::DbType(DbType::Type(
                                 Box::new(self.compute_db_type(simple.named_expr.expression())),
@@ -652,6 +646,19 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         }
     }
 
+    fn compute_type_get_item_on_optional(
+        &mut self,
+        slice_type: SliceType<'db>,
+    ) -> TypeContent<'db> {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => TypeContent::DbType(
+                self.compute_db_type(simple.named_expr.expression())
+                    .union(DbType::None),
+            ),
+            _ => todo!(),
+        }
+    }
+
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &TypeAlias,
@@ -817,8 +824,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Specific::TypingUnion => {
                 compute_type_application!(self, compute_type_get_item_on_union(slice_type))
             }
-            // TODO this is probably slightly wrong and should return a Type[Union[Any]]
-            Specific::TypingOptional => Inferred::new_any(),
+            Specific::TypingOptional => {
+                compute_type_application!(self, compute_type_get_item_on_optional(slice_type))
+            }
             Specific::TypingType => match slice_type.unpack() {
                 SliceTypeContent::Simple(simple) => {
                     todo!()
