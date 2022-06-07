@@ -26,6 +26,7 @@ pub enum IssueType {
     TooFewValuesToUnpack(usize, usize),
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    EnsureSingleGenericOrProtocol,
     DuplicateTypeVar,
     IncompleteGenericOrProtocolTypeVars,
 
@@ -140,6 +141,8 @@ impl<'db> Diagnostic<'db> {
                 let primary = NodeRef::new(self.file, self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
+            IssueType::EnsureSingleGenericOrProtocol =>
+                "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
             IssueType::IncompleteGenericOrProtocolTypeVars =>

@@ -360,11 +360,11 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut mro = vec![];
         let mut type_vars = TypeVarManager::default();
         let mut i_s = i_s.with_annotation_instance();
-        let mut is_protocol = false;
         let mut incomplete_mro = false;
+        let mut protocol_args = None;
         let mut generic_args = None;
         let mut type_vars_were_changed = false;
-        let mut had_duplicate_type_vars = false;
+        let mut had_generic_or_protocol_issue = false;
         if let Some(arguments) = self.node().arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
@@ -378,7 +378,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 let index = if let Some(force_index) = is_generic_or_protocol {
                                     let old_index = type_vars.add(type_var.clone());
                                     if old_index < force_index {
-                                        had_duplicate_type_vars = true;
+                                        had_generic_or_protocol_issue = true;
                                         NodeRef::new(self.reference.file, n.index())
                                             .add_typing_issue(database, IssueType::DuplicateTypeVar)
                                     } else if old_index != force_index {
@@ -434,11 +434,28 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                 }
                             }
-                            BaseClass::Protocol(s) => is_protocol = true,
-                            BaseClass::Generic(s) => match generic_args {
-                                None => generic_args = Some(s),
-                                Some(s) => todo!(),
-                            },
+                            BaseClass::Protocol(s) => {
+                                if generic_args.is_some() || protocol_args.is_some() {
+                                    had_generic_or_protocol_issue = true;
+                                    NodeRef::new(self.reference.file, n.index()).add_typing_issue(
+                                        database,
+                                        IssueType::EnsureSingleGenericOrProtocol,
+                                    );
+                                } else {
+                                    protocol_args = Some(s);
+                                }
+                            }
+                            BaseClass::Generic(s) => {
+                                if generic_args.is_some() || protocol_args.is_some() {
+                                    had_generic_or_protocol_issue = true;
+                                    NodeRef::new(self.reference.file, n.index()).add_typing_issue(
+                                        database,
+                                        IssueType::EnsureSingleGenericOrProtocol,
+                                    );
+                                } else {
+                                    generic_args = Some(s);
+                                }
+                            }
                         };
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
@@ -447,7 +464,7 @@ impl<'db, 'a> Class<'db, 'a> {
             }
         }
         if let Some(slice_type) = generic_args {
-            if !had_duplicate_type_vars {
+            if !had_generic_or_protocol_issue {
                 Self::check_generic_or_protocol_length(i_s.database, &mut type_vars, slice_type)
             }
         }
@@ -461,7 +478,7 @@ impl<'db, 'a> Class<'db, 'a> {
             type_vars: type_vars.into_boxed_slice(),
             mro: mro.into_boxed_slice(),
             incomplete_mro,
-            is_protocol,
+            is_protocol: protocol_args.is_some(),
         })
     }
 

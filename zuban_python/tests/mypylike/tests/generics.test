@@ -1,0 +1,32 @@
+-- Generally cases that were forgotten in Mypy
+
+-- Generics base classes
+-- ---------------------
+
+[case single_generic]
+from typing import TypeVar, Generic, Protocol
+T = TypeVar('T')
+S = TypeVar('S')
+U = TypeVar('U')
+
+class P1(Generic[T], Generic[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+class P2(Generic[T], Protocol[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+class P3(Protocol[T], Generic[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+class P4(Protocol[T], Protocol[S]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+class P5(Generic[T], Generic[S], Protocol[U]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+class P6(Generic[T], Protocol[S], Protocol[U]): # E: Only single Generic[...] or Protocol[...] can be in bases
+    pass
+
+[builtins fixtures/list.pyi]
+[out]
+
