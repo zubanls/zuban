@@ -220,9 +220,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             TypeContent::SpecialType(SpecialType::Protocol | SpecialType::ProtocolWithGenerics) => {
                 BaseClass::Protocol
             }
-            TypeContent::SpecialType(SpecialType::Generic | SpecialType::GenericWithGenerics) => {
-                BaseClass::Generic
-            }
+            TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
             _ => BaseClass::DbType(
                 self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
             ),
