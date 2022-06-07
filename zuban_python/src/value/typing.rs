@@ -506,7 +506,7 @@ impl<'a> CallableClass<'a> {
                     }
                 });
             format!(
-                "def ({p}) -> {}",
+                "Callable[[{p}], {}]",
                 self.content.return_class.as_type_string(db, None, style)
             )
         } else {
