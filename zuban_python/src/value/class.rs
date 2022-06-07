@@ -12,6 +12,7 @@ use crate::database::{
     MroIndex, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -368,13 +369,17 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
+                        let database = i_s.database;
                         let mut inference = self.reference.file.inference(&mut i_s);
                         let base = TypeComputation::new_base_class_calculation(
                             &mut inference,
                             &mut |_, type_var, is_generic_or_protocol| {
                                 let index = if let Some(force_index) = is_generic_or_protocol {
                                     let old_index = type_vars.add(type_var.clone());
-                                    if old_index != force_index {
+                                    if old_index < force_index {
+                                        NodeRef::new(self.reference.file, n.index())
+                                            .add_typing_issue(database, IssueType::DuplicateTypeVar)
+                                    } else if old_index != force_index {
                                         type_vars.move_index(old_index, force_index);
                                         type_vars_were_changed = true;
                                     }
@@ -444,7 +449,6 @@ impl<'db, 'a> Class<'db, 'a> {
         }
         if type_vars_were_changed {
             for db_type in mro.iter_mut() {
-                dbg!(&db_type);
                 *db_type = db_type
                     .remap_type_vars(&mut |t| DbType::TypeVar(type_vars.lookup_for_remap(t)));
             }
@@ -460,7 +464,7 @@ impl<'db, 'a> Class<'db, 'a> {
     fn check_generic_or_protocol_length(type_vars: &mut TypeVarManager, slice_type: SliceType) {
         // Reorder slices
         if slice_type.iter().count() != type_vars.len() {
-            todo!()
+            //todo!()
         }
     }
 

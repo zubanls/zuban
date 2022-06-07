@@ -22,7 +22,7 @@ use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct TypeVarIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MroIndex(pub u32);
