@@ -333,10 +333,12 @@ where
     fn compute_slice_type(
         &mut self,
         slice: SliceOrSimple<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match slice {
-            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression(), type_var_def),
+            SliceOrSimple::Simple(s) => {
+                self.compute_type(s.named_expr.expression(), generic_or_protocol_index)
+            }
             SliceOrSimple::Slice(n) => todo!(),
         }
     }
@@ -344,11 +346,11 @@ where
     fn compute_type(
         &mut self,
         expr: Expression<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
-                self.compute_type_expression_part(n, type_var_def)
+                self.compute_type_expression_part(n, generic_or_protocol_index)
             }
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
@@ -368,11 +370,13 @@ where
     fn compute_type_expression_part(
         &mut self,
         node: ExpressionPart<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match node {
-            ExpressionPart::Atom(atom) => self.compute_type_atom(atom, type_var_def),
-            ExpressionPart::Primary(primary) => self.compute_type_primary(primary, type_var_def),
+            ExpressionPart::Atom(atom) => self.compute_type_atom(atom, generic_or_protocol_index),
+            ExpressionPart::Primary(primary) => {
+                self.compute_type_primary(primary, generic_or_protocol_index)
+            }
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
@@ -387,9 +391,9 @@ where
     fn compute_type_primary(
         &mut self,
         primary: Primary<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
-        let base = self.compute_type_primary_or_atom(primary.first(), type_var_def);
+        let base = self.compute_type_primary_or_atom(primary.first(), generic_or_protocol_index);
         match primary.second() {
             PrimaryContent::Attribute(name) => {
                 match base {
@@ -755,23 +759,25 @@ where
     fn compute_type_primary_or_atom(
         &mut self,
         p: PrimaryOrAtom<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match p {
-            PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary, type_var_def),
-            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom, type_var_def),
+            PrimaryOrAtom::Primary(primary) => {
+                self.compute_type_primary(primary, generic_or_protocol_index)
+            }
+            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom, generic_or_protocol_index),
         }
     }
 
     fn compute_type_atom(
         &mut self,
         atom: Atom<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => {
                 self.inference.infer_name_reference(n);
-                self.compute_type_name(n, type_var_def)
+                self.compute_type_name(n, generic_or_protocol_index)
             }
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
@@ -789,13 +795,14 @@ where
     fn compute_type_name(
         &mut self,
         name: Name<'db>,
-        type_var_def: Option<TypeVarIndex>,
+        generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
             TypeNameLookup::TypeVar(t) => {
-                let usage = (self.type_var_callback)(self.inference.i_s, t, type_var_def);
+                let usage =
+                    (self.type_var_callback)(self.inference.i_s, t, generic_or_protocol_index);
                 self.has_type_vars = true;
                 TypeContent::DbType(DbType::TypeVar(usage))
             }
