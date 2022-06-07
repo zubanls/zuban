@@ -60,6 +60,7 @@ test__aiter__and__anext__
 *RefreshIgnore*
 testRefreshOptions
 *ImportOnTopOfAlias*
+testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
 *Final*
 testIfTypeCheckingUnreachableClass

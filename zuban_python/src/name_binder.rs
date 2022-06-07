@@ -150,7 +150,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
         let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if !in_base_scope {
+        if !in_base_scope || self.is_mypy_compatible {
             if let Some(replaced) = replaced {
                 self.points.set(
                     name_def.name_index(),
