@@ -372,13 +372,13 @@ impl<'db, 'a> Class<'db, 'a> {
                         let base = TypeComputation::new_base_class_calculation(
                             &mut inference,
                             &mut |_, type_var, is_generic_or_protocol| {
-                                let index = if let Some(type_var_index) = is_generic_or_protocol {
-                                    type_vars_were_changed |= type_vars
-                                        .force_set_and_report_change(
-                                            type_var_index,
-                                            type_var.clone(),
-                                        );
-                                    type_var_index
+                                let index = if let Some(force_index) = is_generic_or_protocol {
+                                    let old_index = type_vars.add(type_var.clone());
+                                    if old_index != force_index {
+                                        type_vars.move_index(old_index, force_index);
+                                        type_vars_were_changed = true;
+                                    }
+                                    force_index
                                 } else {
                                     type_vars.add(type_var.clone())
                                 };

@@ -868,19 +868,9 @@ impl TypeVarManager {
         }
     }
 
-    pub fn force_set_and_report_change(
-        &mut self,
-        force_index: TypeVarIndex,
-        tv: Rc<TypeVar>,
-    ) -> bool {
-        let new_index = self.add(tv);
-        if new_index != force_index {
-            let removed = self.0.remove(new_index.as_usize());
-            self.0.insert(force_index.as_usize(), removed);
-            true
-        } else {
-            false
-        }
+    pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {
+        let removed = self.0.remove(old_index.as_usize());
+        self.0.insert(force_index.as_usize(), removed);
     }
 
     pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
