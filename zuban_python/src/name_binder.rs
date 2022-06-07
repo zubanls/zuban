@@ -34,6 +34,7 @@ enum Unresolved<'db> {
 }
 
 pub struct NameBinder<'db, 'a> {
+    is_mypy_compatible: bool,
     tree: &'db Tree,
     type_: NameBinderType,
     symbol_table: &'a SymbolTable,
@@ -51,6 +52,7 @@ pub struct NameBinder<'db, 'a> {
 
 impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
+        is_mypy_compatible: bool,
         tree: &'db Tree,
         type_: NameBinderType,
         symbol_table: &'a SymbolTable,
@@ -61,6 +63,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         parent: Option<&'a Self>,
     ) -> Self {
         Self {
+            is_mypy_compatible,
             tree,
             type_,
             symbol_table,
@@ -78,6 +81,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub fn with_global_binder(
+        is_mypy_compatible: bool,
         tree: &'db Tree,
         symbol_table: &'a SymbolTable,
         points: &'db Points,
@@ -89,6 +93,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         'a: 'db,
     {
         let mut binder = NameBinder::new(
+            is_mypy_compatible,
             tree,
             NameBinderType::Global,
             symbol_table,
@@ -112,6 +117,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         mut func: impl FnMut(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
+            self.is_mypy_compatible,
             self.tree,
             type_,
             symbol_table,
