@@ -613,7 +613,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 Type::Any => {
                     if let Some(matcher) = matcher {
-                        todo!("{value_class:?}")
+                        matcher.match_or_add_type_var(i_s, t, value_class)
                     } else {
                         true
                     }
