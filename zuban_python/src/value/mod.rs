@@ -119,7 +119,7 @@ impl<'db> IteratorContent<'db, '_> {
 
     pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         match self {
-            Self::Inferred(inferred) => None,
+            Self::Inferred(inferred) => Some(inferred.clone()),
             Self::TupleGenerics(t) => t.next().map(|g| Inferred::execute_db_type(i_s, g.clone())),
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
