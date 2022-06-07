@@ -361,6 +361,8 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut i_s = i_s.with_annotation_instance();
         let mut is_protocol = false;
         let mut incomplete_mro = false;
+        let mut generic_args = None;
+        let mut type_vars_were_changed = false;
         if let Some(arguments) = self.node().arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
@@ -369,8 +371,17 @@ impl<'db, 'a> Class<'db, 'a> {
                         let mut inference = self.reference.file.inference(&mut i_s);
                         let base = TypeComputation::new_base_class_calculation(
                             &mut inference,
-                            &mut |_, type_var| {
-                                let index = type_vars.add(type_var.clone());
+                            &mut |_, type_var, is_generic_or_protocol| {
+                                let index = if let Some(type_var_index) = is_generic_or_protocol {
+                                    type_vars_were_changed |= type_vars
+                                        .force_set_and_report_change(
+                                            type_var_index,
+                                            type_var.clone(),
+                                        );
+                                    type_var_index
+                                } else {
+                                    type_vars.add(type_var.clone())
+                                };
                                 TypeVarUsage {
                                     type_var,
                                     index,
@@ -417,12 +428,25 @@ impl<'db, 'a> Class<'db, 'a> {
                                 }
                             }
                             BaseClass::Protocol(s) => is_protocol = true,
-                            BaseClass::Generic(s) => (),
+                            BaseClass::Generic(s) => match generic_args {
+                                None => generic_args = Some(s),
+                                Some(s) => todo!(),
+                            },
                         };
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
                 }
+            }
+        }
+        if let Some(slice_type) = generic_args {
+            Self::check_generic_or_protocol_length(&mut type_vars, slice_type)
+        }
+        if type_vars_were_changed {
+            for db_type in mro.iter_mut() {
+                dbg!(&db_type);
+                *db_type = db_type
+                    .remap_type_vars(&mut |t| DbType::TypeVar(type_vars.lookup_for_remap(t)));
             }
         }
         Box::new(ClassInfos {
@@ -431,6 +455,13 @@ impl<'db, 'a> Class<'db, 'a> {
             incomplete_mro,
             is_protocol,
         })
+    }
+
+    fn check_generic_or_protocol_length(type_vars: &mut TypeVarManager, slice_type: SliceType) {
+        // Reorder slices
+        if slice_type.iter().count() != type_vars.len() {
+            todo!()
+        }
     }
 
     fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {

@@ -868,8 +868,40 @@ impl TypeVarManager {
         }
     }
 
+    pub fn force_set_and_report_change(
+        &mut self,
+        force_index: TypeVarIndex,
+        tv: Rc<TypeVar>,
+    ) -> bool {
+        let new_index = self.add(tv);
+        if new_index != force_index {
+            let removed = self.0.remove(new_index.as_usize());
+            self.0.insert(force_index.as_usize(), removed);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
+        TypeVarUsage {
+            type_var: tv.type_var.clone(),
+            index: TypeVarIndex::new(
+                self.0
+                    .iter()
+                    .position(|t| Rc::ptr_eq(t, &tv.type_var))
+                    .unwrap(),
+            ),
+            type_: tv.type_,
+        }
+    }
+
     pub fn into_boxed_slice(self) -> TypeVars {
         TypeVars(self.0.into_boxed_slice())
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
@@ -941,7 +973,7 @@ impl TypeVar {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum TypeVarType {
     Class,
     Function,

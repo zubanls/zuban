@@ -177,7 +177,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut type_vars = TypeVarManager::default();
         let func_node = self.node();
         let mut inference = self.reference.file.inference(i_s);
-        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>| {
+        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _| {
             if let Some(class) = self.class {
                 if let Some(usage) = class
                     .type_vars(i_s)

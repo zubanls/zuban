@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeAlias, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
+    TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -60,7 +60,7 @@ pub enum BaseClass<'db> {
 macro_rules! compute_type_application {
     ($self:ident, $method:ident $args:tt) => {{
         let mut type_vars = TypeVarManager::default();
-        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>| {
+        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _| {
             let index = type_vars.add(type_var.clone());
             TypeVarUsage {
                 type_var,
@@ -137,8 +137,9 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     is_base_class_calculation: bool,
 }
 
-impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> TypeVarUsage>
-    TypeComputation<'db, 'a, 'b, 'c, C>
+impl<'db, 'a, 'b, 'c, C> TypeComputation<'db, 'a, 'b, 'c, C>
+where
+    C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>, Option<TypeVarIndex>) -> TypeVarUsage,
 {
     pub fn new(
         inference: &'c mut PythonInference<'db, 'a, 'b>,
@@ -167,7 +168,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
     }
 
     fn compute_forward_reference(&mut self, start: CodeIndex, string: String) -> TypeContent<'db> {
-        self.cache_code_string(start, string, |comp, expr| comp.compute_type(expr))
+        self.cache_code_string(start, string, |comp, expr| comp.compute_type(expr, None))
     }
 
     fn cache_type_comment(
@@ -215,7 +216,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
     }
 
     pub fn compute_base_class(&mut self, expr: Expression<'db>) -> BaseClass<'db> {
-        let calculated = self.compute_type(expr);
+        let calculated = self.compute_type(expr, None);
         match calculated {
             TypeContent::SpecialType(SpecialType::GenericWithGenerics(s)) => BaseClass::Generic(s),
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol(None),
@@ -258,7 +259,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             expr.as_code()
         );
 
-        let type_ = self.compute_type(expr);
+        let type_ = self.compute_type(expr, None);
 
         let specific = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
@@ -329,48 +330,66 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         }
     }
 
-    fn compute_slice_type(&mut self, slice: SliceOrSimple<'db>) -> TypeContent<'db> {
+    fn compute_slice_type(
+        &mut self,
+        slice: SliceOrSimple<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match slice {
-            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
+            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression(), type_var_def),
             SliceOrSimple::Slice(n) => todo!(),
         }
     }
 
-    fn compute_type(&mut self, expr: Expression<'db>) -> TypeContent<'db> {
+    fn compute_type(
+        &mut self,
+        expr: Expression<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
+            ExpressionContent::ExpressionPart(n) => {
+                self.compute_type_expression_part(n, type_var_def)
+            }
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
         }
     }
 
     fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'db>) -> DbType {
-        let t = self.compute_slice_type(slice);
+        let t = self.compute_slice_type(slice, None);
         self.as_db_type(t, slice.as_node_ref())
     }
 
     fn compute_db_type(&mut self, expr: Expression<'db>) -> DbType {
-        let t = self.compute_type(expr);
+        let t = self.compute_type(expr, None);
         self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
     }
 
-    fn compute_type_expression_part(&mut self, node: ExpressionPart<'db>) -> TypeContent<'db> {
+    fn compute_type_expression_part(
+        &mut self,
+        node: ExpressionPart<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match node {
-            ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
-            ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
+            ExpressionPart::Atom(atom) => self.compute_type_atom(atom, type_var_def),
+            ExpressionPart::Primary(primary) => self.compute_type_primary(primary, type_var_def),
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
-                let other = self.compute_type_expression_part(b);
-                self.compute_type_expression_part(a)
+                let other = self.compute_type_expression_part(b, None);
+                self.compute_type_expression_part(a, None)
                     .union(self.inference.i_s, other)
             }
             _ => todo!("Not handled yet {node:?}"),
         }
     }
 
-    fn compute_type_primary(&mut self, primary: Primary<'db>) -> TypeContent<'db> {
-        let base = self.compute_type_primary_or_atom(primary.first());
+    fn compute_type_primary(
+        &mut self,
+        primary: Primary<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
+        let base = self.compute_type_primary_or_atom(primary.first(), type_var_def);
         match primary.second() {
             PrimaryContent::Attribute(name) => {
                 match base {
@@ -381,7 +400,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                 name.index(),
                                 Point::new_redirect(f.file_index(), index, Locality::Todo),
                             );
-                            self.compute_type_name(name)
+                            self.compute_type_name(name, None)
                         } else {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             if !self.errors_already_calculated {
@@ -413,7 +432,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
                                     Locality::Todo,
                                 ),
                             );
-                            self.compute_type_name(name)
+                            self.compute_type_name(name, None)
                         } else {
                             todo!()
                         }
@@ -490,25 +509,27 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
             let result = match slice_type.unpack() {
-                SliceTypeContent::Simple(s) => match self.compute_type(s.named_expr.expression()) {
-                    TypeContent::ClassWithoutTypeVar(_) => {
-                        found_simple_generic(self.inference.file, slice_type.primary_index)
+                SliceTypeContent::Simple(s) => {
+                    match self.compute_type(s.named_expr.expression(), None) {
+                        TypeContent::ClassWithoutTypeVar(_) => {
+                            found_simple_generic(self.inference.file, slice_type.primary_index)
+                        }
+                        TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
+                            class.reference.as_link(),
+                            GenericsList::new_generics(Box::new([d])),
+                        )),
+                        TypeContent::Module(m) => todo!(),
+                        TypeContent::TypeAlias(m) => todo!(),
+                        TypeContent::SpecialType(m) => todo!(),
                     }
-                    TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
-                        class.reference.as_link(),
-                        GenericsList::new_generics(Box::new([d])),
-                    )),
-                    TypeContent::Module(m) => todo!(),
-                    TypeContent::TypeAlias(m) => todo!(),
-                    TypeContent::SpecialType(m) => todo!(),
-                },
+                }
                 SliceTypeContent::Slice(slice) => todo!(),
                 SliceTypeContent::Slices(slices) => {
                     given_count = 0;
                     let mut generics = vec![];
                     for slice_content in slices.iter() {
                         if generics.is_empty() {
-                            let t = self.compute_slice_type(slice_content);
+                            let t = self.compute_slice_type(slice_content, None);
                             if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
                                 for slice_content in slices.iter().take(given_count) {
                                     generics.push(self.compute_slice_db_type(slice_content));
@@ -593,7 +614,7 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         let mut params = Some(vec![]);
         let mut add_param = |params: &mut Option<Vec<DbType>>, element: StarLikeExpression<'db>| {
             if let StarLikeExpression::NamedExpression(n) = element {
-                let t = self.compute_type(n.expression());
+                let t = self.compute_type(n.expression(), None);
                 params
                     .as_mut()
                     .unwrap()
@@ -648,12 +669,12 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
     fn compute_type_get_item_on_union(&mut self, slice_type: SliceType<'db>) -> TypeContent<'db> {
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-            self.compute_slice_type(s)
+            self.compute_slice_type(s, None)
         } else {
             TypeContent::DbType(DbType::Union(GenericsList::new_union(
                 iterator
                     .map(|slice_or_simple| {
-                        let t = self.compute_slice_type(slice_or_simple);
+                        let t = self.compute_slice_type(slice_or_simple, None);
                         self.as_db_type(t, slice_or_simple.as_node_ref())
                     })
                     .collect(),
@@ -713,14 +734,16 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
         match slice_type.unpack() {
-            SliceTypeContent::Simple(n) => match self.compute_type(n.named_expr.expression()) {
-                TypeContent::DbType(DbType::TypeVar(_)) => (),
-                _ => todo!(),
-            },
+            SliceTypeContent::Simple(n) => {
+                match self.compute_type(n.named_expr.expression(), Some(TypeVarIndex::new(0))) {
+                    TypeContent::DbType(DbType::TypeVar(_)) => (),
+                    _ => todo!(),
+                }
+            }
             SliceTypeContent::Slice(slice) => todo!(),
             SliceTypeContent::Slices(slices) => {
-                for s in slices.iter() {
-                    match self.compute_slice_type(s) {
+                for (i, s) in slices.iter().enumerate() {
+                    match self.compute_slice_type(s, Some(TypeVarIndex::new(i))) {
                         TypeContent::DbType(DbType::TypeVar(_)) => (),
                         _ => todo!(),
                     }
@@ -729,18 +752,26 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         }
     }
 
-    fn compute_type_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> TypeContent<'db> {
+    fn compute_type_primary_or_atom(
+        &mut self,
+        p: PrimaryOrAtom<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match p {
-            PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary),
-            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom),
+            PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary, type_var_def),
+            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom, type_var_def),
         }
     }
 
-    fn compute_type_atom(&mut self, atom: Atom<'db>) -> TypeContent<'db> {
+    fn compute_type_atom(
+        &mut self,
+        atom: Atom<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match atom.unpack() {
             AtomContent::Name(n) => {
                 self.inference.infer_name_reference(n);
-                self.compute_type_name(n)
+                self.compute_type_name(n, type_var_def)
             }
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
@@ -755,12 +786,16 @@ impl<'db, 'a, 'b, 'c, C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>) -> Typ
         }
     }
 
-    fn compute_type_name(&mut self, name: Name<'db>) -> TypeContent<'db> {
+    fn compute_type_name(
+        &mut self,
+        name: Name<'db>,
+        type_var_def: Option<TypeVarIndex>,
+    ) -> TypeContent<'db> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
             TypeNameLookup::TypeVar(t) => {
-                let usage = (self.type_var_callback)(self.inference.i_s, t);
+                let usage = (self.type_var_callback)(self.inference.i_s, t, type_var_def);
                 self.has_type_vars = true;
                 TypeContent::DbType(DbType::TypeVar(usage))
             }
@@ -1011,7 +1046,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             inference: self,
                             errors_already_calculated: p.calculated(),
                             type_var_callback:
-                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>| {
+                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _| {
                                     let index = type_vars.add(type_var.clone());
                                     TypeVarUsage {
                                         type_var,
@@ -1022,7 +1057,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             has_type_vars: false,
                             is_base_class_calculation: false,
                         };
-                        let t = comp.compute_type(expr);
+                        let t = comp.compute_type(expr, None);
                         if let TypeContent::ClassWithoutTypeVar(i) = t {
                             return TypeNameLookup::Class(i);
                         } else {
@@ -1091,7 +1126,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         start: CodeIndex,
         string: String,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
-        let mut on_type_var = |i_s: &mut InferenceState, type_var| {
+        let mut on_type_var = |i_s: &mut InferenceState, type_var, _| {
             type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
         };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
@@ -1099,7 +1134,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
-        let mut on_type_var = |_: &mut InferenceState, type_var| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var, _| todo!();
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let db_type = comp.compute_db_type(expr);
         (!comp.has_type_vars).then(|| db_type)
