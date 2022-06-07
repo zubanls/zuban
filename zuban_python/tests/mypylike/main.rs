@@ -238,7 +238,11 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         } else {
             path
         };
-        wanted.extend(ErrorCommentsOnCode(p, code.split("\n").enumerate()));
+        for (line_nr, type_, comment) in ErrorCommentsOnCode(code.split("\n").enumerate()) {
+            for comment in comment.split(" # E: ") {
+                wanted.push(format!("{p}:{line_nr}: {type_}: {comment}",))
+            }
+        }
         project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
     }
     for line in &mut wanted {
@@ -281,19 +285,19 @@ fn replace_unions(line: &mut String) {
     }
 }
 
-struct ErrorCommentsOnCode<'a>(&'a str, std::iter::Enumerate<std::str::Split<'a, &'a str>>);
+struct ErrorCommentsOnCode<'a>(std::iter::Enumerate<std::str::Split<'a, &'a str>>);
 
 impl Iterator for ErrorCommentsOnCode<'_> {
-    type Item = String;
+    type Item = (usize, &'static str, String);
     fn next(&mut self) -> Option<Self::Item> {
-        for (i, line) in &mut self.1 {
+        for (i, line) in &mut self.0 {
             if let Some(pos) = line.find("# E: ") {
                 let out = cleanup_mypy_issues(&line[pos + 5..]);
-                return Some(format!("{}:{}: error: {}", self.0, i + 1, &out));
+                return Some((i + 1, "error", out));
             }
             if let Some(pos) = line.find("# N: ") {
                 let out = cleanup_mypy_issues(&line[pos + 5..]);
-                return Some(format!("{}:{}: note: {}", self.0, i + 1, &out));
+                return Some((i + 1, "note", out));
             }
         }
         None
