@@ -481,7 +481,7 @@ fn skipped() -> Box<[Skipped]> {
                 x = &x[1..];
             }
             if end_star {
-                x = &x[..x.len() - 2]
+                x = &x[..x.len() - 1]
             }
             Skipped {
                 name: x.to_owned(),
