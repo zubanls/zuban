@@ -416,8 +416,8 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                 }
                             }
-                            BaseClass::Protocol => is_protocol = true,
-                            BaseClass::Generic => (),
+                            BaseClass::Protocol(s) => is_protocol = true,
+                            BaseClass::Generic(s) => (),
                         };
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
