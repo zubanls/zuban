@@ -364,6 +364,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut incomplete_mro = false;
         let mut generic_args = None;
         let mut type_vars_were_changed = false;
+        let mut had_duplicate_type_vars = false;
         if let Some(arguments) = self.node().arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
@@ -377,6 +378,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 let index = if let Some(force_index) = is_generic_or_protocol {
                                     let old_index = type_vars.add(type_var.clone());
                                     if old_index < force_index {
+                                        had_duplicate_type_vars = true;
                                         NodeRef::new(self.reference.file, n.index())
                                             .add_typing_issue(database, IssueType::DuplicateTypeVar)
                                     } else if old_index != force_index {
@@ -445,7 +447,9 @@ impl<'db, 'a> Class<'db, 'a> {
             }
         }
         if let Some(slice_type) = generic_args {
-            Self::check_generic_or_protocol_length(&mut type_vars, slice_type)
+            if !had_duplicate_type_vars {
+                Self::check_generic_or_protocol_length(i_s.database, &mut type_vars, slice_type)
+            }
         }
         if type_vars_were_changed {
             for db_type in mro.iter_mut() {
@@ -461,10 +465,16 @@ impl<'db, 'a> Class<'db, 'a> {
         })
     }
 
-    fn check_generic_or_protocol_length(type_vars: &mut TypeVarManager, slice_type: SliceType) {
+    fn check_generic_or_protocol_length(
+        db: &Database,
+        type_vars: &mut TypeVarManager,
+        slice_type: SliceType,
+    ) {
         // Reorder slices
         if slice_type.iter().count() != type_vars.len() {
-            //todo!()
+            slice_type
+                .as_node_ref()
+                .add_typing_issue(db, IssueType::IncompleteGenericOrProtocolTypeVars)
         }
     }
 

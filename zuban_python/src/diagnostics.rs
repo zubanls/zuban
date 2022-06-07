@@ -27,6 +27,7 @@ pub enum IssueType {
     OnlyClassTypeApplication,
     InvalidBaseClass,
     DuplicateTypeVar,
+    IncompleteGenericOrProtocolTypeVars,
 
     MethodWithoutArguments,
 
@@ -141,6 +142,8 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
+            IssueType::IncompleteGenericOrProtocolTypeVars =>
+                "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
             IssueType::Note(s) => {
                 type_ = "note";
                 s.clone()
