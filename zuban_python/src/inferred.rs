@@ -532,33 +532,44 @@ impl<'db> Inferred<'db> {
             DbType::Any => on_missing(i_s),
             DbType::Unknown => todo!(),
             DbType::Never => todo!(),
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Class(link) => {
-                    let node_ref = NodeRef::from_link(i_s.database, *link);
-                    callable(
-                        i_s,
-                        &Class::from_position(node_ref, Generics::None, None).unwrap(),
-                    )
-                }
-                DbType::GenericClass(link, generics) => {
-                    let class = Class::from_position(
-                        NodeRef::from_link(i_s.database, *link),
-                        Generics::new_list(generics),
-                        None,
-                    )
-                    .unwrap();
-                    callable(i_s, &class)
-                }
-                DbType::Union(lst) => todo!("{:?}", lst),
-                DbType::TypeVar(t) => todo!(),
-                DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
-                DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-                DbType::Callable(content) => callable(i_s, &CallableClass::new(db_type, content)),
-                DbType::None => todo!(),
-                DbType::Any => todo!(),
-                DbType::Unknown => todo!(),
-                DbType::Never => todo!(),
-            },
+            DbType::Type(t) => self.run_on_db_type_type(i_s, db_type, t, callable, reducer),
+        }
+    }
+
+    fn run_on_db_type_type<'a, T>(
+        &'a self,
+        i_s: &mut InferenceState<'db, '_>,
+        db_type: &'a DbType,
+        type_: &'a DbType,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    ) -> T {
+        match type_ {
+            DbType::Class(link) => {
+                let node_ref = NodeRef::from_link(i_s.database, *link);
+                callable(
+                    i_s,
+                    &Class::from_position(node_ref, Generics::None, None).unwrap(),
+                )
+            }
+            DbType::GenericClass(link, generics) => {
+                let class = Class::from_position(
+                    NodeRef::from_link(i_s.database, *link),
+                    Generics::new_list(generics),
+                    None,
+                )
+                .unwrap();
+                callable(i_s, &class)
+            }
+            DbType::Union(lst) => todo!("{:?}", lst),
+            DbType::TypeVar(t) => todo!(),
+            DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
+            DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
+            DbType::Callable(content) => callable(i_s, &CallableClass::new(db_type, content)),
+            DbType::None => todo!(),
+            DbType::Any => todo!(),
+            DbType::Unknown => todo!(),
+            DbType::Never => todo!(),
         }
     }
 
