@@ -281,20 +281,17 @@ impl<'db, 'a> Function<'db, 'a> {
         self.type_vars(i_s);
 
         let node = self.node();
-        let mut result = "def (".to_owned();
+        let mut result = "Callable[[".to_owned();
         let generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
         let mut first = true;
-        let mut params = self.iter_params();
         generics.run_on_all(i_s, &mut |i_s, g| {
             if !first {
                 result += ", ";
             }
-            result += params.next().unwrap().name_definition().as_code();
-            result += ": ";
             result += &g.as_string(i_s, self.class.as_ref(), style);
             first = false;
         });
-        result += ") -> ";
+        result += "], ";
         if let Some(annotation) = node.return_annotation() {
             result += &self
                 .reference
@@ -305,6 +302,7 @@ impl<'db, 'a> Function<'db, 'a> {
         } else {
             result += "Any"
         }
+        result += "]";
         result
     }
 

@@ -339,11 +339,13 @@ fn try_to_resemble_mypy(s: &str) -> String {
                             &s[pos + i + 1..],
                         );
                     } else if brackets == 1 {
-                        param_end = Some(i);
+                        if param_end.is_none() {
+                            param_end = Some(i);
+                        }
                     }
                 }
             }
-            unreachable!()
+            unreachable!("{}", s)
         }
     }
     s.to_owned()
