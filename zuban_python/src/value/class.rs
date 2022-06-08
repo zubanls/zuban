@@ -117,8 +117,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => false,
                 }
             }
-            Self::Callable(c) => matches!(other, Self::Callable(_) | Self::FunctionType(_)),
-            Self::FunctionType(f) => unreachable!(),
+            Self::Callable(_) | Self::FunctionType(_) => {
+                matches!(other, Self::Callable(_) | Self::FunctionType(_))
+            }
             Self::TypingClass(c) => match other {
                 Self::Tuple(c2) => c.specific == Specific::TypingTuple,
                 _ => todo!(),
