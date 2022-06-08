@@ -561,12 +561,27 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            DbType::Union(lst) => todo!("{:?}", lst),
+            DbType::Union(lst) => lst
+                .iter()
+                .fold(None, |input, t| match input {
+                    None => Some(self.run_on_db_type_type(i_s, db_type, t, callable, reducer)),
+                    Some(t1) => {
+                        let t2 = self.run_on_db_type_type(i_s, db_type, t, callable, reducer);
+                        Some(reducer(i_s, t1, t2))
+                    }
+                })
+                .unwrap(),
             DbType::TypeVar(t) => todo!(),
             DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
             DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-            DbType::Callable(content) => callable(i_s, &CallableClass::new(db_type, content)),
-            DbType::None => todo!(),
+            DbType::Callable(content) => {
+                debug!("TODO the db_type can be wrong if it was part of a union");
+                callable(i_s, &CallableClass::new(db_type, content))
+            }
+            DbType::None => {
+                debug!("TODO this should be NoneType instead of None");
+                callable(i_s, &NoneInstance())
+            }
             DbType::Any => todo!(),
             DbType::Unknown => todo!(),
             DbType::Never => todo!(),
