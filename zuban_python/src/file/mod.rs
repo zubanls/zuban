@@ -1214,7 +1214,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                             todo!()
                                         }
                                     }
-                                    _ => todo!(),
+                                    TypeVarType::Function => DbType::TypeVar(t.clone()),
+                                    _ => todo!("{t:?}"),
                                 });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }

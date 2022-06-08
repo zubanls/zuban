@@ -708,8 +708,14 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        let cls = i_s.database.python_state.object_class();
-        Instance::new(cls, &Inferred::new_any()).lookup_internal(i_s, name)
+        let s = &i_s.database.python_state;
+        // TODO it's kind of stupid that we recreate an instance object here all the time, we
+        // should just use a precreated object() from somewhere.
+        Instance::new(
+            s.object_class(),
+            &Inferred::new_unsaved_complex(ComplexPoint::Instance(s.object().as_link(), None)),
+        )
+        .lookup_internal(i_s, name)
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
