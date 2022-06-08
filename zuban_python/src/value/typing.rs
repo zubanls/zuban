@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::PrimaryContent;
 
-use super::{ClassLike, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
+use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
@@ -708,7 +708,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        let cls = i_s.database.python_state.object_class();
+        Instance::new(cls, &Inferred::new_any()).lookup_internal(i_s, name)
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
