@@ -98,3 +98,8 @@ testGenericTypeAliasesIgnoredPotentialAlias
 testNoSubscriptionOfBuiltinAliases
 testImportedTypeAliasInRuntimeContext
 testMultipleAssignmentWithList*
+# scoping in check-generics
+testClassLevelTypeVariable
+testGenericInnerClass
+testGenericClassInnerFunctionTypeVariable
+testFunctionInGenericInnerClassTypeVariable-skip
