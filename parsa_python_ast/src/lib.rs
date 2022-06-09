@@ -2130,8 +2130,11 @@ impl<'db> Sum<'db> {
 }
 
 impl<'db> Disjunction<'db> {
-    pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__or__", "__ror__", "or")
+    pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let _operand = iter.next().unwrap();
+        (left, ExpressionPart::new(iter.next().unwrap()))
     }
 }
 

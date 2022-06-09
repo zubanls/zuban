@@ -805,7 +805,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
-            ExpressionPart::Disjunction(or) => self.infer_operation(or.as_operation()),
+            ExpressionPart::Term(term) => {
+                todo!()
+            }
+            ExpressionPart::Disjunction(or) => {
+                let (first, second) = or.unpack();
+                let first = self.infer_expression_part(first);
+                let second = self.infer_expression_part(second);
+                Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                    self.i_s.database.python_state.builtins_point_link("bool"),
+                    None,
+                ))
+            }
             ExpressionPart::Comparison(cmp) => {
                 match cmp.unpack() {
                     ComparisonContent::Equals(first, _, second)
