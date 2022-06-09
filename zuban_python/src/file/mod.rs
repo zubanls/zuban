@@ -805,9 +805,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
-            ExpressionPart::Term(term) => {
-                todo!()
-            }
+            ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first);

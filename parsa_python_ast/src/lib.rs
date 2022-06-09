@@ -2071,15 +2071,15 @@ impl<'db> Operation<'db> {
         operand: &'static str,
     ) -> Self {
         let mut iter = node.iter_children();
-        let left = iter.next().unwrap();
+        let left = ExpressionPart::new(iter.next().unwrap());
         iter.next();
-        let right = iter.next().unwrap();
+        let right = ExpressionPart::new(iter.next().unwrap());
         Self {
-            left: ExpressionPart::new(left),
+            left,
             magic_method,
             reverse_magic_method,
             operand,
-            right: ExpressionPart::new(right),
+            right,
             index: node.index,
         }
     }
@@ -2124,6 +2124,58 @@ impl<'db> AugAssign<'db> {
 }
 
 impl<'db> Sum<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let op = iter.next().unwrap().as_code();
+        let right = ExpressionPart::new(iter.next().unwrap());
+        let (magic_method, reverse_magic_method, operand) = if op == "+" {
+            ("__add__", "__radd__", "+")
+        } else {
+            debug_assert_eq!(op, "-");
+            ("__sub__", "__rsub__", "-")
+        };
+        Operation {
+            left,
+            magic_method,
+            reverse_magic_method,
+            operand,
+            right,
+            index: self.node.index,
+        }
+    }
+}
+
+impl<'db> Term<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let op = iter.next().unwrap().as_code();
+        let right = ExpressionPart::new(iter.next().unwrap());
+        let (magic_method, reverse_magic_method, operand) = if op == "*" {
+            ("__mul__", "__rmul__", "+")
+        } else if op == "/" {
+            ("__truediv__", "__rtruediv__", "/")
+        } else if op == "//" {
+            ("__floordiv__", "__rfloordiv__", "//")
+        } else if op == "%" {
+            ("__mod__", "__rmod__", "%")
+        } else {
+            debug_assert_eq!(op, "%");
+            ("__matmul__", "__rmatmul__", "%")
+        };
+        Operation {
+            left,
+            magic_method,
+            reverse_magic_method,
+            operand,
+            right,
+            index: self.node.index,
+        }
+    }
+}
+
+impl<'db> BitwiseOr<'db> {
     pub fn as_operation(&self) -> Operation<'db> {
         Operation::new(self.node, "__add__", "__radd__", "+")
     }
