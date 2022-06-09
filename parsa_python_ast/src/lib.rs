@@ -2122,6 +2122,12 @@ impl<'db> Sum<'db> {
     }
 }
 
+impl<'db> Disjunction<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__or__", "or")
+    }
+}
+
 pub enum OperandType {
     Equals,
     NotEquals,

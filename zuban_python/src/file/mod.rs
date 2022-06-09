@@ -805,6 +805,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
+            ExpressionPart::Disjunction(or) => self.infer_operation(or.as_operation()),
             ExpressionPart::Comparison(cmp) => {
                 let (first, operand, second) = cmp.unpack();
                 let first = self.infer_expression_part(first);
