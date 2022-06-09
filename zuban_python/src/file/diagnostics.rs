@@ -69,7 +69,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StmtContent::IfStmt(if_stmt) => {
                     for block in if_stmt.iter_blocks() {
                         match block {
-                            IfBlockType::If(_, block) => {
+                            IfBlockType::If(if_expr, block) => {
+                                self.infer_named_expression(if_expr);
                                 self.calc_block_diagnostics(block, class, func)
                             }
                             IfBlockType::Else(block) => {

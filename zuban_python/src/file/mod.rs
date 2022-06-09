@@ -805,6 +805,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Atom(atom) => self.infer_atom(atom),
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
+            ExpressionPart::Comparison(cmp) => {
+                let (first, operand, second) = cmp.unpack();
+                let first = self.infer_expression_part(first);
+                let second = self.infer_expression_part(second);
+
+                match operand.as_type() {
+                    OperandType::Equals => (), // TODO do we need to typecheck something here?
+                    OperandType::NotEquals => (),
+                    OperandType::Is => (),
+                    OperandType::IsNot => (),
+                    OperandType::LesserThan => todo!(),
+                    OperandType::GreaterThan => todo!(),
+                    OperandType::LesserEquals => todo!(),
+                    OperandType::GreaterEquals => todo!(),
+                    OperandType::In => todo!(),
+                    OperandType::NotIn => todo!(),
+                }
+                Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                    self.i_s.database.python_state.builtins_point_link("bool"),
+                    None,
+                ))
+            }
             _ => todo!("Not handled yet {node:?}"),
         }
     }

@@ -248,6 +248,7 @@ create_nonterminal_structs!(
     Conjunction: conjunction
     Inversion: inversion
     Comparison: comparison
+    Operand: comp_op
     BitwiseOr: bitwise_or
     BitwiseXor: bitwise_xor
     BitwiseAnd: bitwise_and
@@ -2118,6 +2119,54 @@ impl<'db> AugAssign<'db> {
 impl<'db> Sum<'db> {
     pub fn as_operation(&self) -> Operation<'db> {
         Operation::new(self.node, "__add__", "+")
+    }
+}
+
+pub enum OperandType {
+    Equals,
+    NotEquals,
+    Is,
+    IsNot,
+    LesserThan,
+    GreaterThan,
+    LesserEquals,
+    GreaterEquals,
+    In,
+    NotIn,
+}
+
+impl<'db> Operand<'db> {
+    pub fn as_type(&self) -> OperandType {
+        let node = self.node.nth_child(0);
+        match node.as_code() {
+            "==" => OperandType::Equals,
+            "!=" => OperandType::NotEquals,
+            "is" => {
+                if let Some(s) = node.next_sibling() {
+                    debug_assert_eq!(s.as_code(), "not");
+                    OperandType::Is
+                } else {
+                    OperandType::IsNot
+                }
+            }
+            "<" => OperandType::LesserThan,
+            ">" => OperandType::GreaterThan,
+            "<=" => OperandType::LesserEquals,
+            ">=" => OperandType::GreaterEquals,
+            "in" => OperandType::In,
+            "not" => OperandType::NotIn,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<'db> Comparison<'db> {
+    pub fn unpack(&self) -> (ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let first = ExpressionPart::new(iter.next().unwrap());
+        let operand = Operand::new(iter.next().unwrap());
+        let second = ExpressionPart::new(iter.next().unwrap());
+        (first, operand, second)
     }
 }
 
