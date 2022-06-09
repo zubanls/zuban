@@ -807,21 +807,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Disjunction(or) => self.infer_operation(or.as_operation()),
             ExpressionPart::Comparison(cmp) => {
-                let (first, operand, second) = cmp.unpack();
-                let first = self.infer_expression_part(first);
-                let second = self.infer_expression_part(second);
-
-                match operand.as_type() {
-                    OperandType::Equals => (), // TODO do we need to typecheck something here?
-                    OperandType::NotEquals => (),
-                    OperandType::Is => (),
-                    OperandType::IsNot => (),
-                    OperandType::LesserThan => todo!(),
-                    OperandType::GreaterThan => todo!(),
-                    OperandType::LesserEquals => todo!(),
-                    OperandType::GreaterEquals => todo!(),
-                    OperandType::In => todo!(),
-                    OperandType::NotIn => todo!(),
+                match cmp.unpack() {
+                    ComparisonContent::Equals(first, _, second)
+                    | ComparisonContent::NotEquals(first, _, second)
+                    | ComparisonContent::Is(first, _, second)
+                    | ComparisonContent::IsNot(first, _, second)
+                    | ComparisonContent::In(first, _, second)
+                    | ComparisonContent::NotIn(first, _, second) => {
+                        let first = self.infer_expression_part(first);
+                        let second = self.infer_expression_part(second);
+                    }
+                    ComparisonContent::Operation(op) => return self.infer_operation(op),
                 }
                 Inferred::new_unsaved_complex(ComplexPoint::Instance(
                     self.i_s.database.python_state.builtins_point_link("bool"),

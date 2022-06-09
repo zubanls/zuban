@@ -2135,51 +2135,50 @@ impl<'db> Disjunction<'db> {
     }
 }
 
-pub enum OperandType {
-    Equals,
-    NotEquals,
-    Is,
-    IsNot,
-    LesserThan,
-    GreaterThan,
-    LesserEquals,
-    GreaterEquals,
-    In,
-    NotIn,
-}
-
-impl<'db> Operand<'db> {
-    pub fn as_type(&self) -> OperandType {
-        let node = self.node.nth_child(0);
-        match node.as_code() {
-            "==" => OperandType::Equals,
-            "!=" => OperandType::NotEquals,
-            "is" => {
-                if let Some(s) = node.next_sibling() {
-                    debug_assert_eq!(s.as_code(), "not");
-                    OperandType::Is
-                } else {
-                    OperandType::IsNot
-                }
-            }
-            "<" => OperandType::LesserThan,
-            ">" => OperandType::GreaterThan,
-            "<=" => OperandType::LesserEquals,
-            ">=" => OperandType::GreaterEquals,
-            "in" => OperandType::In,
-            "not" => OperandType::NotIn,
-            _ => unreachable!(),
-        }
-    }
+pub enum ComparisonContent<'db> {
+    Equals(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    NotEquals(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    Is(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    IsNot(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    In(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    NotIn(ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>),
+    Operation(Operation<'db>),
 }
 
 impl<'db> Comparison<'db> {
-    pub fn unpack(&self) -> (ExpressionPart<'db>, Operand<'db>, ExpressionPart<'db>) {
+    pub fn unpack(&self) -> ComparisonContent<'db> {
         let mut iter = self.node.iter_children();
-        let first = ExpressionPart::new(iter.next().unwrap());
-        let operand = Operand::new(iter.next().unwrap());
-        let second = ExpressionPart::new(iter.next().unwrap());
-        (first, operand, second)
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let operand = iter.next().unwrap();
+        let first_operand = operand.nth_child(0);
+        let right = ExpressionPart::new(iter.next().unwrap());
+        let (magic_method, reverse_magic_method, operand) = match first_operand.as_code() {
+            "==" => return ComparisonContent::Equals(left, Operand::new(operand), right),
+            "!=" => return ComparisonContent::NotEquals(left, Operand::new(operand), right),
+            "is" => {
+                if let Some(s) = first_operand.next_sibling() {
+                    debug_assert_eq!(s.as_code(), "not");
+                    return ComparisonContent::IsNot(left, Operand::new(operand), right);
+                } else {
+                    return ComparisonContent::Is(left, Operand::new(operand), right);
+                }
+            }
+            "<" => ("__lt__", "__gt__", "<"),
+            ">" => ("__gt__", "__lt__", ">"),
+            "<=" => ("__le__", "__ge__", "<="),
+            ">=" => ("__ge__", "__le__", ">="),
+            "in" => return ComparisonContent::In(left, Operand::new(operand), right),
+            "not" => return ComparisonContent::NotIn(left, Operand::new(operand), right),
+            _ => unreachable!(),
+        };
+        ComparisonContent::Operation(Operation {
+            left,
+            magic_method,
+            reverse_magic_method,
+            operand,
+            right,
+            index: self.node.index,
+        })
     }
 }
 
