@@ -3,7 +3,6 @@ use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::Generics;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -44,7 +43,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             _ => 1,
         };
         let expected = self.alias.type_vars.len();
-        let given_generics = Generics::new_slice(slice_type.file, slice_type.ast_node);
         slice_type
             .file
             .inference(i_s)
