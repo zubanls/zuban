@@ -415,7 +415,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         )
                                         .unwrap(),
                                     ),
-                                    DbType::Tuple(content) => todo!(),
+                                    DbType::Tuple(content) => None,
                                     DbType::Callable(content) => todo!(),
                                     _ => {
                                         incomplete_mro = true;
