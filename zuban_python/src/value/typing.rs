@@ -2,7 +2,9 @@ use std::fmt;
 
 use parsa_python_ast::PrimaryContent;
 
-use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
+use super::{
+    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind,
+};
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
@@ -708,14 +710,30 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        let s = &i_s.database.python_state;
-        // TODO it's kind of stupid that we recreate an instance object here all the time, we
-        // should just use a precreated object() from somewhere.
-        Instance::new(
-            s.object_class(),
-            &Inferred::new_unsaved_complex(ComplexPoint::Instance(s.object().as_link(), None)),
-        )
-        .lookup_internal(i_s, name)
+        if let Some(db_type) = &self.type_var_usage.type_var.bound {
+            match db_type {
+                DbType::Class(link) => Instance::new(
+                    Class::from_position(
+                        NodeRef::from_link(i_s.database, *link),
+                        Generics::None,
+                        None,
+                    )
+                    .unwrap(),
+                    &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
+                )
+                .lookup_internal(i_s, name),
+                _ => todo!("{:?}", db_type),
+            }
+        } else {
+            let s = &i_s.database.python_state;
+            // TODO it's kind of stupid that we recreate an instance object here all the time, we
+            // should just use a precreated object() from somewhere.
+            Instance::new(
+                s.object_class(),
+                &Inferred::new_unsaved_complex(ComplexPoint::Instance(s.object().as_link(), None)),
+            )
+            .lookup_internal(i_s, name)
+        }
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
