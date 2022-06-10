@@ -420,13 +420,29 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(argument) = param.argument {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_type(i_s);
-                        let m = Type::from_db_type(i_s.database, param.param_type).matches(
+                        let mut matches = true;
+                        Type::from_db_type(i_s.database, param.param_type).error_if_not_matches(
                             i_s,
                             Some(self),
-                            value_class,
-                            Variance::Invariant,
+                            &value,
+                            |i_s, t1, t2| {
+                                /*
+                                (self.on_type_error)(
+                                    i_s,
+                                    p.as_argument_node_reference(),
+                                    None,
+                                    &function,
+                                    &p,
+                                    t1,
+                                    t2,
+                                );
+                                */
+                                todo!();
+                                matches = false;
+                            },
                         );
-                        self.matches &= m;
+
+                        self.matches &= matches;
                     }
                 }
             }

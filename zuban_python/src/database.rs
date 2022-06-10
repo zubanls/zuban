@@ -514,7 +514,7 @@ impl GenericsList {
         }
     }
 
-    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
         for g in self.0.iter() {
             g.scan_for_late_bound_type_vars(db, result)
         }
@@ -730,7 +730,7 @@ impl DbType {
         }
     }
 
-    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<PointLink>) {
+    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
         match self {
             Self::GenericClass(link, generics) => {
                 generics.scan_for_late_bound_type_vars(db, result)
@@ -739,15 +739,15 @@ impl DbType {
             Self::TypeVar(t) => {
                 loop {
                     if t.index.as_usize() == result.len() {
-                        todo!();
-                        //result.push(*link);
+                        result.push(t.type_var.clone());
                         break;
                     } else {
                         // This a bit special, because these are late-bound parameters that are not
                         // part of the DbType anymore. This won't ever be accessed, but it's a
                         // placeholder in the array so that type var indexes still work normally.
                         // e.g. Tuple[Callable[[T], T], Callable[[U], U]] needs this.
-                        result.push(PointLink::new(FileIndex(0), u32::MAX));
+                        todo!()
+                        //result.push(PointLink::new(FileIndex(0), u32::MAX));
                     }
                 }
             }
@@ -916,6 +916,10 @@ impl BitAnd for Variance {
 pub struct TypeVars(Box<[Rc<TypeVar>]>);
 
 impl TypeVars {
+    pub fn from_vec(vec: Vec<Rc<TypeVar>>) -> Self {
+        Self(vec.into_boxed_slice())
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }

@@ -9,7 +9,7 @@ use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
 use crate::database::{
     CallableContent, ComplexPoint, Database, DbType, FormatStyle, Specific, TupleContent,
-    TypeVarIndex, TypeVarUsage, Variance,
+    TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -604,17 +604,21 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!()
-        /*
         let mut type_vars = vec![]; // todo!()
         if let Some(params) = &self.content.params {
             params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
         }
-        let mut finder =
-            TypeVarMatcher::from_callable(self, args, Some(&type_vars), TypeVarType::LateBound);
+        let type_vars = TypeVars::from_vec(type_vars);
+        let mut finder = TypeVarMatcher::from_callable(
+            self,
+            args,
+            Some(&type_vars),
+            TypeVarType::LateBound,
+            on_type_error,
+        );
+        finder.matches_signature(i_s); // TODO this should be different
         let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
-        */
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
