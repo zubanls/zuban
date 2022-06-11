@@ -4,36 +4,36 @@ use crate::database::{Database, FileIndex};
 use crate::file_state::File;
 use crate::workspaces::{DirContent, DirOrFile};
 
-pub fn global_import(database: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {
+pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {
     if name == "typing" {
-        return Some(database.python_state.typing().file_index());
+        return Some(db.python_state.typing().file_index());
     }
     if name == "typing_extensions" {
         // TODO this is completely wrong
-        return Some(database.python_state.typing().file_index());
+        return Some(db.python_state.typing().file_index());
     }
     if name == "collections" {
-        return Some(database.python_state.collections().file_index());
+        return Some(db.python_state.collections().file_index());
     }
 
-    for (dir_path, dir) in database.workspaces.directories() {
-        let result = python_import(database, dir_path, dir, name);
+    for (dir_path, dir) in db.workspaces.directories() {
+        let result = python_import(db, dir_path, dir, name);
         if result.is_some() {
             return result;
         }
     }
-    for (_, dir_children) in database.workspaces.directories() {
+    for (_, dir_children) in db.workspaces.directories() {
         dir_children.add_missing_entry(name.to_owned() + ".py", from_file);
     }
     None
 }
 
-pub fn import_on_dir(database: &Database, name: &str) -> Option<FileIndex> {
+pub fn import_on_dir(db: &Database, name: &str) -> Option<FileIndex> {
     todo!()
 }
 
 pub fn python_import(
-    database: &Database,
+    db: &Database,
     dir_path: &str,
     dir: &Rc<DirContent>,
     name: &str,
@@ -48,7 +48,7 @@ pub fn python_import(
                             DirOrFile::File(file_index) => {
                                 if child.name == "__init__.py" || child.name == "__init__.pyi" {
                                     if file_index.get().is_none() {
-                                        database.load_file_from_workspace(
+                                        db.load_file_from_workspace(
                                             content.clone(),
                                             format!(
                                                 "{dir_path}{separator}{}{separator}{}",
@@ -72,7 +72,7 @@ pub fn python_import(
                 if directory.name == format!("{name}.py") || directory.name == format!("{name}.pyi")
                 {
                     if file_index.get().is_none() {
-                        database.load_file_from_workspace(
+                        db.load_file_from_workspace(
                             dir.clone(),
                             format!("{dir_path}{separator}{}", directory.name),
                             file_index,

@@ -30,12 +30,12 @@ impl PythonState {
     }
 
     pub fn initialize(
-        database: &mut Database,
+        db: &mut Database,
         builtins: *const PythonFile,
         typing: *const PythonFile,
         collections: *const PythonFile,
     ) {
-        let s = &mut database.python_state;
+        let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
         s.collections = collections;

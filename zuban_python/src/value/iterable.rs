@@ -59,7 +59,7 @@ impl<'db> ListLiteral<'db> {
             };
             reference.insert_complex(
                 ComplexPoint::GenericClass(
-                    i_s.database.python_state.builtins_point_link("list"),
+                    i_s.db.python_state.builtins_point_link("list"),
                     GenericsList::new_generics(Box::new([result])),
                 ),
                 Locality::Todo,
@@ -168,10 +168,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference = NodeRef::from_link(
-            i_s.database,
-            i_s.database.python_state.builtins_point_link("list"),
-        );
+        let node_reference =
+            NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
         ClassLike::Class(
             Class::from_position(
                 node_reference,
@@ -239,7 +237,7 @@ impl<'db> DictLiteral<'db> {
             }
             reference.insert_complex(
                 ComplexPoint::GenericClass(
-                    i_s.database.python_state.builtins_point_link("list"),
+                    i_s.db.python_state.builtins_point_link("list"),
                     GenericsList::new_generics(Box::new([keys, values])),
                 ),
                 Locality::Todo,
@@ -322,10 +320,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference = NodeRef::from_link(
-            i_s.database,
-            i_s.database.python_state.builtins_point_link("dict"),
-        );
+        let node_reference =
+            NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
         ClassLike::Class(
             Class::from_position(node_reference, Generics::new_list(self.db_type(i_s)), None)
                 .unwrap(),

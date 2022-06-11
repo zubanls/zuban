@@ -191,12 +191,12 @@ impl<'a> TupleClass<'a> {
                     (false, true) => todo!(),
                     (true, false) => {
                         let t1 = Type::from_db_type(
-                            i_s.database,
+                            i_s.db,
                             generics1.nth(TypeVarIndex::new(0)).unwrap(),
                         );
                         for g in generics2.iter() {
                             let t2 = Type::from_db_type(
-                                i_s.database,
+                                i_s.db,
                                 generics2.nth(TypeVarIndex::new(0)).unwrap(),
                             );
                             if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
@@ -252,7 +252,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.as_type_string(i_s.database, FormatStyle::Short)
+        base_description!(self) + &self.as_type_string(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -346,7 +346,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
+        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -387,13 +387,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 }
 
 pub struct TypingType<'db, 'a> {
-    database: &'db Database,
+    db: &'db Database,
     pub db_type: &'a DbType,
 }
 
 impl<'db, 'a> TypingType<'db, 'a> {
-    pub fn new(database: &'db Database, db_type: &'a DbType) -> Self {
-        Self { database, db_type }
+    pub fn new(db: &'db Database, db_type: &'a DbType) -> Self {
+        Self { db, db_type }
     }
 }
 
@@ -426,7 +426,7 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
                 "db_type",
                 &self
                     .db_type
-                    .as_type_string(self.database, None, FormatStyle::Short),
+                    .as_type_string(self.db, None, FormatStyle::Short),
             )
             .finish()
     }
@@ -546,7 +546,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
+            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         Inferred::new_any()
     }
 }
@@ -567,7 +567,7 @@ impl<'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
+        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
     }
 
     pub fn iter_params_with_args<'db, 'b>(
@@ -606,7 +606,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> Inferred<'db> {
         let mut type_vars = vec![]; // todo!()
         if let Some(params) = &self.content.params {
-            params.scan_for_late_bound_type_vars(i_s.database, &mut type_vars)
+            params.scan_for_late_bound_type_vars(i_s.db, &mut type_vars)
         }
         let type_vars = TypeVars::from_vec(type_vars);
         let mut finder = TypeVarMatcher::from_callable(
@@ -617,12 +617,12 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             on_type_error,
         );
         finder.matches_signature(i_s); // TODO this should be different
-        let g_o = Type::from_db_type(i_s.database, &self.content.return_class);
+        let g_o = Type::from_db_type(i_s.db, &self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.database, FormatStyle::Short)
+        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -677,10 +677,8 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
             .infer(i_s)
             .class_as_type(i_s)
             .as_string(i_s, None, FormatStyle::Qualified);
-        args.node_reference().add_typing_issue(
-            i_s.database,
-            IssueType::Note(format!("Revealed type is {s:?}")),
-        );
+        args.node_reference()
+            .add_typing_issue(i_s.db, IssueType::Note(format!("Revealed type is {s:?}")));
         if iterator.next().is_some() {
             todo!()
         }
@@ -717,19 +715,15 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
         if let Some(db_type) = &self.type_var_usage.type_var.bound {
             match db_type {
                 DbType::Class(link) => Instance::new(
-                    Class::from_position(
-                        NodeRef::from_link(i_s.database, *link),
-                        Generics::None,
-                        None,
-                    )
-                    .unwrap(),
+                    Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)
+                        .unwrap(),
                     &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
                 )
                 .lookup_internal(i_s, name),
                 _ => todo!("{:?}", db_type),
             }
         } else {
-            let s = &i_s.database.python_state;
+            let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
             Instance::new(

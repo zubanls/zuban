@@ -28,8 +28,8 @@ impl<'db> NodeRef<'db> {
         Self { file, node_index }
     }
 
-    pub fn from_link(database: &'db Database, point: PointLink) -> Self {
-        let file = database.loaded_python_file(point.file);
+    pub fn from_link(db: &'db Database, point: PointLink) -> Self {
+        let file = db.loaded_python_file(point.file);
         Self {
             file,
             node_index: point.node_index,

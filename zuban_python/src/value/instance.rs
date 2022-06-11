@@ -71,10 +71,8 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 value.execute(i_s, args, on_type_error)
             })
         } else {
-            args.node_reference().add_typing_issue(
-                i_s.database,
-                IssueType::NotCallable(format!("{:?}", self.name())),
-            );
+            args.node_reference()
+                .add_typing_issue(i_s.db, IssueType::NotCallable(format!("{:?}", self.name())));
             Inferred::new_unknown()
         }
     }
@@ -86,7 +84,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     ) -> Inferred<'db> {
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(
-                i_s.database,
+                i_s.db,
                 IssueType::NotIndexable(self.class.as_string(i_s, FormatStyle::Short)),
             )
         })
@@ -96,7 +94,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 &slice_type.as_args(),
                 &|i_s, node_ref, class, function, p, input, wanted| {
                     node_ref.add_typing_issue(
-                        i_s.database,
+                        i_s.db,
                         IssueType::InvalidGetItem(format!(
                             "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
                             class.unwrap().as_string(i_s, FormatStyle::Short),

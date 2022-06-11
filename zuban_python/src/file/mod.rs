@@ -74,27 +74,21 @@ impl File for PythonFile {
         todo!()
     }
 
-    fn leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db> {
+    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db> {
         match NameOrKeywordLookup::from_position(&self.tree, position) {
-            NameOrKeywordLookup::Name(name) => {
-                Leaf::Name(Box::new(TreeName::new(database, self, name)))
-            }
+            NameOrKeywordLookup::Name(name) => Leaf::Name(Box::new(TreeName::new(db, self, name))),
             NameOrKeywordLookup::Keyword(keyword) => Leaf::Keyword(keyword),
             NameOrKeywordLookup::None => Leaf::None,
         }
     }
 
-    fn infer_operator_leaf<'db>(
-        &'db self,
-        database: &'db Database,
-        leaf: Keyword<'db>,
-    ) -> Inferred<'db> {
+    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, leaf: Keyword<'db>) -> Inferred<'db> {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.as_str())
         {
             if let Some(primary) = leaf.maybe_primary_parent() {
-                let mut i_s = InferenceState::new(database);
+                let mut i_s = InferenceState::new(db);
                 return self.inference(&mut i_s).infer_primary(primary);
             }
         }
@@ -394,12 +388,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // as names should have been calculated earlier
                 let import_file = from_part_file_index
                     .unwrap()
-                    .map(|f| self.i_s.database.loaded_python_file(f));
+                    .map(|f| self.i_s.db.loaded_python_file(f));
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
 
                     let point = if let Some(import_file) = import_file {
-                        let module = Module::new(self.i_s.database, import_file);
+                        let module = Module::new(self.i_s.db, import_file);
 
                         if let Some(link) = import_file.lookup_global(import_name.as_str()) {
                             debug_assert!(
@@ -410,15 +404,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         } else if let Some(Some(file_index)) = import_file
                             .package_dir
                             .as_ref()
-                            .map(|dir| module.sub_module(self.i_s.database, import_name.as_str()))
+                            .map(|dir| module.sub_module(self.i_s.db, import_name.as_str()))
                         {
                             self.i_s
-                                .database
+                                .db
                                 .add_invalidates(file_index, self.file.file_index());
                             Point::new_file_reference(file_index, Locality::Todo)
                         } else {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
-                                self.i_s.database,
+                                self.i_s.db,
                                 IssueType::AttributeError(
                                     format!("Module {:?}", module.name()),
                                     import_name.as_str().to_owned(),
@@ -445,22 +439,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         index: NodeIndex,
         second_index: Option<NodeIndex>,
     ) -> Option<FileIndex> {
-        let file_index = global_import(self.i_s.database, self.file.file_index(), name);
+        let file_index = global_import(self.i_s.db, self.file.file_index(), name);
         let point = if let Some(file_index) = file_index {
             self.i_s
-                .database
+                .db
                 .add_invalidates(file_index, self.file.file_index());
             debug!(
                 "Global import {name:?}: {:?}",
-                self.i_s.database.file_path(file_index)
+                self.i_s.db.file_path(file_index)
             );
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
             let node_ref = NodeRef::new(self.file, index);
-            node_ref.add_typing_issue(
-                self.i_s.database,
-                IssueType::ModuleNotFound(name.to_owned()),
-            );
+            node_ref.add_typing_issue(self.i_s.db, IssueType::ModuleNotFound(name.to_owned()));
             Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         self.file.points.set(index, point);
@@ -476,9 +467,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             DottedNameContent::DottedName(dotted_name, name) => self
                 .infer_import_dotted_name(dotted_name)
                 .and_then(|file_index| {
-                    let file = self.i_s.database.loaded_python_file(file_index);
-                    let module = Module::new(self.i_s.database, file);
-                    module.sub_module(self.i_s.database, name.as_str())
+                    let file = self.i_s.db.loaded_python_file(file_index);
+                    let module = Module::new(self.i_s.db, file);
+                    module.sub_module(self.i_s.db, name.as_str())
                 }),
         }
     }
@@ -502,7 +493,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                         type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             node_ref.add_typing_issue(
-                                i_s.database,
+                                i_s.db,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         });
@@ -524,7 +515,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.use_cached_annotation_type(annotation)
                         .error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             node_ref.add_typing_issue(
-                                i_s.database,
+                                i_s.db,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         })
@@ -554,7 +545,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 &KnownArguments::new(&right, Some(node_ref)),
                                 &|i_s, node_ref, class, function, p, input, wanted| {
                                     node_ref.add_typing_issue(
-                                        i_s.database,
+                                        i_s.db,
                                         IssueType::UnsupportedOperand(
                                             aug_assign.operand().to_owned(),
                                             class.unwrap().as_string(i_s, FormatStyle::Short),
@@ -631,7 +622,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         value,
                         |i_s, t1, t2| {
                             NodeRef::new(self.file, name_def.index()).add_typing_issue(
-                                i_s.database,
+                                i_s.db,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         },
@@ -647,7 +638,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         .class_as_type(self.i_s)
                         .error_if_not_matches(self.i_s, None, value, |i_s, t1, t2| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
-                                self.i_s.database,
+                                self.i_s.db,
                                 IssueType::IncompatibleAssignment(t1, t2),
                             );
                         });
@@ -676,7 +667,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     ),
                                     &|i_s, node_ref, class, function, p, input, wanted| {
                                         node_ref.add_typing_issue(
-                                            i_s.database,
+                                            i_s.db,
                                             IssueType::InvalidGetItem(format!(
                                                 "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
                                                 class.unwrap().as_string(i_s, FormatStyle::Short),
@@ -720,7 +711,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.database.python_state.list().as_link(),
+                                self.i_s.db.python_state.list().as_link(),
                                 Some(GenericsList::new_generics(Box::new([generic]))),
                             ));
                             self.assign_targets(star_target.as_target(), &list, value_node_ref);
@@ -737,7 +728,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             self.assign_targets(target, &Inferred::new_any(), value_node_ref);
                         }
                         value_node_ref.add_typing_issue(
-                            self.i_s.database,
+                            self.i_s.db,
                             IssueType::TooFewValuesToUnpack(original_counter - 1, counter),
                         );
                         break;
@@ -811,7 +802,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let first = self.infer_expression_part(first);
                 let second = self.infer_expression_part(second);
                 Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                    self.i_s.database.python_state.builtins_point_link("bool"),
+                    self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
                 ))
             }
@@ -829,7 +820,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     ComparisonContent::Operation(op) => return self.infer_operation(op),
                 }
                 Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                    self.i_s.database.python_state.builtins_point_link("bool"),
+                    self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
                 ))
             }
@@ -844,7 +835,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         left.run_on_value(self.i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
-                    i_s.database,
+                    i_s.db,
                     IssueType::UnsupportedLeftOperand(
                         op.operand.to_owned(),
                         value.class(i_s).as_string(i_s, FormatStyle::Short),
@@ -859,7 +850,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 &KnownArguments::new(&right, Some(node_ref)),
                 &|i_s, node_ref, class, function, p, input, _| {
                     node_ref.add_typing_issue(
-                        i_s.database,
+                        i_s.db,
                         IssueType::UnsupportedOperand(
                             op.operand.to_owned(),
                             class.unwrap().as_string(i_s, FormatStyle::Short),
@@ -901,7 +892,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         format!("{:?}", value.name())
                     };
                     NodeRef::new(self.file, primary_index).add_typing_issue(
-                        i_s.database,
+                        i_s.db,
                         IssueType::AttributeError(origin, name.as_str().to_owned()),
                     );
                 }) {
@@ -941,7 +932,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         ),
                         &|i_s, node_ref, class, function, p, t1, t2| {
                             node_ref.add_typing_issue(
-                                i_s.database,
+                                i_s.db,
                                 IssueType::ArgumentIssue(format!(
                                     "Argument {} to {} has incompatible type {t1:?}; expected {t2:?}",
                                     p.argument_index(),
@@ -1001,7 +992,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Set(set) => {
                 if let Some(elements) = set.unpack() {
                     return Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                        self.i_s.database.python_state.builtins_point_link("set"),
+                        self.i_s.db.python_state.builtins_point_link("set"),
                         Some(GenericsList::new_generics(Box::new([
                             self.create_list_or_set_generics(elements)
                         ]))),
@@ -1060,7 +1051,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         debug!(
             "Inferred literal: Tuple{}",
-            content.as_string(self.i_s.database, FormatStyle::Short)
+            content.as_string(self.i_s.db, FormatStyle::Short)
         );
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
     }
@@ -1081,7 +1072,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // builtin or really missing.
         let point = if let Some(link) = self
             .i_s
-            .database
+            .db
             .python_state
             .builtins()
             .lookup_global(name.as_str())
@@ -1091,7 +1082,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         } else {
             let name_str = name.as_str();
             for index in &self.file.star_imports {
-                let other_file = self.i_s.database.loaded_python_file(*index);
+                let other_file = self.i_s.db.loaded_python_file(*index);
 
                 if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
                     self.file.points.set(
@@ -1109,15 +1100,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             } else {
                 // The builtin module should really not have any issues.
                 debug_assert!(
-                    self.file_index != self.i_s.database.python_state.builtins().file_index(),
+                    self.file_index != self.i_s.db.python_state.builtins().file_index(),
                     "{:?}",
                     name
                 );
                 // TODO check star imports
-                NodeRef::new(self.file, name.index()).add_typing_issue(
-                    self.i_s.database,
-                    IssueType::NameError(name.as_str().to_owned()),
-                );
+                NodeRef::new(self.file, name.index())
+                    .add_typing_issue(self.i_s.db, IssueType::NameError(name.as_str().to_owned()));
                 Point::new_unknown(self.file_index, Locality::Todo)
             }
         };
@@ -1161,7 +1150,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     todo!(
                                         "{}",
                                         NodeRef::new(inference.file, next_node_index)
-                                            .debug_info(self.i_s.database)
+                                            .debug_info(self.i_s.db)
                                     )
                                 }
                             })
@@ -1172,7 +1161,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         infer(
                             &mut self
                                 .i_s
-                                .database
+                                .db
                                 .loaded_python_file(file_index)
                                 .inference(self.i_s),
                         )
@@ -1320,7 +1309,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         todo!(
                             "star import {} {name_def:?} {:?}",
-                            self.file.file_path(self.i_s.database),
+                            self.file.file_path(self.i_s.db),
                             self.file.byte_to_line_column(name_def.start())
                         )
                     }

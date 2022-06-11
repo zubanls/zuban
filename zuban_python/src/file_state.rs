@@ -133,10 +133,10 @@ pub trait File: std::fmt::Debug + AsAny {
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }
-    fn leaf<'db>(&'db self, database: &'db Database, position: CodeIndex) -> Leaf<'db>;
+    fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;
     fn infer_operator_leaf<'db>(
         &'db self,
-        database: &'db Database,
+        db: &'db Database,
         keyword: Keyword<'db>,
     ) -> Inferred<'db>;
     fn file_index(&self) -> FileIndex;
@@ -147,8 +147,8 @@ pub trait File: std::fmt::Debug + AsAny {
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex;
     fn byte_to_line_column(&self, byte: CodeIndex) -> (usize, usize);
 
-    fn file_path<'db>(&self, database: &'db Database) -> &'db str {
-        database.file_path(self.file_index())
+    fn file_path<'db>(&self, db: &'db Database) -> &'db str {
+        db.file_path(self.file_index())
     }
 
     fn diagnostics<'db>(

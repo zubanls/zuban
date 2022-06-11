@@ -119,7 +119,7 @@ impl<'db> Inferred<'db> {
             }
             DbType::Type(c) => match *c {
                 DbType::Class(link) => {
-                    let node_reference = NodeRef::from_link(i_s.database, link);
+                    let node_reference = NodeRef::from_link(i_s.db, link);
                     InferredState::Saved(node_reference, node_reference.point())
                 }
                 DbType::GenericClass(l, g) => {
@@ -243,8 +243,8 @@ impl<'db> Inferred<'db> {
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => {
-                let f = i_s.database.loaded_python_file(*file_index);
-                callable(i_s, &Module::new(i_s.database, f))
+                let f = i_s.db.loaded_python_file(*file_index);
+                callable(i_s, &Module::new(i_s.db, f))
             }
             InferredState::Unknown => on_missing(i_s),
         }
@@ -287,8 +287,8 @@ impl<'db> Inferred<'db> {
             }
             PointType::Unknown => on_missing(i_s),
             PointType::FileReference => {
-                let f = i_s.database.loaded_python_file(point.file_index());
-                callable(i_s, &Module::new(i_s.database, f))
+                let f = i_s.db.loaded_python_file(point.file_index());
+                callable(i_s, &Module::new(i_s.db, f))
             }
             _ => unreachable!(),
         }
@@ -370,7 +370,7 @@ impl<'db> Inferred<'db> {
             Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
             Specific::None => callable(i_s, &NoneInstance()),
             _ => {
-                let instance = self.resolve_specific(i_s.database, specific);
+                let instance = self.resolve_specific(i_s.db, specific);
                 callable(i_s, &instance)
             }
         }
@@ -387,11 +387,11 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match complex {
             ComplexPoint::ExecutionInstance(cls_definition, execution) => {
-                let def = NodeRef::from_link(i_s.database, *cls_definition);
-                let init = Function::from_execution(i_s.database, execution, None);
+                let def = NodeRef::from_link(i_s.db, *cls_definition);
+                let init = Function::from_execution(i_s.db, execution, None);
                 let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
-                    let args = SimpleArguments::from_execution(i_s.database, execution);
+                    let args = SimpleArguments::from_execution(i_s.db, execution);
                     let class = Class::new(def, cls_storage, Generics::None, None);
                     debug_assert!(class.type_vars(i_s).is_empty());
                     let instance = Instance::new(class, self);
@@ -408,7 +408,7 @@ impl<'db> Inferred<'db> {
                 for any_link in lst.iter() {
                     let result = match any_link {
                         AnyLink::Reference(link) => {
-                            let reference = NodeRef::from_link(i_s.database, *link);
+                            let reference = NodeRef::from_link(i_s.db, *link);
                             self.run_on_saved(
                                 i_s,
                                 &reference,
@@ -436,11 +436,11 @@ impl<'db> Inferred<'db> {
                 previous.unwrap()
             }
             ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-                let reference = NodeRef::from_link(i_s.database, *func_link);
+                let reference = NodeRef::from_link(i_s.db, *func_link);
 
                 // TODO this is potentially not needed, a class could lazily be fetched with a
                 // closure
-                let inf = Inferred::from_any_link(i_s.database, instance_link);
+                let inf = Inferred::from_any_link(i_s.db, instance_link);
                 let instance = inf.expect_instance(i_s);
 
                 let class = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
@@ -457,12 +457,12 @@ impl<'db> Inferred<'db> {
                 }
             }
             ComplexPoint::Closure(function, execution) => {
-                let f = i_s.database.loaded_python_file(function.file);
-                let func = Function::from_execution(i_s.database, execution, None);
-                let args = SimpleArguments::from_execution(i_s.database, execution);
+                let f = i_s.db.loaded_python_file(function.file);
+                let func = Function::from_execution(i_s.db, execution, None);
+                let args = SimpleArguments::from_execution(i_s.db, execution);
                 callable(
                     &mut i_s.with_func_and_args(&func, &args),
-                    &Function::new(NodeRef::from_link(i_s.database, *function), None),
+                    &Function::new(NodeRef::from_link(i_s.db, *function), None),
                 )
             }
             ComplexPoint::Instance(cls, generics_list) => {
@@ -470,7 +470,7 @@ impl<'db> Inferred<'db> {
                     .as_ref()
                     .map(Generics::new_list)
                     .unwrap_or(Generics::None);
-                let instance = self.use_instance(NodeRef::from_link(i_s.database, *cls), generics);
+                let instance = self.use_instance(NodeRef::from_link(i_s.db, *cls), generics);
                 callable(i_s, &instance)
             }
             ComplexPoint::FunctionOverload(overload) => callable(
@@ -479,7 +479,7 @@ impl<'db> Inferred<'db> {
             ),
             ComplexPoint::GenericClass(link, generics) => {
                 let class = Class::from_position(
-                    NodeRef::from_link(i_s.database, *link),
+                    NodeRef::from_link(i_s.db, *link),
                     Generics::new_list(generics),
                     None,
                 )
@@ -506,13 +506,12 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match db_type {
             DbType::Class(link) => {
-                let inst =
-                    self.use_instance(NodeRef::from_link(i_s.database, *link), Generics::None);
+                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), Generics::None);
                 callable(i_s, &inst)
             }
             DbType::GenericClass(link, generics) => {
                 let g = Generics::new_list(generics);
-                let inst = self.use_instance(NodeRef::from_link(i_s.database, *link), g);
+                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), g);
                 callable(i_s, &inst)
             }
             DbType::Union(lst) => lst
@@ -525,7 +524,7 @@ impl<'db> Inferred<'db> {
                     }
                 })
                 .unwrap(),
-            DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.database, db_type, t)),
+            DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
             DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
             DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
             DbType::None => callable(i_s, &NoneInstance()),
@@ -546,7 +545,7 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match type_ {
             DbType::Class(link) => {
-                let node_ref = NodeRef::from_link(i_s.database, *link);
+                let node_ref = NodeRef::from_link(i_s.db, *link);
                 callable(
                     i_s,
                     &Class::from_position(node_ref, Generics::None, None).unwrap(),
@@ -554,7 +553,7 @@ impl<'db> Inferred<'db> {
             }
             DbType::GenericClass(link, generics) => {
                 let class = Class::from_position(
-                    NodeRef::from_link(i_s.database, *link),
+                    NodeRef::from_link(i_s.db, *link),
                     Generics::new_list(generics),
                     None,
                 )
@@ -572,7 +571,7 @@ impl<'db> Inferred<'db> {
                 })
                 .unwrap(),
             DbType::TypeVar(t) => todo!(),
-            DbType::Type(g) => callable(i_s, &TypingType::new(i_s.database, g)),
+            DbType::Type(g) => callable(i_s, &TypingType::new(i_s.db, g)),
             DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
             DbType::Callable(content) => {
                 debug!("TODO the db_type can be wrong if it was part of a union");
@@ -609,7 +608,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             &mut |i_s, value| {
-                ValueNameIterator::Single(callable(&WithValueName::new(i_s.database, value)))
+                ValueNameIterator::Single(callable(&WithValueName::new(i_s.db, value)))
             },
             &|_, iter1, iter2| {
                 // Reducer
@@ -651,9 +650,9 @@ impl<'db> Inferred<'db> {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
     }
 
-    fn resolve_specific(&self, database: &'db Database, specific: Specific) -> Instance<'db, '_> {
+    fn resolve_specific(&self, db: &'db Database, specific: Specific) -> Instance<'db, '_> {
         self.load_builtin_instance_from_str(
-            database,
+            db,
             match specific {
                 Specific::String => "str",
                 Specific::Integer => "int",
@@ -669,10 +668,10 @@ impl<'db> Inferred<'db> {
 
     fn load_builtin_instance_from_str(
         &self,
-        database: &'db Database,
+        db: &'db Database,
         name: &'static str,
     ) -> Instance<'db, '_> {
-        let builtins = database.python_state.builtins();
+        let builtins = db.python_state.builtins();
         let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.type_(), PointType::Redirect);
@@ -689,8 +688,7 @@ impl<'db> Inferred<'db> {
                 // in python_state
                 let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
                 if let InferredState::Saved(cls_definition, _) = cls.state {
-                    if cls_definition.file.file_index()
-                        == i_s.database.python_state.typing().file_index()
+                    if cls_definition.file.file_index() == i_s.db.python_state.typing().file_index()
                         && cls_definition
                             .maybe_class()
                             .map(|cls| cls.name().as_str() == "TypeVar")
@@ -1065,7 +1063,7 @@ impl<'db> Inferred<'db> {
             InferredState::Saved(definition, point) => {
                 format!(
                     "{} (complex?: {:?})",
-                    definition.file.file_path(i_s.database),
+                    definition.file.file_path(i_s.db),
                     definition.complex(),
                 )
             }
@@ -1087,10 +1085,10 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    fn from_any_link(database: &'db Database, any: &AnyLink) -> Self {
+    fn from_any_link(db: &'db Database, any: &AnyLink) -> Self {
         match any {
             AnyLink::Reference(def) => {
-                let file = database.loaded_python_file(def.file);
+                let file = db.loaded_python_file(def.file);
                 Self::new_saved(file, def.node_index, file.points.get(def.node_index))
             }
             AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),

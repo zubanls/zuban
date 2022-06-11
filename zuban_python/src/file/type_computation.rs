@@ -197,7 +197,7 @@ where
         let f: &'db PythonFile =
             self.inference
                 .file
-                .new_annotation_file(self.inference.i_s.database, start, string);
+                .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(expr) = f.tree.maybe_expression() {
             let mut comp = TypeComputation {
                 inference: &mut f.inference(self.inference.i_s),
@@ -239,11 +239,10 @@ where
 
     fn add_module_issue(&self, file: &'db PythonFile, node_ref: NodeRef<'db>) {
         node_ref.add_typing_issue(
-            self.inference.i_s.database,
+            self.inference.i_s.db,
             IssueType::ValidType(format!(
                 "Module {:?} is not valid as a type",
-                Module::new(self.inference.i_s.database, file)
-                    .qualified_name(self.inference.i_s.database),
+                Module::new(self.inference.i_s.db, file).qualified_name(self.inference.i_s.db),
             )),
         );
     }
@@ -292,7 +291,7 @@ where
                 let db_type = match special {
                     SpecialType::Any => DbType::Any,
                     SpecialType::Type => DbType::Type(Box::new(DbType::Class(
-                        self.inference.i_s.database.python_state.object().as_link(),
+                        self.inference.i_s.db.python_state.object().as_link(),
                     ))),
                     SpecialType::Tuple => DbType::Tuple(TupleContent {
                         generics: None,
@@ -409,7 +408,7 @@ where
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             if !self.errors_already_calculated {
                                 node_ref.add_typing_issue(
-                                    self.inference.i_s.database,
+                                    self.inference.i_s.db,
                                     IssueType::TypeNotFound,
                                 );
                                 self.inference.file.points.set(
@@ -560,7 +559,7 @@ where
                 // like tuple/callable/type, which can also have late bound type vars and too
                 // many/few given type vars!
                 NodeRef::new(self.inference.file, slice_type.primary_index).add_typing_issue(
-                    self.inference.i_s.database,
+                    self.inference.i_s.db,
                     IssueType::TypeArgumentIssue(
                         class.name().to_owned(),
                         expected_count,
@@ -723,7 +722,7 @@ where
         let mismatch = given_count != expected_count;
         if mismatch {
             slice_type.as_node_ref().add_typing_issue(
-                self.inference.i_s.database,
+                self.inference.i_s.db,
                 IssueType::TypeAliasArgumentIssue(expected_count, given_count),
             );
         }
@@ -812,10 +811,8 @@ where
                         alias.db_type.as_ref(),
                         DbType::Class(_) | DbType::GenericClass(_, _) | DbType::Tuple(_)
                     ) {
-                        NodeRef::new(self.inference.file, name.index()).add_typing_issue(
-                            self.inference.i_s.database,
-                            IssueType::InvalidBaseClass,
-                        );
+                        NodeRef::new(self.inference.file, name.index())
+                            .add_typing_issue(self.inference.i_s.db, IssueType::InvalidBaseClass);
                     }
                 }
                 TypeContent::TypeAlias(alias)
@@ -856,7 +853,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         ) {
             slice_type
                 .as_node_ref()
-                .add_typing_issue(self.i_s.database, IssueType::OnlyClassTypeApplication);
+                .add_typing_issue(self.i_s.db, IssueType::OnlyClassTypeApplication);
             return Inferred::new_any();
         }
         compute_type_application!(self, compute_type_get_item_on_alias(alias, slice_type))
@@ -913,10 +910,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 SimpleParamType::MultiKwargs => {
                     let p = self.annotation_type(annotation).into_db_type(self.i_s);
                     Inferred::create_instance(
-                        self.i_s.database.python_state.builtins_point_link("dict"),
+                        self.i_s.db.python_state.builtins_point_link("dict"),
                         Some(&[
                             DbType::Class(
-                                self.i_s.database.python_state.builtins_point_link("str"),
+                                self.i_s.db.python_state.builtins_point_link("str"),
                             ),
                             p,
                         ]),
@@ -998,7 +995,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             point.complex_index()
         };
         if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
-            Type::from_db_type(self.i_s.database, db_type)
+            Type::from_db_type(self.i_s.db, db_type)
         } else {
             unreachable!()
         }
@@ -1096,31 +1093,26 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match point.type_() {
             PointType::Specific => todo!(),
             PointType::Redirect => {
-                check_type_name(
-                    self.i_s,
-                    point.as_redirected_node_ref(self.i_s.database),
-                    || {
-                        let node_ref = NodeRef::new(self.file, name.index());
-                        node_ref.add_typing_issue(
-                            self.i_s.database,
-                            IssueType::ValidType(format!(
-                                "Function {:?} is not valid as a type",
-                                "m.A".to_owned() //TODO: func.qualified_name(self.i_s.database),
-                            )),
-                        );
-                        node_ref.add_typing_issue(
-                            self.i_s.database,
-                            IssueType::Note(
-                                "Perhaps you need \"Callable[...]\" or a callback protocol?"
-                                    .to_owned(),
-                            ),
-                        );
-                    },
-                )
+                check_type_name(self.i_s, point.as_redirected_node_ref(self.i_s.db), || {
+                    let node_ref = NodeRef::new(self.file, name.index());
+                    node_ref.add_typing_issue(
+                        self.i_s.db,
+                        IssueType::ValidType(format!(
+                            "Function {:?} is not valid as a type",
+                            "m.A".to_owned() //TODO: func.qualified_name(self.i_s.db),
+                        )),
+                    );
+                    node_ref.add_typing_issue(
+                        self.i_s.db,
+                        IssueType::Note(
+                            "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
+                        ),
+                    );
+                })
             }
             PointType::FileReference => {
                 todo!();
-                let file = self.i_s.database.loaded_python_file(point.file_index());
+                let file = self.i_s.db.loaded_python_file(point.file_index());
                 TypeNameLookup::Module(file)
             }
             PointType::Unknown => TypeNameLookup::Invalid,
@@ -1197,12 +1189,12 @@ fn check_type_name<'db>(
     // It's important to check that it's a name. Otherwise it redirects to some random place.
     if point.calculated() {
         if point.type_() == PointType::Redirect {
-            let new = point.as_redirected_node_ref(i_s.database);
+            let new = point.as_redirected_node_ref(i_s.db);
             if new.maybe_name().is_some() {
                 return check_type_name(i_s, new, on_invalid_function);
             }
         } else if point.type_() == PointType::FileReference {
-            let file = i_s.database.loaded_python_file(point.file_index());
+            let file = i_s.db.loaded_python_file(point.file_index());
             return TypeNameLookup::Module(file);
         }
 

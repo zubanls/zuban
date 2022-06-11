@@ -74,7 +74,7 @@ pub trait ValueName<'db>: Name<'db> {
 }
 
 pub struct TreeName<'db, F: File, N> {
-    database: &'db Database,
+    db: &'db Database,
     file: &'db F,
     ast_name: N,
 }
@@ -89,12 +89,8 @@ impl<'db> fmt::Debug for TreeName<'db, PythonFile, ASTName<'db>> {
 }
 
 impl<'db, F: File, N> TreeName<'db, F, N> {
-    pub fn new(database: &'db Database, file: &'db F, ast_name: N) -> Self {
-        Self {
-            database,
-            ast_name,
-            file,
-        }
+    pub fn new(db: &'db Database, file: &'db F, ast_name: N) -> Self {
+        Self { db, ast_name, file }
     }
 }
 
@@ -104,7 +100,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 
     fn file_path(&self) -> &str {
-        self.database.file_path(self.file.file_index())
+        self.db.file_path(self.file.file_index())
     }
 
     fn start_position(&self) -> TreePosition<'db> {
@@ -139,7 +135,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     */
 
     fn infer(&self) -> Inferred<'db> {
-        let mut i_s = InferenceState::new(self.database);
+        let mut i_s = InferenceState::new(self.db);
         self.file.inference(&mut i_s).infer_name(self.ast_name)
     }
 
@@ -149,13 +145,13 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
 }
 
 pub struct WithValueName<'db, 'a, 'b> {
-    database: &'db Database,
+    db: &'db Database,
     value: &'b dyn Value<'db, 'a>,
 }
 
 impl<'db, 'a, 'b> WithValueName<'db, 'a, 'b> {
-    pub fn new(database: &'db Database, value: &'b dyn Value<'db, 'a>) -> Self {
-        Self { database, value }
+    pub fn new(db: &'db Database, value: &'b dyn Value<'db, 'a>) -> Self {
+        Self { db, value }
     }
 }
 

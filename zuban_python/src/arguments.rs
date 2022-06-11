@@ -104,8 +104,8 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         }
     }
 
-    pub fn from_execution(database: &'db Database, execution: &'a Execution) -> Self {
-        let f = database.loaded_python_file(execution.argument_node.file);
+    pub fn from_execution(db: &'db Database, execution: &'a Execution) -> Self {
+        let f = db.loaded_python_file(execution.argument_node.file);
         let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
         Self::from_primary(f, primary, execution.in_.as_deref(), None)
     }

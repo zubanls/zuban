@@ -195,9 +195,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
-            Self::TypeWithDbType(g) => g.as_type_string(i_s.database, None, style),
-            Self::Tuple(c) => c.as_type_string(i_s.database, style),
-            Self::Callable(c) => c.as_type_string(i_s.database, style),
+            Self::TypeWithDbType(g) => g.as_type_string(i_s.db, None, style),
+            Self::Tuple(c) => c.as_type_string(i_s.db, style),
+            Self::Callable(c) => c.as_type_string(i_s.db, style),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
@@ -210,7 +210,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.mro(i_s),
             _ => MroIterator {
-                database: i_s.database,
+                db: i_s.db,
                 generics: None,
                 class: Some(*self),
                 iterator: [].iter(),
@@ -393,7 +393,7 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        let database = i_s.database;
+                        let database = i_s.db;
                         let mut inference = self.reference.file.inference(&mut i_s);
                         let base = TypeComputation::new_base_class_calculation(
                             &mut inference,
@@ -426,12 +426,12 @@ impl<'db, 'a> Class<'db, 'a> {
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
                                     DbType::Class(link) => {
-                                        let r = NodeRef::from_link(i_s.database, *link);
+                                        let r = NodeRef::from_link(i_s.db, *link);
                                         Some(Self::from_position(r, Generics::None, None).unwrap())
                                     }
                                     DbType::GenericClass(link, generics) => Some(
                                         Class::from_position(
-                                            NodeRef::from_link(i_s.database, *link),
+                                            NodeRef::from_link(i_s.db, *link),
                                             Generics::new_list(generics),
                                             None,
                                         )
@@ -488,7 +488,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
         if let Some(slice_type) = generic_args {
             if !had_generic_or_protocol_issue {
-                Self::check_generic_or_protocol_length(i_s.database, &mut type_vars, slice_type)
+                Self::check_generic_or_protocol_length(i_s.db, &mut type_vars, slice_type)
             }
         }
         if type_vars_were_changed {
@@ -579,7 +579,7 @@ impl<'db, 'a> Class<'db, 'a> {
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
         MroIterator {
-            database: i_s.database,
+            db: i_s.db,
             generics: Some(self.generics),
             class: Some(ClassLike::Class(*self)),
             mro_index: 0,
@@ -591,7 +591,7 @@ impl<'db, 'a> Class<'db, 'a> {
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         let mut result = match style {
             FormatStyle::Short => self.name().to_owned(),
-            FormatStyle::Qualified => self.qualified_name(i_s.database),
+            FormatStyle::Qualified => self.qualified_name(i_s.db),
         };
         let type_var_count = self.class_infos(i_s).type_vars.len();
         if type_var_count > 0 {
@@ -730,7 +730,7 @@ impl<'db> BasesIterator<'db> {
 }
 
 pub struct MroIterator<'db, 'a> {
-    database: &'db Database,
+    db: &'db Database,
     generics: Option<Generics<'db, 'a>>,
     class: Option<ClassLike<'db, 'a>>,
     iterator: std::slice::Iter<'db, DbType>,
@@ -754,7 +754,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                 match c {
                     DbType::Class(c) => ClassLike::Class(
                         Class::from_position(
-                            NodeRef::from_link(self.database, *c),
+                            NodeRef::from_link(self.db, *c),
                             self.generics.unwrap(),
                             None,
                         )
@@ -762,7 +762,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
                     ),
                     DbType::GenericClass(c, generics) => ClassLike::Class(
                         Class::from_position(
-                            NodeRef::from_link(self.database, *c),
+                            NodeRef::from_link(self.db, *c),
                             self.generics.unwrap(),
                             Some(generics),
                         )
@@ -775,7 +775,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             r
         } else if !self.returned_object {
             self.returned_object = true;
-            Class::from_position(self.database.python_state.object(), Generics::None, None)
+            Class::from_position(self.db.python_state.object(), Generics::None, None)
                 .map(|c| (MroIndex(self.mro_index), ClassLike::Class(c)))
         } else {
             None

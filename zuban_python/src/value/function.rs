@@ -44,11 +44,11 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn from_execution(
-        database: &'db Database,
+        db: &'db Database,
         execution: &Execution,
         class: Option<Class<'db, 'a>>,
     ) -> Self {
-        let f_func = database.loaded_python_file(execution.function.file);
+        let f_func = db.loaded_python_file(execution.function.file);
         Function::new(
             NodeRef {
                 file: f_func,
@@ -97,8 +97,8 @@ impl<'db, 'a> Function<'db, 'a> {
                 if func_node.index() == exec.function.node_index {
                     // TODO this could be an instance as well
                     // TODO in general check if this code still makes sense
-                    temporary_args = SimpleArguments::from_execution(i_s.database, exec);
-                    temporary_func = Function::from_execution(i_s.database, exec, None);
+                    temporary_args = SimpleArguments::from_execution(i_s.db, exec);
+                    temporary_func = Function::from_execution(i_s.db, exec, None);
                     break (&temporary_args as &dyn Arguments, &temporary_func);
                 }
                 execution = exec.in_.as_deref();
@@ -354,7 +354,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
+            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         Inferred::new_unknown()
     }
 
@@ -583,7 +583,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
-            let function = Function::new(NodeRef::from_link(i_s.database, *link), self.class);
+            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let has_generics = class
                 .map(|class| !matches!(class.generics(), Generics::None))
                 .unwrap_or(false);
@@ -681,7 +681,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.database, IssueType::OnlyClassTypeApplication);
+            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         todo!("Please write a test that checks this");
         Inferred::new_unknown()
     }

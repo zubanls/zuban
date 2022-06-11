@@ -13,20 +13,20 @@ use crate::inferred::Inferred;
 impl<'db> fmt::Debug for Module<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Module")
-            .field("file", &self.file.file_path(self.database))
+            .field("file", &self.file.file_path(self.db))
             .finish()
     }
 }
 
 #[derive(Copy, Clone)]
 pub struct Module<'db> {
-    database: &'db Database,
+    db: &'db Database,
     pub file: &'db PythonFile,
 }
 
 impl<'db> Module<'db> {
-    pub fn new(database: &'db Database, file: &'db PythonFile) -> Self {
-        Self { database, file }
+    pub fn new(db: &'db Database, file: &'db PythonFile) -> Self {
+        Self { db, file }
     }
 
     pub fn sub_module(&self, db: &'db Database, name: &str) -> Option<FileIndex> {
@@ -44,17 +44,14 @@ impl<'db> Value<'db, '_> for Module<'db> {
 
     fn name(&self) -> &'db str {
         // TODO this is not correct...
-        let (dir, mut name) = self
-            .database
-            .vfs
-            .dir_and_name(self.file.file_path(self.database));
+        let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
         if name.ends_with(".py") {
             name = name.trim_end_matches(".py");
         } else {
             name = name.trim_end_matches(".pyi");
         }
         if name == "__init__" {
-            self.database.vfs.dir_and_name(dir.unwrap()).1
+            self.db.vfs.dir_and_name(dir.unwrap()).1
         } else {
             name
         }
@@ -83,11 +80,10 @@ impl<'db> Value<'db, '_> for Module<'db> {
                 )
             })
             .unwrap_or_else(|| {
-                self.sub_module(i_s.database, name)
+                self.sub_module(i_s.db, name)
                     .map(|file_index| {
                         // TODO this should probably move to the sub_module
-                        i_s.database
-                            .add_invalidates(file_index, self.file.file_index());
+                        i_s.db.add_invalidates(file_index, self.file.file_index());
                         LookupResult::FileReference(file_index)
                     })
                     .unwrap_or_else(|| LookupResult::None)
@@ -101,7 +97,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.node_reference()
-            .add_typing_issue(i_s.database, IssueType::NotCallable("Module".to_owned()));
+            .add_typing_issue(i_s.db, IssueType::NotCallable("Module".to_owned()));
         Inferred::new_unknown()
     }
 }
