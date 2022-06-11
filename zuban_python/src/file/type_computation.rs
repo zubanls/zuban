@@ -262,7 +262,7 @@ where
 
         let specific = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
-                i.save_redirect(self.inference.file, expr.index());
+                debug_assert!(self.inference.file.points.get(expr.index()).calculated());
                 Specific::AnnotationClassInstance
             }
             TypeContent::DbType(d) => {
@@ -347,13 +347,21 @@ where
         expr: Expression<'db>,
         generic_or_protocol_index: Option<TypeVarIndex>,
     ) -> TypeContent<'db> {
-        match expr.unpack() {
+        let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.compute_type_expression_part(n, generic_or_protocol_index)
             }
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
+        };
+        if !self.inference.file.points.get(expr.index()).calculated() {
+            if let TypeContent::ClassWithoutTypeVar(inferred) = &type_content {
+                inferred
+                    .clone()
+                    .save_redirect(self.inference.file, expr.index());
+            }
         }
+        type_content
     }
 
     fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'db>) -> DbType {
@@ -995,6 +1003,33 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Type::from_db_type(self.i_s.db, db_type)
         } else {
             unreachable!()
+        }
+    }
+
+    pub fn use_annotation_expression_or_generic_type(
+        &mut self,
+        expression: Expression<'db>,
+    ) -> Type<'db, 'db> {
+        let point = self.file.points.get(expression.index());
+        if !point.calculated() {
+            todo!("{expression:?}")
+        }
+
+        match point.type_() {
+            PointType::Redirect => {
+                let inferred = self.check_point_cache(expression.index()).unwrap();
+                Type::ClassLike(ClassLike::Class(inferred.maybe_class(self.i_s).unwrap()))
+            }
+            PointType::Complex => {
+                if let ComplexPoint::TypeInstance(t) =
+                    self.file.complex_points.get(point.complex_index())
+                {
+                    Type::from_db_type(self.i_s.db, t)
+                } else {
+                    todo!()
+                }
+            }
+            _ => todo!("{point:?}"),
         }
     }
 

@@ -177,27 +177,6 @@ impl<'db> Inferred<'db> {
         )
     }
 
-    pub fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| {
-                v.as_class_like()
-                    .map(Type::ClassLike)
-                    .or_else(|| v.is_none().then(|| Type::None))
-                    .or_else(|| v.is_any().then(|| Type::Any))
-                    .unwrap_or_else(|| {
-                        debug!("Generic option not resolvable: {}", v.description(i_s));
-                        Type::Any
-                    })
-            },
-            &|i_s, g1, g2| g1.union(i_s, g2),
-            &mut |i_s| {
-                debug!("Generic option is invalid: {}", self.description(i_s));
-                Type::Any
-            },
-        )
-    }
-
     pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,

@@ -216,16 +216,18 @@ impl<'db> GenericsIterator<'db, '_> {
     ) -> Option<T> {
         match self {
             Self::Expression(file, expr) => {
-                let inferred = file.inference(i_s).infer_expression(*expr);
-                let g = inferred.as_type(i_s);
+                let g = file
+                    .inference(i_s)
+                    .use_annotation_expression_or_generic_type(*expr);
                 let result = callable(i_s, g);
                 *self = Self::None;
                 Some(result)
             }
             Self::SliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    let inferred = file.inference(i_s).infer_expression(s.expression());
-                    let g = inferred.as_type(i_s);
+                    let g = file
+                        .inference(i_s)
+                        .use_annotation_expression_or_generic_type(s.expression());
                     Some(callable(i_s, g))
                 } else {
                     None
