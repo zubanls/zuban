@@ -125,17 +125,23 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
                     if let LookupResult::GotoName(_, init) = cls.lookup_internal(i_s, "__init__") {
-                        if let Type::ClassLike(func_cls) = init.class_as_type(i_s) {
+                        if let Type::ClassLike(ClassLike::FunctionType(f)) = init.class_as_type(i_s)
+                        {
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
-                            dbg!(c.result_generics(), cls);
                             return c.result_generics().matches(
                                 i_s,
                                 matcher.as_deref_mut(),
                                 Generics::Class(cls),
                                 variance,
                                 None,
-                            ) && self.check_match(i_s, matcher, &func_cls, variance);
+                            ) && c.param_generics().matches(
+                                i_s,
+                                matcher,
+                                Generics::FunctionParams(&f),
+                                variance,
+                                None,
+                            );
                         }
                     }
                     return false;
