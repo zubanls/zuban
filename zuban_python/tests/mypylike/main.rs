@@ -6,10 +6,11 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
-const USE_MYPY_TEST_FILES: [&str; 3] = [
+const USE_MYPY_TEST_FILES: [&str; 4] = [
     "fine-grained.test",
     "check-generic-alias.test",
     "check-generics.test",
+    "semanal-errors.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
