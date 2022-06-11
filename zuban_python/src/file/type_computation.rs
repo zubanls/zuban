@@ -503,20 +503,15 @@ where
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> TypeContent<'db> {
-        fn found_simple_generic(file: &PythonFile, primary_index: NodeIndex) -> TypeContent {
-            TypeContent::ClassWithoutTypeVar(Inferred::new_unsaved_specific(
-                Specific::SimpleGeneric,
-            ))
-        }
         if matches!(class.generics(), Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
             let mut given_count = 1;
             let result = match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     match self.compute_type(s.named_expr.expression(), None) {
-                        TypeContent::ClassWithoutTypeVar(_) => {
-                            found_simple_generic(self.inference.file, slice_type.primary_index)
-                        }
+                        TypeContent::ClassWithoutTypeVar(_) => TypeContent::ClassWithoutTypeVar(
+                            Inferred::new_unsaved_specific(Specific::SimpleGeneric),
+                        ),
                         TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
                             GenericsList::new_generics(Box::new([d])),
@@ -545,7 +540,9 @@ where
                         given_count += 1;
                     }
                     if generics.is_empty() {
-                        found_simple_generic(self.inference.file, slice_type.primary_index)
+                        TypeContent::ClassWithoutTypeVar(Inferred::new_unsaved_specific(
+                            Specific::SimpleGeneric,
+                        ))
                     } else {
                         TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
