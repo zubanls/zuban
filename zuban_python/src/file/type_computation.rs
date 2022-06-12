@@ -15,7 +15,7 @@ use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent, SliceTypeIterat
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike, Module, Value};
+use crate::value::{Class, ClassLike, Function, Module, Value};
 
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
@@ -49,7 +49,7 @@ enum TypeNameLookup<'db> {
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType<'db>),
-    InvalidFunction,
+    InvalidFunction(Function<'db, 'db>),
     InvalidVariable,
     Unknown,
 }
@@ -255,13 +255,13 @@ where
         );
     }
 
-    fn add_function_issue(&self, node_ref: NodeRef<'db>) {
+    fn add_function_issue(&self, node_ref: NodeRef<'db>, func: Function<'db, 'db>) {
         //let node_ref = NodeRef::new(self.inference.file, name.index());
         node_ref.add_typing_issue(
             self.inference.i_s.db,
             IssueType::InvalidType(format!(
                 "Function {:?} is not valid as a type",
-                "m.A".to_owned() //TODO: func.qualified_name(self.i_s.db),
+                func.qualified_name(self.inference.i_s.db),
             )),
         );
         node_ref.add_typing_issue(
@@ -872,8 +872,8 @@ where
                 }
                 TypeContent::TypeAlias(alias)
             }
-            TypeNameLookup::InvalidFunction => {
-                self.add_function_issue(NodeRef::new(self.inference.file, name.index()));
+            TypeNameLookup::InvalidFunction(func) => {
+                self.add_function_issue(NodeRef::new(self.inference.file, name.index()), func);
                 TypeContent::DbType(DbType::Any)
             }
             TypeNameLookup::InvalidVariable => TypeContent::InvalidVariable,
@@ -1311,7 +1311,10 @@ fn check_type_name<'db>(
                     .cache_type_assignment(assignment)
             }
         }
-        TypeLike::Function => TypeNameLookup::InvalidFunction,
+        TypeLike::Function(f) => TypeNameLookup::InvalidFunction(Function::new(
+            NodeRef::new(name_node_ref.file, f.index()),
+            None,
+        )),
         TypeLike::Import => {
             if point.calculated() {
                 // When an import appears, this means that there's no redirect and the import leads
