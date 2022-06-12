@@ -72,9 +72,11 @@ testWrongNumberOfArguments
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 testStubFixupIssues
 testDunderCallAddition
+
 # check-generic-alias test stuff
 testGenericAliasImportRe
 testGenericAliasCollectionsABCReveal
+
 # check-generics
 testGenericMethodReturnType
 testGenericMethodArgument
@@ -127,3 +129,6 @@ testGenericClassAttrUnboundOn*
 testGenericClassPropertyBound
 testGenericFunctionMemberExpand
 testGenericJoin*
+
+# semanal-errors
+testInvalidNumberOfGenericArgsInTypeDecl
