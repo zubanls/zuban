@@ -40,7 +40,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }
                             SimpleStmtContent::StarExpressions(star_exprs) => {
                                 let inf = self.infer_star_expressions(star_exprs);
-                                inf.class_as_type(self.i_s); // TODO why is this necessary???
                             }
                             SimpleStmtContent::ReturnStmt(return_stmt) => {
                                 self.calc_return_stmt_diagnostics(func, return_stmt)
