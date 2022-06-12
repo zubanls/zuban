@@ -242,7 +242,8 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         } else {
             path
         };
-        for (line_nr, type_, comment) in ErrorCommentsOnCode(code.split("\n").enumerate()) {
+        let lines: Box<_> = code.split("\n").collect();
+        for (line_nr, type_, comment) in ErrorCommentsOnCode(&lines, lines.iter().enumerate()) {
             for comment in comment.split(" # E: ") {
                 wanted.push(format!("{p}:{line_nr}: {type_}: {comment}",))
             }
@@ -289,19 +290,33 @@ fn replace_unions(line: &mut String) {
     }
 }
 
-struct ErrorCommentsOnCode<'a>(std::iter::Enumerate<std::str::Split<'a, &'a str>>);
+struct ErrorCommentsOnCode<'a>(
+    &'a [&'a str],
+    std::iter::Enumerate<std::slice::Iter<'a, &'a str>>,
+);
 
 impl Iterator for ErrorCommentsOnCode<'_> {
     type Item = (usize, &'static str, String);
     fn next(&mut self) -> Option<Self::Item> {
-        for (i, line) in &mut self.0 {
-            if let Some(pos) = line.find("# E: ") {
+        for (i, line) in &mut self.1 {
+            let was_exception = line.find("# E: ");
+            if let Some(pos) = was_exception.or_else(|| line.find("# N: ")) {
+                let mut backslashes = 0;
+                for i in (0..i).rev() {
+                    if !self.0[i].ends_with('\\') {
+                        break;
+                    }
+                    backslashes += 1;
+                }
                 let out = cleanup_mypy_issues(&line[pos + 5..]);
-                return Some((i + 1, "error", out));
-            }
-            if let Some(pos) = line.find("# N: ") {
-                let out = cleanup_mypy_issues(&line[pos + 5..]);
-                return Some((i + 1, "note", out));
+                return Some((
+                    i + 1 - backslashes,
+                    match was_exception {
+                        Some(_) => "error",
+                        None => "note",
+                    },
+                    out,
+                ));
             }
         }
         None
