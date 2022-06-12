@@ -127,7 +127,11 @@ impl File for PythonFile {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
-        self.inference(&mut i_s).calculate_diagnostics();
+        if !self.is_sub_file {
+            // The main file is responsible for calculating diagnostics of type comments,
+            // annotation strings, etc.
+            self.inference(&mut i_s).calculate_diagnostics();
+        }
         let mut vec: Vec<_> = unsafe {
             self.issues
                 .iter()
@@ -165,6 +169,7 @@ pub struct PythonFile {
     pub star_imports: Vec<FileIndex>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
+    pub(crate) is_sub_file: bool,
 
     newline_indices: NewlineIndices,
 }
@@ -191,6 +196,7 @@ impl<'db> PythonFile {
             issues: Default::default(),
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
+            is_sub_file: false,
             package_dir,
         }
     }
@@ -248,6 +254,7 @@ impl<'db> PythonFile {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
         file.star_imports.push(self.file_index());
+        file.is_sub_file = true;
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(file);
         self.sub_files.borrow_mut().insert(start, f.file_index());

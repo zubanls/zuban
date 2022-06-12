@@ -39,7 +39,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 self.cache_assignment_nodes(assignment);
                             }
                             SimpleStmtContent::StarExpressions(star_exprs) => {
-                                let inf = self.infer_star_expressions(star_exprs);
+                                self.infer_star_expressions(star_exprs);
                             }
                             SimpleStmtContent::ReturnStmt(return_stmt) => {
                                 self.calc_return_stmt_diagnostics(func, return_stmt)
