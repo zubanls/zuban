@@ -494,7 +494,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let s = &suffix[start..];
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
-                        let (r, type_) = self.compute_type_comment(start as CodeIndex, s);
+                        let (r, type_) =
+                            self.compute_type_comment(assignment.end() + start as CodeIndex, s);
                         type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             node_ref.add_typing_issue(
                                 i_s.db,
