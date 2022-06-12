@@ -1155,13 +1155,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub(super) fn compute_type_comment(
         &mut self,
         start: CodeIndex,
-        string: String,
+        s: &str,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
         let mut on_type_var = |i_s: &mut InferenceState, type_var, _| {
             type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
         };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
-        comp.cache_type_comment(start, string)
+        comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
