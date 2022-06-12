@@ -40,6 +40,7 @@ enum TypeContent<'db> {
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType<'db>),
+    InvalidVariable,
 }
 
 enum TypeNameLookup<'db> {
@@ -49,6 +50,7 @@ enum TypeNameLookup<'db> {
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType<'db>),
     InvalidFunction,
+    InvalidVariable,
     Unknown,
 }
 
@@ -87,22 +89,24 @@ macro_rules! compute_type_application {
 
 impl<'db> TypeContent<'db> {
     fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        TypeContent::DbType(match self {
-            TypeContent::ClassWithoutTypeVar(inf) => todo!(),
-            TypeContent::DbType(t) => t.union(match other {
-                TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
-                TypeContent::DbType(t) => t,
-                TypeContent::Module(m) => todo!(),
-                TypeContent::TypeAlias(m) => todo!(),
-                TypeContent::SpecialType(m) => todo!(),
+        Self::DbType(match self {
+            Self::ClassWithoutTypeVar(inf) => todo!(),
+            Self::DbType(t) => t.union(match other {
+                Self::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
+                Self::DbType(t) => t,
+                Self::Module(m) => todo!(),
+                Self::TypeAlias(m) => todo!(),
+                Self::SpecialType(m) => todo!(),
+                Self::InvalidVariable => return Self::InvalidVariable,
             }),
-            TypeContent::Module(m) => todo!(),
-            TypeContent::TypeAlias(m) => todo!(),
-            TypeContent::SpecialType(s) => match s {
+            Self::Module(m) => todo!(),
+            Self::TypeAlias(m) => todo!(),
+            Self::SpecialType(s) => match s {
                 // `Any | something` always is Any
                 SpecialType::Any => DbType::Any,
                 _ => todo!("{s:?}"),
             },
+            Self::InvalidVariable => return Self::InvalidVariable,
         })
     }
 }
@@ -324,6 +328,25 @@ where
                     .save_redirect(self.inference.file, annotation_index);
                 return;
             }
+            TypeContent::InvalidVariable => {
+                let node_ref = NodeRef::new(self.inference.file, expr.index());
+                node_ref.add_typing_issue(
+                    self.inference.i_s.db,
+                    IssueType::InvalidType(format!(
+                        "Variable {:?} is not valid as a type",
+                        "__main__.x".to_owned() //TODO: Use the variable name
+                    )),
+                );
+                node_ref.add_typing_issue(
+                    self.inference.i_s.db,
+                    IssueType::Note(
+                        "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
+                    ),
+                );
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
+                    .save_redirect(self.inference.file, annotation_index);
+                return;
+            }
         };
         self.inference.file.points.set(
             annotation_index,
@@ -347,6 +370,9 @@ where
                 }),
                 _ => todo!("{m:?}"),
             },
+            TypeContent::InvalidVariable => {
+                todo!()
+            }
         }
     }
 
@@ -477,6 +503,7 @@ where
                     },
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
+                    TypeContent::InvalidVariable => todo!(),
                 }
             }
             PrimaryContent::Execution(details) => {
@@ -522,6 +549,7 @@ where
                         SpecialType::GenericWithGenerics(_) => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                     },
+                    TypeContent::InvalidVariable => todo!(),
                 }
             }
         }
@@ -548,6 +576,7 @@ where
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
                         TypeContent::SpecialType(m) => todo!(),
+                        TypeContent::InvalidVariable => todo!(),
                     }
                 }
                 SliceTypeContent::Slice(slice) => todo!(),
@@ -813,9 +842,7 @@ where
                 None => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
-            _ => {
-                todo!("{atom:?}")
-            }
+            _ => TypeContent::InvalidVariable,
         }
     }
 
@@ -849,6 +876,7 @@ where
                 self.add_function_issue(NodeRef::new(self.inference.file, name.index()));
                 TypeContent::DbType(DbType::Any)
             }
+            TypeNameLookup::InvalidVariable => TypeContent::InvalidVariable,
             TypeNameLookup::Unknown => TypeContent::DbType(DbType::Any),
             TypeNameLookup::SpecialType(special) => {
                 if self.is_base_class_calculation
@@ -1124,6 +1152,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let t = comp.compute_type(expr, None);
                         if let TypeContent::ClassWithoutTypeVar(i) = t {
                             return TypeNameLookup::Class(i);
+                        } else if matches!(t, TypeContent::InvalidVariable) {
+                            return TypeNameLookup::InvalidVariable;
                         } else {
                             let node_ref = NodeRef::new(comp.inference.file, expr.index());
                             let db_type = Rc::new(comp.as_db_type(t, node_ref));
