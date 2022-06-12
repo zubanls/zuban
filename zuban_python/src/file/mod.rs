@@ -103,12 +103,12 @@ impl File for PythonFile {
         self.file_index.set(Some(index));
     }
 
-    fn node_start_position(&self, n: NodeIndex, offset: Option<CodeIndex>) -> TreePosition {
-        TreePosition::new(self, offset.unwrap_or(0) + self.tree.node_start_position(n))
+    fn node_start_position(&self, n: NodeIndex) -> TreePosition {
+        TreePosition::new(self, self.tree.node_start_position(n))
     }
 
-    fn node_end_position(&self, n: NodeIndex, offset: Option<CodeIndex>) -> TreePosition {
-        TreePosition::new(self, offset.unwrap_or(0) + self.tree.node_end_position(n))
+    fn node_end_position(&self, n: NodeIndex) -> TreePosition {
+        TreePosition::new(self, self.tree.node_end_position(n))
     }
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {

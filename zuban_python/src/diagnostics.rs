@@ -78,18 +78,19 @@ impl<'db> Diagnostic<'db> {
         }
     }
 
+    fn account_for_sub_file(&self, pos: TreePosition<'db>) -> TreePosition<'db> {
+        if let Some(s) = &self.in_sub_file {
+            pos.wrap_sub_file(self.file, s.offset)
+        } else {
+            pos
+        }
+    }
     fn start_position(&self) -> TreePosition<'db> {
-        self.node_file().node_start_position(
-            self.issue.node_index,
-            self.in_sub_file.as_ref().map(|s| s.offset),
-        )
+        self.account_for_sub_file(self.node_file().node_start_position(self.issue.node_index))
     }
 
     fn end_position(&self) -> TreePosition<'db> {
-        self.node_file().node_end_position(
-            self.issue.node_index,
-            self.in_sub_file.as_ref().map(|s| s.offset),
-        )
+        self.account_for_sub_file(self.node_file().node_end_position(self.issue.node_index))
     }
 
     fn node_file(&self) -> &'db PythonFile {

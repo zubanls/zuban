@@ -21,6 +21,13 @@ impl<'db> TreePosition<'db> {
         Self { file, position }
     }
 
+    pub(crate) fn wrap_sub_file(self, file: &'db dyn File, offset: CodeIndex) -> Self {
+        Self {
+            file,
+            position: self.position + offset,
+        }
+    }
+
     pub fn byte_position(&self) -> CodeIndex {
         self.position
     }
