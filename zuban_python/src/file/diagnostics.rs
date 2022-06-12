@@ -81,7 +81,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 StmtContent::ForStmt(for_stmt) => {}
                 StmtContent::TryStmt(try_stmt) => {}
-                StmtContent::WhileStmt(while_stmt) => {}
+                StmtContent::WhileStmt(while_stmt) => {
+                    let (condition, block, else_block) = while_stmt.unpack();
+                    self.infer_named_expression(condition);
+                    self.calc_block_diagnostics(block, class, func);
+                    if let Some(else_block) = else_block {
+                        self.calc_block_diagnostics(else_block.block(), class, func)
+                    }
+                }
                 StmtContent::WithStmt(with_stmt) => {}
                 StmtContent::MatchStmt(match_stmt) => {}
                 StmtContent::AsyncStmt(async_stmt) => {}
