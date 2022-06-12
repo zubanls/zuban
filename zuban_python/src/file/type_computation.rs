@@ -243,7 +243,7 @@ where
     fn add_module_issue(&self, file: &'db PythonFile, node_ref: NodeRef<'db>) {
         node_ref.add_typing_issue(
             self.inference.i_s.db,
-            IssueType::ValidType(format!(
+            IssueType::InvalidType(format!(
                 "Module {:?} is not valid as a type",
                 Module::new(self.inference.i_s.db, file).qualified_name(self.inference.i_s.db),
             )),
@@ -1132,7 +1132,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let node_ref = NodeRef::new(self.file, name.index());
                     node_ref.add_typing_issue(
                         self.i_s.db,
-                        IssueType::ValidType(format!(
+                        IssueType::InvalidType(format!(
                             "Function {:?} is not valid as a type",
                             "m.A".to_owned() //TODO: func.qualified_name(self.i_s.db),
                         )),

@@ -11,7 +11,7 @@ pub enum IssueType {
     AttributeError(String, String),
     NameError(String),
     ArgumentIssue(String),
-    ValidType(String),
+    InvalidType(String),
     IncompatibleReturn(String, String),
     IncompatibleAssignment(String, String),
     ModuleNotFound(String),
@@ -128,7 +128,7 @@ impl<'db> Diagnostic<'db> {
                     "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
                 )
             }
-            IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
+            IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone(),
             IssueType::TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
