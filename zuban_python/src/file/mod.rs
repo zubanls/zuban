@@ -103,12 +103,12 @@ impl File for PythonFile {
         self.file_index.set(Some(index));
     }
 
-    fn node_start_position(&self, n: NodeIndex) -> TreePosition {
-        TreePosition::new(self, self.tree.node_start_position(n))
+    fn node_start_position(&self, n: NodeIndex, offset: Option<CodeIndex>) -> TreePosition {
+        TreePosition::new(self, offset.unwrap_or(0) + self.tree.node_start_position(n))
     }
 
-    fn node_end_position(&self, n: NodeIndex) -> TreePosition {
-        TreePosition::new(self, self.tree.node_end_position(n))
+    fn node_end_position(&self, n: NodeIndex, offset: Option<CodeIndex>) -> TreePosition {
+        TreePosition::new(self, offset.unwrap_or(0) + self.tree.node_end_position(n))
     }
 
     fn line_column_to_byte(&self, line: usize, column: usize) -> CodeIndex {
@@ -135,9 +135,14 @@ impl File for PythonFile {
                 .map(|i| Diagnostic::new(db, self, i))
                 .collect()
         };
-        for file_index in self.sub_files.borrow().values() {
+        for (code_index, file_index) in self.sub_files.borrow().iter() {
             let file = db.loaded_python_file(*file_index);
-            vec.extend(file.diagnostics(db, config).into_vec().into_iter());
+            vec.extend(
+                file.diagnostics(db, config)
+                    .into_vec()
+                    .into_iter()
+                    .map(|d| d.wrap_subfile(self, *code_index)),
+            );
         }
         vec.sort_by_key(|diag| diag.issue.node_index);
         vec.into_boxed_slice()

@@ -1,4 +1,4 @@
-use parsa_python_ast::NodeIndex;
+use parsa_python_ast::{CodeIndex, NodeIndex};
 
 use crate::database::Database;
 use crate::file::PythonFile;
@@ -41,23 +41,62 @@ pub struct Issue {
     pub node_index: NodeIndex,
 }
 
+struct SubFileOffset<'db> {
+    file: &'db PythonFile,
+    offset: CodeIndex,
+}
+
 pub struct Diagnostic<'db> {
     db: &'db Database,
     file: &'db PythonFile,
-    pub(in crate) issue: &'db Issue,
+    in_sub_file: Option<SubFileOffset<'db>>,
+    pub(crate) issue: &'db Issue,
 }
 
 impl<'db> Diagnostic<'db> {
-    pub fn new(db: &'db Database, file: &'db PythonFile, issue: &'db Issue) -> Self {
-        Self { db, file, issue }
+    pub(crate) fn new(db: &'db Database, file: &'db PythonFile, issue: &'db Issue) -> Self {
+        Self {
+            db,
+            file,
+            issue,
+            in_sub_file: None,
+        }
+    }
+
+    pub(crate) fn wrap_subfile(self, file: &'db PythonFile, offset: CodeIndex) -> Self {
+        Self {
+            db: self.db,
+            file,
+            issue: self.issue,
+            in_sub_file: Some(match self.in_sub_file {
+                None => SubFileOffset {
+                    file: self.file,
+                    offset,
+                },
+                Some(f) => todo!(),
+            }),
+        }
     }
 
     fn start_position(&self) -> TreePosition<'db> {
-        self.file.node_start_position(self.issue.node_index)
+        self.node_file().node_start_position(
+            self.issue.node_index,
+            self.in_sub_file.as_ref().map(|s| s.offset),
+        )
     }
 
     fn end_position(&self) -> TreePosition<'db> {
-        self.file.node_end_position(self.issue.node_index)
+        self.node_file().node_end_position(
+            self.issue.node_index,
+            self.in_sub_file.as_ref().map(|s| s.offset),
+        )
+    }
+
+    fn node_file(&self) -> &'db PythonFile {
+        self.in_sub_file
+            .as_ref()
+            .map(|f| f.file)
+            .unwrap_or(self.file)
     }
 
     pub fn as_string(&self) -> String {
@@ -90,7 +129,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::ArgumentIssue(s) | IssueType::ValidType(s) => s.clone(),
             IssueType::TypeNotFound => {
-                let primary = NodeRef::new(self.file, self.issue.node_index);
+                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
             }
             IssueType::TypeArgumentIssue(class, expected, given) => {
@@ -138,7 +177,7 @@ impl<'db> Diagnostic<'db> {
                 "Need more than {actual} values to unpack ({expected} expected)"
             ),
             IssueType::InvalidBaseClass => {
-                let primary = NodeRef::new(self.file, self.issue.node_index);
+                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
             IssueType::EnsureSingleGenericOrProtocol =>
@@ -157,22 +196,22 @@ impl<'db> Diagnostic<'db> {
     }
 }
 
+impl std::fmt::Debug for Diagnostic<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", &self.as_string())
+    }
+}
+
 #[derive(Default)]
 pub struct DiagnosticConfig {
     pub ignore_missing_imports: bool,
 }
 
 impl DiagnosticConfig {
-    pub fn should_be_reported(&self, type_: &IssueType) -> bool {
+    pub(crate) fn should_be_reported(&self, type_: &IssueType) -> bool {
         match type_ {
             IssueType::ModuleNotFound(_) => !self.ignore_missing_imports,
             _ => true,
         }
-    }
-}
-
-impl std::fmt::Debug for Diagnostic<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.as_string())
     }
 }
