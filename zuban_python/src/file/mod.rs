@@ -488,14 +488,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
                 let mut right = self.infer_assignment_right_side(right_side);
-                if let Some(start) = suffix.find("# type: ") {
-                    let s = &suffix[start + "# type: ".len()..];
+                const TYPE: &str = "# type: ";
+                if let Some(start) = suffix.find(TYPE) {
+                    let start = start + TYPE.len();
+                    let s = &suffix[start..];
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
-                        let (r, type_) = self.compute_type_comment(
-                            assignment.end() + "# type: ".len() as CodeIndex,
-                            s.to_owned(),
-                        );
+                        let (r, type_) =
+                            self.compute_type_comment(start as CodeIndex, s.to_owned());
                         type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             node_ref.add_typing_issue(
                                 i_s.db,
