@@ -177,6 +177,9 @@ where
         string: String,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
         self.cache_code_string(start, string, |comp, expr| {
+            // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
+            // allows us to reuse the code for annotations completely and the nodes before the expr
+            // should really never be used by anything productive.
             let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
             comp.cache_annotation_internal(index, expr);
             (
