@@ -388,11 +388,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
 
         let (level, dotted_name) = imp.level_with_dotted_name();
-        let from_part_file_index = self.infer_import_dotted_name(
-            dotted_name.unwrap(),
-            (level > 0)
-                .then(|| find_ancestor(self.i_s.db, self.file, level).unwrap_or_else(|| todo!())),
-        );
+        let maybe_level_file = (level > 0)
+            .then(|| {
+                find_ancestor(self.i_s.db, self.file, level).or_else(|| {
+                    NodeRef::new(self.file, imp.index())
+                        .add_typing_issue(self.i_s.db, IssueType::NoParentModule);
+                    None
+                })
+            })
+            .flatten();
+        let from_part_file_index = match dotted_name {
+            Some(dotted_name) => self.infer_import_dotted_name(dotted_name, maybe_level_file),
+            None => maybe_level_file,
+        };
 
         match imp.unpack_targets() {
             ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier

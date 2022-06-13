@@ -16,6 +16,7 @@ pub(crate) enum IssueType {
     IncompatibleAssignment(String, String),
     Redefinition(usize),
     ModuleNotFound(String),
+    NoParentModule,
     TypeNotFound,
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
@@ -156,6 +157,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot find implementation or library stub for module named {s:?}\n\
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
             ),
+            IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable(s) => format!("{} not callable", s),
             IssueType::UnsupportedOperand(operand, left, right) => {
                 format!(
