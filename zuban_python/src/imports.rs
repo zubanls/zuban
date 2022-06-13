@@ -80,22 +80,12 @@ fn load_init_file(
     on_new: impl Fn(&str) -> String,
 ) -> Option<FileIndex> {
     for child in content.iter() {
-        match &child.type_ {
-            DirOrFile::File(file_index) => {
-                if child.name == "__init__.py" || child.name == "__init__.pyi" {
-                    if file_index.get().is_none() {
-                        db.load_file_from_workspace(
-                            content.clone(),
-                            on_new(&child.name),
-                            file_index,
-                        );
-                    }
-                    return file_index.get();
+        if let DirOrFile::File(file_index) = &child.type_ {
+            if child.name == "__init__.py" || child.name == "__init__.pyi" {
+                if file_index.get().is_none() {
+                    db.load_file_from_workspace(content.clone(), on_new(&child.name), file_index);
                 }
-            }
-            DirOrFile::Directory(_) => {}
-            DirOrFile::MissingEntry(_) => {
-                todo!()
+                return file_index.get();
             }
         }
     }

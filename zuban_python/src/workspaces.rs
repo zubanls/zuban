@@ -267,7 +267,7 @@ impl DirEntry {
                     if name == n.name {
                         return match rest {
                             Some(rest) => n.find_dir_content(vfs, rest),
-                            None => Some(files.clone()),
+                            None => Some(n.directory_entries().unwrap().clone()),
                         };
                     }
                 }
