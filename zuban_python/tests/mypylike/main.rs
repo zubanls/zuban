@@ -330,7 +330,7 @@ fn cleanup_mypy_issues(s: &str) -> String {
         // https://stackoverflow.com/questions/50498575/what-does-the-asterisk-in-the-output-of-reveal-type-mean
         s.replace("*", "")
     } else {
-        s.into_owned()
+        s.replace("tmp/", "")
     })
 }
 
