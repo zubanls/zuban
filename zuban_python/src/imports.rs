@@ -44,28 +44,14 @@ pub fn python_import(
         match &directory.type_ {
             DirOrFile::Directory(content) => {
                 if directory.name == name {
-                    for child in content.iter() {
-                        match &child.type_ {
-                            DirOrFile::File(file_index) => {
-                                if child.name == "__init__.py" || child.name == "__init__.pyi" {
-                                    if file_index.get().is_none() {
-                                        db.load_file_from_workspace(
-                                            content.clone(),
-                                            format!(
-                                                "{dir_path}{separator}{}{separator}{}",
-                                                directory.name, child.name
-                                            ),
-                                            file_index,
-                                        );
-                                    }
-                                    return file_index.get();
-                                }
-                            }
-                            DirOrFile::Directory(_) => {}
-                            DirOrFile::MissingEntry(_) => {
-                                todo!()
-                            }
-                        }
+                    let result = load_init_file(db, content, |child| {
+                        format!(
+                            "{dir_path}{separator}{dir_name}{separator}{child}",
+                            dir_name = directory.name
+                        )
+                    });
+                    if result.is_some() {
+                        return result;
                     }
                 }
             }
@@ -88,10 +74,37 @@ pub fn python_import(
     None
 }
 
+fn load_init_file(
+    db: &Database,
+    content: &Rc<DirContent>,
+    on_new: impl Fn(&str) -> String,
+) -> Option<FileIndex> {
+    for child in content.iter() {
+        match &child.type_ {
+            DirOrFile::File(file_index) => {
+                if child.name == "__init__.py" || child.name == "__init__.pyi" {
+                    if file_index.get().is_none() {
+                        db.load_file_from_workspace(
+                            content.clone(),
+                            on_new(&child.name),
+                            file_index,
+                        );
+                    }
+                    return file_index.get();
+                }
+            }
+            DirOrFile::Directory(_) => {}
+            DirOrFile::MissingEntry(_) => {
+                todo!()
+            }
+        }
+    }
+    None
+}
+
 pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<FileIndex> {
     let path = file.file_path(db);
-    let dir_content = db.workspaces.find_ancestor(db.vfs.as_ref(), path, level);
-    //dir_content.search("__init__.py").or_else(|| dir_content.search("__init__.py"));
-    //dir_content
-    todo!()
+    db.workspaces
+        .find_ancestor(db.vfs.as_ref(), path, level)
+        .and_then(|dir_content| load_init_file(db, &dir_content, |_| todo!()))
 }
