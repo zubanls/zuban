@@ -125,7 +125,7 @@ impl<'db> NodeRef<'db> {
         self.file.tree.code_of_index(self.node_index)
     }
 
-    pub fn add_typing_issue(&self, db: &Database, issue_type: IssueType) {
+    pub(crate) fn add_typing_issue(&self, db: &Database, issue_type: IssueType) {
         let issue = Issue {
             type_: issue_type,
             node_index: self.node_index,

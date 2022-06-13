@@ -7,7 +7,7 @@ use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
-pub enum IssueType {
+pub(crate) enum IssueType {
     AttributeError(String, String),
     NameError(String),
     ArgumentIssue(String),
@@ -38,7 +38,7 @@ pub enum IssueType {
 
 #[derive(Debug)]
 pub struct Issue {
-    pub type_: IssueType,
+    pub(crate) type_: IssueType,
     pub node_index: NodeIndex,
 }
 

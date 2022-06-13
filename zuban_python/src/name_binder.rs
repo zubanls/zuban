@@ -16,7 +16,7 @@ use parsa_python_ast::{
 };
 
 #[derive(PartialEq, Debug)]
-pub enum NameBinderType {
+pub(crate) enum NameBinderType {
     Global,
     Function,
     Class,
@@ -33,7 +33,7 @@ enum Unresolved<'db> {
     Name(Name<'db>),
 }
 
-pub struct NameBinder<'db, 'a> {
+pub(crate) struct NameBinder<'db, 'a> {
     is_mypy_compatible: bool,
     tree: &'db Tree,
     type_: NameBinderType,
@@ -80,7 +80,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    pub fn with_global_binder(
+    pub(crate) fn with_global_binder(
         is_mypy_compatible: bool,
         tree: &'db Tree,
         symbol_table: &'a SymbolTable,
@@ -110,7 +110,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    pub fn with_nested(
+    pub(crate) fn with_nested(
         &mut self,
         type_: NameBinderType,
         symbol_table: &'_ SymbolTable,
@@ -138,7 +138,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.unresolved_nodes.extend(unresolved_nodes);
     }
 
-    pub fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
+    pub(crate) fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
         if self.tree.node_has_type_ignore_comment(node_index) {
             debug!("New ignored name binder issue: {type_:?}");
             return;
@@ -187,7 +187,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
     }
 
-    pub fn index_file(&mut self, file_node: File<'db>) {
+    pub(crate) fn index_file(&mut self, file_node: File<'db>) {
         self.index_stmts(file_node.iter_stmts(), true, true);
     }
 
@@ -810,7 +810,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         None
     }
 
-    pub fn index_function_body(&mut self, func: FunctionDef<'db>) {
+    pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>) {
         // Function name was indexed already.
         let (_, params, _, block) = func.unpack();
 
