@@ -138,3 +138,6 @@ testLocalVarRedefinition
 testClassVarRedefinition
 testMultipleClassDefinitions
 testMultipleMixedDefinitions
+# syntax not yet supported
+testBreakOutsideLoop
+testContinueOutsideLoop

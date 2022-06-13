@@ -32,6 +32,8 @@ pub(crate) enum IssueType {
     DuplicateTypeVar,
     IncompleteGenericOrProtocolTypeVars,
 
+    StmtOutsideFunction(&'static str),
+
     MethodWithoutArguments,
 
     Note(String),
@@ -194,6 +196,9 @@ impl<'db> Diagnostic<'db> {
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
+
+            IssueType::StmtOutsideFunction(stmt) => format!("{stmt:?} outside function"),
+
             IssueType::Note(s) => {
                 type_ = "note";
                 s.clone()

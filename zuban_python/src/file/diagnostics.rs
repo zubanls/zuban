@@ -185,8 +185,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             .add_typing_issue(i_s.db, IssueType::IncompatibleReturn(t1, t2));
                     });
             }
-        } else {
-            todo!()
         }
     }
 
