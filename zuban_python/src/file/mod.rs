@@ -479,7 +479,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let infer_name = |file_index, name: Name<'db>| {
             let file = self.i_s.db.loaded_python_file(file_index);
             let module = Module::new(self.i_s.db, file);
-            module.sub_module(self.i_s.db, name.as_str())
+            let result = module.sub_module(self.i_s.db, name.as_str());
+            if result.is_none() {
+                let node_ref = NodeRef::new(self.file, name.index());
+                node_ref.add_typing_issue(
+                    self.i_s.db,
+                    IssueType::ModuleNotFound(format!(
+                        "{}.{}",
+                        module.name().to_owned(),
+                        name.as_str()
+                    )),
+                );
+            }
+            result
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
