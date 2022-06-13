@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::database::{Database, FileIndex};
+use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::workspaces::{DirContent, DirOrFile};
 
@@ -85,4 +86,12 @@ pub fn python_import(
         }
     }
     None
+}
+
+pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<FileIndex> {
+    let path = file.file_path(db);
+    let dir_content = db.workspaces.find_ancestor(db.vfs.as_ref(), path, level);
+    //dir_content.search("__init__.py").or_else(|| dir_content.search("__init__.py"));
+    //dir_content
+    todo!()
 }

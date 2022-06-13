@@ -18,7 +18,7 @@ use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
-use crate::imports::global_import;
+use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
@@ -388,8 +388,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
 
         let (level, dotted_name) = imp.level_with_dotted_name();
-        let from_part_file_index =
-            self.infer_import_dotted_name(dotted_name.unwrap(), (level > 0).then(|| todo!()));
+        let from_part_file_index = self.infer_import_dotted_name(
+            dotted_name.unwrap(),
+            (level > 0)
+                .then(|| find_ancestor(self.i_s.db, self.file, level).unwrap_or_else(|| todo!())),
+        );
 
         match imp.unpack_targets() {
             ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
