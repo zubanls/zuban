@@ -364,7 +364,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     );
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                    let file_index = self.infer_import_dotted_name(dotted_name);
+                    let file_index = self.infer_import_dotted_name(dotted_name, None);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
                     if let Some(file_index) = file_index {
                         let point = Point::new_file_reference(file_index, Locality::Todo);
@@ -388,19 +388,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
 
         let (level, dotted_name) = imp.level_with_dotted_name();
-        let from_part_file_index = if level > 0 {
-            todo!()
-        } else {
-            Some(self.infer_import_dotted_name(dotted_name.unwrap()))
-        };
+        let from_part_file_index =
+            self.infer_import_dotted_name(dotted_name.unwrap(), (level > 0).then(|| todo!()));
 
         match imp.unpack_targets() {
             ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
             ImportFromTargets::Iterator(targets) => {
                 // as names should have been calculated earlier
-                let import_file = from_part_file_index
-                    .unwrap()
-                    .map(|f| self.i_s.db.loaded_python_file(f));
+                let import_file = from_part_file_index.map(|f| self.i_s.db.loaded_python_file(f));
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
 
@@ -473,16 +468,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         file_index
     }
 
-    fn infer_import_dotted_name(&mut self, dotted: DottedName<'db>) -> Option<FileIndex> {
+    fn infer_import_dotted_name(
+        &mut self,
+        dotted: DottedName<'db>,
+        base: Option<FileIndex>,
+    ) -> Option<FileIndex> {
+        let infer_name = |file_index, name: Name<'db>| {
+            let file = self.i_s.db.loaded_python_file(file_index);
+            let module = Module::new(self.i_s.db, file);
+            module.sub_module(self.i_s.db, name.as_str())
+        };
         match dotted.unpack() {
-            DottedNameContent::Name(name) => self.global_import(name.as_str(), name.index(), None),
+            DottedNameContent::Name(name) => {
+                if let Some(base) = base {
+                    infer_name(base, name)
+                } else {
+                    self.global_import(name.as_str(), name.index(), None)
+                }
+            }
             DottedNameContent::DottedName(dotted_name, name) => self
-                .infer_import_dotted_name(dotted_name)
-                .and_then(|file_index| {
-                    let file = self.i_s.db.loaded_python_file(file_index);
-                    let module = Module::new(self.i_s.db, file);
-                    module.sub_module(self.i_s.db, name.as_str())
-                }),
+                .infer_import_dotted_name(dotted_name, base)
+                .and_then(|file_index| infer_name(file_index, name)),
         }
     }
 
