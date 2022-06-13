@@ -103,8 +103,16 @@ fn load_init_file(
 }
 
 pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<FileIndex> {
-    let path = file.file_path(db);
+    debug_assert!(level > 0);
+    let mut path = file.file_path(db);
+    for _ in 0..level {
+        if let (Some(dir), _) = db.vfs.dir_and_name(path) {
+            path = dir;
+        } else {
+            todo!()
+        }
+    }
     db.workspaces
-        .find_ancestor(db.vfs.as_ref(), path, level)
+        .find_dir_content(db.vfs.as_ref(), path)
         .and_then(|dir_content| load_init_file(db, &dir_content, |_| todo!()))
 }

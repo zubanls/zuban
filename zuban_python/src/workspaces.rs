@@ -57,25 +57,11 @@ impl Workspaces {
         self.0.last().unwrap()
     }
 
-    pub fn find_ancestor(
-        &self,
-        vfs: &dyn Vfs,
-        file_path: &str,
-        level: usize,
-    ) -> Option<Rc<DirContent>> {
-        debug_assert!(level > 0);
-        let mut path = file_path;
-        for _ in 0..level {
-            if let (Some(dir), _) = vfs.dir_and_name(file_path) {
-                path = dir;
-            } else {
-                todo!()
-            }
-        }
+    pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
             if path.starts_with(&workspace.root.name) {
-                let path = &file_path[workspace.root.name.len()..];
-                if let Some(content) = workspace.root.find_ancestor(vfs, path) {
+                let path = &path[workspace.root.name.len()..];
+                if let Some(content) = workspace.root.find_dir_content(vfs, path) {
                     return Some(content);
                 }
             }
@@ -273,14 +259,14 @@ impl DirEntry {
         }
     }
 
-    fn find_ancestor(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
+    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         let (name, rest) = vfs.split_off_folder(path);
         match &self.type_ {
             DirOrFile::Directory(files) => {
                 for n in files.0.borrow().iter() {
                     if name == n.name {
                         return match rest {
-                            Some(rest) => n.find_ancestor(vfs, rest),
+                            Some(rest) => n.find_dir_content(vfs, rest),
                             None => Some(files.clone()),
                         };
                     }
