@@ -498,7 +498,7 @@ where
                     TypeContent::DbType(t) => match t {
                         DbType::Class(c) => todo!(),
                         DbType::GenericClass(c, g) => todo!(),
-                        //DbType::Any => ComputedType::new(TypeContent::DbType(DbType::Any)),
+                        DbType::Any => TypeContent::DbType(DbType::Any),
                         _ => todo!("{primary:?} {t:?}"),
                     },
                     TypeContent::TypeAlias(m) => todo!(),
