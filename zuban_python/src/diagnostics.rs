@@ -14,6 +14,7 @@ pub enum IssueType {
     InvalidType(String),
     IncompatibleReturn(String, String),
     IncompatibleAssignment(String, String),
+    Redefinition(usize),
     ModuleNotFound(String),
     TypeNotFound,
     TypeArgumentIssue(String, usize, usize),
@@ -127,6 +128,10 @@ impl<'db> Diagnostic<'db> {
                 format!(
                     "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
                 )
+            }
+            IssueType::Redefinition(line) => {
+                let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
+                format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone(),
             IssueType::TypeNotFound => {
