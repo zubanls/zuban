@@ -1,6 +1,6 @@
 use parsa_python_ast::{CodeIndex, NodeIndex};
 
-use crate::database::Database;
+use crate::database::{Database, TypeVar};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::name::TreePosition;
@@ -30,7 +30,7 @@ pub(crate) enum IssueType {
     InvalidBaseClass,
     EnsureSingleGenericOrProtocol,
     DuplicateTypeVar,
-    UnboundTypeVar(String, String),
+    UnboundTypeVar(std::rc::Rc<TypeVar>),
     IncompleteGenericOrProtocolTypeVars,
 
     StmtOutsideFunction(&'static str),
@@ -196,11 +196,15 @@ impl<'db> Diagnostic<'db> {
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
 
-            IssueType::UnboundTypeVar(type_var_qualified, type_var) => format!(
-                "Type variable {type_var_qualified:?} is unbound\n\
-                 {path}:{line}: note: (Hint: Use \"Generic[{type_var}]\" or \"Protocol[{type_var}]\" base class to bind \"{type_var}\" inside a class)\n\
-                 {path}:{line}: note: (Hint: Use \"{type_var}\" in function signature to bind \"{type_var}\" inside a function)"
-            ),
+            IssueType::UnboundTypeVar(type_var) => {
+                let qualified = type_var.qualified_name(self.db);
+                let name = type_var.name(self.db);
+                format!(
+                    "Type variable {qualified:?} is unbound\n\
+                     {path}:{line}: note: (Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)\n\
+                     {path}:{line}: note: (Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)"
+                )
+            }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
 

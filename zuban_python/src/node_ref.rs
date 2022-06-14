@@ -10,6 +10,7 @@ use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::value::Module;
 
 #[derive(Clone, Copy)]
 pub struct NodeRef<'db> {
@@ -34,6 +35,10 @@ impl<'db> NodeRef<'db> {
             file,
             node_index: point.node_index,
         }
+    }
+
+    pub fn in_module(&self, db: &'db Database) -> Module<'db> {
+        Module::new(db, self.file)
     }
 
     pub fn add_to_node_index(&self, add: NodeIndex) -> Self {

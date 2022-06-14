@@ -965,6 +965,15 @@ impl TypeVar {
             .unwrap()
             .content()
     }
+
+    pub fn qualified_name(&self, db: &Database) -> String {
+        let node_ref = NodeRef::from_link(db, self.name_string);
+        format!(
+            "{}.{}",
+            node_ref.in_module(db).qualified_name(db),
+            node_ref.maybe_str().unwrap().content()
+        )
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]

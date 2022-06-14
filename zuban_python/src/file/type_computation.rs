@@ -126,16 +126,13 @@ pub(super) fn type_computation_for_variable_annotation(
     }
     if let Some((func, _)) = i_s.current_execution {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var, TypeVarType::Function);
+            let usage = type_vars.find(type_var.clone(), TypeVarType::Function);
             if usage.is_some() {
                 return usage;
             }
         }
     }
-    node_ref.add_typing_issue(
-        i_s.db,
-        IssueType::UnboundTypeVar("xxx".to_owned(), "xxx".to_owned()),
-    );
+    node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar(type_var));
     None
 }
 
