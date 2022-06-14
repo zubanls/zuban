@@ -141,3 +141,9 @@ testMultipleMixedDefinitions
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
+# parser shit
+testInvalidLvalues*
+testTwoStarExpressions*
+testStarExpressionRhs
+testStarExpressionInExp
+testInvalidDel*
