@@ -138,15 +138,21 @@ testLocalVarRedefinition
 testClassVarRedefinition
 testMultipleClassDefinitions
 testMultipleMixedDefinitions
+testMultipleMethodDefinition
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
+testInvalidGlobalDecl
+*NonlocalDecl*
+testNonlocalAndGlobalDecl
 # parser shit
 testInvalidLvalues*
 testTwoStarExpressions*
 testStarExpressionRhs
 testStarExpressionInExp
 testInvalidDel*
+# whatever
+testSuperOutsideClass
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
