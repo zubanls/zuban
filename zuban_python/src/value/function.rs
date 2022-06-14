@@ -177,21 +177,21 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut type_vars = TypeVarManager::default();
         let func_node = self.node();
         let mut inference = self.reference.file.inference(i_s);
-        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _| {
+        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
             if let Some(class) = self.class {
                 if let Some(usage) = class
                     .type_vars(i_s)
                     .find(type_var.clone(), TypeVarType::Class)
                 {
-                    return usage;
+                    return Some(usage);
                 }
             }
             let index = type_vars.add(type_var.clone());
-            TypeVarUsage {
+            Some(TypeVarUsage {
                 type_var,
                 index,
                 type_: TypeVarType::Function,
-            }
+            })
         };
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {

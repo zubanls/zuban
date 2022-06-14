@@ -546,9 +546,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                TypeComputation::new(self, &mut |i_s, type_var, _| {
-                    type_computation_for_variable_annotation(i_s, type_var)
-                        .unwrap_or_else(|| todo!())
+                TypeComputation::new(self, &mut |i_s, type_var, _, node_ref| {
+                    type_computation_for_variable_annotation(i_s, type_var, node_ref)
                 })
                 .compute_annotation(annotation);
                 if let Some(right_side) = right_side {

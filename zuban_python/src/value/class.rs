@@ -403,7 +403,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let mut inference = self.reference.file.inference(&mut i_s);
                         let base = TypeComputation::new_base_class_calculation(
                             &mut inference,
-                            &mut |_, type_var, is_generic_or_protocol| {
+                            &mut |_, type_var, is_generic_or_protocol, _| {
                                 let index = if let Some(force_index) = is_generic_or_protocol {
                                     let old_index = type_vars.add(type_var.clone());
                                     if old_index < force_index {
@@ -418,11 +418,11 @@ impl<'db, 'a> Class<'db, 'a> {
                                 } else {
                                     type_vars.add(type_var.clone())
                                 };
-                                TypeVarUsage {
+                                Some(TypeVarUsage {
                                     type_var,
                                     index,
                                     type_: TypeVarType::Class,
-                                }
+                                })
                             },
                         )
                         .compute_base_class(n.expression());

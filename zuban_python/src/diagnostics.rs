@@ -30,6 +30,7 @@ pub(crate) enum IssueType {
     InvalidBaseClass,
     EnsureSingleGenericOrProtocol,
     DuplicateTypeVar,
+    UnboundTypeVar(String, String),
     IncompleteGenericOrProtocolTypeVars,
 
     StmtOutsideFunction(&'static str),
@@ -194,6 +195,12 @@ impl<'db> Diagnostic<'db> {
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
+
+            IssueType::UnboundTypeVar(type_var_qualified, type_var) => format!(
+                "Type variable {type_var_qualified:?} is unbound\n\
+                 {path}:{line}: note: (Hint: Use \"Generic[{type_var}]\" or \"Protocol[{type_var}]\" base class to bind \"{type_var}\" inside a class)\n\
+                 {path}:{line}: note: (Hint: Use \"{type_var}\" in function signature to bind \"{type_var}\" inside a function)"
+            ),
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
 

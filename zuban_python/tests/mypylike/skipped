@@ -147,3 +147,6 @@ testTwoStarExpressions*
 testStarExpressionRhs
 testStarExpressionInExp
 testInvalidDel*
+
+# Won't support for now:
+testExpressionRefersToTypeVariable

@@ -63,13 +63,13 @@ pub enum BaseClass<'db> {
 macro_rules! compute_type_application {
     ($self:ident, $method:ident $args:tt) => {{
         let mut type_vars = TypeVarManager::default();
-        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _| {
+        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
             let index = type_vars.add(type_var.clone());
-            TypeVarUsage {
+            Some(TypeVarUsage {
                 type_var,
                 index,
                 type_: TypeVarType::Alias,
-            }
+            })
         };
         let mut tcomp = TypeComputation::new($self, &mut on_type_var);
         match tcomp.$method $args {
@@ -114,6 +114,7 @@ impl<'db> TypeContent<'db> {
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     type_var: Rc<TypeVar>,
+    node_ref: NodeRef,
 ) -> Option<TypeVarUsage> {
     if let Some(class) = i_s.current_class {
         if let Some(usage) = class
@@ -131,6 +132,10 @@ pub(super) fn type_computation_for_variable_annotation(
             }
         }
     }
+    node_ref.add_typing_issue(
+        i_s.db,
+        IssueType::UnboundTypeVar("xxx".to_owned(), "xxx".to_owned()),
+    );
     None
 }
 
@@ -144,7 +149,12 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
 
 impl<'db, 'a, 'b, 'c, C> TypeComputation<'db, 'a, 'b, 'c, C>
 where
-    C: FnMut(&mut InferenceState<'db, 'a>, Rc<TypeVar>, Option<TypeVarIndex>) -> TypeVarUsage,
+    C: FnMut(
+        &mut InferenceState<'db, 'a>,
+        Rc<TypeVar>,
+        Option<TypeVarIndex>,
+        NodeRef<'db>,
+    ) -> Option<TypeVarUsage>,
 {
     pub fn new(
         inference: &'c mut PythonInference<'db, 'a, 'b>,
@@ -855,10 +865,18 @@ where
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
             TypeNameLookup::TypeVar(t) => {
-                let usage =
-                    (self.type_var_callback)(self.inference.i_s, t, generic_or_protocol_index);
-                self.has_type_vars = true;
-                TypeContent::DbType(DbType::TypeVar(usage))
+                let usage = (self.type_var_callback)(
+                    self.inference.i_s,
+                    t,
+                    generic_or_protocol_index,
+                    NodeRef::new(self.inference.file, name.index()),
+                );
+                if let Some(usage) = usage {
+                    self.has_type_vars = true;
+                    TypeContent::DbType(DbType::TypeVar(usage))
+                } else {
+                    TypeContent::DbType(DbType::Any)
+                }
             }
             TypeNameLookup::TypeAlias(alias) => {
                 if self.is_base_class_calculation {
@@ -1138,13 +1156,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             inference: self,
                             errors_already_calculated: p.calculated(),
                             type_var_callback:
-                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _| {
+                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
                                     let index = type_vars.add(type_var.clone());
-                                    TypeVarUsage {
+                                    Some(TypeVarUsage {
                                         type_var,
                                         index,
                                         type_: TypeVarType::Alias,
-                                    }
+                                    })
                                 },
                             has_type_vars: false,
                             is_base_class_calculation: false,
@@ -1200,15 +1218,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         start: CodeIndex,
         s: &str,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
-        let mut on_type_var = |i_s: &mut InferenceState, type_var, _| {
-            type_computation_for_variable_annotation(i_s, type_var).unwrap_or_else(|| todo!())
+        let mut on_type_var = |i_s: &mut InferenceState, type_var, _, node_ref| {
+            type_computation_for_variable_annotation(i_s, type_var, node_ref)
         };
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
     pub fn compute_type_var_bound(&mut self, expr: Expression<'db>) -> Option<DbType> {
-        let mut on_type_var = |_: &mut InferenceState, type_var, _| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let db_type = comp.compute_db_type(expr);
         (!comp.has_type_vars).then(|| db_type)
