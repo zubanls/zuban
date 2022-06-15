@@ -141,6 +141,7 @@ testClassVarRedefinition
 testMultipleClassDefinitions
 testMultipleMixedDefinitions
 testMultipleMethodDefinition
+testMultipleNestedFunctionDef
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
