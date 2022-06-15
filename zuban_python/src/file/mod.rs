@@ -159,6 +159,11 @@ impl File for PythonFile {
     }
 }
 
+pub struct StarImport {
+    to_file: FileIndex,
+    scope: NodeIndex,
+}
+
 pub struct PythonFile {
     pub tree: Tree, // TODO should probably not be public
     pub symbol_table: SymbolTable,
@@ -167,7 +172,7 @@ pub struct PythonFile {
     pub complex_points: ComplexValues,
     file_index: Cell<Option<FileIndex>>,
     pub issues: InsertOnlyVec<Issue>,
-    pub star_imports: Vec<FileIndex>,
+    pub star_imports: Vec<StarImport>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) is_sub_file: bool,
@@ -254,7 +259,10 @@ impl<'db> PythonFile {
     ) -> &'db Self {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.star_imports.push(self.file_index());
+        file.star_imports.push(StarImport {
+            to_file: self.file_index(),
+            scope: 0,
+        });
         file.is_sub_file = true;
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(file);
@@ -1122,8 +1130,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             link.into_point_redirect()
         } else {
             let name_str = name.as_str();
-            for index in &self.file.star_imports {
-                let other_file = self.i_s.db.loaded_python_file(*index);
+            for star_import in &self.file.star_imports {
+                let other_file = self.i_s.db.loaded_python_file(star_import.to_file);
 
                 if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
                     self.file.points.set(
