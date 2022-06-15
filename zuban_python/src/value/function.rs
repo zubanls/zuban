@@ -93,15 +93,18 @@ impl<'db, 'a> Function<'db, 'a> {
         } else {
             let mut execution = args.outer_execution();
             loop {
-                let exec = execution.unwrap();
-                if func_node.index() == exec.function.node_index {
-                    // TODO this could be an instance as well
-                    // TODO in general check if this code still makes sense
-                    temporary_args = SimpleArguments::from_execution(i_s.db, exec);
-                    temporary_func = Function::from_execution(i_s.db, exec, None);
-                    break (&temporary_args as &dyn Arguments, &temporary_func);
+                if let Some(exec) = execution {
+                    if func_node.index() == exec.function.node_index {
+                        // TODO this could be an instance as well
+                        // TODO in general check if this code still makes sense
+                        temporary_args = SimpleArguments::from_execution(i_s.db, exec);
+                        temporary_func = Function::from_execution(i_s.db, exec, None);
+                        break (&temporary_args as &dyn Arguments, &temporary_func);
+                    }
+                    execution = exec.in_.as_deref();
+                } else {
+                    return Inferred::new_unknown();
                 }
-                execution = exec.in_.as_deref();
             }
         };
         for param in func.iter_inferrable_params(check_args, false) {
