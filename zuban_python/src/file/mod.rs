@@ -1,4 +1,5 @@
 mod diagnostics;
+mod name_binder;
 mod type_computation;
 mod utils;
 
@@ -23,11 +24,11 @@ use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
-use crate::name_binder::{NameBinder, NameBinderType};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Function, LookupResult, Module, Value};
 use crate::workspaces::DirContent;
+use name_binder::{NameBinder, NameBinderType};
 use type_computation::type_computation_for_variable_annotation;
 pub use type_computation::{BaseClass, TypeComputation};
 
