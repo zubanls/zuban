@@ -172,7 +172,7 @@ pub struct PythonFile {
     pub complex_points: ComplexValues,
     file_index: Cell<Option<FileIndex>>,
     pub issues: InsertOnlyVec<Issue>,
-    pub star_imports: Vec<StarImport>,
+    pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) is_sub_file: bool,
@@ -215,6 +215,7 @@ impl<'db> PythonFile {
             &self.points,
             &self.complex_points,
             &self.issues,
+            &self.star_imports,
             self.file_index.get().unwrap(),
             func,
         )
@@ -259,7 +260,7 @@ impl<'db> PythonFile {
     ) -> &'db Self {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.star_imports.push(StarImport {
+        file.star_imports.borrow_mut().push(StarImport {
             to_file: self.file_index(),
             scope: 0,
         });
@@ -1130,7 +1131,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             link.into_point_redirect()
         } else {
             let name_str = name.as_str();
-            for star_import in &self.file.star_imports {
+            for star_import in self.file.star_imports.borrow().iter() {
                 let other_file = self.i_s.db.loaded_python_file(star_import.to_file);
 
                 if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {

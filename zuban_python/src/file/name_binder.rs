@@ -1,10 +1,12 @@
+use std::cell::RefCell;
+
 use crate::database::{
     ClassStorage, ComplexPoint, FileIndex, FunctionType, Locality, Overload, Point, PointLink,
     PointType, Points, Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
-use crate::file::ComplexValues;
+use crate::file::{ComplexValues, StarImport};
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
@@ -41,6 +43,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     points: &'db Points,
     complex_points: &'db ComplexValues,
     issues: &'db InsertOnlyVec<Issue>,
+    star_imports: &'db RefCell<Vec<StarImport>>,
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
     unresolved_names: Vec<Name<'db>>,
@@ -59,6 +62,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         points: &'db Points,
         complex_points: &'db ComplexValues,
         issues: &'db InsertOnlyVec<Issue>,
+        star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         parent: Option<&'a Self>,
     ) -> Self {
@@ -70,6 +74,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             points,
             complex_points,
             issues,
+            star_imports,
             unordered_references: vec![],
             unresolved_nodes: vec![],
             unresolved_names: vec![],
@@ -87,6 +92,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         points: &'db Points,
         complex_points: &'db ComplexValues,
         issues: &'db InsertOnlyVec<Issue>,
+        star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
     ) where
@@ -100,6 +106,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             points,
             complex_points,
             issues,
+            star_imports,
             file_index,
             None,
         );
@@ -124,6 +131,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.points,
             self.complex_points,
             self.issues,
+            self.star_imports,
             self.file_index,
             Some(self),
         );
@@ -201,7 +209,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // - function_def, class_def: ignore
         match block.unpack() {
             BlockContent::OneLine(simple) => {
-                self.index_non_block_node(&simple, ordered, in_base_scope)
+                self.index_simple_stmts(simple, ordered, in_base_scope)
             }
             BlockContent::Indented(stmts) => self.index_stmts(stmts, ordered, in_base_scope),
         }
