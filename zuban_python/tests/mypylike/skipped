@@ -85,6 +85,7 @@ testGenericMemberVariable2
 testSimpleGenericSubtyping
 testGenericTypeCompatibilityWithAny
 testGenericTypeBody1
+testOperatorAssignmentWithIndexLvalue1
 testTypeApplicationCrash
 testGenericTypeAliasesBasic2
 testGenericTypeAliasesUnion
