@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
+use once_cell::unsync::OnceCell;
 use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, SimpleArguments};
@@ -160,8 +161,40 @@ impl File for PythonFile {
 }
 
 pub struct StarImport {
-    to_file: FileIndex,
+    to_file: OnceCell<Option<FileIndex>>,
     scope: NodeIndex,
+    node: Option<NodeIndex>,
+}
+
+impl StarImport {
+    fn new(scope: NodeIndex, node: NodeIndex) -> Self {
+        Self {
+            scope,
+            node: Some(node),
+            to_file: OnceCell::new(),
+        }
+    }
+
+    #[inline]
+    fn to_file<'db>(&self, inf: &mut PythonInference<'db, '_, '_>) -> Option<&'db PythonFile> {
+        let to_file = self.to_file.get_or_init(|| {
+            let import_from = NodeRef::new(inf.file, self.node.unwrap()).expect_import_from();
+            inf.cache_import_from(import_from);
+            match import_from.unpack_targets() {
+                ImportFromTargets::Star(star) => {
+                    let point = inf.file.points.get(star.index());
+                    if point.type_() == PointType::Unknown {
+                        todo!()
+                        //None
+                    } else {
+                        Some(point.file_index())
+                    }
+                }
+                _ => unreachable!(),
+            }
+        });
+        to_file.map(|f| inf.i_s.db.loaded_python_file(f))
+    }
 }
 
 pub struct PythonFile {
@@ -261,8 +294,9 @@ impl<'db> PythonFile {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
         file.star_imports.borrow_mut().push(StarImport {
-            to_file: self.file_index(),
+            to_file: OnceCell::from(Some(self.file_index())),
             scope: 0,
+            node: None,
         });
         file.is_sub_file = true;
         // TODO just saving this in the cache and forgetting about it is a bad idea
@@ -413,7 +447,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
 
         match imp.unpack_targets() {
-            ImportFromTargets::Star => (), // Nothing to do here, was calculated earlier
+            ImportFromTargets::Star(keyword) => {
+                // Nothing to do here, was calculated earlier
+                let point = match from_part_file_index {
+                    Some(file_index) => Point::new_file_reference(file_index, Locality::Todo),
+                    None => Point::new_unknown(self.file.file_index(), Locality::Todo),
+                };
+                self.file.points.set(keyword.index(), point);
+            }
             ImportFromTargets::Iterator(targets) => {
                 // as names should have been calculated earlier
                 let import_file = from_part_file_index.map(|f| self.i_s.db.loaded_python_file(f));
@@ -1131,15 +1172,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             link.into_point_redirect()
         } else {
             let name_str = name.as_str();
-            for star_import in self.file.star_imports.borrow().iter() {
-                let other_file = self.i_s.db.loaded_python_file(star_import.to_file);
-
-                if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
-                    self.file.points.set(
-                        name.index(),
-                        Point::new_redirect(other_file.file_index(), symbol, Locality::Todo),
-                    );
-                    return self.infer_name_reference(name);
+            if !name_str.starts_with('_') {
+                for star_import in self.file.star_imports.borrow().iter() {
+                    if let Some(other_file) = star_import.to_file(self) {
+                        if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
+                            self.file.points.set(
+                                name.index(),
+                                Point::new_redirect(
+                                    other_file.file_index(),
+                                    symbol,
+                                    Locality::Todo,
+                                ),
+                            );
+                            return self.infer_name_reference(name);
+                        }
+                    }
                 }
             }
             if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {

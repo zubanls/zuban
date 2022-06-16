@@ -1248,6 +1248,13 @@ impl<'db> SimpleStmt<'db> {
             .is_type(Nonterminal(assignment))
             .then(|| Assignment::new(child))
     }
+
+    pub fn maybe_import_from(&self) -> Option<ImportFrom<'db>> {
+        let child = self.node.nth_child(0);
+        child
+            .is_type(Nonterminal(import_from))
+            .then(|| ImportFrom::new(child))
+    }
 }
 
 pub enum SimpleStmtContent<'db> {
@@ -1823,7 +1830,7 @@ impl<'db> ImportFrom<'db> {
             if node.is_type(Nonterminal(import_from_targets)) {
                 let first = node.nth_child(0);
                 if first.is_leaf() && first.as_code() == "*" {
-                    return ImportFromTargets::Star;
+                    return ImportFromTargets::Star(Keyword::new(first));
                 } else {
                     return ImportFromTargets::Iterator(ImportFromTargetsIterator(
                         node.iter_children(),
@@ -1836,7 +1843,7 @@ impl<'db> ImportFrom<'db> {
 }
 
 pub enum ImportFromTargets<'db> {
-    Star,
+    Star(Keyword<'db>),
     Iterator(ImportFromTargetsIterator<'db>),
 }
 

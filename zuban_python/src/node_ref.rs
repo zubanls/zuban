@@ -1,8 +1,8 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, Name, NamedExpression, NodeIndex, Primary, PyString,
-    PythonString,
+    Atom, AtomContent, ClassDef, Expression, ImportFrom, Name, NamedExpression, NodeIndex, Primary,
+    PyString, PythonString,
 };
 
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType};
@@ -116,6 +116,10 @@ impl<'db> NodeRef<'db> {
 
     pub fn as_named_expression(&self) -> NamedExpression<'db> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_import_from(&self) -> ImportFrom<'db> {
+        ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn debug_info(&self, db: &Database) -> String {

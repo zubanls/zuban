@@ -12,9 +12,10 @@ use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
     BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
     DictComprehension, Expression, ExpressionContent, ExpressionPart, File, ForIfClause,
-    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, InterestingNode,
-    InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent, NodeIndex,
-    SimpleStmts, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
+    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
+    NodeIndex, SimpleStmts, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt,
+    WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
@@ -399,6 +400,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         self.index_non_block_node(&target, ordered, in_base_scope)
                     }
                 }
+            } else if let Some(import) = simple_stmt.maybe_import_from() {
+                match import.unpack_targets() {
+                    ImportFromTargets::Star(_) => self
+                        .star_imports
+                        .borrow_mut()
+                        .push(StarImport::new(0, import.index())),
+                    ImportFromTargets::Iterator(targets) => {
+                        for target in targets {
+                            self.index_non_block_node(&target, ordered, in_base_scope);
+                        }
+                    }
+                };
+                0
             } else {
                 self.index_non_block_node(&simple_stmt, ordered, in_base_scope)
             };
