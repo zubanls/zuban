@@ -941,7 +941,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_primary_or_primary_t_content(
         &mut self,
         base: Inferred<'db>,
-        primary_index: NodeIndex,
+        node_index: NodeIndex,
         second: PrimaryContent<'db>,
     ) -> Inferred<'db> {
         match second {
@@ -953,7 +953,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         format!("{:?}", value.name())
                     };
-                    NodeRef::new(self.file, primary_index).add_typing_issue(
+                    NodeRef::new(self.file, node_index).add_typing_issue(
                         i_s.db,
                         IssueType::AttributeError(origin, name.as_str().to_owned()),
                     );
@@ -987,7 +987,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         i_s,
                         &SimpleArguments::new(
                             f,
-                            primary_index,
+                            node_index,
                             details,
                             x.as_ref(),
                             value.as_class().cloned(),
@@ -1009,7 +1009,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item on {}", value.name());
-                    value.get_item(i_s, &SliceType::new(f, primary_index, slice_type))
+                    value.get_item(i_s, &SliceType::new(f, node_index, slice_type))
                 })
             }
         }
