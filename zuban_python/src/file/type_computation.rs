@@ -34,13 +34,19 @@ enum SpecialType<'db> {
 }
 
 #[derive(Debug)]
+enum InvalidVariableType {
+    List,
+    Other,
+}
+
+#[derive(Debug)]
 enum TypeContent<'db> {
     Module(&'db PythonFile),
     ClassWithoutTypeVar(Inferred<'db>),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType<'db>),
-    InvalidVariable,
+    InvalidVariable(InvalidVariableType),
 }
 
 enum TypeNameLookup<'db> {
@@ -50,7 +56,7 @@ enum TypeNameLookup<'db> {
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType<'db>),
     InvalidFunction(Function<'db, 'db>),
-    InvalidVariable,
+    InvalidVariable(InvalidVariableType),
     Unknown,
 }
 
@@ -97,7 +103,7 @@ impl<'db> TypeContent<'db> {
                 Self::Module(m) => todo!(),
                 Self::TypeAlias(m) => todo!(),
                 Self::SpecialType(m) => todo!(),
-                Self::InvalidVariable => return Self::InvalidVariable,
+                Self::InvalidVariable(t) => return Self::InvalidVariable(t),
             }),
             Self::Module(m) => todo!(),
             Self::TypeAlias(m) => todo!(),
@@ -106,7 +112,7 @@ impl<'db> TypeContent<'db> {
                 SpecialType::Any => DbType::Any,
                 _ => todo!("{s:?}"),
             },
-            Self::InvalidVariable => return Self::InvalidVariable,
+            Self::InvalidVariable(t) => return Self::InvalidVariable(t),
         })
     }
 }
@@ -335,21 +341,38 @@ where
                     .save_redirect(self.inference.file, annotation_index);
                 return;
             }
-            TypeContent::InvalidVariable => {
+            TypeContent::InvalidVariable(t) => {
                 let node_ref = NodeRef::new(self.inference.file, expr.index());
-                node_ref.add_typing_issue(
-                    self.inference.i_s.db,
-                    IssueType::InvalidType(format!(
-                        "Variable {:?} is not valid as a type",
-                        "__main__.x".to_owned() //TODO: Use the variable name
-                    )),
-                );
-                node_ref.add_typing_issue(
-                    self.inference.i_s.db,
-                    IssueType::Note(
-                        "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
-                    ),
-                );
+                match t {
+                    InvalidVariableType::Other => {
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::InvalidType(format!(
+                                "Variable {:?} is not valid as a type",
+                                "__main__.x".to_owned() //TODO: Use the variable name
+                            )),
+                        );
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::Note(
+                                "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
+                            ),
+                        );
+                    }
+                    InvalidVariableType::List => {
+                        let node_ref = NodeRef::new(self.inference.file, expr.index());
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::InvalidType(
+                                "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
+                            ),
+                        );
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
+                        );
+                    }
+                }
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
                     .save_redirect(self.inference.file, annotation_index);
                 return;
@@ -377,7 +400,7 @@ where
                 }),
                 _ => todo!("{m:?}"),
             },
-            TypeContent::InvalidVariable => {
+            TypeContent::InvalidVariable(t) => {
                 todo!()
             }
         }
@@ -510,7 +533,7 @@ where
                     },
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
-                    TypeContent::InvalidVariable => todo!(),
+                    TypeContent::InvalidVariable(t) => todo!(),
                 }
             }
             PrimaryContent::Execution(details) => {
@@ -556,7 +579,7 @@ where
                         SpecialType::GenericWithGenerics(_) => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                     },
-                    TypeContent::InvalidVariable => todo!(),
+                    TypeContent::InvalidVariable(t) => todo!(),
                 }
             }
         }
@@ -583,7 +606,7 @@ where
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
                         TypeContent::SpecialType(m) => todo!(),
-                        TypeContent::InvalidVariable => todo!(),
+                        TypeContent::InvalidVariable(t) => todo!(),
                     }
                 }
                 SliceTypeContent::Slice(slice) => todo!(),
@@ -863,21 +886,8 @@ where
                 None => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
-            AtomContent::List(_) => {
-                let node_ref = NodeRef::new(self.inference.file, atom.index());
-                node_ref.add_typing_issue(
-                    self.inference.i_s.db,
-                    IssueType::InvalidType(
-                        "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
-                    ),
-                );
-                node_ref.add_typing_issue(
-                    self.inference.i_s.db,
-                    IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
-                );
-                TypeContent::DbType(DbType::Any)
-            }
-            _ => TypeContent::InvalidVariable,
+            AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
@@ -919,7 +929,7 @@ where
                 self.add_function_issue(NodeRef::new(self.inference.file, name.index()), func);
                 TypeContent::DbType(DbType::Any)
             }
-            TypeNameLookup::InvalidVariable => TypeContent::InvalidVariable,
+            TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::DbType(DbType::Any),
             TypeNameLookup::SpecialType(special) => {
                 if self.is_base_class_calculation
@@ -1193,17 +1203,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             is_base_class_calculation: false,
                         };
                         let t = comp.compute_type(expr, None);
-                        if let TypeContent::ClassWithoutTypeVar(i) = t {
-                            return TypeNameLookup::Class(i);
-                        } else if matches!(t, TypeContent::InvalidVariable) {
-                            return TypeNameLookup::InvalidVariable;
-                        } else {
-                            let node_ref = NodeRef::new(comp.inference.file, expr.index());
-                            let db_type = Rc::new(comp.as_db_type(t, node_ref));
-                            ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                                type_vars: type_vars.into_boxed_slice(),
-                                db_type,
-                            }))
+                        match t {
+                            TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
+                            TypeContent::InvalidVariable(t) => {
+                                return TypeNameLookup::InvalidVariable(t)
+                            }
+                            _ => {
+                                let node_ref = NodeRef::new(comp.inference.file, expr.index());
+                                let db_type = Rc::new(comp.as_db_type(t, node_ref));
+                                ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                                    type_vars: type_vars.into_boxed_slice(),
+                                    db_type,
+                                }))
+                            }
                         }
                     };
                     let node_ref = NodeRef::new(self.file, name_def.name().index());
