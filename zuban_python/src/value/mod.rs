@@ -11,7 +11,8 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{Database, DbType, FileIndex, PointLink};
+use crate::database::{Database, DbType, FileIndex, FormatStyle, PointLink};
+use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -236,7 +237,14 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!("execute not implemented for {self:?}")
+        args.node_reference().add_typing_issue(
+            i_s.db,
+            IssueType::NotCallable(format!(
+                "{:?}",
+                self.class(i_s).as_string(i_s, FormatStyle::Short)
+            )),
+        );
+        Inferred::new_unknown()
     }
 
     fn get_item(

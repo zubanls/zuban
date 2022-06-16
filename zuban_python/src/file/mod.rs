@@ -171,8 +171,7 @@ impl StarImport {
         let point = inf.file.points.get(self.star_node);
         if point.calculated() {
             return if point.type_() == PointType::Unknown {
-                todo!()
-                //None
+                None
             } else {
                 Some(inf.i_s.db.loaded_python_file(point.file_index()))
             };
