@@ -1335,6 +1335,14 @@ pub enum ForIfClause<'db> {
     Sync(SyncForIfClause<'db>),
 }
 
+impl<'db> ForIfClause<'db> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Async(s) | Self::Sync(s) => s.index(),
+        }
+    }
+}
+
 pub struct ForIfClauseIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> Iterator for ForIfClauseIterator<'db> {

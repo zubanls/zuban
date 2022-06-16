@@ -241,16 +241,6 @@ impl<'db> PythonFile {
         )
     }
 
-    fn calculate_function_scope_definitions(&self, func: FunctionDef<'db>) {
-        let symbol_table = SymbolTable::default();
-        self.with_global_binder(|binder| {
-            binder.with_nested(NameBinderType::Function, &symbol_table, |b| {
-                b.index_function_body(func)
-            })
-        });
-        todo!("This function is currently unused, but might be useful again later")
-    }
-
     pub fn inference<'a, 'b>(
         &'db self,
         i_s: &'b mut InferenceState<'db, 'a>,

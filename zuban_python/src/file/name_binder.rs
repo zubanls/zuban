@@ -40,6 +40,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     is_mypy_compatible: bool,
     tree: &'db Tree,
     type_: NameBinderType,
+    scope_node: NodeIndex,
     symbol_table: &'a SymbolTable,
     points: &'db Points,
     complex_points: &'db ComplexValues,
@@ -59,6 +60,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         is_mypy_compatible: bool,
         tree: &'db Tree,
         type_: NameBinderType,
+        scope_node: NodeIndex,
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
@@ -71,6 +73,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             is_mypy_compatible,
             tree,
             type_,
+            scope_node,
             symbol_table,
             points,
             complex_points,
@@ -103,6 +106,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             is_mypy_compatible,
             tree,
             NameBinderType::Global,
+            0,
             symbol_table,
             points,
             complex_points,
@@ -118,9 +122,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    pub(crate) fn with_nested(
+    fn with_nested(
         &mut self,
         type_: NameBinderType,
+        scope_node: NodeIndex,
         symbol_table: &'_ SymbolTable,
         mut func: impl FnMut(&mut NameBinder<'db, '_>),
     ) {
@@ -128,6 +133,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.is_mypy_compatible,
             self.tree,
             type_,
+            scope_node,
             symbol_table,
             self.points,
             self.complex_points,
@@ -335,15 +341,21 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                     Unresolved::FunctionDef(func) => {
                         let symbol_table = SymbolTable::default();
-                        self.with_nested(NameBinderType::Function, &symbol_table, |binder| {
-                            binder.index_function_body(func)
-                        });
+                        self.with_nested(
+                            NameBinderType::Function,
+                            func.index(),
+                            &symbol_table,
+                            |binder| binder.index_function_body(func),
+                        );
                     }
                     Unresolved::Lambda(lambda) => {
                         let symbol_table = SymbolTable::default();
-                        self.with_nested(NameBinderType::Lambda, &symbol_table, |binder| {
-                            binder.index_lambda(lambda)
-                        });
+                        self.with_nested(
+                            NameBinderType::Lambda,
+                            lambda.index(),
+                            &symbol_table,
+                            |binder| binder.index_lambda(lambda),
+                        );
                     }
                     Unresolved::Comprehension(comp) => self.index_comprehension(comp, true),
                     Unresolved::DictComprehension(comp) => {
@@ -404,7 +416,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 match import.unpack_targets() {
                     ImportFromTargets::Star(star) => {
                         self.star_imports.borrow_mut().push(StarImport {
-                            scope: 0,
+                            scope: self.scope_node,
                             import_from_node: import.index(),
                             star_node: star.index(),
                         })
@@ -522,13 +534,18 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {
         let symbol_table = SymbolTable::default();
         let self_symbol_table = SymbolTable::default();
-        self.with_nested(NameBinderType::Class, &symbol_table, |binder| {
-            let (arguments, block) = class.unpack();
-            if let Some(arguments) = arguments {
-                binder.index_non_block_node(&arguments, true, true);
-            }
-            binder.index_block(block, true, true);
-        });
+        self.with_nested(
+            NameBinderType::Class,
+            class.index(),
+            &symbol_table,
+            |binder| {
+                let (arguments, block) = class.unpack();
+                if let Some(arguments) = arguments {
+                    binder.index_non_block_node(&arguments, true, true);
+                }
+                binder.index_block(block, true, true);
+            },
+        );
         self.unresolved_self_vars.push(class);
         self.complex_points.insert(
             self.points,
@@ -696,22 +713,27 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         };
         // TODO this is not exactly correct for named expressions and their scopes.
         let symbol_table = SymbolTable::default();
-        self.with_nested(NameBinderType::Comprehension, &symbol_table, |binder| {
-            binder.index_non_block_node(&targets, true, false);
+        self.with_nested(
+            NameBinderType::Comprehension,
+            clause.index(),
+            &symbol_table,
+            |binder| {
+                binder.index_non_block_node(&targets, true, false);
 
-            if let Some(clause) = clauses.next() {
-                binder.index_comprehension_clause(expr, &clause, clauses);
-            } else {
-                match expr {
-                    CommonComprehensionExpression::Single(named_expr) => {
-                        binder.index_non_block_node(named_expr, true, false)
-                    }
-                    CommonComprehensionExpression::DictKeyValue(dict_key_value) => {
-                        binder.index_non_block_node(dict_key_value, true, false)
-                    }
-                };
-            }
-        });
+                if let Some(clause) = clauses.next() {
+                    binder.index_comprehension_clause(expr, &clause, clauses);
+                } else {
+                    match expr {
+                        CommonComprehensionExpression::Single(named_expr) => {
+                            binder.index_non_block_node(named_expr, true, false)
+                        }
+                        CommonComprehensionExpression::DictKeyValue(dict_key_value) => {
+                            binder.index_non_block_node(dict_key_value, true, false)
+                        }
+                    };
+                }
+            },
+        );
     }
 
     fn index_function_name_and_param_defaults(
