@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::rc::Rc;
 
-use once_cell::unsync::OnceCell;
 use parsa_python_ast::*;
 
 use crate::arguments::{CombinedArguments, KnownArguments, SimpleArguments};
@@ -161,39 +160,35 @@ impl File for PythonFile {
 }
 
 pub struct StarImport {
-    to_file: OnceCell<Option<FileIndex>>,
     scope: NodeIndex,
-    node: Option<NodeIndex>,
+    import_from_node: NodeIndex,
+    star_node: NodeIndex,
 }
 
 impl StarImport {
-    fn new(scope: NodeIndex, node: NodeIndex) -> Self {
+    fn new(scope: NodeIndex, import_from_node: NodeIndex, star_node: NodeIndex) -> Self {
         Self {
             scope,
-            node: Some(node),
-            to_file: OnceCell::new(),
+            import_from_node,
+            star_node,
         }
     }
 
     #[inline]
     fn to_file<'db>(&self, inf: &mut PythonInference<'db, '_, '_>) -> Option<&'db PythonFile> {
-        let to_file = self.to_file.get_or_init(|| {
-            let import_from = NodeRef::new(inf.file, self.node.unwrap()).expect_import_from();
-            inf.cache_import_from(import_from);
-            match import_from.unpack_targets() {
-                ImportFromTargets::Star(star) => {
-                    let point = inf.file.points.get(star.index());
-                    if point.type_() == PointType::Unknown {
-                        todo!()
-                        //None
-                    } else {
-                        Some(point.file_index())
-                    }
-                }
-                _ => unreachable!(),
-            }
-        });
-        to_file.map(|f| inf.i_s.db.loaded_python_file(f))
+        let point = inf.file.points.get(self.star_node);
+        if point.calculated() {
+            return if point.type_() == PointType::Unknown {
+                todo!()
+                //None
+            } else {
+                Some(inf.i_s.db.loaded_python_file(point.file_index()))
+            };
+        }
+        let import_from = NodeRef::new(inf.file, self.import_from_node).expect_import_from();
+        inf.cache_import_from(import_from);
+        debug_assert!(inf.file.points.get(self.star_node).calculated());
+        self.to_file(inf)
     }
 }
 

@@ -402,10 +402,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
             } else if let Some(import) = simple_stmt.maybe_import_from() {
                 match import.unpack_targets() {
-                    ImportFromTargets::Star(_) => self
+                    ImportFromTargets::Star(star) => self
                         .star_imports
                         .borrow_mut()
-                        .push(StarImport::new(0, import.index())),
+                        .push(StarImport::new(0, import.index(), star.index())),
                     ImportFromTargets::Iterator(targets) => {
                         for target in targets {
                             self.index_non_block_node(&target, ordered, in_base_scope);
