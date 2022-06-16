@@ -34,8 +34,9 @@ enum SpecialType<'db> {
 }
 
 #[derive(Debug)]
-enum InvalidVariableType {
+enum InvalidVariableType<'db> {
     List,
+    Function(Function<'db, 'db>),
     Other,
 }
 
@@ -46,7 +47,7 @@ enum TypeContent<'db> {
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType<'db>),
-    InvalidVariable(InvalidVariableType),
+    InvalidVariable(InvalidVariableType<'db>),
 }
 
 enum TypeNameLookup<'db> {
@@ -55,8 +56,7 @@ enum TypeNameLookup<'db> {
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType<'db>),
-    InvalidFunction(Function<'db, 'db>),
-    InvalidVariable(InvalidVariableType),
+    InvalidVariable(InvalidVariableType<'db>),
     Unknown,
 }
 
@@ -268,23 +268,6 @@ where
         );
     }
 
-    fn add_function_issue(&self, node_ref: NodeRef<'db>, func: Function<'db, 'db>) {
-        //let node_ref = NodeRef::new(self.inference.file, name.index());
-        node_ref.add_typing_issue(
-            self.inference.i_s.db,
-            IssueType::InvalidType(format!(
-                "Function {:?} is not valid as a type",
-                func.qualified_name(self.inference.i_s.db),
-            )),
-        );
-        node_ref.add_typing_issue(
-            self.inference.i_s.db,
-            IssueType::Note(
-                "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
-            ),
-        );
-    }
-
     fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression<'db>) {
         let point = self.inference.file.points.get(annotation_index);
         if point.calculated() {
@@ -356,6 +339,22 @@ where
                             self.inference.i_s.db,
                             IssueType::Note(
                                 "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
+                            ),
+                        );
+                    }
+                    InvalidVariableType::Function(func) => {
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::InvalidType(format!(
+                                "Function {:?} is not valid as a type",
+                                func.qualified_name(self.inference.i_s.db),
+                            )),
+                        );
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::Note(
+                                "Perhaps you need \"Callable[...]\" or a callback protocol?"
+                                    .to_owned(),
                             ),
                         );
                     }
@@ -925,10 +924,6 @@ where
                 }
                 TypeContent::TypeAlias(alias)
             }
-            TypeNameLookup::InvalidFunction(func) => {
-                self.add_function_issue(NodeRef::new(self.inference.file, name.index()), func);
-                TypeContent::DbType(DbType::Any)
-            }
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::DbType(DbType::Any),
             TypeNameLookup::SpecialType(special) => {
@@ -1366,9 +1361,8 @@ fn check_type_name<'db>(
                     .cache_type_assignment(assignment)
             }
         }
-        TypeLike::Function(f) => TypeNameLookup::InvalidFunction(Function::new(
-            NodeRef::new(name_node_ref.file, f.index()),
-            None,
+        TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
+            Function::new(NodeRef::new(name_node_ref.file, f.index()), None),
         )),
         TypeLike::Import => {
             if point.calculated() {
