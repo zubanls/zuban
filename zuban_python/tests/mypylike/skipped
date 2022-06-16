@@ -166,6 +166,7 @@ testStarExpressionInExp
 testInvalidDel*
 testInvalidTypeDeclaration
 testIndexedAssignmentWithTypeDeclaration
+testInvalidLvalueWithExplicitType*
 # whatever
 testSuperOutsideClass
 testTestExtendPrimitives
@@ -176,6 +177,10 @@ testInvalidKindsOfArgsToCast
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
+# Tuple types
+testVariableDeclWithInvalidNumberOfTypes*
+testVariableDeclWithInvalidType
+
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
