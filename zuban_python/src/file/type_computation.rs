@@ -849,6 +849,20 @@ where
                 None => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
+            AtomContent::List(_) => {
+                let node_ref = NodeRef::new(self.inference.file, atom.index());
+                node_ref.add_typing_issue(
+                    self.inference.i_s.db,
+                    IssueType::InvalidType(
+                        "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
+                    ),
+                );
+                node_ref.add_typing_issue(
+                    self.inference.i_s.db,
+                    IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
+                );
+                TypeContent::DbType(DbType::Any)
+            }
             _ => TypeContent::InvalidVariable,
         }
     }
