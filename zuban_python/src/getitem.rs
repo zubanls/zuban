@@ -15,7 +15,7 @@ use crate::value::Function;
 pub struct SliceType<'db> {
     pub file: &'db PythonFile,
     pub ast_node: ASTSliceType<'db>,
-    pub primary_index: NodeIndex,
+    node_index: NodeIndex,
 }
 
 pub enum SliceTypeContent<'db> {
@@ -25,20 +25,16 @@ pub enum SliceTypeContent<'db> {
 }
 
 impl<'db> SliceType<'db> {
-    pub fn new(
-        file: &'db PythonFile,
-        primary_index: NodeIndex,
-        ast_node: ASTSliceType<'db>,
-    ) -> Self {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'db>) -> Self {
         Self {
             file,
             ast_node,
-            primary_index,
+            node_index,
         }
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
-        NodeRef::new(self.file, self.primary_index)
+        NodeRef::new(self.file, self.node_index)
     }
 
     pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
@@ -147,7 +143,7 @@ impl<'db> Iterator for SliceIterator<'db> {
     type Item = SliceOrSimple<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO it's actually a bad idea to pass primary_index here
+        // TODO it's actually a bad idea to pass node_index here
         self.1.next().map(|content| match content {
             SliceContent::NamedExpression(n) => SliceOrSimple::Simple(Simple {
                 file: self.0,

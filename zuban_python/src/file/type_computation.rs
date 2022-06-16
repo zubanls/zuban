@@ -662,7 +662,7 @@ where
                 // TODO both the type argument issues and are not implemented for other classlikes
                 // like tuple/callable/type, which can also have late bound type vars and too
                 // many/few given type vars!
-                NodeRef::new(self.inference.file, slice_type.primary_index).add_typing_issue(
+                slice_type.as_node_ref().add_typing_issue(
                     self.inference.i_s.db,
                     IssueType::TypeArgumentIssue(
                         class.name().to_owned(),
