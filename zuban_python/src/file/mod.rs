@@ -166,14 +166,6 @@ pub struct StarImport {
 }
 
 impl StarImport {
-    fn new(scope: NodeIndex, import_from_node: NodeIndex, star_node: NodeIndex) -> Self {
-        Self {
-            scope,
-            import_from_node,
-            star_node,
-        }
-    }
-
     #[inline]
     fn to_file<'db>(&self, inf: &mut PythonInference<'db, '_, '_>) -> Option<&'db PythonFile> {
         let point = inf.file.points.get(self.star_node);
