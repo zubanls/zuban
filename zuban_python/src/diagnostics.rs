@@ -34,6 +34,7 @@ pub(crate) enum IssueType {
     DuplicateTypeVar,
     UnboundTypeVar(std::rc::Rc<TypeVar>),
     IncompleteGenericOrProtocolTypeVars,
+    TypeVarExpected(&'static str),
 
     StmtOutsideFunction(&'static str),
 
@@ -214,6 +215,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
+            IssueType::TypeVarExpected(s) => format!("Free type variable expected in {s}[...]"),
 
             IssueType::StmtOutsideFunction(stmt) => format!("{stmt:?} outside function"),
 

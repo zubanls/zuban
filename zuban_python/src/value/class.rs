@@ -517,7 +517,7 @@ impl<'db, 'a> Class<'db, 'a> {
         slice_type: SliceType,
     ) {
         // Reorder slices
-        if slice_type.iter().count() != type_vars.len() {
+        if slice_type.iter().count() < type_vars.len() {
             slice_type
                 .as_node_ref()
                 .add_typing_issue(db, IssueType::IncompleteGenericOrProtocolTypeVars)

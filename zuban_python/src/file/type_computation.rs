@@ -581,12 +581,12 @@ where
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
-                            self.expect_type_var_args(s);
+                            self.expect_type_var_args(s, "Protocol");
                             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s))
                         }
                         SpecialType::ProtocolWithGenerics(_) => todo!(),
                         SpecialType::Generic => {
-                            self.expect_type_var_args(s);
+                            self.expect_type_var_args(s, "Generic");
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics(s))
                         }
                         SpecialType::GenericWithGenerics(_) => todo!(),
@@ -850,12 +850,14 @@ where
         }))
     }
 
-    fn expect_type_var_args(&mut self, slice_type: SliceType<'db>) {
+    fn expect_type_var_args(&mut self, slice_type: SliceType<'db>, in_: &'static str) {
         match slice_type.unpack() {
             SliceTypeContent::Simple(n) => {
                 match self.compute_type(n.named_expr.expression(), Some(TypeVarIndex::new(0))) {
                     TypeContent::DbType(DbType::TypeVar(_)) => (),
-                    _ => todo!(),
+                    _ => n
+                        .as_node_ref()
+                        .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected(in_)),
                 }
             }
             SliceTypeContent::Slice(slice) => todo!(),

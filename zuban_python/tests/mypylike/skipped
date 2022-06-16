@@ -5,6 +5,7 @@ testCyclicInheritance1
 testCyclicInheritance2
 testNonSelfMemberAssignmentWithTypeDeclaration
 testNonSelfMemberAssignmentWithTypeDeclarationInMethod
+testMissingGenericImport
 
 # fine-grained
 testTypeAliasRefresh
