@@ -1146,6 +1146,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             let name_str = name.as_str();
             if !name_str.starts_with('_') {
                 for star_import in self.file.star_imports.borrow().iter() {
+                    // TODO these feel a bit weird and do not include parent functions (when in a
+                    // closure)
+                    if !(star_import.scope == 0
+                        || self
+                            .i_s
+                            .current_execution
+                            .map(|(f, _)| f.reference.node_index == star_import.scope)
+                            .or_else(|| {
+                                self.i_s
+                                    .current_class
+                                    .map(|c| c.reference.node_index == star_import.scope)
+                            })
+                            .unwrap_or(false))
+                    {
+                        continue;
+                    }
                     if let Some(other_file) = star_import.to_file(self) {
                         if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
                             self.file.points.set(
