@@ -1,4 +1,6 @@
 # temporary
+testStubPackageSubModule
+testInvalidReferenceToAttributeOfOuterClass
 testInvalidStrLiteralSpaces
 testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
@@ -163,6 +165,10 @@ testRedefineVariableAsTypevar
 testRedefineTypevar*
 testImportTwoModulesWithSameNameInFunction
 testImportTwoModulesWithSameNameInGlobalContext
+testTypeRedeclarationNoSpuriousWarnings
+testDuplicateDef*
+testTypeVarClassDup
+testAliasDup
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
@@ -179,6 +185,8 @@ testInvalidDel*
 testInvalidTypeDeclaration
 testIndexedAssignmentWithTypeDeclaration
 testInvalidLvalueWithExplicitType*
+testInvalidWithTarget
+testInvalidTypeAnnotation*
 # whatever
 testSuperOutsideClass
 testTestExtendPrimitives
@@ -195,10 +203,20 @@ testInvalidKindsOfArgsToCast
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
+testParamSpec
+testBaseClassAnnotatedWithoutArgs
 # Tuple types
 testVariableDeclWithInvalidNumberOfTypes*
 testVariableDeclWithInvalidType
+# Scoping
+testListComprehensionSpecialScoping
 
+# Dynamic functions are not type checked?!
+testNoInvalidTypeInDynamicFunctions
+
+# typing extensions
+testInvalidUnpackTypes
+testTypeVarTuple
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
