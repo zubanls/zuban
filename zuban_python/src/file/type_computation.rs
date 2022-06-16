@@ -3,8 +3,9 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    CallableContent, ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific,
-    TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage,
+    CallableContent, ComplexPoint, Database, DbType, GenericsList, Locality, Point, PointType,
+    Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
+    TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -38,6 +39,55 @@ enum InvalidVariableType<'db> {
     List,
     Function(Function<'db, 'db>),
     Other,
+}
+
+impl InvalidVariableType<'_> {
+    fn add_issue(&self, db: &Database, node_ref: NodeRef) {
+        match self {
+            Self::Other => {
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(format!(
+                        "Variable {:?} is not valid as a type",
+                        "__main__.x".to_owned() //TODO: Use the variable name
+                    )),
+                );
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::Note(
+                        "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
+                    ),
+                );
+            }
+            Self::Function(func) => {
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(format!(
+                        "Function {:?} is not valid as a type",
+                        func.qualified_name(db),
+                    )),
+                );
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::Note(
+                        "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
+                    ),
+                );
+            }
+            Self::List => {
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(
+                        "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
+                    ),
+                );
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -326,52 +376,7 @@ where
             }
             TypeContent::InvalidVariable(t) => {
                 let node_ref = NodeRef::new(self.inference.file, expr.index());
-                match t {
-                    InvalidVariableType::Other => {
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::InvalidType(format!(
-                                "Variable {:?} is not valid as a type",
-                                "__main__.x".to_owned() //TODO: Use the variable name
-                            )),
-                        );
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::Note(
-                                "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
-                            ),
-                        );
-                    }
-                    InvalidVariableType::Function(func) => {
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::InvalidType(format!(
-                                "Function {:?} is not valid as a type",
-                                func.qualified_name(self.inference.i_s.db),
-                            )),
-                        );
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::Note(
-                                "Perhaps you need \"Callable[...]\" or a callback protocol?"
-                                    .to_owned(),
-                            ),
-                        );
-                    }
-                    InvalidVariableType::List => {
-                        let node_ref = NodeRef::new(self.inference.file, expr.index());
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::InvalidType(
-                                "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
-                            ),
-                        );
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
-                        );
-                    }
-                }
+                t.add_issue(self.inference.i_s.db, node_ref);
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
                     .save_redirect(self.inference.file, annotation_index);
                 return;
@@ -605,7 +610,10 @@ where
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
                         TypeContent::SpecialType(m) => todo!(),
-                        TypeContent::InvalidVariable(t) => todo!(),
+                        TypeContent::InvalidVariable(t) => {
+                            t.add_issue(self.inference.i_s.db, s.as_node_ref());
+                            TypeContent::DbType(DbType::Any)
+                        }
                     }
                 }
                 SliceTypeContent::Slice(slice) => todo!(),

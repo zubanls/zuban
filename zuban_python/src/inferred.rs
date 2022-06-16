@@ -510,7 +510,9 @@ impl<'db> Inferred<'db> {
             DbType::Any => on_missing(i_s),
             DbType::Unknown => todo!(),
             DbType::Never => todo!(),
-            DbType::Type(t) => self.run_on_db_type_type(i_s, db_type, t, callable, reducer),
+            DbType::Type(t) => {
+                self.run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing)
+            }
         }
     }
 
@@ -521,6 +523,7 @@ impl<'db> Inferred<'db> {
         type_: &'a DbType,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
     ) -> T {
         match type_ {
             DbType::Class(link) => {
@@ -542,9 +545,12 @@ impl<'db> Inferred<'db> {
             DbType::Union(lst) => lst
                 .iter()
                 .fold(None, |input, t| match input {
-                    None => Some(self.run_on_db_type_type(i_s, db_type, t, callable, reducer)),
+                    None => Some(
+                        self.run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
+                    ),
                     Some(t1) => {
-                        let t2 = self.run_on_db_type_type(i_s, db_type, t, callable, reducer);
+                        let t2 = self
+                            .run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing);
                         Some(reducer(i_s, t1, t2))
                     }
                 })
@@ -560,7 +566,7 @@ impl<'db> Inferred<'db> {
                 debug!("TODO this should be NoneType instead of None");
                 callable(i_s, &NoneInstance())
             }
-            DbType::Any => todo!(),
+            DbType::Any => on_missing(i_s),
             DbType::Unknown => todo!(),
             DbType::Never => todo!(),
         }
