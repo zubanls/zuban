@@ -1202,6 +1202,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // TODO check star imports
                 NodeRef::new(self.file, name.index())
                     .add_typing_issue(self.i_s.db, IssueType::NameError(name.as_str().to_owned()));
+                if self
+                    .i_s
+                    .db
+                    .python_state
+                    .typing()
+                    .lookup_global(name_str)
+                    .is_some()
+                {
+                    // TODO what about underscore or other vars?
+                    NodeRef::new(self.file, name.index()).add_typing_issue(
+                        self.i_s.db,
+                        IssueType::Note(format!(
+                            "Did you forget to import it from \"typing\"? \
+                             (Suggestion: \"from typing import {name_str}\")",
+                        )),
+                    );
+                }
                 Point::new_unknown(self.file_index, Locality::Todo)
             }
         };
