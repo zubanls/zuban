@@ -416,13 +416,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
 
 fn cleanup_mypy_issues(s: &str) -> String {
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
-    replace_annoyances(if s.contains("Revealed type is") {
-        // For now just skip stars, it's weird. See also
-        // https://stackoverflow.com/questions/50498575/what-does-the-asterisk-in-the-output-of-reveal-type-mean
-        s.replace("*", "")
-    } else {
-        s.replace("tmp/", "")
-    })
+    replace_annoyances(s.replace("tmp/", ""))
 }
 
 fn try_to_resemble_mypy(s: &str) -> String {
