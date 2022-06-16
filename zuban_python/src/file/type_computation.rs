@@ -38,6 +38,7 @@ enum SpecialType<'db> {
 enum InvalidVariableType<'db> {
     List,
     Function(Function<'db, 'db>),
+    Literal(&'db str),
     Other,
 }
 
@@ -84,6 +85,12 @@ impl InvalidVariableType<'_> {
                 node_ref.add_typing_issue(
                     db,
                     IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
+                );
+            }
+            Self::Literal(s) => {
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(format!("Invalid type: try using Literal[{s}] instead?")),
                 );
             }
         }
@@ -886,7 +893,7 @@ where
             }
             AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
-                    self.compute_forward_reference(start, s.to_owned())
+                    self.compute_forward_reference(start, s.to_owned()
                 }
                 Some(PythonString::String(start, s)) => todo!(),
                 Some(PythonString::FString) => todo!(),
@@ -894,6 +901,7 @@ where
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
             AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),
+            AtomContent::Int(n) => TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code())),
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
