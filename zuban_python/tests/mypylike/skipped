@@ -1,3 +1,7 @@
+# temporary
+testInvalidNestedClassReferenceInDecl
+
+# fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource
 testVariableTypeBecomesInvalid
