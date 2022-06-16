@@ -2,6 +2,8 @@
 testInvalidNestedClassReferenceInDecl
 testCyclicInheritance1
 testCyclicInheritance2
+testNonSelfMemberAssignmentWithTypeDeclaration
+testNonSelfMemberAssignmentWithTypeDeclarationInMethod
 
 # fine-grained
 testTypeAliasRefresh
@@ -161,6 +163,8 @@ testTwoStarExpressions*
 testStarExpressionRhs
 testStarExpressionInExp
 testInvalidDel*
+testInvalidTypeDeclaration
+testIndexedAssignmentWithTypeDeclaration
 # whatever
 testSuperOutsideClass
 testTestExtendPrimitives
