@@ -414,7 +414,10 @@ impl Iterator for ErrorCommentsOnCode<'_> {
     }
 }
 
-fn cleanup_mypy_issues(s: &str) -> String {
+fn cleanup_mypy_issues(mut s: &str) -> String {
+    if s.ends_with(" \\") {
+        s = &s[..s.len() - 2];
+    }
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
     replace_annoyances(s.replace("tmp/", ""))
 }
