@@ -21,6 +21,8 @@ pub(crate) enum IssueType {
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
+    InvalidCallableParams,
+    InvalidCallableArgCount,
     UnsupportedOperand(String, String, String),
     UnsupportedLeftOperand(String, String, Option<String>),
     InvalidGetItem(String),
@@ -162,6 +164,11 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable(s) => format!("{} not callable", s),
+            IssueType::InvalidCallableParams => format!(
+                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
+                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
+            ),
+            IssueType::InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
             IssueType::UnsupportedOperand(operand, left, right) => {
                 format!(
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",

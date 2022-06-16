@@ -110,6 +110,10 @@ pub struct Slices<'db> {
 }
 
 impl<'db> Slices<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
+        NodeRef::new(self.file, self.slices.index())
+    }
+
     pub fn iter(&self) -> SliceIterator<'db> {
         SliceIterator(self.file, self.slices.iter())
     }
