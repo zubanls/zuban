@@ -1,4 +1,11 @@
 # temporary
+testInvalidStrLiteralSpaces
+testInvalidStrLiteralStrayBrace
+testInvalidMultilineLiteralType
+testInvalidTypevarArguments
+testMoreInvalidTypevarArguments
+testInvalidTypevarValues
+testObsoleteTypevarValuesSyntax
 testVarOrFuncAsType
 testInvalidNestedClassReferenceInDecl
 testCyclicInheritance1
@@ -152,6 +159,10 @@ testMultipleClassDefinitions
 testMultipleMixedDefinitions
 testMultipleMethodDefinition
 testMultipleNestedFunctionDef
+testRedefineVariableAsTypevar
+testRedefineTypevar*
+testImportTwoModulesWithSameNameInFunction
+testImportTwoModulesWithSameNameInGlobalContext
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
@@ -171,7 +182,13 @@ testInvalidLvalueWithExplicitType*
 # whatever
 testSuperOutsideClass
 testTestExtendPrimitives
+testInvalidTypeWithinNestedGenericClass
+testTypevarWithType
 # Library stuff
+testStaticmethodAndNonMethod
+testClassmethodAndNonMethod
+testNonMethodProperty
+testInvalidArgCountForProperty
 testInvalidCast*
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
@@ -185,3 +202,5 @@ testVariableDeclWithInvalidType
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
+# Won't support: Signature Comments
+testIncompatibleSignatureInComment

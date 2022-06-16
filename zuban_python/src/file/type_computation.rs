@@ -566,7 +566,10 @@ where
                             t
                         }
                     }
-                    TypeContent::DbType(d) => todo!(),
+                    TypeContent::DbType(d) => match d {
+                        DbType::Any => TypeContent::DbType(d),
+                        _ => todo!("{d:?}"),
+                    },
                     TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
