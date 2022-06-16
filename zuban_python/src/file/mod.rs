@@ -928,7 +928,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
         let result = self
-            .infer_primary_content(base, primary.index(), primary.second())
+            .infer_primary_or_primary_t_content(base, primary.index(), primary.second())
             .save_redirect(self.file, primary.index());
         debug!(
             "Infer primary {} as {}",
@@ -938,7 +938,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         result
     }
 
-    fn infer_primary_content(
+    fn infer_primary_or_primary_t_content(
         &mut self,
         base: Inferred<'db>,
         primary_index: NodeIndex,
@@ -1124,8 +1124,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
         };
-        self.infer_primary_content(first, primary_target.index(), primary_target.second())
-            .save_redirect(self.file, primary_target.index())
+        self.infer_primary_or_primary_t_content(
+            first,
+            primary_target.index(),
+            primary_target.second(),
+        )
+        .save_redirect(self.file, primary_target.index())
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
