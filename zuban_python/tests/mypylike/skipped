@@ -1,5 +1,7 @@
 # temporary
 testInvalidNestedClassReferenceInDecl
+testCyclicInheritance1
+testCyclicInheritance2
 
 # fine-grained
 testTypeAliasRefresh
@@ -152,6 +154,7 @@ testContinueOutsideLoop
 testInvalidGlobalDecl
 *NonlocalDecl*
 testNonlocalAndGlobalDecl
+testAssignToTypeDef
 # parser shit
 testInvalidLvalues*
 testTwoStarExpressions*
@@ -160,6 +163,13 @@ testStarExpressionInExp
 testInvalidDel*
 # whatever
 testSuperOutsideClass
+testTestExtendPrimitives
+# Library stuff
+testInvalidCast*
+testInvalidNumberOfArgsToCast
+testInvalidKindsOfArgsToCast
+testInvalidAssertType
+testInvalidAnyCall
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
