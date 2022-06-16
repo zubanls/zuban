@@ -129,7 +129,7 @@ impl File for PythonFile {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
-        if !self.is_sub_file {
+        if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
             self.inference(&mut i_s).calculate_diagnostics();
@@ -208,7 +208,7 @@ pub struct PythonFile {
     pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
-    pub(crate) is_sub_file: bool,
+    pub(crate) super_file: Option<FileIndex>,
 
     newline_indices: NewlineIndices,
 }
@@ -235,7 +235,7 @@ impl<'db> PythonFile {
             issues: Default::default(),
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
-            is_sub_file: false,
+            super_file: None,
             package_dir,
         }
     }
@@ -293,12 +293,7 @@ impl<'db> PythonFile {
     ) -> &'db Self {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.star_imports.borrow_mut().push(StarImport {
-            to_file: OnceCell::from(Some(self.file_index())),
-            scope: 0,
-            node: None,
-        });
-        file.is_sub_file = true;
+        file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
@@ -1187,6 +1182,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             return self.infer_name_reference(name);
                         }
                     }
+                }
+            }
+            if let Some(super_file) = self.file.super_file {
+                let super_file = self.i_s.db.loaded_python_file(super_file);
+                if let Some(symbol) = super_file.symbol_table.lookup_symbol(name_str) {
+                    self.file.points.set(
+                        name.index(),
+                        Point::new_redirect(super_file.file_index(), symbol, Locality::Todo),
+                    );
+                    return self.infer_name_reference(name);
                 }
             }
             if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {
