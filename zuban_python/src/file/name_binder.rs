@@ -19,7 +19,7 @@ use parsa_python_ast::{
 };
 
 #[derive(PartialEq, Debug)]
-pub(crate) enum NameBinderType {
+enum NameBinderType {
     Global,
     Function,
     Class,

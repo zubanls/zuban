@@ -1,4 +1,5 @@
 # temporary
+testVarOrFuncAsType
 testInvalidNestedClassReferenceInDecl
 testCyclicInheritance1
 testCyclicInheritance2

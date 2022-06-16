@@ -28,7 +28,7 @@ use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Function, LookupResult, Module, Value};
 use crate::workspaces::DirContent;
-use name_binder::{NameBinder, NameBinderType};
+use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
 pub use type_computation::{BaseClass, TypeComputation};
 
