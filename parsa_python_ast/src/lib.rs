@@ -81,10 +81,6 @@ impl Tree {
         let node = self.0.node_by_index(index);
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
-
-    pub fn nth_child_node_index(&self, index: NodeIndex, n: usize) -> NodeIndex {
-        self.0.node_by_index(index).nth_child(n).index
-    }
 }
 
 pub trait InterestingNodeSearcher<'db> {
@@ -1664,19 +1660,7 @@ pub enum ArgumentsDetails<'db> {
     Node(Arguments<'db>),
 }
 
-impl<'db> ArgumentsDetails<'db> {
-    pub fn from_node_index(tree: &'db Tree, index: NodeIndex) -> Self {
-        let node = tree.0.node_by_index(index);
-        if node.is_type(Nonterminal(arguments)) {
-            ArgumentsDetails::Node(Arguments::new(node))
-        } else if node.is_type(Nonterminal(comprehension)) {
-            ArgumentsDetails::Comprehension(Comprehension::new(node))
-        } else {
-            debug_assert_eq!(node.as_code(), ")");
-            ArgumentsDetails::None
-        }
-    }
-
+impl ArgumentsDetails<'_> {
     pub fn index(&self) -> Option<NodeIndex> {
         match self {
             Self::None => None,
