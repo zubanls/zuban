@@ -289,7 +289,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    fn init_func(
+    pub fn init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -643,33 +643,24 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     ) -> Inferred<'db> {
         // TODO locality!!!
         let (func, generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
-        if args.outer_execution().is_some() || !self.type_vars(i_s).is_empty() || is_overload {
-            debug!(
-                "Class execute: {}{}",
-                self.name(),
-                match generics_list.as_ref() {
-                    Some(generics_list) =>
-                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
-                    None => "".to_owned(),
-                }
-            );
-            Inferred::new_unsaved_complex(match generics_list {
-                None => ComplexPoint::ExecutionInstance(
-                    self.reference.as_link(),
-                    Box::new(args.as_execution(&func).unwrap()),
-                ),
-                Some(generics_list) => {
-                    ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
-                }
-            })
-        } else {
-            // TODO this is weird.
-            match args.type_() {
-                ArgumentsType::Normal(file, primary_node_index) => {
-                    Inferred::new_unsaved_specific(Specific::InstanceWithArguments)
-                }
+        debug!(
+            "Class execute: {}{}",
+            self.name(),
+            match generics_list.as_ref() {
+                Some(generics_list) =>
+                    Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
+                None => "".to_owned(),
             }
-        }
+        );
+        Inferred::new_unsaved_complex(match generics_list {
+            None => ComplexPoint::ExecutionInstance(
+                self.reference.as_link(),
+                Box::new(args.as_execution(&func).unwrap()),
+            ),
+            Some(generics_list) => {
+                ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
+            }
+        })
     }
 
     fn get_item(

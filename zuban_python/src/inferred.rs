@@ -842,7 +842,7 @@ impl<'db> Inferred<'db> {
                     }
                     _ => None,
                 },
-                _ => todo!(),
+                _ => None,
             },
             InferredState::UnsavedComplex(complex) => {
                 if let ComplexPoint::TypeInstance(g) = complex {

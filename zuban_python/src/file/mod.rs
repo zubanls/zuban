@@ -26,7 +26,7 @@ use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Function, LookupResult, Module, Value};
+use crate::value::{Class, Function, InferrableParam, LookupResult, Module, Value};
 use crate::workspaces::DirContent;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
@@ -980,9 +980,49 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
+                let on_type_error = |i_s: &mut InferenceState<'db, '_>,
+                                     node_ref: NodeRef<'db>,
+                                     class: Option<&Class<'db, '_>>,
+                                     function: &Function<'db, '_>,
+                                     p: &InferrableParam<'db, '_>,
+                                     t1,
+                                     t2| {
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::ArgumentIssue(format!(
+                            "Argument {} to {} has incompatible type {t1:?}; expected {t2:?}",
+                            p.argument_index(),
+                            function.diagnostic_string(class),
+                        )),
+                    )
+                };
+                let x = self
+                    .i_s
+                    .current_execution
+                    .and_then(|x| x.1.as_execution(x.0));
+                if x.is_none() {
+                    if let Some(class) = base.maybe_class(self.i_s) {
+                        if class.type_vars(self.i_s).is_empty()
+                            && !class
+                                .init_func(
+                                    self.i_s,
+                                    &SimpleArguments::new(
+                                        f,
+                                        node_index,
+                                        details,
+                                        x.as_ref(),
+                                        Some(class),
+                                    ),
+                                    &on_type_error,
+                                )
+                                .2
+                        {
+                            return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
+                        }
+                    }
+                }
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Execute {}", value.name());
-                    let x = i_s.current_execution.and_then(|x| x.1.as_execution(x.0));
                     value.execute(
                         i_s,
                         &SimpleArguments::new(
@@ -992,16 +1032,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             x.as_ref(),
                             value.as_class().cloned(),
                         ),
-                        &|i_s, node_ref, class, function, p, t1, t2| {
-                            node_ref.add_typing_issue(
-                                i_s.db,
-                                IssueType::ArgumentIssue(format!(
-                                    "Argument {} to {} has incompatible type {t1:?}; expected {t2:?}",
-                                    p.argument_index(),
-                                    function.diagnostic_string(class),
-                                )),
-                            )
-                        },
+                        &on_type_error,
                     )
                 })
             }
