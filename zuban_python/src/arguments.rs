@@ -92,18 +92,20 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         }
     }
 
-    pub fn from_primary(
-        file: &'db PythonFile,
-        primary_node: Primary<'db>,
+    pub fn from_primary_like(
+        node_ref: NodeRef<'db>,
         in_: Option<&'a Execution>,
         class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
-        match primary_node.second() {
-            PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node.index(), details, in_, class_of_method)
-            }
-            _ => unreachable!(),
-        }
+        let node_ref = node_ref.nth_child(2);
+        let details = ArgumentsDetails::from_node_index(&node_ref.file.tree, node_ref.node_index);
+        Self::new(
+            node_ref.file,
+            node_ref.node_index,
+            details,
+            in_,
+            class_of_method,
+        )
     }
 
     pub fn from_execution(db: &'db Database, execution: &'a Execution) -> Self {

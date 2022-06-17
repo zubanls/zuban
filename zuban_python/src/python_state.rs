@@ -1,4 +1,4 @@
-use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
+use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, PrimaryOrAtom, TypeLike};
 use std::ptr::null;
 
 use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
@@ -178,6 +178,17 @@ fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
     if let TypeLike::Assignment(assignment) = name.expect_type() {
         if let Some(expr) = assignment.maybe_simple_type_expression_assignment() {
             if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack() {
+                file.points.set(
+                    match p.first() {
+                        PrimaryOrAtom::Atom(a) => a.index(),
+                        PrimaryOrAtom::Primary(a) => unreachable!(),
+                    },
+                    Point::new_redirect(
+                        file.file_index(),
+                        file.symbol_table.lookup_symbol("TypeVar").unwrap(),
+                        Locality::Stmt,
+                    ),
+                );
                 file.points.set(
                     p.index(),
                     Point::new_simple_specific(Specific::InstanceWithArguments, Locality::File),

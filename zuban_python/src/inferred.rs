@@ -296,14 +296,9 @@ impl<'db> Inferred<'db> {
                 })
             }
             Specific::InstanceWithArguments => {
-                let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
+                let inf_cls = self.use_instance_with_arguments_cls(i_s, definition);
                 let class = inf_cls.maybe_class(i_s).unwrap();
-                let args = SimpleArguments::from_primary(
-                    definition.file,
-                    definition.as_primary(),
-                    None,
-                    Some(class),
-                );
+                let args = SimpleArguments::from_primary_like(*definition, None, Some(class));
                 let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
@@ -671,7 +666,7 @@ impl<'db> Inferred<'db> {
             {
                 // TODO this check can/should be optimized by comparing node pointers that are cached
                 // in python_state
-                let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
+                let cls = self.use_instance_with_arguments_cls(i_s, &definition);
                 if let InferredState::Saved(cls_definition, _) = cls.state {
                     if cls_definition.file.file_index() == i_s.db.python_state.typing().file_index()
                         && cls_definition
@@ -679,12 +674,7 @@ impl<'db> Inferred<'db> {
                             .map(|cls| cls.name().as_str() == "TypeVar")
                             .unwrap_or(false)
                     {
-                        let args = SimpleArguments::from_primary(
-                            definition.file,
-                            definition.as_primary(),
-                            None,
-                            None,
-                        );
+                        let args = SimpleArguments::from_primary_like(definition, None, None);
                         return args.maybe_type_var(i_s);
                     }
                 }
@@ -699,16 +689,12 @@ impl<'db> Inferred<'db> {
                 match point.specific() {
                     Specific::InstanceWithArguments => {
                         let inf_cls = self
-                            .infer_instance_with_arguments_cls(i_s, &definition)
+                            .use_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
                         let class = inf_cls.maybe_class(i_s).unwrap();
                         debug_assert!(class.type_vars(i_s).is_empty());
-                        let args = SimpleArguments::from_primary(
-                            definition.file,
-                            definition.as_primary(),
-                            None,
-                            Some(class),
-                        );
+                        let args =
+                            SimpleArguments::from_primary_like(definition, None, Some(class));
                         let init = class.simple_init_func(i_s, &args);
                         if let Some(execution) = args.as_execution(&init) {
                             return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
@@ -739,15 +725,20 @@ impl<'db> Inferred<'db> {
         self
     }
 
-    fn infer_instance_with_arguments_cls(
+    fn use_instance_with_arguments_cls(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         definition: &NodeRef<'db>,
     ) -> Self {
+        dbg!(
+            definition.debug_info(i_s.db),
+            definition.add_to_node_index(1).debug_info(i_s.db)
+        );
         definition
             .file
             .inference(i_s)
-            .infer_primary_or_atom(definition.as_primary().first())
+            .check_point_cache(definition.node_index + 1)
+            .unwrap()
     }
 
     fn with_instance<'a, T>(

@@ -1017,6 +1017,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 )
                                 .2
                         {
+                            let class_node_index = node_index + 1;
+                            if !self.file.points.get(class_node_index).calculated() {
+                                base.save_redirect(self.file, class_node_index);
+                            }
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
                         }
                     }
@@ -1261,7 +1265,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_name_reference(name)
     }
 
-    fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
+    pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
         let point = self.file.points.get(node_index);
         let result = point
             .calculated()

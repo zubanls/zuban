@@ -45,6 +45,13 @@ impl<'db> NodeRef<'db> {
         Self::new(self.file, self.node_index + add)
     }
 
+    pub fn nth_child(&self, n: usize) -> Self {
+        Self {
+            file: self.file,
+            node_index: self.file.tree.nth_child_node_index(self.node_index, n),
+        }
+    }
+
     pub fn point(&self) -> Point {
         self.file.points.get(self.node_index)
     }
@@ -124,9 +131,10 @@ impl<'db> NodeRef<'db> {
 
     pub fn debug_info(&self, db: &Database) -> String {
         format!(
-            "{}: {}",
+            "{}: {}; {:?}",
             self.file.file_path(db),
-            self.file.tree.debug_info(self.node_index)
+            self.file.tree.debug_info(self.node_index),
+            self.point()
         )
     }
 
