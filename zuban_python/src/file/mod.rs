@@ -928,7 +928,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_primary(&mut self, primary: Primary<'db>) -> Inferred<'db> {
         let base = self.infer_primary_or_atom(primary.first());
         let result = self
-            .infer_primary_or_primary_t_content(base, primary.index(), primary.second())
+            .infer_primary_or_primary_t_content(base, primary.index(), primary.second(), false)
             .save_redirect(self.file, primary.index());
         debug!(
             "Infer primary {} as {}",
@@ -943,6 +943,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         base: Inferred<'db>,
         node_index: NodeIndex,
         second: PrimaryContent<'db>,
+        is_target: bool,
     ) -> Inferred<'db> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
@@ -1000,7 +1001,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .i_s
                     .current_execution
                     .and_then(|x| x.1.as_execution(x.0));
-                if x.is_none() {
+                if x.is_none() && !is_target {
                     if let Some(class) = base.maybe_class(self.i_s) {
                         if class.type_vars(self.i_s).is_empty()
                             && !class
@@ -1159,6 +1160,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             first,
             primary_target.index(),
             primary_target.second(),
+            true,
         )
         .save_redirect(self.file, primary_target.index())
     }

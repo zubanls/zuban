@@ -6,7 +6,7 @@ use super::{
     CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
     ValueKind,
 };
-use crate::arguments::{Arguments, ArgumentsType};
+use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
     MroIndex, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
@@ -653,10 +653,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             }
         );
         Inferred::new_unsaved_complex(match generics_list {
-            None => ComplexPoint::ExecutionInstance(
-                self.reference.as_link(),
-                Box::new(args.as_execution(&func).unwrap()),
-            ),
+            None => match args.as_execution(&func) {
+                Some(execution) => {
+                    ComplexPoint::ExecutionInstance(self.reference.as_link(), Box::new(execution))
+                }
+                None => ComplexPoint::Instance(self.reference.as_link(), None),
+            },
             Some(generics_list) => {
                 ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
             }
