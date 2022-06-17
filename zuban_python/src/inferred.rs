@@ -710,10 +710,17 @@ impl<'db> Inferred<'db> {
                             Some(class),
                         );
                         let init = class.simple_init_func(i_s, &args);
-                        return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
-                            inf_cls.get_saved().unwrap().0.as_link(),
-                            Box::new(args.as_execution(&init).unwrap()),
-                        ));
+                        if let Some(execution) = args.as_execution(&init) {
+                            return Inferred::new_unsaved_complex(ComplexPoint::ExecutionInstance(
+                                inf_cls.get_saved().unwrap().0.as_link(),
+                                Box::new(execution),
+                            ));
+                        } else {
+                            return Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                inf_cls.get_saved().unwrap().0.as_link(),
+                                None,
+                            ));
+                        }
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(

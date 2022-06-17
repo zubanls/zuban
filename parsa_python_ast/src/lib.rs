@@ -1660,6 +1660,16 @@ pub enum ArgumentsDetails<'db> {
     Node(Arguments<'db>),
 }
 
+impl ArgumentsDetails<'_> {
+    pub fn index(&self) -> Option<NodeIndex> {
+        match self {
+            Self::None => None,
+            Self::Comprehension(comp) => Some(comp.index()),
+            Self::Node(arg) => Some(arg.index()),
+        }
+    }
+}
+
 impl<'db> Assignment<'db> {
     pub fn unpack(&self) -> AssignmentContent<'db> {
         // | (star_targets "=" )+ (yield_expr | star_expressions)

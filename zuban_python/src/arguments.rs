@@ -57,11 +57,13 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 
     fn as_execution(&self, function: &Function) -> Option<Execution> {
-        Some(Execution::new(
-            function.reference.as_link(),
-            PointLink::new(self.file.file_index(), self.primary_node_index),
-            self.in_,
-        ))
+        self.details.index().map(|index| {
+            Execution::new(
+                function.reference.as_link(),
+                PointLink::new(self.file.file_index(), index),
+                self.in_,
+            )
+        })
     }
 
     fn type_(&self) -> ArgumentsType<'db> {
@@ -106,8 +108,9 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
     pub fn from_execution(db: &'db Database, execution: &'a Execution) -> Self {
         let f = db.loaded_python_file(execution.argument_node.file);
-        let primary = Primary::by_index(&f.tree, execution.argument_node.node_index);
-        Self::from_primary(f, primary, execution.in_.as_deref(), None)
+        todo!()
+        // details = ...
+        //Self::from_primary(f, primary, execution.in_.as_deref(), None)
     }
 
     fn with_class_method(&self, class: Class<'db, 'a>) -> Self {
