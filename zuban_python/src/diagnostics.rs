@@ -146,12 +146,10 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} is not defined", primary.as_code())
             }
             IssueType::TypeArgumentIssue(class, expected, given) => {
-                if *expected == 0 {
-                    format!("{class:?} expects no type arguments, but {given} given")
-                } else {
-                    format!(
-                        "{class:?} expects {expected} type arguments, but {given} given",
-                    )
+                match expected {
+                    0 => format!("{class:?} expects no type arguments, but {given} given"),
+                    1 => format!("{class:?} expects {expected} type argument, but {given} given"),
+                    _ => format!("{class:?} expects {expected} type arguments, but {given} given"),
                 }
             }
             IssueType::TypeAliasArgumentIssue(expected, given) => {
