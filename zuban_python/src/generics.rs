@@ -523,7 +523,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 calculated.set_generic(type_var_usage.index, value_type.into_db_type(i_s));
             }
         } else {
-            todo!()
+            // Happens e.g. for testInvalidNumberOfTypeArgs
+            // class C:  # Forgot to add type params here
+            //     def __init__(self, t: T) -> None: pass
+            debug!("TODO free type param annotations")
         }
         true
     }

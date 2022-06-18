@@ -15,6 +15,7 @@ testCyclicInheritance2
 testNonSelfMemberAssignmentWithTypeDeclaration
 testNonSelfMemberAssignmentWithTypeDeclarationInMethod
 testMissingGenericImport
+testInvalidBaseClass2
 
 # fine-grained
 testTypeAliasRefresh
