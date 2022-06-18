@@ -10,12 +10,42 @@ testInvalidTypevarValues
 testObsoleteTypevarValuesSyntax
 testVarOrFuncAsType
 testInvalidNestedClassReferenceInDecl
-testCyclicInheritance1
-testCyclicInheritance2
 testNonSelfMemberAssignmentWithTypeDeclaration
 testNonSelfMemberAssignmentWithTypeDeclarationInMethod
 testMissingGenericImport
 testInvalidBaseClass2
+
+# Cycles
+testCyclicInheritance1
+testCyclicInheritance2
+testNewAnalyzerTypeAnnotationCycle4
+*Cycl*
+
+# __all__
+testNewAnalyzerExportedValuesInImportAll
+
+# Literal
+testNewAnalyzerBool
+
+# Class in Class
+testNewAnalyzerNestedClass*
+
+# Class in function
+testNewAnalyzerClassInFunction
+testNewAnalyzerNestedClassInMethod
+testNewAnalyzerDeeplyNestedFunctions
+
+# Dynamic functions are not type checked?!
+testNoInvalidTypeInDynamicFunctions
+
+# Module <M> has no attribute <missing_name>; maybe <name>
+testNewAnalyzerTypeAnnotationCycle3
+
+# typing extensions
+testInvalidUnpackTypes
+testTypeVarTuple
+testRuntimeProtoTwoBases
+
 
 # fine-grained
 testTypeAliasRefresh
@@ -154,22 +184,6 @@ testGenericJoin*
 
 # semanal-errors
 testInvalidNumberOfGenericArgsInTypeDecl
-# Redefinition
-testGlobalVarRedefinition
-testLocalVarRedefinition
-testClassVarRedefinition
-testMultipleClassDefinitions
-testMultipleMixedDefinitions
-testMultipleMethodDefinition
-testMultipleNestedFunctionDef
-testRedefineVariableAsTypevar
-testRedefineTypevar*
-testImportTwoModulesWithSameNameInFunction
-testImportTwoModulesWithSameNameInGlobalContext
-testTypeRedeclarationNoSpuriousWarnings
-testDuplicateDef*
-testTypeVarClassDup
-testAliasDup
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
@@ -212,12 +226,26 @@ testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
 
-# Dynamic functions are not type checked?!
-testNoInvalidTypeInDynamicFunctions
-
-# typing extensions
-testInvalidUnpackTypes
-testTypeVarTuple
+# Redefinition
+testGlobalVarRedefinition
+testLocalVarRedefinition
+testClassVarRedefinition
+testMultipleClassDefinitions
+testMultipleMixedDefinitions
+testMultipleMethodDefinition
+testMultipleNestedFunctionDef
+testRedefineVariableAsTypevar
+testRedefineTypevar*
+testImportTwoModulesWithSameNameInFunction
+testImportTwoModulesWithSameNameInGlobalContext
+testTypeRedeclarationNoSpuriousWarnings
+testDuplicateDef*
+testTypeVarClassDup
+testAliasDup
+testImportFuncDup
+testIgnoredImportDup
+testNewAnalyzerRedefinitionAndDeferral*
+testNewAnalyzerImportStarForwardRef*
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
