@@ -297,10 +297,10 @@ macro_rules! check_point_cache_with {
                         node.index(),
                         {
                             let point = self.file.points.get(node.index());
-                            if matches!(point.type_(), PointType::Specific) {
-                                format!("{:?}", point.specific())
-                            } else {
-                                format!("{:?}", point.type_())
+                            match point.type_() {
+                                PointType::Specific => format!("{:?}", point.specific()),
+                                PointType::Redirect => format!("Redirect {}:{}", point.file_index(), point.node_index()),
+                                _ => format!("{:?}", point.type_()),
                             }
                         },
                     );
