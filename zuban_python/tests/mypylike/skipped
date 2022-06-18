@@ -21,11 +21,19 @@ testCyclicInheritance2
 testNewAnalyzerTypeAnnotationCycle4
 *Cycl*
 
+# Type Var Values / Bounds
+*TypeVarValues*
+testNewAnalyzerTypeVarForwardReference*
+*TypeVarBound*
+
 # __all__
 testNewAnalyzerExportedValuesInImportAll
 
 # Literal
 testNewAnalyzerBool
+
+# int -> float promotion
+testNewAnalyzerPromotion
 
 # Class in Class
 testNewAnalyzerNestedClass*
@@ -40,6 +48,9 @@ testNoInvalidTypeInDynamicFunctions
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
+
+# if sys.version
+testNewAnalyzerVersionCheck*
 
 # typing extensions
 testInvalidUnpackTypes
@@ -89,8 +100,6 @@ testReprocessCallableArg
 testImplicitTuple2
 testImplicitTuple3
 *StrictOptional*
-*TypeVarValues*
-*TypeVarBound*
 *GenericFineCallable*
 *Abstract*
 testChangeTypeVarToFunction
