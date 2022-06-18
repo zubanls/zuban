@@ -1169,7 +1169,52 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn _infer_name_reference(&mut self, name: Name<'db>) -> Inferred<'db> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
-        let point = if let Some(link) = self
+        let name_str = name.as_str();
+        if !name_str.starts_with('_') {
+            for star_import in self.file.star_imports.borrow().iter() {
+                // TODO these feel a bit weird and do not include parent functions (when in a
+                // closure)
+                if !(star_import.scope == 0
+                    || self
+                        .i_s
+                        .current_execution
+                        .map(|(f, _)| f.reference.node_index == star_import.scope)
+                        .or_else(|| {
+                            self.i_s
+                                .current_class
+                                .map(|c| c.reference.node_index == star_import.scope)
+                        })
+                        .unwrap_or(false))
+                {
+                    continue;
+                }
+                if let Some(other_file) = star_import.to_file(self) {
+                    if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_redirect(other_file.file_index(), symbol, Locality::Todo),
+                        );
+                        return self.infer_name_reference(name);
+                    }
+                }
+            }
+        }
+        if let Some(super_file) = self.file.super_file {
+            let super_file = self.i_s.db.loaded_python_file(super_file);
+            if let Some(symbol) = super_file.symbol_table.lookup_symbol(name_str) {
+                self.file.points.set(
+                    name.index(),
+                    Point::new_redirect(super_file.file_index(), symbol, Locality::Todo),
+                );
+                return self.infer_name_reference(name);
+            }
+        }
+        let point = if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {
+            // TODO mypy this is a issue AFAIK and this code should not be needed
+            Point::new_redirect(self.file_index, symbol, Locality::Todo)
+        } else if name_str == "reveal_type" {
+            Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
+        } else if let Some(link) = self
             .i_s
             .db
             .python_state
@@ -1179,84 +1224,33 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             debug_assert!(link.file != self.file_index || link.node_index != name.index());
             link.into_point_redirect()
         } else {
-            let name_str = name.as_str();
-            if !name_str.starts_with('_') {
-                for star_import in self.file.star_imports.borrow().iter() {
-                    // TODO these feel a bit weird and do not include parent functions (when in a
-                    // closure)
-                    if !(star_import.scope == 0
-                        || self
-                            .i_s
-                            .current_execution
-                            .map(|(f, _)| f.reference.node_index == star_import.scope)
-                            .or_else(|| {
-                                self.i_s
-                                    .current_class
-                                    .map(|c| c.reference.node_index == star_import.scope)
-                            })
-                            .unwrap_or(false))
-                    {
-                        continue;
-                    }
-                    if let Some(other_file) = star_import.to_file(self) {
-                        if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
-                            self.file.points.set(
-                                name.index(),
-                                Point::new_redirect(
-                                    other_file.file_index(),
-                                    symbol,
-                                    Locality::Todo,
-                                ),
-                            );
-                            return self.infer_name_reference(name);
-                        }
-                    }
-                }
-            }
-            if let Some(super_file) = self.file.super_file {
-                let super_file = self.i_s.db.loaded_python_file(super_file);
-                if let Some(symbol) = super_file.symbol_table.lookup_symbol(name_str) {
-                    self.file.points.set(
-                        name.index(),
-                        Point::new_redirect(super_file.file_index(), symbol, Locality::Todo),
-                    );
-                    return self.infer_name_reference(name);
-                }
-            }
-            if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {
-                // TODO mypy this is a issue AFAIK and this code should not be needed
-                Point::new_redirect(self.file_index, symbol, Locality::Todo)
-            } else if name_str == "reveal_type" {
-                Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
-            } else {
-                // The builtin module should really not have any issues.
-                debug_assert!(
-                    self.file_index != self.i_s.db.python_state.builtins().file_index(),
-                    "{:?}",
-                    name
+            // The builtin module should really not have any issues.
+            debug_assert!(
+                self.file_index != self.i_s.db.python_state.builtins().file_index(),
+                "{:?}",
+                name
+            );
+            // TODO check star imports
+            NodeRef::new(self.file, name.index())
+                .add_typing_issue(self.i_s.db, IssueType::NameError(name.as_str().to_owned()));
+            if self
+                .i_s
+                .db
+                .python_state
+                .typing()
+                .lookup_global(name_str)
+                .is_some()
+            {
+                // TODO what about underscore or other vars?
+                NodeRef::new(self.file, name.index()).add_typing_issue(
+                    self.i_s.db,
+                    IssueType::Note(format!(
+                        "Did you forget to import it from \"typing\"? \
+                         (Suggestion: \"from typing import {name_str}\")",
+                    )),
                 );
-                // TODO check star imports
-                NodeRef::new(self.file, name.index())
-                    .add_typing_issue(self.i_s.db, IssueType::NameError(name.as_str().to_owned()));
-                if self
-                    .i_s
-                    .db
-                    .python_state
-                    .typing()
-                    .lookup_global(name_str)
-                    .is_some()
-                {
-                    // TODO what about underscore or other vars?
-                    NodeRef::new(self.file, name.index()).add_typing_issue(
-                        self.i_s.db,
-                        IssueType::Note(format!(
-                            "Did you forget to import it from \"typing\"? \
-                             (Suggestion: \"from typing import {name_str}\")",
-                        )),
-                    );
-                }
-                Point::new_unknown(self.file_index, Locality::Todo)
             }
+            Point::new_unknown(self.file_index, Locality::Todo)
         };
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());
