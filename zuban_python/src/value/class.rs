@@ -401,7 +401,7 @@ impl<'db, 'a> Class<'db, 'a> {
                     Argument::Positional(n) => {
                         let database = i_s.db;
                         let mut inference = self.reference.file.inference(&mut i_s);
-                        let base = TypeComputation::new_base_class_calculation(
+                        let base = TypeComputation::new(
                             &mut inference,
                             &mut |_, type_var, is_generic_or_protocol, _| {
                                 let index = if let Some(force_index) = is_generic_or_protocol {

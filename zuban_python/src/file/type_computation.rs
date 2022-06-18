@@ -206,7 +206,6 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     type_var_callback: &'c mut C,
     errors_already_calculated: bool,
     pub has_type_vars: bool,
-    is_base_class_calculation: bool,
 }
 
 impl<'db, 'a, 'b, 'c, C> TypeComputation<'db, 'a, 'b, 'c, C>
@@ -227,20 +226,6 @@ where
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
-            is_base_class_calculation: false,
-        }
-    }
-
-    pub fn new_base_class_calculation(
-        inference: &'c mut PythonInference<'db, 'a, 'b>,
-        type_var_callback: &'c mut C,
-    ) -> Self {
-        Self {
-            inference,
-            type_var_callback,
-            errors_already_calculated: false,
-            has_type_vars: false,
-            is_base_class_calculation: true,
         }
     }
 
@@ -284,7 +269,6 @@ where
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
-                is_base_class_calculation: self.is_base_class_calculation,
             };
             let type_ = callback(&mut comp, expr);
             self.has_type_vars |= comp.has_type_vars;
@@ -303,9 +287,17 @@ where
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s)) => {
                 BaseClass::Protocol(Some(s))
             }
-            _ => BaseClass::DbType(
-                self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index())),
-            ),
+            _ => {
+                let db_type =
+                    self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
+                if matches!(db_type, DbType::Class(_) | DbType::GenericClass(_, _)) {
+                    BaseClass::DbType(db_type)
+                } else {
+                    NodeRef::new(self.inference.file, expr.index())
+                        .add_typing_issue(self.inference.i_s.db, IssueType::InvalidBaseClass);
+                    BaseClass::DbType(DbType::Any)
+                }
+            }
         }
     }
 
@@ -414,7 +406,8 @@ where
                 _ => todo!("{m:?}"),
             },
             TypeContent::InvalidVariable(t) => {
-                todo!()
+                t.add_issue(self.inference.i_s.db, node_ref);
+                DbType::Any
             }
         }
     }
@@ -937,31 +930,10 @@ where
                     TypeContent::DbType(DbType::Any)
                 }
             }
-            TypeNameLookup::TypeAlias(alias) => {
-                if self.is_base_class_calculation {
-                    if !matches!(
-                        alias.db_type.as_ref(),
-                        DbType::Class(_) | DbType::GenericClass(_, _) | DbType::Tuple(_)
-                    ) {
-                        NodeRef::new(self.inference.file, name.index())
-                            .add_typing_issue(self.inference.i_s.db, IssueType::InvalidBaseClass);
-                    }
-                }
-                TypeContent::TypeAlias(alias)
-            }
+            TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::DbType(DbType::Any),
-            TypeNameLookup::SpecialType(special) => {
-                if self.is_base_class_calculation
-                    && !matches!(
-                        special,
-                        SpecialType::Protocol | SpecialType::Generic | SpecialType::Tuple
-                    )
-                {
-                    debug!("TODO Invalid base class???")
-                }
-                TypeContent::SpecialType(special)
-            }
+            TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
         }
     }
 }
@@ -1220,7 +1192,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     })
                                 },
                             has_type_vars: false,
-                            is_base_class_calculation: false,
                         };
                         let t = comp.compute_type(expr, None);
                         match t {
