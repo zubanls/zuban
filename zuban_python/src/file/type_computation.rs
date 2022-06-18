@@ -107,6 +107,7 @@ enum TypeContent<'db> {
     DbType(DbType),
     SpecialType(SpecialType<'db>),
     InvalidVariable(InvalidVariableType<'db>),
+    Unknown,
 }
 
 enum TypeNameLookup<'db> {
@@ -162,6 +163,7 @@ impl<'db> TypeContent<'db> {
                 Self::Module(m) => todo!(),
                 Self::TypeAlias(m) => todo!(),
                 Self::SpecialType(m) => todo!(),
+                Self::Unknown => todo!(),
                 Self::InvalidVariable(t) => return Self::InvalidVariable(t),
             }),
             Self::Module(m) => todo!(),
@@ -171,6 +173,7 @@ impl<'db> TypeContent<'db> {
                 SpecialType::Any => DbType::Any,
                 _ => todo!("{s:?}"),
             },
+            Self::Unknown => todo!(),
             Self::InvalidVariable(t) => return Self::InvalidVariable(t),
         })
     }
@@ -287,10 +290,14 @@ where
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s)) => {
                 BaseClass::Protocol(Some(s))
             }
+            TypeContent::Unknown => BaseClass::DbType(DbType::Any),
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
-                if matches!(db_type, DbType::Class(_) | DbType::GenericClass(_, _)) {
+                if matches!(
+                    db_type,
+                    DbType::Class(_) | DbType::GenericClass(_, _) | DbType::Tuple(_)
+                ) {
                     BaseClass::DbType(db_type)
                 } else {
                     NodeRef::new(self.inference.file, expr.index())
@@ -332,61 +339,56 @@ where
 
         let type_ = self.compute_type(expr, None);
 
-        let specific = match type_ {
+        let db_type = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
                 debug_assert!(self.inference.file.points.get(expr.index()).calculated());
-                Specific::AnnotationClassInstance
+                self.inference.file.points.set(
+                    annotation_index,
+                    Point::new_simple_specific(Specific::AnnotationClassInstance, Locality::Todo),
+                );
+                return;
             }
             TypeContent::DbType(d) => {
                 if self.has_type_vars {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                         .save_redirect(self.inference.file, expr.index());
-                    Specific::AnnotationWithTypeVars
-                } else {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                        .save_redirect(self.inference.file, annotation_index);
+                    self.inference.file.points.set(
+                        annotation_index,
+                        Point::new_simple_specific(
+                            Specific::AnnotationWithTypeVars,
+                            Locality::Todo,
+                        ),
+                    );
                     return;
+                } else {
+                    d
                 }
             }
             TypeContent::Module(m) => {
                 self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
-                    .save_redirect(self.inference.file, annotation_index);
-                return;
+                DbType::Any
             }
-            TypeContent::TypeAlias(a) => {
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(a.as_db_type())))
-                    .save_redirect(self.inference.file, annotation_index);
-                return;
-            }
-            TypeContent::SpecialType(special) => {
-                let db_type = match special {
-                    SpecialType::Any => DbType::Any,
-                    SpecialType::Type => DbType::Type(Box::new(DbType::Class(
-                        self.inference.i_s.db.python_state.object().as_link(),
-                    ))),
-                    SpecialType::Tuple => DbType::Tuple(TupleContent {
-                        generics: None,
-                        arbitrary_length: true,
-                    }),
-                    _ => todo!("{special:?}"),
-                };
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)))
-                    .save_redirect(self.inference.file, annotation_index);
-                return;
-            }
+            TypeContent::TypeAlias(a) => a.as_db_type(),
+            TypeContent::SpecialType(special) => match special {
+                SpecialType::Any => DbType::Any,
+                SpecialType::Type => DbType::Type(Box::new(DbType::Class(
+                    self.inference.i_s.db.python_state.object().as_link(),
+                ))),
+                SpecialType::Tuple => DbType::Tuple(TupleContent {
+                    generics: None,
+                    arbitrary_length: true,
+                }),
+                _ => todo!("{special:?}"),
+            },
             TypeContent::InvalidVariable(t) => {
                 let node_ref = NodeRef::new(self.inference.file, expr.index());
                 t.add_issue(self.inference.i_s.db, node_ref);
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Any)))
-                    .save_redirect(self.inference.file, annotation_index);
-                return;
+                DbType::Any
             }
+            TypeContent::Unknown => DbType::Any,
         };
-        self.inference.file.points.set(
-            annotation_index,
-            Point::new_simple_specific(specific, Locality::Todo),
-        );
+        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
+        unsaved.save_redirect(self.inference.file, annotation_index);
     }
 
     fn as_db_type(&mut self, type_: TypeContent<'db>, node_ref: NodeRef<'db>) -> DbType {
@@ -405,6 +407,7 @@ where
                 }),
                 _ => todo!("{m:?}"),
             },
+            TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(self.inference.i_s.db, node_ref);
                 DbType::Any
@@ -507,7 +510,7 @@ where
                                     Point::new_unknown(f.file_index(), Locality::Todo),
                                 );
                             }
-                            TypeContent::DbType(DbType::Any)
+                            TypeContent::Unknown
                         }
                     }
                     TypeContent::ClassWithoutTypeVar(i) => {
@@ -540,6 +543,7 @@ where
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
                     TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
             PrimaryContent::Execution(details) => {
@@ -589,6 +593,7 @@ where
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                     },
                     TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
         }
@@ -615,6 +620,10 @@ where
                         TypeContent::Module(m) => todo!(),
                         TypeContent::TypeAlias(m) => todo!(),
                         TypeContent::SpecialType(m) => todo!(),
+                        TypeContent::Unknown => TypeContent::DbType(DbType::GenericClass(
+                            class.reference.as_link(),
+                            GenericsList::new_generics(Box::new([DbType::Any])),
+                        )),
                         TypeContent::InvalidVariable(t) => {
                             t.add_issue(self.inference.i_s.db, s.as_node_ref());
                             TypeContent::DbType(DbType::Any)
@@ -932,7 +941,7 @@ where
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-            TypeNameLookup::Unknown => TypeContent::DbType(DbType::Any),
+            TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
         }
     }
