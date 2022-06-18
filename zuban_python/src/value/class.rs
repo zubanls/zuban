@@ -445,11 +445,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     ),
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => todo!(),
-                                    _ => {
-                                        incomplete_mro = true;
-                                        mro.pop();
-                                        None
-                                    }
+                                    _ => unreachable!(),
                                 };
                                 if let Some(class) = class {
                                     for base in class.class_infos(&mut i_s).mro.iter() {
@@ -484,6 +480,9 @@ impl<'db, 'a> Class<'db, 'a> {
                                 } else {
                                     generic_args = Some(s);
                                 }
+                            }
+                            BaseClass::Invalid => {
+                                incomplete_mro = true;
                             }
                         };
                     }

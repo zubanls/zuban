@@ -124,6 +124,7 @@ pub enum BaseClass<'db> {
     DbType(DbType),
     Protocol(Option<SliceType<'db>>),
     Generic(SliceType<'db>),
+    Invalid,
 }
 
 macro_rules! compute_type_application {
@@ -290,7 +291,7 @@ where
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s)) => {
                 BaseClass::Protocol(Some(s))
             }
-            TypeContent::Unknown => BaseClass::DbType(DbType::Any),
+            TypeContent::Unknown => BaseClass::Invalid,
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
@@ -302,7 +303,7 @@ where
                 } else {
                     NodeRef::new(self.inference.file, expr.index())
                         .add_typing_issue(self.inference.i_s.db, IssueType::InvalidBaseClass);
-                    BaseClass::DbType(DbType::Any)
+                    BaseClass::Invalid
                 }
             }
         }
