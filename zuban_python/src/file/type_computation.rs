@@ -555,14 +555,7 @@ where
                 match base {
                     TypeContent::ClassWithoutTypeVar(i) => {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
-                        let t = self.compute_type_get_item_on_class(cls, s);
-                        if let TypeContent::ClassWithoutTypeVar(i) = t {
-                            TypeContent::ClassWithoutTypeVar(
-                                i.save_if_unsaved(self.inference.file, primary.index()),
-                            )
-                        } else {
-                            t
-                        }
+                        self.compute_type_get_item_on_class(cls, s, Some(primary))
                     }
                     TypeContent::DbType(d) => match d {
                         DbType::Any => TypeContent::DbType(d),
@@ -604,6 +597,7 @@ where
         &mut self,
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
+        primary: Option<Primary<'db>>,
     ) -> TypeContent<'db> {
         if matches!(class.generics(), Generics::None) {
             let expected_count = class.type_vars(self.inference.i_s).len();
@@ -611,9 +605,18 @@ where
             let result = match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     match self.compute_type(s.named_expr.expression(), None) {
-                        TypeContent::ClassWithoutTypeVar(_) => TypeContent::ClassWithoutTypeVar(
-                            Inferred::new_unsaved_specific(Specific::SimpleGeneric),
-                        ),
+                        TypeContent::ClassWithoutTypeVar(inf) => match primary {
+                            Some(primary) => TypeContent::ClassWithoutTypeVar(
+                                Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+                                    .save_if_unsaved(self.inference.file, primary.index()),
+                            ),
+                            None => TypeContent::DbType(DbType::GenericClass(
+                                class.reference.as_link(),
+                                GenericsList::new_generics(Box::new([
+                                    inf.as_db_type(self.inference.i_s)
+                                ])),
+                            )),
+                        },
                         TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
                             GenericsList::new_generics(Box::new([d])),
@@ -638,7 +641,9 @@ where
                     for slice_content in slices.iter() {
                         if generics.is_empty() {
                             let t = self.compute_slice_type(slice_content, None);
-                            if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
+                            if !matches!(t, TypeContent::ClassWithoutTypeVar(_))
+                                || primary.is_none()
+                            {
                                 for slice_content in slices.iter().take(given_count) {
                                     generics.push(self.compute_slice_db_type(slice_content));
                                 }
@@ -650,9 +655,13 @@ where
                         given_count += 1;
                     }
                     if generics.is_empty() {
-                        TypeContent::ClassWithoutTypeVar(Inferred::new_unsaved_specific(
-                            Specific::SimpleGeneric,
-                        ))
+                        match primary {
+                            Some(primary) => TypeContent::ClassWithoutTypeVar(
+                                Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+                                    .save_if_unsaved(self.inference.file, primary.index()),
+                            ),
+                            None => unreachable!(),
+                        }
                     } else {
                         TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
@@ -954,7 +963,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         class: Class<'db, '_>,
         slice_type: SliceType<'db>,
     ) -> Inferred<'db> {
-        compute_type_application!(self, compute_type_get_item_on_class(class, slice_type))
+        compute_type_application!(
+            self,
+            compute_type_get_item_on_class(class, slice_type, None)
+        )
     }
 
     pub fn compute_type_application_on_alias(
@@ -981,7 +993,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) -> Inferred<'db> {
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
-                //Inferred::new_unsaved_specific(Specific::TypingWithGenerics)
                 todo!()
             }
             Specific::TypingTuple => {
