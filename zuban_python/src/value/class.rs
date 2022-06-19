@@ -9,7 +9,8 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    MroIndex, Point, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -366,8 +367,16 @@ impl<'db, 'a> Class<'db, 'a> {
         &self.class_infos(i_s).type_vars
     }
 
+    fn is_calculating_class_infos(&self) -> bool {
+        self.class_info_reference().point().calculating()
+    }
+
+    fn class_info_reference(&self) -> NodeRef<'db> {
+        self.reference.add_to_node_index(1)
+    }
+
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
-        let reference = self.reference.add_to_node_index(1);
+        let reference = self.class_info_reference();
         let point = reference.point();
         if point.calculated() {
             match reference.complex().unwrap() {
@@ -375,6 +384,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 _ => unreachable!(),
             }
         } else {
+            reference.set_point(Point::new_calculating());
             reference.insert_complex(
                 ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
                 Locality::Todo,
@@ -448,14 +458,25 @@ impl<'db, 'a> Class<'db, 'a> {
                                     _ => unreachable!(),
                                 };
                                 if let Some(class) = class {
-                                    for base in class.class_infos(&mut i_s).mro.iter() {
-                                        mro.push(base.remap_type_vars(&mut |t| {
-                                            mro[mro_index]
-                                                .expect_generics()
-                                                .nth(t.index)
-                                                .unwrap()
-                                                .clone()
-                                        }));
+                                    if class.is_calculating_class_infos() {
+                                        let name = class.name().to_owned();
+                                        mro.pop();
+                                        incomplete_mro = true;
+                                        NodeRef::new(self.reference.file, n.index())
+                                            .add_typing_issue(
+                                                database,
+                                                IssueType::CyclicDefinition(name),
+                                            );
+                                    } else {
+                                        for base in class.class_infos(&mut i_s).mro.iter() {
+                                            mro.push(base.remap_type_vars(&mut |t| {
+                                                mro[mro_index]
+                                                    .expect_generics()
+                                                    .nth(t.index)
+                                                    .unwrap()
+                                                    .clone()
+                                            }));
+                                        }
                                     }
                                 }
                             }

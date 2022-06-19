@@ -16,10 +16,10 @@ testMissingGenericImport
 testInvalidBaseClass2
 
 # Cycles
-testCyclicInheritance1
-testCyclicInheritance2
 testNewAnalyzerTypeAnnotationCycle4
-*Cycl*
+testNewAnalyzerCyclicDefinitions
+testNewAnalyzerCyclicDefinitionCrossModule
+testNewAnalyzerIncompleteRefShadowsBuiltin1
 
 # Type Var Values / Bounds
 *TypeVarValues*

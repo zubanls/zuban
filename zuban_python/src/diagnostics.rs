@@ -30,6 +30,7 @@ pub(crate) enum IssueType {
     TooFewValuesToUnpack(usize, usize),
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    CyclicDefinition(String),
     EnsureSingleGenericOrProtocol,
     DuplicateTypeVar,
     UnboundTypeVar(std::rc::Rc<TypeVar>),
@@ -197,6 +198,8 @@ impl<'db> Diagnostic<'db> {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
+            IssueType::CyclicDefinition(name) =>
+                format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             IssueType::EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
             IssueType::DuplicateTypeVar =>
