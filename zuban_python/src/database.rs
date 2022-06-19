@@ -123,6 +123,13 @@ impl Point {
         }
     }
 
+    pub fn new_calculating() -> Self {
+        Self {
+            flags: Specific::Calculating as u32,
+            node_index: 0,
+        }
+    }
+
     pub fn new_specific(type_: Specific, node_index: NodeIndex, locality: Locality) -> Self {
         todo!()
     }
@@ -170,7 +177,7 @@ impl Point {
     }
 
     pub fn calculating(self) -> bool {
-        self.flags == 1
+        self.flags == Specific::Calculating as u32
     }
 
     fn is_recursion_error(self) -> bool {
@@ -286,12 +293,12 @@ impl Points {
 #[derive(Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PointType {
+    Specific,
     Redirect,
     MultiDefinition,
     Complex,
     // In case of a reference it's missing otherwise unknown.
     Unknown,
-    Specific,
     FileReference,
     // Basically stuff like if/for nodes
     NodeAnalysis,
@@ -300,6 +307,9 @@ pub enum PointType {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum Specific {
+    // This is reserved, because if everything is initialized as zero, this is the value it takes.
+    ReservedBecauseUnused,
+    Calculating,
     String,
     Bytes,
     Float,
