@@ -402,6 +402,7 @@ impl<'db> Inferred<'db> {
                         }
                         AnyLink::SimpleSpecific(specific) => match specific {
                             Specific::None => callable(i_s, &NoneInstance()),
+                            Specific::TypingAny => on_missing(i_s),
                             _ => todo!(
                                 "not even sure if this should be a separate class {specific:?}"
                             ),
