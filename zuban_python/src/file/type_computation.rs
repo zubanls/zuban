@@ -1355,11 +1355,8 @@ fn check_type_name<'db>(
             ));
         }
         TypeLike::Assignment(assignment) => {
-            // Name must be a NameDefinition
-            let name_index = new_name.index();
-            let node_ref = NodeRef::new(name_node_ref.file, name_index);
-            if node_ref.point().calculated() {
-                load_cached_type(node_ref)
+            if name_node_ref.point().calculated() {
+                load_cached_type(name_node_ref)
             } else {
                 name_node_ref
                     .file
