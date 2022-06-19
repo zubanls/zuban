@@ -1756,7 +1756,7 @@ impl<'db> Assignment<'db> {
                 }
                 None
             }
-            AssignmentContent::WithAnnotation(_, _, _) => todo!(),
+            AssignmentContent::WithAnnotation(_, _, _) => todo!("{self:?}"),
             AssignmentContent::AugAssign(_, _, _) => None,
         }
     }

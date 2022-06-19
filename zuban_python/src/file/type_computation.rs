@@ -1161,7 +1161,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn cache_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
+    fn compute_type_assignment(&mut self, assignment: Assignment<'db>) -> TypeNameLookup<'db> {
+        // Use the node star_targets or single_target, because they are not used otherwise.
+        let cached_type_node_ref = NodeRef::new(self.file, assignment.index() + 1);
+        if cached_type_node_ref.point().calculated() {
+            return load_cached_type(cached_type_node_ref);
+        }
         self.cache_assignment_nodes(assignment);
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -1219,9 +1224,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }
                         }
                     };
-                    let node_ref = NodeRef::new(self.file, name_def.name().index());
-                    node_ref.insert_complex(complex, Locality::Todo);
-                    load_cached_type(node_ref)
+                    cached_type_node_ref.insert_complex(complex, Locality::Todo);
+                    load_cached_type(cached_type_node_ref)
                 } else {
                     todo!()
                 }
@@ -1356,13 +1360,12 @@ fn check_type_name<'db>(
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {
-                load_cached_type(name_node_ref)
-            } else {
-                name_node_ref
-                    .file
-                    .inference(i_s)
-                    .cache_type_assignment(assignment)
+                return load_cached_type(name_node_ref);
             }
+            name_node_ref
+                .file
+                .inference(i_s)
+                .compute_type_assignment(assignment)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),

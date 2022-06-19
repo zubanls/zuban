@@ -1,5 +1,8 @@
 use super::{ClassLike, LookupResult, Value, ValueKind};
+use crate::debug;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
+use crate::inferred::Inferred;
 
 #[derive(Debug)]
 pub struct NoneInstance();
@@ -23,5 +26,14 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
 
     fn is_none(&self) -> bool {
         true
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db>,
+    ) -> Inferred<'db> {
+        debug!("TODO None[...]");
+        Inferred::new_any()
     }
 }
