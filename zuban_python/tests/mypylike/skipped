@@ -1,4 +1,5 @@
 # temporary
+testTypeAliasesResultingInPlainInstance
 testStubPackageSubModule
 testInvalidReferenceToAttributeOfOuterClass
 testInvalidStrLiteralSpaces

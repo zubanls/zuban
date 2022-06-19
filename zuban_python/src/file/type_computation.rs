@@ -139,18 +139,18 @@ macro_rules! compute_type_application {
             })
         };
         let mut tcomp = TypeComputation::new($self, &mut on_type_var);
-        match tcomp.$method $args {
-            TypeContent::ClassWithoutTypeVar(inf) => inf,
-            TypeContent::DbType(db_type) => Inferred::new_unsaved_complex(if tcomp.has_type_vars {
+        Inferred::new_unsaved_complex(match tcomp.$method $args {
+            TypeContent::ClassWithoutTypeVar(inf) => return inf,
+            TypeContent::DbType(db_type) => if tcomp.has_type_vars {
                 ComplexPoint::TypeAlias(Box::new(TypeAlias {
                     type_vars: type_vars.into_boxed_slice(),
                     db_type: Rc::new(db_type),
                 }))
             } else {
                 ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
-            }),
+            },
             _ => todo!(),
-        }
+        })
     }}
 }
 

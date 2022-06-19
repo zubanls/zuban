@@ -220,7 +220,7 @@ impl<'db> Inferred<'db> {
             InferredState::UnsavedComplex(complex) => {
                 self.run_on_complex(i_s, complex, None, callable, reducer, on_missing)
             }
-            InferredState::UnsavedSpecific(specific) => todo!(),
+            InferredState::UnsavedSpecific(specific) => todo!("{:?}", specific),
             InferredState::UnsavedFileReference(file_index) => {
                 let f = i_s.db.loaded_python_file(*file_index);
                 callable(i_s, &Module::new(i_s.db, f))
