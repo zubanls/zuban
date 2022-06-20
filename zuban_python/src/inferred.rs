@@ -343,7 +343,7 @@ impl<'db> Inferred<'db> {
                     unreachable!()
                 }
             }
-            Specific::TypingAny => on_missing(i_s),
+            Specific::TypingAny | Specific::Cycle => on_missing(i_s),
             Specific::TypingCast => callable(i_s, &TypingCast()),
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
             Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
