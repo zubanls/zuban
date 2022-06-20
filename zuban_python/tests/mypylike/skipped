@@ -17,7 +17,6 @@ testInvalidBaseClass2
 
 # Cycles
 testNewAnalyzerTypeAnnotationCycle4
-testNewAnalyzerCyclicDefinitions
 testNewAnalyzerCyclicDefinitionCrossModule
 testNewAnalyzerIncompleteRefShadowsBuiltin1
 

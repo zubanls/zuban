@@ -310,6 +310,7 @@ pub enum Specific {
     // This is reserved, because if everything is initialized as zero, this is the value it takes.
     ReservedBecauseUnused,
     Calculating,
+    Cycle,
     String,
     Bytes,
     Float,

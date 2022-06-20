@@ -885,11 +885,17 @@ impl<'db> Inferred<'db> {
 
     pub fn save_redirect(self, file: &'db PythonFile, index: NodeIndex) -> Self {
         // TODO this locality should be calculated in a more correct way
+        let p = file.points.get(index);
+        if p.calculated() && p.maybe_specific() == Some(Specific::Cycle) {
+            return Self::new_saved(file, index, file.points.get(index));
+        }
         let point = match &self.state {
             InferredState::Saved(definition, point) => {
-                let p = file.points.get(index);
                 // Overwriting strings needs to be possible, because of string annotations
-                if p.calculated() && p.maybe_specific() != Some(Specific::String) {
+                if p.calculated()
+                    && p.maybe_specific() != Some(Specific::String)
+                    && point.maybe_specific() != Some(Specific::Cycle)
+                {
                     todo!(
                         "{self:?} {:?} {index:?}, {}",
                         file.points.get(index),

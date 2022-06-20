@@ -322,7 +322,7 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    fn cache_stmt_name(&mut self, stmt: Stmt<'db>) {
+    fn cache_stmt_name(&mut self, stmt: Stmt<'db>, name_def: NodeRef<'db>) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(stmt.start()).0,
@@ -330,6 +330,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             stmt.index(),
             stmt.short_debug().trim()
         );
+        name_def.set_point(Point::new_calculating());
         match stmt.unpack() {
             StmtContent::SimpleStmts(simple_stmts) => {
                 for simple_stmt in simple_stmts.iter() {
@@ -1403,9 +1404,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             })
             .or_else(|| {
                 if point.calculating() {
-                    todo!("Set recursion error and return that");
+                    let node_ref = NodeRef::new(self.file, node_index);
+                    node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
+                    node_ref.add_typing_issue(
+                        self.i_s.db,
+                        IssueType::CyclicDefinition(node_ref.as_code().to_owned()),
+                    );
+                    self.check_point_cache(node_index)
+                } else {
+                    None
                 }
-                None
             });
         if cfg!(feature = "zuban_debug") {
             if let Some(inferred) = result.as_ref() {
@@ -1469,7 +1477,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         if !self.file.points.get(stmt_like.index()).calculated() {
             match stmt_like {
                 StmtLike::Stmt(stmt) => {
-                    self.cache_stmt_name(stmt);
+                    self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }
                 _ => todo!("{stmt_like:?}"),
             }
