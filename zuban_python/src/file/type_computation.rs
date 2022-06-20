@@ -622,7 +622,10 @@ where
                             GenericsList::new_generics(Box::new([d])),
                         )),
                         TypeContent::Module(m) => todo!(),
-                        TypeContent::TypeAlias(m) => todo!(),
+                        TypeContent::TypeAlias(m) => TypeContent::DbType(DbType::GenericClass(
+                            class.reference.as_link(),
+                            GenericsList::new_generics(Box::new([m.as_db_type()])),
+                        )),
                         TypeContent::SpecialType(m) => todo!(),
                         TypeContent::Unknown => TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),

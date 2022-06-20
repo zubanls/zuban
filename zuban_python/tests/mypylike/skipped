@@ -42,6 +42,9 @@ testNewAnalyzerClassInFunction
 testNewAnalyzerNestedClassInMethod
 testNewAnalyzerDeeplyNestedFunctions
 
+# Type application vs. type declaration
+testNewAnalyzerAliasToNotReadyClassDoubleGeneric
+
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 
