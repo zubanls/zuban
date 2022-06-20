@@ -18,11 +18,17 @@ testInvalidBaseClass2
 # Cycles
 testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerIncompleteRefShadowsBuiltin1
+testNewAnalyzerAliasToNotReadyDirectBase
+testNewAnalyzerAliasToNotReadyDirectBaseFunction
+testNewAnalyzerAliasToNotReadyMixed
 
 # Type Var Values / Bounds
 *TypeVarValues*
 testNewAnalyzerTypeVarForwardReference*
 *TypeVarBound*
+testNewAnalyzerTypeArgBoundCheck
+testNewAnalyzerTypeArgValueRestriction
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
 
 # __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -42,14 +48,35 @@ testNewAnalyzerClassInFunction
 testNewAnalyzerNestedClassInMethod
 testNewAnalyzerDeeplyNestedFunctions
 
+# Property
+testNonMethodProperty
+testInvalidArgCountForProperty
+testNewAnalyzerProperty
+
+# classmethod
+testGenericClassMethod*
+testClassmethodAndNonMethod
+testAddBaseClassMethodCausingInvalidOverride
+testModifyBaseClassMethodCausingInvalidOverride
+
+# staticmethod
+testStaticmethodAndNonMethod
+
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
+
+# Incomplete Unions: `int | int`
+testNewAnalyzerForwardAliasFromUnion
 
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
+
+# Comprehensions
+testNewAnalyzerListComprehension
+testNewAnalyzerDictionaryComprehension
 
 # if sys.version
 testNewAnalyzerVersionCheck*
@@ -59,6 +86,8 @@ testInvalidUnpackTypes
 testTypeVarTuple
 testRuntimeProtoTwoBases
 
+# --show-error-context
+testNewAnalyzerTypeArgBoundCheckWithContext
 
 # fine-grained
 testTypeAliasRefresh
@@ -68,8 +97,6 @@ testIgnoreWorksAfterUpdate
 testIgnoredAttrReprocessedMeta
 testDataclass*
 testAttrs*
-testAddBaseClassMethodCausingInvalidOverride
-testModifyBaseClassMethodCausingInvalidOverride
 testAddBaseClassAttributeCausingErrorInSubclass
 testChangeBaseClassAttributeType
 testConstructorSignatureChanged2
@@ -180,7 +207,6 @@ testGenericOperatorMethodOverlapping*
 testCallTypeTWithGenericBound
 testQualifiedTypeVariableName
 testPartiallyQualifiedTypeVariableName
-testGenericClassMethod*
 testGenericClassClsNonGeneric
 testGenericClassUnrelatedVars
 testGenericClassInGenericFunction*
@@ -219,10 +245,6 @@ testTestExtendPrimitives
 testInvalidTypeWithinNestedGenericClass
 testTypevarWithType
 # Library stuff
-testStaticmethodAndNonMethod
-testClassmethodAndNonMethod
-testNonMethodProperty
-testInvalidArgCountForProperty
 testInvalidCast*
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
