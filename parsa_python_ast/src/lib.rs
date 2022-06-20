@@ -2769,8 +2769,15 @@ impl<'db> Target<'db> {
         } else if node.is_type(Nonterminal(t_primary)) {
             Self::new_t_primary(node)
         } else if node.is_type(Nonterminal(star_target_brackets)) {
-            // StarredTuple()
-            todo!("star_target_brackets")
+            let mut iterator = node.iter_children();
+            let keyword = iterator.next().unwrap();
+            let star_targets_ = iterator.next().unwrap();
+            let first_star_target = star_targets_.nth_child(0);
+            if first_star_target.next_sibling().is_none() && keyword.as_code() == "(" {
+                Self::new_non_iterator(first_star_target)
+            } else {
+                todo!("star_target_brackets")
+            }
         } else if node.is_type(Nonterminal(star_target)) {
             Self::Starred(StarTarget::new(node))
         } else {
