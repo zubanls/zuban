@@ -454,8 +454,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         } else {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s.db,
-                                IssueType::AttributeError(
-                                    format!("Module {:?}", module.name()),
+                                IssueType::ImportAttributeError(
+                                    module.name().to_owned(),
                                     import_name.as_str().to_owned(),
                                 ),
                             );

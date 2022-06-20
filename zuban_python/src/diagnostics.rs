@@ -9,6 +9,7 @@ use crate::node_ref::NodeRef;
 #[derive(Debug)]
 pub(crate) enum IssueType {
     AttributeError(String, String),
+    ImportAttributeError(String, String),
     NameError(String),
     ArgumentIssue(String),
     InvalidType(String),
@@ -123,6 +124,9 @@ impl<'db> Diagnostic<'db> {
         let error = match &self.issue.type_ {
             IssueType::AttributeError(object, name) => {
                 format!("{object} has no attribute {name:?}")
+            }
+            IssueType::ImportAttributeError(module_name, name) => {
+                format!("Module {module_name:?} has no attribute {name:?}")
             }
             IssueType::NameError(name) => {
                 format!("Name {name:?} is not defined")
