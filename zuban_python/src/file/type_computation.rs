@@ -673,7 +673,7 @@ where
                     }
                 }
             };
-            if given_count != expected_count {
+            if given_count != expected_count && !self.errors_already_calculated {
                 // TODO both the type argument issues and are not implemented for other classlikes
                 // like tuple/callable/type, which can also have late bound type vars and too
                 // many/few given type vars!
