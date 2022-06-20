@@ -326,7 +326,9 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         wanted.pop();
     }
 
-    for (&path, &code) in &step.files {
+    let mut sorted: Vec<_> = step.files.iter().collect();
+    sorted.sort();
+    for (&path, &code) in &sorted {
         let p = if path == "__main__" {
             // TODO this if is so weird. Why is this shit needed???
             "main"
