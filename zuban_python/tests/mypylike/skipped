@@ -35,6 +35,7 @@ testNewAnalyzerPromotion
 
 # Class in Class
 testNewAnalyzerNestedClass*
+testNewAnalyzerAliasToNotReadyNestedClass*
 
 # Class in function
 testNewAnalyzerClassInFunction
@@ -253,8 +254,12 @@ testImportFuncDup
 testIgnoredImportDup
 testNewAnalyzerRedefinitionAndDeferral*
 testNewAnalyzerImportStarForwardRef*
+testNewAnalyzerImportOverExistingInCycle*
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
 # Won't support: Signature Comments
 testIncompatibleSignatureInComment
+
+# Won't support ever: Mypy test case details
+testNewAnalyzerIncompleteFixture
