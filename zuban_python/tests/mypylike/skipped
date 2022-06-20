@@ -143,6 +143,9 @@ testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testNewAnalyzerFirstAliasTargetWins
 testNewAnalyzerFirstVarDefinitionWins
 
+# Multiple arguments missing
+testMissingPositionalArguments
+
 # Redefinition
 testGlobalVarRedefinition
 testLocalVarRedefinition
@@ -351,6 +354,9 @@ testNewAnalyzerModuleGetattrSerialize_incremental
 
 # need annotation
 testNewAnalyzerLessErrorsNeedAnnotation*
+
+# Separate formatting for ambigous names???
+testIncompatibleAssignmentAmbiguousShortnames
 
 # Won't support for now:
 testExpressionRefersToTypeVariable

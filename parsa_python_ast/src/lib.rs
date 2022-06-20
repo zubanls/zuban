@@ -2392,8 +2392,11 @@ impl<'db> ReturnOrYield<'db> {
 }
 
 impl<'db> ReturnStmt<'db> {
-    pub fn star_expressions(&self) -> StarExpressions<'db> {
-        StarExpressions::new(self.node.nth_child(1))
+    pub fn star_expressions(&self) -> Option<StarExpressions<'db>> {
+        self.node
+            .nth_child(0)
+            .next_sibling()
+            .map(StarExpressions::new)
     }
 }
 

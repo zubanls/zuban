@@ -129,12 +129,16 @@ impl<'db, 'a> Function<'db, 'a> {
                 ReturnOrYield::Return(ret) =>
                 // TODO multiple returns, this is an early exit
                 {
-                    return self
-                        .reference
-                        .file
-                        .inference(&mut inner_i_s)
-                        .infer_star_expressions(ret.star_expressions())
-                        .resolve_function_return(&mut inner_i_s)
+                    if let Some(star_expressions) = ret.star_expressions() {
+                        return self
+                            .reference
+                            .file
+                            .inference(&mut inner_i_s)
+                            .infer_star_expressions(star_expressions)
+                            .resolve_function_return(&mut inner_i_s);
+                    } else {
+                        todo!()
+                    }
                 }
                 ReturnOrYield::Yield(yield_expr) => unreachable!(),
             }

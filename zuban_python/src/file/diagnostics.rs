@@ -5,6 +5,7 @@ use crate::database::{
     ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
     TypeVarUsage,
 };
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::generics::Generics;
@@ -178,12 +179,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
-                let inf = self.infer_star_expressions(return_stmt.star_expressions());
-                self.use_cached_return_annotation_type(annotation)
-                    .error_if_not_matches(self.i_s, None, &inf, |i_s, t1, t2| {
-                        NodeRef::new(self.file, return_stmt.index())
-                            .add_typing_issue(i_s.db, IssueType::IncompatibleReturn(t1, t2));
-                    });
+                if let Some(star_expressions) = return_stmt.star_expressions() {
+                    let inf = self.infer_star_expressions(star_expressions);
+                    self.use_cached_return_annotation_type(annotation)
+                        .error_if_not_matches(self.i_s, None, &inf, |i_s, t1, t2| {
+                            NodeRef::new(self.file, return_stmt.index())
+                                .add_typing_issue(i_s.db, IssueType::IncompatibleReturn(t1, t2));
+                        });
+                } else {
+                    debug!("TODO what about an implicit None?");
+                }
             }
         }
     }
