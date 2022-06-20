@@ -1210,10 +1210,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 return self.infer_name_reference(name);
             }
         }
-        let point = if let Some(symbol) = self.file.symbol_table.lookup_symbol(name_str) {
-            // TODO mypy this is a issue AFAIK and this code should not be needed
-            Point::new_redirect(self.file_index, symbol, Locality::Todo)
-        } else if name_str == "reveal_type" {
+        let point = if name_str == "reveal_type" {
             Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
         } else if let Some(link) = self
             .i_s

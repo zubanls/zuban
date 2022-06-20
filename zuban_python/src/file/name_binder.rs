@@ -409,6 +409,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         0
                     }
                     AssignmentContentWithSimpleTargets::WithAnnotation(target, annotation, _) => {
+                        self.unresolved_nodes
+                            .push(Unresolved::Expression(annotation.expression()));
                         self.index_non_block_node(&target, ordered, in_base_scope)
                     }
                     AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
