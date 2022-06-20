@@ -21,6 +21,7 @@ testNewAnalyzerIncompleteRefShadowsBuiltin1
 testNewAnalyzerAliasToNotReadyDirectBase
 testNewAnalyzerAliasToNotReadyDirectBaseFunction
 testNewAnalyzerAliasToNotReadyMixed
+testNewAnalyzerForwardTypeAliasInBase
 
 # Type Var Values / Bounds
 *TypeVarValues*
@@ -29,6 +30,8 @@ testNewAnalyzerTypeVarForwardReference*
 testNewAnalyzerTypeArgBoundCheck
 testNewAnalyzerTypeArgValueRestriction
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
+testNewAnalyzerApplicationForward4
 
 # __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -62,11 +65,23 @@ testModifyBaseClassMethodCausingInvalidOverride
 # staticmethod
 testStaticmethodAndNonMethod
 
+# NamedTuple
+*NamedTuple*
+testNewAnalyzerTupleIteration
+
+# Cast
+testInvalidCast*
+testInvalidNumberOfArgsToCast
+testInvalidKindsOfArgsToCast
+testNewAnalyzerCastForward*
+
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 
 # Incomplete Unions: `int | int`
 testNewAnalyzerForwardAliasFromUnion
+# Union wrong because of as_inferred (BoundMethod)
+testNewAnalyzerBuiltinAliasesFixed
 
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
@@ -81,6 +96,10 @@ testNewAnalyzerDictionaryComprehension
 # if sys.version
 testNewAnalyzerVersionCheck*
 
+# Conditional definitions
+testNewAnalyzerConditionalFunc*
+testNewAnalyzerConditionallyDefineFuncOverVar
+
 # typing extensions
 testInvalidUnpackTypes
 testTypeVarTuple
@@ -88,6 +107,37 @@ testRuntimeProtoTwoBases
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
+
+# Redefinition
+testGlobalVarRedefinition
+testLocalVarRedefinition
+testClassVarRedefinition
+testMultipleClassDefinitions
+testMultipleMixedDefinitions
+testMultipleMethodDefinition
+testMultipleNestedFunctionDef
+testRedefineVariableAsTypevar
+testRedefineTypevar*
+testImportTwoModulesWithSameNameInFunction
+testImportTwoModulesWithSameNameInGlobalContext
+testTypeRedeclarationNoSpuriousWarnings
+testDuplicateDef*
+testTypeVarClassDup
+testAliasDup
+testImportFuncDup
+testIgnoredImportDup
+testNewAnalyzerRedefinitionAndDeferral*
+testNewAnalyzerImportStarForwardRef*
+testNewAnalyzerImportOverExistingInCycle*
+testNewAnalyzerConditionalFunc
+testNewAnalyzerConditionallyDefineFuncOverClass
+testNewAnalyzerMissingImportErrors*
+testNewAnalyzerDuplicateTypeVar*
+
+# Metaclass
+*Metaclass*
+testNewAnalyzerClassKeywordsError
+testNewAnalyzerNotAnAlias
 
 # fine-grained
 testTypeAliasRefresh
@@ -103,7 +153,6 @@ testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testSuperField
 testReprocessMethodInNestedClassSemanal
-*NamedTuple*
 *Deco*
 testPreviousErrorInMethodSemanalPass3
 *Overload*
@@ -111,7 +160,6 @@ testPreviousErrorInMethodSemanalPass3
 testSuperBasics
 testErrorInTypeCheckSecondPassThroughPropagation
 *PartialType*
-*Metaclass*
 testRefreshGenericSubclass
 *NewType*
 *Enum*
@@ -245,9 +293,6 @@ testTestExtendPrimitives
 testInvalidTypeWithinNestedGenericClass
 testTypevarWithType
 # Library stuff
-testInvalidCast*
-testInvalidNumberOfArgsToCast
-testInvalidKindsOfArgsToCast
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
@@ -258,28 +303,6 @@ testVariableDeclWithInvalidNumberOfTypes*
 testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
-
-# Redefinition
-testGlobalVarRedefinition
-testLocalVarRedefinition
-testClassVarRedefinition
-testMultipleClassDefinitions
-testMultipleMixedDefinitions
-testMultipleMethodDefinition
-testMultipleNestedFunctionDef
-testRedefineVariableAsTypevar
-testRedefineTypevar*
-testImportTwoModulesWithSameNameInFunction
-testImportTwoModulesWithSameNameInGlobalContext
-testTypeRedeclarationNoSpuriousWarnings
-testDuplicateDef*
-testTypeVarClassDup
-testAliasDup
-testImportFuncDup
-testIgnoredImportDup
-testNewAnalyzerRedefinitionAndDeferral*
-testNewAnalyzerImportStarForwardRef*
-testNewAnalyzerImportOverExistingInCycle*
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
