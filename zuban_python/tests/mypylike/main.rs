@@ -288,7 +288,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     current_rest = &current_rest[..current_rest.len() - 2];
                 }
             } else if current_type.starts_with("out") && current_type.len() > 3 {
-                todo!()
+                if let Some(digit) = current_type.chars().nth(3).unwrap().to_digit(10) {
+                    current_step_index = digit as usize;
+                    current_type = "out";
+                }
             }
         }
         process_step(

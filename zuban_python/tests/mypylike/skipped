@@ -108,6 +108,13 @@ testRuntimeProtoTwoBases
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
 
+# Import submodules
+testNewAnalyzerImportStarSpecialCase
+
+# Multi definition ifs
+testNewAnalyzerFirstAliasTargetWins
+testNewAnalyzerFirstVarDefinitionWins
+
 # Redefinition
 testGlobalVarRedefinition
 testLocalVarRedefinition
@@ -133,6 +140,7 @@ testNewAnalyzerConditionalFunc
 testNewAnalyzerConditionallyDefineFuncOverClass
 testNewAnalyzerMissingImportErrors*
 testNewAnalyzerDuplicateTypeVar*
+testNewAnalyzerRedefineAsClass
 
 # Metaclass
 *Metaclass*
@@ -303,6 +311,9 @@ testVariableDeclWithInvalidNumberOfTypes*
 testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
+
+# Module __getattr__
+testNewAnalyzerModuleGetattrSerialize_incremental
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
