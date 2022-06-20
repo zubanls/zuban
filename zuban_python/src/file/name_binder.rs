@@ -329,13 +329,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn close(&mut self) {
-        self.index_unordered_references();
-
         self.parent_lookup_not_finished = true;
         if self.type_ != NameBinderType::Class {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
-                    Unresolved::Name(name) => self.maybe_add_reference(name, true),
+                    Unresolved::Name(name) => {
+                        if !self.try_to_process_reference(name) {
+                            self.unresolved_names.push(name);
+                        }
+                    }
                     Unresolved::Expression(expr) => {
                         self.index_non_block_node(&expr, true, false);
                     }
@@ -364,6 +366,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 };
             }
         }
+        self.index_unordered_references();
         debug_assert_eq!(self.unordered_references.len(), 0);
     }
 
@@ -899,7 +902,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
-        if ordered {
+        if ordered && !self.is_mypy_compatible {
             if !self.try_to_process_reference(name) {
                 self.unresolved_names.push(name);
             }
