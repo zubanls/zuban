@@ -544,7 +544,7 @@ where
                     },
                     TypeContent::TypeAlias(m) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
-                    TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }

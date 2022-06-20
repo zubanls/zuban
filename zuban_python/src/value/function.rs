@@ -334,7 +334,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        todo!("{name:?}")
     }
 
     fn execute(
