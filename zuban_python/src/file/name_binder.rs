@@ -900,10 +900,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
         if ordered {
-            let mut n = None;
-            self.add_reference(name, |name| n = Some(name));
-            if let Some(n) = n {
-                self.unresolved_names.push(n);
+            if !self.try_to_process_reference(name) {
+                self.unresolved_names.push(name);
             }
         } else {
             self.unordered_references.push(name);
@@ -911,14 +909,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     #[inline]
-    fn add_reference(&self, name: Name<'db>, mut unresolved_name_callback: impl FnMut(Name<'db>)) {
+    fn try_to_process_reference(&self, name: Name<'db>) -> bool {
         let point = {
             if self.parent_lookup_not_finished {
                 if let Some(definition) = self.symbol_table.lookup_symbol(name.as_str()) {
                     Point::new_redirect(self.file_index, definition, Locality::File)
                 } else {
-                    unresolved_name_callback(name);
-                    return;
+                    return false;
                 }
             } else if let Some(definition) = self.lookup_name(name) {
                 Point::new_redirect(self.file_index, definition, Locality::File)
@@ -927,6 +924,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
         };
         self.points.set(name.index(), point);
+        true
     }
 
     fn lookup_name(&self, name: Name<'db>) -> Option<NodeIndex> {
@@ -938,10 +936,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_unordered_references(&mut self) {
         for &name in &self.unordered_references {
-            let mut n = None;
-            self.add_reference(name, |name| n = Some(name));
-            if let Some(n) = n {
-                self.unresolved_names.push(n);
+            if !self.try_to_process_reference(name) {
+                self.unresolved_names.push(name);
             }
         }
         self.unordered_references.truncate(0);
