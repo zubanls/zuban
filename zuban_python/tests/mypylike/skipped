@@ -17,6 +17,7 @@ testNonSelfMemberAssignmentWithTypeDeclarationInMethod
 testMissingGenericImport
 testInvalidBaseClass2
 testNewAnalyzerNoCrashOnStarInference
+testProhibitBoundTypeVariableReuseForAliases
 
 # Class body NameBinder issues
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
@@ -27,6 +28,7 @@ testNewAnalyzerNameConflictsAndMultiLineDefinition
 testNewAnalyzerNameNotDefinedYetInClassBody
 testNewAnalyzerImportedNameUsedInClassBody*
 testNewAnalyzerPlaceholderFromOuterScope
+testCorrectQualifiedAliasesAlsoInFunctions
 
 # Cycles
 testNewAnalyzerTypeAnnotationCycle4
@@ -37,6 +39,8 @@ testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerForwardTypeAliasInBase
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testNewAnalyzerFuncTypeVarNoCrashImportCycle
+testRecursiveAliasesErrors*
+testJSONAliasApproximation
 
 # Module Values
 testModuleImplicitAttributes
@@ -376,6 +380,13 @@ testIncompatibleAssignmentAmbiguousShortnames
 # Invariant note
 testAssignmentInvariantNoteForList
 testAssignmentInvariantNoteForDict
+
+# Wtfs
+testEmptyTupleTypeAlias
+
+# Formatting func in reveal_type
+testForwardTypeAlias
+testForwardTypeAliasGeneric
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
