@@ -93,7 +93,17 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!("{self:?}")
+        let mut iterator = args.iter_arguments();
+        let first = iterator.next();
+        if let Some(x) = iterator.next() {
+            todo!()
+        } else if let Some(first) = first {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
+                Box::new(first.infer(i_s).class_as_db_type(i_s)),
+            ))))
+        } else {
+            todo!()
+        }
     }
 }
 
