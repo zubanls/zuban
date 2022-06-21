@@ -42,13 +42,18 @@ impl<'db> ListLiteral<'db> {
     }
 
     fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
-        let reference = self.node_reference.add_to_node_index(1);
-        if reference.point().calculated() {
-            match reference.complex().unwrap() {
-                ComplexPoint::GenericClass(_, list) => list,
+        match self.type_instance_ref(i_s).complex().unwrap() {
+            ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                DbType::GenericClass(_, generics) => generics,
                 _ => unreachable!(),
-            }
-        } else {
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    fn type_instance_ref(&self, i_s: &mut InferenceState<'db, '_>) -> NodeRef<'db> {
+        let reference = self.node_reference.add_to_node_index(1);
+        if !reference.point().calculated() {
             let result = match self.list_node().unpack() {
                 Some(elements) => self
                     .node_reference
@@ -58,10 +63,10 @@ impl<'db> ListLiteral<'db> {
                 None => DbType::Any,
             };
             reference.insert_complex(
-                ComplexPoint::GenericClass(
+                ComplexPoint::TypeInstance(Box::new(DbType::GenericClass(
                     i_s.db.python_state.builtins_point_link("list"),
                     GenericsList::new_generics(Box::new([result])),
-                ),
+                ))),
                 Locality::Todo,
             );
             debug!(
@@ -69,8 +74,12 @@ impl<'db> ListLiteral<'db> {
                 self.list_node().short_debug(),
                 &self.class(i_s).as_string(i_s, FormatStyle::Short),
             );
-            self.generic_list(i_s)
         }
+        reference
+    }
+
+    fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        Inferred::from_saved_node_ref(self.type_instance_ref(i_s))
     }
 }
 
@@ -91,7 +100,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                 None,
             )
             .unwrap(),
-            None,
+            &self.as_inferred(i_s),
         )
         .lookup_internal(i_s, name)
     }

@@ -47,6 +47,12 @@ impl<'db> Inferred<'db> {
         Self::new_saved(file, node_index, point)
     }
 
+    pub fn from_saved_node_ref(node_ref: NodeRef<'db>) -> Self {
+        Self {
+            state: InferredState::Saved(node_ref, node_ref.point()),
+        }
+    }
+
     pub fn new_saved2(file: &'db PythonFile, node_index: NodeIndex) -> Self {
         // TODO rethink this method and new_saved
         let node_ref = NodeRef { file, node_index };
