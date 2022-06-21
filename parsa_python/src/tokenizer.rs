@@ -388,7 +388,6 @@ impl PythonTokenizer<'_> {
         let mut indentation = 0;
         let mut was_comment = false;
         let iterator = code_from_start(self.code, self.index).chars();
-        #[allow(clippy::while_let_on_iterator)] // Because of borrowing
         for character in iterator {
             if character == '\n' || character == '\r' {
                 if !self.previous_token_was_newline {
