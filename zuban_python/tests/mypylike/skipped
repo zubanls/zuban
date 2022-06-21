@@ -1,4 +1,6 @@
 # temporary
+testModuleAsTypeNoCrash
+testModuleAsTypeNoCrash2
 testStubPackageSubModule
 testInvalidReferenceToAttributeOfOuterClass
 testInvalidStrLiteralSpaces
@@ -36,6 +38,9 @@ testNewAnalyzerForwardTypeAliasInBase
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testNewAnalyzerFuncTypeVarNoCrashImportCycle
 
+# Module Values
+testModuleImplicitAttributes
+
 # Type Var Values / Bounds
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 *TypeVarValues*
@@ -52,6 +57,8 @@ testNewAnalyzerExportedValuesInImportAll
 
 # Literal
 testNewAnalyzerBool
+testNoneHasBool
+testNoneHasBoolShowNoneErrorsFalse
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -84,6 +91,7 @@ testStaticmethodAndNonMethod
 # NamedTuple
 *NamedTuple*
 testNewAnalyzerTupleIteration
+testDistinctTypes
 
 # Cast
 testInvalidCast*
@@ -352,16 +360,29 @@ testNewAnalyzerRedefinedNonlocal
 # Module __getattr__
 testNewAnalyzerModuleGetattrSerialize_incremental
 
+# Module __init__ None needed
+testInitReturnTypeError
+
 # need annotation
 testNewAnalyzerLessErrorsNeedAnnotation*
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 
+# Invariant note
+testAssignmentInvariantNoteForList
+testAssignmentInvariantNoteForDict
+
 # Won't support for now:
 testExpressionRefersToTypeVariable
+
 # Won't support: Signature Comments
 testIncompatibleSignatureInComment
+testFunctionSignatureAsComment
+testMethodSignatureAsComment
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
+
+# Skips
+testTrailingCommaParsing-skip

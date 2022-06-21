@@ -157,22 +157,24 @@ macro_rules! compute_type_application {
 
 impl<'db> TypeContent<'db> {
     fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
+        let other_t = match other {
+            Self::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
+            Self::DbType(t) => t,
+            Self::Module(m) => todo!(),
+            Self::TypeAlias(m) => todo!(),
+            Self::SpecialType(m) => todo!(),
+            Self::Unknown => DbType::Any,
+            Self::InvalidVariable(t) => return Self::InvalidVariable(t),
+        };
         Self::DbType(match self {
             Self::ClassWithoutTypeVar(inf) => todo!(),
-            Self::DbType(t) => t.union(match other {
-                Self::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
-                Self::DbType(t) => t,
-                Self::Module(m) => todo!(),
-                Self::TypeAlias(m) => todo!(),
-                Self::SpecialType(m) => todo!(),
-                Self::Unknown => todo!(),
-                Self::InvalidVariable(t) => return Self::InvalidVariable(t),
-            }),
+            Self::DbType(t) => t.union(other_t),
             Self::Module(m) => todo!(),
             Self::TypeAlias(m) => todo!(),
             Self::SpecialType(s) => match s {
                 // `Any | something` always is Any
                 SpecialType::Any => DbType::Any,
+                SpecialType::Type => DbType::Type(Box::new(DbType::Any)).union(other_t),
                 _ => todo!("{s:?}"),
             },
             Self::Unknown => todo!(),
@@ -407,6 +409,7 @@ where
                     params: None,
                     return_class: Box::new(DbType::Any),
                 }),
+                SpecialType::Any => DbType::Any,
                 _ => todo!("{m:?}"),
             },
             TypeContent::Unknown => DbType::Any,
