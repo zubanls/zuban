@@ -597,11 +597,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             // It should be safe to check the index before, because the name binder only ever
             // redirects to ame definitions.
             let param_point = self.points.get(param_index - 1);
-            if param_point.calculated() && param_point.type_() == PointType::Specific {
-                if param_point.specific() == Specific::Param {
-                    let n = Name::by_index(self.tree, param_index);
-                    return n.has_self_param_position();
-                }
+            if param_point.calculated()
+                && param_point.type_() == PointType::Specific
+                && param_point.specific() == Specific::Param
+            {
+                let n = Name::by_index(self.tree, param_index);
+                return n.has_self_param_position();
             }
         }
         false

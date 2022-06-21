@@ -209,10 +209,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         on_error: OnLookupError<'db, '_>,
     ) -> LookupResult<'db> {
         let result = self.lookup_internal(i_s, name);
-        if matches!(result, LookupResult::None) {
-            if self.should_add_lookup_error(i_s) {
-                on_error(i_s);
-            }
+        if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
+            on_error(i_s);
         }
         result
     }
