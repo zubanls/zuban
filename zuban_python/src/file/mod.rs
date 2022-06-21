@@ -1356,7 +1356,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());
                         todo!();
-                        self.check_point_cache(node_index).unwrap()
+                        //self.check_point_cache(node_index).unwrap()
                     }
                     Specific::AnnotationWithTypeVars => {
                         // For variable annotations like a: int

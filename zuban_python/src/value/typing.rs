@@ -93,7 +93,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!()
+        todo!("{self:?}")
     }
 }
 

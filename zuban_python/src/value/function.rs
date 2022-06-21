@@ -696,6 +696,6 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         todo!("Please write a test that checks this");
-        Inferred::new_unknown()
+        //Inferred::new_unknown()
     }
 }
