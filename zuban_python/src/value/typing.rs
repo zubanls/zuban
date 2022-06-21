@@ -183,7 +183,7 @@ impl<'a> TupleClass<'a> {
                         generics1.len() == generics2.len()
                             && Generics::new_list(generics1).matches(
                                 i_s,
-                                matcher.as_deref_mut(),
+                                matcher,
                                 Generics::new_list(generics2),
                                 variance,
                                 None,
