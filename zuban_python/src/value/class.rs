@@ -32,6 +32,7 @@ pub enum ClassLike<'db, 'a> {
     TypeWithDbType(&'a DbType),
     TypingClass(TypingClass),
     TypingClassType(TypingClass),
+    NoneType,
     AnyType,
 }
 
@@ -155,6 +156,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             },
             Self::TypingClassType(c) => todo!(),
             Self::AnyType => todo!(),
+            Self::NoneType => todo!(),
         };
         if matches {
             let (class_generics, class_result_generics) = self.generics();
@@ -192,7 +194,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
             Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
-            Self::TypingClass(_) | Self::TypingClassType(_) | Self::AnyType => {
+            Self::TypingClass(_) | Self::TypingClassType(_) | Self::AnyType | Self::NoneType => {
                 (Generics::None, None)
             }
         }
@@ -208,6 +210,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
+            Self::NoneType => "None".to_owned(),
             // TODO this does not respect formatstyle
             Self::AnyType => "builtins.type".to_owned(),
         }
@@ -249,6 +252,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(f) => todo!(),
             Self::TypingClass(c) => c.as_db_type(),
             Self::TypingClassType(c) => todo!(),
+            Self::NoneType => DbType::Type(Box::new(DbType::None)),
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
         }
     }

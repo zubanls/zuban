@@ -21,7 +21,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        todo!()
+        ClassLike::NoneType
     }
 
     fn is_none(&self) -> bool {
