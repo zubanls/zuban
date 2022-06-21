@@ -117,6 +117,7 @@ lazy_static::lazy_static! {
     )).unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
+    static ref REPLACE_MYPY: Regex = Regex::new(r"`-\d+").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -424,6 +425,7 @@ fn cleanup_mypy_issues(mut s: &str) -> String {
         s = &s[..s.len() - 2];
     }
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
+    let s = REPLACE_MYPY.replace_all(&s, "");
     replace_annoyances(s.replace("tmp/", ""))
 }
 
