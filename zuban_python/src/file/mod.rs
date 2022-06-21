@@ -26,7 +26,7 @@ use crate::lines::NewlineIndices;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Class, Function, InferrableParam, LookupResult, Module, Value};
+use crate::value::{Class, Function, LookupResult, Module, ParamWithArgument, Value};
 use crate::workspaces::DirContent;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
@@ -985,16 +985,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let on_type_error = |i_s: &mut InferenceState<'db, '_>,
                                      node_ref: NodeRef<'db>,
                                      class: Option<&Class<'db, '_>>,
-                                     function: &Function<'db, '_>,
-                                     p: &InferrableParam<'db, '_>,
+                                     function: Option<&Function<'db, '_>>,
+                                     p: &dyn ParamWithArgument<'db, '_>,
                                      t1,
                                      t2| {
                     node_ref.add_typing_issue(
                         i_s.db,
                         IssueType::ArgumentIssue(format!(
-                            "Argument {} to {} has incompatible type {t1:?}; expected {t2:?}",
-                            p.argument_index(),
-                            function.diagnostic_string(class),
+                            "Argument {} has incompatible type {t1:?}; expected {t2:?}",
+                            match function {
+                                Some(function) => format!(
+                                    "{} to {}",
+                                    p.argument_index(),
+                                    function.diagnostic_string(class),
+                                ),
+                                None => format!("{}", p.argument_index()),
+                            },
                         )),
                     )
                 };

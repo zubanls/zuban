@@ -62,6 +62,7 @@ testNoneHasBoolShowNoneErrorsFalse
 
 # int -> float promotion
 testNewAnalyzerPromotion
+testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 
 # Class in Class
 testNewAnalyzerNestedClass*
@@ -98,6 +99,8 @@ testInvalidCast*
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
 testNewAnalyzerCastForward*
+# NoReturn
+testNoReturnTypeAlias
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
@@ -182,6 +185,7 @@ testNewAnalyzerDuplicateTypeVar*
 testNewAnalyzerRedefineAsClass
 testNewAnalyzerOverrideClassWithTypeAlias
 testNewAnalyzerIdentityAssignment*
+testProhibitReassigning*
 
 # Metaclass
 *Metaclass*

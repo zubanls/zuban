@@ -3,7 +3,8 @@ use std::fmt;
 use parsa_python_ast::PrimaryContent;
 
 use super::{
-    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind,
+    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, ParamWithArgument,
+    Value, ValueKind,
 };
 use crate::arguments::{Argument, ArgumentIterator, Arguments};
 use crate::base_description;
@@ -634,6 +635,16 @@ pub struct CallableParam<'db, 'a, 'b> {
 pub struct CallableParamIterator<'db, 'a, 'b> {
     params: Option<std::slice::Iter<'a, DbType>>,
     arguments: ArgumentIterator<'db, 'b>,
+}
+
+impl<'db, 'b> ParamWithArgument<'db, 'b> for CallableParam<'db, '_, 'b> {
+    fn argument_index(&self) -> usize {
+        if let Some(argument) = &self.argument {
+            argument.index()
+        } else {
+            todo!()
+        }
+    }
 }
 
 impl<'db, 'a, 'b> Iterator for CallableParamIterator<'db, 'a, 'b> {

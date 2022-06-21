@@ -19,7 +19,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use class::{Class, ClassLike};
-pub use function::{Function, InferrableParam, OverloadedFunction};
+pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
@@ -34,8 +34,8 @@ pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
     NodeRef<'db>,
     Option<&Class<'db, '_>>,
-    &Function<'db, '_>,
-    &InferrableParam<'db, '_>,
+    Option<&Function<'db, '_>>,
+    &dyn ParamWithArgument<'db, '_>,
     String,
     String,
 );

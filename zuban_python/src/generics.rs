@@ -395,7 +395,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                         i_s,
                                         p.as_argument_node_reference(),
                                         class,
-                                        &function,
+                                        Some(&function),
                                         &p,
                                         t1,
                                         t2,
@@ -419,27 +419,25 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
             FunctionOrCallable::Callable(callable) => {
                 for param in callable.iter_params_with_args(self.args) {
-                    if let Some(argument) = param.argument {
+                    if let Some(ref argument) = param.argument {
                         let value = argument.infer(i_s);
                         let value_class = value.class_as_type(i_s);
                         let mut matches = true;
+                        let on_type_error = self.on_type_error;
                         Type::from_db_type(i_s.db, param.param_type).error_if_not_matches(
                             i_s,
                             Some(self),
                             &value,
                             |i_s, t1, t2| {
-                                /*
-                                (self.on_type_error)(
+                                on_type_error(
                                     i_s,
-                                    p.as_argument_node_reference(),
+                                    argument.as_node_reference(),
                                     None,
-                                    &function,
-                                    &p,
+                                    None,
+                                    &param,
                                     t1,
                                     t2,
                                 );
-                                */
-                                todo!();
                                 matches = false;
                             },
                         );

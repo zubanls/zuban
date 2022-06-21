@@ -505,6 +505,10 @@ impl ParamInput<'_, '_> {
     }
 }
 
+pub trait ParamWithArgument<'db, 'a> {
+    fn argument_index(&self) -> usize;
+}
+
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: Param<'db>,
@@ -514,10 +518,6 @@ pub struct InferrableParam<'db, 'a> {
 impl<'db> InferrableParam<'db, '_> {
     fn is_at(&self, index: NodeIndex) -> bool {
         self.param.name_definition().index() == index
-    }
-
-    pub fn has_argument(&self) -> bool {
-        !matches!(self.argument, ParamInput::None)
     }
 
     pub fn as_argument_node_reference(&self) -> NodeRef<'db> {
@@ -531,8 +531,8 @@ impl<'db> InferrableParam<'db, '_> {
         }
     }
 
-    pub fn argument_index(&self) -> usize {
-        self.argument.argument_index()
+    pub fn has_argument(&self) -> bool {
+        !matches!(self.argument, ParamInput::None)
     }
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
@@ -559,6 +559,12 @@ impl<'db> InferrableParam<'db, '_> {
             }
             ParamInput::None => None,
         }
+    }
+}
+
+impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
+    fn argument_index(&self) -> usize {
+        self.argument.argument_index()
     }
 }
 
