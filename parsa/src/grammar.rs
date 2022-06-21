@@ -484,6 +484,7 @@ impl<'a> Stack<'a> {
     }
 
     #[inline]
+    #[allow(clippy::too_many_arguments)]
     fn push(
         &mut self,
         node_id: InternalNonterminalType,
@@ -616,7 +617,7 @@ impl<'a> StackNode<'a> {
 }
 
 #[inline]
-fn update_tree_node_position(tree_nodes: &mut Vec<InternalNode>, stack_node: &StackNode) {
+fn update_tree_node_position(tree_nodes: &mut [InternalNode], stack_node: &StackNode) {
     let last_tree_node = *tree_nodes.last().unwrap();
     let mut n = tree_nodes.get_mut(stack_node.tree_node_index).unwrap();
     n.length = last_tree_node.end_index() - n.start_index;

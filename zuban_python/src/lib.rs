@@ -3,6 +3,7 @@
 #![allow(clippy::while_let_on_iterator)] // This is simply wrong in some cases
 #![allow(clippy::needless_option_as_deref)] // This is simply wrong in some cases
 #![allow(clippy::collapsible_if)]
+#![allow(clippy::too_many_arguments)] // For now this is easier, but probably enable again
 #![allow(mutable_borrow_reservation_conflict)]
 
 mod arguments;

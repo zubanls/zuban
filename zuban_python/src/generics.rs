@@ -536,6 +536,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     TypeVar(&'a TypeVarUsage),
