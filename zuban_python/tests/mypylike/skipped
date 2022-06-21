@@ -71,12 +71,16 @@ testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 # Class in Class
 testNewAnalyzerNestedClass*
 testNewAnalyzerAliasToNotReadyNestedClass*
+testNestedClassOnAliasAsType
 
 # Class in function
 testNewAnalyzerClassInFunction
 testNewAnalyzerNestedClassInMethod
 testNewAnalyzerDeeplyNestedFunctions
 testNewAnalyzerUnsupportedBaseClassInsideFunction
+
+# Class: generic access from outside
+testAliasRefOnClass
 
 # Property
 testNonMethodProperty
@@ -85,6 +89,7 @@ testNewAnalyzerProperty
 testNewAnalyzerNoCrashOnCustomProperty
 
 # classmethod
+testAliasToClassMethod
 testGenericClassMethod*
 testClassmethodAndNonMethod
 testAddBaseClassMethodCausingInvalidOverride
@@ -141,6 +146,9 @@ testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 testInvalidUnpackTypes
 testTypeVarTuple
 testRuntimeProtoTwoBases
+
+# mypy extensions
+testFlexibleAlias*
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
@@ -348,17 +356,19 @@ testSuperOutsideClass
 testTestExtendPrimitives
 testInvalidTypeWithinNestedGenericClass
 testTypevarWithType
-# Library stuff
-testInvalidAssertType
-testInvalidAnyCall
-testInvalidTypeInTypeApplication
-testParamSpec
-testBaseClassAnnotatedWithoutArgs
 # Tuple types
 testVariableDeclWithInvalidNumberOfTypes*
 testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
+
+# Typing stuff
+testInvalidAssertType
+testInvalidAnyCall
+testInvalidTypeInTypeApplication
+testParamSpec
+testBaseClassAnnotatedWithoutArgs
+*Pep613
 
 # Nonlocal
 *NonlocalDecl*
@@ -381,12 +391,22 @@ testIncompatibleAssignmentAmbiguousShortnames
 testAssignmentInvariantNoteForList
 testAssignmentInvariantNoteForDict
 
+# Type execution
+testNoneAlias
+testNoneAliasStrict
+
 # Wtfs
 testEmptyTupleTypeAlias
+testOverrideByIdemAliasCorrectType
+testOverrideByIdemAliasCorrectTypeReversed
+testOverrideByIdemAliasCorrectTypeImported
+testConditionalExceptionAlias
 
 # Formatting func in reveal_type
 testForwardTypeAlias
 testForwardTypeAliasGeneric
+testAliasToTupleAndCallable
+testAliasInImportCycle3
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
