@@ -137,7 +137,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     setup_type_alias(typing, "OrderedDict", collections, "OrderedDict");
 
     // TODO this is completely wrong, but for now it's good enough
-    setup_type_alias(builtins, "SupportsIndex", builtins, "int")
+    setup_type_alias(typing, "SupportsIndex", builtins, "int")
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {

@@ -399,7 +399,6 @@ testNoneAliasStrict
 testEmptyTupleTypeAlias
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
-testOverrideByIdemAliasCorrectTypeImported
 testConditionalExceptionAlias
 
 # Formatting func in reveal_type
