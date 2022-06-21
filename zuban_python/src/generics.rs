@@ -362,7 +362,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
                 let mut iter = function.iter_inferrable_params(self.args, self.skip_first_param);
-                while let Some(p) = iter.next() {
+                for p in iter.by_ref() {
                     if !p.has_argument() && p.param.default().is_none() {
                         self.matches = false;
                         self.args.node_reference().add_typing_issue(
