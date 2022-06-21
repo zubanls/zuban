@@ -99,6 +99,7 @@ impl PythonState {
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
+        // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();
         let node_index = builtins.symbol_table.lookup_symbol(name).unwrap() - 1;
         let point = builtins.points.get(node_index);

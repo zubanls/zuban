@@ -1,6 +1,6 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
-use super::{Class, ClassLike, IteratorContent, LookupResult, Value, ValueKind};
+use super::{Class, ClassLike, Instance, IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality, TypeVarIndex};
 use crate::debug;
 use crate::generics::Generics;
@@ -84,7 +84,16 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        Instance::new(
+            Class::from_position(
+                NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list")),
+                Generics::List(self.generic_list(i_s), None),
+                None,
+            )
+            .unwrap(),
+            None,
+        )
+        .lookup_internal(i_s, name)
     }
 
     fn iter(
