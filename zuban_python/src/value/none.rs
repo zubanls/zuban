@@ -17,7 +17,8 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        debug!("TODO None lookup");
+        LookupResult::None
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {

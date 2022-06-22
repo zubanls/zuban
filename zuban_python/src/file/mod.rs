@@ -382,13 +382,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let file_index = self.infer_import_dotted_name(dotted_name, None);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
-                    if let Some(file_index) = file_index {
-                        let point = Point::new_file_reference(file_index, Locality::Todo);
-                        self.file.points.set(as_name_def.index(), point);
-                        self.file.points.set(as_name_def.name().index(), point);
+                    let point = if let Some(file_index) = file_index {
+                        Point::new_file_reference(file_index, Locality::Todo)
                     } else {
-                        todo!()
-                    }
+                        Point::new_unknown(self.file.file_index(), Locality::Todo)
+                    };
+                    self.file.points.set(as_name_def.index(), point);
+                    self.file.points.set(as_name_def.name().index(), point);
                 }
             }
         }

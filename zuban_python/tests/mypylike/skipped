@@ -204,6 +204,7 @@ testNewAnalyzerRedefineAsClass
 testNewAnalyzerOverrideClassWithTypeAlias
 testNewAnalyzerIdentityAssignment*
 testProhibitReassigning*
+testUnknownModuleRedefinition
 
 # Metaclass
 *Metaclass*
@@ -409,6 +410,12 @@ testForwardTypeAlias
 testForwardTypeAliasGeneric
 testAliasToTupleAndCallable
 testAliasInImportCycle3
+
+# Formatting Module as types ("ModuleType" instead of Module)
+testInvalidOperationsOnModules
+
+# Tuple type comments
+testChainedAssignmentAndImports
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
