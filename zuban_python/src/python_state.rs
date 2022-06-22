@@ -197,7 +197,7 @@ fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
     let name = NodeRef::new(file, node_index).as_name();
     if let TypeLike::Assignment(assignment) = name.expect_type() {
-        if let Some(expr) = assignment.maybe_simple_type_expression_assignment() {
+        if let Some((_, expr)) = assignment.maybe_simple_type_expression_assignment() {
             if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack() {
                 file.points.set(
                     p.index(),

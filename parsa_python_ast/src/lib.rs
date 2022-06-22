@@ -1741,29 +1741,48 @@ impl<'db> Assignment<'db> {
         }
     }
 
-    pub fn maybe_simple_type_expression_assignment(&self) -> Option<Expression<'db>> {
+    pub fn maybe_simple_type_expression_assignment(
+        &self,
+    ) -> Option<(NameDefinition<'db>, Expression<'db>)> {
         match self.unpack() {
             AssignmentContent::Normal(mut targets_, right) => {
-                targets_.next();
+                let first_target = targets_.next().unwrap();
                 if targets_.next().is_some() {
                     return None;
                 }
 
+                let name_def = if let Target::Name(name_def) = first_target {
+                    name_def
+                } else {
+                    return None;
+                };
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some(expr);
+                        return Some((name_def, expr));
                     }
                 }
                 None
             }
-            AssignmentContent::WithAnnotation(_, _, _) => todo!("{self:?}"),
+            AssignmentContent::WithAnnotation(t, _, right) => {
+                let name_def = if let Target::Name(name_def) = t {
+                    name_def
+                } else {
+                    return None;
+                };
+                if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
+                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+                        return Some((name_def, expr));
+                    }
+                }
+                None
+            }
             AssignmentContent::AugAssign(_, _, _) => None,
         }
     }
 
     pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
         self.maybe_simple_type_expression_assignment()
-            .and_then(|expr| expr.maybe_name_or_last_primary_name())
+            .and_then(|(_, expr)| expr.maybe_name_or_last_primary_name())
     }
 }
 

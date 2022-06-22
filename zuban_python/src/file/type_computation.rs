@@ -168,7 +168,7 @@ impl<'db> TypeContent<'db> {
             Self::InvalidVariable(t) => return Self::InvalidVariable(t),
         };
         Self::DbType(match self {
-            Self::ClassWithoutTypeVar(inf) => todo!(),
+            Self::ClassWithoutTypeVar(inf) => inf.as_db_type(i_s).union(other_t),
             Self::DbType(t) => t.union(other_t),
             Self::Module(m) => todo!(),
             Self::TypeAlias(m) => todo!(),
@@ -178,7 +178,8 @@ impl<'db> TypeContent<'db> {
                 SpecialType::Type => DbType::Type(Box::new(DbType::Any)).union(other_t),
                 _ => todo!("{s:?}"),
             },
-            Self::Unknown => todo!(),
+            // `Any | something` always is Any
+            Self::Unknown => DbType::Any,
             Self::InvalidVariable(t) => return Self::InvalidVariable(t),
         })
     }
@@ -1193,66 +1194,48 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
         }
-        match assignment.unpack() {
-            AssignmentContent::Normal(mut targets, AssignmentRightSide::StarExpressions(right)) => {
-                if let StarExpressionContent::Expression(expr) = right.unpack() {
-                    let first_target = targets.next().unwrap();
-                    if targets.next().is_some() {
-                        todo!()
-                        // return TypeNameLookup::Invalid;
+        if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
+            debug_assert!(self.file.points.get(name_def.index()).calculated());
+            let inferred = self.check_point_cache(name_def.index()).unwrap();
+            let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
+                ComplexPoint::TypeVar(Rc::new(tv))
+            } else {
+                let mut type_vars = TypeVarManager::default();
+                let p = self.file.points.get(expr.index());
+                let mut comp =
+                    TypeComputation {
+                        inference: self,
+                        errors_already_calculated: p.calculated(),
+                        type_var_callback:
+                            &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
+                                let index = type_vars.add(type_var.clone());
+                                Some(TypeVarUsage {
+                                    type_var,
+                                    index,
+                                    type_: TypeVarType::Alias,
+                                })
+                            },
+                        has_type_vars: false,
+                    };
+                let t = comp.compute_type(expr, None);
+                match t {
+                    TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
+                    TypeContent::InvalidVariable(t) => return TypeNameLookup::InvalidVariable(t),
+                    _ => {
+                        let node_ref = NodeRef::new(comp.inference.file, expr.index());
+                        let db_type = Rc::new(comp.as_db_type(t, node_ref));
+                        ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                            type_vars: type_vars.into_boxed_slice(),
+                            db_type,
+                        }))
                     }
-                    let name_def = if let Target::Name(name_def) = first_target {
-                        name_def
-                    } else {
-                        unreachable!()
-                    };
-                    debug_assert!(self.file.points.get(name_def.index()).calculated());
-                    let inferred = self.check_point_cache(name_def.index()).unwrap();
-                    let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
-                        ComplexPoint::TypeVar(Rc::new(tv))
-                    } else {
-                        let mut type_vars = TypeVarManager::default();
-                        let p = self.file.points.get(expr.index());
-                        let mut comp = TypeComputation {
-                            inference: self,
-                            errors_already_calculated: p.calculated(),
-                            type_var_callback:
-                                &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
-                                    let index = type_vars.add(type_var.clone());
-                                    Some(TypeVarUsage {
-                                        type_var,
-                                        index,
-                                        type_: TypeVarType::Alias,
-                                    })
-                                },
-                            has_type_vars: false,
-                        };
-                        let t = comp.compute_type(expr, None);
-                        match t {
-                            TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
-                            TypeContent::InvalidVariable(t) => {
-                                return TypeNameLookup::InvalidVariable(t)
-                            }
-                            _ => {
-                                let node_ref = NodeRef::new(comp.inference.file, expr.index());
-                                let db_type = Rc::new(comp.as_db_type(t, node_ref));
-                                ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                                    type_vars: type_vars.into_boxed_slice(),
-                                    db_type,
-                                }))
-                            }
-                        }
-                    };
-                    cached_type_node_ref.insert_complex(complex, Locality::Todo);
-                    load_cached_type(cached_type_node_ref)
-                } else {
-                    todo!()
                 }
-            }
-            AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                todo!("{target:?}")
-            }
-            _ => todo!(),
+            };
+            cached_type_node_ref.insert_complex(complex, Locality::Todo);
+            load_cached_type(cached_type_node_ref)
+        } else {
+            debug!("TODO invalid type def");
+            TypeNameLookup::Unknown
         }
     }
 
