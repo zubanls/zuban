@@ -5,8 +5,9 @@ use crate::database::{Database, Locality, Point, PointLink, PointType, Specific}
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::Generics;
+use crate::generics::Type;
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::value::{Class, ClassLike};
 
 pub struct PythonState {
     builtins: *const PythonFile,
@@ -15,6 +16,7 @@ pub struct PythonState {
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
+    builtins_base_exception_index: NodeIndex,
 }
 
 impl PythonState {
@@ -26,6 +28,7 @@ impl PythonState {
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
+            builtins_base_exception_index: 0,
         }
     }
 
@@ -44,10 +47,19 @@ impl PythonState {
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
         let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
+        let base_exception_name_index = builtins
+            .symbol_table
+            .lookup_symbol("BaseException")
+            .unwrap();
 
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
         s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
+        s.builtins_base_exception_index = s
+            .builtins()
+            .points
+            .get(base_exception_name_index - 1)
+            .node_index();
 
         // Needed because there's a loop for calculating the type var _T_co, which defines string
         // literal arguments arguments, which means that the class of those is str, which is a sub
@@ -98,6 +110,12 @@ impl PythonState {
         NodeRef::new(self.builtins(), self.builtins_tuple_index)
     }
 
+    #[inline]
+    fn base_exception(&self) -> NodeRef {
+        debug_assert!(self.builtins_base_exception_index != 0);
+        NodeRef::new(self.builtins(), self.builtins_base_exception_index)
+    }
+
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();
@@ -105,6 +123,13 @@ impl PythonState {
         let point = builtins.points.get(node_index);
         debug_assert_eq!(point.type_(), PointType::Redirect);
         PointLink::new(builtins.file_index(), point.node_index())
+    }
+
+    #[inline]
+    pub fn base_exception_type(&self) -> Type {
+        Type::ClassLike(ClassLike::Class(
+            Class::from_position(self.base_exception(), Generics::None, None).unwrap(),
+        ))
     }
 }
 

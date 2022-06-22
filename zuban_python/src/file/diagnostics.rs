@@ -80,7 +80,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 StmtContent::ForStmt(for_stmt) => {}
-                StmtContent::TryStmt(try_stmt) => {}
+                StmtContent::TryStmt(try_stmt) => {
+                    self.calc_try_stmt_diagnostics(try_stmt, class, func)
+                }
                 StmtContent::WhileStmt(while_stmt) => {
                     let (condition, block, else_block) = while_stmt.unpack();
                     self.infer_named_expression(condition);
@@ -189,6 +191,34 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 } else {
                     debug!("TODO what about an implicit None?");
                 }
+            }
+        }
+    }
+
+    fn calc_try_stmt_diagnostics(
+        &mut self,
+        try_stmt: TryStmt<'db>,
+        class: Option<Class<'db, '_>>,
+        func: Option<&Function<'db, '_>>,
+    ) {
+        for b in try_stmt.iter_blocks() {
+            match b {
+                TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
+                TryBlockType::Except(b) => {
+                    let (exception, _name_def, block) = b.unpack();
+                    let inf = self.infer_expression(exception);
+                    self.i_s
+                        .db
+                        .python_state
+                        .base_exception_type()
+                        .error_if_not_matches(self.i_s, None, &inf, |i_s, t1, t2| {
+                            NodeRef::new(self.file, exception.index())
+                                .add_typing_issue(i_s.db, IssueType::BaseExceptionExpected);
+                        });
+                    self.calc_block_diagnostics(block, class, func)
+                }
+                TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
+                TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
             }
         }
     }

@@ -38,6 +38,8 @@ pub(crate) enum IssueType {
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected(&'static str),
 
+    BaseExceptionExpected,
+
     StmtOutsideFunction(&'static str),
 
     MethodWithoutArguments,
@@ -222,6 +224,8 @@ impl<'db> Diagnostic<'db> {
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
             IssueType::TypeVarExpected(s) => format!("Free type variable expected in {s}[...]"),
 
+            IssueType::BaseExceptionExpected =>
+                "Exception type must be derived from BaseException".to_owned(),
             IssueType::StmtOutsideFunction(stmt) => format!("{stmt:?} outside function"),
 
             IssueType::Note(s) => {
