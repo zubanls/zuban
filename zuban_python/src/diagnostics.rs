@@ -39,6 +39,7 @@ pub(crate) enum IssueType {
     TypeVarExpected(&'static str),
 
     BaseExceptionExpected,
+    UnsupportedClassScopedImport,
 
     StmtOutsideFunction(&'static str),
 
@@ -226,6 +227,8 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
+            IssueType::UnsupportedClassScopedImport =>
+                "Unsupported class scoped import".to_owned(),
             IssueType::StmtOutsideFunction(stmt) => format!("{stmt:?} outside function"),
 
             IssueType::Note(s) => {

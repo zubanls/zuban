@@ -48,6 +48,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             SimpleStmtContent::YieldExpr(x) => {}
                             SimpleStmtContent::RaiseStmt(x) => {}
                             SimpleStmtContent::ImportFrom(import_from) => {
+                                if class.is_some() && func.is_none() {
+                                    NodeRef::new(self.file, simple_stmt.index()).add_typing_issue(
+                                        self.i_s.db,
+                                        IssueType::UnsupportedClassScopedImport,
+                                    );
+                                }
                                 self.cache_import_from(import_from);
                             }
                             SimpleStmtContent::ImportName(import_name) => {
