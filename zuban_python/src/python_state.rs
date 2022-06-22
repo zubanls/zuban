@@ -1,13 +1,12 @@
 use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
 use std::ptr::null;
 
-use crate::database::{Database, Locality, Point, PointLink, PointType, Specific};
+use crate::database::{Database, DbType, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::generics::Generics;
-use crate::generics::Type;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike};
+use crate::value::Class;
 
 pub struct PythonState {
     builtins: *const PythonFile,
@@ -110,12 +109,6 @@ impl PythonState {
         NodeRef::new(self.builtins(), self.builtins_tuple_index)
     }
 
-    #[inline]
-    fn base_exception(&self) -> NodeRef {
-        debug_assert!(self.builtins_base_exception_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_base_exception_index)
-    }
-
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();
@@ -126,9 +119,11 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn base_exception_type(&self) -> Type {
-        Type::ClassLike(ClassLike::Class(
-            Class::from_position(self.base_exception(), Generics::None, None).unwrap(),
+    pub fn base_exception(&self) -> DbType {
+        debug_assert!(self.builtins_base_exception_index != 0);
+        DbType::Class(PointLink::new(
+            self.builtins().file_index(),
+            self.builtins_base_exception_index,
         ))
     }
 }

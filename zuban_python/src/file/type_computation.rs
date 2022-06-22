@@ -120,6 +120,7 @@ enum TypeNameLookup<'db> {
     Unknown,
 }
 
+#[derive(Debug)]
 pub enum BaseClass<'db> {
     DbType(DbType),
     Protocol(Option<SliceType<'db>>),
