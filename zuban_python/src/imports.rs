@@ -40,6 +40,8 @@ pub fn python_import(
     name: &str,
 ) -> Option<FileIndex> {
     let separator = "/"; // TODO different separator
+    let mut python_file_index = None;
+    let mut stub_file_index = None;
     for directory in dir.iter() {
         match &directory.type_ {
             DirOrFile::Directory(content) => {
@@ -56,8 +58,8 @@ pub fn python_import(
                 }
             }
             DirOrFile::File(file_index) => {
-                if directory.name == format!("{name}.py") || directory.name == format!("{name}.pyi")
-                {
+                let is_py_file = directory.name == format!("{name}.py");
+                if is_py_file || directory.name == format!("{name}.pyi") {
                     if file_index.get().is_none() {
                         db.load_file_from_workspace(
                             dir.clone(),
@@ -65,13 +67,18 @@ pub fn python_import(
                             file_index,
                         );
                     }
-                    return file_index.get();
+                    debug_assert!(file_index.get().is_some());
+                    if is_py_file {
+                        python_file_index = file_index.get();
+                    } else {
+                        stub_file_index = file_index.get();
+                    }
                 }
             }
             DirOrFile::MissingEntry(_) => (),
         }
     }
-    None
+    stub_file_index.or(python_file_index)
 }
 
 fn load_init_file(
