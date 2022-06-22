@@ -1220,7 +1220,8 @@ impl Database {
         let typing = self.py_load_tmp("../typeshed/stdlib/typing.pyi") as *const _;
         let collections =
             self.py_load_tmp("../typeshed/stdlib/collections/__init__.pyi") as *const _;
-        PythonState::initialize(self, builtins, typing, collections);
+        let types = self.py_load_tmp("../typeshed/stdlib/types.pyi") as *const _;
+        PythonState::initialize(self, builtins, typing, collections, types);
     }
 }
 

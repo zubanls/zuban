@@ -12,10 +12,12 @@ pub struct PythonState {
     builtins: *const PythonFile,
     typing: *const PythonFile,
     collections: *const PythonFile,
+    types: *const PythonFile,
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
+    types_module_type_index: NodeIndex,
 }
 
 impl PythonState {
@@ -24,10 +26,12 @@ impl PythonState {
             builtins: null(),
             typing: null(),
             collections: null(),
+            types: null(),
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_base_exception_index: 0,
+            types_module_type_index: 0,
         }
     }
 
@@ -36,11 +40,13 @@ impl PythonState {
         builtins: *const PythonFile,
         typing: *const PythonFile,
         collections: *const PythonFile,
+        types: *const PythonFile,
     ) {
         let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
         s.collections = collections;
+        s.types = types;
         let builtins = s.builtins();
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
@@ -50,6 +56,7 @@ impl PythonState {
             .symbol_table
             .lookup_symbol("BaseException")
             .unwrap();
+        let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
 
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
@@ -58,6 +65,11 @@ impl PythonState {
             .builtins()
             .points
             .get(base_exception_name_index - 1)
+            .node_index();
+        s.types_module_type_index = s
+            .types()
+            .points
+            .get(module_type_name_index - 1)
             .node_index();
 
         // Needed because there's a loop for calculating the type var _T_co, which defines string
@@ -84,6 +96,12 @@ impl PythonState {
     pub fn collections(&self) -> &PythonFile {
         debug_assert!(!self.collections.is_null());
         unsafe { &*self.collections }
+    }
+
+    #[inline]
+    pub fn types(&self) -> &PythonFile {
+        debug_assert!(!self.types.is_null());
+        unsafe { &*self.types }
     }
 
     #[inline]
@@ -125,6 +143,13 @@ impl PythonState {
             self.builtins().file_index(),
             self.builtins_base_exception_index,
         ))
+    }
+
+    #[inline]
+    pub fn module_type(&self) -> Class {
+        debug_assert!(self.types_module_type_index != 0);
+        let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
+        Class::from_position(node_ref, Generics::None, None).unwrap()
     }
 }
 

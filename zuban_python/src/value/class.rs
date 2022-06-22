@@ -294,6 +294,10 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
+    pub fn as_class_like(self) -> ClassLike<'db, 'a> {
+        ClassLike::Class(self)
+    }
+
     pub fn init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
