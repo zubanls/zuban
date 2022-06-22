@@ -122,9 +122,6 @@ testNewAnalyzerBuiltinAliasesFixed
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 
-# Module <M> has no attribute <missing_name>; maybe <name>
-testNewAnalyzerTypeAnnotationCycle3
-
 # Comprehensions
 testNewAnalyzerListComprehension
 testNewAnalyzerDictionaryComprehension
@@ -153,8 +150,17 @@ testFlexibleAlias*
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
 
+# Module <M> has no attribute <missing_name>; maybe <name>
+testNewAnalyzerTypeAnnotationCycle3
+
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
+
+# Complex Star import
+testImportWithinMethod
+
+# Module __getattr__
+testNewAnalyzerModuleGetattrSerialize_incremental
 
 # Import itself / Extremely weird import orders
 testNewAnalyzerImportCycleWithIgnoreMissingImports
@@ -375,10 +381,7 @@ testBaseClassAnnotatedWithoutArgs
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
 
-# Module __getattr__
-testNewAnalyzerModuleGetattrSerialize_incremental
-
-# Module __init__ None needed
+# __init__ None needed
 testInitReturnTypeError
 
 # need annotation
