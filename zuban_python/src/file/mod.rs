@@ -466,6 +466,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     };
                     self.file.points.set(import_name.index(), point);
                     self.file.points.set(name_def.index(), point);
+                    self.file.points.set(name_def.name().index(), point);
                 }
             }
         }
