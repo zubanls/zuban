@@ -619,8 +619,13 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
+        if let DbType::Class(link) = t {
+            if self.reference.as_link() == *link {
+                return true;
+            }
+        }
         let class_infos = self.class_infos(i_s);
-        class_infos.mro.contains(&t)
+        class_infos.mro.contains(t)
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
