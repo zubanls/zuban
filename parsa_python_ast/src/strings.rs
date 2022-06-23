@@ -13,9 +13,6 @@ impl<'db> PythonString<'db> {
     pub fn new(strings: SiblingIterator<'db>) -> Option<Self> {
         let mut result: Option<Self> = None;
         for literal in strings {
-            if !starts_with_string(&literal) {
-                return None;
-            }
             result = Some(match result {
                 Some(s) => s.union(Self::from_literal(literal)),
                 None => Self::from_literal(literal),
@@ -55,16 +52,4 @@ impl<'db> PythonString<'db> {
             Self::FString => Self::FString,
         }
     }
-}
-
-pub fn starts_with_string(literal: &PyNode) -> bool {
-    let code = literal.as_code();
-    for byte in code.bytes() {
-        if byte == b'"' || byte == b'\'' {
-            break;
-        } else if byte == b'b' || byte == b'B' {
-            return false;
-        }
-    }
-    true
 }

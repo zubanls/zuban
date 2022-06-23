@@ -919,7 +919,7 @@ where
                 self.inference.infer_name_reference(n);
                 self.compute_type_name(n, generic_or_protocol_index)
             }
-            AtomContent::StringsOrBytes(s_o_b) => match s_o_b.as_python_string() {
+            AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
                     self.compute_forward_reference(start, s.to_owned())
                 }

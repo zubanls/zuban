@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{
     Atom, AtomContent, ClassDef, Expression, ImportFrom, Name, NamedExpression, NodeIndex, Primary,
-    PyString, PythonString,
+    PythonString, StringLiteral,
 };
 
 use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType};
@@ -100,14 +100,14 @@ impl<'db> NodeRef<'db> {
     pub fn infer_str(&self) -> Option<PythonString<'db>> {
         Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
             match atom.unpack() {
-                AtomContent::StringsOrBytes(s) => s.as_python_string(),
+                AtomContent::Strings(s) => s.as_python_string(),
                 _ => None,
             }
         })
     }
 
-    pub fn maybe_str(&self) -> Option<PyString<'db>> {
-        PyString::maybe_by_index(&self.file.tree, self.node_index)
+    pub fn maybe_str(&self) -> Option<StringLiteral<'db>> {
+        StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'db>> {

@@ -1066,20 +1066,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Int(_) => Specific::Integer,
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
-            StringsOrBytes(s_o_b) => {
-                let mut iterator = s_o_b.iter().peekable();
-                let specific = match iterator.peek().unwrap() {
-                    StringOrByte::String(_) => Specific::String,
-                    StringOrByte::Bytes(_) => Specific::Bytes,
-                    StringOrByte::FString(f) => Specific::String,
-                };
-                for string_or_byte in iterator {
-                    if let StringOrByte::FString(f) = string_or_byte {
+            Strings(s_o_b) => {
+                for string in s_o_b.iter() {
+                    if let StringType::FString(f) = string {
                         self.calc_fstring_diagnostics(f)
                     }
                 }
-                specific
+                Specific::String
             }
+            Bytes(_) => Specific::Bytes,
             NoneLiteral => Specific::None,
             Boolean(_) => Specific::Boolean,
             Ellipsis => Specific::Ellipsis,

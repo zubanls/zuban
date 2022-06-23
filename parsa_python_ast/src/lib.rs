@@ -11,7 +11,6 @@ use parsa_python::{
     PyTree, SearchIterator, SiblingIterator, TerminalType,
 };
 pub use parsa_python::{CodeIndex, NodeIndex};
-use strings::starts_with_string;
 pub use strings::PythonString;
 
 pub struct Tree(PyTree);
@@ -267,7 +266,8 @@ create_nonterminal_structs!(
 
     NameDefinition: name_definition
     Atom: atom
-    StringsOrBytes: strings
+    Strings: strings
+    Bytes: bytes
     FString: fstring
     FStringExpr: fstring_expr
     FStringFormatSpec: fstring_format_spec
@@ -309,8 +309,8 @@ create_struct!(Name: Terminal(TerminalType::Name));
 create_struct!(Int: Terminal(TerminalType::Number));
 create_struct!(Float: Terminal(TerminalType::Number));
 create_struct!(Complex: Terminal(TerminalType::Number));
-create_struct!(PyString: Terminal(TerminalType::String));
-create_struct!(Bytes: Terminal(TerminalType::Bytes));
+create_struct!(StringLiteral: Terminal(TerminalType::String));
+create_struct!(BytesLiteral: Terminal(TerminalType::Bytes));
 create_struct!(FStringString: Terminal(TerminalType::FStringString));
 create_struct!(Keyword: PyNodeType::Keyword);
 
@@ -801,10 +801,10 @@ impl<'db> NamedExpression<'db> {
         false
     }
 
-    pub fn maybe_single_string_literal(&self) -> Option<PyString<'db>> {
+    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
         if let NamedExpressionContent::Expression(e) = self.unpack() {
             if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
-                if let AtomContent::StringsOrBytes(s) = a.unpack() {
+                if let AtomContent::Strings(s) = a.unpack() {
                     return s.maybe_single_string_literal();
                 }
             }
@@ -2558,7 +2558,8 @@ impl<'db> Atom<'db> {
                     AtomContent::Int(Int::new(first))
                 }
             }
-            Nonterminal(strings) => AtomContent::StringsOrBytes(StringsOrBytes::new(first)),
+            Nonterminal(strings) => AtomContent::Strings(Strings::new(first)),
+            Nonterminal(bytes) => AtomContent::Bytes(Bytes::new(first)),
             PyNodeType::Keyword => match first.as_code() {
                 "None" => AtomContent::NoneLiteral,
                 "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
@@ -2624,7 +2625,8 @@ pub enum AtomContent<'db> {
     Float(Float<'db>),
     Int(Int<'db>),
     Complex(Complex<'db>),
-    StringsOrBytes(StringsOrBytes<'db>),
+    Strings(Strings<'db>),
+    Bytes(Bytes<'db>),
 
     NoneLiteral,
     Boolean(Keyword<'db>),
@@ -2642,13 +2644,13 @@ pub enum AtomContent<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
-impl<'db> PyString<'db> {
+impl<'db> StringLiteral<'db> {
     pub fn content(&self) -> &'db str {
         let code = self.node.as_code();
-        let bytes = code.as_bytes();
+        let bytes_ = code.as_bytes();
         let mut start = 0;
         let mut quote = None;
-        for (i, b) in bytes.iter().enumerate() {
+        for (i, b) in bytes_.iter().enumerate() {
             if *b == b'"' || *b == b'\'' {
                 if let Some(quote) = quote {
                     if *b == quote && i == start + 3 {
@@ -2668,18 +2670,18 @@ impl<'db> PyString<'db> {
     }
 }
 
-impl<'db> StringsOrBytes<'db> {
+impl<'db> Strings<'db> {
     pub fn as_python_string(&self) -> Option<PythonString<'db>> {
         PythonString::new(self.node.iter_children())
     }
 
-    pub fn iter(&self) -> StringOrByteIterator<'db> {
-        StringOrByteIterator(self.node.iter_children())
+    pub fn iter(&self) -> StringIterator<'db> {
+        StringIterator(self.node.iter_children())
     }
 
-    pub fn maybe_single_string_literal(&self) -> Option<PyString<'db>> {
+    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
         let mut iterator = self.iter();
-        if let Some(StringOrByte::String(s)) = iterator.next() {
+        if let Some(StringType::String(s)) = iterator.next() {
             Some(s)
         } else {
             None
@@ -2687,27 +2689,24 @@ impl<'db> StringsOrBytes<'db> {
     }
 }
 
-pub struct StringOrByteIterator<'db>(SiblingIterator<'db>);
+pub struct StringIterator<'db>(SiblingIterator<'db>);
 
-impl<'db> Iterator for StringOrByteIterator<'db> {
-    type Item = StringOrByte<'db>;
+impl<'db> Iterator for StringIterator<'db> {
+    type Item = StringType<'db>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|n| {
             if n.is_type(Nonterminal(fstring)) {
-                StringOrByte::FString(FString::new(n))
-            } else if starts_with_string(&n) {
-                StringOrByte::String(PyString::new(n))
+                StringType::FString(FString::new(n))
             } else {
-                StringOrByte::Bytes(Bytes::new(n))
+                StringType::String(StringLiteral::new(n))
             }
         })
     }
 }
 
-pub enum StringOrByte<'db> {
-    String(PyString<'db>),
-    Bytes(Bytes<'db>),
+pub enum StringType<'db> {
+    String(StringLiteral<'db>),
     FString(FString<'db>),
 }
 
