@@ -1,4 +1,8 @@
 # temporary
+testImportCycleSpecialCase2
+testImportCycleSpecialCase3
+testForwardReferenceToListAlias
+
 testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
 testStubPackageSubModule
@@ -18,6 +22,9 @@ testMissingGenericImport
 testInvalidBaseClass2
 testNewAnalyzerNoCrashOnStarInference
 testProhibitBoundTypeVariableReuseForAliases
+
+# Too many #missing-imports
+testDoNotLimitImportErrorVolume
 
 # Class body NameBinder issues
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
@@ -41,6 +48,7 @@ testNewAnalyzerVarTypeVarNoCrashImportCycle
 testNewAnalyzerFuncTypeVarNoCrashImportCycle
 testRecursiveAliasesErrors*
 testJSONAliasApproximation
+testCyclicUndefinedImport*
 
 # Module Values
 testModuleImplicitAttributes
@@ -61,6 +69,7 @@ testNewAnalyzerExportedValuesInImportAll
 testExportedValuesInImportAll
 testAllMustBeSequenceStr*
 testUnderscoreExportedValuesInImportAll
+testReExportAllInStub
 
 # Literal
 testNewAnalyzerBool
@@ -156,6 +165,8 @@ testNewAnalyzerTypeArgBoundCheckWithContext
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
+testModuleAttributeTwoSuggestions
+testModuleAttributeThreeSuggestions
 
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
@@ -164,17 +175,51 @@ testNewAnalyzerImportStarSpecialCase
 testSubmoduleImportFromDoesNotAddParents
 testSubmoduleMixingImportFromAndImport
 
+# import a.b.c issues
+testMissingSubmoduleImportedWithIgnoreMissingImports*
+testMissingSubmoduleOfInstalledStubPackage
+
 # Complex Star import
 testImportWithinMethod
 
 # Module __getattr__
 testNewAnalyzerModuleGetattrSerialize_incremental
+testModuleLevelGetattr*
+testModuleGetattr*
+testModuleGetAttr*
+
+# Module type does not contain module info
+testMultiModuleAlias
+testModuleAliasWithExplicitAnnotation
+
+# namespace packages
+testClassicNotPackage
+testNamespacePackage*
+testClassicPackageIgnoresEarlierNamespacePackage
+testClassicPackageInsideNamespacePackage
+
+# Stub Reexport
+testNoReExportFromStubs*
+testNoReExportChildStubs
+testReExportChildStubs
+testNoReExportNestedStub
+testNoReExportFromMissingStubs
+
+# Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
+testModuleAliasRepeated
+testModuleAliasRepeatedComplex
+testModuleAliasToOtherModule
+testModuleAliasToQualifiedImport2
 
 # Import itself / Extremely weird import orders
 testNewAnalyzerImportCycleWithIgnoreMissingImports
 testNewAnalyzerImportFromTopLevelFunction
 testNewAnalyzerImportFromTopLevelAlias
 testNewAnalyzerImportAmbiguousWithTopLevelFunction
+testReExportChildStubs
+testReExportChildStubs2
+testImportCycleSpecialCase
+testPackagePath
 
 # Multi definition ifs
 testNewAnalyzerFirstAliasTargetWins
@@ -437,6 +482,7 @@ testScriptsAreNotModules
 # Formatting qualified name
 testSubmoduleMixingImportFromAndImport
 testSubmoduleMixingImportFromAndImport2
+testErrorFromGoogleCloud
 
 # Formatting func in reveal_type
 testForwardTypeAlias
@@ -446,9 +492,15 @@ testAliasInImportCycle3
 testTypeCheckPrio
 testImportStarAliasCallable
 
+# Formatting class in reveal_type
+testReExportChildStubs3
+testImportFromReExportInCycleUsingRelativeImport1
+testImportReExportInCycleUsingRelativeImport2
+
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
 testConditionalImportAndAssignInvalidToModule
+testModuleAliasRepeatedWithAnnotation
 
 # Tuple type comments
 testChainedAssignmentAndImports
@@ -463,6 +515,15 @@ testEllipsisDefaultArgValueInNonStubsMethods
 *StrictOptional*
 testAssignToFuncDefViaImport
 
+# pyproject.toml
+testMultipleModulesInOverridePyProjectTOML
+testIgnoreErrorFromMissingStubs1
+testIgnoreErrorFromMissingStubs2
+
+# --disallow-any-expr
+testDoNotLimitErrorVolumeIfNotImportErrors
+testUnlimitedStubErrorVolume
+
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
 testAncestorSuppressedWhileAlmostSilent
@@ -472,6 +533,9 @@ testTypeCheckNamedModule4
 testTypeCheckNamedModule5
 testTypeCheckNamedModuleWithImportCycle
 testStubImportNonStubWhileSilent
+
+# --soft-error-limit
+testLimitLegacyStubErrorVolume
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
@@ -486,6 +550,9 @@ testScriptsAreModules
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
+
+# Won't support ever: python 2
+testMypyPathAndPython2Dir
 
 # Skips
 testTrailingCommaParsing-skip
