@@ -22,6 +22,7 @@ pub(crate) enum IssueType {
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
+    NotIterable(String),
     InvalidCallableParams,
     InvalidCallableArgCount,
     UnsupportedOperand(String, String, String),
@@ -170,7 +171,8 @@ impl<'db> Diagnostic<'db> {
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
-            IssueType::NotCallable(s) => format!("{} not callable", s),
+            IssueType::NotCallable(s) => format!("{s} not callable"),
+            IssueType::NotIterable(s) => format!("{s} object is not iterable"),
             IssueType::InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"

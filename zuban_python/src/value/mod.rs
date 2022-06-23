@@ -258,11 +258,19 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from: NodeRef<'db>,
     ) -> IteratorContent<'db, 'a> {
         IteratorContent::Inferred(
-            self.lookup_implicit(i_s, "__iter__", &|i_s| todo!("{self:?}"))
-                .run_on_value(i_s, &mut |i_s, value| {
-                    value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| todo!())
-                })
-                .execute_function(i_s, "__next__", from),
+            self.lookup_implicit(i_s, "__iter__", &|i_s| {
+                from.add_typing_issue(
+                    i_s.db,
+                    IssueType::NotIterable(format!(
+                        "{:?}",
+                        self.class(i_s).as_string(i_s, FormatStyle::Short)
+                    )),
+                );
+            })
+            .run_on_value(i_s, &mut |i_s, value| {
+                value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| todo!())
+            })
+            .execute_function(i_s, "__next__", from),
         )
     }
 
