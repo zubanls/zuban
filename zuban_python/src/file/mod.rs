@@ -13,7 +13,7 @@ use parsa_python_ast::*;
 use crate::arguments::{CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
-    Point, PointType, Points, Specific, TupleContent, TypeVarType,
+    Point, PointLink, PointType, Points, Specific, TupleContent, TypeVarType,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -1169,44 +1169,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let name_str = name.as_str();
-        if !name_str.starts_with('_') {
-            for star_import in self.file.star_imports.borrow().iter() {
-                // TODO these feel a bit weird and do not include parent functions (when in a
-                // closure)
-                if !(star_import.scope == 0
-                    || self
-                        .i_s
-                        .current_execution
-                        .map(|(f, _)| f.reference.node_index == star_import.scope)
-                        .or_else(|| {
-                            self.i_s
-                                .current_class
-                                .map(|c| c.reference.node_index == star_import.scope)
-                        })
-                        .unwrap_or(false))
-                {
-                    continue;
-                }
-                if let Some(other_file) = star_import.to_file(self) {
-                    if let Some(symbol) = other_file.symbol_table.lookup_symbol(name_str) {
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_redirect(other_file.file_index(), symbol, Locality::Todo),
-                        );
-                        return self.infer_name_reference(name);
-                    }
-                }
-            }
-        }
-        if let Some(super_file) = self.file.super_file {
-            let super_file = self.i_s.db.loaded_python_file(super_file);
-            if let Some(symbol) = super_file.symbol_table.lookup_symbol(name_str) {
-                self.file.points.set(
-                    name.index(),
-                    Point::new_redirect(super_file.file_index(), symbol, Locality::Todo),
-                );
-                return self.infer_name_reference(name);
-            }
+        if let Some(point_link) = self.lookup_from_star_import(name_str) {
+            self.file.points.set(
+                name.index(),
+                Point::new_redirect(point_link.file, point_link.node_index, Locality::Todo),
+            );
+            return self.infer_name_reference(name);
         }
         let point = if name_str == "reveal_type" {
             Point::new_simple_specific(Specific::RevealTypeFunction, Locality::Stmt)
@@ -1251,6 +1219,46 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());
         self.infer_name_reference(name)
+    }
+
+    fn lookup_from_star_import(&mut self, name: &str) -> Option<PointLink> {
+        if !name.starts_with('_') {
+            for star_import in self.file.star_imports.borrow().iter() {
+                // TODO these feel a bit weird and do not include parent functions (when in a
+                // closure)
+                if !(star_import.scope == 0
+                    || self
+                        .i_s
+                        .current_execution
+                        .map(|(f, _)| f.reference.node_index == star_import.scope)
+                        .or_else(|| {
+                            self.i_s
+                                .current_class
+                                .map(|c| c.reference.node_index == star_import.scope)
+                        })
+                        .unwrap_or(false))
+                {
+                    continue;
+                }
+                if let Some(other_file) = star_import.to_file(self) {
+                    if let Some(symbol) = other_file.symbol_table.lookup_symbol(name) {
+                        return Some(PointLink::new(other_file.file_index(), symbol));
+                    }
+                    if let Some(l) = other_file.inference(self.i_s).lookup_from_star_import(name) {
+                        return Some(l);
+                    }
+                }
+            }
+        }
+        if let Some(super_file) = self.file.super_file {
+            let super_file = self.i_s.db.loaded_python_file(super_file);
+            if let Some(symbol) = super_file.symbol_table.lookup_symbol(name) {
+                return Some(PointLink::new(super_file.file_index(), symbol));
+            }
+            super_file.inference(self.i_s).lookup_from_star_import(name)
+        } else {
+            None
+        }
     }
 
     fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
