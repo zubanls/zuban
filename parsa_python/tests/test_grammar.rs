@@ -296,4 +296,11 @@ parametrize_snapshots!(
         with (i for i in 42): ...
         with (yield y): ...
         ");
+    bytes: dedent(r#"
+        b'asdf\n\''
+        br'\asdf'
+        Br'asdf"""'
+        bR''
+        BR'\''
+        "#);
 );

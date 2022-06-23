@@ -909,8 +909,7 @@ impl<'db> Iterator for StmtIterator<'db> {
                 debug_assert!(
                     n.is_type(Terminal(TerminalType::Dedent))
                         || n.is_type(Terminal(TerminalType::Endmarker)),
-                    "{:?}",
-                    n.type_()
+                    "{n:?}",
                 );
                 None
             }

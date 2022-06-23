@@ -85,7 +85,7 @@ create_grammar!(
         | group_pattern | sequence_pattern | mapping_pattern | class_pattern
 
     literal_pattern:
-        | complex_number | signed_number | strings
+        | complex_number | signed_number | strings | bytes
         | "None" | "True" | "False"
     complex_number: signed_number ("+"|"-") Number
     signed_number: "-"? Number
@@ -258,7 +258,7 @@ create_grammar!(
           "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
         | "[" [star_named_expressions | comprehension] "]"
         | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
-        | Name | Number | strings | "..." | "None" | "True" | "False"
+        | Name | Number | strings | bytes | "..." | "None" | "True" | "False"
     slices:? ",".slice+ [","]
     slice:? expression? ":" expression? [":" expression?] | named_expression
 
@@ -309,6 +309,7 @@ create_grammar!(
     name_definition: Name
 
     strings: (String | fstring)+
+    bytes: Bytes+
     fstring: FStringStart fstring_content* FStringEnd
     fstring_content:? FStringString | fstring_expr
     fstring_conversion: "!" Name
