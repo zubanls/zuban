@@ -2800,11 +2800,10 @@ impl<'db> Target<'db> {
             let mut iterator = node.iter_children();
             let keyword = iterator.next().unwrap();
             let star_targets_ = iterator.next().unwrap();
-            let first_star_target = star_targets_.nth_child(0);
-            if first_star_target.next_sibling().is_none() && keyword.as_code() == "(" {
-                Self::new_non_iterator(first_star_target)
+            if keyword.as_code() == "(" {
+                Self::new(star_targets_)
             } else {
-                todo!("star_target_brackets")
+                Self::Tuple(TargetIterator(star_targets_.iter_children().step_by(2)))
             }
         } else if node.is_type(Nonterminal(star_target)) {
             Self::Starred(StarTarget::new(node))

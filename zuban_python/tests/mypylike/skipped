@@ -97,6 +97,7 @@ testGenericClassMethod*
 testClassmethodAndNonMethod
 testAddBaseClassMethodCausingInvalidOverride
 testModifyBaseClassMethodCausingInvalidOverride
+testClassImportAccessedInMethod
 
 # staticmethod
 testStaticmethodAndNonMethod
