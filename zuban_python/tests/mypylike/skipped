@@ -232,6 +232,9 @@ testImportedVariableViaImport
 testPreferPackageOverFile
 testPreferPackageOverFile2
 
+# "Cannot determine type of"
+testThreePassesRequired
+
 # fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource
@@ -427,6 +430,9 @@ testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
 testConditionalExceptionAlias
 
+# weird files
+testScriptsAreNotModules
+
 # Formatting qualified name
 testSubmoduleMixingImportFromAndImport
 testSubmoduleMixingImportFromAndImport2
@@ -436,6 +442,7 @@ testForwardTypeAlias
 testForwardTypeAliasGeneric
 testAliasToTupleAndCallable
 testAliasInImportCycle3
+testTypeCheckPrio
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
@@ -471,6 +478,9 @@ testExpressionRefersToTypeVariable
 testIncompatibleSignatureInComment
 testFunctionSignatureAsComment
 testMethodSignatureAsComment
+
+# --scripts-are-modules
+testScriptsAreModules
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
