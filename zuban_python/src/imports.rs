@@ -16,6 +16,9 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
     if name == "collections" {
         return Some(db.python_state.collections().file_index());
     }
+    if name == "types" {
+        return Some(db.python_state.types().file_index());
+    }
 
     for (dir_path, dir) in db.workspaces.directories() {
         let result = python_import(db, dir_path, dir, name);
