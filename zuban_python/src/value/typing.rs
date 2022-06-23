@@ -523,7 +523,10 @@ impl<'a> CallableClass<'a> {
                 self.content.return_class.as_type_string(db, None, style)
             )
         } else {
-            todo!()
+            format!(
+                "Callable[..., {}]",
+                self.content.return_class.as_type_string(db, None, style)
+            )
         }
     }
 }

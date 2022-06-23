@@ -443,6 +443,7 @@ testForwardTypeAliasGeneric
 testAliasToTupleAndCallable
 testAliasInImportCycle3
 testTypeCheckPrio
+testImportStarAliasCallable
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
