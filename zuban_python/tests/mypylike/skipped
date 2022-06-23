@@ -159,6 +159,10 @@ testNewAnalyzerTypeAnnotationCycle3
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
 
+# Submodule was not imported
+testSubmoduleImportFromDoesNotAddParents
+testSubmoduleMixingImportFromAndImport
+
 # Complex Star import
 testImportWithinMethod
 
@@ -210,12 +214,19 @@ testProhibitReassigning*
 testUnknownModuleRedefinition
 testStarImportOverlappingMismatch
 testStarImportOverridingLocalImports
+testRedefineFunctionViaImport
+testDifferentImportSameNameTwice
 
 # Metaclass
 *Metaclass*
 testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
+
+# flow graph
+testAssignAndConditional*
+testRedefineImportedFunctionViaImport
+testImportedVariableViaImport
 
 # fine-grained
 testTypeAliasRefresh
@@ -381,6 +392,9 @@ testParamSpec
 testBaseClassAnnotatedWithoutArgs
 *Pep613
 
+# Global
+testAssignToFuncDefViaGlobalDecl2
+
 # Nonlocal
 *NonlocalDecl*
 testNonlocalAndGlobalDecl
@@ -409,6 +423,10 @@ testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
 testConditionalExceptionAlias
 
+# Formatting qualified name
+testSubmoduleMixingImportFromAndImport
+testSubmoduleMixingImportFromAndImport2
+
 # Formatting func in reveal_type
 testForwardTypeAlias
 testForwardTypeAliasGeneric
@@ -417,6 +435,7 @@ testAliasInImportCycle3
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
+testConditionalImportAndAssignInvalidToModule
 
 # Tuple type comments
 testChainedAssignmentAndImports
@@ -430,6 +449,16 @@ testEllipsisDefaultArgValueInNonStubsMethods
 # strict optional
 *StrictOptional*
 testAssignToFuncDefViaImport
+
+# --follow-imports=error
+testImportSuppressedWhileAlmostSilent
+testAncestorSuppressedWhileAlmostSilent
+
+# Not all modules are checked in mypy: `# cmd: mypy -m m`
+testTypeCheckNamedModule4
+testTypeCheckNamedModule5
+testTypeCheckNamedModuleWithImportCycle
+testStubImportNonStubWhileSilent
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
