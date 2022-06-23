@@ -212,16 +212,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
                 TryBlockType::Except(b) => {
                     let (exception, _name_def, block) = b.unpack();
-                    if !self
-                        .infer_expression(exception)
-                        .maybe_class(self.i_s)
-                        .map(|class| {
-                            class.in_mro(self.i_s, &self.i_s.db.python_state.base_exception())
-                        })
-                        .unwrap_or(false)
-                    {
-                        NodeRef::new(self.file, exception.index())
-                            .add_typing_issue(self.i_s.db, IssueType::BaseExceptionExpected);
+                    if let Some(exception) = exception {
+                        if !self
+                            .infer_expression(exception)
+                            .maybe_class(self.i_s)
+                            .map(|class| {
+                                class.in_mro(self.i_s, &self.i_s.db.python_state.base_exception())
+                            })
+                            .unwrap_or(false)
+                        {
+                            NodeRef::new(self.file, exception.index())
+                                .add_typing_issue(self.i_s.db, IssueType::BaseExceptionExpected);
+                        }
                     }
                     self.calc_block_diagnostics(block, class, func)
                 }

@@ -519,11 +519,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 TryBlockType::Try(block) => self.index_block(block, ordered, false),
                 TryBlockType::Except(except) => {
                     let (expression, name_def, block) = except.unpack();
-                    let latest = self.index_non_block_node(&expression, ordered, false);
-                    latest_return_or_yield =
-                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    if let Some(name_def) = name_def {
-                        self.add_redirect_definition(name_def, expression.index() as u32, false);
+                    if let Some(expression) = expression {
+                        let latest = self.index_non_block_node(&expression, ordered, false);
+                        latest_return_or_yield =
+                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                        if let Some(name_def) = name_def {
+                            self.add_redirect_definition(
+                                name_def,
+                                expression.index() as u32,
+                                false,
+                            );
+                        }
                     }
                     self.index_block(block, ordered, false)
                 }

@@ -1056,23 +1056,29 @@ impl<'db> FinallyBlock<'db> {
 }
 
 impl<'db> ExceptBlock<'db> {
-    pub fn unpack(&self) -> (Expression<'db>, Option<NameDefinition<'db>>, Block<'db>) {
+    pub fn unpack(
+        &self,
+    ) -> (
+        Option<Expression<'db>>,
+        Option<NameDefinition<'db>>,
+        Block<'db>,
+    ) {
         // except_clause ":" block
         let mut iterator = self.node.iter_children();
         let except_clause_ = iterator.next().unwrap();
         iterator.next();
-        let block_ = iterator.next().unwrap();
+        let block_ = Block::new(iterator.next().unwrap());
 
         // except_clause: "except" [expression ["as" name_definition]]
         let mut clause_iterator = except_clause_.iter_children();
         clause_iterator.next();
-        let expr = clause_iterator.next().unwrap();
-        clause_iterator.next();
-        (
-            Expression::new(expr),
-            clause_iterator.next().map(NameDefinition::new),
-            Block::new(block_),
-        )
+        if let Some(expr) = clause_iterator.next() {
+            clause_iterator.next();
+            let as_name = clause_iterator.next().map(NameDefinition::new);
+            (Some(Expression::new(expr)), as_name, block_)
+        } else {
+            (None, None, block_)
+        }
     }
 }
 
