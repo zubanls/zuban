@@ -2000,6 +2000,8 @@ impl<'db> PrimaryTarget<'db> {
         let second = self.node.nth_child(2);
         if second.is_type(Nonterminal(name_definition)) {
             PrimaryContent::Attribute(Name::new(second.nth_child(0)))
+        } else if second.is_type(Terminal(TerminalType::Name)) {
+            PrimaryContent::Attribute(Name::new(second))
         } else if second.is_type(Nonterminal(arguments)) {
             PrimaryContent::Execution(ArgumentsDetails::Node(Arguments::new(second)))
         } else if second.is_type(Nonterminal(named_expression)) {

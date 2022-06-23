@@ -58,6 +58,9 @@ testNewAnalyzerApplicationForward4
 
 # __all__
 testNewAnalyzerExportedValuesInImportAll
+testExportedValuesInImportAll
+testAllMustBeSequenceStr*
+testUnderscoreExportedValuesInImportAll
 
 # Literal
 testNewAnalyzerBool
@@ -205,6 +208,8 @@ testNewAnalyzerOverrideClassWithTypeAlias
 testNewAnalyzerIdentityAssignment*
 testProhibitReassigning*
 testUnknownModuleRedefinition
+testStarImportOverlappingMismatch
+testStarImportOverridingLocalImports
 
 # Metaclass
 *Metaclass*
@@ -249,7 +254,6 @@ testSkippedClass*
 testReprocessCallableArg
 testImplicitTuple2
 testImplicitTuple3
-*StrictOptional*
 *GenericFineCallable*
 *Abstract*
 testChangeTypeVarToFunction
@@ -416,6 +420,16 @@ testInvalidOperationsOnModules
 
 # Tuple type comments
 testChainedAssignmentAndImports
+
+# Weird ellipsis assignment
+testEllipsisInitializerInStubFileWithType
+testEllipsisDefaultArgValueInStub2
+testEllipsisDefaultArgValueInNonStub
+testEllipsisDefaultArgValueInNonStubsMethods
+
+# strict optional
+*StrictOptional*
+testAssignToFuncDefViaImport
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
