@@ -1169,7 +1169,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let name_str = name.as_str();
-        if let Some(point_link) = self.lookup_from_star_import(name_str) {
+        if let Some(point_link) = self.lookup_from_star_import(name_str, true) {
             self.file.points.set(
                 name.index(),
                 Point::new_redirect(point_link.file, point_link.node_index, Locality::Todo),
@@ -1221,22 +1221,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_name_reference(name)
     }
 
-    fn lookup_from_star_import(&mut self, name: &str) -> Option<PointLink> {
+    fn lookup_from_star_import(&mut self, name: &str, check_local: bool) -> Option<PointLink> {
         if !name.starts_with('_') {
             for star_import in self.file.star_imports.borrow().iter() {
                 // TODO these feel a bit weird and do not include parent functions (when in a
                 // closure)
                 if !(star_import.scope == 0
-                    || self
-                        .i_s
-                        .current_execution
-                        .map(|(f, _)| f.reference.node_index == star_import.scope)
-                        .or_else(|| {
-                            self.i_s
-                                .current_class
-                                .map(|c| c.reference.node_index == star_import.scope)
-                        })
-                        .unwrap_or(false))
+                    || check_local
+                        && self
+                            .i_s
+                            .current_execution
+                            .map(|(f, _)| f.reference.node_index == star_import.scope)
+                            .or_else(|| {
+                                self.i_s
+                                    .current_class
+                                    .map(|c| c.reference.node_index == star_import.scope)
+                            })
+                            .unwrap_or(false))
                 {
                     continue;
                 }
@@ -1244,7 +1245,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if let Some(symbol) = other_file.symbol_table.lookup_symbol(name) {
                         return Some(PointLink::new(other_file.file_index(), symbol));
                     }
-                    if let Some(l) = other_file.inference(self.i_s).lookup_from_star_import(name) {
+                    if let Some(l) = other_file
+                        .inference(self.i_s)
+                        .lookup_from_star_import(name, false)
+                    {
                         return Some(l);
                     }
                 }
@@ -1255,7 +1259,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             if let Some(symbol) = super_file.symbol_table.lookup_symbol(name) {
                 return Some(PointLink::new(super_file.file_index(), symbol));
             }
-            super_file.inference(self.i_s).lookup_from_star_import(name)
+            super_file
+                .inference(self.i_s)
+                .lookup_from_star_import(name, false)
         } else {
             None
         }
