@@ -228,6 +228,10 @@ testAssignAndConditional*
 testRedefineImportedFunctionViaImport
 testImportedVariableViaImport
 
+# syntax errors
+testPreferPackageOverFile
+testPreferPackageOverFile2
+
 # fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource

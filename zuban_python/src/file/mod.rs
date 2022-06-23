@@ -437,10 +437,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let module = Module::new(self.i_s.db, import_file);
 
                         if let Some(link) = import_file.lookup_global(import_name.as_str()) {
-                            debug_assert!(
-                                link.file != self.file_index
-                                    || link.node_index != import_name.index()
-                            );
                             link.into_point_redirect()
                         } else if let Some(Some(file_index)) = import_file
                             .package_dir
