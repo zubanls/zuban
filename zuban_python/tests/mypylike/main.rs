@@ -76,7 +76,6 @@ const USE_MYPY_TEST_FILES: [&str; 9] = [
 
     //"check-newsyntax.test",
     //"check-fastparse.test",
-    //"check-python2.test",
     //"check-python38.test",
     //"check-python39.test",
     //"check-python310.test",
@@ -105,6 +104,7 @@ const USE_MYPY_TEST_FILES: [&str; 9] = [
 
     // Won't do, because it tests mypy internals
     //"check-incomplete-fixture.test",
+    //"check-python2.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";

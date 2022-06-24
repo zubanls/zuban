@@ -1,6 +1,4 @@
 # temporary
-testImportCycleSpecialCase2
-testImportCycleSpecialCase3
 testForwardReferenceToListAlias
 
 testModuleAsTypeNoCrash
