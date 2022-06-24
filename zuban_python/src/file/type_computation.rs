@@ -1222,7 +1222,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let t = comp.compute_type(expr, None);
                 match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
-                    TypeContent::InvalidVariable(t) => return TypeNameLookup::InvalidVariable(t),
+                    TypeContent::InvalidVariable(t) => {
+                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
+                    }
                     _ => {
                         let node_ref = NodeRef::new(comp.inference.file, expr.index());
                         let db_type = Rc::new(comp.as_db_type(t, node_ref));

@@ -1,7 +1,3 @@
-# temporary
-testVarOrFuncAsType
-testInvalidBaseClass2
-
 # Too many #missing-imports
 testDoNotLimitImportErrorVolume
 
