@@ -1,7 +1,4 @@
 # temporary
-testInfiniteLoop
-testInfiniteLoop2
-
 testStubPackageSubModule
 testInvalidReferenceToAttributeOfOuterClass
 testInvalidStrLiteralSpaces
@@ -87,6 +84,7 @@ testNewAnalyzerClassInFunction
 testNewAnalyzerNestedClassInMethod
 testNewAnalyzerDeeplyNestedFunctions
 testNewAnalyzerUnsupportedBaseClassInsideFunction
+testInfiniteLoop
 
 # Class: generic access from outside
 testAliasRefOnClass
@@ -112,6 +110,7 @@ testStaticmethodAndNonMethod
 *NamedTuple*
 testNewAnalyzerTupleIteration
 testDistinctTypes
+testInfiniteLoop2
 
 # Cast
 testInvalidCast*
