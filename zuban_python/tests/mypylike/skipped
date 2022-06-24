@@ -1,21 +1,11 @@
 # temporary
-testStubPackageSubModule
-testInvalidReferenceToAttributeOfOuterClass
-testInvalidStrLiteralSpaces
-testInvalidStrLiteralStrayBrace
-testInvalidMultilineLiteralType
-testInvalidTypevarArguments
-testMoreInvalidTypevarArguments
-testInvalidTypevarValues
-testObsoleteTypevarValuesSyntax
 testVarOrFuncAsType
+testInvalidBaseClass2
+
 testInvalidNestedClassReferenceInDecl
+
 testNonSelfMemberAssignmentWithTypeDeclaration
 testNonSelfMemberAssignmentWithTypeDeclarationInMethod
-testMissingGenericImport
-testInvalidBaseClass2
-testNewAnalyzerNoCrashOnStarInference
-testProhibitBoundTypeVariableReuseForAliases
 
 # Too many #missing-imports
 testDoNotLimitImportErrorVolume
@@ -48,6 +38,11 @@ testCyclicUndefinedImport*
 testModuleImplicitAttributes
 
 # Type Var Values / Bounds
+testProhibitBoundTypeVariableReuseForAliases
+testInvalidTypevarArguments
+testMoreInvalidTypevarArguments
+testInvalidTypevarValues
+testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 *TypeVarValues*
 testNewAnalyzerTypeVarForwardReference*
@@ -200,6 +195,7 @@ testNoReExportChildStubs
 testReExportChildStubs
 testNoReExportNestedStub
 testNoReExportFromMissingStubs
+testMissingGenericImport
 
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
 testModuleAliasRepeated
@@ -436,6 +432,11 @@ testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
 
+# parser recovery in type comments / types in string literals
+testInvalidStrLiteralSpaces
+testInvalidStrLiteralStrayBrace
+testInvalidMultilineLiteralType
+
 # Typing stuff
 testInvalidAssertType
 testInvalidAnyCall
@@ -482,6 +483,7 @@ testScriptsAreNotModules
 testSubmoduleMixingImportFromAndImport
 testSubmoduleMixingImportFromAndImport2
 testErrorFromGoogleCloud
+testStubPackageSubModule
 
 # Formatting func in reveal_type
 testForwardTypeAlias
