@@ -192,10 +192,7 @@ impl<'db> Inferred<'db> {
                 false => Type::ClassLike(v.class(i_s)),
             },
             &|i_s, g1, g2| g1.union(i_s, g2),
-            &mut |i_s| {
-                debug!("Generic class option is unknown: {}", self.description(i_s));
-                Type::Any
-            },
+            &mut |i_s| Type::Any,
         )
     }
 
@@ -204,10 +201,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.class(i_s).as_db_type(i_s),
             &|_, g1, g2| g1.union(g2),
-            &mut |i_s| {
-                debug!("Type not found: {}", self.description(i_s));
-                DbType::Any
-            },
+            &mut |i_s| DbType::Any,
         )
     }
 

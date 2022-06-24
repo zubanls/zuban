@@ -1,5 +1,4 @@
 # temporary
-testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
 testStubPackageSubModule
 testInvalidReferenceToAttributeOfOuterClass

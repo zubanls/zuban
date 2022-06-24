@@ -79,7 +79,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 false
             }
             Type::TypeVar(t) => false,
-            Type::Union(list) => false,
+            Type::Union(list) => match self {
+                Self::Class(c1) => c1.is_object_class(i_s.db),
+                _ => false,
+            },
             Type::None => true, // TODO should be false
             Type::Any => true,
             Type::Never => todo!(),
@@ -632,6 +635,10 @@ impl<'db, 'a> Class<'db, 'a> {
         class_infos.mro.contains(t)
     }
 
+    fn is_object_class(&self, db: &Database) -> bool {
+        self.reference == db.python_state.object()
+    }
+
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         let mut result = match style {
             FormatStyle::Short => self.name().to_owned(),
@@ -738,7 +745,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 impl fmt::Debug for Class<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Class")
-            .field("file", &self.reference.file)
+            .field("file_index", &self.reference.file.file_index())
+            .field("node_index", &self.reference.node_index)
             .field("name", &self.name())
             .field("generics", &self.generics)
             .field("type_var_remap", &self.type_var_remap)
