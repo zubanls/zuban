@@ -42,6 +42,7 @@ const USE_MYPY_TEST_FILES: [&str; 9] = [
     //"check-isinstance.test",
     //"check-type-checks.test",
     //"check-type-promotion.test",
+    //"check-native-int.test",
     //"check-async-await.test",
     //"check-inference.test",
     //"check-inference-context.test",
@@ -90,6 +91,7 @@ const USE_MYPY_TEST_FILES: [&str; 9] = [
     //"fine-grained-cycles.test",
     //"fine-grained-attr.test",
 
+    //"check-typevar-tuple.test",
     //"check-columns.test",
     //"check-errorcodes.test",
     //"check-formatting.test",
