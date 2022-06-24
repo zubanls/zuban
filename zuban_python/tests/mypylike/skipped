@@ -2,8 +2,6 @@
 testVarOrFuncAsType
 testInvalidBaseClass2
 
-testInvalidNestedClassReferenceInDecl
-
 testNonSelfMemberAssignmentWithTypeDeclaration
 testNonSelfMemberAssignmentWithTypeDeclarationInMethod
 

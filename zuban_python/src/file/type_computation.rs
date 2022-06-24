@@ -538,7 +538,9 @@ where
                             );
                             self.compute_type_name(name, None)
                         } else {
-                            todo!()
+                            node_ref
+                                .add_typing_issue(self.inference.i_s.db, IssueType::TypeNotFound);
+                            TypeContent::Unknown
                         }
                     }
                     TypeContent::DbType(t) => match t {
