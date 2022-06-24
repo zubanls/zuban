@@ -173,8 +173,7 @@ impl<'db> Diagnostic<'db> {
                 )
             }
             IssueType::ModuleNotFound(s) => format!(
-                "Cannot find implementation or library stub for module named {s:?}\n\
-                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports",
+                "Cannot find implementation or library stub for module named {s:?}",
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable(s) => format!("{s} not callable"),

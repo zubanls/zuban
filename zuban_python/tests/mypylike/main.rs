@@ -326,7 +326,7 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         .out
         .trim()
         .split("\n")
-        .map(|s| cleanup_mypy_issues(s))
+        .filter_map(|s| cleanup_mypy_issues(s))
         .collect::<Vec<_>>();
 
     if wanted == [""] {
@@ -408,28 +408,31 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                     }
                     backslashes += 1;
                 }
-                let out = cleanup_mypy_issues(&line[pos + 5..]);
-                return Some((
-                    i + 1 - backslashes,
-                    match was_exception {
-                        Some(_) => "error",
-                        None => "note",
-                    },
-                    out,
-                ));
+                if let Some(out) = cleanup_mypy_issues(&line[pos + 5..]) {
+                    return Some((
+                        i + 1 - backslashes,
+                        match was_exception {
+                            Some(_) => "error",
+                            None => "note",
+                        },
+                        out,
+                    ));
+                }
             }
         }
         None
     }
 }
-
-fn cleanup_mypy_issues(mut s: &str) -> String {
+fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
+    if s.contains("See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports") {
+        return None;
+    }
     if s.ends_with(" \\") {
         s = &s[..s.len() - 2];
     }
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
     let s = REPLACE_MYPY.replace_all(&s, "");
-    replace_annoyances(s.replace("tmp/", ""))
+    Some(replace_annoyances(s.replace("tmp/", "")))
 }
 
 fn try_to_resemble_mypy(s: &str) -> String {

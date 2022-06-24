@@ -1,6 +1,3 @@
-# Too many #missing-imports
-testDoNotLimitImportErrorVolume
-
 # Class body NameBinder issues
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
