@@ -71,7 +71,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtContent::Decorated(decorated) => {}
+                StmtContent::Decorated(decorated) => {
+                    for decorator in decorated.decorators().iter() {
+                        self.infer_named_expression(decorator.named_expression());
+                    }
+                    match decorated.decoratee() {
+                        Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                        Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
+                        Decoratee::AsyncFunctionDef(f) => todo!(),
+                    }
+                }
                 StmtContent::IfStmt(if_stmt) => {
                     for block in if_stmt.iter_blocks() {
                         match block {

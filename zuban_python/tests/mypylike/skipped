@@ -1,5 +1,7 @@
 # temporary
-testModuleAsTypeNoCrash2
+testInfiniteLoop
+testInfiniteLoop2
+
 testStubPackageSubModule
 testInvalidReferenceToAttributeOfOuterClass
 testInvalidStrLiteralSpaces
