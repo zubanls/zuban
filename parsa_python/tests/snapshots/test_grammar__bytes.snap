@@ -1,0 +1,52 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-47
+ stmt: 1-13
+  simple_stmts: 1-13
+   simple_stmt: 1-12
+    star_expressions: 1-12
+     expression: 1-12
+      atom: 1-12
+       bytes: 1-12
+        Bytes: 1-12 "b'asdf\\n\\''"
+   Newline: 12-13 "\n"
+ stmt: 13-23
+  simple_stmts: 13-23
+   simple_stmt: 13-22
+    star_expressions: 13-22
+     expression: 13-22
+      atom: 13-22
+       bytes: 13-22
+        Bytes: 13-22 "br'\\asdf'"
+   Newline: 22-23 "\n"
+ stmt: 23-35
+  simple_stmts: 23-35
+   simple_stmt: 23-34
+    star_expressions: 23-34
+     expression: 23-34
+      atom: 23-34
+       bytes: 23-34
+        Bytes: 23-34 "Br'asdf\"\"\"'"
+   Newline: 34-35 "\n"
+ stmt: 35-40
+  simple_stmts: 35-40
+   simple_stmt: 35-39
+    star_expressions: 35-39
+     expression: 35-39
+      atom: 35-39
+       bytes: 35-39
+        Bytes: 35-39 "bR''"
+   Newline: 39-40 "\n"
+ stmt: 40-47
+  simple_stmts: 40-47
+   simple_stmt: 40-46
+    star_expressions: 40-46
+     expression: 40-46
+      atom: 40-46
+       bytes: 40-46
+        Bytes: 40-46 "BR'\\''"
+   Newline: 46-47 "\n"
+ Endmarker: 47-47 ""
+
