@@ -20,6 +20,7 @@ pub(crate) enum IssueType {
     NoParentModule,
     TypeNotFound,
     InvalidTypeDeclaration,
+    UnexpectedTypeDeclaration,
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
@@ -157,6 +158,8 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::InvalidTypeDeclaration =>
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
+            IssueType::UnexpectedTypeDeclaration =>
+                "Unexpected type declaration".to_owned(),
             IssueType::TypeArgumentIssue(class, expected, given) => {
                 match expected {
                     0 => format!("{class:?} expects no type arguments, but {given} given"),

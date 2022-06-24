@@ -719,13 +719,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
                     PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
                 };
+                if is_definition {
+                    NodeRef::new(self.file, primary_target.index())
+                        .add_typing_issue(self.i_s.db, IssueType::UnexpectedTypeDeclaration);
+                }
                 if let PrimaryContent::GetItem(slice_type) = primary_target.second() {
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
                         v
-                            .lookup_implicit(i_s, "__setitem__", &|i_s| todo!())
+                            .lookup_implicit(i_s, "__setitem__", &|i_s| {
+                                debug!("TODO __setitem__ not found");
+                            })
                             .run_on_value(i_s, &mut |i_s, v| {
                                 v.execute(
                                     i_s,

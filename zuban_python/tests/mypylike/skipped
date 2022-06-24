@@ -413,9 +413,10 @@ testStarExpressionInExp
 testInvalidDel*
 testInvalidTypeDeclaration
 testIndexedAssignmentWithTypeDeclaration
-testInvalidLvalueWithExplicitType*
+testInvalidLvalueWithExplicitType
+testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
-testInvalidTypeAnnotation*
+testInvalidTypeAnnotation2
 # whatever
 testSuperOutsideClass
 testTestExtendPrimitives
