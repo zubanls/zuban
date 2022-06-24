@@ -19,6 +19,7 @@ pub(crate) enum IssueType {
     ModuleNotFound(String),
     NoParentModule,
     TypeNotFound,
+    InvalidTypeDeclaration,
     TypeArgumentIssue(String, usize, usize),
     TypeAliasArgumentIssue(usize, usize),
     NotCallable(String),
@@ -154,6 +155,8 @@ impl<'db> Diagnostic<'db> {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
             }
+            IssueType::InvalidTypeDeclaration =>
+                "Type cannot be declared in assignment to non-self attribute".to_owned(),
             IssueType::TypeArgumentIssue(class, expected, given) => {
                 match expected {
                     0 => format!("{class:?} expects no type arguments, but {given} given"),

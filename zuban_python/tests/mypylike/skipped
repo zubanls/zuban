@@ -2,9 +2,6 @@
 testVarOrFuncAsType
 testInvalidBaseClass2
 
-testNonSelfMemberAssignmentWithTypeDeclaration
-testNonSelfMemberAssignmentWithTypeDeclarationInMethod
-
 # Too many #missing-imports
 testDoNotLimitImportErrorVolume
 

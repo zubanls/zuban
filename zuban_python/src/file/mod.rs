@@ -359,6 +359,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     star_targets.as_target(),
                     &element,
                     NodeRef::new(self.file, star_exprs.index()),
+                    false,
                 )
             }
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
@@ -545,6 +546,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let suffix = assignment.suffix();
                 let mut right = self.infer_assignment_right_side(right_side);
                 const TYPE: &str = "# type: ";
+                let mut is_definition = false;
                 if let Some(start) = suffix.find(TYPE) {
                     let start = start + TYPE.len();
                     let s = &suffix[start..];
@@ -552,6 +554,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if s != "ignore" {
                         let (r, type_) =
                             self.compute_type_comment(assignment.end() + start as CodeIndex, s);
+                        is_definition = true;
                         type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
                             node_ref.add_typing_issue(
                                 i_s.db,
@@ -562,7 +565,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
                 for target in targets {
-                    self.assign_targets(target, &right, node_ref)
+                    self.assign_targets(target, &right, node_ref, is_definition)
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -581,7 +584,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         })
                 }
                 let inf_annot = self.use_cached_annotation(annotation);
-                self.assign_single_target(target, &inf_annot, |index| {
+                self.assign_single_target(target, &inf_annot, true, |index| {
                     self.file.points.set(
                         index,
                         Point::new_redirect(
@@ -617,7 +620,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         })
                 });
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
-                    self.assign_single_target(target, &result, |index| {
+                    self.assign_single_target(target, &result, false, |index| {
                         // There is no need to save this, because it's never used
                     })
                 } else {
@@ -659,6 +662,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         target: Target<'db>,
         value: &Inferred<'db>,
+        is_definition: bool,
         save: impl Fn(NodeIndex),
     ) {
         match target {
@@ -694,6 +698,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if primary_target.as_code().contains("self") {
                     // TODO here we should do something as well.
                 } else {
+                    if is_definition {
+                        NodeRef::new(self.file, primary_target.index())
+                            .add_typing_issue(self.i_s.db, IssueType::InvalidTypeDeclaration);
+                    }
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
                         .error_if_not_matches(self.i_s, None, value, |i_s, t1, t2| {
@@ -750,6 +758,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         target: Target<'db>,
         value: &Inferred<'db>,
         value_node_ref: NodeRef<'db>,
+        is_definition: bool,
     ) {
         match target {
             Target::Tuple(mut targets) => {
@@ -774,18 +783,33 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 self.i_s.db.python_state.list().as_link(),
                                 Some(GenericsList::new_generics(Box::new([generic]))),
                             ));
-                            self.assign_targets(star_target.as_target(), &list, value_node_ref);
+                            self.assign_targets(
+                                star_target.as_target(),
+                                &list,
+                                value_node_ref,
+                                is_definition,
+                            );
                         } else {
                             todo!()
                         }
                     } else if let Some(value) = value_iterator.next(self.i_s) {
-                        self.assign_targets(target, &value, value_node_ref)
+                        self.assign_targets(target, &value, value_node_ref, is_definition)
                     } else {
                         let original_counter = counter;
-                        self.assign_targets(target, &Inferred::new_any(), value_node_ref);
+                        self.assign_targets(
+                            target,
+                            &Inferred::new_any(),
+                            value_node_ref,
+                            is_definition,
+                        );
                         for target in targets {
                             counter += 1;
-                            self.assign_targets(target, &Inferred::new_any(), value_node_ref);
+                            self.assign_targets(
+                                target,
+                                &Inferred::new_any(),
+                                value_node_ref,
+                                is_definition,
+                            );
                         }
                         value_node_ref.add_typing_issue(
                             self.i_s.db,
@@ -798,7 +822,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
-            _ => self.assign_single_target(target, value, |index| {
+            _ => self.assign_single_target(target, value, is_definition, |index| {
                 value.clone().save_redirect(self.file, index);
             }),
         };
