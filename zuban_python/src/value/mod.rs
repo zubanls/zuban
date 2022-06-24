@@ -307,6 +307,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        i_s.db.python_state.module_type().as_class_like()
+        todo!("{self:?}")
     }
 }

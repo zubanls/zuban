@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{LookupResult, OnTypeError, Value, ValueKind};
+use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Database, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
@@ -99,5 +99,9 @@ impl<'db> Value<'db, '_> for Module<'db> {
         args.node_reference()
             .add_typing_issue(i_s.db, IssueType::NotCallable("Module".to_owned()));
         Inferred::new_unknown()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'db> {
+        i_s.db.python_state.module_type().as_class_like()
     }
 }

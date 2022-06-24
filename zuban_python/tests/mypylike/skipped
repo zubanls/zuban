@@ -1,6 +1,4 @@
 # temporary
-testForwardReferenceToListAlias
-
 testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
 testStubPackageSubModule
@@ -260,6 +258,9 @@ testStarImportOverlappingMismatch
 testStarImportOverridingLocalImports
 testRedefineFunctionViaImport
 testDifferentImportSameNameTwice
+
+# BoundMethod type
+testForwardReferenceToListAlias
 
 # Metaclass
 *Metaclass*
