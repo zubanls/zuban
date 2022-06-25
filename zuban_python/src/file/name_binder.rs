@@ -50,8 +50,8 @@ pub(crate) struct NameBinder<'db, 'a> {
     unresolved_nodes: Vec<Unresolved<'db>>,
     unresolved_names: Vec<Name<'db>>,
     unresolved_self_vars: Vec<ClassDef<'db>>,
+    annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
-    parent_lookup_not_finished: bool,
     parent: Option<&'a NameBinder<'db, 'a>>,
 }
 
@@ -83,8 +83,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             unresolved_nodes: vec![],
             unresolved_names: vec![],
             unresolved_self_vars: vec![],
+            annotation_names: vec![],
             file_index,
-            parent_lookup_not_finished: false,
             parent,
         }
     }
@@ -120,6 +120,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         while let Some(class_def) = binder.unresolved_self_vars.pop() {
             binder.index_self_vars(class_def);
         }
+        for annotation_name in &binder.annotation_names {
+            binder.try_to_process_reference(*annotation_name);
+        }
     }
 
     fn with_nested(
@@ -144,13 +147,27 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
         func(&mut name_binder);
         name_binder.close();
-        let unresolved_nodes = name_binder.unresolved_nodes;
-        let unresolved_names = name_binder.unresolved_names;
-        self.unresolved_self_vars
-            .extend(name_binder.unresolved_self_vars);
+        let NameBinder {
+            unresolved_nodes,
+            unresolved_names,
+            annotation_names,
+            unresolved_self_vars,
+            ..
+        } = name_binder;
+        self.unresolved_self_vars.extend(unresolved_self_vars);
         self.unresolved_nodes
             .extend(unresolved_names.into_iter().map(Unresolved::Name));
         self.unresolved_nodes.extend(unresolved_nodes);
+        for annotation_name in annotation_names {
+            if !try_to_process_reference_for_symbol_table(
+                symbol_table,
+                self.file_index,
+                self.points,
+                annotation_name,
+            ) {
+                self.annotation_names.push(annotation_name);
+            }
+        }
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
@@ -329,7 +346,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn close(&mut self) {
-        self.parent_lookup_not_finished = true;
         if self.type_ != NameBinderType::Class {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
@@ -339,7 +355,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         }
                     }
                     Unresolved::AnnotationExpression(expr) => {
-                        self.index_non_block_node(&expr, true, false);
+                        self.index_non_block_node_full(&expr, true, false, true);
                     }
                     Unresolved::FunctionDef(func) => {
                         let symbol_table = SymbolTable::default();
@@ -372,7 +388,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             while let Some(n) = self.unresolved_nodes.pop() {
                 match n {
                     Unresolved::AnnotationExpression(expr) => {
-                        self.index_non_block_node(&expr, true, false);
+                        self.index_non_block_node_full(&expr, true, false, true);
                     }
                     _ => new_unresolved_nodes.push(n),
                 }
@@ -637,13 +653,28 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         ordered: bool,
         in_base_scope: bool,
     ) -> NodeIndex {
+        self.index_non_block_node_full(node, ordered, in_base_scope, false)
+    }
+
+    #[inline]
+    fn index_non_block_node_full<T: InterestingNodeSearcher<'db>>(
+        &mut self,
+        node: &T,
+        ordered: bool,
+        in_base_scope: bool,
+        from_annotation: bool,
+    ) -> NodeIndex {
         let mut latest_return_or_yield = 0;
         for n in node.search_interesting_nodes() {
             match n {
                 InterestingNode::Name(name) => {
                     match name.parent() {
                         NameParent::Atom => {
-                            self.maybe_add_reference(name, ordered);
+                            if from_annotation {
+                                self.annotation_names.push(name);
+                            } else {
+                                self.maybe_add_reference(name, ordered);
+                            }
                         }
                         NameParent::NameDefinition(name_def) => {
                             if name_def.is_not_primary() {
@@ -925,32 +956,21 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
-        if ordered && !self.is_mypy_compatible {
-            if !self.try_to_process_reference(name) {
-                self.unresolved_names.push(name);
-            }
-        } else {
+        if !ordered || self.is_mypy_compatible && self.type_ != NameBinderType::Class {
             self.unordered_references.push(name);
+        } else if !self.try_to_process_reference(name) {
+            self.unresolved_names.push(name);
         }
     }
 
     #[inline]
     fn try_to_process_reference(&self, name: Name<'db>) -> bool {
-        let point = {
-            if self.parent_lookup_not_finished {
-                if let Some(definition) = self.symbol_table.lookup_symbol(name.as_str()) {
-                    Point::new_redirect(self.file_index, definition, Locality::File)
-                } else {
-                    return false;
-                }
-            } else if let Some(definition) = self.lookup_name(name) {
-                Point::new_redirect(self.file_index, definition, Locality::File)
-            } else {
-                Point::new_uncalculated()
-            }
-        };
-        self.points.set(name.index(), point);
-        true
+        try_to_process_reference_for_symbol_table(
+            self.symbol_table,
+            self.file_index,
+            self.points,
+            name,
+        )
     }
 
     fn lookup_name(&self, name: Name<'db>) -> Option<NodeIndex> {
@@ -968,4 +988,22 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         self.unordered_references.truncate(0);
     }
+}
+
+#[inline]
+fn try_to_process_reference_for_symbol_table(
+    symbol_table: &SymbolTable,
+    file_index: FileIndex,
+    points: &Points,
+    name: Name,
+) -> bool {
+    let point = {
+        if let Some(definition) = symbol_table.lookup_symbol(name.as_str()) {
+            Point::new_redirect(file_index, definition, Locality::File)
+        } else {
+            return false;
+        }
+    };
+    points.set(name.index(), point);
+    true
 }
