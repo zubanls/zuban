@@ -1,7 +1,4 @@
 # Class body NameBinder issues
-testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
-testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
-testNewAnalyzerNameConflictsAndMultiLineDefinition
 testNewAnalyzerImportedNameUsedInClassBody*
 
 # Cycles
@@ -502,6 +499,11 @@ testEllipsisDefaultArgValueInNonStubsMethods
 # strict optional
 *StrictOptional*
 testAssignToFuncDefViaImport
+
+# Very weird annotation resolution order
+testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
+testNewAnalyzerAnnotationConflictsWithAttributeTwoPasses
+testNewAnalyzerNameConflictsAndMultiLineDefinition
 
 # pyproject.toml
 testMultipleModulesInOverridePyProjectTOML
