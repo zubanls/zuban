@@ -30,7 +30,6 @@ enum NameBinderType {
 enum Unresolved<'db> {
     FunctionDef(FunctionDef<'db>),
     Lambda(Lambda<'db>),
-    AnnotationExpression(Expression<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
     Name(Name<'db>),
@@ -354,9 +353,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             self.unresolved_names.push(name);
                         }
                     }
-                    Unresolved::AnnotationExpression(expr) => {
-                        self.index_non_block_node_full(&expr, true, false, true);
-                    }
                     Unresolved::FunctionDef(func) => {
                         let symbol_table = SymbolTable::default();
                         self.with_nested(
@@ -381,19 +377,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                 };
             }
-        } else {
-            // TODO This would use drain_filter ideally, which is feature gated (see
-            // https://github.com/rust-lang/rust/issues/43244)
-            let mut new_unresolved_nodes = Vec::with_capacity(self.unresolved_nodes.len());
-            while let Some(n) = self.unresolved_nodes.pop() {
-                match n {
-                    Unresolved::AnnotationExpression(expr) => {
-                        self.index_non_block_node_full(&expr, true, false, true);
-                    }
-                    _ => new_unresolved_nodes.push(n),
-                }
-            }
-            self.unresolved_nodes = new_unresolved_nodes;
         }
         self.index_unordered_references();
         debug_assert_eq!(self.unordered_references.len(), 0);
@@ -438,8 +421,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         0
                     }
                     AssignmentContentWithSimpleTargets::WithAnnotation(target, annotation, _) => {
-                        self.unresolved_nodes
-                            .push(Unresolved::AnnotationExpression(annotation.expression()));
+                        self.index_annotation_expression(&annotation.expression());
                         self.index_non_block_node(&target, ordered, in_base_scope)
                     }
                     AssignmentContentWithSimpleTargets::AugAssign(target, _, _) => {
@@ -656,6 +638,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.index_non_block_node_full(node, ordered, in_base_scope, false)
     }
 
+    fn index_annotation_expression(&mut self, node: &Expression<'db>) -> NodeIndex {
+        self.index_non_block_node_full(node, true, true, true)
+    }
+
     #[inline]
     fn index_non_block_node_full<T: InterestingNodeSearcher<'db>>(
         &mut self,
@@ -810,8 +796,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
             if let Some(annotation) = param.annotation() {
-                self.unresolved_nodes
-                    .push(Unresolved::AnnotationExpression(annotation.expression()));
+                self.index_annotation_expression(&annotation.expression());
             }
             if let Some(expression) = param.default() {
                 self.index_non_block_node(&expression, ordered, false);
@@ -819,10 +804,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             param_count += 1;
         }
         if let Some(return_annotation) = return_annotation {
-            // This is the -> annotation that needs to be resolved at the end of a module.
-            self.unresolved_nodes.push(Unresolved::AnnotationExpression(
-                return_annotation.expression(),
-            ));
+            // This is the -> annotation
+            self.index_annotation_expression(&return_annotation.expression());
         }
 
         let mut is_overload = false;
