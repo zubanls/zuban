@@ -47,7 +47,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     star_imports: &'db RefCell<Vec<StarImport>>,
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
-    unresolved_names: Vec<Name<'db>>,
+    names_to_be_resolved_in_parent: Vec<Name<'db>>,
     unresolved_self_vars: Vec<ClassDef<'db>>,
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
@@ -80,7 +80,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             star_imports,
             unordered_references: vec![],
             unresolved_nodes: vec![],
-            unresolved_names: vec![],
+            names_to_be_resolved_in_parent: vec![],
             unresolved_self_vars: vec![],
             annotation_names: vec![],
             file_index,
@@ -148,14 +148,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         name_binder.close();
         let NameBinder {
             unresolved_nodes,
-            unresolved_names,
+            names_to_be_resolved_in_parent,
             annotation_names,
             unresolved_self_vars,
             ..
         } = name_binder;
         self.unresolved_self_vars.extend(unresolved_self_vars);
-        self.unresolved_nodes
-            .extend(unresolved_names.into_iter().map(Unresolved::Name));
+        self.unresolved_nodes.extend(
+            names_to_be_resolved_in_parent
+                .into_iter()
+                .map(Unresolved::Name),
+        );
         self.unresolved_nodes.extend(unresolved_nodes);
         for annotation_name in annotation_names {
             if !try_to_process_reference_for_symbol_table(
@@ -350,7 +353,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 match n {
                     Unresolved::Name(name) => {
                         if !self.try_to_process_reference(name) {
-                            self.unresolved_names.push(name);
+                            self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
                     Unresolved::FunctionDef(func) => {
@@ -942,7 +945,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         if !ordered || self.is_mypy_compatible && self.type_ != NameBinderType::Class {
             self.unordered_references.push(name);
         } else if !self.try_to_process_reference(name) {
-            self.unresolved_names.push(name);
+            self.names_to_be_resolved_in_parent.push(name);
         }
     }
 
@@ -966,7 +969,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     fn index_unordered_references(&mut self) {
         for &name in &self.unordered_references {
             if !self.try_to_process_reference(name) {
-                self.unresolved_names.push(name);
+                self.names_to_be_resolved_in_parent.push(name);
             }
         }
         self.unordered_references.truncate(0);
