@@ -99,6 +99,7 @@ pub enum IteratorContent<'db, 'a> {
     // TODO this should include the arbitrary_length
     TupleGenerics(std::slice::Iter<'a, DbType>),
     Empty,
+    Any,
 }
 
 impl<'db> IteratorContent<'db, '_> {
@@ -114,6 +115,7 @@ impl<'db> IteratorContent<'db, '_> {
                 generics.fold(DbType::Unknown, |a, b| a.union(b.clone())),
             ),
             Self::Empty => todo!(),
+            Self::Any => Inferred::new_any(),
         }
     }
 
@@ -133,12 +135,13 @@ impl<'db> IteratorContent<'db, '_> {
                 })
             }
             Self::Empty => todo!(),
+            Self::Any => Some(Inferred::new_any()),
         }
     }
 
     pub fn len(&self) -> Option<usize> {
         match self {
-            Self::Inferred(inferred) => None,
+            Self::Inferred(_) | Self::Any => None,
             Self::TupleGenerics(t) => Some(t.len()),
             Self::ListLiteral(_, iterator) => todo!(),
             Self::Empty => Some(0),

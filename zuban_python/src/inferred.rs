@@ -1153,7 +1153,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.iter(i_s, from),
             &|_, i1, i2| todo!(),
-            &mut |i_s| todo!(),
+            &mut |i_s| IteratorContent::Any,
         )
     }
 }
