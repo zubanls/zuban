@@ -30,13 +30,6 @@ testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 testNewAnalyzerApplicationForward4
 
-# __all__
-testNewAnalyzerExportedValuesInImportAll
-testExportedValuesInImportAll
-testAllMustBeSequenceStr*
-testUnderscoreExportedValuesInImportAll
-testReExportAllInStub
-
 # Literal
 testNewAnalyzerBool
 testNoneHasBool
@@ -130,6 +123,13 @@ testFlexibleAlias*
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
+
+# Module __all__
+testNewAnalyzerExportedValuesInImportAll
+testExportedValuesInImportAll
+testAllMustBeSequenceStr*
+testUnderscoreExportedValuesInImportAll
+testReExportAllInStub
 
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
