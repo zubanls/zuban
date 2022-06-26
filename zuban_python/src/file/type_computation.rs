@@ -39,18 +39,19 @@ enum InvalidVariableType<'db> {
     List,
     Function(Function<'db, 'db>),
     Literal(&'db str),
-    Other,
+    Variable(NodeRef<'db>),
 }
 
 impl InvalidVariableType<'_> {
     fn add_issue(&self, db: &Database, node_ref: NodeRef) {
         match self {
-            Self::Other => {
+            Self::Variable(var_ref) => {
                 node_ref.add_typing_issue(
                     db,
                     IssueType::InvalidType(format!(
-                        "Variable {:?} is not valid as a type",
-                        "__main__.x".to_owned() //TODO: Use the variable name
+                        "Variable \"{}.{}\" is not valid as a type",
+                        var_ref.in_module(db).qualified_name(db),
+                        var_ref.as_code().to_owned(),
                     )),
                 );
                 node_ref.add_typing_issue(
@@ -934,7 +935,7 @@ where
             AtomContent::Int(n) => {
                 TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code()))
             }
-            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
+            _ => todo!(),
         }
     }
 
@@ -1223,7 +1224,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
                     TypeContent::InvalidVariable(t) => {
-                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
+                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                            NodeRef::new(self.file, name_def.index()),
+                        ))
                     }
                     _ => {
                         let node_ref = NodeRef::new(comp.inference.file, expr.index());

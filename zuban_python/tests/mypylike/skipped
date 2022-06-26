@@ -407,9 +407,6 @@ testSuperOutsideClass
 testTestExtendPrimitives
 testInvalidTypeWithinNestedGenericClass
 testTypevarWithType
-# Tuple types
-testVariableDeclWithInvalidNumberOfTypes*
-testVariableDeclWithInvalidType
 # Scoping
 testListComprehensionSpecialScoping
 
@@ -488,7 +485,10 @@ testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
 
 # Tuple type comments
+testVariableDeclWithInvalidNumberOfTypes*
+testVariableDeclWithInvalidType
 testChainedAssignmentAndImports
+testCallingVariableWithFunctionType
 
 # Weird ellipsis assignment
 testEllipsisInitializerInStubFileWithType
