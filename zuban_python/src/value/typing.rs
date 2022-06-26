@@ -651,7 +651,7 @@ pub struct CallableParamIterator<'db, 'a, 'b> {
 }
 
 impl<'db, 'b> ParamWithArgument<'db, 'b> for CallableParam<'db, '_, 'b> {
-    fn argument_index(&self) -> usize {
+    fn argument_index(&self) -> String {
         if let Some(argument) = &self.argument {
             argument.index()
         } else {

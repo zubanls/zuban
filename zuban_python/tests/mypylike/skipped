@@ -17,9 +17,7 @@ testModuleImplicitAttributes
 
 # Type Var Values / Bounds
 testProhibitBoundTypeVariableReuseForAliases
-testInvalidTypevarArguments
 testMoreInvalidTypevarArguments
-testInvalidTypevarValues
 testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 *TypeVarValues*
@@ -30,6 +28,8 @@ testNewAnalyzerTypeArgValueRestriction
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 testNewAnalyzerApplicationForward4
+
+testInvalidTypevarValues
 
 # Literal
 testNewAnalyzerBool

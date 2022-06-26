@@ -348,11 +348,11 @@ impl<'db> Argument<'db, '_> {
         }
     }
 
-    pub fn index(&self) -> usize {
+    pub fn index(&self) -> String {
         match self {
-            Self::Positional(index, _) => *index,
-            Self::Keyword(_, _) => todo!(),
-            Self::Inferred(_, _) => 1, // TODO this is not correct
+            Self::Positional(index, _) => format!("{index}"),
+            Self::Keyword(kw, _) => format!("{kw:?}"),
+            Self::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
             Self::SlicesTuple(_) => todo!(),
         }
     }
