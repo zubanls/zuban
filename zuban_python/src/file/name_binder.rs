@@ -786,7 +786,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func: FunctionDef<'db>,
         ordered: bool,
         in_base_scope: bool,
-        decorators: Option<Decorators>,
+        decorators: Option<Decorators<'db>>,
         is_async: bool,
     ) {
         // If there is no parent, this does not have to be resolved immediately in theory, but for
@@ -815,6 +815,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         let mut function_type = FunctionType::Function;
         if let Some(decorators) = decorators {
             for decorator in decorators.iter() {
+                self.index_non_block_node(&decorator, ordered, false);
                 let expression = decorator.named_expression().expression();
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                     expression.unpack()
