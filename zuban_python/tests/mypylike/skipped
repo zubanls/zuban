@@ -244,6 +244,19 @@ testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
 
+# Signature of "???" incompatible with supertype "???"
+testKeywordOnlyArgumentOrderInsensitivity
+testPositionalOverridingArgumentNamesCheckedWhenMismatchingPos
+
+# Liskov
+testPositionalOverridingArgumentNameInsensitivity
+
+# Function Subtyping
+testSubtypingFunction*
+testLackOfNames
+testLackOfNamesFastparse
+testFunctionTypeCompatibilityWithOtherTypes
+
 # flow graph
 testAssignAndConditional*
 testRedefineImportedFunctionViaImport
