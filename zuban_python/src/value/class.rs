@@ -222,14 +222,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
-            _ => MroIterator {
-                db: i_s.db,
-                generics: None,
-                class: Some(*self),
-                iterator: [].iter(),
-                mro_index: 0,
-                returned_object: false,
-            },
+            Self::Tuple(t) => t.mro(i_s.db),
+            _ => MroIterator::new(i_s.db, *self, [].iter()),
         }
     }
 
@@ -781,6 +775,23 @@ pub struct MroIterator<'db, 'a> {
     iterator: std::slice::Iter<'db, DbType>,
     mro_index: u32,
     returned_object: bool,
+}
+
+impl<'db, 'a> MroIterator<'db, 'a> {
+    pub fn new(
+        db: &'db Database,
+        class: ClassLike<'db, 'a>,
+        iterator: std::slice::Iter<'db, DbType>,
+    ) -> Self {
+        Self {
+            db,
+            generics: None,
+            class: Some(class),
+            iterator: [].iter(),
+            mro_index: 0,
+            returned_object: false,
+        }
+    }
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {

@@ -2,6 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::PrimaryContent;
 
+use super::class::MroIterator;
 use super::{
     Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, ParamWithArgument,
     Value, ValueKind,
@@ -166,6 +167,10 @@ impl<'a> TupleClass<'a> {
 
     pub fn as_db_type(&self) -> DbType {
         DbType::Tuple(self.content.clone())
+    }
+
+    pub fn mro<'db>(&self, db: &'db Database) -> MroIterator<'db, 'a> {
+        MroIterator::new(db, ClassLike::Tuple(*self), [].iter())
     }
 
     pub(super) fn generics(&self) -> Generics<'static, 'a> {
