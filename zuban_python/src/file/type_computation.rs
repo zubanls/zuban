@@ -413,6 +413,7 @@ where
                     return_class: Box::new(DbType::Any),
                 }),
                 SpecialType::Any => DbType::Any,
+                SpecialType::Type => DbType::Type(Box::new(DbType::Any)),
                 _ => todo!("{m:?}"),
             },
             TypeContent::Unknown => DbType::Any,
@@ -613,38 +614,36 @@ where
             let mut given_count = 1;
             let result = match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
-                    match self.compute_type(s.named_expr.expression(), None) {
-                        TypeContent::ClassWithoutTypeVar(inf) => match primary {
-                            Some(primary) => TypeContent::ClassWithoutTypeVar(
-                                Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-                                    .save_if_unsaved(self.inference.file, primary.index()),
-                            ),
-                            None => TypeContent::DbType(DbType::GenericClass(
-                                class.reference.as_link(),
-                                GenericsList::new_generics(Box::new([
-                                    inf.as_db_type(self.inference.i_s)
-                                ])),
-                            )),
-                        },
-                        TypeContent::DbType(d) => TypeContent::DbType(DbType::GenericClass(
+                    let mut to_type_content = || {
+                        let db_type = match self.compute_type(s.named_expr.expression(), None) {
+                            TypeContent::ClassWithoutTypeVar(inf) => match primary {
+                                Some(primary) => {
+                                    return TypeContent::ClassWithoutTypeVar(
+                                        Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+                                            .save_if_unsaved(self.inference.file, primary.index()),
+                                    )
+                                }
+                                None => inf.as_db_type(self.inference.i_s),
+                            },
+                            TypeContent::DbType(d) => d,
+                            TypeContent::Module(m) => todo!(),
+                            TypeContent::TypeAlias(m) => m.as_db_type(),
+                            TypeContent::SpecialType(SpecialType::Type) => {
+                                DbType::Type(Box::new(DbType::Any))
+                            }
+                            TypeContent::SpecialType(m) => todo!("{m:?} {primary:?}"),
+                            TypeContent::Unknown => DbType::Any,
+                            TypeContent::InvalidVariable(t) => {
+                                t.add_issue(self.inference.i_s.db, s.as_node_ref());
+                                DbType::Any
+                            }
+                        };
+                        TypeContent::DbType(DbType::GenericClass(
                             class.reference.as_link(),
-                            GenericsList::new_generics(Box::new([d])),
-                        )),
-                        TypeContent::Module(m) => todo!(),
-                        TypeContent::TypeAlias(m) => TypeContent::DbType(DbType::GenericClass(
-                            class.reference.as_link(),
-                            GenericsList::new_generics(Box::new([m.as_db_type()])),
-                        )),
-                        TypeContent::SpecialType(m) => todo!(),
-                        TypeContent::Unknown => TypeContent::DbType(DbType::GenericClass(
-                            class.reference.as_link(),
-                            GenericsList::new_generics(Box::new([DbType::Any])),
-                        )),
-                        TypeContent::InvalidVariable(t) => {
-                            t.add_issue(self.inference.i_s.db, s.as_node_ref());
-                            TypeContent::DbType(DbType::Any)
-                        }
-                    }
+                            GenericsList::new_generics(Box::new([db_type])),
+                        ))
+                    };
+                    to_type_content()
                 }
                 SliceTypeContent::Slice(slice) => todo!(),
                 SliceTypeContent::Slices(slices) => {
