@@ -1031,36 +1031,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    /* TODO remove
-    pub fn maybe_compute_param_annotation(&mut self, name: Name<'db>) -> Option<Inferred<'db>> {
-        name.maybe_param_annotation()
-            .map(|annotation| match name.simple_param_type() {
-                SimpleParamType::Normal => self.compute_annotation(annotation),
-                SimpleParamType::MultiArgs => {
-                    let p = self.annotation_type(annotation).into_db_type(self.i_s);
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        DbType::Tuple(TupleContent {
-                            generics: Some(GenericsList::new(Box::new([p]))),
-                            arbitrary_length: true,
-                        }),
-                    )))
-                }
-                SimpleParamType::MultiKwargs => {
-                    let p = self.annotation_type(annotation).into_db_type(self.i_s);
-                    Inferred::create_instance(
-                        self.i_s.db.python_state.builtins_point_link("dict"),
-                        Some(&[
-                            DbType::Class(
-                                self.i_s.db.python_state.builtins_point_link("str"),
-                            ),
-                            p,
-                        ]),
-                    )
-                }
-            })
-    }
-    */
-
     pub(super) fn use_cached_annotation(&mut self, annotation: Annotation<'db>) -> Inferred<'db> {
         let point = self.file.points.get(annotation.index());
         if point.type_() == PointType::Specific {

@@ -589,7 +589,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::TypeVar(t) => DbType::TypeVar(t.clone()),

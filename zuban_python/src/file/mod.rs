@@ -1365,7 +1365,36 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
 
                         if let Some(annotation) = name_def.maybe_param_annotation() {
-                            self.use_cached_annotation(annotation)
+                            match name_def.name().simple_param_type() {
+                                SimpleParamType::Normal => self.use_cached_annotation(annotation),
+                                SimpleParamType::MultiArgs => {
+                                    let p = self
+                                        .use_cached_annotation_type(annotation)
+                                        .into_db_type(self.i_s);
+                                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                        Box::new(DbType::Tuple(TupleContent {
+                                            generics: Some(GenericsList::new_generics(Box::new([
+                                                p,
+                                            ]))),
+                                            arbitrary_length: true,
+                                        })),
+                                    ))
+                                }
+                                SimpleParamType::MultiKwargs => {
+                                    let p = self
+                                        .use_cached_annotation_type(annotation)
+                                        .into_db_type(self.i_s);
+                                    Inferred::create_instance(
+                                        self.i_s.db.python_state.builtins_point_link("dict"),
+                                        Some(&[
+                                            DbType::Class(
+                                                self.i_s.db.python_state.builtins_point_link("str"),
+                                            ),
+                                            p,
+                                        ]),
+                                    )
+                                }
+                            }
                         } else if let Some((function, args)) = self.i_s.current_execution {
                             function
                                 .infer_param(self.i_s, node_index, args)
