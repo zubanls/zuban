@@ -249,7 +249,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_db_type(i_s),
             Self::Type(c) => DbType::Type(Box::new(c.as_db_type(i_s))),
-            Self::TypeWithDbType(g) => (*g).clone(),
+            Self::TypeWithDbType(g) => DbType::Type(Box::new((*g).clone())),
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => todo!(),
