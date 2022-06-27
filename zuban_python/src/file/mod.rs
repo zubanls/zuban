@@ -928,7 +928,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand(
                         op.operand.to_owned(),
-                        value.class(i_s).as_string(i_s, FormatStyle::Short),
+                        value.class(i_s).as_string(i_s, None, FormatStyle::Short),
                         None, // TODO check for unions and stuff
                     ),
                 )

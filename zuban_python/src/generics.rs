@@ -472,7 +472,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn match_or_add_type_var(
+    pub fn match_or_add_type_var(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
@@ -539,7 +539,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 #[allow(clippy::enum_variant_names)]
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    TypeVar(&'a TypeVarUsage),
     Union(Vec<DbType>),
     None,
     Any,
@@ -565,7 +564,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 ))
             }
             DbType::Union(list) => Self::Union(list.iter().cloned().collect()),
-            DbType::TypeVar(t) => Self::TypeVar(t),
+            DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
             DbType::Callable(content) => {
@@ -592,7 +591,6 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::TypeVar(t) => DbType::TypeVar(t.clone()),
             Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list)),
             Self::None => DbType::None,
             Self::Any => DbType::Any,
@@ -609,47 +607,6 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         let result = match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
-            Self::TypeVar(t) => match value_class {
-                Type::ClassLike(class) => {
-                    if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
-                        class.matches_type_var(t)
-                    }
-                }
-                Type::TypeVar(t2) => {
-                    if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
-                        t.index == t2.index && t.type_ == t2.type_
-                    }
-                }
-                Type::Union(ref list) => {
-                    if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
-                        todo!()
-                    }
-                }
-                Type::Any => {
-                    if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
-                        true
-                    }
-                }
-                Type::Never => {
-                    todo!()
-                }
-                Type::None => {
-                    if let Some(matcher) = matcher {
-                        todo!()
-                        //matcher.match_or_add_type_var(i_s, t, value_class)
-                    } else {
-                        true // TODO is this correct? Maybe depending on strict options?
-                    }
-                }
-            },
             Self::Union(list1) => match value_class {
                 // TODO this should use the variance argument
                 Self::Union(mut list2) => {
@@ -785,7 +742,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
                 resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
             }),
-            Self::TypeVar(t) => resolve_type_var(i_s, function_matcher, t),
             Self::Union(list) => DbType::Union(GenericsList::new_union(
                 list.iter()
                     .map(|g| {
@@ -808,21 +764,7 @@ impl<'db, 'a> Type<'db, 'a> {
         style: FormatStyle,
     ) -> String {
         match self {
-            Self::ClassLike(c) => c.as_string(i_s, style),
-            Self::TypeVar(t) => {
-                if t.type_ == TypeVarType::Class {
-                    if let Some(class) = class {
-                        class
-                            .generics()
-                            .nth(i_s, t.index)
-                            .as_type_string(i_s.db, None, style)
-                    } else {
-                        t.type_var.name(i_s.db).to_owned()
-                    }
-                } else {
-                    t.type_var.name(i_s.db).to_owned()
-                }
-            }
+            Self::ClassLike(c) => c.as_string(i_s, class, style),
             Self::Union(list) => list.iter().fold(String::new(), |a, b| {
                 if a.is_empty() {
                     a + &b.as_type_string(i_s.db, None, style)

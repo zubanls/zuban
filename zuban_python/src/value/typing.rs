@@ -781,7 +781,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeWithDbType(self.db_type)
+        ClassLike::TypeVar(self.type_var_usage)
     }
 }
 

@@ -30,6 +30,7 @@ pub enum ClassLike<'db, 'a> {
     FunctionType(Function<'db, 'a>),
     Type(Class<'db, 'a>),
     TypeWithDbType(&'a DbType),
+    TypeVar(&'a TypeVarUsage),
     TypingClass(TypingClass),
     TypingClassType(TypingClass),
     NoneType,
@@ -78,7 +79,49 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 false
             }
-            Type::TypeVar(t) => false,
+            /*
+                            Self::TypeVar(t) => match value_class {
+                                Type::ClassLike(class) => {
+                                    if let Some(matcher) = matcher {
+                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                    } else {
+                                        class.matches_type_var(t)
+                                    }
+                                }
+                                Type::TypeVar(t2) => {
+                                    if let Some(matcher) = matcher {
+                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                    } else {
+                                        t.index == t2.index && t.type_ == t2.type_
+                                    }
+                                }
+                                Type::Union(ref list) => {
+                                    if let Some(matcher) = matcher {
+                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                    } else {
+                                        todo!()
+                                    }
+                                }
+                                Type::Any => {
+                                    if let Some(matcher) = matcher {
+                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                    } else {
+                                        true
+                                    }
+                                }
+                                Type::Never => {
+                                    todo!()
+                                }
+                                Type::None => {
+                                    if let Some(matcher) = matcher {
+                                        todo!()
+                                        //matcher.match_or_add_type_var(i_s, t, value_class)
+                                    } else {
+                                        true // TODO is this correct? Maybe depending on strict options?
+                                    }
+                                }
+                            },
+            */
             Type::Union(list) => match self {
                 Self::Class(c1) => c1.is_object_class(i_s.db),
                 _ => false,
@@ -115,6 +158,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             },
             Self::Type(_) | Self::TypeWithDbType(_) => {
                 matches!(other, Self::Type(_) | Self::TypeWithDbType(_))
+            }
+            Self::TypeVar(t) => {
+                return match matcher {
+                    Some(matcher) => matcher.match_or_add_type_var(i_s, t, Type::ClassLike(*other)),
+                    None => other.matches_type_var(t),
+                }
             }
             Self::Tuple(t1) => {
                 return match other {
@@ -182,10 +231,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     }
 
     pub fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
-        if let Self::TypeWithDbType(DbType::TypeVar(t2)) = self {
-            t1.index == t2.index && t1.type_ == t2.type_
-        } else {
-            false
+        match self {
+            Self::TypeVar(t2) => t1.index == t2.index && t1.type_ == t2.type_,
+            Self::TypeWithDbType(DbType::TypeVar(t2)) => {
+                t1.index == t2.index && t1.type_ == t2.type_
+            }
+            _ => false,
         }
     }
 
@@ -197,16 +248,34 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => (c.generics(), None),
             Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
             Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
-            Self::TypingClass(_) | Self::TypingClassType(_) | Self::AnyType | Self::NoneType => {
-                (Generics::None, None)
-            }
+            Self::TypingClass(_)
+            | Self::TypeVar(_)
+            | Self::TypingClassType(_)
+            | Self::AnyType
+            | Self::NoneType => (Generics::None, None),
         }
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_string(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class<'db, '_>>,
+        style: FormatStyle,
+    ) -> String {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
+            Self::TypeVar(t) => {
+                if t.type_ == TypeVarType::Class {
+                    if let Some(class) = class {
+                        return class
+                            .generics()
+                            .nth(i_s, t.index)
+                            .as_type_string(i_s.db, None, style);
+                    }
+                }
+                t.type_var.name(i_s.db).to_owned()
+            }
             Self::TypeWithDbType(g) => g.as_type_string(i_s.db, None, style),
             Self::Tuple(c) => c.as_type_string(i_s.db, style),
             Self::Callable(c) => c.as_type_string(i_s.db, style),
@@ -244,6 +313,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Class(c) => c.as_db_type(i_s),
             Self::Type(c) => DbType::Type(Box::new(c.as_db_type(i_s))),
             Self::TypeWithDbType(g) => DbType::Type(Box::new((*g).clone())),
+            Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => todo!(),
