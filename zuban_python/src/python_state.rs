@@ -121,10 +121,15 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple(&self) -> NodeRef {
+    pub fn tuple(&self) -> Class {
         debug_assert!(self.builtins_tuple_index != 0);
         // TODO might be unused???
-        NodeRef::new(self.builtins(), self.builtins_tuple_index)
+        Class::from_position(
+            NodeRef::new(self.builtins(), self.builtins_tuple_index),
+            Generics::None,
+            None,
+        )
+        .unwrap()
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {

@@ -222,8 +222,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
-            Self::Tuple(t) => t.mro(i_s.db),
-            _ => MroIterator::new(i_s.db, *self, [].iter()),
+            Self::Tuple(t) => t.mro(i_s),
+            _ => MroIterator::new(i_s.db, *self, None, [].iter()),
         }
     }
 
@@ -609,14 +609,12 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         let class_infos = self.class_infos(i_s);
-        MroIterator {
-            db: i_s.db,
-            generics: Some(self.generics),
-            class: Some(ClassLike::Class(*self)),
-            mro_index: 0,
-            iterator: class_infos.mro.iter(),
-            returned_object: false,
-        }
+        MroIterator::new(
+            i_s.db,
+            ClassLike::Class(*self),
+            Some(self.generics),
+            class_infos.mro.iter(),
+        )
     }
 
     pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
@@ -781,13 +779,14 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
         class: ClassLike<'db, 'a>,
+        generics: Option<Generics<'db, 'a>>,
         iterator: std::slice::Iter<'db, DbType>,
     ) -> Self {
         Self {
             db,
-            generics: None,
+            generics,
             class: Some(class),
-            iterator: [].iter(),
+            iterator,
             mro_index: 0,
             returned_object: false,
         }
@@ -800,10 +799,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
             self.mro_index += 1;
-            Some((
-                MroIndex(0),
-                std::mem::replace(&mut self.class, None).unwrap(),
-            ))
+            Some((MroIndex(0), std::mem::take(&mut self.class).unwrap()))
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),

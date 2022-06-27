@@ -21,6 +21,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 
+const ANY: DbType = DbType::Any;
+
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
     pub specific: Specific,
@@ -169,8 +171,23 @@ impl<'a> TupleClass<'a> {
         DbType::Tuple(self.content.clone())
     }
 
-    pub fn mro<'db>(&self, db: &'db Database) -> MroIterator<'db, 'a> {
-        MroIterator::new(db, ClassLike::Tuple(*self), [].iter())
+    pub fn mro<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
+        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+        if !self.content.arbitrary_length {
+            debug!("TODO Only used TypeVarIndex #0, and not all of them");
+        }
+        MroIterator::new(
+            i_s.db,
+            ClassLike::Tuple(*self),
+            Some(Generics::DbType(
+                self.content
+                    .generics
+                    .as_ref()
+                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap())
+                    .unwrap_or(&ANY),
+            )),
+            class_infos.mro.iter(),
+        )
     }
 
     pub(super) fn generics(&self) -> Generics<'static, 'a> {

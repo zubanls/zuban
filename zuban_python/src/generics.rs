@@ -91,7 +91,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     DbType::Any
                 }
             }
-            Self::DbType(g) => todo!(),
+            Self::DbType(g) => (*g).clone(),
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
             Self::None => {
