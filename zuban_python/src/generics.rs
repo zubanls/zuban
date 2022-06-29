@@ -1,6 +1,4 @@
-use parsa_python_ast::{
-    Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
-};
+use parsa_python_ast::{Expression, ParamIterator, SliceContent, SliceIterator, SliceType, Slices};
 
 use crate::arguments::Arguments;
 use crate::database::{
@@ -376,11 +374,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         //continue
                     }
                     if let Some(annotation) = p.param.annotation() {
-                        match p.param.type_() {
-                            ParamType::Starred => continue, // TODO this is *args: Foo
-                            ParamType::DoubleStarred => todo!(),
-                            _ => (),
-                        }
                         if let Some(argument) = p.argument {
                             let value = argument.infer(i_s);
                             let value_class = value.class_as_type(i_s);

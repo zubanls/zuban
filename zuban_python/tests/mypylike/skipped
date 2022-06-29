@@ -271,6 +271,9 @@ testPreferPackageOverFile2
 # "Cannot determine type of"
 testThreePassesRequired
 
+# "???" does not return a value
+testCallingVarArgsFunction
+
 # fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource
