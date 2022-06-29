@@ -337,7 +337,7 @@ impl<'db> Argument<'db, '_> {
         }
     }
 
-    pub fn as_node_reference(&self) -> NodeRef<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'db> {
         match self {
             Self::Positional(_, node_ref) => *node_ref,
             Self::Keyword(_, node_ref) => *node_ref,

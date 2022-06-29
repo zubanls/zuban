@@ -387,7 +387,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
                                     on_type_error(
                                         i_s,
-                                        argument.as_node_reference(),
+                                        argument.as_node_ref(),
                                         class,
                                         Some(&function),
                                         &p,
@@ -425,7 +425,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             |i_s, t1, t2| {
                                 on_type_error(
                                     i_s,
-                                    argument.as_node_reference(),
+                                    argument.as_node_ref(),
                                     None,
                                     None,
                                     &param,
