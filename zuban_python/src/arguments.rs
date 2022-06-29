@@ -403,7 +403,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 expr.index(),
                             ))
                         }
-                        ASTArgument::Starred(expr) => todo!("*args"),
+                        ASTArgument::Starred(expr) => todo!("*args {arg:?}"),
                         ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
                     }
                 }

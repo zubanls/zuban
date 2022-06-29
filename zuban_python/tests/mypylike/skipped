@@ -258,6 +258,7 @@ testSubtypingFunction*
 testLackOfNames
 testLackOfNamesFastparse
 testFunctionTypeCompatibilityWithOtherTypes
+testVarArgsFunctionSubtyping
 
 # flow graph
 testAssignAndConditional*
@@ -271,8 +272,34 @@ testPreferPackageOverFile2
 # "Cannot determine type of"
 testThreePassesRequired
 
+# *args input
+testCallVarargsFunctionWithIterable
+testCallVarargsFunctionWithTwoTupleStarArgs
+testCallVarargsFunctionWithIterableAndPositional
+testCallVarargsFunctionWithTupleAndPositional
+testCallingWithListVarArgs
+testCallingWithTupleVarArgs
+testInvalidVarArg
+testCallingVarArgsFunctionWithListVarArgs
+testCallingVarArgsFunctionWithTupleVarArgs
+testDynamicVarArg
+testListVarArgsAndSubtyping
+testCallerVarArgsAndDefaultArgs
+testVarArgsAfterKeywordArgInCall*
+testVarArgsEmptyList
+testVarArgsEmptyTuple
+testIntersectionTypesAndVarArgs
+testCallerVarArgsListWithTypeInference
+testCallerVarArgsTupleWithTypeInference
+testCallerVarargsAndComplexTypeInference
+testCallerTupleVarArgsAndGenericCalleeVarArg
+testInvariantTypeConfusingNames2
+
 # "???" does not return a value
 testCallingVarArgsFunction
+
+# Param Option X = None -> Optional[X] inference
+testCallingVarArgsFunctionWithDefaultArgs
 
 # fine-grained
 testTypeAliasRefresh
@@ -461,6 +488,7 @@ testIncompatibleAssignmentAmbiguousShortnames
 # Invariant note
 testAssignmentInvariantNoteForList
 testAssignmentInvariantNoteForDict
+testInvariantListArgNote
 
 # Type execution
 testNoneAlias
