@@ -359,7 +359,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
-                let mut iter = function.iter_args_with_params(self.args, self.skip_first_param);
+                let mut iter =
+                    function.iter_args_with_params(i_s.db, self.args, self.skip_first_param);
                 for p in iter.by_ref() {
                     if p.argument.is_none() && p.param.default().is_none() {
                         self.matches = false;

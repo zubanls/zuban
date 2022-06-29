@@ -300,8 +300,9 @@ testInvariantTypeConfusingNames2
 # "???" does not return a value
 testCallingVarArgsFunction
 
-# Param Option X = None -> Optional[X] inference
+# Implicit Param Option X = None -> Optional[X] inference
 testCallingVarArgsFunctionWithDefaultArgs
+testOneOfSeveralOptionalKeywordArguments
 
 # Decorators
 *Deco*

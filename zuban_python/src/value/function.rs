@@ -80,14 +80,15 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn iter_args_with_params<'b>(
         &self,
+        db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b> {
+    ) -> InferrableParamIterator2<'db, 'b, '_> {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(params, args.iter_arguments().peekable())
+        InferrableParamIterator2::new(db, self, params, args.iter_arguments().peekable())
     }
 
     pub fn infer_param(
@@ -569,7 +570,9 @@ impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
     }
 }
 
-pub struct InferrableParamIterator2<'db, 'a> {
+pub struct InferrableParamIterator2<'db, 'a, 'b> {
+    db: &'db Database,
+    func: &'b Function<'db, 'b>,
     arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: ParamIterator<'db>,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
@@ -577,12 +580,16 @@ pub struct InferrableParamIterator2<'db, 'a> {
     current_double_starred_param: Option<Param<'db>>,
 }
 
-impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
+impl<'db, 'a, 'b> InferrableParamIterator2<'db, 'a, 'b> {
     fn new(
+        db: &'db Database,
+        func: &'b Function<'db, 'b>,
         params: ParamIterator<'db>,
         arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     ) -> Self {
         Self {
+            db,
+            func,
             arguments,
             params,
             unused_keyword_arguments: vec![],
@@ -596,7 +603,7 @@ impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
+impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a, '_> {
     type Item = InferrableParam2<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -620,7 +627,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
                 self.current_double_starred_param = None;
             }
         }
-        self.params.next().and_then(|param| {
+        if let Some(param) = self.params.next() {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
                     Argument::Keyword(name, reference) => {
@@ -677,7 +684,24 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
                 ParamType::DoubleStarred => todo!(),
             }
             Some(InferrableParam2 { param, argument })
-        })
+        } else {
+            for unused in &self.unused_keyword_arguments {
+                match unused {
+                    Argument::Keyword(name, reference) => {
+                        debug!("TODO this keyword param could also not exist");
+                        reference.add_typing_issue(
+                            self.db,
+                            IssueType::ArgumentIssue(format!(
+                                "{:?} gets multiple values for keyword argument {name:?}",
+                                self.func.name(),
+                            )),
+                        );
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            None
+        }
     }
 }
 
