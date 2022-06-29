@@ -58,7 +58,7 @@ impl<'db, 'a> Function<'db, 'a> {
         )
     }
 
-    fn node(&self) -> FunctionDef<'db> {
+    pub fn node(&self) -> FunctionDef<'db> {
         FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 
@@ -80,15 +80,14 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn iter_args_with_params<'b>(
         &self,
-        db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b, '_> {
+    ) -> InferrableParamIterator2<'db, 'b> {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, self, params, args.iter_arguments().peekable())
+        InferrableParamIterator2::new(params, args.iter_arguments().peekable())
     }
 
     pub fn infer_param(
@@ -570,26 +569,20 @@ impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
     }
 }
 
-pub struct InferrableParamIterator2<'db, 'a, 'b> {
-    db: &'db Database,
-    func: &'b Function<'db, 'b>,
+pub struct InferrableParamIterator2<'db, 'a> {
     arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: ParamIterator<'db>,
-    unused_keyword_arguments: Vec<Argument<'db, 'a>>,
+    pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<Param<'db>>,
     current_double_starred_param: Option<Param<'db>>,
 }
 
-impl<'db, 'a, 'b> InferrableParamIterator2<'db, 'a, 'b> {
+impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
     fn new(
-        db: &'db Database,
-        func: &'b Function<'db, 'b>,
         params: ParamIterator<'db>,
         arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     ) -> Self {
         Self {
-            db,
-            func,
             arguments,
             params,
             unused_keyword_arguments: vec![],
@@ -607,7 +600,7 @@ impl<'db, 'a, 'b> InferrableParamIterator2<'db, 'a, 'b> {
     }
 }
 
-impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a, '_> {
+impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
     type Item = InferrableParam2<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -631,7 +624,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a, '_> {
                 self.current_double_starred_param = None;
             }
         }
-        if let Some(param) = self.params.next() {
+        self.params.next().and_then(|param| {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
                     Argument::Keyword(name, reference) => {
@@ -688,35 +681,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a, '_> {
                 ParamType::DoubleStarred => todo!(),
             }
             Some(InferrableParam2 { param, argument })
-        } else {
-            for unused in &self.unused_keyword_arguments {
-                match unused {
-                    Argument::Keyword(name, reference) => {
-                        let s = if self
-                            .func
-                            .node()
-                            .params()
-                            .iter()
-                            .any(|p| p.name_definition().as_code() == *name)
-                        {
-                            format!(
-                                "{:?} gets multiple values for keyword argument {name:?}",
-                                self.func.name(),
-                            )
-                        } else {
-                            format!(
-                                "unexpected keyword argument {name:?} for {:?}",
-                                self.func.name(),
-                            )
-                        };
-                        debug!("TODO this keyword param could also not exist");
-                        reference.add_typing_issue(self.db, IssueType::ArgumentIssue(s));
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            None
-        }
+        })
     }
 }
 

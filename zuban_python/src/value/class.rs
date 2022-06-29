@@ -434,7 +434,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    fn node(&self) -> ClassDef<'db> {
+    pub fn node(&self) -> ClassDef<'db> {
         ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
     }
 

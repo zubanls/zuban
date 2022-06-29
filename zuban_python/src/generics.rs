@@ -1,6 +1,6 @@
 use parsa_python_ast::{Expression, ParamIterator, SliceContent, SliceIterator, SliceType, Slices};
 
-use crate::arguments::Arguments;
+use crate::arguments::{Argument, Arguments};
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
     Variance,
@@ -359,8 +359,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
-                let mut iter =
-                    function.iter_args_with_params(i_s.db, self.args, self.skip_first_param);
+                let mut iter = function.iter_args_with_params(self.args, self.skip_first_param);
                 let mut missing_params = vec![];
                 for p in iter.by_ref() {
                     if p.argument.is_none() && p.param.default().is_none() {
@@ -404,7 +403,32 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         )),
                     );
                     self.matches = false
-                } else if iter.has_unused_keyword_arguments() {
+                } else if !iter.unused_keyword_arguments.is_empty() {
+                    for unused in iter.unused_keyword_arguments {
+                        match unused {
+                            Argument::Keyword(name, reference) => {
+                                let s = if function
+                                    .node()
+                                    .params()
+                                    .iter()
+                                    .any(|p| p.name_definition().as_code() == name)
+                                {
+                                    format!(
+                                        "{:?} gets multiple values for keyword argument {name:?}",
+                                        function.name(),
+                                    )
+                                } else {
+                                    format!(
+                                        "unexpected keyword argument {name:?} for {:?}",
+                                        function.name(),
+                                    )
+                                };
+                                debug!("TODO this keyword param could also not exist");
+                                reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                 } else {
                     for param in missing_params {
                         self.args.node_reference().add_typing_issue(
