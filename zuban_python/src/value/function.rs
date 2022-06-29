@@ -78,6 +78,18 @@ impl<'db, 'a> Function<'db, 'a> {
         InferrableParamIterator::new(params, args.iter_arguments())
     }
 
+    pub fn iter_args_with_params<'b>(
+        &self,
+        args: &'b dyn Arguments<'db>,
+        skip_first_param: bool,
+    ) -> InferrableParamIterator2<'db, 'b> {
+        let mut params = self.node().params().iter();
+        if skip_first_param {
+            params.next();
+        }
+        InferrableParamIterator2::new(params, args.iter_arguments().peekable())
+    }
+
     pub fn infer_param(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -520,17 +532,6 @@ impl<'db> InferrableParam<'db, '_> {
         self.param.name_definition().index() == index
     }
 
-    pub fn as_argument_node_reference(&self) -> NodeRef<'db> {
-        match &self.argument {
-            ParamInput::Argument(arg) => arg.as_node_reference(),
-            ParamInput::Tuple(args) => args
-                .get(0)
-                .map(|arg| arg.as_node_reference())
-                .unwrap_or_else(|| todo!()),
-            ParamInput::None => todo!(),
-        }
-    }
-
     pub fn has_argument(&self) -> bool {
         !matches!(self.argument, ParamInput::None)
     }
@@ -565,6 +566,130 @@ impl<'db> InferrableParam<'db, '_> {
 impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
     fn argument_index(&self) -> String {
         self.argument.argument_index()
+    }
+}
+
+pub struct InferrableParamIterator2<'db, 'a> {
+    arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    params: ParamIterator<'db>,
+    unused_keyword_arguments: Vec<Argument<'db, 'a>>,
+    current_starred_param: Option<Param<'db>>,
+    current_double_starred_param: Option<Param<'db>>,
+}
+
+impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
+    fn new(
+        params: ParamIterator<'db>,
+        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    ) -> Self {
+        Self {
+            arguments,
+            params,
+            unused_keyword_arguments: vec![],
+            current_starred_param: None,
+            current_double_starred_param: None,
+        }
+    }
+
+    pub fn has_unused_argument(&mut self) -> bool {
+        self.arguments.next().is_some()
+    }
+}
+
+impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
+    type Item = InferrableParam2<'db, 'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(param) = self.current_starred_param {
+            if let Some(argument) = self.arguments.next_if(|arg| !arg.is_keyword_argument()) {
+                return Some(InferrableParam2 {
+                    param,
+                    argument: Some(argument),
+                });
+            } else {
+                self.current_starred_param = None;
+            }
+        }
+        if let Some(param) = self.current_double_starred_param {
+            if let Some(argument) = self.arguments.next_if(|arg| arg.is_keyword_argument()) {
+                return Some(InferrableParam2 {
+                    param,
+                    argument: Some(argument),
+                });
+            } else {
+                self.current_double_starred_param = None;
+            }
+        }
+        self.params.next().and_then(|param| {
+            for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+                match unused {
+                    Argument::Keyword(name, reference) => {
+                        if *name == param.name_definition().name().as_str() {
+                            return Some(InferrableParam2 {
+                                param,
+                                argument: Some(self.unused_keyword_arguments.remove(i)),
+                            });
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            let mut argument = None;
+            match param.type_() {
+                ParamType::PositionalOrKeyword => {
+                    for arg in &mut self.arguments {
+                        match arg {
+                            Argument::Keyword(name, reference) => {
+                                if name == param.name_definition().name().as_str() {
+                                    argument = Some(arg);
+                                    break;
+                                } else {
+                                    self.unused_keyword_arguments.push(arg);
+                                }
+                            }
+                            _ => {
+                                argument = Some(arg);
+                                break;
+                            }
+                        }
+                    }
+                }
+                ParamType::KeywordOnly => {
+                    for arg in &mut self.arguments {
+                        match arg {
+                            Argument::Keyword(name, reference) => {
+                                if name == param.name_definition().name().as_str() {
+                                    argument = Some(arg);
+                                    break;
+                                } else {
+                                    self.unused_keyword_arguments.push(arg);
+                                }
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
+                ParamType::PositionalOnly => todo!(),
+                ParamType::Starred => {
+                    self.current_starred_param = Some(param);
+                    return self.next();
+                }
+                ParamType::DoubleStarred => todo!(),
+            }
+            Some(InferrableParam2 { param, argument })
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct InferrableParam2<'db, 'a> {
+    pub param: Param<'db>,
+    pub argument: Option<Argument<'db, 'a>>,
+}
+
+impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a> {
+    fn argument_index(&self) -> String {
+        self.argument.as_ref().unwrap().index()
     }
 }
 

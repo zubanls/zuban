@@ -1586,7 +1586,7 @@ impl<'db> Iterator for ParamIterator<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Param<'db> {
     type_: ParamType,
     name_def: NameDefinition<'db>,

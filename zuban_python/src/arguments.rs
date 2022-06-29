@@ -289,7 +289,7 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(&'db str, NodeRef<'db>),

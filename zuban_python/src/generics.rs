@@ -361,9 +361,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
-                let mut iter = function.iter_inferrable_params(self.args, self.skip_first_param);
+                let mut iter = function.iter_args_with_params(self.args, self.skip_first_param);
                 for p in iter.by_ref() {
-                    if !p.has_argument() && p.param.default().is_none() {
+                    if p.argument.is_none() && p.param.default().is_none() {
                         self.matches = false;
                         self.args.node_reference().add_typing_issue(
                             i_s.db,
@@ -381,7 +381,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             ParamType::DoubleStarred => todo!(),
                             _ => (),
                         }
-                        if let Some(value) = p.infer(i_s) {
+                        if let Some(argument) = p.argument {
+                            let value = argument.infer(i_s);
                             let value_class = value.class_as_type(i_s);
                             let mut matches = true;
                             let on_type_error = self.on_type_error;
@@ -393,7 +394,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 .error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
                                     on_type_error(
                                         i_s,
-                                        p.as_argument_node_reference(),
+                                        argument.as_node_reference(),
                                         class,
                                         Some(&function),
                                         &p,
