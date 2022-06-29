@@ -688,14 +688,25 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a, '_> {
             for unused in &self.unused_keyword_arguments {
                 match unused {
                     Argument::Keyword(name, reference) => {
-                        debug!("TODO this keyword param could also not exist");
-                        reference.add_typing_issue(
-                            self.db,
-                            IssueType::ArgumentIssue(format!(
+                        let s = if self
+                            .func
+                            .node()
+                            .params()
+                            .iter()
+                            .any(|p| p.name_definition().as_code() == *name)
+                        {
+                            format!(
                                 "{:?} gets multiple values for keyword argument {name:?}",
                                 self.func.name(),
-                            )),
-                        );
+                            )
+                        } else {
+                            format!(
+                                "unexpected keyword argument {name:?} for {:?}",
+                                self.func.name(),
+                            )
+                        };
+                        debug!("TODO this keyword param could also not exist");
+                        reference.add_typing_issue(self.db, IssueType::ArgumentIssue(s));
                     }
                     _ => unreachable!(),
                 }

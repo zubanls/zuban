@@ -368,7 +368,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             i_s.db,
                             IssueType::ArgumentIssue(format!(
                                 "Missing positional argument {:?} in call to {}",
-                                p.param.name_definition().name().as_str(),
+                                p.param.name_definition().as_code(),
                                 function.diagnostic_string(class),
                             )),
                         );
