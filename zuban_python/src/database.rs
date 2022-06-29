@@ -478,7 +478,7 @@ impl GenericsList {
     }
 
     pub fn set_generic(&mut self, index: TypeVarIndex, generic: DbType) {
-        self.0[index.0 as usize].union_in_place(generic);
+        self.0[index.0 as usize] = generic;
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {

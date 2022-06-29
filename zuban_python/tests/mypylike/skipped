@@ -1,5 +1,3 @@
-
-
 # Cycles
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1
@@ -34,6 +32,10 @@ testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 testNewAnalyzerApplicationForward4
 
 testInvalidTypevarValues
+
+# Type Var overrides
+testTypeInferenceWithCalleeVarArgs
+testTypeInferenceWithCalleeVarArgsAndDefaultArgs
 
 # Literal
 testNewAnalyzerBool
@@ -301,6 +303,10 @@ testCallingVarArgsFunction
 # Param Option X = None -> Optional[X] inference
 testCallingVarArgsFunctionWithDefaultArgs
 
+# Decorators
+*Deco*
+testVarArgsCallableSelf
+
 # fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource
@@ -315,7 +321,6 @@ testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testSuperField
 testReprocessMethodInNestedClassSemanal
-*Deco*
 testPreviousErrorInMethodSemanalPass3
 *Overload*
 *python2
@@ -489,6 +494,7 @@ testIncompatibleAssignmentAmbiguousShortnames
 testAssignmentInvariantNoteForList
 testAssignmentInvariantNoteForDict
 testInvariantListArgNote
+testInvariantDictArgNote
 
 # Type execution
 testNoneAlias
@@ -580,6 +586,7 @@ testExpressionRefersToTypeVariable
 testIncompatibleSignatureInComment
 testFunctionSignatureAsComment
 testMethodSignatureAsComment
+testVarArgsAndCommentSignature
 
 # --scripts-are-modules
 testScriptsAreModules

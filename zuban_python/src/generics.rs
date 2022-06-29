@@ -512,7 +512,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         if self.match_type == type_var_usage.type_ {
             if let Some(calculated) = self.calculated_type_vars.as_mut() {
-                calculated.set_generic(type_var_usage.index, value_type.into_db_type(i_s));
+                let current = calculated.nth(type_var_usage.index).unwrap();
+                if current == &DbType::Unknown {
+                    calculated.set_generic(type_var_usage.index, value_type.into_db_type(i_s));
+                } else if current != &value_type.into_db_type(i_s) {
+                    todo!()
+                }
             }
         } else {
             // Happens e.g. for testInvalidNumberOfTypeArgs
