@@ -143,6 +143,11 @@ testNewAnalyzerTypeAnnotationCycle3
 testModuleAttributeTwoSuggestions
 testModuleAttributeThreeSuggestions
 
+# Unexpected keyword argument "otter" for "f"; did you mean "other"?
+testKeywordMisspelling
+testMultipleKeywordsForMisspelling
+testKeywordMisspelling*
+
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
 

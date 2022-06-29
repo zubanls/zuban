@@ -361,18 +361,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 function.type_vars(i_s);
                 let mut iter =
                     function.iter_args_with_params(i_s.db, self.args, self.skip_first_param);
+                let mut missing_params = vec![];
                 for p in iter.by_ref() {
                     if p.argument.is_none() && p.param.default().is_none() {
                         self.matches = false;
-                        self.args.node_reference().add_typing_issue(
-                            i_s.db,
-                            IssueType::ArgumentIssue(format!(
-                                "Missing positional argument {:?} in call to {}",
-                                p.param.name_definition().as_code(),
-                                function.diagnostic_string(class),
-                            )),
-                        );
-                        //continue
+                        missing_params.push(p.param);
+                        continue;
                     }
                     if let Some(annotation) = p.param.annotation() {
                         if let Some(argument) = p.argument {
@@ -410,6 +404,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         )),
                     );
                     self.matches = false
+                } else if iter.has_unused_keyword_arguments() {
+                } else {
+                    for param in missing_params {
+                        self.args.node_reference().add_typing_issue(
+                            i_s.db,
+                            IssueType::ArgumentIssue(format!(
+                                "Missing positional argument {:?} in call to {}",
+                                param.name_definition().as_code(),
+                                function.diagnostic_string(class),
+                            )),
+                        );
+                    }
                 }
             }
             FunctionOrCallable::Callable(callable) => {
