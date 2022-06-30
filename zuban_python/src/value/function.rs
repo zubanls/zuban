@@ -82,7 +82,7 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b> {
+    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = Param<'db>>, Param<'db>> {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
@@ -569,19 +569,16 @@ impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
     }
 }
 
-pub struct InferrableParamIterator2<'db, 'a> {
+pub struct InferrableParamIterator2<'db, 'a, I, P> {
     arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
-    params: ParamIterator<'db>,
+    params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
-    current_starred_param: Option<Param<'db>>,
-    current_double_starred_param: Option<Param<'db>>,
+    current_starred_param: Option<P>,
+    current_double_starred_param: Option<P>,
 }
 
-impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
-    fn new(
-        params: ParamIterator<'db>,
-        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
-    ) -> Self {
+impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
+    fn new(params: I, arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>) -> Self {
         Self {
             arguments,
             params,
@@ -600,8 +597,10 @@ impl<'db, 'a> InferrableParamIterator2<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
-    type Item = InferrableParam2<'db, 'a>;
+impl<'db, 'a, I: Iterator<Item = P>, P: crate::params::Param<'db>> Iterator
+    for InferrableParamIterator2<'db, 'a, I, P>
+{
+    type Item = InferrableParam2<'db, 'a, P>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
@@ -628,7 +627,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
                     Argument::Keyword(name, reference) => {
-                        if *name == param.name_definition().name().as_str() {
+                        if *name == param.name() {
                             return Some(InferrableParam2 {
                                 param,
                                 argument: Some(self.unused_keyword_arguments.remove(i)),
@@ -639,12 +638,12 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
                 }
             }
             let mut argument = None;
-            match param.type_() {
+            match param.param_type() {
                 ParamType::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
                         match arg {
                             Argument::Keyword(name, reference) => {
-                                if name == param.name_definition().name().as_str() {
+                                if name == param.name() {
                                     argument = Some(arg);
                                     break;
                                 } else {
@@ -662,7 +661,7 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
                     for arg in &mut self.arguments {
                         match arg {
                             Argument::Keyword(name, reference) => {
-                                if name == param.name_definition().name().as_str() {
+                                if name == param.name() {
                                     argument = Some(arg);
                                     break;
                                 } else {
@@ -686,12 +685,12 @@ impl<'db, 'a> Iterator for InferrableParamIterator2<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct InferrableParam2<'db, 'a> {
-    pub param: Param<'db>,
+pub struct InferrableParam2<'db, 'a, P> {
+    pub param: P,
     pub argument: Option<Argument<'db, 'a>>,
 }
 
-impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a> {
+impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
     fn argument_index(&self) -> String {
         self.argument.as_ref().unwrap().index()
     }
