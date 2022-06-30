@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::*;
 
-use crate::arguments::{CombinedArguments, KnownArguments, SimpleArguments};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
     Point, PointLink, PointType, Points, Specific, TupleContent, TypeVarType,
@@ -1056,20 +1056,32 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                 }
-                base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Execute {}", value.name());
-                    value.execute(
-                        i_s,
-                        &SimpleArguments::new(
-                            f,
-                            node_index,
-                            details,
-                            x.as_ref(),
-                            value.as_class().cloned(),
-                        ),
-                        &on_type_error,
-                    )
-                })
+                base.internal_run(
+                    self.i_s,
+                    &mut |i_s, value| {
+                        debug!("Execute {}", value.name());
+                        value.execute(
+                            i_s,
+                            &SimpleArguments::new(
+                                f,
+                                node_index,
+                                details,
+                                x.as_ref(),
+                                value.as_class().cloned(),
+                            ),
+                            &on_type_error,
+                        )
+                    },
+                    &|i_s, i1, i2| i1.union(i2),
+                    &mut |i_s| {
+                        let args = SimpleArguments::new(f, node_index, details, x.as_ref(), None);
+                        // Still need to calculate diagnostics for all the arguments
+                        for arg in args.iter_arguments() {
+                            arg.infer(i_s);
+                        }
+                        Inferred::new_unknown()
+                    },
+                )
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
