@@ -1,4 +1,4 @@
-use parsa_python_ast::NodeIndex;
+use parsa_python_ast::{NodeIndex, ParamType};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -525,7 +525,7 @@ impl GenericsList {
         }
     }
 
-    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
+    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
         for g in self.0.iter() {
             g.scan_for_late_bound_type_vars(db, result)
         }
@@ -681,7 +681,10 @@ impl DbType {
             }
             Self::Callable(mut content) => {
                 if let Some(params) = content.params.as_mut() {
-                    replace_list(&mut params.0, callable)
+                    for item in params.iter_mut() {
+                        let g = std::mem::replace(&mut item.db_type, DbType::Unknown);
+                        item.db_type = g.replace_type_vars(callable);
+                    }
                 }
                 let g = std::mem::replace(&mut *content.return_class, DbType::Unknown);
                 *content.return_class = g.replace_type_vars(callable);
@@ -741,7 +744,7 @@ impl DbType {
         }
     }
 
-    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
+    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
         match self {
             Self::GenericClass(link, generics) => {
                 generics.scan_for_late_bound_type_vars(db, result)
@@ -770,7 +773,9 @@ impl DbType {
             }
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
-                    params.scan_for_late_bound_type_vars(db, result)
+                    for param in params.iter() {
+                        param.db_type.scan_for_late_bound_type_vars(db, result)
+                    }
                 }
                 content
                     .return_class
@@ -848,8 +853,14 @@ impl TupleContent {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct CallableParam {
+    pub param_type: ParamType,
+    pub db_type: DbType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
-    pub params: Option<GenericsList>,
+    pub params: Option<Box<[CallableParam]>>,
     pub return_class: Box<DbType>,
 }
 
@@ -859,7 +870,19 @@ impl CallableContent {
             "[{}, {}]",
             self.params
                 .as_ref()
-                .map(|p| format!("[{}]", p.as_string(db, None, style)))
+                .map(|params| format!(
+                    "[{}]",
+                    params
+                        .iter()
+                        .map(|p| p.db_type.as_type_string(db, None, style))
+                        .fold(String::new(), |a, b| {
+                            if a.is_empty() {
+                                a + &b
+                            } else {
+                                a + ", " + &b
+                            }
+                        })
+                ))
                 .unwrap_or_else(|| "...".to_owned()),
             self.return_class.as_type_string(db, None, style)
         )

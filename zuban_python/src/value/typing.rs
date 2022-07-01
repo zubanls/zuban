@@ -4,14 +4,13 @@ use parsa_python_ast::PrimaryContent;
 
 use super::class::MroIterator;
 use super::{
-    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, ParamWithArgument,
-    Value, ValueKind,
+    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind,
 };
-use crate::arguments::{Argument, ArgumentIterator, Arguments};
+use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, FormatStyle, Specific, TupleContent,
-    TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, Specific,
+    TupleContent, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -520,7 +519,7 @@ impl<'a> CallableClass<'a> {
         self.content
             .params
             .as_ref()
-            .map(Generics::new_list)
+            .map(|p| Generics::Params(p))
             .unwrap_or(Generics::None)
     }
 
@@ -530,20 +529,7 @@ impl<'a> CallableClass<'a> {
 
     pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
         if let Some(params) = &self.content.params {
-            let p = params
-                .iter()
-                .map(|g| g.as_type_string(db, None, style))
-                .fold(String::new(), |a, b| {
-                    if a.is_empty() {
-                        a + &b
-                    } else {
-                        a + ", " + &b
-                    }
-                });
-            format!(
-                "Callable[[{p}], {}]",
-                self.content.return_class.as_type_string(db, None, style)
-            )
+            format!("Callable{}", self.content.as_string(db, style))
         } else {
             format!(
                 "Callable[..., {}]",
@@ -606,14 +592,8 @@ impl<'a> Callable<'a> {
         base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
     }
 
-    pub fn iter_params_with_args<'db, 'b>(
-        &self,
-        args: &'b dyn Arguments<'db>,
-    ) -> CallableParamIterator<'db, 'a, 'b> {
-        CallableParamIterator {
-            params: self.content.params.as_ref().map(|params| params.iter()),
-            arguments: args.iter_arguments(),
-        }
+    pub fn iter_params<'db, 'b>(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
+        self.content.params.as_ref().map(|params| params.iter())
     }
 }
 
@@ -642,7 +622,11 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> Inferred<'db> {
         let mut type_vars = vec![]; // todo!()
         if let Some(params) = &self.content.params {
-            params.scan_for_late_bound_type_vars(i_s.db, &mut type_vars)
+            for param in params.iter() {
+                param
+                    .db_type
+                    .scan_for_late_bound_type_vars(i_s.db, &mut type_vars)
+            }
         }
         let type_vars = TypeVars::from_vec(type_vars);
         let mut finder = TypeVarMatcher::from_callable(
@@ -659,38 +643,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn description(&self, i_s: &mut InferenceState) -> String {
         base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
-    }
-}
-
-pub struct CallableParam<'db, 'a, 'b> {
-    pub param_type: &'a DbType,
-    pub argument: Option<Argument<'db, 'b>>,
-}
-
-pub struct CallableParamIterator<'db, 'a, 'b> {
-    params: Option<std::slice::Iter<'a, DbType>>,
-    arguments: ArgumentIterator<'db, 'b>,
-}
-
-impl<'db, 'b> ParamWithArgument<'db, 'b> for CallableParam<'db, '_, 'b> {
-    fn argument_index(&self) -> String {
-        if let Some(argument) = &self.argument {
-            argument.index()
-        } else {
-            todo!()
-        }
-    }
-}
-
-impl<'db, 'a, 'b> Iterator for CallableParamIterator<'db, 'a, 'b> {
-    type Item = CallableParam<'db, 'a, 'b>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.params.as_mut().and_then(|params| {
-            params.next().map(|param_type| Self::Item {
-                param_type,
-                argument: self.arguments.next(),
-            })
-        })
     }
 }
 

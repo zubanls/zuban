@@ -3,9 +3,9 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, GenericsList, Locality, Point, PointType,
-    Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarType,
-    TypeVarUsage,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, GenericsList, Locality, Point,
+    PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager,
+    TypeVarType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -743,13 +743,14 @@ where
     ) -> TypeContent<'db> {
         let mut params = Some(vec![]);
         let db = self.inference.i_s.db;
-        let mut add_param = |params: &mut Option<Vec<DbType>>, element: StarLikeExpression<'db>| {
+        let mut add_param = |params: &mut Option<Vec<CallableParam>>,
+                             element: StarLikeExpression<'db>| {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = self.compute_type(n.expression(), None);
-                params
-                    .as_mut()
-                    .unwrap()
-                    .push(self.as_db_type(t, NodeRef::new(self.inference.file, n.index())))
+                params.as_mut().unwrap().push(CallableParam {
+                    param_type: ParamType::PositionalOnly,
+                    db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
+                })
             } else {
                 todo!()
             }
@@ -799,7 +800,7 @@ where
                         .map(|slice_content| self.compute_slice_db_type(slice_content))
                         .unwrap_or(DbType::Any);
                     CallableContent {
-                        params: params.map(GenericsList::generics_from_vec),
+                        params: params.map(|p| p.into_boxed_slice()),
                         return_class: Box::new(return_class),
                     }
                 } else {

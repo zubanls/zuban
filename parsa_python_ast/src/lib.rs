@@ -1631,7 +1631,7 @@ impl<'db> Param<'db> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ParamType {
     PositionalOnly,
     PositionalOrKeyword,

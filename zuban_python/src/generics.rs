@@ -1,6 +1,7 @@
 use parsa_python_ast::{Expression, ParamIterator, SliceContent, SliceIterator, SliceType, Slices};
 
 use crate::arguments::{Argument, Arguments};
+use crate::database::CallableParam;
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
     Variance,
@@ -36,6 +37,7 @@ pub enum Generics<'db, 'a> {
     Expression(&'db PythonFile, Expression<'db>),
     Slices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
+    Params(&'a [CallableParam]),
     Class(&'a Class<'db, 'a>),
     DbType(&'a DbType),
     FunctionParams(&'a Function<'db, 'a>),
@@ -368,32 +370,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 );
             }
             FunctionOrCallable::Callable(callable) => {
-                for param in callable.iter_params_with_args(self.args) {
-                    if let Some(ref argument) = param.argument {
-                        let value = argument.infer(i_s);
-                        let value_class = value.class_as_type(i_s);
-                        let mut matches = true;
-                        let on_type_error = self.on_type_error;
-                        Type::from_db_type(i_s.db, param.param_type).error_if_not_matches(
-                            i_s,
-                            Some(self),
-                            &value,
-                            |i_s, t1, t2| {
-                                on_type_error(
-                                    i_s,
-                                    argument.as_node_ref(),
-                                    None,
-                                    None,
-                                    &param,
-                                    t1,
-                                    t2,
-                                );
-                                matches = false;
-                            },
-                        );
-
-                        self.matches &= matches;
-                    }
+                if let Some(params) = callable.iter_params() {
+                    self.calculate_type_vars_for_params(
+                        i_s,
+                        None,
+                        None,
+                        InferrableParamIterator2::new(
+                            params,
+                            self.args.iter_arguments().peekable(),
+                        ),
+                    );
                 }
             }
         }

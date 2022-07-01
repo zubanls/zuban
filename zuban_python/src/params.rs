@@ -1,6 +1,7 @@
 use parsa_python_ast::{Param as ASTParam, ParamType};
 
 use crate::arguments::{Argument, ArgumentIterator};
+use crate::database::CallableParam;
 use crate::generics::Type;
 use crate::inference_state::InferenceState;
 use crate::value::{Function, ParamWithArgument};
@@ -42,6 +43,28 @@ impl<'db> Param<'db> for ASTParam<'db> {
 
     fn param_type(&self) -> ParamType {
         self.type_()
+    }
+}
+
+impl<'db> Param<'db> for &'db CallableParam {
+    fn has_default(&self) -> bool {
+        false
+    }
+
+    fn name(&self) -> &str {
+        todo!()
+    }
+
+    fn annotation_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        function: Option<&Function<'db, '_>>,
+    ) -> Option<Type<'db, 'db>> {
+        Some(Type::from_db_type(i_s.db, &self.db_type))
+    }
+
+    fn param_type(&self) -> ParamType {
+        self.param_type
     }
 }
 
