@@ -2,12 +2,17 @@ use parsa_python_ast::{Param as ASTParam, ParamType};
 
 use crate::arguments::{Argument, ArgumentIterator};
 use crate::generics::Type;
-use crate::value::ParamWithArgument;
+use crate::inference_state::InferenceState;
+use crate::value::{Function, ParamWithArgument};
 
 pub trait Param<'db>: Copy {
     fn has_default(&self) -> bool;
     fn name(&self) -> &str;
-    fn annotation_type(&self) -> Type<'db, 'db>;
+    fn annotation_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        function: Option<&Function<'db, '_>>,
+    ) -> Option<Type<'db, 'db>>;
     fn param_type(&self) -> ParamType;
 }
 
@@ -20,8 +25,19 @@ impl<'db> Param<'db> for ASTParam<'db> {
         self.name_definition().as_code()
     }
 
-    fn annotation_type(&self) -> Type<'db, 'db> {
-        todo!()
+    fn annotation_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        function: Option<&Function<'db, '_>>,
+    ) -> Option<Type<'db, 'db>> {
+        self.annotation().map(|annotation| {
+            function
+                .unwrap()
+                .reference
+                .file
+                .inference(i_s)
+                .use_cached_annotation_type(annotation)
+        })
     }
 
     fn param_type(&self) -> ParamType {

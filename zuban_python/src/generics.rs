@@ -11,6 +11,7 @@ use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
+use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{
     Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
@@ -359,88 +360,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
                 function.type_vars(i_s);
-                let mut iter = function.iter_args_with_params(self.args, self.skip_first_param);
-                let mut missing_params = vec![];
-                for p in iter.by_ref() {
-                    if p.argument.is_none() && p.param.default().is_none() {
-                        self.matches = false;
-                        missing_params.push(p.param);
-                        continue;
-                    }
-                    if let Some(annotation) = p.param.annotation() {
-                        if let Some(argument) = p.argument {
-                            let value = argument.infer(i_s);
-                            let value_class = value.class_as_type(i_s);
-                            let mut matches = true;
-                            let on_type_error = self.on_type_error;
-                            function
-                                .reference
-                                .file
-                                .inference(i_s)
-                                .use_cached_annotation_type(annotation)
-                                .error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
-                                    on_type_error(
-                                        i_s,
-                                        argument.as_node_ref(),
-                                        class,
-                                        Some(&function),
-                                        &p,
-                                        t1,
-                                        t2,
-                                    );
-                                    matches = false;
-                                });
-                            self.matches &= matches;
-                        }
-                    }
-                }
-                if iter.has_unused_argument() {
-                    self.args.node_reference().add_typing_issue(
-                        i_s.db,
-                        IssueType::ArgumentIssue(format!(
-                            "Too many arguments for {}",
-                            function.diagnostic_string(class),
-                        )),
-                    );
-                    self.matches = false
-                } else if !iter.unused_keyword_arguments.is_empty() {
-                    for unused in iter.unused_keyword_arguments {
-                        match unused {
-                            Argument::Keyword(name, reference) => {
-                                let s = if function
-                                    .node()
-                                    .params()
-                                    .iter()
-                                    .any(|p| p.name_definition().as_code() == name)
-                                {
-                                    format!(
-                                        "{:?} gets multiple values for keyword argument {name:?}",
-                                        function.name(),
-                                    )
-                                } else {
-                                    format!(
-                                        "unexpected keyword argument {name:?} for {:?}",
-                                        function.name(),
-                                    )
-                                };
-                                debug!("TODO this keyword param could also not exist");
-                                reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
-                            }
-                            _ => unreachable!(),
-                        }
-                    }
-                } else {
-                    for param in missing_params {
-                        self.args.node_reference().add_typing_issue(
-                            i_s.db,
-                            IssueType::ArgumentIssue(format!(
-                                "Missing positional argument {:?} in call to {}",
-                                param.name_definition().as_code(),
-                                function.diagnostic_string(class),
-                            )),
-                        );
-                    }
-                }
+                self.calculate_type_vars_for_params(
+                    i_s,
+                    class,
+                    Some(&function),
+                    function.iter_args_with_params(self.args, self.skip_first_param),
+                );
             }
             FunctionOrCallable::Callable(callable) => {
                 for param in callable.iter_params_with_args(self.args) {
@@ -485,6 +410,86 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 },
                 calculated.as_string(i_s.db, None, FormatStyle::Short),
             );
+        }
+    }
+
+    fn calculate_type_vars_for_params<P: Param<'db>>(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class<'db, '_>>,
+        function: Option<&Function<'db, '_>>,
+        mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
+    ) {
+        let mut missing_params = vec![];
+        for p in args_with_params.by_ref() {
+            if p.argument.is_none() && !p.param.has_default() {
+                self.matches = false;
+                missing_params.push(p.param);
+                continue;
+            }
+            if let Some(argument) = p.argument {
+                if let Some(annotation_type) = p.param.annotation_type(i_s, function) {
+                    let value = argument.infer(i_s);
+                    let value_class = value.class_as_type(i_s);
+                    let mut matches = true;
+                    let on_type_error = self.on_type_error;
+                    annotation_type.error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
+                        on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
+                        matches = false;
+                    });
+                    self.matches &= matches;
+                }
+            }
+        }
+        if args_with_params.has_unused_argument() {
+            let mut s = "Too many arguments".to_owned();
+            if let Some(function) = function {
+                s += " for ";
+                s += &function.diagnostic_string(class);
+            }
+
+            self.args
+                .node_reference()
+                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+            self.matches = false
+        } else if !args_with_params.unused_keyword_arguments.is_empty() {
+            for unused in args_with_params.unused_keyword_arguments {
+                match unused {
+                    Argument::Keyword(name, reference) => {
+                        let function = function.unwrap_or_else(|| todo!());
+                        let s = if function
+                            .node()
+                            .params()
+                            .iter()
+                            .any(|p| p.name_definition().as_code() == name)
+                        {
+                            format!(
+                                "{:?} gets multiple values for keyword argument {name:?}",
+                                function.name(),
+                            )
+                        } else {
+                            format!(
+                                "Unexpected keyword argument {name:?} for {:?}",
+                                function.name(),
+                            )
+                        };
+                        debug!("TODO this keyword param could also not exist");
+                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        } else {
+            for param in missing_params {
+                let mut s = format!("Missing positional argument {:?} in call", param.name());
+                if let Some(function) = function {
+                    s += " to ";
+                    s += &function.diagnostic_string(class);
+                }
+                self.args
+                    .node_reference()
+                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+            }
         }
     }
 
