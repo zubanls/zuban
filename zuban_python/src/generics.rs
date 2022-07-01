@@ -479,14 +479,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         } else {
             for param in missing_params {
-                let mut s = format!("Missing positional argument {:?} in call", param.name());
-                if let Some(function) = function {
-                    s += " to ";
-                    s += &function.diagnostic_string(class);
+                if let Some(param_name) = param.name() {
+                    let mut s = format!("Missing positional argument {:?} in call", param_name);
+                    if let Some(function) = function {
+                        s += " to ";
+                        s += &function.diagnostic_string(class);
+                    }
+                    self.args
+                        .node_reference()
+                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                } else {
+                    todo!()
                 }
-                self.args
-                    .node_reference()
-                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             }
         }
     }

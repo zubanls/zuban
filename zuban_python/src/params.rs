@@ -8,7 +8,7 @@ use crate::value::{Function, ParamWithArgument};
 
 pub trait Param<'db>: Copy {
     fn has_default(&self) -> bool;
-    fn name(&self) -> &str;
+    fn name(&self) -> Option<&str>;
     fn annotation_type(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -22,8 +22,8 @@ impl<'db> Param<'db> for ASTParam<'db> {
         self.default().is_some()
     }
 
-    fn name(&self) -> &str {
-        self.name_definition().as_code()
+    fn name(&self) -> Option<&str> {
+        Some(self.name_definition().as_code())
     }
 
     fn annotation_type(
@@ -51,8 +51,8 @@ impl<'db> Param<'db> for &'db CallableParam {
         false
     }
 
-    fn name(&self) -> &str {
-        ""
+    fn name(&self) -> Option<&str> {
+        None
     }
 
     fn annotation_type(
@@ -126,7 +126,7 @@ impl<'db, 'a, I: Iterator<Item = P>, P: Param<'db>> Iterator
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
                     Argument::Keyword(name, reference) => {
-                        if *name == param.name() {
+                        if Some(*name) == param.name() {
                             return Some(InferrableParam2 {
                                 param,
                                 argument: Some(self.unused_keyword_arguments.remove(i)),
@@ -142,7 +142,7 @@ impl<'db, 'a, I: Iterator<Item = P>, P: Param<'db>> Iterator
                     for arg in &mut self.arguments {
                         match arg {
                             Argument::Keyword(name, reference) => {
-                                if name == param.name() {
+                                if Some(name) == param.name() {
                                     argument = Some(arg);
                                     break;
                                 } else {
@@ -160,7 +160,7 @@ impl<'db, 'a, I: Iterator<Item = P>, P: Param<'db>> Iterator
                     for arg in &mut self.arguments {
                         match arg {
                             Argument::Keyword(name, reference) => {
-                                if name == param.name() {
+                                if Some(name) == param.name() {
                                     argument = Some(arg);
                                     break;
                                 } else {
