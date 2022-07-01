@@ -52,7 +52,7 @@ impl<'db> Param<'db> for &'db CallableParam {
     }
 
     fn name(&self) -> &str {
-        todo!()
+        ""
     }
 
     fn annotation_type(
@@ -171,7 +171,19 @@ impl<'db, 'a, I: Iterator<Item = P>, P: Param<'db>> Iterator
                         }
                     }
                 }
-                ParamType::PositionalOnly => todo!(),
+                ParamType::PositionalOnly => {
+                    argument = self.arguments.next();
+                    if let Some(arg) = argument {
+                        match arg {
+                            Argument::Positional(_, _) => (),
+                            Argument::Keyword(_, _) => {
+                                self.unused_keyword_arguments.push(arg);
+                                argument = None;
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                }
                 ParamType::Starred => {
                     self.current_starred_param = Some(param);
                     return self.next();

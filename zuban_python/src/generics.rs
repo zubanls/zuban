@@ -92,6 +92,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     DbType::Any
                 }
             }
+            Self::Params(_) => todo!(),
             Self::DbType(g) => (*g).clone(),
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
@@ -109,6 +110,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIterator::DbType(g),
             Self::Class(s) => GenericsIterator::Class(*s),
+            Self::Params(p) => GenericsIterator::Params(p.iter()),
             Self::FunctionParams(f) => {
                 GenericsIterator::ParamIterator(f.reference.file, f.iter_params())
             }
@@ -144,6 +146,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
             )),
+            Self::Params(_) => todo!(),
             Self::None => None,
         }
     }
@@ -202,6 +205,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 pub enum GenericsIterator<'db, 'a> {
     SliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'db, 'a>>),
+    Params(std::slice::Iter<'a, CallableParam>),
     DbType(&'a DbType),
     Class(&'a Class<'db, 'a>),
     ParamIterator(&'db PythonFile, ParamIterator<'db>),
@@ -238,6 +242,9 @@ impl<'db> GenericsIterator<'db, '_> {
                 let g = replace_class_vars!(i_s, g, type_var_generics);
                 callable(i_s, Type::from_db_type(i_s.db, &g))
             }),
+            Self::Params(iterator) => iterator
+                .next()
+                .map(|p| callable(i_s, Type::from_db_type(i_s.db, &p.db_type))),
             Self::DbType(g) => {
                 let result = Some(callable(i_s, Type::from_db_type(i_s.db, g)));
                 *self = Self::None;
@@ -370,6 +377,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 );
             }
             FunctionOrCallable::Callable(callable) => {
+                // TODO this is soooo wrong.
+                let callable: &'db Callable<'db> = unsafe { std::mem::transmute(callable) };
                 if let Some(params) = callable.iter_params() {
                     self.calculate_type_vars_for_params(
                         i_s,
@@ -442,24 +451,27 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             for unused in args_with_params.unused_keyword_arguments {
                 match unused {
                     Argument::Keyword(name, reference) => {
-                        let function = function.unwrap_or_else(|| todo!());
-                        let s = if function
-                            .node()
-                            .params()
-                            .iter()
-                            .any(|p| p.name_definition().as_code() == name)
-                        {
-                            format!(
-                                "{:?} gets multiple values for keyword argument {name:?}",
-                                function.name(),
-                            )
+                        let s = if let Some(function) = function {
+                            if function
+                                .node()
+                                .params()
+                                .iter()
+                                .any(|p| p.name_definition().as_code() == name)
+                            {
+                                format!(
+                                    "{:?} gets multiple values for keyword argument {name:?}",
+                                    function.name(),
+                                )
+                            } else {
+                                format!(
+                                    "Unexpected keyword argument {name:?} for {:?}",
+                                    function.name(),
+                                )
+                            }
                         } else {
-                            format!(
-                                "Unexpected keyword argument {name:?} for {:?}",
-                                function.name(),
-                            )
+                            debug!("TODO this keyword param could also exist");
+                            format!("Unexpected keyword argument {name:?}")
                         };
-                        debug!("TODO this keyword param could also not exist");
                         reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
                     }
                     _ => unreachable!(),
