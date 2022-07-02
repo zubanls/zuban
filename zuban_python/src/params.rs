@@ -9,11 +9,11 @@ use crate::value::{Function, ParamWithArgument};
 pub trait Param<'x>: Copy {
     fn has_default(&self) -> bool;
     fn name(&self) -> Option<&str>;
-    fn annotation_type<'db: 'x>(
+    fn annotation_type<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'x, 'x>>;
+    ) -> Option<Type<'db, 'x>>;
     fn param_type(&self) -> ParamType;
 }
 
@@ -26,11 +26,11 @@ impl<'x> Param<'x> for ASTParam<'x> {
         Some(self.name_definition().as_code())
     }
 
-    fn annotation_type<'db: 'x>(
+    fn annotation_type<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'x, 'x>> {
+    ) -> Option<Type<'db, 'x>> {
         self.annotation().map(|annotation| {
             function
                 .unwrap()
@@ -55,11 +55,11 @@ impl<'x> Param<'x> for &'x CallableParam {
         None
     }
 
-    fn annotation_type<'db: 'x>(
+    fn annotation_type<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'x, 'x>> {
+    ) -> Option<Type<'db, 'x>> {
         Some(Type::from_db_type(i_s.db, &self.db_type))
     }
 

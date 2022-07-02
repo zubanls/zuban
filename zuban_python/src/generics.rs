@@ -428,13 +428,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     let value_class = value.class_as_type(i_s);
                     let mut matches = true;
                     let on_type_error = self.on_type_error;
-                    /*
                     annotation_type.error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
                         on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
                         matches = false;
                     });
-                    */
-                    todo!();
                     self.matches &= matches;
                 }
             }
