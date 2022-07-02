@@ -1,4 +1,6 @@
-use parsa_python_ast::{Expression, ParamIterator, SliceContent, SliceIterator, SliceType, Slices};
+use parsa_python_ast::{
+    Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
+};
 
 use crate::arguments::{Argument, Arguments};
 use crate::database::CallableParam;
@@ -491,11 +493,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         } else {
             for param in missing_params {
                 if let Some(param_name) = param.name() {
-                    let mut s = format!("Missing positional argument {:?} in call", param_name);
-                    if let Some(function) = function {
-                        s += " to ";
-                        s += &function.diagnostic_string(class);
-                    }
+                    let s = if param.param_type() == ParamType::KeywordOnly {
+                        let mut s = format!("Missing named argument {:?}", param_name);
+                        if let Some(function) = function {
+                            s += " for ";
+                            s += &function.diagnostic_string(class);
+                        }
+                        s
+                    } else {
+                        let mut s = format!("Missing positional argument {:?} in call", param_name);
+                        if let Some(function) = function {
+                            s += " to ";
+                            s += &function.diagnostic_string(class);
+                        }
+                        s
+                    };
                     self.args
                         .node_reference()
                         .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
