@@ -1,11 +1,6 @@
 testKwargsArgumentInFunctionBodyWithImplicitAny
 testKwargsAllowedInDunderCall
 testKwargsAllowedInDunderCallKwOnly
-testKeywordArgumentAndCommentSignature
-testKeywordArgumentAndCommentSignature2
-testKeywordVarArgsAndCommentSignature
-testUnexpectedMethodKwargInNestedClass
-testUnexpectedMethodKwargFromOtherModule
 
 # Cycles
 testCyclicUndefinedImportWithName
@@ -620,6 +615,9 @@ testIncompatibleSignatureInComment
 testFunctionSignatureAsComment
 testMethodSignatureAsComment
 testVarArgsAndCommentSignature
+testKeywordArgumentAndCommentSignature
+testKeywordArgumentAndCommentSignature2
+testKeywordVarArgsAndCommentSignature
 
 # --scripts-are-modules
 testScriptsAreModules

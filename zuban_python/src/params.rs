@@ -69,7 +69,7 @@ impl<'x> Param<'x> for &'x CallableParam {
 }
 
 pub struct InferrableParamIterator2<'db, 'a, I, P> {
-    arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
@@ -87,10 +87,6 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
             current_double_starred_param: None,
             too_many_positional_arguments: false,
         }
-    }
-
-    pub fn has_unused_argument(&mut self) -> bool {
-        self.arguments.next().is_some()
     }
 
     pub fn has_unused_keyword_arguments(&mut self) -> bool {

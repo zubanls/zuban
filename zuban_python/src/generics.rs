@@ -449,16 +449,32 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 .node_reference()
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             self.matches = false
-        } else if args_with_params.has_unused_argument() {
-            let mut s = "Too many arguments".to_owned();
-            if let Some(function) = function {
-                s += " for ";
-                s += &function.diagnostic_string(class);
+        } else if args_with_params.arguments.peek().is_some() {
+            let mut too_many = false;
+            for arg in args_with_params.arguments {
+                match arg {
+                    Argument::Keyword(name, reference) => {
+                        let mut s = format!("Unexpected keyword argument {name:?}");
+                        if let Some(function) = function {
+                            s += " for ";
+                            s += &function.diagnostic_string(class);
+                        }
+                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                    }
+                    _ => too_many = true,
+                }
             }
+            if too_many {
+                let mut s = "Too many arguments".to_owned();
+                if let Some(function) = function {
+                    s += " for ";
+                    s += &function.diagnostic_string(class);
+                }
 
-            self.args
-                .node_reference()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                self.args
+                    .node_reference()
+                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+            }
             self.matches = false
         } else if !args_with_params.unused_keyword_arguments.is_empty() {
             for unused in args_with_params.unused_keyword_arguments {
