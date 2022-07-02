@@ -1,3 +1,12 @@
+testKwargsArgumentInFunctionBodyWithImplicitAny
+testKwargsAllowedInDunderCall
+testKwargsAllowedInDunderCallKwOnly
+testKeywordArgumentAndCommentSignature
+testKeywordArgumentAndCommentSignature2
+testKeywordVarArgsAndCommentSignature
+testUnexpectedMethodKwargInNestedClass
+testUnexpectedMethodKwargFromOtherModule
+
 # Cycles
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1
@@ -302,12 +311,30 @@ testCallerVarargsAndComplexTypeInference
 testCallerTupleVarArgsAndGenericCalleeVarArg
 testInvariantTypeConfusingNames2
 
+# **kwargs input
+testKwargsAfterBareArgs
+testCallingFunctionWithKeywordVarArgs
+testPassingMappingForKeywordVarArg
+testPassingMappingSubclassForKeywordVarArg
+testInvalidTypeForKeywordVarArg
+testPassingKeywordVarArgsToNonVarArgsFunction
+testBothKindsOfVarArgs
+testPassingMultipleKeywordVarArgs
+testPassingKeywordVarArgsToVarArgsOnlyFunction
+testCallsWithStars
+testCallStar2WithStar
+testStarArgsAndKwArgsSpecialCase
+testPassingEmptyDictWithStars
+testKeywordUnpackWithDifferentTypes
+
 # "???" does not return a value
 testCallingVarArgsFunction
 
 # Implicit Param Option X = None -> Optional[X] inference
 testCallingVarArgsFunctionWithDefaultArgs
 testOneOfSeveralOptionalKeywordArguments
+testKeywordArgAfterVarArgs
+testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 
 # Decorators
 *Deco*

@@ -190,7 +190,10 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'x>> Iterator
                     self.current_starred_param = Some(param);
                     return self.next();
                 }
-                ParamType::DoubleStarred => todo!(),
+                ParamType::DoubleStarred => {
+                    self.current_double_starred_param = Some(param);
+                    return self.next();
+                }
             }
             Some(InferrableParam2 { param, argument })
         })
