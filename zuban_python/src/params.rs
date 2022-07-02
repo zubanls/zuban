@@ -74,6 +74,7 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
+    pub too_many_positional_arguments: bool,
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
@@ -84,6 +85,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
             unused_keyword_arguments: vec![],
             current_starred_param: None,
             current_double_starred_param: None,
+            too_many_positional_arguments: false,
         }
     }
 
@@ -167,7 +169,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'x>> Iterator
                                     self.unused_keyword_arguments.push(arg);
                                 }
                             }
-                            _ => todo!(),
+                            _ => self.too_many_positional_arguments = true,
                         }
                     }
                 }

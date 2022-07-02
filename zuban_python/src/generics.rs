@@ -436,7 +436,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
         }
-        if args_with_params.has_unused_argument() {
+        if args_with_params.too_many_positional_arguments {
+            let mut s = "Too many positional arguments".to_owned();
+            if let Some(function) = function {
+                s += " for ";
+                s += &function.diagnostic_string(class);
+            }
+
+            self.args
+                .node_reference()
+                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+            self.matches = false
+        } else if args_with_params.has_unused_argument() {
             let mut s = "Too many arguments".to_owned();
             if let Some(function) = function {
                 s += " for ";
