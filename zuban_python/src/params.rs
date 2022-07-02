@@ -6,18 +6,18 @@ use crate::generics::Type;
 use crate::inference_state::InferenceState;
 use crate::value::{Function, ParamWithArgument};
 
-pub trait Param<'db>: Copy {
+pub trait Param<'x>: Copy {
     fn has_default(&self) -> bool;
     fn name(&self) -> Option<&str>;
-    fn annotation_type(
+    fn annotation_type<'db: 'x>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'db>>;
+    ) -> Option<Type<'x, 'x>>;
     fn param_type(&self) -> ParamType;
 }
 
-impl<'db> Param<'db> for ASTParam<'db> {
+impl<'x> Param<'x> for ASTParam<'x> {
     fn has_default(&self) -> bool {
         self.default().is_some()
     }
@@ -26,11 +26,11 @@ impl<'db> Param<'db> for ASTParam<'db> {
         Some(self.name_definition().as_code())
     }
 
-    fn annotation_type(
+    fn annotation_type<'db: 'x>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'db>> {
+    ) -> Option<Type<'x, 'x>> {
         self.annotation().map(|annotation| {
             function
                 .unwrap()
@@ -46,7 +46,7 @@ impl<'db> Param<'db> for ASTParam<'db> {
     }
 }
 
-impl<'db> Param<'db> for &'db CallableParam {
+impl<'x> Param<'x> for &'x CallableParam {
     fn has_default(&self) -> bool {
         false
     }
@@ -55,11 +55,11 @@ impl<'db> Param<'db> for &'db CallableParam {
         None
     }
 
-    fn annotation_type(
+    fn annotation_type<'db: 'x>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'db>> {
+    ) -> Option<Type<'x, 'x>> {
         Some(Type::from_db_type(i_s.db, &self.db_type))
     }
 
@@ -96,7 +96,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db, 'a, I: Iterator<Item = P>, P: Param<'db>> Iterator
+impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'x>> Iterator
     for InferrableParamIterator2<'db, 'a, I, P>
 {
     type Item = InferrableParam2<'db, 'a, P>;

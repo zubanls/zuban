@@ -377,8 +377,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 );
             }
             FunctionOrCallable::Callable(callable) => {
-                // TODO this is soooo wrong.
-                let callable: &'db Callable<'db> = unsafe { std::mem::transmute(callable) };
                 if let Some(params) = callable.iter_params() {
                     self.calculate_type_vars_for_params(
                         i_s,
@@ -408,13 +406,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn calculate_type_vars_for_params<P: Param<'db>>(
+    fn calculate_type_vars_for_params<'x, P: Param<'x>>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         function: Option<&Function<'db, '_>>,
         mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
-    ) {
+    ) where
+        'db: 'x,
+    {
         let mut missing_params = vec![];
         for p in args_with_params.by_ref() {
             if p.argument.is_none() && !p.param.has_default() {
@@ -428,10 +428,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     let value_class = value.class_as_type(i_s);
                     let mut matches = true;
                     let on_type_error = self.on_type_error;
+                    /*
                     annotation_type.error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
                         on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
                         matches = false;
                     });
+                    */
+                    todo!();
                     self.matches &= matches;
                 }
             }
