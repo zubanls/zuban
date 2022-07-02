@@ -5,10 +5,7 @@ use crate::file::PythonInference;
 use crate::node_ref::NodeRef;
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    pub fn create_list_or_set_generics(
-        &mut self,
-        elements: ListOrSetElementIterator<'db>,
-    ) -> DbType {
+    pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
         let mut result = DbType::Unknown;
         for child in elements {
             result.union_in_place(match child {

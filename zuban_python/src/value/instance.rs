@@ -80,7 +80,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(

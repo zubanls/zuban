@@ -370,7 +370,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()
@@ -692,7 +692,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()

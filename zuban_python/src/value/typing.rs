@@ -73,7 +73,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         slice_type
             .file
@@ -123,7 +123,7 @@ impl<'db> TypingWithGenerics<'db> {
         }
     }
 
-    pub fn generics(&self) -> SliceType<'db> {
+    pub fn generics(&self) -> SliceType<'db, '_> {
         let primary = self.reference.as_primary();
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
@@ -345,7 +345,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
@@ -401,7 +401,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
@@ -564,7 +564,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         slice_type
             .as_node_ref()

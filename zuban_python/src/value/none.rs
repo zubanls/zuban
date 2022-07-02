@@ -32,7 +32,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         debug!("TODO None[...]");
         Inferred::new_any()

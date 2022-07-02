@@ -34,7 +34,7 @@ pub struct SimpleArguments<'db, 'a> {
     // primary "(" [arguments | comprehension] ")"
     file: &'db PythonFile,
     primary_node_index: NodeIndex,
-    details: ArgumentsDetails<'db>,
+    details: ArgumentsDetails<'a>,
     in_: Option<&'a Execution>,
     class_of_method: Option<Class<'db, 'a>>,
 }
@@ -79,7 +79,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         primary_node_index: NodeIndex,
-        details: ArgumentsDetails<'db>,
+        details: ArgumentsDetails<'a>,
         in_: Option<&'a Execution>,
         class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
@@ -292,19 +292,19 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 #[derive(Debug, Copy, Clone)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    Keyword(&'db str, NodeRef<'db>),
+    Keyword(&'a str, NodeRef<'db>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
     // The first argument is the position as a 1-based index
     Positional(usize, NodeRef<'db>),
-    SlicesTuple(Slices<'db>),
+    SlicesTuple(Slices<'db, 'a>),
 }
 
-impl<'db> Argument<'db, '_> {
+impl<'db, 'a> Argument<'db, 'a> {
     fn new_argument(position: usize, file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self::Positional(position, NodeRef { file, node_index })
     }
 
-    fn new_keyword_argument(file: &'db PythonFile, name: &'db str, node_index: NodeIndex) -> Self {
+    fn new_keyword_argument(file: &'db PythonFile, name: &'a str, node_index: NodeIndex) -> Self {
         Self::Keyword(name, NodeRef { file, node_index })
     }
 
@@ -364,13 +364,10 @@ impl<'db> Argument<'db, '_> {
 
 #[derive(Debug)]
 enum ArgumentIteratorBase<'db, 'a> {
-    Iterator(
-        &'db PythonFile,
-        std::iter::Enumerate<ArgumentsIterator<'db>>,
-    ),
-    Comprehension(&'db PythonFile, Comprehension<'db>),
+    Iterator(&'db PythonFile, std::iter::Enumerate<ArgumentsIterator<'a>>),
+    Comprehension(&'db PythonFile, Comprehension<'a>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
-    SliceType(SliceType<'db>),
+    SliceType(SliceType<'db, 'a>),
     Finished,
 }
 
@@ -447,7 +444,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         }
     }
 
-    pub fn new_slice(slice_type: SliceType<'db>) -> Self {
+    pub fn new_slice(slice_type: SliceType<'db, 'a>) -> Self {
         Self {
             current: ArgumentIteratorBase::SliceType(slice_type),
             next: None,

@@ -484,7 +484,7 @@ impl<'db, 'a> Class<'db, 'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        let database = i_s.db;
+                        let db = i_s.db;
                         let mut inference = self.reference.file.inference(&mut i_s);
                         let base = TypeComputation::new(
                             &mut inference,
@@ -494,7 +494,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if old_index < force_index {
                                         had_generic_or_protocol_issue = true;
                                         NodeRef::new(self.reference.file, n.index())
-                                            .add_typing_issue(database, IssueType::DuplicateTypeVar)
+                                            .add_typing_issue(db, IssueType::DuplicateTypeVar)
                                     } else if old_index != force_index {
                                         type_vars.move_index(old_index, force_index);
                                         type_vars_were_changed = true;
@@ -539,7 +539,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         incomplete_mro = true;
                                         NodeRef::new(self.reference.file, n.index())
                                             .add_typing_issue(
-                                                database,
+                                                db,
                                                 IssueType::CyclicDefinition(name),
                                             );
                                     } else {
@@ -559,7 +559,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
                                     NodeRef::new(self.reference.file, n.index()).add_typing_issue(
-                                        database,
+                                        db,
                                         IssueType::EnsureSingleGenericOrProtocol,
                                     );
                                 } else {
@@ -570,7 +570,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
                                     NodeRef::new(self.reference.file, n.index()).add_typing_issue(
-                                        database,
+                                        db,
                                         IssueType::EnsureSingleGenericOrProtocol,
                                     );
                                 } else {
@@ -775,7 +775,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         slice_type
             .file

@@ -119,7 +119,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
@@ -286,7 +286,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     fn get_item(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db>,
+        slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
         /*
         match slice_type {

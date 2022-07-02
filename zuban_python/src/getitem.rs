@@ -12,20 +12,20 @@ use crate::node_ref::NodeRef;
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
-pub struct SliceType<'db> {
+pub struct SliceType<'db, 'a> {
     pub file: &'db PythonFile,
-    pub ast_node: ASTSliceType<'db>,
+    pub ast_node: ASTSliceType<'a>,
     node_index: NodeIndex,
 }
 
-pub enum SliceTypeContent<'db> {
-    Simple(Simple<'db>),
-    Slice(Slice<'db>),
-    Slices(Slices<'db>),
+pub enum SliceTypeContent<'db, 'a> {
+    Simple(Simple<'db, 'a>),
+    Slice(Slice<'db, 'a>),
+    Slices(Slices<'db, 'a>),
 }
 
-impl<'db> SliceType<'db> {
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'db>) -> Self {
+impl<'db: 'a, 'a> SliceType<'db, 'a> {
+    pub fn new(file: &'db PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'a>) -> Self {
         Self {
             file,
             ast_node,
@@ -37,11 +37,11 @@ impl<'db> SliceType<'db> {
         NodeRef::new(self.file, self.node_index)
     }
 
-    pub fn as_args<'a>(&'a self) -> SliceArguments<'db, 'a> {
+    pub fn as_args<'x>(&'x self) -> SliceArguments<'db, 'x> {
         SliceArguments(self)
     }
 
-    pub fn unpack(&self) -> SliceTypeContent<'db> {
+    pub fn unpack(&self) -> SliceTypeContent<'db, 'a> {
         match self.ast_node {
             ASTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
                 file: self.file,
@@ -58,7 +58,7 @@ impl<'db> SliceType<'db> {
         }
     }
 
-    pub fn iter(&self) -> SliceTypeIterator<'db> {
+    pub fn iter(&self) -> SliceTypeIterator<'db, 'a> {
         match self.unpack() {
             SliceTypeContent::Simple(s) => {
                 SliceTypeIterator::SliceOrSimple(SliceOrSimple::Simple(s))
@@ -70,12 +70,12 @@ impl<'db> SliceType<'db> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Simple<'db> {
+pub struct Simple<'db, 'a> {
     pub file: &'db PythonFile,
-    pub named_expr: NamedExpression<'db>,
+    pub named_expr: NamedExpression<'a>,
 }
 
-impl<'db> Simple<'db> {
+impl<'db> Simple<'db, '_> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         self.file
             .inference(i_s)
@@ -88,40 +88,40 @@ impl<'db> Simple<'db> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slice<'db> {
+pub struct Slice<'db, 'a> {
     file: &'db PythonFile,
-    slice: ASTSlice<'db>,
+    slice: ASTSlice<'a>,
 }
 
-impl<'db> Slice<'db> {
+impl<'db> Slice<'db, '_> {
     pub fn as_node_ref(&self) -> NodeRef<'db> {
         NodeRef::new(self.file, self.slice.index())
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slices<'db> {
+pub struct Slices<'db, 'a> {
     pub file: &'db PythonFile,
-    slices: ASTSlices<'db>,
+    slices: ASTSlices<'a>,
 }
 
-impl<'db> Slices<'db> {
+impl<'db, 'a> Slices<'db, 'a> {
     pub fn as_node_ref(&self) -> NodeRef<'db> {
         NodeRef::new(self.file, self.slices.index())
     }
 
-    pub fn iter(&self) -> SliceIterator<'db> {
+    pub fn iter(&self) -> SliceIterator<'db, 'a> {
         SliceIterator(self.file, self.slices.iter())
     }
 }
 
 #[derive(Copy, Clone)]
-pub enum SliceOrSimple<'db> {
-    Simple(Simple<'db>),
-    Slice(Slice<'db>),
+pub enum SliceOrSimple<'db, 'a> {
+    Simple(Simple<'db, 'a>),
+    Slice(Slice<'db, 'a>),
 }
 
-impl<'db> SliceOrSimple<'db> {
+impl<'db> SliceOrSimple<'db, '_> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
@@ -137,10 +137,10 @@ impl<'db> SliceOrSimple<'db> {
     }
 }
 
-pub struct SliceIterator<'db>(&'db PythonFile, ASTSliceIterator<'db>);
+pub struct SliceIterator<'db, 'a>(&'db PythonFile, ASTSliceIterator<'a>);
 
-impl<'db> Iterator for SliceIterator<'db> {
-    type Item = SliceOrSimple<'db>;
+impl<'db, 'a> Iterator for SliceIterator<'db, 'a> {
+    type Item = SliceOrSimple<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // TODO it's actually a bad idea to pass node_index here
@@ -157,14 +157,14 @@ impl<'db> Iterator for SliceIterator<'db> {
     }
 }
 
-pub enum SliceTypeIterator<'db> {
-    SliceIterator(SliceIterator<'db>),
-    SliceOrSimple(SliceOrSimple<'db>),
+pub enum SliceTypeIterator<'db, 'a> {
+    SliceIterator(SliceIterator<'db, 'a>),
+    SliceOrSimple(SliceOrSimple<'db, 'a>),
     Finished,
 }
 
-impl<'db> Iterator for SliceTypeIterator<'db> {
-    type Item = SliceOrSimple<'db>;
+impl<'db, 'a> Iterator for SliceTypeIterator<'db, 'a> {
+    type Item = SliceOrSimple<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -183,7 +183,7 @@ impl<'db> Iterator for SliceTypeIterator<'db> {
 }
 
 #[derive(Debug)]
-pub struct SliceArguments<'db, 'a>(&'a SliceType<'db>);
+pub struct SliceArguments<'db, 'a>(&'a SliceType<'db, 'a>);
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {

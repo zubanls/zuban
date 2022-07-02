@@ -20,7 +20,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn calc_stmts_diagnostics(
         &mut self,
-        stmts: StmtIterator<'db>,
+        stmts: StmtIterator,
         class: Option<Class<'db, '_>>,
         func: Option<&Function<'db, '_>>,
     ) {
@@ -119,7 +119,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn calc_block_diagnostics(
         &mut self,
-        block: Block<'db>,
+        block: Block,
         class: Option<Class<'db, '_>>,
         func: Option<&Function<'db, '_>>,
     ) {
@@ -129,7 +129,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn calc_class_diagnostics(&mut self, class: ClassDef<'db>) {
+    fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let class =
             Class::from_position(NodeRef::new(self.file, class.index()), Generics::None, None)
@@ -141,7 +141,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .calc_block_diagnostics(block, Some(class), None)
     }
 
-    fn calc_function_diagnostics(&mut self, f: FunctionDef<'db>, class: Option<Class<'db, '_>>) {
+    fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class<'db, '_>>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
@@ -192,7 +192,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_return_stmt_diagnostics(
         &mut self,
         func: Option<&Function<'db, '_>>,
-        return_stmt: ReturnStmt<'db>,
+        return_stmt: ReturnStmt,
     ) {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
@@ -212,7 +212,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn calc_try_stmt_diagnostics(
         &mut self,
-        try_stmt: TryStmt<'db>,
+        try_stmt: TryStmt,
         class: Option<Class<'db, '_>>,
         func: Option<&Function<'db, '_>>,
     ) {
@@ -242,13 +242,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn calc_fstring_diagnostics(&mut self, fstring: FString<'db>) {
+    pub fn calc_fstring_diagnostics(&mut self, fstring: FString) {
         self.calc_fstring_content_diagnostics(fstring.iter_content())
     }
 
-    fn calc_fstring_content_diagnostics(
+    fn calc_fstring_content_diagnostics<'x>(
         &mut self,
-        iter: impl Iterator<Item = FStringContent<'db>>,
+        iter: impl Iterator<Item = FStringContent<'x>>,
     ) {
         for content in iter {
             match content {
