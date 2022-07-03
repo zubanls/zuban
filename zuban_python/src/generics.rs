@@ -549,6 +549,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         type_var_usage: &TypeVarUsage,
         value_type: Type<'db, '_>,
     ) -> bool {
+        let type_var = &type_var_usage.type_var;
         if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
@@ -564,27 +565,41 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             &mut self.func_or_callable,
                             FunctionOrCallable::Function(class, new_func),
                         );
-                        let result = g.matches(
-                            i_s,
-                            Some(self),
-                            value_type,
-                            type_var_usage.type_var.variance,
-                        );
+                        let result = g.matches(i_s, Some(self), value_type, type_var.variance);
                         self.func_or_callable = old;
                         return result;
                     } else if !matches!(f.class.unwrap().generics, Generics::None) {
                         let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                         // TODO nth should return a type instead of DbType
                         let g = Type::from_db_type(i_s.db, &g);
-                        return g.matches(
-                            i_s,
-                            Some(self),
-                            value_type,
-                            type_var_usage.type_var.variance,
-                        );
+                        return g.matches(i_s, Some(self), value_type, type_var.variance);
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
+            }
+        }
+        if !type_var.constraints.is_empty()
+            && !type_var.constraints.iter().any(|t| {
+                Type::from_db_type(i_s.db, t).matches(
+                    i_s,
+                    Some(self),
+                    value_type.clone(),
+                    Variance::Covariant,
+                )
+            })
+        {
+            match self.func_or_callable {
+                FunctionOrCallable::Function(class, f) => {
+                    self.args.node_reference().add_typing_issue(
+                        i_s.db,
+                        IssueType::InvalidTypeVarValue(
+                            type_var.name(i_s.db).to_owned(),
+                            f.name().to_owned(),
+                            value_type.as_string(i_s, None, FormatStyle::Short),
+                        ),
+                    );
+                }
+                _ => todo!(),
             }
         }
         if self.match_type == type_var_usage.type_ {

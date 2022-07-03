@@ -40,6 +40,7 @@ pub(crate) enum IssueType {
     UnboundTypeVar(std::rc::Rc<TypeVar>),
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected(&'static str),
+    InvalidTypeVarValue(String, String, String),
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -231,6 +232,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
             IssueType::TypeVarExpected(s) => format!("Free type variable expected in {s}[...]"),
+            IssueType::InvalidTypeVarValue(type_var, func, type_) =>
+                format!("Value of type variable {type_var:?} of {func:?} cannot be {type_:?}"),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
