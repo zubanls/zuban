@@ -1,6 +1,4 @@
-testKwargsArgumentInFunctionBodyWithImplicitAny
-testKwargsAllowedInDunderCall
-testKwargsAllowedInDunderCallKwOnly
+
 
 # Cycles
 testCyclicUndefinedImportWithName
@@ -103,6 +101,10 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testNewAnalyzerForwardAliasFromUnion
 # Union wrong because of as_inferred (BoundMethod)
 testNewAnalyzerBuiltinAliasesFixed
+
+# BoundMethod class
+testKwargsAllowedInDunderCall
+testKwargsAllowedInDunderCallKwOnly
 
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
@@ -330,6 +332,9 @@ testCallingVarArgsFunctionWithDefaultArgs
 testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
+
+# Implicit any param
+testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Decorators
 *Deco*
