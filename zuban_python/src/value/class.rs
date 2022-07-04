@@ -276,7 +276,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 t.type_var.name(i_s.db).to_owned()
             }
-            Self::TypeWithDbType(g) => g.as_type_string(i_s.db, None, style),
+            Self::TypeWithDbType(g) => format!("Type[{}]", g.as_type_string(i_s.db, None, style)),
             Self::Tuple(c) => c.as_type_string(i_s.db, style),
             Self::Callable(c) => c.as_type_string(i_s.db, style),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
