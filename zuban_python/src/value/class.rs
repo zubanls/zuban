@@ -318,7 +318,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => todo!(),
             Self::TypingClass(c) => c.as_db_type(),
-            Self::TypingClassType(c) => todo!(),
+            Self::TypingClassType(c) => todo!("{c:?}"),
             Self::NoneType => DbType::Type(Box::new(DbType::None)),
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
         }

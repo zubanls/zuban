@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
-const USE_MYPY_TEST_FILES: [&str; 14] = [
+const USE_MYPY_TEST_FILES: [&str; 15] = [
     "fine-grained.test",
     "check-generics.test",
     "check-generic-alias.test",
@@ -31,7 +31,7 @@ const USE_MYPY_TEST_FILES: [&str; 14] = [
     //"check-classvar.test",
     //"check-overloading.test",
     //"check-literal.test",
-    //"check-unions.test",
+    "check-unions.test",
     //"check-union-or-syntax.test",
     //"check-protocols.test",
     //"check-callable.test",

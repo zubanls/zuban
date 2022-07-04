@@ -1,3 +1,9 @@
+testUnionAttributeAccess
+testUnionIndexing
+testUnionWithNoneItem
+testOptional
+testUnionAndBinaryOperation
+
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
 testTypeVarBoundToOldUnionAttributeAccess
@@ -21,6 +27,8 @@ testBoundGenericFunctions
 testContravariant
 testInheritedConstructor
 
+# Duplicate in Union
+testUnionMethodCalls
 
 # Duplicate base class
 testIncludingBaseClassTwice
@@ -101,6 +109,7 @@ testNoneHasBoolShowNoneErrorsFalse
 # int -> float promotion
 testNewAnalyzerPromotion
 testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
+testSimplifyingUnionAndTypePromotions
 
 # Class in Class
 testNewAnalyzerNestedClass*
@@ -150,6 +159,7 @@ testInvalidKindsOfArgsToCast
 testNewAnalyzerCastForward*
 # NoReturn
 testNoReturnTypeAlias
+testUnionWithNoReturn
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
@@ -158,6 +168,8 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testNewAnalyzerForwardAliasFromUnion
 # Union wrong because of as_inferred (BoundMethod)
 testNewAnalyzerBuiltinAliasesFixed
+# Union simplification
+testUnionSimplification*
 
 # BoundMethod class
 testKwargsAllowedInDunderCall
@@ -185,6 +197,14 @@ testNewAnalyzerConditionallyDefineFuncOverVar
 testIsinstanceAndTypeVarValues*
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues*
+# isinstance & union
+testUnion1
+testUnion2
+testUnion3
+testUnionAnyIsInstance
+
+# All conditional function variants must have identical signatures (flow analysis)
+testUnionOrderEquivalence
 
 # Visibility of imports in pyi
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
