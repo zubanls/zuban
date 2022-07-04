@@ -443,7 +443,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        todo!()
+        ClassLike::TypeWithDbType(self.db_type)
     }
 
     fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {

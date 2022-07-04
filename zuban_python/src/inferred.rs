@@ -138,6 +138,9 @@ impl<'db> Inferred<'db> {
                     todo!()
                 }
                 DbType::Any => return Self::new_any(),
+                DbType::Type(_) => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(
+                    Box::new(DbType::Type(c)),
+                )),
                 _ => todo!("{c:?}"),
             },
             DbType::None => return Inferred::new_none(),
