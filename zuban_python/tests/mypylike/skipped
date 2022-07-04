@@ -1,4 +1,9 @@
-
+testTypeVarWithAnyTypeBound
+testGenericTypeWithTypevarValues
+testConstructGenericTypeWithTypevarValuesAndTypeInference
+testGenericTypeWithTypevarValuesAndSubtypePromotion
+testMultipleClassTypevarsWithValues2
+testGenericFunctionSubtypingWithTypevarValues
 
 # Cycles
 testCyclicUndefinedImportWithName
@@ -24,7 +29,6 @@ testProhibitBoundTypeVariableReuseForAliases
 testMoreInvalidTypevarArguments
 testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
-*TypeVarValues*
 testNewAnalyzerTypeVarForwardReference*
 *TypeVarBound*
 testNewAnalyzerTypeArgBoundCheck
@@ -35,9 +39,36 @@ testNewAnalyzerApplicationForward4
 
 testInvalidTypevarValues
 
+# Type Var Value in func
+testCheckGenericFunctionBodyWithTypeVarValues
+testCheckGenericFunctionBodyWithTypeVarValues2
+testTypeInferenceAndTypeVarValues
+testTypeDeclaredBasedOnTypeVarWithValues
+testTypeVarValuesAndNestedCalls
+testGenericTypeWithTypevarValuesAndTypevarArgument
+testGenericTypeBodyWithTypevarValues
+testAttributeInGenericTypeWithTypevarValues*
+testMultipleClassTypevarsWithValues1
+testGenericFunctionWithNormalAndRestrictedTypevar
+testDefineAttributeInGenericMethodUsingTypeVarWithValues
+testTypevarValuesSpecialCase1
+
+testTypeVarValuesFunction
+testTypeVarValuesClass
+testTypeVarValuesMethod1
+testTypeVarValuesMethod2
+testTypeVarValuesRuntime
+
+# Nested type vars
+testInnerFunctionWithTypevarValues
+testInnerFunctionMutualRecursionWithTypevarValues
+
 # Type Var overrides
 testTypeInferenceWithCalleeVarArgs
 testTypeInferenceWithCalleeVarArgsAndDefaultArgs
+
+# Type variable "C.T" cannot be used as an expression
+testClassMemberTypeVarInFunctionBody
 
 # Literal
 testNewAnalyzerBool
@@ -76,6 +107,7 @@ testClassmethodAndNonMethod
 testAddBaseClassMethodCausingInvalidOverride
 testModifyBaseClassMethodCausingInvalidOverride
 testClassImportAccessedInMethod
+testSelfTypeVarIndexExpr
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -108,6 +140,7 @@ testKwargsAllowedInDunderCallKwOnly
 
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
+testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -122,6 +155,11 @@ testNewAnalyzerVarTypeVarNoCrash
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
 testNewAnalyzerConditionallyDefineFuncOverVar
+
+# isinstance flow analysis
+testIsinstanceAndTypeVarValues*
+testIsinstanceWithUserDefinedTypeAndTypeVarValues
+testIsinstanceWithUserDefinedTypeAndTypeVarValues*
 
 # Visibility of imports in pyi
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
@@ -528,6 +566,7 @@ testAssignmentInvariantNoteForList
 testAssignmentInvariantNoteForDict
 testInvariantListArgNote
 testInvariantDictArgNote
+testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
 
 # Type execution
 testNoneAlias

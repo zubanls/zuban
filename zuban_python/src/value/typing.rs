@@ -710,6 +710,22 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+        if !self.type_var_usage.type_var.constraints.is_empty() {
+            debug!("TODO type var values");
+            /*
+            for db_type in self.type_var_usage.type_var.constraints.iter() {
+                return match db_type {
+                    DbType::Class(link) => Instance::new(
+                        Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)
+                            .unwrap(),
+                        &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
+                    )
+                    .lookup_internal(i_s, name),
+                    _ => todo!("{:?}", db_type),
+                }
+            }
+            */
+        }
         if let Some(db_type) = &self.type_var_usage.type_var.bound {
             match db_type {
                 DbType::Class(link) => Instance::new(
