@@ -18,7 +18,7 @@ const EXPONENT: &str = r"[eE][-+]?[0-9](_?[0-9])*";
 
 lazy_static::lazy_static! {
     static ref INT_NUMBER: String = or(&[HEX_NUMBER, BIN_NUMBER, OCT_NUMBER, DEC_NUMBER]);
-    static ref EXP_FLOAT: String = or(&[r"[0-9](_?[0-9])*", EXPONENT]);
+    static ref EXP_FLOAT: String = r"[0-9](_?[0-9])*".to_owned() + EXPONENT;
     static ref POINT_FLOAT: String = or(&[
         r"[0-9](_?[0-9])*\.([0-9](_?[0-9])*)?",
         r"\.[0-9](_?[0-9])*"]) + "(" + EXPONENT + ")?";
@@ -666,6 +666,9 @@ mod tests {
         number4 r".13" => [(0, 3, Number)];
         number5 r"1." => [(0, 2, Number)];
         number6 r"1.2j" => [(0, 4, Number)];
+        number7 r"12e6" => [(0, 4, Number)];
+        number8 r"1.2e6" => [(0, 5, Number)];
+        not_number r"e2" => [(0, 2, Name)];
 
         backslash1 "\\\nfoo" => [(2, 3, Name)];
         backslash2 " \\\nfoo" => [(3, 0, Indent), (3, 3, Name), (6, 0, Dedent)];
