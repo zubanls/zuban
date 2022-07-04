@@ -572,7 +572,8 @@ impl<'db> Inferred<'db> {
                 debug!("TODO this should be NoneType instead of None");
                 callable(i_s, &NoneInstance())
             }
-            DbType::Any => todo!(),
+            // TODO it is wrong that this uses TypingType like Type(Type(Any))
+            DbType::Any => callable(i_s, &TypingType::new(i_s.db, db_type)),
             DbType::Unknown => todo!(),
             DbType::Never => todo!(),
         }
