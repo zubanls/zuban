@@ -1,3 +1,4 @@
+testNewAnalyzerTypeVarBoundForwardRef
 testTypeVarWithAnyTypeBound
 testGenericTypeWithTypevarValues
 testConstructGenericTypeWithTypevarValuesAndTypeInference
@@ -30,7 +31,6 @@ testMoreInvalidTypevarArguments
 testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 testNewAnalyzerTypeVarForwardReference*
-*TypeVarBound*
 testNewAnalyzerTypeArgBoundCheck
 testNewAnalyzerTypeArgValueRestriction
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
@@ -53,11 +53,15 @@ testGenericFunctionWithNormalAndRestrictedTypevar
 testDefineAttributeInGenericMethodUsingTypeVarWithValues
 testTypevarValuesSpecialCase1
 
+# type var from fine grained
 testTypeVarValuesFunction
 testTypeVarValuesClass
 testTypeVarValuesMethod1
 testTypeVarValuesMethod2
 testTypeVarValuesRuntime
+
+testTypeVarBoundClass
+testTypeVarBoundRuntime
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
@@ -108,6 +112,7 @@ testAddBaseClassMethodCausingInvalidOverride
 testModifyBaseClassMethodCausingInvalidOverride
 testClassImportAccessedInMethod
 testSelfTypeVarIndexExpr
+testNewAnalyzerTypeVarBoundInCycle
 
 # staticmethod
 testStaticmethodAndNonMethod

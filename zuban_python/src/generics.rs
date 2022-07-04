@@ -578,7 +578,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 FunctionOrCallable::Callable(c) => todo!(),
             }
         }
-        if !type_var.constraints.is_empty()
+        let mut mismatch_constraints = !type_var.constraints.is_empty()
             && !type_var.constraints.iter().any(|t| {
                 Type::from_db_type(i_s.db, t).matches(
                     i_s,
@@ -586,8 +586,17 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     value_type.clone(),
                     Variance::Covariant,
                 )
-            })
-        {
+            });
+        if let Some(bound) = &type_var.bound {
+            mismatch_constraints = mismatch_constraints
+                || !Type::from_db_type(i_s.db, bound).matches(
+                    i_s,
+                    Some(self),
+                    value_type.clone(),
+                    Variance::Covariant,
+                );
+        }
+        if mismatch_constraints {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
                     self.args.node_reference().add_typing_issue(
