@@ -1,3 +1,5 @@
+testBoundOnGenericClass
+testBoundInheritance
 testNewAnalyzerTypeVarBoundForwardRef
 testTypeVarWithAnyTypeBound
 testGenericTypeWithTypevarValues
@@ -5,6 +7,8 @@ testConstructGenericTypeWithTypevarValuesAndTypeInference
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 testMultipleClassTypevarsWithValues2
 testGenericFunctionSubtypingWithTypevarValues
+testBoundHigherOrderWithVoid
+testBoundGenericFunctions
 
 # Cycles
 testCyclicUndefinedImportWithName
@@ -116,6 +120,7 @@ testNewAnalyzerTypeVarBoundInCycle
 
 # staticmethod
 testStaticmethodAndNonMethod
+testBoundStaticMethod
 
 # NamedTuple
 *NamedTuple*
