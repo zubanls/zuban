@@ -132,7 +132,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                 Some(py_string) => py_string,
                 None => return None,
             };
-            let mut constraints = vec![];
+            let mut restrictions = vec![];
             let mut bound = None;
             let mut covariant = false;
             let mut contravariant = false;
@@ -143,7 +143,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                         if let Some(t) = inference
                             .compute_type_var_bound(node.as_named_expression().expression())
                         {
-                            constraints.push(t);
+                            restrictions.push(t);
                         } else {
                             return None;
                         }
@@ -187,7 +187,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
                     file: name_node.file.file_index(),
                     node_index: py_string.index(),
                 },
-                constraints: constraints.into_boxed_slice(),
+                restrictions: restrictions.into_boxed_slice(),
                 bound,
                 variance: match (covariant, contravariant) {
                     (false, false) => Variance::Invariant,

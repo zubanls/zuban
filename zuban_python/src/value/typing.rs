@@ -710,10 +710,10 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        if !self.type_var_usage.type_var.constraints.is_empty() {
+        if !self.type_var_usage.type_var.restrictions.is_empty() {
             debug!("TODO type var values");
             /*
-            for db_type in self.type_var_usage.type_var.constraints.iter() {
+            for db_type in self.type_var_usage.type_var.restrictions.iter() {
                 return match db_type {
                     DbType::Class(link) => Instance::new(
                         Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)

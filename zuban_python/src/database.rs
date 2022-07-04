@@ -981,7 +981,7 @@ impl TypeVars {
 #[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: PointLink,
-    pub constraints: Box<[DbType]>,
+    pub restrictions: Box<[DbType]>,
     pub bound: Option<DbType>,
     pub variance: Variance,
 }

@@ -578,8 +578,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 FunctionOrCallable::Callable(c) => todo!(),
             }
         }
-        let mut mismatch_constraints = !type_var.constraints.is_empty()
-            && !type_var.constraints.iter().any(|t| {
+        let mut mismatch_constraints = !type_var.restrictions.is_empty()
+            && !type_var.restrictions.iter().any(|t| {
                 Type::from_db_type(i_s.db, t).matches(
                     i_s,
                     Some(self),
