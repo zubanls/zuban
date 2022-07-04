@@ -1,3 +1,11 @@
+testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
+testInheritanceFromGenericWithImplicitDynamic
+testTypeVarBoundToOldUnionAttributeAccess
+testTypeVarBoundToNewUnionAttributeAccess
+
+testSubtypingIterableUnpacking1
+testSubtypingIterableUnpacking2
+
 testBoundOnGenericClass
 testBoundInheritance
 testNewAnalyzerTypeVarBoundForwardRef
@@ -9,6 +17,13 @@ testMultipleClassTypevarsWithValues2
 testGenericFunctionSubtypingWithTypevarValues
 testBoundHigherOrderWithVoid
 testBoundGenericFunctions
+
+testContravariant
+testInheritedConstructor
+
+
+# Duplicate base class
+testIncludingBaseClassTwice
 
 # Cycles
 testCyclicUndefinedImportWithName
@@ -185,6 +200,11 @@ testFlexibleAlias*
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
 
+# Import stdlib
+testSubclassingGenericABCWithImplicitAny
+testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
+testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
+
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
 testExportedValuesInImportAll
@@ -310,9 +330,26 @@ testNewAnalyzerClassPropertiesInAllScopes
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
 testPositionalOverridingArgumentNamesCheckedWhenMismatchingPos
+testOverrideGenericMethodInNonGenericClassLists
+testOverrideGenericMethodInNonGenericClassGeneralize
+
+# super
+testSuperExpressionsWhenInheritingFromGenericType
+testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
+testSuperOutsideClass
+testSuperField
+testSuperBasics
 
 # Liskov
+*Liskov*
 testPositionalOverridingArgumentNameInsensitivity
+testOverridingMethodInSimpleTypeInheritingGenericType
+testOverridingMethodInGenericTypeInheritingSimpleType
+testOverridingMethodInMultilevelHierarchyOfGenericTypes
+testOverridingMethodInGenericTypeInheritingGenericType
+testSubclassingGenericABC1
+testSubclassingGenericABCWithDeepHierarchy
+testSubclassingGenericABCWithDeepHierarchy2
 
 # Function Subtyping
 testSubtypingFunction*
@@ -372,6 +409,12 @@ testStarArgsAndKwArgsSpecialCase
 testPassingEmptyDictWithStars
 testKeywordUnpackWithDifferentTypes
 
+# {**kwargs}
+testSubtypingMappingUnpacking1
+testSubtypingMappingUnpacking2
+testSubtypingMappingUnpacking3
+testNotDirectIterableAndMappingSubtyping
+
 # "???" does not return a value
 testCallingVarArgsFunction
 
@@ -400,12 +443,10 @@ testAddBaseClassAttributeCausingErrorInSubclass
 testChangeBaseClassAttributeType
 testConstructorSignatureChanged2
 testConstructorSignatureChanged3
-testSuperField
 testReprocessMethodInNestedClassSemanal
 testPreviousErrorInMethodSemanalPass3
 *Overload*
 *python2
-testSuperBasics
 testErrorInTypeCheckSecondPassThroughPropagation
 *PartialType*
 testRefreshGenericSubclass
@@ -439,7 +480,6 @@ testUnpackInExpression3-only_when_nocache
 *Await*
 test__aiter__and__anext__
 *Async*
-*Liskov*
 *RefreshIgnore*
 testRefreshOptions
 *ImportOnTopOfAlias*
@@ -534,7 +574,6 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 # whatever
-testSuperOutsideClass
 testTestExtendPrimitives
 testInvalidTypeWithinNestedGenericClass
 testTypevarWithType
@@ -623,6 +662,14 @@ testVariableDeclWithInvalidNumberOfTypes*
 testVariableDeclWithInvalidType
 testChainedAssignmentAndImports
 testCallingVariableWithFunctionType
+testAccessingMethodInheritedFromGenericType
+testAccessingMethodInheritedFromGenericTypeInNonGenericType
+testAccessingMemberVarInheritedFromGenericType
+testSubtypingWithTypeImplementingGenericABCViaInheritance
+testSubtypingAndABCExtension
+testAccessingGenericABCMembers
+testAccessingInheritedGenericABCMembers
+testMultipleAssignmentAndGenericSubtyping
 
 # Weird ellipsis assignment
 testEllipsisInitializerInStubFileWithType
@@ -684,3 +731,4 @@ testMypyPathAndPython2Dir
 
 # Skips
 testTrailingCommaParsing-skip
+testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip

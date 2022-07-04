@@ -945,7 +945,7 @@ where
             AtomContent::Int(n) => {
                 TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code()))
             }
-            _ => todo!(),
+            _ => todo!("{atom:?}"),
         }
     }
 
