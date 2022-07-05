@@ -1,3 +1,9 @@
+testNestedInstanceTypeAlias
+testNestedInstanceTypeAliasUnsimplifiedUnion
+testNestedInstanceUnsimplifiedUnion
+testAssignUnionWithTenaryExprWithEmptyCollection
+testJoinUnionWithUnionAndAny
+testLongUnionFormatting
 testUnionAttributeAccess
 testUnionIndexing
 testUnionWithNoneItem
@@ -41,6 +47,7 @@ testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testNewAnalyzerFuncTypeVarNoCrashImportCycle
+testRecursiveForwardReferenceInUnion
 # Class generics cycles / + type alias cycles
 testNewAnalyzerAliasToNotReadyDirectBase
 testNewAnalyzerAliasToNotReadyDirectBaseFunction
@@ -110,6 +117,7 @@ testNoneHasBoolShowNoneErrorsFalse
 testNewAnalyzerPromotion
 testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSimplifyingUnionAndTypePromotions
+testFlattenTypeAliasWhenAliasedAsUnion
 
 # Class in Class
 testNewAnalyzerNestedClass*
@@ -170,6 +178,31 @@ testNewAnalyzerForwardAliasFromUnion
 testNewAnalyzerBuiltinAliasesFixed
 # Union simplification
 testUnionSimplification*
+testSimplifyingUnionWithTypeTypes2
+
+# Union iter()
+testUnionMultiassignSingle
+testUnionMultiassignDouble
+testUnionMultiassignGeneric
+testUnionMultiassignAny
+testUnionMultiassignNotJoin
+testUnionMultiassignRebind
+testUnionMultiassignAlreadyDeclared
+testUnionMultiassignIndexed
+testUnionMultiassignIndexedWithError
+testUnionMultiassignPacked
+testUnpackingUnionOfListsInFunction
+testUnionOfVariableLengthTupleUnpacking
+testUnionOfNonIterableUnpacking
+testUnionAlwaysTooMany
+testUnionAlwaysTooFew
+testUnionUnpacking*
+testNestedUnionUnpackingFromNestedTuples
+testNestedUnionUnpackingFromNestedTuplesBinder
+testUnpackUnionNoCrashOnPartialNone*
+
+# Unpacking a string is disallowed
+testStringDisallowedUnpacking
 
 # BoundMethod class
 testKwargsAllowedInDunderCall
@@ -202,6 +235,10 @@ testUnion1
 testUnion2
 testUnion3
 testUnionAnyIsInstance
+testNestedUnionsProcessedCorrectly
+
+# check after flow analysis
+testAssignAnyToUnionWithAny
 
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
@@ -224,6 +261,7 @@ testNewAnalyzerTypeArgBoundCheckWithContext
 testSubclassingGenericABCWithImplicitAny
 testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
 testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
+testInvariance
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -663,6 +701,7 @@ testAliasToTupleAndCallable
 testAliasInImportCycle3
 testTypeCheckPrio
 testImportStarAliasCallable
+testSimplifyUnionWithCallable
 
 # Formatting class in reveal_type
 testReExportChildStubs3
