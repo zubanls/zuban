@@ -1,12 +1,4 @@
-testNestedInstanceUnsimplifiedUnion
-testAssignUnionWithTenaryExprWithEmptyCollection
-testJoinUnionWithUnionAndAny
-testLongUnionFormatting
 testUnionAttributeAccess
-testUnionIndexing
-testUnionWithNoneItem
-testOptional
-testUnionAndBinaryOperation
 
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
@@ -30,6 +22,12 @@ testBoundGenericFunctions
 
 testContravariant
 testInheritedConstructor
+
+# Not matching type vars
+testJoinUnionWithUnionAndAny
+
+# Type mismatches for x[Any] | int and x[int] | int
+testAssignUnionWithTenaryExprWithEmptyCollection
 
 # Duplicate in Union
 testUnionMethodCalls
@@ -174,6 +172,7 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testNewAnalyzerForwardAliasFromUnion
 # Union wrong because of as_inferred (BoundMethod)
 testNewAnalyzerBuiltinAliasesFixed
+testUnionIndexing
 # Union simplification
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
@@ -480,6 +479,9 @@ testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 
+# Option[X] <-> Union[X, None] mixups
+testOptional
+
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
@@ -737,6 +739,7 @@ testEllipsisDefaultArgValueInNonStubsMethods
 # strict optional
 *StrictOptional*
 testAssignToFuncDefViaImport
+testUnionWithNoneItem
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass

@@ -278,6 +278,7 @@ impl<'db> GenericsIterator<'db, '_> {
     }
 }
 
+#[derive(Debug)]
 enum FunctionOrCallable<'db, 'a> {
     Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
     Callable(&'a Callable<'a>),
