@@ -635,7 +635,10 @@ where
                             TypeContent::SpecialType(SpecialType::Type) => {
                                 DbType::Type(Box::new(DbType::Any))
                             }
-                            TypeContent::SpecialType(m) => todo!("{m:?} {primary:?}"),
+                            TypeContent::SpecialType(m) => match m {
+                                SpecialType::Any => DbType::Any,
+                                _ => todo!("{m:?} {primary:?}"),
+                            },
                             TypeContent::Unknown => DbType::Any,
                             TypeContent::InvalidVariable(t) => {
                                 t.add_issue(self.inference.i_s.db, s.as_node_ref());

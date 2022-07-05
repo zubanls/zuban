@@ -1,5 +1,3 @@
-testNestedInstanceTypeAlias
-testNestedInstanceTypeAliasUnsimplifiedUnion
 testNestedInstanceUnsimplifiedUnion
 testAssignUnionWithTenaryExprWithEmptyCollection
 testJoinUnionWithUnionAndAny
