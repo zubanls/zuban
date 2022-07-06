@@ -6,21 +6,25 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'db, 'a> {
     pub class: Class<'db, 'a>,
-    inferred: Option<&'a Inferred<'db>>,
+    inferred_link: Option<NodeRef<'db>>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
-    pub fn new(class: Class<'db, 'a>, inferred: Option<&'a Inferred<'db>>) -> Self {
-        Self { class, inferred }
+    pub fn new(class: Class<'db, 'a>, inferred_link: Option<NodeRef<'db>>) -> Self {
+        Self {
+            class,
+            inferred_link,
+        }
     }
 
     pub fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        if let Some(inferred) = self.inferred {
-            inferred.clone()
+        if let Some(inferred_link) = self.inferred_link {
+            Inferred::from_saved_node_ref(inferred_link)
         } else {
             Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 self.class.reference.as_link(),

@@ -289,39 +289,17 @@ impl<'db> Inferred<'db> {
         match specific {
             Specific::Function => callable(i_s, &Function::new(*definition, None)),
             Specific::AnnotationClassInstance => {
-                if cfg!(debug_assertions) {
-                    debug_assert_eq!(
-                        definition.point().specific(),
-                        Specific::AnnotationClassInstance
-                    );
-                    if let InferredState::Saved(_, point) = self.state {
-                        debug_assert_eq!(point.specific(), Specific::AnnotationClassInstance);
-                    } else {
-                        unreachable!()
-                    }
-                }
-                let definition = definition.add_to_node_index(2);
-                let inferred = definition
+                let expr_def = definition.add_to_node_index(2);
+                let inferred = expr_def
                     .file
                     .inference(i_s)
-                    .check_point_cache(definition.node_index)
+                    .check_point_cache(expr_def.node_index)
                     .unwrap();
-                inferred.with_instance(i_s, self, None, |i_s, instance| {
+                inferred.with_instance(i_s, definition, None, |i_s, instance| {
                     callable(&mut i_s.with_annotation_instance(), instance)
                 })
             }
             Specific::InstanceWithArguments => {
-                if cfg!(debug_assertions) {
-                    debug_assert_eq!(
-                        definition.point().specific(),
-                        Specific::InstanceWithArguments
-                    );
-                    if let InferredState::Saved(_, point) = self.state {
-                        debug_assert_eq!(point.specific(), Specific::InstanceWithArguments);
-                    } else {
-                        unreachable!()
-                    }
-                }
                 let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
                 let class = inf_cls.maybe_class(i_s).unwrap();
                 let args = SimpleArguments::from_primary(
@@ -331,7 +309,7 @@ impl<'db> Inferred<'db> {
                     Some(class),
                 );
                 let init = class.simple_init_func(i_s, &args);
-                inf_cls.with_instance(i_s, self, None, |i_s, instance| {
+                inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
                     let instance_arg = KnownArguments::new(self, None);
                     let args = CombinedArguments::new(&instance_arg, &args);
@@ -478,7 +456,7 @@ impl<'db> Inferred<'db> {
                     .as_ref()
                     .map(Generics::new_list)
                     .unwrap_or(Generics::None);
-                let instance = self.use_instance(NodeRef::from_link(i_s.db, *cls), generics, false);
+                let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics, None);
                 callable(i_s, &instance)
             }
             ComplexPoint::FunctionOverload(overload) => callable(
@@ -514,13 +492,12 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match db_type {
             DbType::Class(link) => {
-                let inst =
-                    self.use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, false);
+                let inst = use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, None);
                 callable(i_s, &inst)
             }
             DbType::GenericClass(link, generics) => {
                 let g = Generics::new_list(generics);
-                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), g, false);
+                let inst = use_instance(NodeRef::from_link(i_s.db, *link), g, None);
                 callable(i_s, &inst)
             }
             DbType::Union(lst) => lst
@@ -692,11 +669,7 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.type_(), PointType::Redirect);
         debug_assert_eq!(v.file_index(), builtins.file_index());
-        self.use_instance(
-            NodeRef::new(builtins, v.node_index()),
-            Generics::None,
-            false,
-        )
+        use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
     }
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
@@ -787,7 +760,7 @@ impl<'db> Inferred<'db> {
     fn with_instance<'a, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        instance: &'a Self,
+        instance: &NodeRef<'db>,
         generics: Option<Generics<'db, 'a>>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
     ) -> T {
@@ -812,10 +785,10 @@ impl<'db> Inferred<'db> {
                 } else {
                     callable(
                         i_s,
-                        &instance.use_instance(
+                        &use_instance(
                             *definition,
                             generics.unwrap_or(Generics::None),
-                            true,
+                            Some(*instance),
                         ),
                     )
                 }
@@ -841,16 +814,6 @@ impl<'db> Inferred<'db> {
             || unreachable!(),
         );
         instance.unwrap()
-    }
-
-    fn use_instance<'a>(
-        &'a self,
-        reference: NodeRef<'db>,
-        generics: Generics<'db, 'a>,
-        self_is_inferred: bool,
-    ) -> Instance<'db, 'a> {
-        let class = Class::from_position(reference, generics, None).unwrap();
-        Instance::new(class, self_is_inferred.then(|| self))
     }
 
     pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, 'db>> {
@@ -1209,6 +1172,15 @@ impl fmt::Debug for Inferred<'_> {
         }
         .finish()
     }
+}
+
+fn use_instance<'db, 'a>(
+    class_reference: NodeRef<'db>,
+    generics: Generics<'db, 'a>,
+    instance_reference: Option<NodeRef<'db>>,
+) -> Instance<'db, 'a> {
+    let class = Class::from_position(class_reference, generics, None).unwrap();
+    Instance::new(class, instance_reference)
 }
 
 // TODO unused -> delete?!

@@ -77,10 +77,6 @@ impl<'db> ListLiteral<'db> {
         }
         reference
     }
-
-    fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        Inferred::from_saved_node_ref(self.type_instance_ref(i_s))
-    }
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
@@ -100,7 +96,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                 None,
             )
             .unwrap(),
-            Some(&self.as_inferred(i_s)),
+            Some(self.type_instance_ref(i_s)),
         )
         .lookup_internal(i_s, name)
     }
