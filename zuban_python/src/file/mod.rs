@@ -922,6 +922,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let left = self.infer_expression_part(op.left);
         let right = self.infer_expression_part(op.right);
         let node_ref = NodeRef::new(self.file, op.index);
+        let added_note = Cell::new(false);
         left.run_on_value(self.i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
@@ -947,7 +948,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             input,
                         ),
                     );
-                    if left.is_union() {
+                    if left.is_union() && !added_note.get() {
+                        added_note.set(true);
                         node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::Note(format!(
