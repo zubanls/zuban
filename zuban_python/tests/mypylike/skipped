@@ -173,6 +173,7 @@ testNewAnalyzerForwardAliasFromUnion
 # Union wrong because of as_inferred (BoundMethod)
 testNewAnalyzerBuiltinAliasesFixed
 testUnionIndexing
+testUnionAndBinaryOperation
 # Union simplification
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2

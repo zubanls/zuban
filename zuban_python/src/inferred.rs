@@ -310,7 +310,7 @@ impl<'db> Inferred<'db> {
                 let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, self, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
-                    let instance_arg = KnownArguments::new(instance.as_inferred(), None);
+                    let instance_arg = KnownArguments::new(self, None);
                     let args = CombinedArguments::new(&instance_arg, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
                 })
