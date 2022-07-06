@@ -175,9 +175,6 @@ testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
 
-# Left operand is of type "int | str"
-testUnionAndBinaryOperation
-
 # Union iter()
 testUnionMultiassignSingle
 testUnionMultiassignDouble
