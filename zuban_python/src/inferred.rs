@@ -808,7 +808,7 @@ impl<'db> Inferred<'db> {
                 if let Some(i) = v.as_instance() {
                     instance = Some(*i);
                 } else {
-                    unreachable!()
+                    unreachable!("{self:?} -> {v:?}")
                 }
             },
             || unreachable!(),

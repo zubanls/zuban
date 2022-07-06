@@ -731,7 +731,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                 DbType::Class(link) => Instance::new(
                     Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)
                         .unwrap(),
-                    Some(NodeRef::from_link(i_s.db, *link)),
+                    None,
                 )
                 .lookup_internal(i_s, name),
                 _ => todo!("{:?}", db_type),
@@ -740,7 +740,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), Some(s.object())).lookup_internal(i_s, name)
+            Instance::new(s.object_class(), None).lookup_internal(i_s, name)
         }
     }
 
