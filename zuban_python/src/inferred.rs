@@ -1128,6 +1128,17 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    pub fn is_union(&self) -> bool {
+        match &self.state {
+            InferredState::Saved(reference, point) => reference
+                .complex()
+                .map(|c| matches!(c, ComplexPoint::Union(_)))
+                .unwrap_or(false),
+            InferredState::UnsavedComplex(ComplexPoint::Union(_)) => true,
+            _ => false,
+        }
+    }
+
     pub fn execute_function(
         &self,
         i_s: &mut InferenceState<'db, '_>,

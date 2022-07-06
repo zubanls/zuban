@@ -946,7 +946,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             class.unwrap().as_string(i_s, FormatStyle::Short),
                             input,
                         ),
-                    )
+                    );
+                    if left.is_union() {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::Note(format!(
+                                "Left operand is of type {:?}",
+                                left.class_as_type(i_s)
+                                    .as_string(i_s, None, FormatStyle::Short),
+                            )),
+                        );
+                    }
                 },
             )
         })
