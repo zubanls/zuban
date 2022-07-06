@@ -289,16 +289,39 @@ impl<'db> Inferred<'db> {
         match specific {
             Specific::Function => callable(i_s, &Function::new(*definition, None)),
             Specific::AnnotationClassInstance => {
+                if cfg!(debug_assertions) {
+                    debug_assert_eq!(
+                        definition.point().specific(),
+                        Specific::AnnotationClassInstance
+                    );
+                    if let InferredState::Saved(_, point) = self.state {
+                        debug_assert_eq!(point.specific(), Specific::AnnotationClassInstance);
+                    } else {
+                        unreachable!()
+                    }
+                }
                 let definition = definition.add_to_node_index(2);
                 let inferred = definition
                     .file
                     .inference(i_s)
-                    .infer_expression(definition.as_expression());
+                    .check_point_cache(definition.node_index)
+                    .unwrap();
                 inferred.with_instance(i_s, self, None, |i_s, instance| {
                     callable(&mut i_s.with_annotation_instance(), instance)
                 })
             }
             Specific::InstanceWithArguments => {
+                if cfg!(debug_assertions) {
+                    debug_assert_eq!(
+                        definition.point().specific(),
+                        Specific::InstanceWithArguments
+                    );
+                    if let InferredState::Saved(_, point) = self.state {
+                        debug_assert_eq!(point.specific(), Specific::InstanceWithArguments);
+                    } else {
+                        unreachable!()
+                    }
+                }
                 let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
                 let class = inf_cls.maybe_class(i_s).unwrap();
                 let args = SimpleArguments::from_primary(

@@ -1309,7 +1309,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
+    pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
         let point = self.file.points.get(node_index);
         let result = point
             .calculated()

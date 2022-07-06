@@ -176,7 +176,6 @@ testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
 
 # Left operand is of type "int | str"
-testUnionIndexing
 testUnionAndBinaryOperation
 
 # Union iter()
