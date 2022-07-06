@@ -1,6 +1,6 @@
 use super::{Class, ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{FormatStyle, PointLink};
+use crate::database::{ComplexPoint, FormatStyle, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -10,16 +10,23 @@ use crate::inferred::Inferred;
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'db, 'a> {
     pub class: Class<'db, 'a>,
-    inferred: &'a Inferred<'db>,
+    inferred: Option<&'a Inferred<'db>>,
 }
 
 impl<'db, 'a> Instance<'db, 'a> {
-    pub fn new(class: Class<'db, 'a>, inferred: &'a Inferred<'db>) -> Self {
+    pub fn new(class: Class<'db, 'a>, inferred: Option<&'a Inferred<'db>>) -> Self {
         Self { class, inferred }
     }
 
-    pub fn as_inferred(&self) -> &'a Inferred<'db> {
-        self.inferred
+    pub fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        if let Some(inferred) = self.inferred {
+            inferred.clone()
+        } else {
+            Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                self.class.reference.as_link(),
+                self.class.generics.as_generics_list(i_s),
+            ))
+        }
     }
 }
 

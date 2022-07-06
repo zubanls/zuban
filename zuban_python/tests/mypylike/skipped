@@ -170,13 +170,14 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 
 # Incomplete Unions: `int | int`
 testNewAnalyzerForwardAliasFromUnion
-# Union wrong because of as_inferred (BoundMethod)
-testNewAnalyzerBuiltinAliasesFixed
-testUnionIndexing
-testUnionAndBinaryOperation
 # Union simplification
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
+testNewAnalyzerBuiltinAliasesFixed
+
+# Left operand is of type "int | str"
+testUnionIndexing
+testUnionAndBinaryOperation
 
 # Union iter()
 testUnionMultiassignSingle

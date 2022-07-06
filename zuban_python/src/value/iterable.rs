@@ -100,7 +100,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
                 None,
             )
             .unwrap(),
-            &self.as_inferred(i_s),
+            Some(&self.as_inferred(i_s)),
         )
         .lookup_internal(i_s, name)
     }

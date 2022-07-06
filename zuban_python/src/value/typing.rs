@@ -731,7 +731,9 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                 DbType::Class(link) => Instance::new(
                     Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)
                         .unwrap(),
-                    &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
+                    Some(&Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                        *link, None,
+                    ))),
                 )
                 .lookup_internal(i_s, name),
                 _ => todo!("{:?}", db_type),
@@ -742,7 +744,10 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
             // should just use a precreated object() from somewhere.
             Instance::new(
                 s.object_class(),
-                &Inferred::new_unsaved_complex(ComplexPoint::Instance(s.object().as_link(), None)),
+                Some(&Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                    s.object().as_link(),
+                    None,
+                ))),
             )
             .lookup_internal(i_s, name)
         }

@@ -44,8 +44,8 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        let instance_arg =
-            KnownArguments::with_mro_index(self.instance.as_inferred(), self.mro_index, None);
+        let instance_inf = self.instance.as_inferred(i_s);
+        let instance_arg = KnownArguments::with_mro_index(&instance_inf, self.mro_index, None);
         let args = CombinedArguments::new(&instance_arg, args);
         self.function.execute(i_s, &args, on_type_error)
     }

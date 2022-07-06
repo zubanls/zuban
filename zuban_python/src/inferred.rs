@@ -376,7 +376,7 @@ impl<'db> Inferred<'db> {
                     let args = SimpleArguments::from_execution(i_s.db, execution);
                     let class = Class::new(def, cls_storage, Generics::None, None);
                     debug_assert!(class.type_vars(i_s).is_empty());
-                    let instance = Instance::new(class, self);
+                    let instance = Instance::new(class, None);
                     // TODO is this MroIndex fine? probably not!
                     let instance_arg = KnownArguments::new(self, None);
                     let args = CombinedArguments::new(&instance_arg, &args);
@@ -455,7 +455,7 @@ impl<'db> Inferred<'db> {
                     .as_ref()
                     .map(Generics::new_list)
                     .unwrap_or(Generics::None);
-                let instance = self.use_instance(NodeRef::from_link(i_s.db, *cls), generics);
+                let instance = self.use_instance(NodeRef::from_link(i_s.db, *cls), generics, false);
                 callable(i_s, &instance)
             }
             ComplexPoint::FunctionOverload(overload) => callable(
@@ -491,12 +491,13 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match db_type {
             DbType::Class(link) => {
-                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), Generics::None);
+                let inst =
+                    self.use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, false);
                 callable(i_s, &inst)
             }
             DbType::GenericClass(link, generics) => {
                 let g = Generics::new_list(generics);
-                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), g);
+                let inst = self.use_instance(NodeRef::from_link(i_s.db, *link), g, false);
                 callable(i_s, &inst)
             }
             DbType::Union(lst) => lst
@@ -668,7 +669,11 @@ impl<'db> Inferred<'db> {
         let v = builtins.points.get(node_index);
         debug_assert_eq!(v.type_(), PointType::Redirect);
         debug_assert_eq!(v.file_index(), builtins.file_index());
-        self.use_instance(NodeRef::new(builtins, v.node_index()), Generics::None)
+        self.use_instance(
+            NodeRef::new(builtins, v.node_index()),
+            Generics::None,
+            false,
+        )
     }
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
@@ -784,7 +789,11 @@ impl<'db> Inferred<'db> {
                 } else {
                     callable(
                         i_s,
-                        &instance.use_instance(*definition, generics.unwrap_or(Generics::None)),
+                        &instance.use_instance(
+                            *definition,
+                            generics.unwrap_or(Generics::None),
+                            true,
+                        ),
                     )
                 }
             }
@@ -815,9 +824,10 @@ impl<'db> Inferred<'db> {
         &'a self,
         reference: NodeRef<'db>,
         generics: Generics<'db, 'a>,
+        self_is_inferred: bool,
     ) -> Instance<'db, 'a> {
         let class = Class::from_position(reference, generics, None).unwrap();
-        Instance::new(class, self)
+        Instance::new(class, self_is_inferred.then(|| self))
     }
 
     pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, 'db>> {
@@ -1015,7 +1025,7 @@ impl<'db> Inferred<'db> {
     #[inline]
     pub fn bind(
         self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &mut InferenceState<'db, '_>,
         instance: &Instance<'db, '_>,
         mro_index: MroIndex,
     ) -> Self {
@@ -1024,7 +1034,7 @@ impl<'db> Inferred<'db> {
                 PointType::Specific => {
                     if point.specific() == Specific::Function {
                         let complex = ComplexPoint::BoundMethod(
-                            instance.as_inferred().as_any_link(i_s),
+                            instance.as_inferred(i_s).as_any_link(i_s),
                             mro_index,
                             definition.as_link(),
                         );
@@ -1036,7 +1046,7 @@ impl<'db> Inferred<'db> {
                         definition.file.complex_points.get(point.complex_index())
                     {
                         let complex = ComplexPoint::BoundMethod(
-                            instance.as_inferred().as_any_link(i_s),
+                            instance.as_inferred(i_s).as_any_link(i_s),
                             mro_index,
                             definition.as_link(),
                         );
