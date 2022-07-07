@@ -30,3 +30,6 @@ class P6(Generic[T], Protocol[S], Protocol[U]): # E: Only single Generic[...] or
 [builtins fixtures/list.pyi]
 [out]
 
+[case type_type_application]
+from typing import Type
+reveal_type(Type[int]) # N: Revealed type is "Type[int]"

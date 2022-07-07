@@ -12,7 +12,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
 use crate::generics::{Generics, Type};
-use crate::getitem::{SliceOrSimple, SliceType, SliceTypeContent, SliceTypeIterator};
+use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -580,16 +580,7 @@ where
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
                         SpecialType::Optional => self.compute_type_get_item_on_optional(s),
-                        SpecialType::Type => {
-                            let mut iterator = s.iter();
-                            let content = iterator.next().unwrap();
-                            if iterator.count() > 0 {
-                                todo!()
-                            }
-                            TypeContent::DbType(DbType::Type(Box::new(
-                                self.compute_slice_db_type(content),
-                            )))
-                        }
+                        SpecialType::Type => self.compute_type_get_item_on_type(s),
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
@@ -783,6 +774,18 @@ where
         TypeContent::DbType(self.compute_slice_db_type(first).union(DbType::None))
     }
 
+    fn compute_type_get_item_on_type(
+        &mut self,
+        slice_type: SliceType<'db, 'x>,
+    ) -> TypeContent<'db, 'x> {
+        let mut iterator = slice_type.iter();
+        let content = iterator.next().unwrap();
+        if iterator.count() > 0 {
+            todo!()
+        }
+        TypeContent::DbType(DbType::Type(Box::new(self.compute_slice_db_type(content))))
+    }
+
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &TypeAlias,
@@ -943,14 +946,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 compute_type_application!(self, compute_type_get_item_on_optional(slice_type))
             }
             Specific::TypingType => {
-                let mut iterator = slice_type.iter();
-                let first = iterator.next().unwrap();
-                // let g = simple.infer_type(i_s);
-                // DbType::Type(Box::new(g))
-                if let Some(slice_content) = iterator.next() {
-                    todo!()
-                }
-                todo!()
+                compute_type_application!(self, compute_type_get_item_on_type(slice_type))
             }
             _ => unreachable!("{:?}", specific),
         }
