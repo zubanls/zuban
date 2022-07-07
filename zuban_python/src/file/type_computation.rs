@@ -771,13 +771,12 @@ where
         &mut self,
         slice_type: SliceType<'db, 'x>,
     ) -> TypeContent<'db, 'x> {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => TypeContent::DbType(
-                self.compute_db_type(simple.named_expr.expression())
-                    .union(DbType::None),
-            ),
-            _ => todo!(),
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if let Some(next) = iterator.next() {
+            todo!()
         }
+        TypeContent::DbType(self.compute_slice_db_type(first).union(DbType::None))
     }
 
     fn compute_type_get_item_on_alias(
