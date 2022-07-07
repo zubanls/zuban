@@ -580,12 +580,16 @@ where
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
                         SpecialType::Optional => self.compute_type_get_item_on_optional(s),
-                        SpecialType::Type => match s.unpack() {
-                            SliceTypeContent::Simple(simple) => TypeContent::DbType(DbType::Type(
-                                Box::new(self.compute_db_type(simple.named_expr.expression())),
-                            )),
-                            _ => todo!(),
-                        },
+                        SpecialType::Type => {
+                            let mut iterator = s.iter();
+                            let content = iterator.next().unwrap();
+                            if iterator.count() > 0 {
+                                todo!()
+                            }
+                            TypeContent::DbType(DbType::Type(Box::new(
+                                self.compute_slice_db_type(content),
+                            )))
+                        }
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
