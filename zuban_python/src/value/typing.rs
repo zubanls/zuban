@@ -587,7 +587,7 @@ impl<'a> Callable<'a> {
         base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
     }
 
-    pub fn iter_params<'db, 'b>(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
+    pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
         self.content.params.as_ref().map(|params| params.iter())
     }
 }

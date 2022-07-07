@@ -1038,7 +1038,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     p.argument_index(),
                                     function.diagnostic_string(class),
                                 ),
-                                None => format!("{}", p.argument_index()),
+                                None => p.argument_index(),
                             },
                         )),
                     )
