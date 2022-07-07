@@ -164,7 +164,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let node_ref = NodeRef::new(self.file, f.index());
         let args: &dyn Arguments = if let Some(class) = class {
             i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                class.reference.as_link(),
+                class.node_ref.as_link(),
                 Some(GenericsList::new_generics(
                     class
                         .type_vars(self.i_s)

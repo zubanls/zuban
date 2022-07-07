@@ -142,7 +142,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         let mut matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => {
-                    if c1.reference == c2.reference {
+                    if c1.node_ref == c2.node_ref {
                         let type_vars = c1.type_vars(i_s);
                         return c1.generics().matches(
                             i_s,
@@ -327,7 +327,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
 #[derive(Clone, Copy)]
 pub struct Class<'db, 'a> {
-    pub reference: NodeRef<'db>,
+    pub node_ref: NodeRef<'db>,
     pub class_storage: &'db ClassStorage,
     pub generics: Generics<'db, 'a>,
     pub type_var_remap: Option<&'db GenericsList>,
@@ -335,13 +335,13 @@ pub struct Class<'db, 'a> {
 
 impl<'db, 'a> Class<'db, 'a> {
     pub fn new(
-        reference: NodeRef<'db>,
+        node_ref: NodeRef<'db>,
         class_storage: &'db ClassStorage,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db GenericsList>,
     ) -> Self {
         Self {
-            reference,
+            node_ref,
             class_storage,
             generics,
             type_var_remap,
@@ -350,13 +350,13 @@ impl<'db, 'a> Class<'db, 'a> {
 
     #[inline]
     pub fn from_position(
-        reference: NodeRef<'db>,
+        node_ref: NodeRef<'db>,
         generics: Generics<'db, 'a>,
         type_var_remap: Option<&'db GenericsList>,
     ) -> Option<Self> {
-        let complex = reference.complex().unwrap();
+        let complex = node_ref.complex().unwrap();
         match complex {
-            ComplexPoint::Class(c) => Some(Self::new(reference, c, generics, type_var_remap)),
+            ComplexPoint::Class(c) => Some(Self::new(node_ref, c, generics, type_var_remap)),
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
         }
     }
@@ -435,7 +435,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn node(&self) -> ClassDef<'db> {
-        ClassDef::by_index(&self.reference.file.tree, self.reference.node_index)
+        ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db TypeVars {
@@ -443,28 +443,28 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     fn is_calculating_class_infos(&self) -> bool {
-        self.class_info_reference().point().calculating()
+        self.class_info_node_ref().point().calculating()
     }
 
-    fn class_info_reference(&self) -> NodeRef<'db> {
-        self.reference.add_to_node_index(1)
+    fn class_info_node_ref(&self) -> NodeRef<'db> {
+        self.node_ref.add_to_node_index(1)
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
-        let reference = self.class_info_reference();
-        let point = reference.point();
+        let node_ref = self.class_info_node_ref();
+        let point = node_ref.point();
         if point.calculated() {
-            match reference.complex().unwrap() {
+            match node_ref.complex().unwrap() {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
                 _ => unreachable!(),
             }
         } else {
-            reference.set_point(Point::new_calculating());
-            reference.insert_complex(
+            node_ref.set_point(Point::new_calculating());
+            node_ref.insert_complex(
                 ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
                 Locality::Todo,
             );
-            debug_assert!(reference.point().calculated());
+            debug_assert!(node_ref.point().calculated());
             self.class_infos(i_s)
         }
     }
@@ -485,7 +485,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 match argument {
                     Argument::Positional(n) => {
                         let db = i_s.db;
-                        let mut inference = self.reference.file.inference(&mut i_s);
+                        let mut inference = self.node_ref.file.inference(&mut i_s);
                         let base = TypeComputation::new(
                             &mut inference,
                             &mut |_, type_var, is_generic_or_protocol, _| {
@@ -493,7 +493,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     let old_index = type_vars.add(type_var.clone());
                                     if old_index < force_index {
                                         had_generic_or_protocol_issue = true;
-                                        NodeRef::new(self.reference.file, n.index())
+                                        NodeRef::new(self.node_ref.file, n.index())
                                             .add_typing_issue(db, IssueType::DuplicateTypeVar)
                                     } else if old_index != force_index {
                                         type_vars.move_index(old_index, force_index);
@@ -537,7 +537,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         let name = class.name().to_owned();
                                         mro.pop();
                                         incomplete_mro = true;
-                                        NodeRef::new(self.reference.file, n.index())
+                                        NodeRef::new(self.node_ref.file, n.index())
                                             .add_typing_issue(
                                                 db,
                                                 IssueType::CyclicDefinition(name),
@@ -558,7 +558,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             BaseClass::Protocol(s) => {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.reference.file, n.index()).add_typing_issue(
+                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
                                         db,
                                         IssueType::EnsureSingleGenericOrProtocol,
                                     );
@@ -569,7 +569,7 @@ impl<'db, 'a> Class<'db, 'a> {
                             BaseClass::Generic(s) => {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.reference.file, n.index()).add_typing_issue(
+                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
                                         db,
                                         IssueType::EnsureSingleGenericOrProtocol,
                                     );
@@ -638,12 +638,12 @@ impl<'db, 'a> Class<'db, 'a> {
             None => LookupResult::None,
             Some(node_index) => {
                 let inf = self
-                    .reference
+                    .node_ref
                     .file
                     .inference(&mut i_s.with_class_context(self))
                     .infer_name_by_index(node_index);
                 LookupResult::GotoName(
-                    PointLink::new(self.reference.file.file_index(), node_index),
+                    PointLink::new(self.node_ref.file.file_index(), node_index),
                     inf,
                 )
             }
@@ -689,7 +689,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
         if let DbType::Class(link) = t {
-            if self.reference.as_link() == *link {
+            if self.node_ref.as_link() == *link {
                 return true;
             }
         }
@@ -698,7 +698,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     fn is_object_class(&self, db: &Database) -> bool {
-        self.reference == db.python_state.object()
+        self.node_ref == db.python_state.object()
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
@@ -715,7 +715,7 @@ impl<'db, 'a> Class<'db, 'a> {
 
     fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         let lst = self.generics().as_generics_list(i_s);
-        let link = self.reference.as_link();
+        let link = self.node_ref.as_link();
         lst.map(|lst| DbType::GenericClass(link, lst))
             .unwrap_or_else(|| DbType::Class(link))
     }
@@ -731,7 +731,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
-        Module::new(db, self.reference.file)
+        Module::new(db, self.node_ref.file)
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
@@ -762,12 +762,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         Inferred::new_unsaved_complex(match generics_list {
             None => match args.as_execution(&func) {
                 Some(execution) => {
-                    ComplexPoint::ExecutionInstance(self.reference.as_link(), Box::new(execution))
+                    ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
                 }
-                None => ComplexPoint::Instance(self.reference.as_link(), None),
+                None => ComplexPoint::Instance(self.node_ref.as_link(), None),
             },
             Some(generics_list) => {
-                ComplexPoint::Instance(self.reference.as_link(), Some(generics_list))
+                ComplexPoint::Instance(self.node_ref.as_link(), Some(generics_list))
             }
         })
     }
@@ -807,8 +807,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 impl fmt::Debug for Class<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Class")
-            .field("file_index", &self.reference.file.file_index())
-            .field("node_index", &self.reference.node_index)
+            .field("file_index", &self.node_ref.file.file_index())
+            .field("node_index", &self.node_ref.node_index)
             .field("name", &self.name())
             .field("generics", &self.generics)
             .field("type_var_remap", &self.type_var_remap)

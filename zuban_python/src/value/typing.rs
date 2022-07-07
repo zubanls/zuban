@@ -109,23 +109,20 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
 
 #[derive(Debug)]
 pub struct TypingWithGenerics<'db> {
-    reference: NodeRef<'db>,
+    node_ref: NodeRef<'db>,
     pub specific: Specific,
 }
 
 impl<'db> TypingWithGenerics<'db> {
-    pub fn new(reference: NodeRef<'db>, specific: Specific) -> Self {
-        Self {
-            reference,
-            specific,
-        }
+    pub fn new(node_ref: NodeRef<'db>, specific: Specific) -> Self {
+        Self { node_ref, specific }
     }
 
     pub fn generics(&self) -> SliceType<'db, '_> {
-        let primary = self.reference.as_primary();
+        let primary = self.node_ref.as_primary();
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
-            SliceType::new(self.reference.file, primary.index(), slice_type)
+            SliceType::new(self.node_ref.file, primary.index(), slice_type)
         } else {
             unreachable!()
         }

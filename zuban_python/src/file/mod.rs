@@ -1289,7 +1289,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             .or_else(|| {
                                 self.i_s
                                     .current_class
-                                    .map(|c| c.reference.node_index == star_import.scope)
+                                    .map(|c| c.node_ref.node_index == star_import.scope)
                             })
                             .unwrap_or(false))
                 {

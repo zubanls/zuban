@@ -27,7 +27,7 @@ impl<'db, 'a> Instance<'db, 'a> {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
             Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                self.class.reference.as_link(),
+                self.class.node_ref.as_link(),
                 self.class.generics.as_generics_list(i_s),
             ))
         }
@@ -48,8 +48,8 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
             if let ClassLike::Class(c) = class {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     return LookupResult::GotoName(
-                        PointLink::new(c.reference.file.file_index(), self_symbol),
-                        c.reference
+                        PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                        c.node_ref
                             .file
                             .inference(&mut i_s.with_class_context(&c))
                             .infer_name_by_index(self_symbol)

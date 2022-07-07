@@ -537,7 +537,7 @@ where
                             self.inference.file.points.set(
                                 name.index(),
                                 Point::new_redirect(
-                                    cls.reference.file.file_index(),
+                                    cls.node_ref.file.file_index(),
                                     index,
                                     Locality::Todo,
                                 ),
@@ -646,7 +646,7 @@ where
                             }
                         };
                         TypeContent::DbType(DbType::GenericClass(
-                            class.reference.as_link(),
+                            class.node_ref.as_link(),
                             GenericsList::new_generics(Box::new([db_type])),
                         ))
                     };
@@ -682,7 +682,7 @@ where
                         }
                     } else {
                         TypeContent::DbType(DbType::GenericClass(
-                            class.reference.as_link(),
+                            class.node_ref.as_link(),
                             GenericsList::generics_from_vec(generics),
                         ))
                     }
