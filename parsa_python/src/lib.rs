@@ -295,8 +295,7 @@ create_grammar!(
 
     single_target: t_primary | name_definition | "(" single_target ")"
 
-    targets: ",".target+ [","]
-    target: t_primary | t_atom
+    targets: ",".(t_primary | t_atom)+ [","]
     t_primary:?
           (
               t_primary "." Name

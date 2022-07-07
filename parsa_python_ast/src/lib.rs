@@ -2400,6 +2400,12 @@ pub enum Argument<'db> {
     DoubleStarred(Expression<'db>),
 }
 
+impl<'db> DelStmt<'db> {
+    pub fn target(&self) -> Target<'db> {
+        Target::new(self.node.nth_child(1))
+    }
+}
+
 pub enum ReturnOrYield<'db> {
     Return(ReturnStmt<'db>),
     Yield(YieldExpr<'db>),

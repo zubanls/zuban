@@ -65,7 +65,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             SimpleStmtContent::AssertStmt(x) => {}
                             SimpleStmtContent::BreakStmt(x) => {}
                             SimpleStmtContent::ContinueStmt(x) => {}
-                            SimpleStmtContent::DelStmt(x) => {}
+                            SimpleStmtContent::DelStmt(d) => {
+                                self.calc_del_stmt_diagnostics(d.target());
+                            }
                         }
                     }
                 }
@@ -261,6 +263,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 FStringContent::FStringString(_) => (),
             }
+        }
+    }
+
+    fn calc_del_stmt_diagnostics(&mut self, target: Target) {
+        match target {
+            Target::Name(name_def) => todo!(),
+            Target::NameExpression(_, _) => {
+                // TODO this should still be implemented
+                //self.infer_single_target(target);
+            }
+            Target::IndexExpression(t) => todo!(),
+            Target::Tuple(_) => todo!(),
+            Target::Starred(_) => unreachable!(),
         }
     }
 }
