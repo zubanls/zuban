@@ -625,7 +625,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             // Happens e.g. for testInvalidNumberOfTypeArgs
             // class C:  # Forgot to add type params here
             //     def __init__(self, t: T) -> None: pass
-            debug!("TODO free type param annotations")
+            debug!(
+                "TODO free type param annotations; searched {:?}, found {:?}",
+                self.match_type, type_var_usage.type_
+            )
         }
         true
     }

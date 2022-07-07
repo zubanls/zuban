@@ -22,6 +22,7 @@ use crate::value::{
     TypingType, TypingWithGenerics, Value,
 };
 
+#[derive(Debug)]
 pub enum FunctionOrOverload<'db, 'a> {
     Function(Function<'db, 'a>),
     Overload(OverloadedFunction<'db, 'a>),

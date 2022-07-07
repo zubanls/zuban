@@ -3,7 +3,6 @@ testUnionAttributeAccess
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
 
-testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
 
 testBoundOnGenericClass

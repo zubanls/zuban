@@ -596,18 +596,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 .unwrap_or(false);
             let mut finder = match class {
                 Some(c) => {
-                    let has_generics = !matches!(c.generics, Generics::None);
                     if has_generics {
-                        TypeVarMatcher::new(
-                            class,
-                            function,
-                            args,
-                            true,
-                            Some(c.type_vars(i_s)),
-                            TypeVarType::Class,
-                            on_type_error,
-                        )
-                    } else {
                         let func_type_vars = function.type_vars(i_s);
                         TypeVarMatcher::new(
                             class,
@@ -616,6 +605,16 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             true,
                             func_type_vars,
                             TypeVarType::Function,
+                            on_type_error,
+                        )
+                    } else {
+                        TypeVarMatcher::new(
+                            class,
+                            function,
+                            args,
+                            true,
+                            Some(c.type_vars(i_s)),
+                            TypeVarType::Class,
                             on_type_error,
                         )
                     }
