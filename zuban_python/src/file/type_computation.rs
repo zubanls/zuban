@@ -663,40 +663,24 @@ where
         &mut self,
         slice_type: SliceType<'db, 'x>,
     ) -> TypeContent<'db, 'x> {
-        let content = match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => {
-                // TODO if it is a (), it's an empty tuple
-                let t = self.compute_db_type(simple.named_expr.expression());
-                TupleContent {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if let Some(SliceOrSimple::Simple(s)) = iterator.next() {
+            if s.named_expr.is_ellipsis_literal() {
+                let t = self.compute_slice_db_type(first);
+                return TypeContent::DbType(DbType::Tuple(TupleContent {
                     generics: Some(GenericsList::new_generics(Box::new([t]))),
-                    arbitrary_length: false,
-                }
+                    arbitrary_length: true,
+                }));
             }
-            SliceTypeContent::Slice(x) => {
-                todo!()
-            }
-            SliceTypeContent::Slices(slices) => {
-                let mut arbitrary_length = false;
-                TupleContent {
-                    generics: Some(GenericsList::new_generics(
-                        slices
-                            .iter()
-                            .filter_map(|slice_content| {
-                                if let SliceOrSimple::Simple(s) = slice_content {
-                                    if s.named_expr.is_ellipsis_literal() {
-                                        arbitrary_length = true;
-                                        return None;
-                                    }
-                                }
-                                Some(self.compute_slice_db_type(slice_content))
-                            })
-                            .collect(),
-                    )),
-                    arbitrary_length,
-                }
-            }
-        };
-        TypeContent::DbType(DbType::Tuple(content))
+        }
+        let generics = slice_type
+            .iter()
+            .map(|slice_content| self.compute_slice_db_type(slice_content));
+        TypeContent::DbType(DbType::Tuple(TupleContent {
+            generics: Some(GenericsList::new_generics(generics.collect())),
+            arbitrary_length: false,
+        }))
     }
 
     fn compute_type_get_item_on_callable(
