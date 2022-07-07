@@ -701,57 +701,48 @@ where
                 todo!()
             }
         };
-        let on_invalid_arg_count = |node_ref: NodeRef<'db>| {
-            node_ref.add_typing_issue(db, IssueType::InvalidCallableArgCount);
-            CallableContent {
-                params: None,
-                return_class: Box::new(DbType::Any),
-            }
-        };
 
-        let content = match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => on_invalid_arg_count(simple.as_node_ref()),
-            SliceTypeContent::Slice(x) => {
-                todo!()
-            }
-            SliceTypeContent::Slices(slices) => {
-                if slices.iter().count() == 2 {
-                    let mut iterator = slices.iter();
-                    let param_node = iterator.next().map(|slice_content| match slice_content {
-                        SliceOrSimple::Simple(n) => {
-                            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                                n.named_expr.expression().unpack()
-                            {
-                                match atom.unpack() {
-                                    AtomContent::List(list) => {
-                                        if let Some(iterator) = list.unpack() {
-                                            for i in iterator {
-                                                add_param(&mut params, i)
-                                            }
-                                        }
-                                    }
-                                    AtomContent::Ellipsis => params = None,
-                                    _ => {
-                                        n.as_node_ref()
-                                            .add_typing_issue(db, IssueType::InvalidCallableParams);
-                                        params = None
+        let content = if slice_type.iter().count() == 2 {
+            let mut iterator = slice_type.iter();
+            let param_node = iterator.next().map(|slice_content| match slice_content {
+                SliceOrSimple::Simple(n) => {
+                    if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                        n.named_expr.expression().unpack()
+                    {
+                        match atom.unpack() {
+                            AtomContent::List(list) => {
+                                if let Some(iterator) = list.unpack() {
+                                    for i in iterator {
+                                        add_param(&mut params, i)
                                     }
                                 }
                             }
+                            AtomContent::Ellipsis => params = None,
+                            _ => {
+                                n.as_node_ref()
+                                    .add_typing_issue(db, IssueType::InvalidCallableParams);
+                                params = None
+                            }
                         }
-                        SliceOrSimple::Slice(s) => todo!(),
-                    });
-                    let return_class = iterator
-                        .next()
-                        .map(|slice_content| self.compute_slice_db_type(slice_content))
-                        .unwrap_or(DbType::Any);
-                    CallableContent {
-                        params: params.map(|p| p.into_boxed_slice()),
-                        return_class: Box::new(return_class),
                     }
-                } else {
-                    on_invalid_arg_count(slices.as_node_ref())
                 }
+                SliceOrSimple::Slice(s) => todo!(),
+            });
+            let return_class = iterator
+                .next()
+                .map(|slice_content| self.compute_slice_db_type(slice_content))
+                .unwrap_or(DbType::Any);
+            CallableContent {
+                params: params.map(|p| p.into_boxed_slice()),
+                return_class: Box::new(return_class),
+            }
+        } else {
+            slice_type
+                .as_node_ref()
+                .add_typing_issue(db, IssueType::InvalidCallableArgCount);
+            CallableContent {
+                params: None,
+                return_class: Box::new(DbType::Any),
             }
         };
         TypeContent::DbType(DbType::Callable(content))
