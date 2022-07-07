@@ -3,9 +3,9 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, GenericsList, Locality, Point,
-    PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex, TypeVarManager,
-    TypeVarType, TypeVarUsage,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
+    Locality, Point, PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex,
+    TypeVarManager, TypeVarType, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -20,7 +20,7 @@ use crate::value::{Class, ClassLike, Function, Module, Value};
 
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum SpecialType<'db, 'a> {
     Union,
     Optional,
@@ -34,7 +34,7 @@ enum SpecialType<'db, 'a> {
     Tuple,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum InvalidVariableType<'db, 'a> {
     List,
     Function(Function<'db, 'db>),
@@ -100,7 +100,7 @@ impl InvalidVariableType<'_, '_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
     ClassWithoutTypeVar(Inferred<'db>),
@@ -619,6 +619,27 @@ where
         for type_var in type_vars.iter() {
             let db_type = if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type(slice_content, None);
+                if let Some(bound) = &type_var.bound {
+                    // Performance: This could be optimized to not create new objects all the time.
+                    let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                    let i_s = &mut self.inference.i_s;
+                    let actual = Type::from_db_type(i_s.db, &db_t);
+                    let expected = Type::from_db_type(i_s.db, bound);
+                    if !expected.matches(i_s, None, actual, Variance::Covariant) {
+                        slice_content.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::TypeVarBoundViolation(
+                                Type::from_db_type(i_s.db, &db_t).as_string(
+                                    i_s,
+                                    None,
+                                    FormatStyle::Short,
+                                ),
+                                class.name().to_owned(),
+                                expected.as_string(i_s, None, FormatStyle::Short),
+                            ),
+                        );
+                    }
+                }
                 given_count += 1;
                 if generics.is_empty() {
                     if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {

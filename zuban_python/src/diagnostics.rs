@@ -40,6 +40,7 @@ pub(crate) enum IssueType {
     UnboundTypeVar(std::rc::Rc<TypeVar>),
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected(&'static str),
+    TypeVarBoundViolation(String, String, String),
     InvalidTypeVarValue(String, String, String),
 
     BaseExceptionExpected,
@@ -232,6 +233,9 @@ impl<'db> Diagnostic<'db> {
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
             IssueType::TypeVarExpected(s) => format!("Free type variable expected in {s}[...]"),
+            IssueType::TypeVarBoundViolation(actual, executable, expected) => format!(
+                "Type argument \"{actual}\" of \"{executable}\" must be a suptype of \"{expected}\"",
+            ),
             IssueType::InvalidTypeVarValue(type_var, func, type_) =>
                 format!("Value of type variable {type_var:?} of {func:?} cannot be {type_:?}"),
 
