@@ -327,7 +327,7 @@ impl<'db> Inferred<'db> {
                     .file
                     .inference(i_s)
                     .use_db_type_of_annotation(definition.node_index);
-                self.run_on_db_type(i_s, db_type, callable, reducer, on_missing)
+                run_on_db_type(i_s, db_type, callable, reducer, on_missing)
             }
             Specific::TypingProtocol
             | Specific::TypingGeneric
@@ -472,111 +472,11 @@ impl<'db> Inferred<'db> {
                 .unwrap();
                 callable(i_s, &class)
             }
-            ComplexPoint::TypeInstance(t) => {
-                self.run_on_db_type(i_s, t, callable, reducer, on_missing)
-            }
+            ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
             ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
             _ => {
                 unreachable!("Classes are handled earlier {complex:?}")
             }
-        }
-    }
-
-    fn run_on_db_type<'a, T>(
-        &'a self,
-        i_s: &mut InferenceState<'db, '_>,
-        db_type: &'a DbType,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match db_type {
-            DbType::Class(link) => {
-                let inst = use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, None);
-                callable(i_s, &inst)
-            }
-            DbType::GenericClass(link, generics) => {
-                let g = Generics::new_list(generics);
-                let inst = use_instance(NodeRef::from_link(i_s.db, *link), g, None);
-                callable(i_s, &inst)
-            }
-            DbType::Union(lst) => lst
-                .iter()
-                .fold(None, |input, t| match input {
-                    None => Some(self.run_on_db_type(i_s, t, callable, reducer, on_missing)),
-                    Some(t1) => {
-                        let t2 = self.run_on_db_type(i_s, t, callable, reducer, on_missing);
-                        Some(reducer(i_s, t1, t2))
-                    }
-                })
-                .unwrap(),
-            DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
-            DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
-            DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
-            DbType::None => callable(i_s, &NoneInstance()),
-            DbType::Any => on_missing(i_s),
-            DbType::Unknown => todo!(),
-            DbType::Never => todo!(),
-            DbType::Type(t) => {
-                self.run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing)
-            }
-        }
-    }
-
-    fn run_on_db_type_type<'a, T>(
-        &'a self,
-        i_s: &mut InferenceState<'db, '_>,
-        db_type: &'a DbType,
-        type_: &'a DbType,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match type_ {
-            DbType::Class(link) => {
-                let node_ref = NodeRef::from_link(i_s.db, *link);
-                callable(
-                    i_s,
-                    &Class::from_position(node_ref, Generics::None, None).unwrap(),
-                )
-            }
-            DbType::GenericClass(link, generics) => {
-                let class = Class::from_position(
-                    NodeRef::from_link(i_s.db, *link),
-                    Generics::new_list(generics),
-                    None,
-                )
-                .unwrap();
-                callable(i_s, &class)
-            }
-            DbType::Union(lst) => lst
-                .iter()
-                .fold(None, |input, t| match input {
-                    None => Some(
-                        self.run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
-                    ),
-                    Some(t1) => {
-                        let t2 = self
-                            .run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing);
-                        Some(reducer(i_s, t1, t2))
-                    }
-                })
-                .unwrap(),
-            DbType::TypeVar(t) => todo!(),
-            DbType::Type(g) => callable(i_s, &TypingType::new(i_s.db, g)),
-            DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-            DbType::Callable(content) => {
-                debug!("TODO the db_type can be wrong if it was part of a union");
-                callable(i_s, &CallableClass::new(db_type, content))
-            }
-            DbType::None => {
-                debug!("TODO this should be NoneType instead of None");
-                callable(i_s, &NoneInstance())
-            }
-            // TODO it is wrong that this uses TypingType like Type(Type(Any))
-            DbType::Any => callable(i_s, &TypingType::new(i_s.db, db_type)),
-            DbType::Unknown => todo!(),
-            DbType::Never => todo!(),
         }
     }
 
@@ -1197,6 +1097,99 @@ fn use_instance<'db, 'a>(
 ) -> Instance<'db, 'a> {
     let class = Class::from_position(class_reference, generics, None).unwrap();
     Instance::new(class, instance_reference)
+}
+
+pub fn run_on_db_type<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
+    db_type: &'a DbType,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+) -> T {
+    match db_type {
+        DbType::Class(link) => {
+            let inst = use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, None);
+            callable(i_s, &inst)
+        }
+        DbType::GenericClass(link, generics) => {
+            let g = Generics::new_list(generics);
+            let inst = use_instance(NodeRef::from_link(i_s.db, *link), g, None);
+            callable(i_s, &inst)
+        }
+        DbType::Union(lst) => lst
+            .iter()
+            .fold(None, |input, t| match input {
+                None => Some(run_on_db_type(i_s, t, callable, reducer, on_missing)),
+                Some(t1) => {
+                    let t2 = run_on_db_type(i_s, t, callable, reducer, on_missing);
+                    Some(reducer(i_s, t1, t2))
+                }
+            })
+            .unwrap(),
+        DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
+        DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
+        DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
+        DbType::None => callable(i_s, &NoneInstance()),
+        DbType::Any => on_missing(i_s),
+        DbType::Unknown => todo!(),
+        DbType::Never => todo!(),
+        DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
+    }
+}
+
+fn run_on_db_type_type<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
+    db_type: &'a DbType,
+    type_: &'a DbType,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+) -> T {
+    match type_ {
+        DbType::Class(link) => {
+            let node_ref = NodeRef::from_link(i_s.db, *link);
+            callable(
+                i_s,
+                &Class::from_position(node_ref, Generics::None, None).unwrap(),
+            )
+        }
+        DbType::GenericClass(link, generics) => {
+            let class = Class::from_position(
+                NodeRef::from_link(i_s.db, *link),
+                Generics::new_list(generics),
+                None,
+            )
+            .unwrap();
+            callable(i_s, &class)
+        }
+        DbType::Union(lst) => lst
+            .iter()
+            .fold(None, |input, t| match input {
+                None => Some(run_on_db_type_type(
+                    i_s, db_type, t, callable, reducer, on_missing,
+                )),
+                Some(t1) => {
+                    let t2 = run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing);
+                    Some(reducer(i_s, t1, t2))
+                }
+            })
+            .unwrap(),
+        DbType::TypeVar(t) => todo!(),
+        DbType::Type(g) => callable(i_s, &TypingType::new(i_s.db, g)),
+        DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
+        DbType::Callable(content) => {
+            debug!("TODO the db_type can be wrong if it was part of a union");
+            callable(i_s, &CallableClass::new(db_type, content))
+        }
+        DbType::None => {
+            debug!("TODO this should be NoneType instead of None");
+            callable(i_s, &NoneInstance())
+        }
+        // TODO it is wrong that this uses TypingType like Type(Type(Any))
+        DbType::Any => callable(i_s, &TypingType::new(i_s.db, db_type)),
+        DbType::Unknown => todo!(),
+        DbType::Never => todo!(),
+    }
 }
 
 // TODO unused -> delete?!

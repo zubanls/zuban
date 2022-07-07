@@ -3,9 +3,7 @@ use std::fmt;
 use parsa_python_ast::PrimaryContent;
 
 use super::class::MroIterator;
-use super::{
-    Class, ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind,
-};
+use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
@@ -17,7 +15,7 @@ use crate::diagnostics::IssueType;
 use crate::generics::{Generics, Type, TypeVarMatcher};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{run_on_db_type, Inferred};
 use crate::node_ref::NodeRef;
 
 const ANY: DbType = DbType::Any;
@@ -727,15 +725,25 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
             */
         }
         if let Some(db_type) = &self.type_var_usage.type_var.bound {
-            match db_type {
-                DbType::Class(link) => Instance::new(
-                    Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::None, None)
-                        .unwrap(),
-                    None,
-                )
-                .lookup_internal(i_s, name),
-                _ => todo!("{:?}", db_type),
-            }
+            run_on_db_type(
+                i_s,
+                db_type,
+                &mut |i_s, v| {
+                    let result = v.lookup_internal(i_s, name);
+                    if matches!(result, LookupResult::None) {
+                        debug!(
+                            "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
+                            v.class(i_s).as_string(i_s, None, FormatStyle::Short),
+                            db_type.as_type_string(i_s.db, None, FormatStyle::Short),
+                            self.name(),
+                            name,
+                        );
+                    }
+                    result
+                },
+                &|i_s, a, b| a.union(b),
+                &mut |i_s| todo!(),
+            )
         } else {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we

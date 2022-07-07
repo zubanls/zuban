@@ -160,9 +160,20 @@ pub enum LookupResult<'db> {
 
 impl<'db> LookupResult<'db> {
     fn into_maybe_inferred(self) -> Option<Inferred<'db>> {
+        // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
             Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),
             Self::None | Self::FileReference(_) => None,
+        }
+    }
+
+    pub fn union(self, other: Self) -> Self {
+        match self.into_maybe_inferred() {
+            Some(self_) => match other.into_maybe_inferred() {
+                Some(other) => LookupResult::UnknownName(self_.union(other)),
+                None => LookupResult::UnknownName(self_),
+            },
+            None => other,
         }
     }
 
@@ -170,6 +181,7 @@ impl<'db> LookupResult<'db> {
         match self {
             Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
             Self::UnknownName(inf) => Self::UnknownName(c(inf)),
+            // TODO is it ok that map does not include FileReference(_)?
             _ => self,
         }
     }
