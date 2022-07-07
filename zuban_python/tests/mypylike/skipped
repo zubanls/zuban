@@ -3,8 +3,6 @@ testUnionAttributeAccess
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
 
-testSubtypingIterableUnpacking2
-
 testBoundOnGenericClass
 testBoundInheritance
 testNewAnalyzerTypeVarBoundForwardRef
@@ -19,6 +17,12 @@ testBoundGenericFunctions
 
 testContravariant
 testInheritedConstructor
+
+# Overloading
+*Overload*
+# Overloading generated messages that were not necessary
+testSubtypingIterableUnpacking1
+testSubtypingIterableUnpacking2
 
 # Not matching type vars
 testJoinUnionWithUnionAndAny
@@ -502,7 +506,6 @@ testConstructorSignatureChanged2
 testConstructorSignatureChanged3
 testReprocessMethodInNestedClassSemanal
 testPreviousErrorInMethodSemanalPass3
-*Overload*
 *python2
 testErrorInTypeCheckSecondPassThroughPropagation
 *PartialType*
