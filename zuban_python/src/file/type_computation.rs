@@ -939,14 +939,16 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             Specific::TypingOptional => {
                 compute_type_application!(self, compute_type_get_item_on_optional(slice_type))
             }
-            Specific::TypingType => match slice_type.unpack() {
-                SliceTypeContent::Simple(simple) => {
+            Specific::TypingType => {
+                let mut iterator = slice_type.iter();
+                let first = iterator.next().unwrap();
+                // let g = simple.infer_type(i_s);
+                // DbType::Type(Box::new(g))
+                if let Some(slice_content) = iterator.next() {
                     todo!()
-                    // let g = simple.infer_type(i_s);
-                    // DbType::Type(Box::new(g))
                 }
-                _ => todo!(),
-            },
+                todo!()
+            }
             _ => unreachable!("{:?}", specific),
         }
     }
