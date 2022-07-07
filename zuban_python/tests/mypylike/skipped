@@ -2,8 +2,6 @@ testUnionAttributeAccess
 
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
-testTypeVarBoundToOldUnionAttributeAccess
-testTypeVarBoundToNewUnionAttributeAccess
 
 testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
@@ -82,6 +80,10 @@ testMultipleClassTypevarsWithValues1
 testGenericFunctionWithNormalAndRestrictedTypevar
 testDefineAttributeInGenericMethodUsingTypeVarWithValues
 testTypevarValuesSpecialCase1
+
+# Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
+testTypeVarBoundToOldUnionAttributeAccess
+testTypeVarBoundToNewUnionAttributeAccess
 
 # type var from fine grained
 testTypeVarValuesFunction

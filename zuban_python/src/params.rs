@@ -34,7 +34,7 @@ impl<'x> Param<'x> for ASTParam<'x> {
         self.annotation().map(|annotation| {
             function
                 .unwrap()
-                .reference
+                .node_ref
                 .file
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)

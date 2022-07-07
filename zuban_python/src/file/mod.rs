@@ -1285,7 +1285,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         && self
                             .i_s
                             .current_execution
-                            .map(|(f, _)| f.reference.node_index == star_import.scope)
+                            .map(|(f, _)| f.node_ref.node_index == star_import.scope)
                             .or_else(|| {
                                 self.i_s
                                     .current_class

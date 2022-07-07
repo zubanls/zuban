@@ -114,7 +114,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::Class(s) => GenericsIterator::Class(*s),
             Self::Params(p) => GenericsIterator::Params(p.iter()),
             Self::FunctionParams(f) => {
-                GenericsIterator::ParamIterator(f.reference.file, f.iter_params())
+                GenericsIterator::ParamIterator(f.node_ref.file, f.iter_params())
             }
             Self::None => GenericsIterator::None,
         }

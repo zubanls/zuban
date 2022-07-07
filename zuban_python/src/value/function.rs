@@ -23,14 +23,14 @@ use crate::value::Class;
 
 #[derive(Clone, Copy)]
 pub struct Function<'db, 'a> {
-    pub reference: NodeRef<'db>,
+    pub node_ref: NodeRef<'db>,
     pub class: Option<Class<'db, 'a>>,
 }
 
 impl<'db> fmt::Debug for Function<'db, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
-            .field("file", self.reference.file)
+            .field("file", self.node_ref.file)
             .field("node", &self.node())
             .finish()
     }
@@ -40,8 +40,8 @@ impl<'db, 'a> Function<'db, 'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(reference: NodeRef<'db>, class: Option<Class<'db, 'a>>) -> Self {
-        Self { reference, class }
+    pub fn new(node_ref: NodeRef<'db>, class: Option<Class<'db, 'a>>) -> Self {
+        Self { node_ref, class }
     }
 
     pub fn from_execution(
@@ -60,7 +60,7 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     pub fn node(&self) -> FunctionDef<'db> {
-        FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index)
+        FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
     pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
@@ -98,10 +98,10 @@ impl<'db, 'a> Function<'db, 'a> {
         args: &dyn Arguments<'db>,
     ) -> Inferred<'db> {
         let func_node =
-            FunctionDef::from_param_name_def_index(&self.reference.file.tree, param_name_def_index);
+            FunctionDef::from_param_name_def_index(&self.node_ref.file.tree, param_name_def_index);
         let temporary_args;
         let temporary_func;
-        let (check_args, func) = if func_node.index() == self.reference.node_index {
+        let (check_args, func) = if func_node.index() == self.node_ref.node_index {
             (args, self)
         } else {
             let mut execution = args.outer_execution();
@@ -144,7 +144,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 {
                     if let Some(star_expressions) = ret.star_expressions() {
                         return self
-                            .reference
+                            .node_ref
                             .file
                             .inference(&mut inner_i_s)
                             .infer_star_expressions(star_expressions)
@@ -160,14 +160,10 @@ impl<'db, 'a> Function<'db, 'a> {
     }
 
     fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
-        let def_point = self
-            .reference
-            .file
-            .points
-            .get(self.reference.node_index + 1);
+        let def_point = self.node_ref.file.points.get(self.node_ref.node_index + 1);
         let first_return_or_yield = def_point.node_index();
         ReturnOrYieldIterator {
-            file: self.reference.file,
+            file: self.node_ref.file,
             next_node_index: first_return_or_yield,
         }
     }
@@ -184,7 +180,7 @@ impl<'db, 'a> Function<'db, 'a> {
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (
-        let type_var_reference = self.reference.add_to_node_index(4);
+        let type_var_reference = self.node_ref.add_to_node_index(4);
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
                 match complex {
@@ -196,7 +192,7 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         let mut type_vars = TypeVarManager::default();
         let func_node = self.node();
-        let mut inference = self.reference.file.inference(i_s);
+        let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
             if let Some(class) = self.class {
                 if let Some(usage) = class
@@ -240,7 +236,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn result_generics(&self) -> Generics<'db, 'a> {
         self.return_annotation()
-            .map(|a| Generics::Expression(self.reference.file, a.expression()))
+            .map(|a| Generics::Expression(self.node_ref.file, a.expression()))
             .unwrap_or(Generics::None)
     }
 
@@ -280,13 +276,13 @@ impl<'db, 'a> Function<'db, 'a> {
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
-                self.reference
+                self.node_ref
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
                     .execute_and_resolve_type_vars(i_s, self.class.as_ref(), Some(&mut finder))
             } else {
-                self.reference
+                self.node_ref
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation(return_annotation)
@@ -302,7 +298,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
         let node = self.node();
         let mut result = "Callable[[".to_owned();
-        let generics = GenericsIterator::ParamIterator(self.reference.file, self.iter_params());
+        let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
         let mut first = true;
         generics.run_on_all(i_s, &mut |i_s, g| {
             if !first {
@@ -314,7 +310,7 @@ impl<'db, 'a> Function<'db, 'a> {
         result += "], ";
         if let Some(annotation) = node.return_annotation() {
             result += &self
-                .reference
+                .node_ref
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
@@ -346,7 +342,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn name(&self) -> &'db str {
-        let func = FunctionDef::by_index(&self.reference.file.tree, self.reference.node_index);
+        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
     }
 
@@ -387,7 +383,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
-        Module::new(db, self.reference.file)
+        Module::new(db, self.node_ref.file)
     }
 }
 
@@ -568,19 +564,19 @@ impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'db, 'a> {
-    reference: NodeRef<'db>,
+    node_ref: NodeRef<'db>,
     overload: &'a Overload,
     class: Option<Class<'db, 'a>>,
 }
 
 impl<'db, 'a> OverloadedFunction<'db, 'a> {
     pub fn new(
-        reference: NodeRef<'db>,
+        node_ref: NodeRef<'db>,
         overload: &'a Overload,
         class: Option<Class<'db, 'a>>,
     ) -> Self {
         Self {
-            reference,
+            node_ref,
             overload,
             class,
         }
@@ -666,7 +662,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
     }
 
     fn name(&self) -> &'db str {
-        self.reference.as_code()
+        self.node_ref.as_code()
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
