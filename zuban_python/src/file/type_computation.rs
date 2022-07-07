@@ -611,24 +611,35 @@ where
         if !matches!(class.generics(), Generics::None) {
             todo!("{:?}", class)
         }
-        let expected_count = class.type_vars(self.inference.i_s).len();
+        let type_vars = class.type_vars(self.inference.i_s);
+        let expected_count = type_vars.len();
         let mut given_count = 0;
         let mut generics = vec![];
-        for slice_content in slice_type.iter() {
-            let t = self.compute_slice_type(slice_content, None);
-            given_count += 1;
-            if generics.is_empty() {
-                if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
-                    continue;
-                } else {
-                    for slice_content in slice_type.iter().take(given_count - 1) {
-                        generics.push(self.compute_slice_db_type(slice_content));
+        let mut iterator = slice_type.iter();
+        for type_var in type_vars.iter() {
+            let db_type = if let Some(slice_content) = iterator.next() {
+                let t = self.compute_slice_type(slice_content, None);
+                given_count += 1;
+                if generics.is_empty() {
+                    if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
+                        continue;
+                    } else {
+                        for slice_content in slice_type.iter().take(given_count - 1) {
+                            generics.push(self.compute_slice_db_type(slice_content));
+                        }
                     }
                 }
-            }
-            generics.push(self.as_db_type(t, slice_content.as_node_ref()))
+                self.as_db_type(t, slice_content.as_node_ref())
+            } else {
+                for slice_content in slice_type.iter().take(given_count) {
+                    generics.push(self.compute_slice_db_type(slice_content));
+                }
+                DbType::Any
+            };
+            generics.push(db_type);
         }
-        let result = if generics.is_empty() {
+        given_count += iterator.count();
+        let result = if generics.is_empty() && given_count == expected_count {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(
                     Inferred::new_unsaved_specific(Specific::SimpleGeneric)
@@ -637,10 +648,13 @@ where
                 None => unreachable!(),
             }
         } else {
-            TypeContent::DbType(DbType::GenericClass(
-                class.node_ref.as_link(),
-                GenericsList::generics_from_vec(generics),
-            ))
+            TypeContent::DbType(match expected_count {
+                0 => DbType::Class(class.node_ref.as_link()),
+                _ => DbType::GenericClass(
+                    class.node_ref.as_link(),
+                    GenericsList::generics_from_vec(generics),
+                ),
+            })
         };
         if given_count != expected_count && !self.errors_already_calculated {
             // TODO both the type argument issues and are not implemented for other classlikes
