@@ -615,18 +615,18 @@ where
         let mut given_count = 0;
         let mut generics = vec![];
         for slice_content in slice_type.iter() {
+            let t = self.compute_slice_type(slice_content, None);
+            given_count += 1;
             if generics.is_empty() {
-                let t = self.compute_slice_type(slice_content, None);
-                if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) || primary.is_none() {
-                    for slice_content in slice_type.iter().take(given_count) {
+                if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
+                    continue;
+                } else {
+                    for slice_content in slice_type.iter().take(given_count - 1) {
                         generics.push(self.compute_slice_db_type(slice_content));
                     }
-                    generics.push(self.as_db_type(t, slice_content.as_node_ref()));
                 }
-            } else {
-                generics.push(self.compute_slice_db_type(slice_content))
             }
-            given_count += 1;
+            generics.push(self.as_db_type(t, slice_content.as_node_ref()))
         }
         let result = if generics.is_empty() {
             match primary {
