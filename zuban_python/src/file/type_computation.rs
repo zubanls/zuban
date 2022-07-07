@@ -811,21 +811,12 @@ where
         slice_type: SliceType<'db, 'x>,
     ) -> TypeContent<'db, 'x> {
         let expected_count = alias.type_vars.len();
-        let mut given_count = 1;
+        let mut given_count = 0;
         let mut generics = vec![];
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(s) => {
-                generics.push(self.compute_db_type(s.named_expr.expression()))
-            }
-            SliceTypeContent::Slice(slice) => todo!(),
-            SliceTypeContent::Slices(slices) => {
-                given_count = 0;
-                for slice_or_simple in slices.iter() {
-                    given_count += 1;
-                    generics.push(self.compute_slice_db_type(slice_or_simple))
-                }
-            }
-        };
+        for slice_or_simple in slice_type.iter() {
+            given_count += 1;
+            generics.push(self.compute_slice_db_type(slice_or_simple))
+        }
         let mismatch = given_count != expected_count;
         if mismatch {
             slice_type.as_node_ref().add_typing_issue(
