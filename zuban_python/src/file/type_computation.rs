@@ -617,76 +617,35 @@ where
             todo!("{:?}", class)
         }
         let expected_count = class.type_vars(self.inference.i_s).len();
-        let mut given_count = 1;
-        let result = match slice_type.unpack() {
-            SliceTypeContent::Simple(s) => {
-                let mut to_type_content = || {
-                    let db_type = match self.compute_type(s.named_expr.expression(), None) {
-                        TypeContent::ClassWithoutTypeVar(inf) => match primary {
-                            Some(primary) => {
-                                return TypeContent::ClassWithoutTypeVar(
-                                    Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-                                        .save_if_unsaved(self.inference.file, primary.index()),
-                                )
-                            }
-                            None => inf.as_db_type(self.inference.i_s),
-                        },
-                        TypeContent::DbType(d) => d,
-                        TypeContent::Module(m) => todo!(),
-                        TypeContent::TypeAlias(m) => m.as_db_type(),
-                        TypeContent::SpecialType(SpecialType::Type) => {
-                            DbType::Type(Box::new(DbType::Any))
-                        }
-                        TypeContent::SpecialType(m) => match m {
-                            SpecialType::Any => DbType::Any,
-                            _ => todo!("{m:?} {primary:?}"),
-                        },
-                        TypeContent::Unknown => DbType::Any,
-                        TypeContent::InvalidVariable(t) => {
-                            t.add_issue(self.inference.i_s.db, s.as_node_ref());
-                            DbType::Any
-                        }
-                    };
-                    TypeContent::DbType(DbType::GenericClass(
-                        class.node_ref.as_link(),
-                        GenericsList::new_generics(Box::new([db_type])),
-                    ))
-                };
-                to_type_content()
-            }
-            SliceTypeContent::Slice(slice) => todo!(),
-            SliceTypeContent::Slices(slices) => {
-                given_count = 0;
-                let mut generics = vec![];
-                for slice_content in slices.iter() {
-                    if generics.is_empty() {
-                        let t = self.compute_slice_type(slice_content, None);
-                        if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) || primary.is_none() {
-                            for slice_content in slices.iter().take(given_count) {
-                                generics.push(self.compute_slice_db_type(slice_content));
-                            }
-                            generics.push(self.as_db_type(t, slice_content.as_node_ref()));
-                        }
-                    } else {
-                        generics.push(self.compute_slice_db_type(slice_content))
+        let mut given_count = 0;
+        let mut generics = vec![];
+        for slice_content in slice_type.iter() {
+            if generics.is_empty() {
+                let t = self.compute_slice_type(slice_content, None);
+                if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) || primary.is_none() {
+                    for slice_content in slice_type.iter().take(given_count) {
+                        generics.push(self.compute_slice_db_type(slice_content));
                     }
-                    given_count += 1;
+                    generics.push(self.as_db_type(t, slice_content.as_node_ref()));
                 }
-                if generics.is_empty() {
-                    match primary {
-                        Some(primary) => TypeContent::ClassWithoutTypeVar(
-                            Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-                                .save_if_unsaved(self.inference.file, primary.index()),
-                        ),
-                        None => unreachable!(),
-                    }
-                } else {
-                    TypeContent::DbType(DbType::GenericClass(
-                        class.node_ref.as_link(),
-                        GenericsList::generics_from_vec(generics),
-                    ))
-                }
+            } else {
+                generics.push(self.compute_slice_db_type(slice_content))
             }
+            given_count += 1;
+        }
+        let result = if generics.is_empty() {
+            match primary {
+                Some(primary) => TypeContent::ClassWithoutTypeVar(
+                    Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+                        .save_if_unsaved(self.inference.file, primary.index()),
+                ),
+                None => unreachable!(),
+            }
+        } else {
+            TypeContent::DbType(DbType::GenericClass(
+                class.node_ref.as_link(),
+                GenericsList::generics_from_vec(generics),
+            ))
         };
         if given_count != expected_count && !self.errors_already_calculated {
             // TODO both the type argument issues and are not implemented for other classlikes
