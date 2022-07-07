@@ -834,23 +834,12 @@ where
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, in_: &'static str) {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(n) => {
-                match self.compute_type(n.named_expr.expression(), Some(TypeVarIndex::new(0))) {
-                    TypeContent::DbType(DbType::TypeVar(_)) => (),
-                    _ => n
-                        .as_node_ref()
-                        .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected(in_)),
-                }
-            }
-            SliceTypeContent::Slice(slice) => todo!(),
-            SliceTypeContent::Slices(slices) => {
-                for (i, s) in slices.iter().enumerate() {
-                    match self.compute_slice_type(s, Some(TypeVarIndex::new(i))) {
-                        TypeContent::DbType(DbType::TypeVar(_)) => (),
-                        _ => todo!(),
-                    }
-                }
+        for (i, s) in slice_type.iter().enumerate() {
+            match self.compute_slice_type(s, Some(TypeVarIndex::new(i))) {
+                TypeContent::DbType(DbType::TypeVar(_)) => (),
+                _ => s
+                    .as_node_ref()
+                    .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected(in_)),
             }
         }
     }
