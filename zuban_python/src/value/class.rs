@@ -233,9 +233,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
         match self {
             Self::TypeVar(t2) => t1.index == t2.index && t1.type_ == t2.type_,
-            Self::TypeWithDbType(DbType::TypeVar(t2)) => {
-                t1.index == t2.index && t1.type_ == t2.type_
-            }
             _ => false,
         }
     }
