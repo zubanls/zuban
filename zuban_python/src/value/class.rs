@@ -48,8 +48,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        // TODO use type_var_remap
         match value_class {
+            Type::ClassLike(ClassLike::TypeVar(t)) if matcher.is_none() => {
+                return self.matches_type_var(t)
+                    || self.matches(i_s, t.type_var.constraint_type(i_s.db), matcher, variance)
+            }
             Type::ClassLike(c) => {
                 match variance {
                     Variance::Covariant => {
@@ -230,7 +233,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         matches
     }
 
-    pub fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
+    fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
         match self {
             Self::TypeVar(t2) => t1.index == t2.index && t1.type_ == t2.type_,
             _ => false,

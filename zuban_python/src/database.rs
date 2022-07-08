@@ -13,7 +13,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::generics::Generics;
+use crate::generics::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
@@ -1007,6 +1007,16 @@ impl TypeVar {
             node_ref.in_module(db).qualified_name(db),
             node_ref.maybe_str().unwrap().content()
         )
+    }
+
+    pub fn constraint_type<'db>(&self, db: &'db Database) -> Type<'db, '_> {
+        if let Some(bound) = &self.bound {
+            Type::from_db_type(db, bound)
+        } else if !self.restrictions.is_empty() {
+            todo!()
+        } else {
+            db.python_state.object_type()
+        }
     }
 }
 

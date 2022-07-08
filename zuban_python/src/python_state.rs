@@ -4,9 +4,9 @@ use std::ptr::null;
 use crate::database::{Database, DbType, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::generics::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::value::{Class, ClassLike};
 
 pub struct PythonState {
     builtins: *const PythonFile,
@@ -110,8 +110,14 @@ impl PythonState {
         NodeRef::new(self.builtins(), self.builtins_object_node_index)
     }
 
+    #[inline]
     pub fn object_class(&self) -> Class {
         Class::from_position(self.object(), Generics::None, None).unwrap()
+    }
+
+    #[inline]
+    pub fn object_type(&self) -> Type {
+        Type::ClassLike(ClassLike::Class(self.object_class()))
     }
 
     #[inline]
