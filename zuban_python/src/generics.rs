@@ -583,7 +583,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             && !type_var.restrictions.iter().any(|t| {
                 Type::from_db_type(i_s.db, t).matches(
                     i_s,
-                    Some(self),
+                    None,
                     value_type.clone(),
                     Variance::Covariant,
                 )
@@ -592,7 +592,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             mismatch_constraints = mismatch_constraints
                 || !Type::from_db_type(i_s.db, bound).matches(
                     i_s,
-                    Some(self),
+                    None,
                     value_type.clone(),
                     Variance::Covariant,
                 );

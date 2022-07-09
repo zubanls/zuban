@@ -8,8 +8,6 @@ testConstructGenericTypeWithTypevarValuesAndTypeInference
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 testMultipleClassTypevarsWithValues2
 testGenericFunctionSubtypingWithTypevarValues
-testBoundHigherOrderWithVoid
-testBoundGenericFunctions
 
 testContravariant
 testInheritedConstructor
@@ -744,6 +742,7 @@ testEllipsisDefaultArgValueInNonStubsMethods
 *StrictOptional*
 testAssignToFuncDefViaImport
 testUnionWithNoneItem
+testBoundHigherOrderWithVoid
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
