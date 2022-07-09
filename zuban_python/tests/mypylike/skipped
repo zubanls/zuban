@@ -3,9 +3,6 @@ testUnionAttributeAccess
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritanceFromGenericWithImplicitDynamic
 
-testBoundOnGenericClass
-testNewAnalyzerTypeVarBoundForwardRef
-testTypeVarWithAnyTypeBound
 testGenericTypeWithTypevarValues
 testConstructGenericTypeWithTypevarValuesAndTypeInference
 testGenericTypeWithTypevarValuesAndSubtypePromotion
@@ -107,6 +104,12 @@ testTypeInferenceWithCalleeVarArgsAndDefaultArgs
 
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
+
+# Type[T] TypeVars
+testTypeVarWithAnyTypeBound
+
+# Type Var Inference bottom up
+testBoundOnGenericClass
 
 # Literal
 testNewAnalyzerBool
