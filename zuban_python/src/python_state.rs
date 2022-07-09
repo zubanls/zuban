@@ -174,6 +174,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Any", Specific::TypingAny);
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
+    set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -198,7 +199,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
-    if !["cast", "type", "tuple"].contains(&name) {
+    if !["cast", "type", "tuple", "TypeVar"].contains(&name) {
         debug_assert!(!file.points.get(node_index).calculated());
         set_assignments_cached(file, node_index);
     }

@@ -18,8 +18,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
-    Tuple, TupleClass, TypeAlias, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
-    TypingType, TypingWithGenerics, Value,
+    Tuple, TupleClass, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
+    TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 #[derive(Debug)]
@@ -330,6 +330,7 @@ impl<'db> Inferred<'db> {
                     .use_db_type_of_annotation(definition.node_index);
                 run_on_db_type(i_s, db_type, callable, reducer, on_missing)
             }
+            Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
             Specific::TypingProtocol
             | Specific::TypingGeneric
             | Specific::TypingTuple

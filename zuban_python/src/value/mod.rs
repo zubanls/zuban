@@ -26,8 +26,8 @@ pub use module::Module;
 pub use none::NoneInstance;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypeVarInstance, TypingCast,
-    TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
+    Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypeVarClass, TypeVarInstance,
+    TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
 };
 
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(

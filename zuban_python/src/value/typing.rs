@@ -761,3 +761,33 @@ impl fmt::Debug for TypeVarInstance<'_, '_> {
             .finish()
     }
 }
+
+#[derive(Debug)]
+pub struct TypeVarClass();
+
+impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &'db str {
+        "TypeVar"
+    }
+
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+        LookupResult::None
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred<'db> {
+        todo!()
+    }
+
+    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+        ClassLike::TypingClass(TypingClass::new(Specific::TypingType))
+    }
+}
