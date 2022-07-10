@@ -825,7 +825,13 @@ pub fn maybe_type_var<'db>(
                             return None;
                         }
                     }
-                    _ => return None,
+                    _ => {
+                        node.add_typing_issue(
+                            i_s.db,
+                            IssueType::TypeVarUnexpectedArgument(name.to_owned()),
+                        );
+                        return None;
+                    }
                 },
                 Argument::Inferred(v, _) => unreachable!(),
                 Argument::SlicesTuple(slices) => return None,

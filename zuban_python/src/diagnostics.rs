@@ -46,6 +46,7 @@ pub(crate) enum IssueType {
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     OnlySingleRestriction,
+    TypeVarUnexpectedArgument(String),
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -248,6 +249,8 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot have both values and an upper bound".to_owned(),
             IssueType::OnlySingleRestriction =>
                  "TypeVar cannot have only a single constraint".to_owned(),
+            IssueType::TypeVarUnexpectedArgument(arg) => format!(
+                 "Unexpected argument to \"TypeVar()\": \"{arg}\""),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
