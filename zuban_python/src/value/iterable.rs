@@ -11,12 +11,12 @@ use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ListLiteral<'db> {
-    node_reference: NodeRef<'db>,
+    node_ref: NodeRef<'db>,
 }
 
 impl<'db> ListLiteral<'db> {
-    pub fn new(node_reference: NodeRef<'db>) -> Self {
-        Self { node_reference }
+    pub fn new(node_ref: NodeRef<'db>) -> Self {
+        Self { node_ref }
     }
 
     pub fn infer_named_expr(
@@ -24,17 +24,14 @@ impl<'db> ListLiteral<'db> {
         i_s: &mut InferenceState<'db, '_>,
         named_expr: NamedExpression<'db>,
     ) -> Inferred<'db> {
-        self.node_reference
+        self.node_ref
             .file
             .inference(i_s)
             .infer_named_expression(named_expr)
     }
 
     fn list_node(&self) -> List<'db> {
-        List::by_index(
-            &self.node_reference.file.tree,
-            self.node_reference.node_index,
-        )
+        List::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
     pub fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
@@ -52,11 +49,11 @@ impl<'db> ListLiteral<'db> {
     }
 
     fn type_instance_ref(&self, i_s: &mut InferenceState<'db, '_>) -> NodeRef<'db> {
-        let reference = self.node_reference.add_to_node_index(1);
+        let reference = self.node_ref.add_to_node_index(1);
         if !reference.point().calculated() {
             let result = match self.list_node().unpack() {
                 Some(elements) => self
-                    .node_reference
+                    .node_ref
                     .file
                     .inference(i_s)
                     .create_list_or_set_generics(elements),
@@ -182,27 +179,22 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference =
-            NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
+        let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
         ClassLike::Class(
-            Class::from_position(
-                node_reference,
-                Generics::new_list(self.generic_list(i_s)),
-                None,
-            )
-            .unwrap(),
+            Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
+                .unwrap(),
         )
     }
 }
 
 #[derive(Debug)]
 pub struct DictLiteral<'db> {
-    node_reference: NodeRef<'db>,
+    node_ref: NodeRef<'db>,
 }
 
 impl<'db> DictLiteral<'db> {
-    pub fn new(node_reference: NodeRef<'db>) -> Self {
-        Self { node_reference }
+    pub fn new(node_ref: NodeRef<'db>) -> Self {
+        Self { node_ref }
     }
 
     fn infer_expr(
@@ -210,21 +202,15 @@ impl<'db> DictLiteral<'db> {
         i_s: &mut InferenceState<'db, '_>,
         expr: Expression<'db>,
     ) -> Inferred<'db> {
-        self.node_reference
-            .file
-            .inference(i_s)
-            .infer_expression(expr)
+        self.node_ref.file.inference(i_s).infer_expression(expr)
     }
 
     fn dict_node(&self) -> Dict<'db> {
-        Dict::by_index(
-            &self.node_reference.file.tree,
-            self.node_reference.node_index,
-        )
+        Dict::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
     fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
-        let reference = self.node_reference.add_to_node_index(1);
+        let reference = self.node_ref.add_to_node_index(1);
         if reference.point().calculated() {
             match reference.complex().unwrap() {
                 ComplexPoint::GenericClass(_, list) => list,
@@ -334,11 +320,9 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        let node_reference =
-            NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
+        let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
         ClassLike::Class(
-            Class::from_position(node_reference, Generics::new_list(self.db_type(i_s)), None)
-                .unwrap(),
+            Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),
         )
     }
 }

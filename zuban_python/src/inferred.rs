@@ -127,8 +127,8 @@ impl<'db> Inferred<'db> {
             }
             DbType::Type(c) => match *c {
                 DbType::Class(link) => {
-                    let node_reference = NodeRef::from_link(i_s.db, link);
-                    InferredState::Saved(node_reference, node_reference.point())
+                    let node_ref = NodeRef::from_link(i_s.db, link);
+                    InferredState::Saved(node_ref, node_ref.point())
                 }
                 DbType::GenericClass(l, g) => {
                     InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
