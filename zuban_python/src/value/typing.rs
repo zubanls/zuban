@@ -811,6 +811,10 @@ pub fn maybe_type_var<'db>(
                         }
                     }
                     "bound" => {
+                        if !restrictions.is_empty() {
+                            node.add_typing_issue(i_s.db, IssueType::TypeVarValuesAndUpperBound);
+                            return None;
+                        }
                         if let Some(t) = node
                             .file
                             .inference(i_s)
