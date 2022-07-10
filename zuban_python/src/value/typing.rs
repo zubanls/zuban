@@ -671,7 +671,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
             .infer(i_s)
             .class_as_type(i_s)
             .as_string(i_s, None, FormatStyle::Qualified);
-        args.node_reference()
+        args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::Note(format!("Revealed type is {s:?}")));
         if iterator.next().is_some() {
             todo!()
@@ -862,7 +862,7 @@ pub fn maybe_type_var<'db>(
             }
         }
         if restrictions.len() == 1 {
-            args.node_reference()
+            args.as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
@@ -878,14 +878,14 @@ pub fn maybe_type_var<'db>(
                 (true, false) => Variance::Covariant,
                 (false, true) => Variance::Contravariant,
                 (true, true) => {
-                    args.node_reference()
+                    args.as_node_ref()
                         .add_typing_issue(i_s.db, IssueType::TypeVarCoAndContravariant);
                     return None;
                 }
             },
         });
     } else {
-        args.node_reference()
+        args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
     }
     None

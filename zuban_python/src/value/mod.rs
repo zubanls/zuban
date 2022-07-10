@@ -249,7 +249,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        args.node_reference().add_typing_issue(
+        args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable(format!(
                 "{:?}",

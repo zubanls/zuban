@@ -447,7 +447,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
 
             self.args
-                .node_reference()
+                .as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             self.matches = false
         } else if args_with_params.arguments.peek().is_some() {
@@ -473,7 +473,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
 
                 self.args
-                    .node_reference()
+                    .as_node_ref()
                     .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             }
             self.matches = false
@@ -526,7 +526,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         s
                     };
                     self.args
-                        .node_reference()
+                        .as_node_ref()
                         .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
                 } else {
                     todo!()
@@ -600,7 +600,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if mismatch_constraints {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
-                    self.args.node_reference().add_typing_issue(
+                    self.args.as_node_ref().add_typing_issue(
                         i_s.db,
                         IssueType::InvalidTypeVarValue(
                             type_var.name(i_s.db).to_owned(),

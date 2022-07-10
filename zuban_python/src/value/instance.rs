@@ -82,7 +82,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 value.execute(i_s, args, on_type_error)
             })
         } else {
-            args.node_reference()
+            args.as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::NotCallable(format!("{:?}", self.name())));
             Inferred::new_unknown()
         }

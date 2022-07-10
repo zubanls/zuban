@@ -24,7 +24,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType<'db>;
-    fn node_reference(&self) -> NodeRef<'db>;
+    fn as_node_ref(&self) -> NodeRef<'db>;
 }
 
 #[derive(Debug)]
@@ -69,7 +69,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         ArgumentsType::Normal(self.file, self.primary_node_index)
     }
 
-    fn node_reference(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef<'db> {
         NodeRef::new(self.file, self.primary_node_index)
     }
 }
@@ -148,7 +148,7 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef<'db> {
         todo!()
     }
 }
@@ -201,8 +201,8 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeRef<'db> {
-        self.args2.node_reference()
+    fn as_node_ref(&self) -> NodeRef<'db> {
+        self.args2.as_node_ref()
     }
 }
 
@@ -416,7 +416,7 @@ impl<'db> Arguments<'db> for NoArguments<'db> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef<'db> {
         self.0
     }
 }

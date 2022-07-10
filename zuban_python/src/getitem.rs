@@ -214,7 +214,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn node_reference(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef<'db> {
         self.0.as_node_ref()
     }
 }
