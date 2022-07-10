@@ -37,6 +37,7 @@ enum SpecialType<'db, 'a> {
 #[derive(Debug, Clone)]
 enum InvalidVariableType<'db, 'a> {
     List,
+    Tuple,
     Function(Function<'db, 'db>),
     Literal(&'a str),
     Variable(NodeRef<'db>),
@@ -87,6 +88,12 @@ impl InvalidVariableType<'_, '_> {
                     db,
                     IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
                 );
+            }
+            Self::Tuple => {
+                // Should be something like:
+                // error: Syntax error in type annotation
+                // note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+                todo!()
             }
             Self::Literal(s) => {
                 node_ref.add_typing_issue(
@@ -891,6 +898,7 @@ where
             AtomContent::Int(n) => {
                 TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code()))
             }
+            AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple),
             _ => todo!("{atom:?}"),
         }
     }
