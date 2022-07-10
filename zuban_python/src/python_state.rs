@@ -75,7 +75,8 @@ impl PythonState {
         // Needed because there's a loop for calculating the type var _T_co, which defines string
         // literal arguments arguments, which means that the class of those is str, which is a sub
         // class of Sequence[_T_co], which uses _T_co again.
-        precalculate_type_var_instance(s.typing(), "_T_co");
+        // TODO do we really not need this anymore?
+        //precalculate_type_var_instance(s.typing(), "_T_co");
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }

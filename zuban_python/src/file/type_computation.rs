@@ -1123,8 +1123,8 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
             debug_assert!(self.file.points.get(name_def.index()).calculated());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            let complex = if let Some(tv) = inferred.maybe_type_var(self.i_s) {
-                ComplexPoint::TypeVar(Rc::new(tv))
+            if let Some(tv) = inferred.maybe_type_var(self.i_s) {
+                TypeNameLookup::TypeVar(tv)
             } else {
                 let mut type_vars = TypeVarManager::default();
                 let p = self.file.points.get(expr.index());
@@ -1144,7 +1144,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         has_type_vars: false,
                     };
                 let t = comp.compute_type(expr, None);
-                match t {
+                let complex = match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
                     TypeContent::InvalidVariable(t) => {
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
@@ -1159,10 +1159,10 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                             db_type,
                         }))
                     }
-                }
-            };
-            cached_type_node_ref.insert_complex(complex, Locality::Todo);
-            load_cached_type(cached_type_node_ref)
+                };
+                cached_type_node_ref.insert_complex(complex, Locality::Todo);
+                load_cached_type(cached_type_node_ref)
+            }
         } else {
             debug!("TODO invalid type def");
             TypeNameLookup::Unknown

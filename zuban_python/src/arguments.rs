@@ -2,7 +2,6 @@ use std::mem;
 
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
-    TypeVar, Variance,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -122,82 +121,6 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
             self.in_,
             Some(class),
         )
-    }
-
-    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
-        let mut iterator = self.iter_arguments();
-        if let Some(Argument::Positional(_, name_node)) = iterator.next() {
-            let name_expr = name_node.as_named_expression();
-            let py_string = match name_expr.maybe_single_string_literal() {
-                Some(py_string) => py_string,
-                None => return None,
-            };
-            let mut restrictions = vec![];
-            let mut bound = None;
-            let mut covariant = false;
-            let mut contravariant = false;
-            for arg in iterator {
-                match arg {
-                    Argument::Positional(_, node) => {
-                        let mut inference = node.file.inference(i_s);
-                        if let Some(t) = inference
-                            .compute_type_var_bound(node.as_named_expression().expression())
-                        {
-                            restrictions.push(t);
-                        } else {
-                            return None;
-                        }
-                    }
-                    Argument::Keyword(name, node) => match name {
-                        "covariant" => {
-                            let code = node.as_expression().as_code();
-                            match code {
-                                "True" => covariant = true,
-                                "False" => (),
-                                _ => return None,
-                            }
-                        }
-                        "contravariant" => {
-                            let code = node.as_expression().as_code();
-                            match code {
-                                "True" => contravariant = true,
-                                "False" => (),
-                                _ => return None,
-                            }
-                        }
-                        "bound" => {
-                            if let Some(t) = node
-                                .file
-                                .inference(i_s)
-                                .compute_type_var_bound(node.as_expression())
-                            {
-                                bound = Some(t)
-                            } else {
-                                return None;
-                            }
-                        }
-                        _ => return None,
-                    },
-                    Argument::Inferred(v, _) => unreachable!(),
-                    Argument::SlicesTuple(slices) => return None,
-                }
-            }
-            return Some(TypeVar {
-                name_string: PointLink {
-                    file: name_node.file.file_index(),
-                    node_index: py_string.index(),
-                },
-                restrictions: restrictions.into_boxed_slice(),
-                bound,
-                variance: match (covariant, contravariant) {
-                    (false, false) => Variance::Invariant,
-                    (true, false) => Variance::Covariant,
-                    (false, true) => Variance::Contravariant,
-                    (true, true) => Variance::Bivariant,
-                },
-            });
-        }
-        None
     }
 }
 

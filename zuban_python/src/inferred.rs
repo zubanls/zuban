@@ -1,5 +1,6 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::fmt;
+use std::rc::Rc;
 
 use crate::arguments::{
     Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
@@ -476,6 +477,7 @@ impl<'db> Inferred<'db> {
             }
             ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
             ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
+            ComplexPoint::TypeVar(t) => on_missing(i_s), // TODO this should probably be different
             _ => {
                 unreachable!("Classes are handled earlier {complex:?}")
             }
@@ -574,30 +576,10 @@ impl<'db> Inferred<'db> {
         use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
     }
 
-    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVar> {
+    pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Rc<TypeVar>> {
         if let InferredState::Saved(definition, point) = self.state {
-            if point.type_() == PointType::Specific
-                && point.specific() == Specific::InstanceWithArguments
-            {
-                // TODO this check can/should be optimized by comparing node pointers that are cached
-                // in python_state
-                let cls = self.infer_instance_with_arguments_cls(i_s, &definition);
-                if let InferredState::Saved(cls_definition, _) = cls.state {
-                    if cls_definition.file.file_index() == i_s.db.python_state.typing().file_index()
-                        && cls_definition
-                            .maybe_class()
-                            .map(|cls| cls.name().as_str() == "TypeVar")
-                            .unwrap_or(false)
-                    {
-                        let args = SimpleArguments::from_primary(
-                            definition.file,
-                            definition.as_primary(),
-                            None,
-                            None,
-                        );
-                        return args.maybe_type_var(i_s);
-                    }
-                }
+            if let Some(ComplexPoint::TypeVar(t)) = definition.complex() {
+                return Some(t.clone());
             }
         }
         None

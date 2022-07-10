@@ -5,7 +5,7 @@ use parsa_python_ast::{
     PythonString, StringLiteral,
 };
 
-use crate::database::{ComplexPoint, Database, Locality, Point, PointLink, PointType};
+use crate::database::{ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType};
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
@@ -86,6 +86,10 @@ impl<'db> NodeRef<'db> {
 
     pub fn maybe_name(&self) -> Option<Name<'db>> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn file_index(&self) -> FileIndex {
+        self.file.file_index()
     }
 
     pub fn infer_int(&self) -> Option<i64> {

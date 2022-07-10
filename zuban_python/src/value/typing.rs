@@ -1,14 +1,15 @@
 use std::fmt;
+use std::rc::Rc;
 
 use parsa_python_ast::PrimaryContent;
 
 use super::class::MroIterator;
 use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::Arguments;
+use crate::arguments::{Argument, Arguments};
 use crate::base_description;
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, Specific,
-    TupleContent, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, PointLink,
+    Specific, TupleContent, TypeVar, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -765,6 +766,85 @@ impl fmt::Debug for TypeVarInstance<'_, '_> {
 #[derive(Debug)]
 pub struct TypeVarClass();
 
+pub fn maybe_type_var<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Option<TypeVar> {
+    let mut iterator = args.iter_arguments();
+    if let Some(Argument::Positional(_, name_node)) = iterator.next() {
+        let name_expr = name_node.as_named_expression();
+        let py_string = match name_expr.maybe_single_string_literal() {
+            Some(py_string) => py_string,
+            None => return None,
+        };
+        let mut restrictions = vec![];
+        let mut bound = None;
+        let mut covariant = false;
+        let mut contravariant = false;
+        for arg in iterator {
+            match arg {
+                Argument::Positional(_, node) => {
+                    let mut inference = node.file.inference(i_s);
+                    if let Some(t) =
+                        inference.compute_type_var_bound(node.as_named_expression().expression())
+                    {
+                        restrictions.push(t);
+                    } else {
+                        return None;
+                    }
+                }
+                Argument::Keyword(name, node) => match name {
+                    "covariant" => {
+                        let code = node.as_expression().as_code();
+                        match code {
+                            "True" => covariant = true,
+                            "False" => (),
+                            _ => return None,
+                        }
+                    }
+                    "contravariant" => {
+                        let code = node.as_expression().as_code();
+                        match code {
+                            "True" => contravariant = true,
+                            "False" => (),
+                            _ => return None,
+                        }
+                    }
+                    "bound" => {
+                        if let Some(t) = node
+                            .file
+                            .inference(i_s)
+                            .compute_type_var_bound(node.as_expression())
+                        {
+                            bound = Some(t)
+                        } else {
+                            return None;
+                        }
+                    }
+                    _ => return None,
+                },
+                Argument::Inferred(v, _) => unreachable!(),
+                Argument::SlicesTuple(slices) => return None,
+            }
+        }
+        return Some(TypeVar {
+            name_string: PointLink {
+                file: name_node.file_index(),
+                node_index: py_string.index(),
+            },
+            restrictions: restrictions.into_boxed_slice(),
+            bound,
+            variance: match (covariant, contravariant) {
+                (false, false) => Variance::Invariant,
+                (true, false) => Variance::Covariant,
+                (false, true) => Variance::Contravariant,
+                (true, true) => Variance::Bivariant,
+            },
+        });
+    }
+    None
+}
+
 impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
@@ -784,7 +864,11 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        todo!()
+        if let Some(t) = maybe_type_var(i_s, args) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVar(Rc::new(t)))
+        } else {
+            Inferred::new_unknown()
+        }
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
