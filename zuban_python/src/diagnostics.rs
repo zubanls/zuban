@@ -45,7 +45,7 @@ pub(crate) enum IssueType {
     InvalidTypeVarValue(String, String, String),
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
-    OnlySingleRestriction,
+    TypeVarOnlySingleRestriction,
     TypeVarUnexpectedArgument(String),
 
     BaseExceptionExpected,
@@ -247,7 +247,7 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
             IssueType::TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_owned(),
-            IssueType::OnlySingleRestriction =>
+            IssueType::TypeVarOnlySingleRestriction =>
                  "TypeVar cannot have only a single constraint".to_owned(),
             IssueType::TypeVarUnexpectedArgument(arg) => format!(
                  "Unexpected argument to \"TypeVar()\": \"{arg}\""),

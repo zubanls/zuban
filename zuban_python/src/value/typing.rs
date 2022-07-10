@@ -839,7 +839,7 @@ pub fn maybe_type_var<'db>(
         }
         if restrictions.len() == 1 {
             args.node_reference()
-                .add_typing_issue(i_s.db, IssueType::OnlySingleRestriction);
+                .add_typing_issue(i_s.db, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
         return Some(TypeVar {
