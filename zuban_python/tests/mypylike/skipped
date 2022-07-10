@@ -50,7 +50,6 @@ testJSONAliasApproximation
 testModuleImplicitAttributes
 
 # Type Var Values / Bounds
-testInvalidTypevarArguments
 testProhibitBoundTypeVariableReuseForAliases
 testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred

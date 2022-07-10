@@ -36,6 +36,7 @@ pub(crate) enum IssueType {
     InvalidBaseClass,
     CyclicDefinition(String),
     EnsureSingleGenericOrProtocol,
+
     DuplicateTypeVar,
     UnboundTypeVar(std::rc::Rc<TypeVar>),
     IncompleteGenericOrProtocolTypeVars,
@@ -44,6 +45,7 @@ pub(crate) enum IssueType {
     InvalidTypeVarValue(String, String, String),
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
+    OnlySingleRestriction,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -220,9 +222,9 @@ impl<'db> Diagnostic<'db> {
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             IssueType::EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
+
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
-
             IssueType::UnboundTypeVar(type_var) => {
                 let qualified = type_var.qualified_name(self.db);
                 let name = type_var.name(self.db);
@@ -244,6 +246,8 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
             IssueType::TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_owned(),
+            IssueType::OnlySingleRestriction =>
+                 "TypeVar cannot have only a single constraint".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

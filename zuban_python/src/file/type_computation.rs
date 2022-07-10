@@ -1199,7 +1199,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
-    pub fn compute_type_var_bound(&mut self, expr: Expression) -> Option<DbType> {
+    pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
         let mut comp = TypeComputation::new(self, &mut on_type_var);
         let db_type = comp.compute_db_type(expr);

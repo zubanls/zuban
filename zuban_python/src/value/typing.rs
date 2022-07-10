@@ -785,8 +785,8 @@ pub fn maybe_type_var<'db>(
             match arg {
                 Argument::Positional(_, node) => {
                     let mut inference = node.file.inference(i_s);
-                    if let Some(t) =
-                        inference.compute_type_var_bound(node.as_named_expression().expression())
+                    if let Some(t) = inference
+                        .compute_type_var_constraint(node.as_named_expression().expression())
                     {
                         restrictions.push(t);
                     } else {
@@ -818,7 +818,7 @@ pub fn maybe_type_var<'db>(
                         if let Some(t) = node
                             .file
                             .inference(i_s)
-                            .compute_type_var_bound(node.as_expression())
+                            .compute_type_var_constraint(node.as_expression())
                         {
                             bound = Some(t)
                         } else {
@@ -830,6 +830,11 @@ pub fn maybe_type_var<'db>(
                 Argument::Inferred(v, _) => unreachable!(),
                 Argument::SlicesTuple(slices) => return None,
             }
+        }
+        if restrictions.len() == 1 {
+            args.node_reference()
+                .add_typing_issue(i_s.db, IssueType::OnlySingleRestriction);
+            return None;
         }
         return Some(TypeVar {
             name_string: PointLink {
