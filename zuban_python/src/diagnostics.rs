@@ -49,6 +49,7 @@ pub(crate) enum IssueType {
     TypeVarUnexpectedArgument(String),
     TypeVarTooFewArguments,
     TypeVarFirstArgMustBeString,
+    TypeVarVarianceMustBeBool(&'static str),
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -254,7 +255,11 @@ impl<'db> Diagnostic<'db> {
             IssueType::TypeVarUnexpectedArgument(arg) => format!(
                  "Unexpected argument to \"TypeVar()\": \"{arg}\""),
             IssueType::TypeVarTooFewArguments => "Too few argument to \"TypeVar()\"".to_owned(),
-            IssueType::TypeVarFirstArgMustBeString => "TypeVar() expects a string literal as first argument".to_owned(),
+            IssueType::TypeVarFirstArgMustBeString =>
+                "TypeVar() expects a string literal as first argument".to_owned(),
+            IssueType::TypeVarVarianceMustBeBool(arg) => format!(
+                "TypeVar \"{arg}\" may only be a literal bool"
+            ),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

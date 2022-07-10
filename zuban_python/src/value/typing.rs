@@ -811,7 +811,13 @@ pub fn maybe_type_var<'db>(
                         match code {
                             "True" => covariant = true,
                             "False" => (),
-                            _ => return None,
+                            _ => {
+                                node.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::TypeVarVarianceMustBeBool("covariant"),
+                                );
+                                return None;
+                            }
                         }
                     }
                     "contravariant" => {
@@ -819,7 +825,13 @@ pub fn maybe_type_var<'db>(
                         match code {
                             "True" => contravariant = true,
                             "False" => (),
-                            _ => return None,
+                            _ => {
+                                node.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::TypeVarVarianceMustBeBool("contravariant"),
+                                );
+                                return None;
+                            }
                         }
                     }
                     "bound" => {
