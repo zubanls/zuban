@@ -2674,6 +2674,13 @@ impl<'db> StringLiteral<'db> {
         }
         &code[start + 1..code.len() - 1]
     }
+
+    pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {
+        self.node
+            .parent_until(&[Nonterminal(assignment)])
+            .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
+            .map(|(name, _)| name)
+    }
 }
 
 impl<'db> Strings<'db> {

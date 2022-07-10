@@ -789,6 +789,20 @@ pub fn maybe_type_var<'db>(
                 return None;
             }
         };
+        if let Some(name) = py_string.in_simple_assignment() {
+            if name.as_code() != py_string.content() {
+                name_node.add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarNameMismatch(
+                        py_string.content().to_owned(),
+                        name.as_code().to_owned(),
+                    ),
+                );
+            }
+        } else {
+            todo!()
+        }
+
         let mut restrictions = vec![];
         let mut bound = None;
         let mut covariant = false;

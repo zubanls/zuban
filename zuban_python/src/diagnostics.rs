@@ -51,6 +51,7 @@ pub(crate) enum IssueType {
     TypeVarFirstArgMustBeString,
     TypeVarVarianceMustBeBool(&'static str),
     TypeVarTypeExpected,
+    TypeVarNameMismatch(String, String),
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -255,13 +256,17 @@ impl<'db> Diagnostic<'db> {
                  "TypeVar cannot have only a single constraint".to_owned(),
             IssueType::TypeVarUnexpectedArgument(arg) => format!(
                  "Unexpected argument to \"TypeVar()\": \"{arg}\""),
-            IssueType::TypeVarTooFewArguments => "Too few argument to \"TypeVar()\"".to_owned(),
+            IssueType::TypeVarTooFewArguments => "Too few arguments for TypeVar()".to_owned(),
             IssueType::TypeVarFirstArgMustBeString =>
                 "TypeVar() expects a string literal as first argument".to_owned(),
             IssueType::TypeVarVarianceMustBeBool(arg) => format!(
                 "TypeVar \"{arg}\" may only be a literal bool"
             ),
             IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
+            IssueType::TypeVarNameMismatch(string, variable) => format!(
+                "String argument 1 \"{string}\" to TypeVar(...) does not \
+                 match variable name \"{variable}\""
+            ),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
