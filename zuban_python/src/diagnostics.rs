@@ -50,6 +50,7 @@ pub(crate) enum IssueType {
     TypeVarTooFewArguments,
     TypeVarFirstArgMustBeString,
     TypeVarVarianceMustBeBool(&'static str),
+    TypeVarTypeExpected,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -260,6 +261,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::TypeVarVarianceMustBeBool(arg) => format!(
                 "TypeVar \"{arg}\" may only be a literal bool"
             ),
+            IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

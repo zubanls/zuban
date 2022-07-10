@@ -468,11 +468,6 @@ where
         self.as_db_type(t, slice.as_node_ref())
     }
 
-    fn compute_db_type(&mut self, expr: Expression) -> DbType {
-        let t = self.compute_type(expr, None);
-        self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
-    }
-
     fn compute_type_expression_part(
         &mut self,
         node: ExpressionPart<'x>,
@@ -1201,9 +1196,15 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
+        let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(self, &mut on_type_var);
-        let db_type = comp.compute_db_type(expr);
-        (!comp.has_type_vars).then(|| db_type)
+        let t = comp.compute_type(expr, None);
+        if matches!(t, TypeContent::InvalidVariable(_)) {
+            // TODO this is a bit weird and should probably generate other errors
+            node_ref.add_typing_issue(comp.inference.i_s.db, IssueType::TypeVarTypeExpected);
+            return None;
+        }
+        (!comp.has_type_vars).then(|| comp.as_db_type(t, node_ref))
     }
 }
 
