@@ -52,7 +52,6 @@ testModuleImplicitAttributes
 # Type Var Values / Bounds
 testInvalidTypevarArguments
 testProhibitBoundTypeVariableReuseForAliases
-testMoreInvalidTypevarArguments
 testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 testNewAnalyzerTypeVarForwardReference*

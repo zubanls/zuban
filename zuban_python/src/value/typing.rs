@@ -838,7 +838,11 @@ pub fn maybe_type_var<'db>(
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,
                 (false, true) => Variance::Contravariant,
-                (true, true) => Variance::Bivariant,
+                (true, true) => {
+                    args.node_reference()
+                        .add_typing_issue(i_s.db, IssueType::TypeVarCoAndContravariant);
+                    return None;
+                }
             },
         });
     }

@@ -936,7 +936,6 @@ pub enum Variance {
     Invariant = 0,
     Covariant,
     Contravariant,
-    Bivariant,
 }
 
 impl BitAnd for Variance {

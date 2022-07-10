@@ -42,6 +42,7 @@ pub(crate) enum IssueType {
     TypeVarExpected(&'static str),
     TypeVarBoundViolation(String, String, String),
     InvalidTypeVarValue(String, String, String),
+    TypeVarCoAndContravariant,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -238,6 +239,8 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::InvalidTypeVarValue(type_var, func, type_) =>
                 format!("Value of type variable {type_var:?} of {func:?} cannot be {type_:?}"),
+            IssueType::TypeVarCoAndContravariant =>
+                "TypeVar cannot be both covariant and contravariant".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

@@ -69,7 +69,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         }
                     }
                     Variance::Contravariant => todo!(),
-                    Variance::Bivariant => todo!(),
                 }
                 // TODO this should probably be checked before normal mro checking?!
                 if let Self::Class(c1) = self {
