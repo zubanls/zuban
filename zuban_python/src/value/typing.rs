@@ -771,11 +771,23 @@ pub fn maybe_type_var<'db>(
     args: &dyn Arguments<'db>,
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
-    if let Some(Argument::Positional(_, name_node)) = iterator.next() {
-        let name_expr = name_node.as_named_expression();
-        let py_string = match name_expr.maybe_single_string_literal() {
-            Some(py_string) => py_string,
-            None => return None,
+    if let Some(first_arg) = iterator.next() {
+        let result = if let Argument::Positional(_, name_node) = first_arg {
+            name_node
+                .as_named_expression()
+                .maybe_single_string_literal()
+                .map(|py_string| (name_node, py_string))
+        } else {
+            None
+        };
+        let (name_node, py_string) = match result {
+            Some(result) => result,
+            None => {
+                first_arg
+                    .as_node_ref()
+                    .add_typing_issue(i_s.db, IssueType::TypeVarFirstArgMustBeString);
+                return None;
+            }
         };
         let mut restrictions = vec![];
         let mut bound = None;
@@ -860,6 +872,9 @@ pub fn maybe_type_var<'db>(
                 }
             },
         });
+    } else {
+        args.node_reference()
+            .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
     }
     None
 }

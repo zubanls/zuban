@@ -47,6 +47,8 @@ pub(crate) enum IssueType {
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
     TypeVarUnexpectedArgument(String),
+    TypeVarTooFewArguments,
+    TypeVarFirstArgMustBeString,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -251,6 +253,8 @@ impl<'db> Diagnostic<'db> {
                  "TypeVar cannot have only a single constraint".to_owned(),
             IssueType::TypeVarUnexpectedArgument(arg) => format!(
                  "Unexpected argument to \"TypeVar()\": \"{arg}\""),
+            IssueType::TypeVarTooFewArguments => "Too few argument to \"TypeVar()\"".to_owned(),
+            IssueType::TypeVarFirstArgMustBeString => "TypeVar() expects a string literal as first argument".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
