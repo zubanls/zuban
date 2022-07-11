@@ -641,6 +641,31 @@ where
                             ),
                         );
                     }
+                } else if !type_var.restrictions.is_empty() {
+                    // Performance: This could be optimized to not create new objects all the time.
+                    let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                    let i_s = &mut self.inference.i_s;
+                    if !type_var.restrictions.iter().any(|t| {
+                        Type::from_db_type(i_s.db, t).matches(
+                            i_s,
+                            None,
+                            Type::from_db_type(i_s.db, &db_t),
+                            Variance::Covariant,
+                        )
+                    }) {
+                        slice_content.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::InvalidTypeVarValue(
+                                type_var.name(i_s.db).to_owned(),
+                                class.name().to_owned(),
+                                Type::from_db_type(i_s.db, &db_t).as_string(
+                                    i_s,
+                                    None,
+                                    FormatStyle::Short,
+                                ),
+                            ),
+                        );
+                    }
                 }
                 given_count += 1;
                 if generics.is_empty() {
