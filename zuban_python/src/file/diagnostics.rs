@@ -18,6 +18,48 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }
 
+    fn calc_simple_stmts_diagnostics(
+        &mut self,
+        simple_stmts: SimpleStmts,
+        class: Option<Class<'db, '_>>,
+        func: Option<&Function<'db, '_>>,
+    ) {
+        for simple_stmt in simple_stmts.iter() {
+            match simple_stmt.unpack() {
+                SimpleStmtContent::Assignment(assignment) => {
+                    self.cache_assignment_nodes(assignment);
+                }
+                SimpleStmtContent::StarExpressions(star_exprs) => {
+                    self.infer_star_expressions(star_exprs);
+                }
+                SimpleStmtContent::ReturnStmt(return_stmt) => {
+                    self.calc_return_stmt_diagnostics(func, return_stmt)
+                }
+                SimpleStmtContent::YieldExpr(x) => {}
+                SimpleStmtContent::RaiseStmt(x) => {}
+                SimpleStmtContent::ImportFrom(import_from) => {
+                    if class.is_some() && func.is_none() {
+                        NodeRef::new(self.file, simple_stmt.index())
+                            .add_typing_issue(self.i_s.db, IssueType::UnsupportedClassScopedImport);
+                    }
+                    self.cache_import_from(import_from);
+                }
+                SimpleStmtContent::ImportName(import_name) => {
+                    self.cache_import_name(import_name);
+                }
+                SimpleStmtContent::PassStmt(x) => {}
+                SimpleStmtContent::GlobalStmt(x) => {}
+                SimpleStmtContent::NonlocalStmt(x) => {}
+                SimpleStmtContent::AssertStmt(x) => {}
+                SimpleStmtContent::BreakStmt(x) => {}
+                SimpleStmtContent::ContinueStmt(x) => {}
+                SimpleStmtContent::DelStmt(d) => {
+                    self.calc_del_stmt_diagnostics(d.target());
+                }
+            }
+        }
+    }
+
     fn calc_stmts_diagnostics(
         &mut self,
         stmts: StmtIterator,
@@ -34,42 +76,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
             match stmt.unpack() {
                 StmtContent::SimpleStmts(simple_stmts) => {
-                    for simple_stmt in simple_stmts.iter() {
-                        match simple_stmt.unpack() {
-                            SimpleStmtContent::Assignment(assignment) => {
-                                self.cache_assignment_nodes(assignment);
-                            }
-                            SimpleStmtContent::StarExpressions(star_exprs) => {
-                                self.infer_star_expressions(star_exprs);
-                            }
-                            SimpleStmtContent::ReturnStmt(return_stmt) => {
-                                self.calc_return_stmt_diagnostics(func, return_stmt)
-                            }
-                            SimpleStmtContent::YieldExpr(x) => {}
-                            SimpleStmtContent::RaiseStmt(x) => {}
-                            SimpleStmtContent::ImportFrom(import_from) => {
-                                if class.is_some() && func.is_none() {
-                                    NodeRef::new(self.file, simple_stmt.index()).add_typing_issue(
-                                        self.i_s.db,
-                                        IssueType::UnsupportedClassScopedImport,
-                                    );
-                                }
-                                self.cache_import_from(import_from);
-                            }
-                            SimpleStmtContent::ImportName(import_name) => {
-                                self.cache_import_name(import_name);
-                            }
-                            SimpleStmtContent::PassStmt(x) => {}
-                            SimpleStmtContent::GlobalStmt(x) => {}
-                            SimpleStmtContent::NonlocalStmt(x) => {}
-                            SimpleStmtContent::AssertStmt(x) => {}
-                            SimpleStmtContent::BreakStmt(x) => {}
-                            SimpleStmtContent::ContinueStmt(x) => {}
-                            SimpleStmtContent::DelStmt(d) => {
-                                self.calc_del_stmt_diagnostics(d.target());
-                            }
-                        }
-                    }
+                    self.calc_simple_stmts_diagnostics(simple_stmts, class, func)
                 }
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
@@ -127,7 +134,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     ) {
         match block.unpack() {
             BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, class, func),
-            BlockContent::OneLine(simple_stmts) => {}
+            BlockContent::OneLine(simple_stmts) => {
+                self.calc_simple_stmts_diagnostics(simple_stmts, class, func)
+            }
         }
     }
 
