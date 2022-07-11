@@ -1,7 +1,36 @@
-testGenericTypeWithTypevarValuesAndSubtypePromotion
+testEllipsisDefaultArgValueInNonStubsOverload
 
 # Overloading
-*Overload*
+testOverloadRefresh
+testOverloadSpecialCase
+testOverloadsSimpleFrom
+testOverloadsRemovedOverload
+testOverloadsDeleted
+testOverloadsGenericTypevarUpdated
+testOverloadsGenericToNonGeneric
+testOverloadsToNonOverloaded
+testOverloadsUpdateFunctionToOverloaded
+testOverloadedUpdateToClass
+testNewAnalyzerOverload
+testNewAnalyzerOverload2
+testNewAnalyzerMutuallyRecursiveOverloadedFunctions
+testUnionAsOverloadArg
+
+testPreviousErrorInOverloadedFunction
+testPreviousErrorInOverloadedFunctionSemanal
+testOverloadsUpdatedTypeRechekConsistency
+testRedefinedOverloadedFunction
+testInconsistentOverload
+testInconsistentOverload2
+testOverloadedProperty
+testOverloadedProperty2
+testFakeOverloadCrash
+testFakeOverloadCrash2
+testTypevarValuesWithOverloadedFunctionSpecialCase
+
+testOverloadedMethodSupertype-only_when_cache
+testOverloadedMethodSupertype2-only_when_nocache
+testOverloadedInitSupertype
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
@@ -75,6 +104,7 @@ testTypeVarWithAnyTypeBound
 
 # Type Var Inference bottom up
 testBoundOnGenericClass
+testGenericTypeWithTypevarValuesAndSubtypePromotion
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
@@ -126,6 +156,7 @@ testModifyBaseClassMethodCausingInvalidOverride
 testClassImportAccessedInMethod
 testSelfTypeVarIndexExpr
 testNewAnalyzerTypeVarBoundInCycle
+testOverloadClassmethodDisappears
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -322,7 +353,7 @@ testNewAnalyzerFirstVarDefinitionWins
 # Multiple arguments missing
 testMissingPositionalArguments
 
-# Redefinition
+# Redefinition (Name "X" already defined on line X)
 testGlobalVarRedefinition
 testLocalVarRedefinition
 testClassVarRedefinition
@@ -356,6 +387,7 @@ testStarImportOverlappingMismatch
 testStarImportOverridingLocalImports
 testRedefineFunctionViaImport
 testDifferentImportSameNameTwice
+testNewAnalyzerRedefineAsOverload
 
 # BoundMethod type
 testForwardReferenceToListAlias
@@ -725,6 +757,8 @@ testSubtypingAndABCExtension
 testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testMultipleAssignmentAndGenericSubtyping
+testGenericArgumentInOverload
+testGenericFunctionAsOverloadItem
 
 # Weird ellipsis assignment
 testEllipsisInitializerInStubFileWithType
