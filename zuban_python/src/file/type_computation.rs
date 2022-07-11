@@ -657,7 +657,7 @@ where
                             i_s.db,
                             IssueType::InvalidTypeVarValue(
                                 type_var.name(i_s.db).to_owned(),
-                                class.name().to_owned(),
+                                format!("{:?}", class.name().to_owned()),
                                 Type::from_db_type(i_s.db, &db_t).as_string(
                                     i_s,
                                     None,

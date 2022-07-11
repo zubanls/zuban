@@ -604,7 +604,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         i_s.db,
                         IssueType::InvalidTypeVarValue(
                             type_var.name(i_s.db).to_owned(),
-                            f.name().to_owned(),
+                            f.diagnostic_string(class),
                             value_type.as_string(i_s, None, FormatStyle::Short),
                         ),
                     );

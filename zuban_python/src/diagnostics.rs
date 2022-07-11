@@ -247,7 +247,7 @@ impl<'db> Diagnostic<'db> {
                 "Type argument \"{actual}\" of \"{executable}\" must be a subtype of \"{expected}\"",
             ),
             IssueType::InvalidTypeVarValue(type_var, func, type_) =>
-                format!("Value of type variable {type_var:?} of {func:?} cannot be {type_:?}"),
+                format!("Value of type variable {type_var:?} of {func} cannot be {type_:?}"),
             IssueType::TypeVarCoAndContravariant =>
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
             IssueType::TypeVarValuesAndUpperBound =>
