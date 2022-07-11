@@ -7,118 +7,57 @@ use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
-#[rustfmt::skip]
+#[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
-    AttributeError {
-        object: String,
-        name: String,
-    },
-    ImportAttributeError {
-        module_name: String,
-        name: String,
-    },
-    NameError {
-        name: String,
-    },
+    AttributeError { object: String, name: String },
+    ImportAttributeError { module_name: String, name: String },
+    NameError { name: String },
     ArgumentIssue(String),
     InvalidType(String),
-    IncompatibleReturn {
-        got: String,
-        expected: String,
-    },
-    IncompatibleAssignment {
-        got: String,
-        expected: String,
-    },
-    Redefinition {
-        line: usize,
-    },
-    ModuleNotFound {
-        module_name: String,
-    },
+    IncompatibleReturn { got: String, expected: String },
+    IncompatibleAssignment { got: String, expected: String },
+    Redefinition { line: usize },
+    ModuleNotFound { module_name: String },
     NoParentModule,
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
-    TypeArgumentIssue {
-        class: String,
-        expected_count: usize,
-        given_count: usize,
-    },
-    TypeAliasArgumentIssue {
-        expected_count: usize,
-        given_count: usize,
-    },
-    NotCallable {
-        type_: String,
-    },
-    NotIterable {
-        type_: String,
-    },
+    TypeArgumentIssue { class: String, expected_count: usize, given_count: usize },
+    TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
+    NotCallable { type_: String },
+    NotIterable { type_: String },
     InvalidCallableParams,
     InvalidCallableArgCount,
-    UnsupportedOperand {
-        operand: String,
-        left: String,
-        right: String,
-    },
+    UnsupportedOperand { operand: String, left: String, right: String },
     UnsupportedLeftOperand { operand: String, left: String, note: Option<String> },
     InvalidGetItem { actual: String, type_: String, expected: String },
-    NotIndexable {
-        type_: String,
-    },
-    TooFewValuesToUnpack {
-        actual: usize,
-        expected: usize,
-    },
+    NotIndexable { type_: String },
+    TooFewValuesToUnpack { actual: usize, expected: usize },
     OnlyClassTypeApplication,
     InvalidBaseClass,
-    CyclicDefinition {
-        name: String,
-    },
+    CyclicDefinition { name: String },
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
-    UnboundTypeVar {
-        type_var: std::rc::Rc<TypeVar>,
-    },
+    UnboundTypeVar { type_var: std::rc::Rc<TypeVar> },
     IncompleteGenericOrProtocolTypeVars,
-    TypeVarExpected {
-        class: &'static str,
-    },
-    TypeVarBoundViolation {
-        actual: String,
-        executable: String,
-        expected: String,
-    },
-    InvalidTypeVarValue {
-        type_var: String,
-        func: String,
-        actual: String,
-    },
+    TypeVarExpected { class: &'static str },
+    TypeVarBoundViolation { actual: String, executable: String, expected: String },
+    InvalidTypeVarValue { type_var: String, func: String, actual: String },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
-    TypeVarUnexpectedArgument {
-        argument_name: String,
-    },
+    TypeVarUnexpectedArgument { argument_name: String },
     TypeVarTooFewArguments,
     TypeVarFirstArgMustBeString,
-    TypeVarVarianceMustBeBool {
-        argument: &'static str,
-    },
+    TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
-    TypeVarNameMismatch {
-        string_name: String,
-        variable_name: String,
-    },
+    TypeVarNameMismatch { string_name: String, variable_name: String },
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
 
-    StmtOutsideFunction {
-        keyword: &'static str,
-    },
+    StmtOutsideFunction { keyword: &'static str },
 
     MethodWithoutArguments,
 
