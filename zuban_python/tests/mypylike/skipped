@@ -1,13 +1,5 @@
 testUnionAttributeAccess
-
-testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
-testInheritanceFromGenericWithImplicitDynamic
-
 testGenericTypeWithTypevarValuesAndSubtypePromotion
-testMultipleClassTypevarsWithValues2
-testGenericFunctionSubtypingWithTypevarValues
-
-testInheritedConstructor
 
 # Overloading
 *Overload*
@@ -84,6 +76,13 @@ testTypeVarWithAnyTypeBound
 
 # Type Var Inference bottom up
 testBoundOnGenericClass
+
+# Type var self and access
+testInheritanceFromGenericWithImplicitDynamic
+testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
+
+# Type var formatting as nothing
+testInheritedConstructor
 
 # Literal
 testNewAnalyzerBool
@@ -394,6 +393,8 @@ testLackOfNames
 testLackOfNamesFastparse
 testFunctionTypeCompatibilityWithOtherTypes
 testVarArgsFunctionSubtyping
+
+testGenericFunctionSubtypingWithTypevarValues
 
 # flow graph
 testAssignAndConditional*
