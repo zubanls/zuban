@@ -51,11 +51,8 @@ testModuleImplicitAttributes
 
 # Type Var Values / Bounds
 testProhibitBoundTypeVariableReuseForAliases
-testObsoleteTypevarValuesSyntax
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
-testNewAnalyzerTypeArgValueRestriction
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 testNewAnalyzerApplicationForward4
 
 testInvalidTypevarValues
@@ -782,6 +779,9 @@ testKeywordVarArgsAndCommentSignature
 
 # --scripts-are-modules
 testScriptsAreModules
+
+# Won't support: Warning about wrong usage of type var values
+testObsoleteTypevarValuesSyntax
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
