@@ -9,7 +9,6 @@ testGenericTypeWithTypevarValuesAndSubtypePromotion
 testMultipleClassTypevarsWithValues2
 testGenericFunctionSubtypingWithTypevarValues
 
-testContravariant
 testInheritedConstructor
 
 # Overloading

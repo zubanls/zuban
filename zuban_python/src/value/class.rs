@@ -56,7 +56,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Type::ClassLike(c) => {
                 match variance {
                     Variance::Covariant => {
-                        for (mro_index, class_like) in c.mro(i_s) {
+                        for (_, class_like) in c.mro(i_s) {
                             if self.check_match(i_s, matcher.as_deref_mut(), &class_like, variance)
                             {
                                 return true;
@@ -68,7 +68,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             return true;
                         }
                     }
-                    Variance::Contravariant => todo!(),
+                    Variance::Contravariant => {
+                        for (_, class_like) in self.mro(i_s) {
+                            if class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance) {
+                                return true;
+                            }
+                        }
+                    }
                 }
                 // TODO this should probably be checked before normal mro checking?!
                 if let Self::Class(c1) = self {
