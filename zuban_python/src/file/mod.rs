@@ -731,28 +731,30 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
-                        v
-                            .lookup_implicit(i_s, "__setitem__", &|i_s| {
-                                debug!("TODO __setitem__ not found");
-                            })
-                            .run_on_value(i_s, &mut |i_s, v| {
-                                v.execute(
-                                    i_s,
-                                    &CombinedArguments::new(
-                                        &slice.as_args(),
-                                        &KnownArguments::new(value, None),
-                                    ),
-                                    &|i_s, node_ref, class, function, p, input, wanted| {
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidGetItem(format!(
-                                                "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
-                                                class.unwrap().as_string(i_s, FormatStyle::Short),
-                                            )),
-                                        )
-                                    },
-                                )
-                            })
+                        v.lookup_implicit(i_s, "__setitem__", &|i_s| {
+                            debug!("TODO __setitem__ not found");
+                        })
+                        .run_on_value(i_s, &mut |i_s, v| {
+                            v.execute(
+                                i_s,
+                                &CombinedArguments::new(
+                                    &slice.as_args(),
+                                    &KnownArguments::new(value, None),
+                                ),
+                                &|i_s, node_ref, class, function, p, actual, expected| {
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidGetItem {
+                                            actual,
+                                            type_: class
+                                                .unwrap()
+                                                .as_string(i_s, FormatStyle::Short),
+                                            expected,
+                                        },
+                                    )
+                                },
+                            )
+                        })
                     });
                 } else {
                     unreachable!();

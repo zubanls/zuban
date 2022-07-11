@@ -109,13 +109,14 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
             v.execute(
                 i_s,
                 &slice_type.as_args(),
-                &|i_s, node_ref, class, function, p, input, wanted| {
+                &|i_s, node_ref, class, function, p, actual, expected| {
                     node_ref.add_typing_issue(
                         i_s.db,
-                        IssueType::InvalidGetItem(format!(
-                            "Invalid index type {input:?} for {:?}; expected type {wanted:?}",
-                            class.unwrap().as_string(i_s, FormatStyle::Short),
-                        )),
+                        IssueType::InvalidGetItem {
+                            actual,
+                            type_: class.unwrap().as_string(i_s, FormatStyle::Short),
+                            expected,
+                        },
                     )
                 },
             )

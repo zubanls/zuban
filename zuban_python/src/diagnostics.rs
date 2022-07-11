@@ -66,7 +66,11 @@ pub(crate) enum IssueType {
         left: String,
         note: Option<String>,
     },
-    InvalidGetItem(String),
+    InvalidGetItem {
+        actual: String,
+        type_: String,
+        expected: String,
+    },
     NotIndexable {
         type_: String,
     },
@@ -274,7 +278,9 @@ impl<'db> Diagnostic<'db> {
                 }
                 s
             }
-            IssueType::InvalidGetItem(s) => s.clone(),
+            IssueType::InvalidGetItem{actual, type_, expected} => format!(
+                "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
+            ),
             IssueType::NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
