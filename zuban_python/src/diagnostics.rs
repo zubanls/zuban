@@ -7,6 +7,7 @@ use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
+#[rustfmt::skip]
 pub(crate) enum IssueType {
     AttributeError {
         object: String,
@@ -61,16 +62,8 @@ pub(crate) enum IssueType {
         left: String,
         right: String,
     },
-    UnsupportedLeftOperand {
-        operand: String,
-        left: String,
-        note: Option<String>,
-    },
-    InvalidGetItem {
-        actual: String,
-        type_: String,
-        expected: String,
-    },
+    UnsupportedLeftOperand { operand: String, left: String, note: Option<String> },
+    InvalidGetItem { actual: String, type_: String, expected: String },
     NotIndexable {
         type_: String,
     },
