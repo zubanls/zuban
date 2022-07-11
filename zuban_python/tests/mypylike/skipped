@@ -49,14 +49,6 @@ testJSONAliasApproximation
 # Module Values
 testModuleImplicitAttributes
 
-# Type Var Values / Bounds
-testProhibitBoundTypeVariableReuseForAliases
-testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testNewAnalyzerApplicationForward4
-
-testInvalidTypevarValues
-
 # Type Var Value in func
 testCheckGenericFunctionBodyWithTypeVarValues
 testCheckGenericFunctionBodyWithTypeVarValues2
@@ -127,6 +119,8 @@ testInfiniteLoop
 
 # Class: generic access from outside
 testAliasRefOnClass
+# Class alias with class type var prohibited
+testProhibitBoundTypeVariableReuseForAliases
 
 # Property
 testNonMethodProperty
@@ -153,6 +147,7 @@ testBoundStaticMethod
 testNewAnalyzerTupleIteration
 testDistinctTypes
 testInfiniteLoop2
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
 
 # Cast
 testInvalidCast*
@@ -422,6 +417,7 @@ testPreferPackageOverFile2
 testThreePassesRequired
 
 # *args input
+testInvalidTypevarValues
 testCallVarargsFunctionWithIterable
 testCallVarargsFunctionWithTwoTupleStarArgs
 testCallVarargsFunctionWithIterableAndPositional
@@ -484,6 +480,9 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 # Decorators
 *Deco*
 testVarArgsCallableSelf
+
+# https://github.com/python/mypy/issues/13102
+testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 
 # fine-grained
 testTypeAliasRefresh
@@ -711,6 +710,9 @@ testNewAnalyzerPlaceholderFromOuterScope
 testInvalidOperationsOnModules
 testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
+
+# Tuple iter
+testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 
 # Tuple type comments
 testVariableDeclWithInvalidNumberOfTypes*
