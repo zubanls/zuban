@@ -38,10 +38,18 @@ pub(crate) enum IssueType {
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
-    UnboundTypeVar(std::rc::Rc<TypeVar>),
+    UnboundTypeVar {
+        type_var: std::rc::Rc<TypeVar>,
+    },
     IncompleteGenericOrProtocolTypeVars,
-    TypeVarExpected(&'static str),
-    TypeVarBoundViolation(String, String, String),
+    TypeVarExpected {
+        class: &'static str,
+    },
+    TypeVarBoundViolation {
+        actual: String,
+        executable: String,
+        expected: String,
+    },
     InvalidTypeVarValue {
         type_var: String,
         func: String,
@@ -50,17 +58,26 @@ pub(crate) enum IssueType {
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
-    TypeVarUnexpectedArgument(String),
+    TypeVarUnexpectedArgument {
+        argument_name: String,
+    },
     TypeVarTooFewArguments,
     TypeVarFirstArgMustBeString,
-    TypeVarVarianceMustBeBool(&'static str),
+    TypeVarVarianceMustBeBool {
+        argument: &'static str,
+    },
     TypeVarTypeExpected,
-    TypeVarNameMismatch(String, String),
+    TypeVarNameMismatch {
+        string_name: String,
+        variable_name: String,
+    },
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
 
-    StmtOutsideFunction(&'static str),
+    StmtOutsideFunction {
+        keyword: &'static str,
+    },
 
     MethodWithoutArguments,
 
@@ -235,7 +252,7 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
-            IssueType::UnboundTypeVar(type_var) => {
+            IssueType::UnboundTypeVar{type_var} => {
                 let qualified = type_var.qualified_name(self.db);
                 let name = type_var.name(self.db);
                 format!(
@@ -246,8 +263,8 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
-            IssueType::TypeVarExpected(s) => format!("Free type variable expected in {s}[...]"),
-            IssueType::TypeVarBoundViolation(actual, executable, expected) => format!(
+            IssueType::TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
+            IssueType::TypeVarBoundViolation{actual, executable, expected} => format!(
                 "Type argument \"{actual}\" of \"{executable}\" must be a subtype of \"{expected}\"",
             ),
             IssueType::InvalidTypeVarValue{type_var, func, actual} =>
@@ -258,25 +275,25 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot have both values and an upper bound".to_owned(),
             IssueType::TypeVarOnlySingleRestriction =>
                  "TypeVar cannot have only a single constraint".to_owned(),
-            IssueType::TypeVarUnexpectedArgument(arg) => format!(
-                 "Unexpected argument to \"TypeVar()\": \"{arg}\""),
+            IssueType::TypeVarUnexpectedArgument{argument_name} => format!(
+                 "Unexpected argument to \"TypeVar()\": \"{argument_name}\""),
             IssueType::TypeVarTooFewArguments => "Too few arguments for TypeVar()".to_owned(),
             IssueType::TypeVarFirstArgMustBeString =>
                 "TypeVar() expects a string literal as first argument".to_owned(),
-            IssueType::TypeVarVarianceMustBeBool(arg) => format!(
-                "TypeVar \"{arg}\" may only be a literal bool"
+            IssueType::TypeVarVarianceMustBeBool{argument} => format!(
+                "TypeVar \"{argument}\" may only be a literal bool"
             ),
             IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
-            IssueType::TypeVarNameMismatch(string, variable) => format!(
-                "String argument 1 \"{string}\" to TypeVar(...) does not \
-                 match variable name \"{variable}\""
+            IssueType::TypeVarNameMismatch{string_name, variable_name} => format!(
+                "String argument 1 \"{string_name}\" to TypeVar(...) does not \
+                 match variable name \"{variable_name}\""
             ),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
             IssueType::UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
-            IssueType::StmtOutsideFunction(stmt) => format!("{stmt:?} outside function"),
+            IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
 
             IssueType::Note(s) => {
                 type_ = "note";

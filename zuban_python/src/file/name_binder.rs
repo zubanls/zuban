@@ -693,7 +693,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 }
                 InterestingNode::ReturnStmt(n) => {
                     if self.type_ != NameBinderType::Function {
-                        self.add_issue(n.index(), IssueType::StmtOutsideFunction("return"))
+                        self.add_issue(
+                            n.index(),
+                            IssueType::StmtOutsideFunction { keyword: "return" },
+                        )
                     }
                     self.index_return_or_yield(&mut latest_return_or_yield, n.index());
                 }

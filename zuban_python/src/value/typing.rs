@@ -793,10 +793,10 @@ pub fn maybe_type_var<'db>(
             if name.as_code() != py_string.content() {
                 name_node.add_typing_issue(
                     i_s.db,
-                    IssueType::TypeVarNameMismatch(
-                        py_string.content().to_owned(),
-                        name.as_code().to_owned(),
-                    ),
+                    IssueType::TypeVarNameMismatch {
+                        string_name: py_string.content().to_owned(),
+                        variable_name: name.as_code().to_owned(),
+                    },
                 );
             }
         } else {
@@ -828,7 +828,9 @@ pub fn maybe_type_var<'db>(
                             _ => {
                                 node.add_typing_issue(
                                     i_s.db,
-                                    IssueType::TypeVarVarianceMustBeBool("covariant"),
+                                    IssueType::TypeVarVarianceMustBeBool {
+                                        argument: "covariant",
+                                    },
                                 );
                                 return None;
                             }
@@ -842,7 +844,9 @@ pub fn maybe_type_var<'db>(
                             _ => {
                                 node.add_typing_issue(
                                     i_s.db,
-                                    IssueType::TypeVarVarianceMustBeBool("contravariant"),
+                                    IssueType::TypeVarVarianceMustBeBool {
+                                        argument: "contravariant",
+                                    },
                                 );
                                 return None;
                             }
@@ -866,7 +870,9 @@ pub fn maybe_type_var<'db>(
                     _ => {
                         node.add_typing_issue(
                             i_s.db,
-                            IssueType::TypeVarUnexpectedArgument(name.to_owned()),
+                            IssueType::TypeVarUnexpectedArgument {
+                                argument_name: name.to_owned(),
+                            },
                         );
                         return None;
                     }

@@ -214,7 +214,7 @@ pub(super) fn type_computation_for_variable_annotation(
             }
         }
     }
-    node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar(type_var));
+    node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar { type_var });
     None
 }
 
@@ -630,15 +630,15 @@ where
                     if !expected.matches(i_s, None, actual, Variance::Covariant) {
                         slice_content.as_node_ref().add_typing_issue(
                             i_s.db,
-                            IssueType::TypeVarBoundViolation(
-                                Type::from_db_type(i_s.db, &db_t).as_string(
+                            IssueType::TypeVarBoundViolation {
+                                actual: Type::from_db_type(i_s.db, &db_t).as_string(
                                     i_s,
                                     None,
                                     FormatStyle::Short,
                                 ),
-                                class.name().to_owned(),
-                                expected.as_string(i_s, None, FormatStyle::Short),
-                            ),
+                                executable: class.name().to_owned(),
+                                expected: expected.as_string(i_s, None, FormatStyle::Short),
+                            },
                         );
                     }
                 } else if !type_var.restrictions.is_empty() {
@@ -876,13 +876,13 @@ where
         }))
     }
 
-    fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, in_: &'static str) {
+    fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             match self.compute_slice_type(s, Some(TypeVarIndex::new(i))) {
                 TypeContent::DbType(DbType::TypeVar(_)) => (),
                 _ => s
                     .as_node_ref()
-                    .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected(in_)),
+                    .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected { class }),
             }
         }
     }
