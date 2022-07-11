@@ -63,19 +63,13 @@ testGenericFunctionWithNormalAndRestrictedTypevar
 testDefineAttributeInGenericMethodUsingTypeVarWithValues
 testTypevarValuesSpecialCase1
 
+testTypeVarValuesFunction
+testTypeVarValuesMethod1
+testTypeVarValuesMethod2
+
 # Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
 testTypeVarBoundToOldUnionAttributeAccess
 testTypeVarBoundToNewUnionAttributeAccess
-
-# type var from fine grained
-testTypeVarValuesFunction
-testTypeVarValuesClass
-testTypeVarValuesMethod1
-testTypeVarValuesMethod2
-testTypeVarValuesRuntime
-
-testTypeVarBoundClass
-testTypeVarBoundRuntime
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
@@ -88,7 +82,7 @@ testTypeInferenceWithCalleeVarArgsAndDefaultArgs
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 
-# Type[T] TypeVars
+# Type[T] TypeVars -> Indirect class access
 testTypeVarWithAnyTypeBound
 
 # Type Var Inference bottom up
