@@ -322,6 +322,31 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+    fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef<'db>) {
+        debug!(
+            "Infer stmt (#{}, {}:{}): {:?}",
+            self.file.byte_to_line_column(simple_stmts.start()).0,
+            self.file.file_index(),
+            simple_stmts.index(),
+            simple_stmts.short_debug().trim()
+        );
+        name_def.set_point(Point::new_calculating());
+        for simple_stmt in simple_stmts.iter() {
+            match simple_stmt.unpack() {
+                SimpleStmtContent::Assignment(assignment) => {
+                    self.cache_assignment_nodes(assignment);
+                }
+                SimpleStmtContent::ImportFrom(import_from) => {
+                    self.cache_import_from(import_from);
+                }
+                SimpleStmtContent::ImportName(import_name) => {
+                    self.cache_import_name(import_name);
+                }
+                _ => unreachable!("Found {simple_stmt:?}"),
+            }
+        }
+    }
+
     fn cache_stmt_name(&mut self, stmt: Stmt, name_def: NodeRef<'db>) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
@@ -332,22 +357,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         );
         name_def.set_point(Point::new_calculating());
         match stmt.unpack() {
-            StmtContent::SimpleStmts(simple_stmts) => {
-                for simple_stmt in simple_stmts.iter() {
-                    match simple_stmt.unpack() {
-                        SimpleStmtContent::Assignment(assignment) => {
-                            self.cache_assignment_nodes(assignment);
-                        }
-                        SimpleStmtContent::ImportFrom(import_from) => {
-                            self.cache_import_from(import_from);
-                        }
-                        SimpleStmtContent::ImportName(import_name) => {
-                            self.cache_import_name(import_name);
-                        }
-                        _ => unreachable!("Found {simple_stmt:?}"),
-                    }
-                }
-            }
             StmtContent::ForStmt(for_stmt) => {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 let element = self
@@ -1585,6 +1594,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
         if !self.file.points.get(stmt_like.index()).calculated() {
             match stmt_like {
+                StmtLike::SimpleStmts(s) => {
+                    self.cache_simple_stmts_name(s, NodeRef::new(self.file, name_def.index()));
+                }
                 StmtLike::Stmt(stmt) => {
                     self.cache_stmt_name(stmt, NodeRef::new(self.file, name_def.index()));
                 }

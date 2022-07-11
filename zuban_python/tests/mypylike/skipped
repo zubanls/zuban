@@ -1,4 +1,4 @@
-testUnionAttributeAccess
+testPositionalAndKeywordForSameArg
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 
 # Overloading
@@ -144,6 +144,7 @@ testInvalidCast*
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
 testNewAnalyzerCastForward*
+testCastConfusion
 # NoReturn
 testNoReturnTypeAlias
 testUnionWithNoReturn
@@ -157,6 +158,9 @@ testNewAnalyzerForwardAliasFromUnion
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
+
+# Union attribute error: Item "D" of "C | D" has no attribute "y"
+testUnionAttributeAccess
 
 # Union iter()
 testUnionMultiassignSingle
