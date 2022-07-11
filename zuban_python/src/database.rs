@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::iter::repeat;
 use std::mem;
-use std::ops::BitAnd;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -936,14 +935,6 @@ pub enum Variance {
     Invariant = 0,
     Covariant,
     Contravariant,
-}
-
-impl BitAnd for Variance {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        unsafe { std::mem::transmute(self as u32 & rhs as u32) }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -1,4 +1,3 @@
-testPositionalAndKeywordForSameArg
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 
 # Overloading
@@ -476,6 +475,9 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 # Decorators
 *Deco*
 testVarArgsCallableSelf
+
+# Function Not checked, missing return annotations
+testPositionalAndKeywordForSameArg
 
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
