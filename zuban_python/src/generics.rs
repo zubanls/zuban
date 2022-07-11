@@ -602,11 +602,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 FunctionOrCallable::Function(class, f) => {
                     self.args.as_node_ref().add_typing_issue(
                         i_s.db,
-                        IssueType::InvalidTypeVarValue(
-                            type_var.name(i_s.db).to_owned(),
-                            f.diagnostic_string(class),
-                            value_type.as_string(i_s, None, FormatStyle::Short),
-                        ),
+                        IssueType::InvalidTypeVarValue {
+                            type_var: type_var.name(i_s.db).to_owned(),
+                            func: f.diagnostic_string(class),
+                            actual: value_type.as_string(i_s, None, FormatStyle::Short),
+                        },
                     );
                 }
                 _ => todo!(),

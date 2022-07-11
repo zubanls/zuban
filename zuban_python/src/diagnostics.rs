@@ -42,7 +42,11 @@ pub(crate) enum IssueType {
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected(&'static str),
     TypeVarBoundViolation(String, String, String),
-    InvalidTypeVarValue(String, String, String),
+    InvalidTypeVarValue {
+        type_var: String,
+        func: String,
+        actual: String,
+    },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
@@ -246,8 +250,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::TypeVarBoundViolation(actual, executable, expected) => format!(
                 "Type argument \"{actual}\" of \"{executable}\" must be a subtype of \"{expected}\"",
             ),
-            IssueType::InvalidTypeVarValue(type_var, func, type_) =>
-                format!("Value of type variable {type_var:?} of {func} cannot be {type_:?}"),
+            IssueType::InvalidTypeVarValue{type_var, func, actual} =>
+                format!("Value of type variable {type_var:?} of {func} cannot be {actual:?}"),
             IssueType::TypeVarCoAndContravariant =>
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
             IssueType::TypeVarValuesAndUpperBound =>
