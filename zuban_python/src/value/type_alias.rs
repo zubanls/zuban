@@ -67,8 +67,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
                 self.alias.db_type.as_ref().clone(),
             )));
         }
-        args.as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::NotCallable("\"object\"".to_owned()));
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::NotCallable {
+                type_: "\"object\"".to_owned(),
+            },
+        );
         Inferred::new_any()
     }
 }

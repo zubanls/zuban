@@ -251,10 +251,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> Inferred<'db> {
         args.as_node_ref().add_typing_issue(
             i_s.db,
-            IssueType::NotCallable(format!(
-                "{:?}",
-                self.class(i_s).as_string(i_s, None, FormatStyle::Short)
-            )),
+            IssueType::NotCallable {
+                type_: format!(
+                    "{:?}",
+                    self.class(i_s).as_string(i_s, None, FormatStyle::Short)
+                ),
+            },
         );
         Inferred::new_unknown()
     }
@@ -276,10 +278,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             self.lookup_implicit(i_s, "__iter__", &|i_s| {
                 from.add_typing_issue(
                     i_s.db,
-                    IssueType::NotIterable(format!(
-                        "{:?}",
-                        self.class(i_s).as_string(i_s, None, FormatStyle::Short)
-                    )),
+                    IssueType::NotIterable {
+                        type_: format!(
+                            "{:?}",
+                            self.class(i_s).as_string(i_s, None, FormatStyle::Short)
+                        ),
+                    },
                 );
             })
             .run_on_value(i_s, &mut |i_s, value| {

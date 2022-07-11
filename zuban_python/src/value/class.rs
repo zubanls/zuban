@@ -545,7 +545,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         NodeRef::new(self.node_ref.file, n.index())
                                             .add_typing_issue(
                                                 db,
-                                                IssueType::CyclicDefinition(name),
+                                                IssueType::CyclicDefinition { name },
                                             );
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {

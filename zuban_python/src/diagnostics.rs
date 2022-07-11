@@ -8,33 +8,77 @@ use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub(crate) enum IssueType {
-    AttributeError(String, String),
-    ImportAttributeError(String, String),
-    NameError(String),
+    AttributeError {
+        object: String,
+        name: String,
+    },
+    ImportAttributeError {
+        module_name: String,
+        name: String,
+    },
+    NameError {
+        name: String,
+    },
     ArgumentIssue(String),
     InvalidType(String),
-    IncompatibleReturn(String, String),
-    IncompatibleAssignment(String, String),
-    Redefinition(usize),
-    ModuleNotFound(String),
+    IncompatibleReturn {
+        got: String,
+        expected: String,
+    },
+    IncompatibleAssignment {
+        got: String,
+        expected: String,
+    },
+    Redefinition {
+        line: usize,
+    },
+    ModuleNotFound {
+        module_name: String,
+    },
     NoParentModule,
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
-    TypeArgumentIssue(String, usize, usize),
-    TypeAliasArgumentIssue(usize, usize),
-    NotCallable(String),
-    NotIterable(String),
+    TypeArgumentIssue {
+        class: String,
+        expected_count: usize,
+        given_count: usize,
+    },
+    TypeAliasArgumentIssue {
+        expected_count: usize,
+        given_count: usize,
+    },
+    NotCallable {
+        type_: String,
+    },
+    NotIterable {
+        type_: String,
+    },
     InvalidCallableParams,
     InvalidCallableArgCount,
-    UnsupportedOperand(String, String, String),
-    UnsupportedLeftOperand(String, String, Option<String>),
+    UnsupportedOperand {
+        operand: String,
+        left: String,
+        right: String,
+    },
+    UnsupportedLeftOperand {
+        operand: String,
+        left: String,
+        note: Option<String>,
+    },
     InvalidGetItem(String),
-    NotIndexable(String),
-    TooFewValuesToUnpack(usize, usize),
+    NotIndexable {
+        type_: String,
+    },
+    TooFewValuesToUnpack {
+        actual: usize,
+        expected: usize,
+    },
     OnlyClassTypeApplication,
     InvalidBaseClass,
-    CyclicDefinition(String),
+    CyclicDefinition {
+        name: String,
+    },
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
@@ -161,26 +205,26 @@ impl<'db> Diagnostic<'db> {
         }
         let line = self.start_position().line_and_column().0;
         let error = match &self.issue.type_ {
-            IssueType::AttributeError(object, name) => {
+            IssueType::AttributeError{object, name} => {
                 format!("{object} has no attribute {name:?}")
             }
-            IssueType::ImportAttributeError(module_name, name) => {
+            IssueType::ImportAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }
-            IssueType::NameError(name) => {
+            IssueType::NameError{name} => {
                 format!("Name {name:?} is not defined")
             }
-            IssueType::IncompatibleReturn(got, expected) => {
+            IssueType::IncompatibleReturn{got, expected} => {
                 format!(
                     "Incompatible return value type (got {got:?}, expected {expected:?})",
                 )
             }
-            IssueType::IncompatibleAssignment(got, expected) => {
+            IssueType::IncompatibleAssignment{got, expected} => {
                 format!(
                     "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
                 )
             }
-            IssueType::Redefinition(line) => {
+            IssueType::Redefinition{line} => {
                 let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
@@ -193,35 +237,35 @@ impl<'db> Diagnostic<'db> {
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
             IssueType::UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
-            IssueType::TypeArgumentIssue(class, expected, given) => {
-                match expected {
-                    0 => format!("{class:?} expects no type arguments, but {given} given"),
-                    1 => format!("{class:?} expects {expected} type argument, but {given} given"),
-                    _ => format!("{class:?} expects {expected} type arguments, but {given} given"),
+            IssueType::TypeArgumentIssue{class, expected_count, given_count} => {
+                match expected_count {
+                    0 => format!("{class:?} expects no type arguments, but {given_count} given"),
+                    1 => format!("{class:?} expects {expected_count} type argument, but {given_count} given"),
+                    _ => format!("{class:?} expects {expected_count} type arguments, but {given_count} given"),
                 }
             }
-            IssueType::TypeAliasArgumentIssue(expected, given) => {
+            IssueType::TypeAliasArgumentIssue{expected_count, given_count} => {
                 format!(
-                    "Bad number of arguments for type alias, expected: {expected}, given: {given}",
+                    "Bad number of arguments for type alias, expected: {expected_count}, given: {given_count}",
                 )
             }
-            IssueType::ModuleNotFound(s) => format!(
-                "Cannot find implementation or library stub for module named {s:?}",
+            IssueType::ModuleNotFound{module_name} => format!(
+                "Cannot find implementation or library stub for module named {module_name:?}",
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
-            IssueType::NotCallable(s) => format!("{s} not callable"),
-            IssueType::NotIterable(s) => format!("{s} object is not iterable"),
+            IssueType::NotCallable{type_} => format!("{type_} not callable"),
+            IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
             IssueType::InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
             ),
             IssueType::InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
-            IssueType::UnsupportedOperand(operand, left, right) => {
+            IssueType::UnsupportedOperand{operand, left, right} => {
                 format!(
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
             }
-            IssueType::UnsupportedLeftOperand(operand, left, note) => {
+            IssueType::UnsupportedLeftOperand{operand, left, note} => {
                 let mut s = format!(
                     "Unsupported left operand type for {operand} ({left:?})",
                 );
@@ -231,21 +275,21 @@ impl<'db> Diagnostic<'db> {
                 s
             }
             IssueType::InvalidGetItem(s) => s.clone(),
-            IssueType::NotIndexable(s) => format!("Value of type {s:?} is not indexable"),
+            IssueType::NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
             IssueType::MethodWithoutArguments => {
                 "Method must have at least one argument".to_owned()
             }
             IssueType::OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_owned()
             }
-            IssueType::TooFewValuesToUnpack(actual, expected) => format!(
+            IssueType::TooFewValuesToUnpack{actual, expected} => format!(
                 "Need more than {actual} values to unpack ({expected} expected)"
             ),
             IssueType::InvalidBaseClass => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
-            IssueType::CyclicDefinition(name) =>
+            IssueType::CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             IssueType::EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
@@ -319,7 +363,7 @@ pub struct DiagnosticConfig {
 impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, type_: &IssueType) -> bool {
         match type_ {
-            IssueType::ModuleNotFound(_) => !self.ignore_missing_imports,
+            IssueType::ModuleNotFound { .. } => !self.ignore_missing_imports,
             _ => true,
         }
     }

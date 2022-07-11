@@ -710,7 +710,11 @@ where
             // many/few given type vars!
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.db,
-                IssueType::TypeArgumentIssue(class.name().to_owned(), expected_count, given_count),
+                IssueType::TypeArgumentIssue {
+                    class: class.name().to_owned(),
+                    expected_count,
+                    given_count,
+                },
             );
         }
         result
@@ -864,7 +868,10 @@ where
         if mismatch {
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.db,
-                IssueType::TypeAliasArgumentIssue(expected_count, given_count),
+                IssueType::TypeAliasArgumentIssue {
+                    expected_count,
+                    given_count,
+                },
             );
         }
         TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {

@@ -451,10 +451,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         } else {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s.db,
-                                IssueType::ImportAttributeError(
-                                    module.name().to_owned(),
-                                    import_name.as_str().to_owned(),
-                                ),
+                                IssueType::ImportAttributeError {
+                                    module_name: module.name().to_owned(),
+                                    name: import_name.as_str().to_owned(),
+                                },
                             );
                             Point::new_unknown(import_file.file_index(), Locality::Todo)
                         }
@@ -490,7 +490,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Point::new_file_reference(file_index, Locality::DirectExtern)
         } else {
             let node_ref = NodeRef::new(self.file, index);
-            node_ref.add_typing_issue(self.i_s.db, IssueType::ModuleNotFound(name.to_owned()));
+            node_ref.add_typing_issue(
+                self.i_s.db,
+                IssueType::ModuleNotFound {
+                    module_name: name.to_owned(),
+                },
+            );
             Point::new_unknown(self.file.file_index(), Locality::Todo)
         };
         self.file.points.set(index, point);
@@ -513,11 +518,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let node_ref = NodeRef::new(self.file, name.index());
                 node_ref.add_typing_issue(
                     self.i_s.db,
-                    IssueType::ModuleNotFound(format!(
-                        "{}.{}",
-                        module.name().to_owned(),
-                        name.as_str()
-                    )),
+                    IssueType::ModuleNotFound {
+                        module_name: format!("{}.{}", module.name().to_owned(), name.as_str()),
+                    },
                 );
             }
             result
@@ -555,10 +558,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let (r, type_) =
                             self.compute_type_comment(assignment.end() + start as CodeIndex, s);
                         is_definition = true;
-                        type_.error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
+                        type_.error_if_not_matches(self.i_s, None, &right, |i_s, got, expected| {
                             node_ref.add_typing_issue(
                                 i_s.db,
-                                IssueType::IncompatibleAssignment(t1, t2),
+                                IssueType::IncompatibleAssignment { got, expected },
                             );
                         });
                         right = r;
@@ -576,10 +579,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, None, &right, |i_s, t1, t2| {
+                        .error_if_not_matches(self.i_s, None, &right, |i_s, got, expected| {
                             node_ref.add_typing_issue(
                                 i_s.db,
-                                IssueType::IncompatibleAssignment(t1, t2),
+                                IssueType::IncompatibleAssignment { got, expected },
                             );
                         })
                 }
@@ -606,14 +609,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             v.execute(
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
-                                &|i_s, node_ref, class, function, p, input, wanted| {
+                                &|i_s, node_ref, class, function, p, right, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
-                                        IssueType::UnsupportedOperand(
-                                            aug_assign.operand().to_owned(),
-                                            class.unwrap().as_string(i_s, FormatStyle::Short),
-                                            input,
-                                        ),
+                                        IssueType::UnsupportedOperand {
+                                            operand: aug_assign.operand().to_owned(),
+                                            left: class.unwrap().as_string(i_s, FormatStyle::Short),
+                                            right,
+                                        },
                                     )
                                 },
                             )
@@ -684,10 +687,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.i_s,
                         None,
                         value,
-                        |i_s, t1, t2| {
+                        |i_s, got, expected| {
                             NodeRef::new(self.file, name_def.index()).add_typing_issue(
                                 i_s.db,
-                                IssueType::IncompatibleAssignment(t1, t2),
+                                IssueType::IncompatibleAssignment { got, expected },
                             );
                         },
                     );
@@ -704,10 +707,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, None, value, |i_s, t1, t2| {
+                        .error_if_not_matches(self.i_s, None, value, |i_s, got, expected| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
                                 self.i_s.db,
-                                IssueType::IncompatibleAssignment(t1, t2),
+                                IssueType::IncompatibleAssignment { got, expected },
                             );
                         });
                 }
@@ -819,7 +822,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                         value_node_ref.add_typing_issue(
                             self.i_s.db,
-                            IssueType::TooFewValuesToUnpack(original_counter - 1, counter),
+                            IssueType::TooFewValuesToUnpack {
+                                actual: original_counter - 1,
+                                expected: counter,
+                            },
                         );
                         break;
                     }
@@ -927,11 +933,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.lookup_implicit(i_s, op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
                     i_s.db,
-                    IssueType::UnsupportedLeftOperand(
-                        op.operand.to_owned(),
-                        value.class(i_s).as_string(i_s, None, FormatStyle::Short),
-                        None, // TODO check for unions and stuff
-                    ),
+                    IssueType::UnsupportedLeftOperand {
+                        operand: op.operand.to_owned(),
+                        left: value.class(i_s).as_string(i_s, None, FormatStyle::Short),
+                        note: None, // TODO check for unions and stuff
+                    },
                 )
             })
         })
@@ -939,14 +945,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
-                &|i_s, node_ref, class, function, p, input, _| {
+                &|i_s, node_ref, class, function, p, right, _| {
                     node_ref.add_typing_issue(
                         i_s.db,
-                        IssueType::UnsupportedOperand(
-                            op.operand.to_owned(),
-                            class.unwrap().as_string(i_s, FormatStyle::Short),
-                            input,
-                        ),
+                        IssueType::UnsupportedOperand {
+                            operand: op.operand.to_owned(),
+                            left: class.unwrap().as_string(i_s, FormatStyle::Short),
+                            right,
+                        },
                     );
                     if left.is_union() && !added_note.get() {
                         added_note.set(true);
@@ -989,14 +995,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
                 match value.lookup(i_s, name.as_str(), &|i_s| {
-                    let origin = if value.as_module().is_some() {
+                    let object = if value.as_module().is_some() {
                         "Module".to_owned()
                     } else {
                         format!("{:?}", value.name())
                     };
                     NodeRef::new(self.file, node_index).add_typing_issue(
                         i_s.db,
-                        IssueType::AttributeError(origin, name.as_str().to_owned()),
+                        IssueType::AttributeError {
+                            object,
+                            name: name.as_str().to_owned(),
+                        },
                     );
                 }) {
                     LookupResult::GotoName(link, inferred) => {
@@ -1249,8 +1258,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 name
             );
             // TODO check star imports
-            NodeRef::new(self.file, name.index())
-                .add_typing_issue(self.i_s.db, IssueType::NameError(name.as_str().to_owned()));
+            NodeRef::new(self.file, name.index()).add_typing_issue(
+                self.i_s.db,
+                IssueType::NameError {
+                    name: name.as_str().to_owned(),
+                },
+            );
             if self
                 .i_s
                 .db
@@ -1500,7 +1513,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
                     node_ref.add_typing_issue(
                         self.i_s.db,
-                        IssueType::CyclicDefinition(node_ref.as_code().to_owned()),
+                        IssueType::CyclicDefinition {
+                            name: node_ref.as_code().to_owned(),
+                        },
                     );
                     self.check_point_cache(node_index)
                 } else {

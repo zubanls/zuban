@@ -82,8 +82,12 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                 value.execute(i_s, args, on_type_error)
             })
         } else {
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::NotCallable(format!("{:?}", self.name())));
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::NotCallable {
+                    type_: format!("{:?}", self.name()),
+                },
+            );
             Inferred::new_unknown()
         }
     }
@@ -96,7 +100,9 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.db,
-                IssueType::NotIndexable(self.class.as_string(i_s, FormatStyle::Short)),
+                IssueType::NotIndexable {
+                    type_: self.class.as_string(i_s, FormatStyle::Short),
+                },
             )
         })
         .run_on_value(i_s, &mut |i_s, v| {
