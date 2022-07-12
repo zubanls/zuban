@@ -258,7 +258,11 @@ where
         start: CodeIndex,
         string: String,
     ) -> TypeContent<'db, 'db> {
-        self.cache_code_string(start, string, |comp, expr| comp.compute_type(expr, None))
+        self.cache_code_string(start, string, |comp, s| match s.unpack() {
+            StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
+            StarExpressionContent::Tuple(t) => todo!(),
+            StarExpressionContent::StarExpression(s) => todo!(),
+        })
     }
 
     fn cache_type_comment(
@@ -266,28 +270,36 @@ where
         start: CodeIndex,
         string: String,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
-        self.cache_code_string(start, string, |comp, expr| {
-            // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
-            // allows us to reuse the code for annotations completely and the nodes before the expr
-            // should really never be used by anything productive.
-            let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
-            if let Some(db_type) = comp.maybe_calc_type_comment_tuple(expr) {
-                if comp.has_type_vars {
-                    todo!()
-                } else {
-                    let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                        Box::new(db_type),
-                    ));
-                    unsaved.save_redirect(comp.inference.file, index);
+        self.cache_code_string(start, string, |comp, star_exprs| {
+            match star_exprs.unpack() {
+                StarExpressionContent::Expression(expr) => {
+                    // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
+                    // allows us to reuse the code for annotations completely and the nodes before the expr
+                    // should really never be used by anything productive.
+                    let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    if let Some(db_type) = comp.maybe_calc_type_comment_tuple(expr) {
+                        if comp.has_type_vars {
+                            todo!()
+                        } else {
+                            let unsaved = Inferred::new_unsaved_complex(
+                                ComplexPoint::TypeInstance(Box::new(db_type)),
+                            );
+                            unsaved.save_redirect(comp.inference.file, index);
+                        }
+                    } else {
+                        comp.cache_annotation_internal(index, expr)
+                    }
+                    (
+                        Inferred::new_saved2(comp.inference.file, index),
+                        comp.inference
+                            .use_cached_annotation_type_internal(index, expr),
+                    )
                 }
-            } else {
-                comp.cache_annotation_internal(index, expr);
+                StarExpressionContent::Tuple(t) => {
+                    todo!()
+                }
+                StarExpressionContent::StarExpression(s) => todo!(),
             }
-            (
-                Inferred::new_saved2(comp.inference.file, index),
-                comp.inference
-                    .use_cached_annotation_type_internal(index, expr),
-            )
         })
     }
 
@@ -321,20 +333,20 @@ where
         &mut self,
         start: CodeIndex,
         string: String,
-        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_, C>, Expression<'db>) -> T,
+        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_, C>, StarExpressions<'db>) -> T,
     ) -> T {
         let f: &'db PythonFile =
             self.inference
                 .file
                 .new_annotation_file(self.inference.i_s.db, start, string);
-        if let Some(expr) = f.tree.maybe_expression() {
+        if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let mut comp = TypeComputation {
                 inference: &mut f.inference(self.inference.i_s),
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
             };
-            let type_ = callback(&mut comp, expr);
+            let type_ = callback(&mut comp, star_exprs);
             self.has_type_vars |= comp.has_type_vars;
             type_
         } else {

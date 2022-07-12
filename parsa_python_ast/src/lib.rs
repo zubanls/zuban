@@ -32,14 +32,13 @@ impl Tree {
         File::new(self.0.root_node())
     }
 
-    pub fn maybe_expression(&self) -> Option<Expression> {
+    pub fn maybe_star_expressions(&self) -> Option<StarExpressions> {
         let mut node = self.0.root_node();
         for (nonterminal, expected_node_count) in [
             (stmt, 2),
             (simple_stmts, 1),
             (simple_stmt, 2),
             (star_expressions, 1),
-            (expression, 1),
         ] {
             if node.iter_children().count() != expected_node_count {
                 return None;
@@ -49,7 +48,7 @@ impl Tree {
                 return None;
             }
         }
-        Some(Expression::new(node))
+        Some(StarExpressions::new(node))
     }
 
     pub fn node_start_position(&self, index: NodeIndex) -> CodeIndex {
