@@ -3,12 +3,6 @@ testErrorReportingNewAnalyzer
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
 
-testGenericFineCallableNormal
-testGenericFineCallableNamed
-testGenericFineCallableInBound
-testGenericFineCallableAddedBound
-testGenericFineCallableBoundDeleted-only_when_cache
-testGenericFineCallableToNonGeneric
 
 # Overloading
 testOverloadRefresh
@@ -542,6 +536,10 @@ testProtocolMultipleUpdates
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
 
+# callable
+testIdentityHigherOrderFunction*
+testGenericFineCallableInBound
+
 # fine-grained
 testTypeAliasRefresh
 testReprocessMethodShowSource
@@ -638,8 +636,6 @@ testFunctionInGenericInnerClassTypeVariable-skip
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
 testSubtypingWithGenericFunctionUsingTypevarWithValues
-# callable
-testIdentityHigherOrderFunction*
 # special cases
 testGenericFunctionsWithUnalignedIds
 testTypeVariableWithContainerAndTuple
