@@ -221,6 +221,9 @@ pub(super) fn type_computation_for_variable_annotation(
 pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_callback: &'c mut C,
+    // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
+    // It's therefore unclear if type inference or type computation is needed. So once we encounter
+    // a type alias we check in the database if the error was already calculated and set the flag.
     errors_already_calculated: bool,
     pub has_type_vars: bool,
 }
@@ -422,7 +425,9 @@ where
                 }
             }
             TypeContent::Module(m) => {
-                self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
+                if !self.errors_already_calculated {
+                    self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
+                }
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => a.as_db_type(),
@@ -439,7 +444,9 @@ where
             },
             TypeContent::InvalidVariable(t) => {
                 let node_ref = NodeRef::new(self.inference.file, expr.index());
-                t.add_issue(self.inference.i_s.db, node_ref);
+                if !self.errors_already_calculated {
+                    t.add_issue(self.inference.i_s.db, node_ref);
+                }
                 DbType::Any
             }
             TypeContent::Unknown => DbType::Any,
@@ -453,7 +460,9 @@ where
             TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.inference.i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
-                self.add_module_issue(m, node_ref);
+                if !self.errors_already_calculated {
+                    self.add_module_issue(m, node_ref);
+                }
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => a.as_db_type(),
@@ -468,7 +477,9 @@ where
             },
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
-                t.add_issue(self.inference.i_s.db, node_ref);
+                if !self.errors_already_calculated {
+                    t.add_issue(self.inference.i_s.db, node_ref);
+                }
                 DbType::Any
             }
         }
@@ -725,7 +736,12 @@ where
             };
             generics.push(db_type);
         }
-        given_count += iterator.count();
+        for slice_content in iterator {
+            // Still calculate errors for the rest of the types given. After all they are still
+            // expected to be types.
+            self.compute_slice_db_type(slice_content);
+            given_count += 1;
+        }
         let result = if generics.is_empty() && given_count == expected_count {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(

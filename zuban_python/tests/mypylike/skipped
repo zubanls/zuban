@@ -1,6 +1,3 @@
-testChangeTypeVarToFunction
-testChangeTypeVarToModule
-
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
 testAliasForwardFunction*
