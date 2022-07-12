@@ -2,11 +2,22 @@ testEllipsisDefaultArgValueInNonStubsOverload
 testErrorReportingNewAnalyzer
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
+testRefreshOptions
 
 testSubtypingAndABCExtension
 testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testMultipleAssignmentAndGenericSubtyping
+
+testInvalidTypevarValues
+testChangeTypeVarToFunction
+testChangeTypeVarToModule
+testRefreshForWithTypeComment1
+testRefreshForWithTypeComment2
+
+testImportOnTopOfAlias1
+testImportOnTopOfAlias2
+testAliasForwardFunction*
 
 # Overloading
 testOverloadRefresh
@@ -70,6 +81,7 @@ testNewAnalyzerAliasToNotReadyDirectBaseFunction
 testNewAnalyzerForwardTypeAliasInBase
 testRecursiveAliasesErrors*
 testJSONAliasApproximation
+testChangeBaseClassAttributeType
 
 # Module Values
 testModuleImplicitAttributes
@@ -128,6 +140,7 @@ testInheritedConstructor
 testNewAnalyzerBool
 testNoneHasBool
 testNoneHasBoolShowNoneErrorsFalse
+testLiteral*
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -189,6 +202,9 @@ testBaseClassAnnotatedWithoutArgs
 *Pep613
 *Abstract*
 *Final*
+
+# TYPE_CHECKING
+testIfTypeCheckingUnreachableClass
 
 # stdlib
 testDataclass*
@@ -358,6 +374,7 @@ testReExportChildStubs
 testNoReExportNestedStub
 testNoReExportFromMissingStubs
 testMissingGenericImport
+testStubFixupIssues
 
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
 testModuleAliasRepeated
@@ -440,6 +457,7 @@ testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
 testSuperOutsideClass
 testSuperField
 testSuperBasics
+testRefreshGenericSubclass
 
 # Liskov
 *Liskov*
@@ -451,6 +469,18 @@ testOverridingMethodInGenericTypeInheritingGenericType
 testSubclassingGenericABC1
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
+
+# class issues
+testAddBaseClassAttributeCausingErrorInSubclass
+testConstructorSignatureChanged2
+testConstructorSignatureChanged3
+testFineGrainedCallable
+testRefreshSubclassNestedInFunction2
+testAliasFineNormalClassBases
+testSkippedClass*
+
+# Intersection types
+testIsInstanceAdHocIntersectionFineGrainedIncremental*
 
 # Function Subtyping
 testSubtypingFunction*
@@ -485,7 +515,6 @@ testThreePassesRequired
 *DunderNew*
 
 # *args input
-testInvalidTypevarValues
 testCallVarargsFunctionWithIterable
 testCallVarargsFunctionWithTwoTupleStarArgs
 testCallVarargsFunctionWithIterableAndPositional
@@ -529,6 +558,7 @@ testSubtypingMappingUnpacking1
 testSubtypingMappingUnpacking2
 testSubtypingMappingUnpacking3
 testNotDirectIterableAndMappingSubtyping
+testUnpackInExpression3-only_when_nocache
 
 # "???" does not return a value
 testCallingVarArgsFunction
@@ -576,6 +606,7 @@ testWeAreCarefullWithBuiltinProtocolsBase
 # callable
 testIdentityHigherOrderFunction*
 testGenericFineCallableInBound
+testReprocessCallableArg
 
 # parser recovery in type comments / types in string literals
 testInvalidStrLiteralSpaces
@@ -659,6 +690,10 @@ testVariableDeclWithInvalidType
 testVariableDeclWithInvalidNumberOfTypesNested3
 testVariableDeclWithInvalidNumberOfTypesNested5
 
+# Syntax error in type annotation
+# Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+testImplicitTuple2
+
 # Incompatible number of tuple items
 testVariableDeclWithInvalidNumberOfTypes
 testVariableDeclWithInvalidNumberOfTypesNested
@@ -676,6 +711,9 @@ testEllipsisDefaultArgValueInNonStubsMethods
 testAssignToFuncDefViaImport
 testUnionWithNoneItem
 testBoundHigherOrderWithVoid
+
+# type: ignore leads to Any type?
+testDunderCallAddition
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
@@ -706,39 +744,6 @@ testLimitLegacyStubErrorVolume
 
 # --pretty
 testReprocessMethodShowSource
-
-# fine-grained
-testAddBaseClassAttributeCausingErrorInSubclass
-testChangeBaseClassAttributeType
-testConstructorSignatureChanged2
-testConstructorSignatureChanged3
-testRefreshGenericSubclass
-testAliasFineNormalClassBases
-testFineGrainedCallable
-testRefreshSubclassNestedInFunction2
-testSkippedClass*
-testReprocessCallableArg
-testImplicitTuple2
-testImplicitTuple3
-testChangeTypeVarToFunction
-testChangeTypeVarToModule
-testRefreshGenericClass
-testChangeTypeVarToTypeAlias
-testRefreshNestedClassWithSelfReference
-testNonExistentFileOnCommandLine*
-testUnpackInExpression3-only_when_nocache
-testRefreshOptions
-testImportOnTopOfAlias*
-testRefreshForWithTypeComment1
-testRefreshForWithTypeComment2
-testIfTypeCheckingUnreachableClass
-testAliasForwardFunction*
-testLiteral*
-testInlineConfigFineGrained*
-testWrongNumberOfArguments
-testIsInstanceAdHocIntersectionFineGrainedIncremental*
-testStubFixupIssues
-testDunderCallAddition
 
 # check-generic-alias test stuff
 testGenericAliasImportRe
@@ -833,9 +838,14 @@ testVarArgsAndCommentSignature
 testKeywordArgumentAndCommentSignature
 testKeywordArgumentAndCommentSignature2
 testKeywordVarArgsAndCommentSignature
+testWrongNumberOfArguments
 
 # --scripts-are-modules
 testScriptsAreModules
+
+# cmd: mypy ...
+testNonExistentFileOnCommandLine1
+testInlineConfigFineGrained*
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
