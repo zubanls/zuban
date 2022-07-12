@@ -30,6 +30,10 @@ testGenericTypeAliasesImportingWithoutTypeVar
 testAliasesInClassBodyNormalVsSubscripted
 testGenericTypeAliasesTypeVarConstraints
 
+testTestExtendPrimitives
+testInvalidTypeWithinNestedGenericClass
+testTypevarWithType
+
 # Overloading
 testOverloadRefresh
 testOverloadSpecialCase
@@ -97,6 +101,25 @@ testGenericTypeBody1
 
 # Module Values
 testModuleImplicitAttributes
+
+# generics special cases
+testGenericFunctionsWithUnalignedIds
+testTypeVariableWithContainerAndTuple
+testGenericOperatorMethodOverlapping*
+testCallTypeTWithGenericBound
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
+testGenericClassClsNonGeneric
+testGenericClassUnrelatedVars
+testGenericClassInGenericFunction*
+testGenericClassDirectCall
+testGenericClassAlternativeConstructorPrecise*
+testNoGenericAccessOnImplicitAttributes
+testGenericClassAttrUnboundOn*
+testGenericClassPropertyBound
+testGenericClassInsideOtherGenericClass
+testGenericFunctionMemberExpand
+testGenericJoin*
 
 # Type Var Value in func
 testCheckGenericFunctionBodyWithTypeVarValues
@@ -181,6 +204,10 @@ testInfiniteLoop
 testAliasRefOnClass
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
+# General Scoping
+testGenericInnerClass
+testGenericClassInnerFunctionTypeVariable
+testListComprehensionSpecialScoping
 
 # Property
 testNonMethodProperty
@@ -508,6 +535,9 @@ testFunctionTypeCompatibilityWithOtherTypes
 testVarArgsFunctionSubtyping
 
 testGenericFunctionSubtypingWithTypevarValues
+testSubtypingWithGenericFunctions
+testSubtypingWithGenericInnerFunctions
+testSubtypingWithGenericFunctionUsingTypevarWithValues
 
 # flow graph
 testAssignAndConditional*
@@ -771,42 +801,12 @@ testLimitLegacyStubErrorVolume
 # --pretty
 testReprocessMethodShowSource
 
-# check-generics
-# scoping in check-generics
-testClassLevelTypeVariable
-testGenericInnerClass
-testGenericClassInnerFunctionTypeVariable
-testFunctionInGenericInnerClassTypeVariable-skip
-# function subtyping
-testSubtypingWithGenericFunctions
-testSubtypingWithGenericInnerFunctions
-testSubtypingWithGenericFunctionUsingTypevarWithValues
-# special cases
-testGenericFunctionsWithUnalignedIds
-testTypeVariableWithContainerAndTuple
-testGenericOperatorMethodOverlapping*
-testCallTypeTWithGenericBound
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
-testGenericClassClsNonGeneric
-testGenericClassUnrelatedVars
-testGenericClassInGenericFunction*
-testGenericClassDirectCall
-testGenericClassAlternativeConstructorPrecise*
-testNoGenericAccessOnImplicitAttributes
-testGenericClassAttrUnboundOn*
-testGenericClassPropertyBound
-testGenericClassInsideOtherGenericClass
-testGenericFunctionMemberExpand
-testGenericJoin*
-
-# semanal-errors
-testInvalidNumberOfGenericArgsInTypeDecl
 # syntax not yet supported
 testBreakOutsideLoop
 testContinueOutsideLoop
 testInvalidGlobalDecl
 testAssignToTypeDef
+
 # parser shit
 testInvalidLvalues*
 testTwoStarExpressions*
@@ -819,12 +819,6 @@ testInvalidLvalueWithExplicitType
 testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
-# whatever
-testTestExtendPrimitives
-testInvalidTypeWithinNestedGenericClass
-testTypevarWithType
-# Scoping
-testListComprehensionSpecialScoping
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
@@ -862,3 +856,4 @@ testNoSubscriptionOfBuiltinAliases
 # Skips
 testTrailingCommaParsing-skip
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
+testFunctionInGenericInnerClassTypeVariable-skip
