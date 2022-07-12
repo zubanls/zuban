@@ -541,10 +541,6 @@ testIdentityHigherOrderFunction*
 testGenericFineCallableInBound
 
 # fine-grained
-testTypeAliasRefresh
-testReprocessMethodShowSource
-testVariableTypeBecomesInvalid
-testIgnoreWorksAfterUpdate
 testIgnoredAttrReprocessedMeta
 testDataclass*
 testAttrs*
@@ -552,20 +548,12 @@ testAddBaseClassAttributeCausingErrorInSubclass
 testChangeBaseClassAttributeType
 testConstructorSignatureChanged2
 testConstructorSignatureChanged3
-testReprocessMethodInNestedClassSemanal
-testPreviousErrorInMethodSemanalPass3
-testErrorInTypeCheckSecondPassThroughPropagation
 *PartialType*
 testRefreshGenericSubclass
 *NewType*
 *Enum*
 *TypedDict*
 testAliasFineNormalClassBases
-testAliasFineGenericToNonGeneric
-testAliasFineClassToAlias
-testAliasFineAliasToClass
-testAliasFineInitGenericMod
-testAliasFineInitGenericFunc
 testFineGrainedCallable
 testRefreshSubclassNestedInFunction2
 testSkippedClass*
@@ -705,8 +693,9 @@ testNewAnalyzerRedefinedNonlocal
 # __init__ None needed
 testInitReturnTypeError
 
-# need annotation
+# Need type annotation for "X"
 testNewAnalyzerLessErrorsNeedAnnotation*
+testErrorInTypeCheckSecondPassThroughPropagation
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -746,6 +735,8 @@ testTypeCheckPrio
 testImportStarAliasCallable
 testSimplifyUnionWithCallable
 testNewAnalyzerTypeVarForwardReferenceErrors
+testAliasFineGenericToNonGeneric
+testAliasFineInitGenericMod
 
 # Formatting class in reveal_type
 testReExportChildStubs3
@@ -817,6 +808,9 @@ testStubImportNonStubWhileSilent
 
 # --soft-error-limit
 testLimitLegacyStubErrorVolume
+
+# --pretty
+testReprocessMethodShowSource
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
