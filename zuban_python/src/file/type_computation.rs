@@ -38,6 +38,7 @@ enum SpecialType<'db, 'a> {
 enum InvalidVariableType<'db, 'a> {
     List,
     Tuple,
+    Execution,
     Function(Function<'db, 'db>),
     Literal(&'a str),
     Variable(NodeRef<'db>),
@@ -61,6 +62,9 @@ impl InvalidVariableType<'_, '_> {
                         "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
                     ),
                 );
+            }
+            Self::Execution => {
+                todo!()
             }
             Self::Function(func) => {
                 node_ref.add_typing_issue(
@@ -614,7 +618,7 @@ where
                 }
             }
             PrimaryContent::Execution(details) => {
-                todo!("{primary:?}")
+                TypeContent::InvalidVariable(InvalidVariableType::Execution)
             }
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
@@ -1402,7 +1406,10 @@ fn check_type_name<'db>(
             if point.calculated() {
                 // When an import appears, this means that there's no redirect and the import leads
                 // nowhere.
-                debug_assert_eq!(point.type_(), PointType::Unknown);
+                debug_assert!(
+                    point.type_() == PointType::Unknown
+                        || point.type_() == PointType::MultiDefinition
+                );
                 TypeNameLookup::Unknown
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);

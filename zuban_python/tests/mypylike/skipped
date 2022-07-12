@@ -1,6 +1,4 @@
-testImportOnTopOfAlias1
-testImportOnTopOfAlias2
-testAliasForwardFunction*
+
 
 # Type comment tuple without ()
 testMultipleAssignmentAndGenericSubtyping
@@ -469,6 +467,8 @@ testStarImportOverridingLocalImports
 testRedefineFunctionViaImport
 testDifferentImportSameNameTwice
 testNewAnalyzerRedefineAsOverload
+testImportOnTopOfAlias1
+testImportOnTopOfAlias2
 
 # BoundMethod type
 testForwardReferenceToListAlias
