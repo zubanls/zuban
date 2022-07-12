@@ -1,25 +1,14 @@
-testEllipsisDefaultArgValueInNonStubsOverload
-testErrorReportingNewAnalyzer
-testRefreshIgnoreErrors1
-testRefreshIgnoreErrors2
-testRefreshOptions
-
-testSubtypingAndABCExtension
-testAccessingGenericABCMembers
-testAccessingInheritedGenericABCMembers
-testMultipleAssignmentAndGenericSubtyping
-
-testInvalidTypevarValues
 testChangeTypeVarToFunction
 testChangeTypeVarToModule
-testRefreshForWithTypeComment1
-testRefreshForWithTypeComment2
 
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
 testAliasForwardFunction*
 
-testOperatorAssignmentWithIndexLvalue1
+# Type comment tuple without ()
+testMultipleAssignmentAndGenericSubtyping
+
+# Generic type aliases
 testGenericTypeAliasesBasic2
 testGenericTypeAliasesUnion
 testGenericTypeAliasesCallable
@@ -29,10 +18,6 @@ testGenericTypeAliasesImporting
 testGenericTypeAliasesImportingWithoutTypeVar
 testAliasesInClassBodyNormalVsSubscripted
 testGenericTypeAliasesTypeVarConstraints
-
-testTestExtendPrimitives
-testInvalidTypeWithinNestedGenericClass
-testTypevarWithType
 
 # Overloading
 testOverloadRefresh
@@ -65,6 +50,7 @@ testTypevarValuesWithOverloadedFunctionSpecialCase
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedInitSupertype
+testEllipsisDefaultArgValueInNonStubsOverload
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
@@ -176,6 +162,9 @@ testImportedTypeAliasInRuntimeContext
 testGenericTypeAliasesRuntimeExpressionsInstance
 testGenericTypeAliasesTypeVarBinding
 
+# Cannot declare the type of a TypeVar or similar construct
+testTypevarWithType
+
 # Literal
 testNewAnalyzerBool
 testNoneHasBool
@@ -192,6 +181,7 @@ testFlattenTypeAliasWhenAliasedAsUnion
 testNewAnalyzerNestedClass*
 testNewAnalyzerAliasToNotReadyNestedClass*
 testNestedClassOnAliasAsType
+testInvalidTypeWithinNestedGenericClass
 
 # Class in function
 testNewAnalyzerClassInFunction
@@ -358,11 +348,14 @@ testFlexibleAlias*
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
 
-# Import stdlib
+# stdlib imports
 testSubclassingGenericABCWithImplicitAny
 testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
 testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
 testInvariance
+testSubtypingAndABCExtension
+testAccessingGenericABCMembers
+testAccessingInheritedGenericABCMembers
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -584,6 +577,7 @@ testCallerVarArgsTupleWithTypeInference
 testCallerVarargsAndComplexTypeInference
 testCallerTupleVarArgsAndGenericCalleeVarArg
 testInvariantTypeConfusingNames2
+testInvalidTypevarValues
 
 # **kwargs input
 testKwargsAfterBareArgs
@@ -747,6 +741,9 @@ testVariableDeclWithInvalidNumberOfTypesNested5
 # Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 testImplicitTuple2
 
+# Assignment like ac[b] += c with both __getitem__ and __setitem__ has same # error twice
+testOperatorAssignmentWithIndexLvalue1
+
 # Incompatible number of tuple items
 testVariableDeclWithInvalidNumberOfTypes
 testVariableDeclWithInvalidNumberOfTypesNested
@@ -761,6 +758,9 @@ testEllipsisDefaultArgValueInNonStubsMethods
 
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
+
+# "bool" is not a valid base class
+testTestExtendPrimitives
 
 # strict optional
 *StrictOptional*
@@ -781,9 +781,17 @@ testMultipleModulesInOverridePyProjectTOML
 testIgnoreErrorFromMissingStubs1
 testIgnoreErrorFromMissingStubs2
 
+# mypy.ini
+testRefreshIgnoreErrors1
+testRefreshIgnoreErrors2
+testRefreshOptions
+
 # --disallow-any-expr
 testDoNotLimitErrorVolumeIfNotImportErrors
 testUnlimitedStubErrorVolume
+
+# --disallow-any-generics
+testErrorReportingNewAnalyzer
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
@@ -819,6 +827,10 @@ testInvalidLvalueWithExplicitType
 testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
+
+# for type comment
+testRefreshForWithTypeComment1
+testRefreshForWithTypeComment2
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
