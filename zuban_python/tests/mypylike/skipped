@@ -19,6 +19,17 @@ testImportOnTopOfAlias1
 testImportOnTopOfAlias2
 testAliasForwardFunction*
 
+testOperatorAssignmentWithIndexLvalue1
+testGenericTypeAliasesBasic2
+testGenericTypeAliasesUnion
+testGenericTypeAliasesCallable
+testGenericTypeAliasesTuple
+testGenericTypeAliasesPEPBasedExample
+testGenericTypeAliasesImporting
+testGenericTypeAliasesImportingWithoutTypeVar
+testAliasesInClassBodyNormalVsSubscripted
+testGenericTypeAliasesTypeVarConstraints
+
 # Overloading
 testOverloadRefresh
 testOverloadSpecialCase
@@ -82,6 +93,7 @@ testNewAnalyzerForwardTypeAliasInBase
 testRecursiveAliasesErrors*
 testJSONAliasApproximation
 testChangeBaseClassAttributeType
+testGenericTypeBody1
 
 # Module Values
 testModuleImplicitAttributes
@@ -135,6 +147,11 @@ testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 
 # Type var formatting as nothing
 testInheritedConstructor
+testImportedTypeAliasInRuntimeContext
+
+# Special Type Var Binding
+testGenericTypeAliasesRuntimeExpressionsInstance
+testGenericTypeAliasesTypeVarBinding
 
 # Literal
 testNewAnalyzerBool
@@ -347,6 +364,7 @@ testSubmoduleMixingImportFromAndImport
 # import a.b.c issues
 testMissingSubmoduleImportedWithIgnoreMissingImports*
 testMissingSubmoduleOfInstalledStubPackage
+testGenericAliasCollectionsABCReveal
 
 # Complex Star import
 testImportWithinMethod
@@ -638,6 +656,11 @@ testInvariantListArgNote
 testInvariantDictArgNote
 testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
 
+# List unpacking
+testMultipleAssignmentWithLists
+testMultipleAssignmentWithListsInInitialization
+testMultipleAssignmentWithListAndIndexing
+
 # Type execution
 testNoneAlias
 testNoneAliasStrict
@@ -706,6 +729,9 @@ testEllipsisDefaultArgValueInStub2
 testEllipsisDefaultArgValueInNonStub
 testEllipsisDefaultArgValueInNonStubsMethods
 
+# The type "Type[type]" is not generic and not indexable
+testTypeApplicationCrash
+
 # strict optional
 *StrictOptional*
 testAssignToFuncDefViaImport
@@ -745,34 +771,7 @@ testLimitLegacyStubErrorVolume
 # --pretty
 testReprocessMethodShowSource
 
-# check-generic-alias test stuff
-testGenericAliasImportRe
-testGenericAliasCollectionsABCReveal
-
 # check-generics
-testGenericMethodReturnType
-testGenericMethodArgument
-testGenericMemberVariable
-testGenericMemberVariable2
-testSimpleGenericSubtyping
-testGenericTypeCompatibilityWithAny
-testGenericTypeBody1
-testOperatorAssignmentWithIndexLvalue1
-testTypeApplicationCrash
-testGenericTypeAliasesBasic2
-testGenericTypeAliasesUnion
-testGenericTypeAliasesCallable
-testGenericTypeAliasesPEPBasedExample
-testGenericTypeAliasesImporting
-testGenericTypeAliasesImportingWithoutTypeVar
-testAliasesInClassBodyNormalVsSubscripted
-testGenericTypeAliasesRuntimeExpressionsInstance
-testGenericTypeAliasesTypeVarBinding
-testGenericTypeAliasesTypeVarConstraints
-testGenericTypeAliasesIgnoredPotentialAlias
-testNoSubscriptionOfBuiltinAliases
-testImportedTypeAliasInRuntimeContext
-testMultipleAssignmentWithList*
 # scoping in check-generics
 testClassLevelTypeVariable
 testGenericInnerClass
@@ -856,6 +855,9 @@ testNewAnalyzerIncompleteFixture
 # Won't support ever: python 2
 *python2
 testMypyPathAndPython2Dir
+
+# Won't support list/dict/tuple "is not subscriptable" (python <3.10)
+testNoSubscriptionOfBuiltinAliases
 
 # Skips
 testTrailingCommaParsing-skip
