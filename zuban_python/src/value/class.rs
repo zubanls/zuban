@@ -534,6 +534,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                         .unwrap(),
                                     ),
                                     DbType::Tuple(content) => None,
+                                    DbType::Type(_) => todo!(),
                                     DbType::Callable(content) => todo!(),
                                     _ => unreachable!(),
                                 };

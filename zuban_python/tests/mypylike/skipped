@@ -426,6 +426,7 @@ testForwardReferenceToListAlias
 testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
+testIgnoredAttrReprocessedMeta
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -707,7 +708,6 @@ testLimitLegacyStubErrorVolume
 testReprocessMethodShowSource
 
 # fine-grained
-testIgnoredAttrReprocessedMeta
 testAddBaseClassAttributeCausingErrorInSubclass
 testChangeBaseClassAttributeType
 testConstructorSignatureChanged2

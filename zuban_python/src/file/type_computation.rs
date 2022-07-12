@@ -344,6 +344,9 @@ where
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s)) => {
                 BaseClass::Protocol(Some(s))
             }
+            TypeContent::SpecialType(SpecialType::Type) => {
+                BaseClass::DbType(DbType::Type(Box::new(DbType::Any)))
+            }
             TypeContent::Unknown => BaseClass::Invalid,
             _ => {
                 let db_type =
