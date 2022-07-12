@@ -180,6 +180,24 @@ testDistinctTypes
 testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 
+# Typing stuff
+testInvalidAssertType
+testInvalidAnyCall
+testInvalidTypeInTypeApplication
+testParamSpec
+testBaseClassAnnotatedWithoutArgs
+*Pep613
+*Abstract*
+*Final*
+
+# stdlib
+testDataclass*
+testAttrs*
+*PartialType*
+*NewType*
+*Enum*
+*TypedDict*
+
 # Cast
 testInvalidCast*
 testInvalidNumberOfArgsToCast
@@ -451,8 +469,19 @@ testImportedVariableViaImport
 testPreferPackageOverFile
 testPreferPackageOverFile2
 
+# async/await
+*Await*
+*Async*
+test__aiter__and__anext__
+
+# Yield
+*Yield*
+
 # "Cannot determine type of"
 testThreePassesRequired
+
+# __new__
+*DunderNew*
 
 # *args input
 testInvalidTypevarValues
@@ -547,147 +576,10 @@ testWeAreCarefullWithBuiltinProtocolsBase
 testIdentityHigherOrderFunction*
 testGenericFineCallableInBound
 
-# fine-grained
-testIgnoredAttrReprocessedMeta
-testDataclass*
-testAttrs*
-testAddBaseClassAttributeCausingErrorInSubclass
-testChangeBaseClassAttributeType
-testConstructorSignatureChanged2
-testConstructorSignatureChanged3
-*PartialType*
-testRefreshGenericSubclass
-*NewType*
-*Enum*
-*TypedDict*
-testAliasFineNormalClassBases
-testFineGrainedCallable
-testRefreshSubclassNestedInFunction2
-testSkippedClass*
-testReprocessCallableArg
-testImplicitTuple2
-testImplicitTuple3
-*Abstract*
-testChangeTypeVarToFunction
-testChangeTypeVarToModule
-testRefreshGenericClass
-testChangeTypeVarToTypeAlias
-testRefreshNestedClassWithSelfReference
-testNonExistentFileOnCommandLine*
-*DunderNew*
-*Yield*
-testUnpackInExpression3-only_when_nocache
-*Await*
-*Async*
-test__aiter__and__anext__
-testRefreshOptions
-testImportOnTopOfAlias*
-testRefreshForWithTypeComment1
-testRefreshForWithTypeComment2
-*Final*
-testIfTypeCheckingUnreachableClass
-testAliasForwardFunction*
-testLiteral*
-testInlineConfigFineGrained*
-testWrongNumberOfArguments
-testIsInstanceAdHocIntersectionFineGrainedIncremental*
-testStubFixupIssues
-testDunderCallAddition
-
-# check-generic-alias test stuff
-testGenericAliasImportRe
-testGenericAliasCollectionsABCReveal
-
-# check-generics
-testGenericMethodReturnType
-testGenericMethodArgument
-testGenericMemberVariable
-testGenericMemberVariable2
-testSimpleGenericSubtyping
-testGenericTypeCompatibilityWithAny
-testGenericTypeBody1
-testOperatorAssignmentWithIndexLvalue1
-testTypeApplicationCrash
-testGenericTypeAliasesBasic2
-testGenericTypeAliasesUnion
-testGenericTypeAliasesCallable
-testGenericTypeAliasesPEPBasedExample
-testGenericTypeAliasesImporting
-testGenericTypeAliasesImportingWithoutTypeVar
-testAliasesInClassBodyNormalVsSubscripted
-testGenericTypeAliasesRuntimeExpressionsInstance
-testGenericTypeAliasesTypeVarBinding
-testGenericTypeAliasesTypeVarConstraints
-testGenericTypeAliasesIgnoredPotentialAlias
-testNoSubscriptionOfBuiltinAliases
-testImportedTypeAliasInRuntimeContext
-testMultipleAssignmentWithList*
-# scoping in check-generics
-testClassLevelTypeVariable
-testGenericInnerClass
-testGenericClassInnerFunctionTypeVariable
-testFunctionInGenericInnerClassTypeVariable-skip
-# function subtyping
-testSubtypingWithGenericFunctions
-testSubtypingWithGenericInnerFunctions
-testSubtypingWithGenericFunctionUsingTypevarWithValues
-# special cases
-testGenericFunctionsWithUnalignedIds
-testTypeVariableWithContainerAndTuple
-testGenericOperatorMethodOverlapping*
-testCallTypeTWithGenericBound
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
-testGenericClassClsNonGeneric
-testGenericClassUnrelatedVars
-testGenericClassInGenericFunction*
-testGenericClassDirectCall
-testGenericClassAlternativeConstructorPrecise*
-testNoGenericAccessOnImplicitAttributes
-testGenericClassAttrUnboundOn*
-testGenericClassPropertyBound
-testGenericClassInsideOtherGenericClass
-testGenericFunctionMemberExpand
-testGenericJoin*
-
-# semanal-errors
-testInvalidNumberOfGenericArgsInTypeDecl
-# syntax not yet supported
-testBreakOutsideLoop
-testContinueOutsideLoop
-testInvalidGlobalDecl
-testAssignToTypeDef
-# parser shit
-testInvalidLvalues*
-testTwoStarExpressions*
-testStarExpressionRhs
-testStarExpressionInExp
-testInvalidDel*
-testInvalidTypeDeclaration
-testIndexedAssignmentWithTypeDeclaration
-testInvalidLvalueWithExplicitType
-testInvalidLvalueWithExplicitType3
-testInvalidWithTarget
-testInvalidTypeAnnotation2
-# whatever
-testTestExtendPrimitives
-testInvalidTypeWithinNestedGenericClass
-testTypevarWithType
-# Scoping
-testListComprehensionSpecialScoping
-
 # parser recovery in type comments / types in string literals
 testInvalidStrLiteralSpaces
 testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
-
-# Typing stuff
-testInvalidAssertType
-testInvalidAnyCall
-testInvalidTypeInTypeApplication
-testParamSpec
-testBaseClassAnnotatedWithoutArgs
-*Pep613
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
@@ -813,6 +705,122 @@ testLimitLegacyStubErrorVolume
 
 # --pretty
 testReprocessMethodShowSource
+
+# fine-grained
+testIgnoredAttrReprocessedMeta
+testAddBaseClassAttributeCausingErrorInSubclass
+testChangeBaseClassAttributeType
+testConstructorSignatureChanged2
+testConstructorSignatureChanged3
+testRefreshGenericSubclass
+testAliasFineNormalClassBases
+testFineGrainedCallable
+testRefreshSubclassNestedInFunction2
+testSkippedClass*
+testReprocessCallableArg
+testImplicitTuple2
+testImplicitTuple3
+testChangeTypeVarToFunction
+testChangeTypeVarToModule
+testRefreshGenericClass
+testChangeTypeVarToTypeAlias
+testRefreshNestedClassWithSelfReference
+testNonExistentFileOnCommandLine*
+testUnpackInExpression3-only_when_nocache
+testRefreshOptions
+testImportOnTopOfAlias*
+testRefreshForWithTypeComment1
+testRefreshForWithTypeComment2
+testIfTypeCheckingUnreachableClass
+testAliasForwardFunction*
+testLiteral*
+testInlineConfigFineGrained*
+testWrongNumberOfArguments
+testIsInstanceAdHocIntersectionFineGrainedIncremental*
+testStubFixupIssues
+testDunderCallAddition
+
+# check-generic-alias test stuff
+testGenericAliasImportRe
+testGenericAliasCollectionsABCReveal
+
+# check-generics
+testGenericMethodReturnType
+testGenericMethodArgument
+testGenericMemberVariable
+testGenericMemberVariable2
+testSimpleGenericSubtyping
+testGenericTypeCompatibilityWithAny
+testGenericTypeBody1
+testOperatorAssignmentWithIndexLvalue1
+testTypeApplicationCrash
+testGenericTypeAliasesBasic2
+testGenericTypeAliasesUnion
+testGenericTypeAliasesCallable
+testGenericTypeAliasesPEPBasedExample
+testGenericTypeAliasesImporting
+testGenericTypeAliasesImportingWithoutTypeVar
+testAliasesInClassBodyNormalVsSubscripted
+testGenericTypeAliasesRuntimeExpressionsInstance
+testGenericTypeAliasesTypeVarBinding
+testGenericTypeAliasesTypeVarConstraints
+testGenericTypeAliasesIgnoredPotentialAlias
+testNoSubscriptionOfBuiltinAliases
+testImportedTypeAliasInRuntimeContext
+testMultipleAssignmentWithList*
+# scoping in check-generics
+testClassLevelTypeVariable
+testGenericInnerClass
+testGenericClassInnerFunctionTypeVariable
+testFunctionInGenericInnerClassTypeVariable-skip
+# function subtyping
+testSubtypingWithGenericFunctions
+testSubtypingWithGenericInnerFunctions
+testSubtypingWithGenericFunctionUsingTypevarWithValues
+# special cases
+testGenericFunctionsWithUnalignedIds
+testTypeVariableWithContainerAndTuple
+testGenericOperatorMethodOverlapping*
+testCallTypeTWithGenericBound
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
+testGenericClassClsNonGeneric
+testGenericClassUnrelatedVars
+testGenericClassInGenericFunction*
+testGenericClassDirectCall
+testGenericClassAlternativeConstructorPrecise*
+testNoGenericAccessOnImplicitAttributes
+testGenericClassAttrUnboundOn*
+testGenericClassPropertyBound
+testGenericClassInsideOtherGenericClass
+testGenericFunctionMemberExpand
+testGenericJoin*
+
+# semanal-errors
+testInvalidNumberOfGenericArgsInTypeDecl
+# syntax not yet supported
+testBreakOutsideLoop
+testContinueOutsideLoop
+testInvalidGlobalDecl
+testAssignToTypeDef
+# parser shit
+testInvalidLvalues*
+testTwoStarExpressions*
+testStarExpressionRhs
+testStarExpressionInExp
+testInvalidDel*
+testInvalidTypeDeclaration
+testIndexedAssignmentWithTypeDeclaration
+testInvalidLvalueWithExplicitType
+testInvalidLvalueWithExplicitType3
+testInvalidWithTarget
+testInvalidTypeAnnotation2
+# whatever
+testTestExtendPrimitives
+testInvalidTypeWithinNestedGenericClass
+testTypevarWithType
+# Scoping
+testListComprehensionSpecialScoping
 
 # Won't support for now:
 testExpressionRefersToTypeVariable
