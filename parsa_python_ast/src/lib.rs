@@ -674,6 +674,19 @@ impl<'db> Expression<'db> {
             _ => None,
         }
     }
+
+    pub fn maybe_tuple(&self) -> Option<Tuple<'db>> {
+        match self.unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
+                if let AtomContent::Tuple(t) = a.unpack() {
+                    Some(t)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 pub enum ExpressionContent<'db> {

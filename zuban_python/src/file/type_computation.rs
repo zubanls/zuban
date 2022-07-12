@@ -264,12 +264,48 @@ where
             // allows us to reuse the code for annotations completely and the nodes before the expr
             // should really never be used by anything productive.
             let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
-            comp.cache_annotation_internal(index, expr);
+            if let Some(db_type) = comp.maybe_calc_type_comment_tuple(expr) {
+                if comp.has_type_vars {
+                    todo!()
+                } else {
+                    let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                        Box::new(db_type),
+                    ));
+                    unsaved.save_redirect(comp.inference.file, index);
+                }
+            } else {
+                comp.cache_annotation_internal(index, expr);
+            }
             (
                 Inferred::new_saved2(comp.inference.file, index),
                 comp.inference
                     .use_cached_annotation_type_internal(index, expr),
             )
+        })
+    }
+
+    fn maybe_calc_type_comment_tuple(&mut self, expr: Expression) -> Option<DbType> {
+        expr.maybe_tuple().map(|tuple| {
+            let generics = tuple
+                .iter()
+                .map(|star_like| match star_like {
+                    StarLikeExpression::NamedExpression(named_expr) => {
+                        let expr = named_expr.expression();
+                        self.maybe_calc_type_comment_tuple(expr).unwrap_or_else(|| {
+                            let t = self.compute_type(expr, None);
+                            self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
+                        })
+                    }
+                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
+                    StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
+                        unreachable!()
+                    }
+                })
+                .collect();
+            DbType::Tuple(TupleContent {
+                generics: Some(GenericsList::new_generics(generics)),
+                arbitrary_length: false,
+            })
         })
     }
 
