@@ -202,12 +202,7 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn class_as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| v.class(i_s).as_db_type(i_s),
-            &|_, g1, g2| g1.union(g2),
-            &mut |i_s| DbType::Any,
-        )
+        self.class_as_type(i_s).into_db_type(i_s)
     }
 
     #[inline]
