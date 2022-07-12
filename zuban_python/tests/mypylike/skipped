@@ -3,6 +3,10 @@ testErrorReportingNewAnalyzer
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
 
+testSubtypingAndABCExtension
+testAccessingGenericABCMembers
+testAccessingInheritedGenericABCMembers
+testMultipleAssignmentAndGenericSubtyping
 
 # Overloading
 testOverloadRefresh
@@ -109,6 +113,9 @@ testTypeVarWithAnyTypeBound
 # Type Var Inference bottom up
 testBoundOnGenericClass
 testGenericTypeWithTypevarValuesAndSubtypePromotion
+# Inference bottom up?
+testGenericArgumentInOverload
+testGenericFunctionAsOverloadItem
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
@@ -754,20 +761,16 @@ testModuleAliasRepeatedWithAnnotation
 # Tuple iter
 testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 
-# Tuple type comments
-testVariableDeclWithInvalidNumberOfTypes*
+# tuple type expected for multiple variables
 testVariableDeclWithInvalidType
-testCallingVariableWithFunctionType
-testAccessingMethodInheritedFromGenericType
-testAccessingMethodInheritedFromGenericTypeInNonGenericType
-testAccessingMemberVarInheritedFromGenericType
-testSubtypingWithTypeImplementingGenericABCViaInheritance
-testSubtypingAndABCExtension
-testAccessingGenericABCMembers
-testAccessingInheritedGenericABCMembers
-testMultipleAssignmentAndGenericSubtyping
-testGenericArgumentInOverload
-testGenericFunctionAsOverloadItem
+testVariableDeclWithInvalidNumberOfTypesNested3
+testVariableDeclWithInvalidNumberOfTypesNested5
+
+# Incompatible number of tuple items
+testVariableDeclWithInvalidNumberOfTypes
+testVariableDeclWithInvalidNumberOfTypesNested
+testVariableDeclWithInvalidNumberOfTypesNested2
+testVariableDeclWithInvalidNumberOfTypesNested4
 
 # Weird ellipsis assignment
 testEllipsisInitializerInStubFileWithType
