@@ -277,7 +277,8 @@ where
                     // allows us to reuse the code for annotations completely and the nodes before the expr
                     // should really never be used by anything productive.
                     let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
-                    if let Some(db_type) = comp.maybe_calc_type_comment_tuple(expr) {
+                    if let Some(tuple) = expr.maybe_tuple() {
+                        let db_type = comp.calc_type_comment_tuple(tuple.iter());
                         if comp.has_type_vars {
                             todo!()
                         } else {
@@ -303,28 +304,27 @@ where
         })
     }
 
-    fn maybe_calc_type_comment_tuple(&mut self, expr: Expression) -> Option<DbType> {
-        expr.maybe_tuple().map(|tuple| {
-            let generics = tuple
-                .iter()
-                .map(|star_like| match star_like {
-                    StarLikeExpression::NamedExpression(named_expr) => {
-                        let expr = named_expr.expression();
-                        self.maybe_calc_type_comment_tuple(expr).unwrap_or_else(|| {
-                            let t = self.compute_type(expr, None);
-                            self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
-                        })
+    fn calc_type_comment_tuple(&mut self, iterator: TupleLikeIterator) -> DbType {
+        let generics = iterator
+            .map(|star_like| match star_like {
+                StarLikeExpression::NamedExpression(named_expr) => {
+                    let expr = named_expr.expression();
+                    if let Some(tuple) = expr.maybe_tuple() {
+                        self.calc_type_comment_tuple(tuple.iter())
+                    } else {
+                        let t = self.compute_type(expr, None);
+                        self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
                     }
-                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
-                    StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
-                        unreachable!()
-                    }
-                })
-                .collect();
-            DbType::Tuple(TupleContent {
-                generics: Some(GenericsList::new_generics(generics)),
-                arbitrary_length: false,
+                }
+                StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
+                StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
+                    unreachable!()
+                }
             })
+            .collect();
+        DbType::Tuple(TupleContent {
+            generics: Some(GenericsList::new_generics(generics)),
+            arbitrary_length: false,
         })
     }
 

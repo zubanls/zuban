@@ -1,8 +1,5 @@
 
 
-# Type comment tuple without ()
-testMultipleAssignmentAndGenericSubtyping
-
 # Generic type aliases
 testGenericTypeAliasesBasic2
 testGenericTypeAliasesUnion
