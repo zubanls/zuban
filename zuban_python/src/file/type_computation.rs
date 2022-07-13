@@ -297,28 +297,50 @@ where
                     )
                 }
                 StarExpressionContent::Tuple(t) => {
-                    todo!()
+                    let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    let db_type = comp.calc_type_comment_tuple(t.iter());
+                    let complex_index = if comp.has_type_vars {
+                        todo!()
+                    } else {
+                        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                            Box::new(db_type),
+                        ));
+                        unsaved.save_redirect(comp.inference.file, index);
+                        comp.inference.file.points.get(index).complex_index()
+                    };
+                    (
+                        Inferred::new_saved2(comp.inference.file, index),
+                        if let ComplexPoint::TypeInstance(db_type) =
+                            comp.inference.file.complex_points.get(complex_index)
+                        {
+                            Type::from_db_type(comp.inference.i_s.db, db_type)
+                        } else {
+                            unreachable!()
+                        },
+                    )
                 }
                 StarExpressionContent::StarExpression(s) => todo!(),
             }
         })
     }
 
-    fn calc_type_comment_tuple(&mut self, iterator: TupleLikeIterator) -> DbType {
+    fn calc_type_comment_tuple<'s>(
+        &mut self,
+        iterator: impl Iterator<Item = StarLikeExpression<'s>>,
+    ) -> DbType {
         let generics = iterator
-            .map(|star_like| match star_like {
-                StarLikeExpression::NamedExpression(named_expr) => {
-                    let expr = named_expr.expression();
-                    if let Some(tuple) = expr.maybe_tuple() {
-                        self.calc_type_comment_tuple(tuple.iter())
-                    } else {
-                        let t = self.compute_type(expr, None);
-                        self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
-                    }
-                }
-                StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
-                StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
-                    unreachable!()
+            .map(|star_like| {
+                let expr = match star_like {
+                    StarLikeExpression::NamedExpression(named_expr) => named_expr.expression(),
+                    StarLikeExpression::Expression(expr) => expr,
+                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
+                    StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
+                };
+                if let Some(tuple) = expr.maybe_tuple() {
+                    self.calc_type_comment_tuple(tuple.iter())
+                } else {
+                    let t = self.compute_type(expr, None);
+                    self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
                 }
             })
             .collect();

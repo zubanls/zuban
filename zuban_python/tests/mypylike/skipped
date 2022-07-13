@@ -678,6 +678,7 @@ testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
 testMultipleAssignmentWithLists
 testMultipleAssignmentWithListsInInitialization
 testMultipleAssignmentWithListAndIndexing
+testMultipleAssignmentAndGenericSubtyping
 
 # Type execution
 testNoneAlias
