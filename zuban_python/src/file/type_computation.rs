@@ -1365,12 +1365,18 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             _ => unreachable!(),
         }
     } else {
-        let specific = node_ref.point().maybe_specific().unwrap();
-        if specific == Specific::TypingType {
-            TypeNameLookup::SpecialType(SpecialType::Type)
+        let point = node_ref.point();
+        if point.type_() == PointType::MultiDefinition {
+            debug!("TODO check if this is the right place for this kind of stuff.");
+            TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
-            debug_assert_eq!(specific, Specific::TypingCallable);
-            TypeNameLookup::SpecialType(SpecialType::Callable)
+            let specific = point.maybe_specific().unwrap();
+            if specific == Specific::TypingType {
+                TypeNameLookup::SpecialType(SpecialType::Type)
+            } else {
+                debug_assert_eq!(specific, Specific::TypingCallable);
+                TypeNameLookup::SpecialType(SpecialType::Callable)
+            }
         }
     }
 }

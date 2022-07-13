@@ -617,8 +617,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 let current = calculated.nth(type_var_usage.index).unwrap();
                 if current == &DbType::Unknown {
                     calculated.set_generic(type_var_usage.index, value_type.into_db_type(i_s));
-                } else if current != &value_type.into_db_type(i_s) {
-                    todo!()
+                } else {
+                    let value_db_type = value_type.into_db_type(i_s);
+                    if current != &value_db_type {
+                        dbg!(current, value_db_type);
+                        todo!(
+                            "should be: Cannot infer type argument {}",
+                            type_var_usage.type_var.name(i_s.db)
+                        )
+                    }
                 }
             }
         } else {

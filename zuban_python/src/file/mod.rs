@@ -904,6 +904,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             ExpressionPart::Primary(primary) => self.infer_primary(primary),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::Inversion(inv) => Inferred::new_unsaved_complex(
+                ComplexPoint::Instance(self.i_s.db.python_state.builtins_point_link("bool"), None),
+            ),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first);
