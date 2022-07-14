@@ -22,6 +22,7 @@ pub(crate) enum IssueType {
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
+    OverloadMismatch { func: String, args: Box<[String]>, variants: Box<[String]> },
     TypeArgumentIssue { class: String, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: String },
@@ -173,6 +174,26 @@ impl<'db> Diagnostic<'db> {
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
             IssueType::UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
+            IssueType::OverloadMismatch{func, args, variants} => {
+                let mut out = match args.len() {
+                    0 => format!(
+                        "All overload variants of \"{func}\" require at least one argument\n"
+                    ),
+                    1 => format!(
+                        "No overload variant of \"{func}\" matches argument type \"{}\"\n", args[0]
+                    ),
+                    _ => format!(
+                        "No overload variant of \"{func}\" matches argument types \"{}\"\n",
+                        &args.join(", "),
+                    )
+                };
+                out += &format!("{path}:{line}: note: Possible overload variants:\n");
+                for variant in variants.iter() {
+                    out += &format!("{path}:{line}: note:     def {variant}\n");
+                }
+                out.pop(); // Pop the last newline
+                out
+            }
             IssueType::TypeArgumentIssue{class, expected_count, given_count} => {
                 match expected_count {
                     0 => format!("{class:?} expects no type arguments, but {given_count} given"),

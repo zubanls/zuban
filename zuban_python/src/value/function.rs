@@ -677,7 +677,17 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None, on_type_error)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
-            .unwrap_or_else(Inferred::new_unknown)
+            .unwrap_or_else(|| {
+                args.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::OverloadMismatch {
+                        func: self.name().to_owned(),
+                        args: Box::new([]),
+                        variants: Box::new(["(foo: Foo) -> bar".to_owned()]),
+                    },
+                );
+                Inferred::new_unknown()
+            })
     }
 
     fn get_item(

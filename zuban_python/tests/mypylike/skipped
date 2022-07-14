@@ -11,6 +11,7 @@
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 # - 3352-3500 Union/Type vars/overloads weird combinations
 # - Condition cannot be inferred, unable to merge overloads
+# - Not all union combinations were tried because there are too many unions
 #
 # - An overloaded function outside a stub file must have an implementation
 # - Signature of "f" incompatible with supertype "Parent"
@@ -35,7 +36,6 @@ testOverloadsGenericToNonGeneric
 testOverloadsToNonOverloaded
 testOverloadsUpdateFunctionToOverloaded
 testOverloadedUpdateToClass
-testNewAnalyzerOverload
 testNewAnalyzerOverload2
 testNewAnalyzerMutuallyRecursiveOverloadedFunctions
 testUnionAsOverloadArg
