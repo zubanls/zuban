@@ -1,5 +1,29 @@
 
 
+# - No overload variant of "f" matches argument types "A", "A"
+#     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
+# - No overload variant of "__add__" of "A" matches argument type "str"
+# - wtf List item 0 has incompatible type "List[str]"; expected "int"
+# - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
+# - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
+# - wtf Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
+# - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
+#       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
+# - 3352-3500 Union/Type vars/overloads weird combinations
+# - Condition cannot be inferred, unable to merge overloads
+#
+# - An overloaded function outside a stub file must have an implementation
+# - Signature of "f" incompatible with supertype "Parent"
+#     Overload variants must be defined in the same order as they are in "Parent"
+# - Single overload definition, multiple required
+# - The implementation for an overloaded function must come last
+# - Overloaded function signatures 2 and 3 overlap with incompatible return types
+# - Overloaded function implementation does not accept all possible arguments of signature 2
+# - Overloaded function implementation cannot produce return type of signature 2
+# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
+# - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+# - Overload does not consistently use the "@classmethod" decorator on all function signatures
+# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 # Overloading
 testOverloadRefresh
 testOverloadSpecialCase
