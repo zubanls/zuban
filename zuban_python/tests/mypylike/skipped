@@ -38,8 +38,6 @@ testOverloadsUpdatedTypeRechekConsistency
 testRedefinedOverloadedFunction
 testInconsistentOverload
 testInconsistentOverload2
-testOverloadedProperty
-testOverloadedProperty2
 testFakeOverloadCrash
 testFakeOverloadCrash2
 testTypevarValuesWithOverloadedFunctionSpecialCase
@@ -207,6 +205,9 @@ testNonMethodProperty
 testInvalidArgCountForProperty
 testNewAnalyzerProperty
 testNewAnalyzerNoCrashOnCustomProperty
+# Decorated property not supported
+testOverloadedProperty
+testOverloadedProperty2
 
 # classmethod
 testAliasToClassMethod

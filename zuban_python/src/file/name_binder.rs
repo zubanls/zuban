@@ -848,6 +848,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let current_link = PointLink::new(self.file_index, func.index());
 
             let new_overload = if let Some(overload) = maybe_overload {
+                if overload.implementing_function.is_some() {
+                    /*
+                    self.add_issue(
+                        func.name().index(),
+                        IssueType::OverloadImplementationNotLast ,
+                    )
+                    */
+                    todo!()
+                }
                 overload.add_another_overload(current_link)
             } else {
                 Overload {
