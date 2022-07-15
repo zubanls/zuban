@@ -292,7 +292,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     matches: bool,
     type_vars: Option<&'a TypeVars>,
     match_type: TypeVarType,
-    on_type_error: OnTypeError<'db, 'a>,
+    on_type_error: Option<OnTypeError<'db, 'a>>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -303,7 +303,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first_param: bool,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
-        on_type_error: OnTypeError<'db, 'a>,
+        on_type_error: Option<OnTypeError<'db, 'a>>,
     ) -> Self {
         Self {
             func_or_callable: FunctionOrCallable::Function(class, function),
@@ -333,7 +333,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             matches: true,
             type_vars,
             match_type,
-            on_type_error,
+            on_type_error: Some(on_type_error),
         }
     }
 
@@ -345,7 +345,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         skip_first_param: bool,
         type_vars: Option<&'db TypeVars>,
         match_type: TypeVarType,
-        on_type_error: OnTypeError<'db, 'a>,
+        on_type_error: Option<OnTypeError<'db, 'a>>,
     ) -> Option<GenericsList> {
         let mut self_ = Self::new(
             class,
@@ -432,7 +432,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     let mut matches = true;
                     let on_type_error = self.on_type_error;
                     annotation_type.error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
-                        on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
+                        if let Some(on_type_error) = on_type_error {
+                            on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
+                        }
                         matches = false;
                     });
                     self.matches &= matches;

@@ -391,7 +391,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         true,
                         func.type_vars(i_s),
                         TypeVarType::Function,
-                        on_type_error,
+                        Some(on_type_error),
                     );
                     finder.matches_signature(i_s); // TODO this should be different
                     self.generics.as_generics_list(i_s)
@@ -404,18 +404,15 @@ impl<'db, 'a> Class<'db, 'a> {
                         true,
                         Some(type_vars),
                         TypeVarType::Class,
-                        on_type_error,
+                        Some(on_type_error),
                     )
                 };
                 return (func, list, false);
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => {
-                if let Some((func, list)) = overloaded_function.find_matching_function(
-                    i_s,
-                    args,
-                    class.as_ref(),
-                    on_type_error,
-                ) {
+                if let Some((func, list)) =
+                    overloaded_function.find_matching_function(i_s, args, class.as_ref())
+                {
                     return (func, list, true);
                 } else {
                     todo!()

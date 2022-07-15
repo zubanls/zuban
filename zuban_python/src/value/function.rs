@@ -256,7 +256,7 @@ impl<'db, 'a> Function<'db, 'a> {
             false,
             func_type_vars,
             TypeVarType::Function,
-            on_type_error,
+            Some(on_type_error),
         );
         finder.matches_signature(i_s); // TODO this should be different
         if let Some(return_annotation) = return_annotation {
@@ -615,7 +615,6 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
-        on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
@@ -633,7 +632,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             true,
                             func_type_vars,
                             TypeVarType::Function,
-                            on_type_error,
+                            None,
                         )
                     } else {
                         TypeVarMatcher::new(
@@ -643,7 +642,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             true,
                             Some(c.type_vars(i_s)),
                             TypeVarType::Class,
-                            on_type_error,
+                            None,
                         )
                     }
                 }
@@ -656,7 +655,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         false,
                         func_type_vars,
                         TypeVarType::Function,
-                        on_type_error,
+                        None,
                     )
                 }
             };
@@ -714,7 +713,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, None, on_type_error)
+        self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
             .unwrap_or_else(|| {
                 args.as_node_ref().add_typing_issue(
