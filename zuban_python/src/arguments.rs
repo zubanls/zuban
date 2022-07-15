@@ -298,8 +298,11 @@ enum ArgumentIteratorBase<'db, 'a> {
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<String> {
         match self {
-            Self::Inferred(_, _) => {
-                todo!()
+            Self::Inferred(inf, _) => {
+                // TODO for now we just skip this, because most of these are instances.
+                //      Shouldn't this be something like:
+                //      vec![inf.class_as_type(i_s).as_string(i_s, None, FormatStyle::Short)]
+                vec![]
             }
             Self::Iterator(python_file, iterator) => iterator
                 .map(|(_, arg)| {

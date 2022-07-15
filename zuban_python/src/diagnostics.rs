@@ -22,7 +22,7 @@ pub(crate) enum IssueType {
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
-    OverloadMismatch { func: String, args: Box<[String]>, variants: Box<[String]> },
+    OverloadMismatch { name: String, args: Box<[String]>, variants: Box<[String]> },
     TypeArgumentIssue { class: String, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: String },
@@ -174,17 +174,17 @@ impl<'db> Diagnostic<'db> {
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
             IssueType::UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
-            IssueType::OverloadMismatch{func, args, variants} => {
+            IssueType::OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join(", ");
                 let mut out = match args.len() {
                     0 => format!(
-                        "All overload variants of \"{func}\" require at least one argument\n"
+                        "All overload variants of {name} require at least one argument\n"
                     ),
                     1 => format!(
-                        "No overload variant of \"{func}\" matches argument type \"{arg_str}\"\n",
+                        "No overload variant of {name} matches argument type \"{arg_str}\"\n",
                     ),
                     _ => format!(
-                        "No overload variant of \"{func}\" matches argument types \"{arg_str}\"\n",
+                        "No overload variant of {name} matches argument types \"{arg_str}\"\n",
                     ),
                 };
                 out += &format!("{path}:{line}: note: Possible overload variants:\n");
@@ -325,5 +325,15 @@ impl DiagnosticConfig {
             IssueType::ModuleNotFound { .. } => !self.ignore_missing_imports,
             _ => true,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sizes() {
+        use super::*;
+        use std::mem::size_of;
+        assert_eq!(size_of::<IssueType>(), 80);
     }
 }

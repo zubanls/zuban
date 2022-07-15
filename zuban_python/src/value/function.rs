@@ -311,11 +311,18 @@ impl<'db, 'a> Function<'db, 'a> {
         ) {
             let args = self
                 .iter_params()
-                .map(|p| {
-                    let a = p
+                .enumerate()
+                .map(|(i, p)| {
+                    let annotation_str = p
                         .annotation_type(i_s, Some(self))
                         .map(|t| t.as_string(i_s, None, style));
-                    format!("{}: {}", p.name().unwrap(), a.as_deref().unwrap_or("Any"))
+                    if let Some(annotation_str) = annotation_str {
+                        format!("{}: {annotation_str}", p.name().unwrap())
+                    } else if i == 0 && self.class.is_some() {
+                        p.name().unwrap().to_owned()
+                    } else {
+                        format!("{}: Any", p.name().unwrap())
+                    }
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -716,10 +723,14 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
             .unwrap_or_else(|| {
+                let function = Function::new(
+                    NodeRef::from_link(i_s.db, self.overload.functions[0]),
+                    self.class,
+                );
                 args.as_node_ref().add_typing_issue(
                     i_s.db,
                     IssueType::OverloadMismatch {
-                        func: self.name().to_owned(),
+                        name: function.diagnostic_string(self.class.as_ref()),
                         args: args.iter_arguments().into_argument_types(i_s),
                         variants: self.variants(i_s),
                     },
