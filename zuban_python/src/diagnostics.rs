@@ -175,17 +175,17 @@ impl<'db> Diagnostic<'db> {
             IssueType::UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
             IssueType::OverloadMismatch{func, args, variants} => {
+                let arg_str = args.join(", ");
                 let mut out = match args.len() {
                     0 => format!(
                         "All overload variants of \"{func}\" require at least one argument\n"
                     ),
                     1 => format!(
-                        "No overload variant of \"{func}\" matches argument type \"{}\"\n", args[0]
+                        "No overload variant of \"{func}\" matches argument type \"{arg_str}\"\n",
                     ),
                     _ => format!(
-                        "No overload variant of \"{func}\" matches argument types \"{}\"\n",
-                        &args.join(", "),
-                    )
+                        "No overload variant of \"{func}\" matches argument types \"{arg_str}\"\n",
+                    ),
                 };
                 out += &format!("{path}:{line}: note: Possible overload variants:\n");
                 for variant in variants.iter() {

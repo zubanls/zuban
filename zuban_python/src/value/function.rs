@@ -653,6 +653,17 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         debug!("Could not decide overload for {}", self.name());
         None
     }
+
+    fn variants(&self, i_s: &mut InferenceState<'db, '_>) -> Box<[String]> {
+        self.overload
+            .functions
+            .iter()
+            .map(|link| {
+                let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                func.as_type_string(i_s, FormatStyle::Short)
+            })
+            .collect()
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
@@ -682,8 +693,8 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
                     i_s.db,
                     IssueType::OverloadMismatch {
                         func: self.name().to_owned(),
-                        args: Box::new([]),
-                        variants: Box::new(["(foo: Foo) -> bar".to_owned()]),
+                        args: args.iter_arguments().into_argument_types(i_s),
+                        variants: self.variants(i_s),
                     },
                 );
                 Inferred::new_unknown()

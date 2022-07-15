@@ -1,7 +1,8 @@
 use std::mem;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
+    ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, MroIndex, PointLink,
+    TupleContent,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -294,6 +295,57 @@ enum ArgumentIteratorBase<'db, 'a> {
     Finished,
 }
 
+impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
+    fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<String> {
+        match self {
+            Self::Inferred(_, _) => {
+                todo!()
+            }
+            Self::Iterator(python_file, iterator) => iterator
+                .map(|(_, arg)| {
+                    let mut prefix = "".to_owned();
+                    let mut inference = python_file.inference(i_s);
+                    let inf = match arg {
+                        ASTArgument::Positional(named_expr) => {
+                            inference.infer_named_expression(named_expr)
+                        }
+                        ASTArgument::Keyword(name, expr) => {
+                            prefix = format!("{name}=");
+                            inference.infer_expression(expr)
+                        }
+                        ASTArgument::Starred(expr) => {
+                            prefix = "*".to_owned();
+                            inference.infer_expression(expr)
+                        }
+                        ASTArgument::DoubleStarred(expr) => {
+                            prefix = "*".to_owned();
+                            inference.infer_expression(expr)
+                        }
+                    };
+                    format!(
+                        "{prefix}{}",
+                        inf.class_as_type(i_s)
+                            .as_string(i_s, None, FormatStyle::Short)
+                    )
+                })
+                .collect(),
+            Self::Comprehension(file, comprehension) => {
+                todo!()
+            }
+            Self::Finished => vec![],
+            Self::SliceType(slice_type) => match slice_type.unpack() {
+                SliceTypeContent::Simple(s) => {
+                    let file = s.file;
+                    let named_expr = s.named_expr;
+                    todo!()
+                }
+                SliceTypeContent::Slices(slices) => todo!(),
+                _ => todo!(),
+            },
+        }
+    }
+}
+
 impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
@@ -372,6 +424,19 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
             current: ArgumentIteratorBase::SliceType(slice_type),
             next: None,
         }
+    }
+
+    pub fn into_argument_types(mut self, i_s: &mut InferenceState<'db, '_>) -> Box<[String]> {
+        let mut result = vec![];
+        loop {
+            result.extend(self.current.into_argument_types(i_s));
+            if let Some(next) = self.next {
+                self = next.iter_arguments();
+            } else {
+                break;
+            }
+        }
+        result.into_boxed_slice()
     }
 }
 
