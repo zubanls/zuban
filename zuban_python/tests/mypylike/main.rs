@@ -187,11 +187,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .map(|d| d.as_string())
                 .collect();
 
-            let actual = replace_annoyances(
-                diagnostics
-                    .iter()
-                    .fold(String::new(), |a, b| a + &try_to_resemble_mypy(b) + "\n"),
-            );
+            let actual = replace_annoyances(diagnostics.join("\n"));
             let mut actual_lines = actual
                 .trim()
                 .split("\n")
@@ -437,39 +433,6 @@ fn cleanup_mypy_issues(mut s: &str) -> Option<String> {
     let s = REPLACE_TUPLE.replace_all(s, TypeStuffReplacer());
     let s = REPLACE_MYPY.replace_all(&s, "");
     Some(replace_annoyances(s.replace("tmp/", "")))
-}
-
-fn try_to_resemble_mypy(s: &str) -> String {
-    if s.contains("Revealed type is") {
-        let key = "Callable[";
-        if let Some(original_pos) = s.find(key) {
-            let pos = original_pos + key.len();
-            let mut brackets = 1;
-            let mut param_end = None;
-            for (i, &c) in s[pos..].as_bytes().iter().enumerate() {
-                if c == b'[' {
-                    brackets += 1;
-                } else if c == b']' {
-                    brackets -= 1;
-                    if brackets == 0 {
-                        return format!(
-                            "{}def ({}) ->{}{}",
-                            &s[..original_pos],
-                            &s[pos + 1..pos + param_end.unwrap()],
-                            &s[pos + param_end.unwrap() + 2..pos + i],
-                            &s[pos + i + 1..],
-                        );
-                    } else if brackets == 1 {
-                        if param_end.is_none() {
-                            param_end = Some(i);
-                        }
-                    }
-                }
-            }
-            unreachable!("{}", s)
-        }
-    }
-    s.to_owned()
 }
 
 struct TypeStuffReplacer();

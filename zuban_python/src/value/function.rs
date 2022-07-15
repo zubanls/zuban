@@ -296,30 +296,46 @@ impl<'db, 'a> Function<'db, 'a> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
-        let node = self.node();
-        let mut result = "Callable[[".to_owned();
-        let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
-        let mut first = true;
-        generics.run_on_all(i_s, &mut |i_s, g| {
-            if !first {
-                result += ", ";
-            }
-            result += &g.as_string(i_s, self.class.as_ref(), style);
-            first = false;
-        });
-        result += "], ";
-        if let Some(annotation) = node.return_annotation() {
-            result += &self
-                .node_ref
+        let return_type = |i_s: &mut InferenceState<'db, '_>, annotation| {
+            self.node_ref
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
                 .as_string(i_s, self.class.as_ref(), style)
+        };
+        let node = self.node();
+        if matches!(
+            style,
+            FormatStyle::MypyRevealType | FormatStyle::MypyOverload
+        ) {
+            let args = "";
+            let ret = node.return_annotation().map(|a| return_type(i_s, a));
+            format!(
+                "def {}({args}) -> {}",
+                match style {
+                    FormatStyle::MypyRevealType => "",
+                    _ => self.name(),
+                },
+                ret.as_deref().unwrap_or("Any")
+            )
         } else {
-            result += "Any"
+            let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
+
+            let mut result = "Callable[[".to_owned();
+            let mut first = true;
+            generics.run_on_all(i_s, &mut |i_s, g| {
+                if !first {
+                    result += ", ";
+                }
+                result += &g.as_string(i_s, self.class.as_ref(), style);
+                first = false;
+            });
+            result += "], ";
+            let ret = node.return_annotation().map(|a| return_type(i_s, a));
+            result += ret.as_deref().unwrap_or("Any");
+            result += "]";
+            result
         }
-        result += "]";
-        result
     }
 
     pub fn diagnostic_string(&self, class: Option<&Class>) -> String {

@@ -243,8 +243,8 @@ impl<'a> TupleClass<'a> {
         format!(
             "{}{}",
             match style {
-                FormatStyle::Short => "tuple",
-                FormatStyle::Qualified => "builtins.tuple",
+                FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
+                FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
             },
             &self.content.as_string(db, style)
         )
@@ -670,7 +670,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let s = arg
             .infer(i_s)
             .class_as_type(i_s)
-            .as_string(i_s, None, FormatStyle::Qualified);
+            .as_string(i_s, None, FormatStyle::MypyRevealType);
         args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::Note(format!("Revealed type is {s:?}")));
         if iterator.next().is_some() {

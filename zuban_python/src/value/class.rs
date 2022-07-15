@@ -709,8 +709,8 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         let mut result = match style {
-            FormatStyle::Short => self.name().to_owned(),
-            FormatStyle::Qualified => self.qualified_name(i_s.db),
+            FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
+            FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
         };
         let type_var_count = self.class_infos(i_s).type_vars.len();
         if type_var_count > 0 {

@@ -606,8 +606,8 @@ impl DbType {
             let class =
                 Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
             match style {
-                FormatStyle::Short => class.name().to_owned(),
-                FormatStyle::Qualified => class.qualified_name(db),
+                FormatStyle::Short | FormatStyle::MypyOverload => class.name().to_owned(),
+                FormatStyle::Qualified | FormatStyle::MypyRevealType => class.qualified_name(db),
             }
         };
         match self {
@@ -635,8 +635,8 @@ impl DbType {
             Self::Tuple(content) => format!(
                 "{}{}",
                 match style {
-                    FormatStyle::Short => "tuple",
-                    FormatStyle::Qualified => "builtins.tuple",
+                    FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
+                    FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
                 },
                 &content.as_string(db, style)
             ),
@@ -1288,6 +1288,8 @@ impl<'db> std::cmp::PartialEq for ClassStorage {
 pub enum FormatStyle {
     Short,
     Qualified,
+    MypyRevealType,
+    MypyOverload,
 }
 
 #[cfg(test)]
