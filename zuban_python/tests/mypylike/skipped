@@ -27,17 +27,10 @@
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 # Overloading
 testOverloadRefresh
-testOverloadSpecialCase
-testOverloadsSimpleFrom
 testOverloadsRemovedOverload
-testOverloadsDeleted
-testOverloadsGenericTypevarUpdated
 testOverloadsGenericToNonGeneric
-testOverloadsToNonOverloaded
-testOverloadsUpdateFunctionToOverloaded
-testOverloadedUpdateToClass
+testOverloadsGenericTypevarUpdated
 testNewAnalyzerMutuallyRecursiveOverloadedFunctions
-testUnionAsOverloadArg
 
 testPreviousErrorInOverloadedFunction
 testPreviousErrorInOverloadedFunctionSemanal
@@ -361,6 +354,7 @@ testFlexibleAlias*
 testNewAnalyzerTypeArgBoundCheckWithContext
 
 # stdlib imports
+testOverloadSpecialCase
 testSubclassingGenericABCWithImplicitAny
 testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
 testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
