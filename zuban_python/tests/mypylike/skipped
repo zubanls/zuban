@@ -279,6 +279,7 @@ testNewAnalyzerForwardAliasFromUnion
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
+testSimplifyUnionWithCallable
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
@@ -723,13 +724,6 @@ testSubmoduleMixingImportFromAndImport2
 testErrorFromGoogleCloud
 testStubPackageSubModule
 
-# Formatting func in reveal_type
-testAliasToTupleAndCallable
-testSimplifyUnionWithCallable
-testNewAnalyzerTypeVarForwardReferenceErrors
-testAliasFineGenericToNonGeneric
-testAliasFineInitGenericMod
-
 # Formatting class in reveal_type
 testReExportChildStubs3
 testImportFromReExportInCycleUsingRelativeImport1
@@ -738,6 +732,10 @@ testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
 testNewAnalyzerPlaceholderFromOuterScope
 testAliasInImportCycle3
+testNewAnalyzerTypeVarForwardReferenceErrors
+
+# Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
+testAliasToTupleAndCallable
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules

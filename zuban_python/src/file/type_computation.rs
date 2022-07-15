@@ -478,6 +478,10 @@ where
                     generics: None,
                     arbitrary_length: true,
                 }),
+                SpecialType::Callable => DbType::Callable(CallableContent {
+                    params: None,
+                    return_class: Box::new(DbType::Any),
+                }),
                 _ => todo!("{special:?}"),
             },
             TypeContent::InvalidVariable(t) => {
