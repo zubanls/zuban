@@ -723,12 +723,11 @@ testSubmoduleMixingImportFromAndImport
 testSubmoduleMixingImportFromAndImport2
 testErrorFromGoogleCloud
 testStubPackageSubModule
-
-# Formatting class in reveal_type
 testReExportChildStubs3
 testImportFromReExportInCycleUsingRelativeImport1
 testImportReExportInCycleUsingRelativeImport2
-testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
+
+# Formatting class in reveal_type (stashed in 860494e, see also https://github.com/python/mypy/issues/13062)
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
 testNewAnalyzerPlaceholderFromOuterScope
 testAliasInImportCycle3
