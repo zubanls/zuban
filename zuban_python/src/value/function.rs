@@ -1,5 +1,6 @@
 use parsa_python_ast::{
-    FunctionDef, NodeIndex, Param, ParamIterator, ParamType, ReturnAnnotation, ReturnOrYield,
+    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamType, ReturnAnnotation,
+    ReturnOrYield,
 };
 use std::fmt;
 use std::rc::Rc;
@@ -18,7 +19,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::params::InferrableParamIterator2;
+use crate::params::{InferrableParamIterator2, Param};
 use crate::value::Class;
 
 #[derive(Clone, Copy)]
@@ -83,7 +84,7 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = Param<'db>>, Param<'db>> {
+    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = ASTParam<'db>>, ASTParam<'db>> {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
@@ -308,7 +309,16 @@ impl<'db, 'a> Function<'db, 'a> {
             style,
             FormatStyle::MypyRevealType | FormatStyle::MypyOverload
         ) {
-            let args = "";
+            let args = self
+                .iter_params()
+                .map(|p| {
+                    let a = p
+                        .annotation_type(i_s, Some(self))
+                        .map(|t| t.as_string(i_s, None, style));
+                    format!("{}: {}", p.name().unwrap(), a.as_deref().unwrap_or("Any"))
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             let ret = node.return_annotation().map(|a| return_type(i_s, a));
             format!(
                 "def {}({args}) -> {}",
@@ -437,7 +447,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         }
     }
 
-    fn next_argument(&mut self, param: &Param<'db>) -> ParamInput<'db, 'a> {
+    fn next_argument(&mut self, param: &ASTParam<'db>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
@@ -532,7 +542,7 @@ pub trait ParamWithArgument<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
-    pub param: Param<'db>,
+    pub param: ASTParam<'db>,
     argument: ParamInput<'db, 'a>,
 }
 
