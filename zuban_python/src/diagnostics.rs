@@ -189,7 +189,7 @@ impl<'db> Diagnostic<'db> {
                 };
                 out += &format!("{path}:{line}: note: Possible overload variants:\n");
                 for variant in variants.iter() {
-                    out += &format!("{path}:{line}: note:     def {variant}\n");
+                    out += &format!("{path}:{line}: note:     {variant}\n");
                 }
                 out.pop(); // Pop the last newline
                 out

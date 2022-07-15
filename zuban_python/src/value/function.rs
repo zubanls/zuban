@@ -688,7 +688,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.as_type_string(i_s, FormatStyle::Short)
+                func.as_type_string(i_s, FormatStyle::MypyOverload)
             })
             .collect()
     }
