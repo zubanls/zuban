@@ -320,14 +320,16 @@ impl<'db, 'a> Function<'db, 'a> {
                 .collect::<Vec<_>>()
                 .join(", ");
             let ret = node.return_annotation().map(|a| return_type(i_s, a));
-            format!(
-                "def {}({args}) -> {}",
-                match style {
-                    FormatStyle::MypyRevealType => "",
-                    _ => self.name(),
-                },
-                ret.as_deref().unwrap_or("Any")
-            )
+            let name = match style {
+                FormatStyle::MypyRevealType => "",
+                _ => self.name(),
+            };
+            let result = ret.as_deref().unwrap_or("Any");
+            if result == "None" {
+                format!("def {name}({args})")
+            } else {
+                format!("def {name}({args}) -> {result}")
+            }
         } else {
             let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
 

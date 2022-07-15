@@ -724,7 +724,6 @@ testErrorFromGoogleCloud
 testStubPackageSubModule
 
 # Formatting func in reveal_type
-testForwardTypeAlias
 testForwardTypeAliasGeneric
 testAliasToTupleAndCallable
 testAliasInImportCycle3

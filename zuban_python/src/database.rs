@@ -877,7 +877,11 @@ impl CallableContent {
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("");
-                format!("def ({param_str}) -> {result}")
+                if result == "None" {
+                    format!("def ({param_str})")
+                } else {
+                    format!("def ({param_str}) -> {result}")
+                }
             }
             _ => {
                 let param_string = param_string.map(|p| format!("[{p}]"));
