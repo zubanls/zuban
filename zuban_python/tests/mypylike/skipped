@@ -724,11 +724,7 @@ testErrorFromGoogleCloud
 testStubPackageSubModule
 
 # Formatting func in reveal_type
-testForwardTypeAliasGeneric
 testAliasToTupleAndCallable
-testAliasInImportCycle3
-testTypeCheckPrio
-testImportStarAliasCallable
 testSimplifyUnionWithCallable
 testNewAnalyzerTypeVarForwardReferenceErrors
 testAliasFineGenericToNonGeneric
@@ -741,6 +737,7 @@ testImportReExportInCycleUsingRelativeImport2
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderSinglePass
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
 testNewAnalyzerPlaceholderFromOuterScope
+testAliasInImportCycle3
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules

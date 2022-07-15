@@ -876,7 +876,7 @@ impl CallableContent {
         let result = self.return_class.as_type_string(db, None, style);
         match style {
             FormatStyle::MypyRevealType => {
-                let param_str = param_string.as_deref().unwrap_or("");
+                let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
                 if result == "None" {
                     format!("def ({param_str})")
                 } else {
