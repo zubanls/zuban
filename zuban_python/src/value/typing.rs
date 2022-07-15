@@ -524,14 +524,7 @@ impl<'a> CallableClass<'a> {
     }
 
     pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
-        if let Some(params) = &self.content.params {
-            format!("Callable{}", self.content.as_string(db, style))
-        } else {
-            format!(
-                "Callable[..., {}]",
-                self.content.return_class.as_type_string(db, None, style)
-            )
-        }
+        self.content.as_string(db, style)
     }
 }
 

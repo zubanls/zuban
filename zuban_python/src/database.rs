@@ -640,7 +640,7 @@ impl DbType {
                 },
                 &content.as_string(db, style)
             ),
-            Self::Callable(content) => format!("Callable{}", &content.as_string(db, style)),
+            Self::Callable(content) => content.as_string(db, style),
             Self::Any => "Any".to_owned(),
             Self::None => "None".to_owned(),
             Self::Unknown => "Unknown".to_owned(),
@@ -866,26 +866,25 @@ pub struct CallableContent {
 
 impl CallableContent {
     pub fn as_string(&self, db: &Database, style: FormatStyle) -> String {
-        format!(
-            "[{}, {}]",
-            self.params
-                .as_ref()
-                .map(|params| format!(
-                    "[{}]",
-                    params
-                        .iter()
-                        .map(|p| p.db_type.as_type_string(db, None, style))
-                        .fold(String::new(), |a, b| {
-                            if a.is_empty() {
-                                a + &b
-                            } else {
-                                a + ", " + &b
-                            }
-                        })
-                ))
-                .unwrap_or_else(|| "...".to_owned()),
-            self.return_class.as_type_string(db, None, style)
-        )
+        let param_string = self.params.as_ref().map(|params| {
+            params
+                .iter()
+                .map(|p| p.db_type.as_type_string(db, None, style))
+                .collect::<Vec<_>>()
+                .join(", ")
+        });
+        let result = self.return_class.as_type_string(db, None, style);
+        match style {
+            FormatStyle::MypyRevealType => {
+                let param_str = param_string.as_deref().unwrap_or("");
+                format!("def ({param_str}) -> {result}")
+            }
+            _ => {
+                let param_string = param_string.map(|p| format!("[{p}]"));
+                let param_str = param_string.as_deref().unwrap_or("...");
+                format!("Callable[{param_str}, {result}]")
+            }
+        }
     }
 }
 
