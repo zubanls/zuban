@@ -1309,4 +1309,15 @@ mod tests {
         assert_eq!(size_of::<ComplexPoint>(), 32);
         assert_eq!(size_of::<DbType>(), 32);
     }
+
+    #[test]
+    fn test_emtpy_point() {
+        use super::*;
+        let p = Point::new_simple_specific(Specific::ReservedBecauseUnused, Locality::Stmt);
+        assert_eq!(p.flags & !IS_ANALIZED_MASK, 0);
+        assert_eq!(p.node_index, 0);
+        assert_eq!(p.calculated());
+        assert_eq!(p.type_(), PointType::Specific);
+        assert_eq!(p.type_(), Specific::ReservedBecauseUnused);
+    }
 }
