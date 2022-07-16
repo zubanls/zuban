@@ -448,33 +448,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         }
         if args_with_params.too_many_positional_arguments {
-            let mut s = "Too many positional arguments".to_owned();
-            if let Some(function) = function {
-                s += " for ";
-                s += &function.diagnostic_string(class);
-            }
-
-            self.args
-                .as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
-            self.matches = false
-        } else if args_with_params.arguments.peek().is_some() {
-            let mut too_many = false;
-            for arg in args_with_params.arguments {
-                match arg {
-                    Argument::Keyword(name, reference) => {
-                        let mut s = format!("Unexpected keyword argument {name:?}");
-                        if let Some(function) = function {
-                            s += " for ";
-                            s += &function.diagnostic_string(class);
-                        }
-                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
-                    }
-                    _ => too_many = true,
-                }
-            }
-            if too_many && self.should_generate_errors() {
-                let mut s = "Too many arguments".to_owned();
+            self.matches = false;
+            if self.should_generate_errors() || true {
+                // TODO remove true and add test
+                let mut s = "Too many positional arguments".to_owned();
                 if let Some(function) = function {
                     s += " for ";
                     s += &function.diagnostic_string(class);
@@ -484,8 +461,39 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .as_node_ref()
                     .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             }
-            self.matches = false
-        } else if !args_with_params.unused_keyword_arguments.is_empty() {
+        } else if args_with_params.arguments.peek().is_some() {
+            self.matches = false;
+            if self.should_generate_errors() {
+                let mut too_many = false;
+                for arg in args_with_params.arguments {
+                    match arg {
+                        Argument::Keyword(name, reference) => {
+                            dbg!(self.should_generate_errors());
+                            let mut s = format!("Unexpected keyword argument {name:?}");
+                            if let Some(function) = function {
+                                s += " for ";
+                                s += &function.diagnostic_string(class);
+                            }
+                            reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                        }
+                        _ => too_many = true,
+                    }
+                }
+                if too_many {
+                    let mut s = "Too many arguments".to_owned();
+                    if let Some(function) = function {
+                        s += " for ";
+                        s += &function.diagnostic_string(class);
+                    }
+
+                    self.args
+                        .as_node_ref()
+                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                }
+            }
+        } else if !args_with_params.unused_keyword_arguments.is_empty()
+            && self.should_generate_errors()
+        {
             for unused in args_with_params.unused_keyword_arguments {
                 match unused {
                     Argument::Keyword(name, reference) => {
