@@ -7,7 +7,6 @@ use std::time::Instant;
 use regex::{Captures, Regex, Replacer};
 
 const USE_MYPY_TEST_FILES: [&str; 16] = [
-    "fine-grained.test",
     "check-generics.test",
     "check-generic-alias.test",
     "semanal-errors.test",
@@ -81,7 +80,7 @@ const USE_MYPY_TEST_FILES: [&str; 16] = [
     //"check-python310.test",
     //"check-default-plugin.test",
     //"check-custom-plugin.test",
-
+    "fine-grained.test",
     //"fine-grained-modules.test",
     //"fine-grained-suggest.test",
     //"fine-grained-follow-imports.test",

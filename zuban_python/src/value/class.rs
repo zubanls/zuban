@@ -370,6 +370,16 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassLike::Class(self)
     }
 
+    pub fn has_non_overloaded_init_func(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        let (init, class) = self.lookup_and_class(i_s, "__init__");
+        let cls = class.unwrap_or_else(|| todo!());
+        match init.into_maybe_inferred().unwrap().init_as_function(cls) {
+            Some(FunctionOrOverload::Function(_)) => true,
+            Some(FunctionOrOverload::Overload(_)) => false,
+            None => unreachable!(), // There is always an init func
+        }
+    }
+
     pub fn init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,

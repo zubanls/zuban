@@ -1077,21 +1077,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if x.is_none() && !is_target {
                     if let Some(class) = base.maybe_class(self.i_s) {
                         if class.type_vars(self.i_s).is_empty()
-                            && !class
-                                .init_func(
-                                    self.i_s,
-                                    &SimpleArguments::new(
-                                        f,
-                                        node_index,
-                                        details,
-                                        x.as_ref(),
-                                        Some(class),
-                                    ),
-                                    &on_type_error,
-                                )
-                                .map(|x| x.2)
-                                .unwrap_or(true)
+                            && class.has_non_overloaded_init_func(self.i_s)
                         {
+                            class.init_func(
+                                self.i_s,
+                                &SimpleArguments::new(
+                                    f,
+                                    node_index,
+                                    details,
+                                    x.as_ref(),
+                                    Some(class),
+                                ),
+                                &on_type_error,
+                            );
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
                         }
                     }
