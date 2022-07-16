@@ -37,7 +37,7 @@ enum SpecialType<'db, 'a> {
 #[derive(Debug, Clone)]
 enum InvalidVariableType<'db, 'a> {
     List,
-    Tuple,
+    Tuple { tuple_length: usize },
     Execution,
     Function(Function<'db, 'db>),
     Literal(&'a str),
@@ -93,7 +93,7 @@ impl InvalidVariableType<'_, '_> {
                     IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
                 );
             }
-            Self::Tuple => {
+            Self::Tuple { .. } => {
                 // Should be something like:
                 // error: Syntax error in type annotation
                 // note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
@@ -823,20 +823,32 @@ where
     ) -> TypeContent<'db, 'x> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        if let Some(SliceOrSimple::Simple(s)) = iterator.next() {
-            if s.named_expr.is_ellipsis_literal() {
-                let t = self.compute_slice_db_type(first);
-                return TypeContent::DbType(DbType::Tuple(TupleContent {
-                    generics: Some(GenericsList::new_generics(Box::new([t]))),
-                    arbitrary_length: true,
-                }));
+        let generics: Box<[_]> = if let Some(slice_or_simple) = iterator.next() {
+            if let SliceOrSimple::Simple(s) = slice_or_simple {
+                if s.named_expr.is_ellipsis_literal() {
+                    let t = self.compute_slice_db_type(first);
+                    return TypeContent::DbType(DbType::Tuple(TupleContent {
+                        generics: Some(GenericsList::new_generics(Box::new([t]))),
+                        arbitrary_length: true,
+                    }));
+                }
             }
-        }
-        let generics = slice_type
-            .iter()
-            .map(|slice_content| self.compute_slice_db_type(slice_content));
+            slice_type
+                .iter()
+                .map(|slice_content| self.compute_slice_db_type(slice_content))
+                .collect()
+        } else {
+            let t = self.compute_slice_type(first, None);
+            // Handle Tuple[()]
+            match t {
+                TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
+                    Box::new([])
+                }
+                _ => Box::new([self.as_db_type(t, first.as_node_ref())]),
+            }
+        };
         TypeContent::DbType(DbType::Tuple(TupleContent {
-            generics: Some(GenericsList::new_generics(generics.collect())),
+            generics: Some(GenericsList::new_generics(generics)),
             arbitrary_length: false,
         }))
     }
@@ -1027,7 +1039,9 @@ where
             AtomContent::Int(n) => {
                 TypeContent::InvalidVariable(InvalidVariableType::Literal(n.as_code()))
             }
-            AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple),
+            AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple {
+                tuple_length: t.iter().count(),
+            }),
             _ => todo!("{atom:?}"),
         }
     }
