@@ -1,25 +1,88 @@
 
 
 # Overloading
+testOverloadOnOverloadWithType
+testOverloadTupleInstance
+testOverloadTupleEllipsisNumargs
+testBadOverloadProbableMatch
+testOverloadBadArgumentsInferredToAny1
+testOverloadBadArgumentsInferredToAny2
+testSingleOverloadStub
+testNonconsecutiveOverloads
 testOverloadsWithDifferentArgumentCounts
 testOverloadedInit
+testIgnoreOverloadVariantBasedOnKeywordArg
+testOverloadWithDerivedFromAny
+testOverloadWithBoundedTypeVar
+testOverloadedCallWithVariableTypes
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadWithNonPositionalArgs
+testOverloadMultipleVarargDefinitionComplex
+testOverloadedInIter
+testNestedOverloadsTypeVar
+testNestedOverloadsMutuallyRecursive
+testOverloadConstrainedTypevarNotShadowingAny
+testOverloadBoundedTypevarNotShadowingAny
+testOverloadDeferredNode
+testOverloadedToGeneric
+
+testOverloadsUsingAny
+testOverloadWithOverlappingItemsAndAnyArgument1
+testOverloadWithOverlappingItemsAndAnyArgument2
+testOverloadWithOverlappingItemsAndAnyArgument3
+testOverloadWithOverlappingItemsAndAnyArgument4
+testOverloadWithOverlappingItemsAndAnyArgument9
+testOverloadWithOverlappingItemsAndAnyArgument12
+testOverloadWithOverlappingItemsAndAnyArgument13
+testOverloadWithOverlappingItemsAndAnyArgument14
+testOverloadWithOverlappingItemsAndAnyArgument15
+testOverloadWithOverlappingItemsAndAnyArgument16
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
 # - wtf List item 0 has incompatible type "List[str]"; expected "int"
+testPreferExactSignatureMatchInOverload
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
 testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 # - wtf Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
+testOverlappingErasedSignatures
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadWithTupleMatchingTypeVar
+testOverloadTuple
+testOverloadInferUnionReturnBasic
+testOverloadInferUnionReturnMultipleArguments
+testOverloadInferUnionRespectsVariance
+testUnionMathTrickyOverload1
+testUnionMathTrickyOverload2
+testManyUnionsInOverload
 # - 3352-3500 Union/Type vars/overloads weird combinations
+testOverloadInferUnionIfParameterNamesAreDifferent
+testOverloadInferUnionReturnFunctionsWithKwargs
+testOverloadInferUnionWithDifferingLengths
+testOverloadInferUnionWithMixOfPositionalAndOptionalArgs
+testOverloadingInferUnionReturn*
+testOverloadInferUnionReturnWithInconsistentTypevarNames
 # - Condition cannot be inferred, unable to merge overloads
+testOverloadIf*
 # - Not all union combinations were tried because there are too many unions
-#
+testTooManyUnionsException
 # - An overloaded function outside a stub file must have an implementation
 # - Signature of "f" incompatible with supertype "Parent"
 #     Overload variants must be defined in the same order as they are in "Parent"
+testOverrideOverloadSwapped
+testOverrideOverloadSwappedWithExtraVariants
+testOverrideOverloadSwappedWithAdjustedVariants
+testOverrideOverloadedMethodWithMoreSpecificArgumentTypes
+testOverloadWithIncompatibleMethodOverrideAndImplementation
+testOverloadFaultyClassMethodInheritance
+testOverloadClassMethodMixingInheritance
+testOverloadFaultyStaticMethodInheritance
+testOverloadStaticMethodMixingInheritance
+testOverloadStaticMethodImplementation
+testUnsafeDunderOverlapInSubclass
 # - Single overload definition, multiple required
 # - The implementation for an overloaded function must come last
 testInconsistentOverload
@@ -27,30 +90,92 @@ testInconsistentOverload2
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 testTypeCheckOverloadWithUntypedImplAndMultipleVariants
 testTypeCheckOverloadImplementationTypeVarDifferingUsage2
+testOverlappingErasedSignatures
+testOverlappingOverloadSignatures
+testPartiallyCovariantOverlappingOverloadSignatures
+testOverlappingOverloadCounting
+testOverloadWithOverlappingItemsAndAnyArgument5
+testOverloadWithOverlappingItemsAndAnyArgument10
+testOverloadTupleEllipsisVariance
+testOverloadWithMethodOverrideAndImplementation
+testOverloadAnyIsConsideredValidReturnSubtype
+testOverloadWithVariableArgsAreOverlapping
+testOverloadDetectsPossibleMatchesWithGenerics
+testOverloadPossibleOverlapWithArgsAndKwargs
+testOverloadPossibleOverlapWithVarargs2
+testOverloadPossibleOverlapWithVarargs4
+testOverloadPossibleOverlapMixingOptionalArgsWithVarargs
+testOverloadPossibleOverlapMixingOptionalArgsWithVarargs2
+testOverloadPossibleOverlapMixingNamedArgsWithKwargs2
+testOverloadPossibleOverlapMixingNamedArgsWithKwargs3
+testOverloadWithPartiallyOverlappingUnions
+testOverloadWithPartiallyOverlappingUnionsNested
+testOverloadPartialOverlapWithUnrestrictedTypeVar
+testOverloadPartialOverlapWithUnrestrictedTypeVarNested
+testOverloadPartialOverlapWithUnrestrictedTypeVarInClass
+testOverloadPartialOverlapWithUnrestrictedTypeVarInClassNested
+testOverloadedPartiallyOverlappingInheritedTypes1
+testOverloadedPartiallyOverlappingInheritedTypes2
+testOverloadedPartiallyOverlappingInheritedTypes3
+testOverloadedPartiallyOverlappingTypeVarsAndUnion
+testOverloadPartiallyOverlappingTypeVarsIdentical
+testOverloadedPartiallyOverlappingCallables
+testNestedOverloadsTypeVarOverlap
+testOverloadsIgnorePromotions
+testOverloadsTypesAndUnions
+testOverloadTwoTypeArgs
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
 # - Overloaded function implementation cannot produce return type of signature 2
 testTypeCheckOverloadWithImplTooSpecificRetType
 testPreviousErrorInOverloadedFunction
 testOverloadsUpdatedTypeRechekConsistency
+testOverloadClassMethodImplementation
+testOverloadItemHasMoreGeneralReturnType
 # - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
 testTypeCheckOverloadWithImplTypeVarProblems
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testOverloadRefresh
+testContravariantOverlappingOverloadSignatures
+testPartiallyContravariantOverloadSignatures
+testContravariantOverlappingOverloadSignaturesWithAnyType
+testOverloadOverlapWithTypeVars
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadOverlapWithTypeVarsWithValuesOrdering
+testOverloadWithNonPositionalArgsIgnoresOrder
+testOverloadFlagsPossibleMatches
+testOverloadPossibleOverlapWithVarargs
+testOverloadPossibleOverlapWithKwargs
+testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
+testOverloadWithInconsistentStaticMethods
+# if
 
 # OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
 testIntersectionTypeCompatibility
+testVeryBrokenOverload
+testVeryBrokenOverload2
+# overload self type
+testOverloadAndSelfTypes
+# overload operator
+testOverloadedLtAndGtMethods
+testOverloadedForwardMethodAndCallingReverseMethod
+testTypeInferenceSpecialCaseWithOverloading
 # overload rename in import
 testOverloadByAnyOtherName
+# overload none matching in non strict
+testOptionalIsNotAUnionIfNoStrictOverload
+testOptionalIsNotAUnionIfNoStrictOverloadStr
 
 # Overload -> None formatting
 testCallToOverloadedFunction
 testCallToOverloadedMethod
 testOverloadsRemovedOverload
 testOverloadsGenericToNonGeneric
+testCallableSpecificOverload
+testOverloadErrorMessageManyMatches
 
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
@@ -183,6 +308,7 @@ testNewAnalyzerPromotion
 testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSimplifyingUnionAndTypePromotions
 testFlattenTypeAliasWhenAliasedAsUnion
+testOverloadingAndIntFloatSubtyping
 
 # Class in Class
 testNewAnalyzerNestedClass*
@@ -211,9 +337,16 @@ testNonMethodProperty
 testInvalidArgCountForProperty
 testNewAnalyzerProperty
 testNewAnalyzerNoCrashOnCustomProperty
+testOverloadNotConfusedForProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
+
+# descriptors
+testOverloadWithNonGenericDescriptor
+testOverloadWithNonGenericDescriptorLookalike
+testOverloadWithGenericDescriptor
+testOverloadWithGenericDescriptorLookalike
 
 # classmethod
 testAliasToClassMethod
@@ -225,6 +358,9 @@ testClassImportAccessedInMethod
 testSelfTypeVarIndexExpr
 testNewAnalyzerTypeVarBoundInCycle
 testOverloadClassmethodDisappears
+testOverloadWithClassMethods
+testOverloadWithInconsistentClassMethods
+testOverloadAndClassTypes
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -237,11 +373,13 @@ testDistinctTypes
 testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 
+
 # Typing stuff
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
 testParamSpec
+testOverloadingWithParamSpec
 testBaseClassAnnotatedWithoutArgs
 *Pep613
 *Abstract*
@@ -267,6 +405,8 @@ testCastConfusion
 # NoReturn
 testNoReturnTypeAlias
 testUnionWithNoReturn
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
+testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
@@ -323,6 +463,7 @@ testNewAnalyzerVersionCheck*
 
 # lambda
 testNewAnalyzerVarTypeVarNoCrash
+testOverloadLambdaUnpackingInference
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -488,6 +629,9 @@ testRedefinedOverloadedFunction
 testFakeOverloadCrash
 testFakeOverloadCrash2
 testOverloadNotImportedNoCrash
+testSingleOverload2
+testNonconsecutiveOverloadsMissingFirstOverload
+testNonconsecutiveOverloadsMissingLaterOverload
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
@@ -608,6 +752,15 @@ testCallerVarargsAndComplexTypeInference
 testCallerTupleVarArgsAndGenericCalleeVarArg
 testInvariantTypeConfusingNames2
 testInvalidTypevarValues
+testOverloadingVariableInputs
+testOverloadWithTupleVarArg
+testOverloadWithOverlappingItemsAndAnyArgument6
+testOverloadWithOverlappingItemsAndAnyArgument7
+testOverloadWithOverlappingItemsAndAnyArgument8
+testOverloadVarargInputAndVarargDefinition
+testOverloadMultipleVarargDefinition
+testOverloadVarargsSelection
+testOverloadVarargsSelectionWithTuples
 
 # **kwargs input
 testKwargsAfterBareArgs
@@ -624,6 +777,9 @@ testCallStar2WithStar
 testStarArgsAndKwArgsSpecialCase
 testPassingEmptyDictWithStars
 testKeywordUnpackWithDifferentTypes
+testOverloadWithOverlappingItemsAndAnyArgument11
+testOverloadKwargsSelectionWithDict
+testOverloadVarargsAndKwargsSelection
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -675,6 +831,8 @@ testProtocolVsProtocol*
 testProtocolMultipleUpdates
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
+# Duck typing
+testOverloadingAndDucktypeCompatibility
 
 # callable
 testIdentityHigherOrderFunction*
@@ -895,3 +1053,4 @@ testNoSubscriptionOfBuiltinAliases
 testTrailingCommaParsing-skip
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testFunctionInGenericInnerClassTypeVariable-skip
+testOverloadInferringArgumentsUsingContext2-skip
