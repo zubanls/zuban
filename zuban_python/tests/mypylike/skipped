@@ -7,8 +7,6 @@ testOverloadBadArgumentsInferredToAny2
 testOverloadedCallWithVariableTypes
 testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
-testOverloadDeferredNode
-testOverloadedToGeneric
 
 testOverloadsUsingAny
 testOverloadWithOverlappingItemsAndAnyArgument1
@@ -136,7 +134,6 @@ testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 testOverloadWithInconsistentStaticMethods
-# if
 
 # OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
@@ -457,6 +454,7 @@ testNewAnalyzerVersionCheck*
 # lambda
 testNewAnalyzerVarTypeVarNoCrash
 testOverloadLambdaUnpackingInference
+testOverloadedToGeneric
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -797,6 +795,7 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 # Decorators
 *Deco*
 testVarArgsCallableSelf
+testOverloadDeferredNode
 
 # Function Not checked, missing return annotations (untyped)
 testPositionalAndKeywordForSameArg
