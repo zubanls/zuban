@@ -898,7 +898,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     self.points.set(
                         old_overload_index,
                         Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
-                    )
+                    );
+                    self.symbol_table.add_or_replace_symbol(name_def.name());
                 }
             }
 
