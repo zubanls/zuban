@@ -349,7 +349,14 @@ impl<'db, 'a> Function<'db, 'a> {
                                     bound.as_type_string(i_s.db, None, FormatStyle::Short)
                                 );
                             } else if !t.restrictions.is_empty() {
-                                todo!()
+                                s += &format!(
+                                    " in ({})",
+                                    t.restrictions
+                                        .iter()
+                                        .map(|t| t.as_type_string(i_s.db, None, FormatStyle::Short))
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                );
                             }
                             s
                         })

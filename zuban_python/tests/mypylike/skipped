@@ -6,13 +6,7 @@ testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
 testOverloadedCallWithVariableTypes
 testOverloadOverlapWithTypeVarsWithValues
-testOverloadWithNonPositionalArgs
 testOverloadMultipleVarargDefinitionComplex
-testOverloadedInIter
-testNestedOverloadsTypeVar
-testNestedOverloadsMutuallyRecursive
-testOverloadConstrainedTypevarNotShadowingAny
-testOverloadBoundedTypevarNotShadowingAny
 testOverloadDeferredNode
 testOverloadedToGeneric
 
@@ -41,7 +35,6 @@ testOverloadsGenericTypevarUpdated
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 testOverlappingErasedSignatures
-testOverloadOverlapWithTypeVarsWithValues
 testOverloadWithTupleMatchingTypeVar
 testOverloadTuple
 testOverloadInferUnionReturnBasic
@@ -134,7 +127,6 @@ testContravariantOverlappingOverloadSignatures
 testPartiallyContravariantOverloadSignatures
 testContravariantOverlappingOverloadSignaturesWithAnyType
 testOverloadOverlapWithTypeVars
-testOverloadOverlapWithTypeVarsWithValues
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
@@ -170,6 +162,8 @@ testOverloadsRemovedOverload
 testOverloadsGenericToNonGeneric
 testCallableSpecificOverload
 testOverloadErrorMessageManyMatches
+# overloading for loop
+testOverloadedInIter
 
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
