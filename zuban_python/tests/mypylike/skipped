@@ -1,6 +1,8 @@
 
 
 # Overloading
+testOverloadsWithDifferentArgumentCounts
+testOverloadedInit
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
@@ -23,11 +25,16 @@ testOverloadsGenericTypevarUpdated
 testInconsistentOverload
 testInconsistentOverload2
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
+testTypeCheckOverloadWithUntypedImplAndMultipleVariants
+testTypeCheckOverloadImplementationTypeVarDifferingUsage2
 # - Overloaded function implementation does not accept all possible arguments of signature 2
+testTypeCheckOverloadWithImplTooSpecificArg
 # - Overloaded function implementation cannot produce return type of signature 2
+testTypeCheckOverloadWithImplTooSpecificRetType
 testPreviousErrorInOverloadedFunction
 testOverloadsUpdatedTypeRechekConsistency
 # - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
+testTypeCheckOverloadWithImplTypeVarProblems
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testOverloadRefresh
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
@@ -35,8 +42,13 @@ testOverloadRefresh
 
 # OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
+testIntersectionTypeCompatibility
+# overload rename in import
+testOverloadByAnyOtherName
 
 # Overload -> None formatting
+testCallToOverloadedFunction
+testCallToOverloadedMethod
 testOverloadsRemovedOverload
 testOverloadsGenericToNonGeneric
 
@@ -320,6 +332,8 @@ testNewAnalyzerConditionallyDefineFuncOverVar
 testIsinstanceAndTypeVarValues*
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues*
+testTypeCheckOverloadImplementationTypeVarWithValueRestriction
+testTypeCheckOverloadImplementationTypeVarDifferingUsage1
 # isinstance & union
 testUnion1
 testUnion2
@@ -491,6 +505,7 @@ testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
 testIgnoredAttrReprocessedMeta
+testImplementingOverloadedMethod
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -636,8 +651,9 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 *Deco*
 testVarArgsCallableSelf
 
-# Function Not checked, missing return annotations
+# Function Not checked, missing return annotations (untyped)
 testPositionalAndKeywordForSameArg
+testTypeCheckOverloadWithImplementationError
 
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
