@@ -337,6 +337,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
+    #[inline]
+    fn should_generate_errors(&self) -> bool {
+        // If no type error function is given, we are probably checking overloads
+        self.on_type_error.is_some()
+    }
+
     pub fn calculate_and_return(
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&'a Class<'db, 'a>>,
@@ -467,7 +473,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     _ => too_many = true,
                 }
             }
-            if too_many {
+            if too_many && self.should_generate_errors() {
                 let mut s = "Too many arguments".to_owned();
                 if let Some(function) = function {
                     s += " for ";
@@ -509,7 +515,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     _ => unreachable!(),
                 }
             }
-        } else {
+        } else if self.should_generate_errors() {
             for param in missing_params {
                 if let Some(param_name) = param.name() {
                     let s = if param.param_type() == ParamType::KeywordOnly {
