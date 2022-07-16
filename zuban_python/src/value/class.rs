@@ -375,7 +375,7 @@ impl<'db, 'a> Class<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> (Function<'db, '_>, Option<GenericsList>, bool) {
+    ) -> Option<(Function<'db, '_>, Option<GenericsList>, bool)> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let cls = class.unwrap_or_else(|| todo!());
         match init.into_maybe_inferred().unwrap().init_as_function(cls) {
@@ -407,20 +407,13 @@ impl<'db, 'a> Class<'db, 'a> {
                         Some(on_type_error),
                     )
                 };
-                return (func, list, false);
+                Some((func, list, false))
             }
-            Some(FunctionOrOverload::Overload(overloaded_function)) => {
-                if let Some((func, list)) =
-                    overloaded_function.find_matching_function(i_s, args, class.as_ref())
-                {
-                    return (func, list, true);
-                } else {
-                    todo!()
-                }
-            }
-            None => (),
-        };
-        unreachable!("Should never happen, because there's always object.__init__")
+            Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
+                .find_matching_function(i_s, args, class.as_ref())
+                .map(|(func, list)| (func, list, true)),
+            None => unreachable!("Should never happen, because there's always object.__init__"),
+        }
     }
 
     pub fn simple_init_func(
@@ -752,28 +745,31 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        let (func, generics_list, is_overload) = self.init_func(i_s, args, on_type_error);
-        debug!(
-            "Class execute: {}{}",
-            self.name(),
-            match generics_list.as_ref() {
-                Some(generics_list) =>
-                    Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
-                None => "".to_owned(),
-            }
-        );
-        Inferred::new_unsaved_complex(match generics_list {
-            None => match args.as_execution(&func) {
-                Some(execution) => {
-                    todo!();
-                    //ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
+        if let Some((func, generics_list, is_overload)) = self.init_func(i_s, args, on_type_error) {
+            debug!(
+                "Class execute: {}{}",
+                self.name(),
+                match generics_list.as_ref() {
+                    Some(generics_list) =>
+                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
+                    None => "".to_owned(),
                 }
-                None => ComplexPoint::Instance(self.node_ref.as_link(), None),
-            },
-            Some(generics_list) => {
-                ComplexPoint::Instance(self.node_ref.as_link(), Some(generics_list))
-            }
-        })
+            );
+            Inferred::new_unsaved_complex(match generics_list {
+                None => match args.as_execution(&func) {
+                    Some(execution) => {
+                        todo!();
+                        //ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
+                    }
+                    None => ComplexPoint::Instance(self.node_ref.as_link(), None),
+                },
+                Some(generics_list) => {
+                    ComplexPoint::Instance(self.node_ref.as_link(), Some(generics_list))
+                }
+            })
+        } else {
+            Inferred::new_any()
+        }
     }
 
     fn get_item(

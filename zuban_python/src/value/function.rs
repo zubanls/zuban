@@ -689,7 +689,18 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 return Some((function, calculated));
             }
         }
-        debug!("Could not decide overload for {}", self.name());
+        let function = Function::new(
+            NodeRef::from_link(i_s.db, self.overload.functions[0]),
+            self.class,
+        );
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::OverloadMismatch {
+                name: function.diagnostic_string(self.class.as_ref()),
+                args: args.iter_arguments().into_argument_types(i_s),
+                variants: self.variants(i_s),
+            },
+        );
         None
     }
 
@@ -727,21 +738,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, None)
             .map(|(function, _)| function.execute(i_s, args, on_type_error))
-            .unwrap_or_else(|| {
-                let function = Function::new(
-                    NodeRef::from_link(i_s.db, self.overload.functions[0]),
-                    self.class,
-                );
-                args.as_node_ref().add_typing_issue(
-                    i_s.db,
-                    IssueType::OverloadMismatch {
-                        name: function.diagnostic_string(self.class.as_ref()),
-                        args: args.iter_arguments().into_argument_types(i_s),
-                        variants: self.variants(i_s),
-                    },
-                );
-                Inferred::new_unknown()
-            })
+            .unwrap_or_else(Inferred::new_unknown)
     }
 
     fn get_item(

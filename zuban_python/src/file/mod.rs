@@ -1089,7 +1089,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     ),
                                     &on_type_error,
                                 )
-                                .2
+                                .map(|x| x.2)
+                                .unwrap_or(true)
                         {
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
                         }
