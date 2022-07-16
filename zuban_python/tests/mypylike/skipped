@@ -1,5 +1,9 @@
 
 
+# Overloading
+testOverloadsGenericTypevarUpdated
+testNewAnalyzerMutuallyRecursiveOverloadedFunctions
+testEllipsisDefaultArgValueInNonStubsOverload
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
@@ -18,32 +22,26 @@
 #     Overload variants must be defined in the same order as they are in "Parent"
 # - Single overload definition, multiple required
 # - The implementation for an overloaded function must come last
+testInconsistentOverload
+testInconsistentOverload2
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 # - Overloaded function implementation cannot produce return type of signature 2
-# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
-# - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-# - Overload does not consistently use the "@classmethod" decorator on all function signatures
-# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
-# Overloading
-testOverloadRefresh
-testOverloadsRemovedOverload
-testOverloadsGenericToNonGeneric
-testOverloadsGenericTypevarUpdated
-testNewAnalyzerMutuallyRecursiveOverloadedFunctions
-
 testPreviousErrorInOverloadedFunction
 testOverloadsUpdatedTypeRechekConsistency
-testInconsistentOverload
-testInconsistentOverload2
-testFakeOverloadCrash
-testFakeOverloadCrash2
+# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
+# - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+testOverloadRefresh
+# - Overload does not consistently use the "@classmethod" decorator on all function signatures
+# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
+
+# OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
 
-testOverloadedMethodSupertype-only_when_cache
-testOverloadedMethodSupertype2-only_when_nocache
-testOverloadedInitSupertype
-testEllipsisDefaultArgValueInNonStubsOverload
+# Overload -> None formatting
+testOverloadsRemovedOverload
+testOverloadsGenericToNonGeneric
+
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
@@ -474,6 +472,8 @@ testNewAnalyzerRedefineAsOverload
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
 testRedefinedOverloadedFunction
+testFakeOverloadCrash
+testFakeOverloadCrash2
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
@@ -497,6 +497,9 @@ testKeywordOnlyArgumentOrderInsensitivity
 testPositionalOverridingArgumentNamesCheckedWhenMismatchingPos
 testOverrideGenericMethodInNonGenericClassLists
 testOverrideGenericMethodInNonGenericClassGeneralize
+testOverloadedMethodSupertype-only_when_cache
+testOverloadedMethodSupertype2-only_when_nocache
+testOverloadedInitSupertype
 
 # super
 testSuperExpressionsWhenInheritingFromGenericType
