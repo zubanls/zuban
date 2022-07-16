@@ -616,14 +616,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if mismatch_constraints {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
-                    self.args.as_node_ref().add_typing_issue(
-                        i_s.db,
-                        IssueType::InvalidTypeVarValue {
-                            type_var: type_var.name(i_s.db).to_owned(),
-                            func: f.diagnostic_string(class),
-                            actual: value_type.as_string(i_s, None, FormatStyle::Short),
-                        },
-                    );
+                    if self.should_generate_errors() {
+                        self.args.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::InvalidTypeVarValue {
+                                type_var: type_var.name(i_s.db).to_owned(),
+                                func: f.diagnostic_string(class),
+                                actual: value_type.as_string(i_s, None, FormatStyle::Short),
+                            },
+                        );
+                    } else {
+                        self.matches = false;
+                    }
                 }
                 _ => todo!(),
             }

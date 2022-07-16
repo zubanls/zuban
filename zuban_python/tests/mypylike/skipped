@@ -4,8 +4,6 @@
 testBadOverloadProbableMatch
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
-testOverloadWithDerivedFromAny
-testOverloadWithBoundedTypeVar
 testOverloadedCallWithVariableTypes
 testOverloadOverlapWithTypeVarsWithValues
 testOverloadWithNonPositionalArgs
@@ -29,6 +27,8 @@ testOverloadWithOverlappingItemsAndAnyArgument13
 testOverloadWithOverlappingItemsAndAnyArgument14
 testOverloadWithOverlappingItemsAndAnyArgument15
 testOverloadWithOverlappingItemsAndAnyArgument16
+
+testOverloadWithDerivedFromAny
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
