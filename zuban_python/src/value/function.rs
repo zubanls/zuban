@@ -336,11 +336,33 @@ impl<'db, 'a> Function<'db, 'a> {
                 FormatStyle::MypyRevealType => "",
                 _ => self.name(),
             };
+            let type_var_string = self.type_vars(i_s).map(|type_vars| {
+                format!(
+                    "[{}] ",
+                    type_vars
+                        .iter()
+                        .map(|t| {
+                            let mut s = t.name(i_s.db).to_owned();
+                            if let Some(bound) = &t.bound {
+                                s += &format!(
+                                    " <: {}",
+                                    bound.as_type_string(i_s.db, None, FormatStyle::Short)
+                                );
+                            } else if !t.restrictions.is_empty() {
+                                todo!()
+                            }
+                            s
+                        })
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                )
+            });
+            let type_var_str = type_var_string.as_deref().unwrap_or("");
             let result = ret.as_deref().unwrap_or("Any");
             if result == "None" {
-                format!("def {name}({args})")
+                format!("def {type_var_str}{name}({args})")
             } else {
-                format!("def {name}({args}) -> {result}")
+                format!("def {type_var_str}{name}({args}) -> {result}")
             }
         } else {
             let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
