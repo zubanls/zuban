@@ -813,12 +813,11 @@ pub struct Overload {
 
 impl Overload {
     pub fn add_another_overload(&self, function: PointLink) -> Self {
-        debug_assert!(self.implementing_function.is_none());
         let mut functions = Vec::with_capacity(self.functions.len() + 1);
         functions.extend_from_slice(self.functions.as_ref());
         functions.push(function);
         Self {
-            implementing_function: None,
+            implementing_function: self.implementing_function,
             functions: functions.into_boxed_slice(),
             function_type: self.function_type,
             is_async: self.is_async,
