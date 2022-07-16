@@ -380,7 +380,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn init_func(
+    pub fn type_check_init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -755,7 +755,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!
-        if let Some((func, generics_list, is_overload)) = self.init_func(i_s, args, on_type_error) {
+        if let Some((func, generics_list, is_overload)) =
+            self.type_check_init_func(i_s, args, on_type_error)
+        {
             debug!(
                 "Class execute: {}{}",
                 self.name(),

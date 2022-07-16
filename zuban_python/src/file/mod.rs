@@ -1079,7 +1079,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if class.type_vars(self.i_s).is_empty()
                             && class.has_non_overloaded_init_func(self.i_s)
                         {
-                            class.init_func(
+                            class.type_check_init_func(
                                 self.i_s,
                                 &SimpleArguments::new(
                                     f,
