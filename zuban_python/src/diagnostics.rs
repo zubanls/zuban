@@ -62,6 +62,7 @@ pub(crate) enum IssueType {
 
     OverloadImplementationNotLast,
     OverloadImplementationNeeded,
+    OverloadSingleNotAllowed,
 
     MethodWithoutArguments,
 
@@ -305,6 +306,8 @@ impl<'db> Diagnostic<'db> {
                 "The implementation for an overloaded function must come last".to_owned(),
             IssueType::OverloadImplementationNeeded =>
                 "An overloaded function outside a stub file must have an implementation".to_owned(),
+            IssueType::OverloadSingleNotAllowed =>
+                "Single overload definition, multiple required".to_owned(),
 
             IssueType::Note(s) => {
                 type_ = "note";

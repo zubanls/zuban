@@ -1,13 +1,12 @@
 
 
 # Overloading
-testOverloadsGenericTypevarUpdated
-testEllipsisDefaultArgValueInNonStubsOverload
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
 # - wtf List item 0 has incompatible type "List[str]"; expected "int"
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
+testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 # - wtf Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
@@ -470,9 +469,11 @@ testDifferentImportSameNameTwice
 testNewAnalyzerRedefineAsOverload
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
+# redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
 testFakeOverloadCrash2
+testOverloadNotImportedNoCrash
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
@@ -542,6 +543,9 @@ testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
 testSubtypingWithGenericFunctionUsingTypevarWithValues
+
+# Incompatible default for argument
+testEllipsisDefaultArgValueInNonStubsOverload
 
 # flow graph
 testAssignAndConditional*
