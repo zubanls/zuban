@@ -843,11 +843,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
+        let file_index = self.file_index;
         let maybe_overload = self.maybe_overload(name_def.as_code());
         if is_overload {
-            let current_link = PointLink::new(self.file_index, func.index());
+            let current_link = PointLink::new(file_index, func.index());
 
-            let new_overload = if let Some(overload) = maybe_overload {
+            let new_overload = if let Some((old_overload_index, overload)) = maybe_overload {
                 if overload.implementing_function.is_some() {
                     /*
                     self.add_issue(
@@ -857,7 +858,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     */
                     todo!()
                 }
-                overload.add_another_overload(current_link)
+                let new = overload.add_another_overload(current_link);
+                // Reset the old overload definition, there should only be one.
+                self.points.set(
+                    old_overload_index,
+                    Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
+                );
+                new
             } else {
                 Overload {
                     functions: Box::new([current_link]),
@@ -875,7 +882,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.symbol_table.add_or_replace_symbol(name_def.name());
         } else {
             // Check for implementing functions of overloads
-            if let Some(o) = maybe_overload {
+            if let Some((old_overload_index, o)) = maybe_overload {
                 if o.implementing_function.is_none() {
                     is_overload = true;
                     let mut new_overload = o.clone();
@@ -887,6 +894,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         ComplexPoint::FunctionOverload(Box::new(new_overload)),
                         Locality::File,
                     );
+                    // Reset the old overload definition, there should only be one.
+                    self.points.set(
+                        old_overload_index,
+                        Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
+                    )
                 }
             }
 
@@ -910,12 +922,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
     }
 
-    fn maybe_overload(&self, name: &str) -> Option<&Overload> {
+    fn maybe_overload(&self, name: &str) -> Option<(NodeIndex, &Overload)> {
         if let Some(index) = self.symbol_table.lookup_symbol(name) {
-            let point = self.points.get(index - 1); // Lookup on NameDefinition
+            let name_def_index = index - 1;
+            let point = self.points.get(name_def_index); // Lookup on NameDefinition
             if let Some(complex_index) = point.maybe_complex_index() {
                 if let ComplexPoint::FunctionOverload(o) = self.complex_points.get(complex_index) {
-                    return Some(o);
+                    return Some((name_def_index, o));
                 }
             }
         }
