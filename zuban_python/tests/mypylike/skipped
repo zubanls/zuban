@@ -2,7 +2,6 @@
 
 # Overloading
 testOverloadsGenericTypevarUpdated
-testNewAnalyzerMutuallyRecursiveOverloadedFunctions
 testEllipsisDefaultArgValueInNonStubsOverload
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"

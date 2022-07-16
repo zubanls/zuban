@@ -729,7 +729,12 @@ impl<'db, 'a> Type<'db, 'a> {
                             type_var_usage = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
-                            if g1.todo_matches(g2) {
+                            if Type::from_db_type(i_s.db, g1).matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                Type::from_db_type(i_s.db, g2),
+                                variance,
+                            ) {
                                 list2.remove(i);
                                 break;
                             }
