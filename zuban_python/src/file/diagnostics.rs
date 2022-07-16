@@ -153,6 +153,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class<'db, '_>>) {
+        let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
+        if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
+            if !self.file.is_stub(self.i_s.db) && o.implementing_function.is_none() {
+                name_def_node_ref
+                    .add_typing_issue(self.i_s.db, IssueType::OverloadImplementationNeeded);
+            }
+        }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);

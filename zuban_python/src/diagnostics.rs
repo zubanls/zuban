@@ -59,7 +59,9 @@ pub(crate) enum IssueType {
     UnsupportedClassScopedImport,
 
     StmtOutsideFunction { keyword: &'static str },
+
     OverloadImplementationNotLast,
+    OverloadImplementationNeeded,
 
     MethodWithoutArguments,
 
@@ -298,8 +300,11 @@ impl<'db> Diagnostic<'db> {
             IssueType::UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
             IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+
             IssueType::OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_owned(),
+            IssueType::OverloadImplementationNeeded =>
+                "An overloaded function outside a stub file must have an implementation".to_owned(),
 
             IssueType::Note(s) => {
                 type_ = "note";

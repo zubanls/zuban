@@ -878,9 +878,15 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if let Some(o) = maybe_overload {
                 if o.implementing_function.is_none() {
                     is_overload = true;
-                    let mut overload = o.clone();
-                    overload.implementing_function =
+                    let mut new_overload = o.clone();
+                    new_overload.implementing_function =
                         Some(PointLink::new(self.file_index, func.index()));
+                    self.complex_points.insert(
+                        self.points,
+                        name_def.index(),
+                        ComplexPoint::FunctionOverload(Box::new(new_overload)),
+                        Locality::File,
+                    );
                 }
             }
 

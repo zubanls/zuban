@@ -275,6 +275,10 @@ impl<'db> PythonFile {
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
     }
+
+    pub fn is_stub(&self, db: &'db Database) -> bool {
+        db.file_path(self.file_index()).ends_with(".pyi")
+    }
 }
 
 pub struct PythonInference<'db, 'a, 'b> {

@@ -33,9 +33,7 @@ testOverloadsGenericTypevarUpdated
 testNewAnalyzerMutuallyRecursiveOverloadedFunctions
 
 testPreviousErrorInOverloadedFunction
-testPreviousErrorInOverloadedFunctionSemanal
 testOverloadsUpdatedTypeRechekConsistency
-testRedefinedOverloadedFunction
 testInconsistentOverload
 testInconsistentOverload2
 testFakeOverloadCrash
@@ -475,6 +473,7 @@ testDifferentImportSameNameTwice
 testNewAnalyzerRedefineAsOverload
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
+testRedefinedOverloadedFunction
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
