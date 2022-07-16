@@ -316,12 +316,17 @@ impl<'db, 'a> Function<'db, 'a> {
                     let annotation_str = p
                         .annotation_type(i_s, Some(self))
                         .map(|t| t.as_string(i_s, None, style));
+                    let stars = match p.param_type() {
+                        ParamType::Starred => "*",
+                        ParamType::DoubleStarred => "**",
+                        _ => "",
+                    };
                     if let Some(annotation_str) = annotation_str {
-                        format!("{}: {annotation_str}", p.name().unwrap())
-                    } else if i == 0 && self.class.is_some() {
+                        format!("{stars}{}: {annotation_str}", p.name().unwrap())
+                    } else if i == 0 && self.class.is_some() && stars.is_empty() {
                         p.name().unwrap().to_owned()
                     } else {
-                        format!("{}: Any", p.name().unwrap())
+                        format!("{stars}{}: Any", p.name().unwrap())
                     }
                 })
                 .collect::<Vec<_>>()

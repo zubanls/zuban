@@ -179,7 +179,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
             IssueType::OverloadMismatch{name, args, variants} => {
-                let arg_str = args.join(", ");
+                let arg_str = args.join("\", \"");
                 let mut out = match args.len() {
                     0 => format!(
                         "All overload variants of {name} require at least one argument\n"
