@@ -4,7 +4,6 @@
 testBadOverloadProbableMatch
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
-testNonconsecutiveOverloads
 testOverloadsWithDifferentArgumentCounts
 testOverloadedInit
 testIgnoreOverloadVariantBasedOnKeywordArg
@@ -178,6 +177,11 @@ testOverloadErrorMessageManyMatches
 # Overloading generated messages that were not necessary
 testSubtypingIterableUnpacking1
 testSubtypingIterableUnpacking2
+
+# Non consecutive overloads
+testNonconsecutiveOverloads
+testNonconsecutiveOverloadsMissingFirstOverload
+testNonconsecutiveOverloadsMissingLaterOverload
 
 # Not matching type vars
 testJoinUnionWithUnionAndAny
@@ -628,8 +632,6 @@ testFakeOverloadCrash
 testFakeOverloadCrash2
 testOverloadNotImportedNoCrash
 testSingleOverload2
-testNonconsecutiveOverloadsMissingFirstOverload
-testNonconsecutiveOverloadsMissingLaterOverload
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
