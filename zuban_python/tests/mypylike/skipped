@@ -1,11 +1,9 @@
 
 
 # Overloading
-testOverloadTupleEllipsisNumargs
 testBadOverloadProbableMatch
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
-testSingleOverloadStub
 testNonconsecutiveOverloads
 testOverloadsWithDifferentArgumentCounts
 testOverloadedInit
@@ -123,6 +121,7 @@ testOverloadsIgnorePromotions
 testOverloadsTypesAndUnions
 testOverloadTwoTypeArgs
 testOverloadTupleInstance
+testOverloadTupleEllipsisNumargs
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
 # - Overloaded function implementation cannot produce return type of signature 2

@@ -156,11 +156,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
         if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
             if o.functions.len() < 2 {
-                name_def_node_ref
+                NodeRef::from_link(self.i_s.db, o.functions[0])
                     .add_typing_issue(self.i_s.db, IssueType::OverloadSingleNotAllowed);
-            } else if !self.file.is_stub(self.i_s.db) && o.implementing_function.is_none() {
+            } else if o.implementing_function.is_none() && !self.file.is_stub(self.i_s.db) {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadImplementationNeeded);
+            }
+            if o.implementing_function.is_some() && self.file.is_stub(self.i_s.db) {
+                name_def_node_ref
+                    .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
         }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
