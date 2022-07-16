@@ -755,17 +755,16 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                     None => "".to_owned(),
                 }
             );
-            Inferred::new_unsaved_complex(match generics_list {
-                None => match args.as_execution(&func) {
+            Inferred::new_unsaved_complex(if generics_list == None && !is_overload {
+                match args.as_execution(&func) {
                     Some(execution) => {
                         todo!();
                         //ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
                     }
                     None => ComplexPoint::Instance(self.node_ref.as_link(), None),
-                },
-                Some(generics_list) => {
-                    ComplexPoint::Instance(self.node_ref.as_link(), Some(generics_list))
                 }
+            } else {
+                ComplexPoint::Instance(self.node_ref.as_link(), generics_list)
             })
         } else {
             Inferred::new_any()
