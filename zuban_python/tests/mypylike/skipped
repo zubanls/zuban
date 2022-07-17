@@ -1,6 +1,4 @@
-testOverloadWithBoundedTypeVar
-testOverloadConstrainedTypevarNotShadowingAny
-testOverloadBoundedTypevarNotShadowingAny
+
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1

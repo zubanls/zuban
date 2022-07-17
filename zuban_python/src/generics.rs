@@ -713,8 +713,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             },
                         );
                     } else {
-                        debug!("TODO this is wrong, because thie might also be Match::False");
-                        self.matches = Match::FalseButSimilar;
+                        debug!(
+                            "TODO this is wrong, because this might also be Match::FalseButSimilar"
+                        );
+                        self.matches = Match::False;
                     }
                 }
                 _ => todo!(),
