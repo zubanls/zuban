@@ -301,7 +301,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
             Self::Inferred(inf, _) => {
                 // TODO for now we just skip this, because most of these are instances.
                 //      Shouldn't this be something like:
-                //      vec![inf.class_as_type(i_s).as_string(i_s, None, FormatStyle::Short)]
+                //      vec![inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)]
                 vec![]
             }
             Self::Iterator(python_file, iterator) => iterator
@@ -327,8 +327,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                     };
                     format!(
                         "{prefix}{}",
-                        inf.class_as_type(i_s)
-                            .as_string(i_s, None, FormatStyle::Short)
+                        inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)
                     )
                     .into()
                 })

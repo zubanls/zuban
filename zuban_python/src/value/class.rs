@@ -283,32 +283,30 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn as_string(
+    pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::Class(c) => c.as_string(i_s, style),
-            Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)).into(),
+            Self::Class(c) => c.format(i_s, style),
+            Self::Type(c) => format!("Type[{}]", c.format(i_s, style)).into(),
             Self::TypeVar(t) => {
                 if t.type_ == TypeVarType::Class {
                     if let Some(class) = class {
                         return class
                             .generics()
                             .nth(i_s, t.index)
-                            .as_type_string(i_s.db, None, style);
+                            .format(i_s.db, None, style);
                     }
                 }
                 Box::from(t.type_var.name(i_s.db))
             }
-            Self::TypeWithDbType(g) => {
-                format!("Type[{}]", g.as_type_string(i_s.db, None, style)).into()
-            }
-            Self::Tuple(c) => c.as_type_string(i_s.db, style),
-            Self::Callable(c) => c.as_type_string(i_s.db, style),
-            Self::FunctionType(f) => f.as_type_string(i_s, style),
+            Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s.db, None, style)).into(),
+            Self::Tuple(c) => c.format(i_s.db, style),
+            Self::Callable(c) => c.format(i_s.db, style),
+            Self::FunctionType(f) => f.format(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
             Self::NoneType => Box::from("None"),
@@ -731,14 +729,14 @@ impl<'db, 'a> Class<'db, 'a> {
         (self.node_ref == db.python_state.object()).into()
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         let mut result = match style {
             FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
         };
         let type_var_count = self.class_infos(i_s).type_vars.len();
         if type_var_count > 0 {
-            result += &self.generics().as_string(i_s, style, Some(type_var_count));
+            result += &self.generics().format(i_s, style, Some(type_var_count));
         }
         result.into()
     }
@@ -787,7 +785,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 self.name(),
                 match generics_list.as_ref() {
                     Some(generics_list) =>
-                        Generics::new_list(generics_list).as_string(i_s, FormatStyle::Short, None),
+                        Generics::new_list(generics_list).format(i_s, FormatStyle::Short, None),
                     None => "".to_owned(),
                 }
             );
@@ -830,7 +828,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.as_string(i_s, FormatStyle::Short),
+            self.format(i_s, FormatStyle::Short),
         )
     }
 

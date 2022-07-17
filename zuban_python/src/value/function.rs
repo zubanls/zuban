@@ -273,7 +273,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.as_string(i_s, FormatStyle::Short)))
+                        .map(|c| format!("{}.", c.format(i_s, FormatStyle::Short)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -293,11 +293,7 @@ impl<'db, 'a> Function<'db, 'a> {
         }
     }
 
-    pub fn as_type_string(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
@@ -306,7 +302,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .as_string(i_s, self.class.as_ref(), style)
+                .format(i_s, self.class.as_ref(), style)
         };
         let node = self.node();
         if matches!(
@@ -319,7 +315,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .map(|(i, p)| {
                     let annotation_str = p
                         .annotation_type(i_s, Some(self))
-                        .map(|t| t.as_string(i_s, None, style));
+                        .map(|t| t.format(i_s, None, style));
                     let stars = match p.param_type() {
                         ParamType::Starred => "*",
                         ParamType::DoubleStarred => "**",
@@ -350,14 +346,14 @@ impl<'db, 'a> Function<'db, 'a> {
                             if let Some(bound) = &t.bound {
                                 s += &format!(
                                     " <: {}",
-                                    bound.as_type_string(i_s.db, None, FormatStyle::Short)
+                                    bound.format(i_s.db, None, FormatStyle::Short)
                                 );
                             } else if !t.restrictions.is_empty() {
                                 s += &format!(
                                     " in ({})",
                                     t.restrictions
                                         .iter()
-                                        .map(|t| t.as_type_string(i_s.db, None, FormatStyle::Short))
+                                        .map(|t| t.format(i_s.db, None, FormatStyle::Short))
                                         .collect::<Vec<_>>()
                                         .join(", ")
                                 );
@@ -384,7 +380,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 if !first {
                     result += ", ";
                 }
-                result += &g.as_string(i_s, self.class.as_ref(), style);
+                result += &g.format(i_s, self.class.as_ref(), style);
                 first = false;
             });
             result += "], ";
@@ -747,7 +743,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.as_type_string(i_s, FormatStyle::MypyOverload)
+                func.format(i_s, FormatStyle::MypyOverload)
             })
             .collect()
     }

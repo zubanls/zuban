@@ -732,13 +732,13 @@ where
                         slice_content.as_node_ref().add_typing_issue(
                             i_s.db,
                             IssueType::TypeVarBoundViolation {
-                                actual: Type::from_db_type(i_s.db, &db_t).as_string(
+                                actual: Type::from_db_type(i_s.db, &db_t).format(
                                     i_s,
                                     None,
                                     FormatStyle::Short,
                                 ),
                                 executable: Box::from(class.name()),
-                                expected: expected.as_string(i_s, None, FormatStyle::Short),
+                                expected: expected.format(i_s, None, FormatStyle::Short),
                             },
                         );
                     }
@@ -761,7 +761,7 @@ where
                             IssueType::InvalidTypeVarValue {
                                 type_var: Box::from(type_var.name(i_s.db)),
                                 func: format!("{:?}", class.name()).into(),
-                                actual: Type::from_db_type(i_s.db, &db_t).as_string(
+                                actual: Type::from_db_type(i_s.db, &db_t).format(
                                     i_s,
                                     None,
                                     FormatStyle::Short,

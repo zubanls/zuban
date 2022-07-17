@@ -495,7 +495,7 @@ impl GenericsList {
         self.0.len()
     }
 
-    pub fn as_string(
+    pub fn format(
         &self,
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
@@ -505,7 +505,7 @@ impl GenericsList {
             // TODO is there no better way than writing this twice???
             self.0
                 .iter()
-                .map(|g| g.as_type_string(db, Some(type_var_generics), style))
+                .map(|g| g.format(db, Some(type_var_generics), style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -517,7 +517,7 @@ impl GenericsList {
         } else {
             self.0
                 .iter()
-                .map(|g| g.as_type_string(db, None, style))
+                .map(|g| g.format(db, None, style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -600,7 +600,7 @@ impl DbType {
         *self = mem::replace(self, Self::Unknown).union(other);
     }
 
-    pub fn as_type_string(
+    pub fn format(
         &self,
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
@@ -621,33 +621,31 @@ impl DbType {
             Self::GenericClass(link, generics_lst) => format!(
                 "{}[{}]",
                 &class_name(*link),
-                generics_lst.as_string(db, type_var_generics, style)
+                generics_lst.format(db, type_var_generics, style)
             )
             .into(),
             Self::Union(list) => {
-                format!("Union[{}]", list.as_string(db, type_var_generics, style)).into()
+                format!("Union[{}]", list.format(db, type_var_generics, style)).into()
             }
             Self::TypeVar(t) => {
                 if let Some(type_var_generics) = type_var_generics {
-                    return type_var_generics(t.index).as_type_string(db, None, style);
+                    return type_var_generics(t.index).format(db, None, style);
                 }
                 Box::from(t.type_var.name(db))
             }
-            Self::Type(db_type) => format!(
-                "Type[{}]",
-                db_type.as_type_string(db, type_var_generics, style)
-            )
-            .into(),
+            Self::Type(db_type) => {
+                format!("Type[{}]", db_type.format(db, type_var_generics, style)).into()
+            }
             Self::Tuple(content) => format!(
                 "{}{}",
                 match style {
                     FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                     FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
                 },
-                &content.as_string(db, style)
+                &content.format(db, style)
             )
             .into(),
-            Self::Callable(content) => content.as_string(db, style).into(),
+            Self::Callable(content) => content.format(db, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Unknown => Box::from("Unknown"),
@@ -837,9 +835,9 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn as_string(&self, db: &Database, style: FormatStyle) -> String {
+    pub fn format(&self, db: &Database, style: FormatStyle) -> String {
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.as_string(db, None, style);
+            let list = generics.format(db, None, style);
             if self.arbitrary_length {
                 format!("[{list}, ...]")
             } else {
@@ -864,15 +862,15 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn as_string(&self, db: &Database, style: FormatStyle) -> String {
+    pub fn format(&self, db: &Database, style: FormatStyle) -> String {
         let param_string = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.db_type.as_type_string(db, None, style))
+                .map(|p| p.db_type.format(db, None, style))
                 .collect::<Vec<_>>()
                 .join(", ")
         });
-        let result = self.return_class.as_type_string(db, None, style);
+        let result = self.return_class.format(db, None, style);
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");

@@ -241,14 +241,14 @@ impl<'a> TupleClass<'a> {
         true
     }
 
-    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         format!(
             "{}{}",
             match style {
                 FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
             },
-            &self.content.as_string(db, style)
+            &self.content.format(db, style)
         )
         .into()
     }
@@ -283,7 +283,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.as_type_string(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.format(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -377,7 +377,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -455,9 +455,7 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "db_type",
-                &self
-                    .db_type
-                    .as_type_string(self.db, None, FormatStyle::Short),
+                &self.db_type.format(self.db, None, FormatStyle::Short),
             )
             .finish()
     }
@@ -526,8 +524,8 @@ impl<'a> CallableClass<'a> {
         Generics::DbType(&self.content.return_class)
     }
 
-    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> Box<str> {
-        self.content.as_string(db, style).into()
+    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
+        self.content.format(db, style).into()
     }
 }
 
@@ -581,7 +579,7 @@ impl<'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
     }
 
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
@@ -634,7 +632,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.as_string(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
     }
 }
 
@@ -666,7 +664,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let s = arg
             .infer(i_s)
             .class_as_type(i_s)
-            .as_string(i_s, None, FormatStyle::MypyRevealType);
+            .format(i_s, None, FormatStyle::MypyRevealType);
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::Note(format!("Revealed type is {s:?}").into()),
@@ -729,8 +727,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.class(i_s).as_string(i_s, None, FormatStyle::Short),
-                            db_type.as_type_string(i_s.db, None, FormatStyle::Short),
+                            v.class(i_s).format(i_s, None, FormatStyle::Short),
+                            db_type.format(i_s.db, None, FormatStyle::Short),
                             self.name(),
                             name,
                         );

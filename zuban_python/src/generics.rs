@@ -166,7 +166,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {n:?} was requested",
-                        self.as_string(i_s, FormatStyle::Short, None),
+                        self.format(i_s, FormatStyle::Short, None),
                     );
                     DbType::Any
                 }
@@ -230,7 +230,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn as_string(
+    pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         style: FormatStyle,
@@ -241,7 +241,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut i = 0;
         self.iter().run_on_all(i_s, &mut |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
-                strings.push(g.as_string(i_s, None, style));
+                strings.push(g.format(i_s, None, style));
                 i += 1;
             }
         });
@@ -487,7 +487,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         &callable_description
                     }
                 },
-                calculated.as_string(i_s.db, None, FormatStyle::Short),
+                calculated.format(i_s.db, None, FormatStyle::Short),
             );
         }
     }
@@ -709,7 +709,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             IssueType::InvalidTypeVarValue {
                                 type_var: Box::from(type_var.name(i_s.db)),
                                 func: f.diagnostic_string(class),
-                                actual: value_type.as_string(i_s, None, FormatStyle::Short),
+                                actual: value_type.format(i_s, None, FormatStyle::Short),
                             },
                         );
                     } else {
@@ -904,8 +904,8 @@ impl<'db, 'a> Type<'db, 'a> {
             });
             let value_type = value.class_as_type(i_s);
             debug!("Mismatch between {value_type:?} and {self:?}");
-            let input = value_type.as_string(i_s, None, FormatStyle::Short);
-            let wanted = self.as_string(i_s, class, FormatStyle::Short);
+            let input = value_type.format(i_s, None, FormatStyle::Short);
+            let wanted = self.format(i_s, class, FormatStyle::Short);
             callback(i_s, matches, input, wanted)
         }
     }
@@ -919,7 +919,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, function_matcher);
         debug!(
             "Resolved type vars: {}",
-            db_type.as_type_string(i_s.db, None, FormatStyle::Short)
+            db_type.format(i_s.db, None, FormatStyle::Short)
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -985,21 +985,21 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn as_string(
+    pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::ClassLike(c) => c.as_string(i_s, class, style),
+            Self::ClassLike(c) => c.format(i_s, class, style),
             Self::Union(list) => list
                 .iter()
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
-                        a + &b.as_type_string(i_s.db, None, style)
+                        a + &b.format(i_s.db, None, style)
                     } else {
-                        a + " | " + &b.as_type_string(i_s.db, None, style)
+                        a + " | " + &b.format(i_s.db, None, style)
                     }
                 })
                 .into(),
