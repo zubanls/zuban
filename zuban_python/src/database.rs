@@ -1049,7 +1049,7 @@ pub struct Database {
     files: InsertOnlyVec<dyn FileState>,
     path_to_file: HashMap<&'static str, FileIndex>,
     pub workspaces: Workspaces,
-    in_memory_files: HashMap<String, FileIndex>,
+    in_memory_files: HashMap<Box<str>, FileIndex>,
 
     pub python_state: PythonState,
 }
@@ -1169,7 +1169,7 @@ impl Database {
             file_index
         } else {
             let file_index = self.add_file_state(file_state);
-            self.in_memory_files.insert(path.clone(), file_index);
+            self.in_memory_files.insert(path.clone().into(), file_index);
             file_index
         };
         ensured.set_file_index(file_index);
