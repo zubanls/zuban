@@ -16,7 +16,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
-use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::generics::{Generics, Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
@@ -44,34 +44,42 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         value_class: Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         variance: Variance,
-    ) -> bool {
+    ) -> Match {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         match value_class {
             Type::ClassLike(ClassLike::TypeVar(t)) if matcher.is_none() => {
-                return self.matches_type_var(t)
-                    || self.matches(i_s, t.type_var.constraint_type(i_s.db), matcher, variance)
+                if self.matches_type_var(t) {
+                    Match::True
+                } else {
+                    self.matches(i_s, t.type_var.constraint_type(i_s.db), matcher, variance)
+                }
             }
             Type::ClassLike(c) => {
                 match variance {
                     Variance::Covariant => {
                         for (_, class_like) in c.mro(i_s) {
-                            if self.check_match(i_s, matcher.as_deref_mut(), &class_like, variance)
+                            if self
+                                .check_match(i_s, matcher.as_deref_mut(), &class_like, variance)
+                                .bool()
                             {
-                                return true;
+                                return Match::True;
                             }
                         }
                     }
                     Variance::Invariant => {
-                        if self.check_match(i_s, matcher, &c, variance) {
-                            return true;
+                        if self.check_match(i_s, matcher, &c, variance).bool() {
+                            return Match::True;
                         }
                     }
                     Variance::Contravariant => {
                         for (_, class_like) in self.mro(i_s) {
-                            if class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance) {
-                                return true;
+                            if class_like
+                                .check_match(i_s, matcher.as_deref_mut(), &c, variance)
+                                .bool()
+                            {
+                                return Match::True;
                             }
                         }
                     }
@@ -80,12 +88,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 if let Self::Class(c1) = self {
                     if c1.class_infos(i_s).is_protocol {
                         return match c {
-                            ClassLike::Class(c2) => c1.check_protocol_match(i_s, c2),
-                            _ => false,
+                            ClassLike::Class(c2) => c1.check_protocol_match(i_s, c2).into(),
+                            _ => Match::False,
                         };
                     }
                 }
-                false
+                Match::False
             }
             /*
                             Self::TypeVar(t) => match value_class {
@@ -132,10 +140,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             */
             Type::Union(list) => match self {
                 Self::Class(c1) => c1.is_object_class(i_s.db),
-                _ => false,
+                _ => Match::False,
             },
-            Type::None => true, // TODO should be false
-            Type::Any => true,
+            Type::None => Match::True, // TODO should be false
+            Type::Any => Match::True,
             Type::Never => todo!(),
         }
     }
@@ -146,8 +154,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &Self,
         variance: Variance,
-    ) -> bool {
-        let mut matches = match self {
+    ) -> Match {
+        let matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => {
                     if c1.node_ref == c2.node_ref {
@@ -170,13 +178,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t) => {
                 return match matcher {
                     Some(matcher) => matcher.match_or_add_type_var(i_s, t, Type::ClassLike(*other)),
-                    None => other.matches_type_var(t),
+                    None => other.matches_type_var(t).into(),
                 }
             }
             Self::Tuple(t1) => {
                 return match other {
-                    Self::Tuple(t2) => t1.matches(i_s, t2, matcher, variance),
-                    _ => false,
+                    Self::Tuple(t2) => t1.matches(i_s, t2, matcher, variance).into(),
+                    _ => Match::False,
                 }
             }
             Self::FunctionType(_) => {
@@ -197,7 +205,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 Generics::Class(cls),
                                 variance,
                                 None,
-                            ) && c.param_generics().matches(
+                            ) & c.param_generics().matches(
                                 i_s,
                                 matcher,
                                 Generics::FunctionParams(&f),
@@ -206,7 +214,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             );
                         }
                     }
-                    return false;
+                    return Match::False;
                 }
                 matches!(other, Self::Callable(_) | Self::FunctionType(_))
             }
@@ -222,7 +230,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let (class_generics, class_result_generics) = self.generics();
             let (value_generics, value_result_generics) = other.generics();
 
-            matches &=
+            let mut matches =
                 class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance, None);
             // Result generics are only relevant for callables/functions
             if let Some(class_result_generics) = class_result_generics {
@@ -234,8 +242,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     None,
                 );
             }
+            matches
+        } else {
+            Match::False
         }
-        matches
     }
 
     fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
@@ -703,8 +713,8 @@ impl<'db, 'a> Class<'db, 'a> {
         class_infos.mro.contains(t)
     }
 
-    fn is_object_class(&self, db: &Database) -> bool {
-        self.node_ref == db.python_state.object()
+    fn is_object_class(&self, db: &Database) -> Match {
+        (self.node_ref == db.python_state.object()).into()
     }
 
     pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {

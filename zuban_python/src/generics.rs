@@ -1,3 +1,5 @@
+use std::ops::{BitAnd, BitAndAssign, Not};
+
 use parsa_python_ast::{
     Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
 };
@@ -18,6 +20,60 @@ use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{
     Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
+
+#[derive(Copy, Clone)]
+pub enum Match {
+    True,
+    FalseButSimilar,
+    False,
+}
+
+impl Match {
+    pub fn bool(self) -> bool {
+        matches!(self, Self::True)
+    }
+}
+
+impl BitAnd for Match {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        match self {
+            Self::True => match rhs {
+                Self::True => Self::True,
+                _ => rhs,
+            },
+            Self::FalseButSimilar => match rhs {
+                Self::False => Self::False,
+                _ => self,
+            },
+            Self::False => Self::False,
+        }
+    }
+}
+
+impl BitAndAssign for Match {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = *self & rhs
+    }
+}
+
+impl Not for Match {
+    type Output = bool;
+
+    fn not(self) -> Self::Output {
+        !matches!(self, Self::True)
+    }
+}
+
+impl From<bool> for Match {
+    fn from(item: bool) -> Self {
+        match item {
+            true => Match::True,
+            _ => Match::False,
+        }
+    }
+}
 
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
@@ -183,9 +239,9 @@ impl<'db, 'a> Generics<'db, 'a> {
         value_generics: Self,
         variance: Variance,
         type_vars: Option<&TypeVars>,
-    ) -> bool {
+    ) -> Match {
         let mut value_generics = value_generics.iter();
-        let mut matches = true;
+        let mut matches = Match::True;
         let mut type_var_iterator = type_vars.map(|t| t.iter());
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
@@ -565,7 +621,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
         value_type: Type<'db, '_>,
-    ) -> bool {
+    ) -> Match {
         let type_var = &type_var_usage.type_var;
         if type_var_usage.type_ == TypeVarType::Class {
             match self.func_or_callable {
@@ -597,12 +653,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         let mut mismatch_constraints = !type_var.restrictions.is_empty()
             && !type_var.restrictions.iter().any(|t| {
-                Type::from_db_type(i_s.db, t).matches(
-                    i_s,
-                    None,
-                    value_type.clone(),
-                    Variance::Covariant,
-                )
+                Type::from_db_type(i_s.db, t)
+                    .matches(i_s, None, value_type.clone(), Variance::Covariant)
+                    .bool()
             });
         if let Some(bound) = &type_var.bound {
             mismatch_constraints = mismatch_constraints
@@ -657,7 +710,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 self.match_type, type_var_usage.type_
             )
         }
-        true
+        Match::True
     }
 
     pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
@@ -735,7 +788,7 @@ impl<'db, 'a> Type<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_class: Self,
         variance: Variance,
-    ) -> bool {
+    ) -> Match {
         let result = match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
             Self::Union(list1) => match value_class {
@@ -747,12 +800,15 @@ impl<'db, 'a> Type<'db, 'a> {
                             type_var_usage = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
-                            if Type::from_db_type(i_s.db, g1).matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                Type::from_db_type(i_s.db, g2),
-                                variance,
-                            ) {
+                            if Type::from_db_type(i_s.db, g1)
+                                .matches(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    Type::from_db_type(i_s.db, g2),
+                                    variance,
+                                )
+                                .bool()
+                            {
                                 list2.remove(i);
                                 break;
                             }
@@ -775,23 +831,23 @@ impl<'db, 'a> Type<'db, 'a> {
                             };
                             matcher.match_or_add_type_var(i_s, type_var_usage, g)
                         } else {
-                            true
+                            Match::True
                         }
                     } else {
-                        list2.is_empty()
+                        list2.is_empty().into()
                     }
                 }
-                _ => list1.iter().any(|g| {
-                    Type::from_db_type(i_s.db, g).matches(
-                        i_s,
-                        matcher.as_deref_mut(),
-                        value_class.clone(),
-                        variance,
-                    )
-                }),
+                _ => list1
+                    .iter()
+                    .any(|g| {
+                        Type::from_db_type(i_s.db, g)
+                            .matches(i_s, matcher.as_deref_mut(), value_class.clone(), variance)
+                            .bool()
+                    })
+                    .into(),
             },
-            Self::None => matches!(value_class, Self::None),
-            Self::Any => true,
+            Self::None => matches!(value_class, Self::None).into(),
+            Self::Any => Match::True,
             Self::Never => todo!(),
         };
         result

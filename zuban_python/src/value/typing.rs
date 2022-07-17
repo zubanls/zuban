@@ -208,13 +208,15 @@ impl<'a> TupleClass<'a> {
                 ) {
                     (false, false) | (true, true) => {
                         generics1.len() == generics2.len()
-                            && Generics::new_list(generics1).matches(
-                                i_s,
-                                matcher,
-                                Generics::new_list(generics2),
-                                variance,
-                                None,
-                            )
+                            && Generics::new_list(generics1)
+                                .matches(
+                                    i_s,
+                                    matcher,
+                                    Generics::new_list(generics2),
+                                    variance,
+                                    None,
+                                )
+                                .bool()
                     }
                     (false, true) => todo!(),
                     (true, false) => {
