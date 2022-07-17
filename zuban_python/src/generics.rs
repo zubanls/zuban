@@ -39,10 +39,7 @@ impl BitAnd for Match {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         match self {
-            Self::True => match rhs {
-                Self::True => Self::True,
-                _ => rhs,
-            },
+            Self::True => rhs,
             Self::FalseButSimilar => match rhs {
                 Self::False => Self::False,
                 _ => self,
