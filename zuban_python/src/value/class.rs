@@ -288,10 +288,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         style: FormatStyle,
-    ) -> String {
+    ) -> Box<str> {
         match self {
             Self::Class(c) => c.as_string(i_s, style),
-            Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)),
+            Self::Type(c) => format!("Type[{}]", c.as_string(i_s, style)).into(),
             Self::TypeVar(t) => {
                 if t.type_ == TypeVarType::Class {
                     if let Some(class) = class {
@@ -301,17 +301,19 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             .as_type_string(i_s.db, None, style);
                     }
                 }
-                t.type_var.name(i_s.db).to_owned()
+                Box::from(t.type_var.name(i_s.db))
             }
-            Self::TypeWithDbType(g) => format!("Type[{}]", g.as_type_string(i_s.db, None, style)),
+            Self::TypeWithDbType(g) => {
+                format!("Type[{}]", g.as_type_string(i_s.db, None, style)).into()
+            }
             Self::Tuple(c) => c.as_type_string(i_s.db, style),
             Self::Callable(c) => c.as_type_string(i_s.db, style),
             Self::FunctionType(f) => f.as_type_string(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
-            Self::NoneType => "None".to_owned(),
+            Self::NoneType => Box::from("None"),
             // TODO this does not respect formatstyle
-            Self::AnyType => "builtins.type".to_owned(),
+            Self::AnyType => Box::from("builtins.type"),
         }
     }
 
@@ -562,7 +564,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 };
                                 if let Some(class) = class {
                                     if class.is_calculating_class_infos() {
-                                        let name = class.name().to_owned();
+                                        let name = Box::<str>::from(class.name());
                                         mro.pop();
                                         incomplete_mro = true;
                                         NodeRef::new(self.node_ref.file, n.index())
@@ -729,7 +731,7 @@ impl<'db, 'a> Class<'db, 'a> {
         (self.node_ref == db.python_state.object()).into()
     }
 
-    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         let mut result = match style {
             FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
@@ -738,7 +740,7 @@ impl<'db, 'a> Class<'db, 'a> {
         if type_var_count > 0 {
             result += &self.generics().as_string(i_s, style, Some(type_var_count));
         }
-        result
+        result.into()
     }
 
     fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {

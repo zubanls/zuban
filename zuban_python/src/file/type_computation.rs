@@ -50,16 +50,19 @@ impl InvalidVariableType<'_, '_> {
             Self::Variable(var_ref) => {
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::InvalidType(format!(
-                        "Variable \"{}.{}\" is not valid as a type",
-                        var_ref.in_module(db).qualified_name(db),
-                        var_ref.as_code().to_owned(),
-                    )),
+                    IssueType::InvalidType(
+                        format!(
+                            "Variable \"{}.{}\" is not valid as a type",
+                            var_ref.in_module(db).qualified_name(db),
+                            var_ref.as_code().to_owned(),
+                        )
+                        .into(),
+                    ),
                 );
                 node_ref.add_typing_issue(
                     db,
                     IssueType::Note(
-                        "See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases".to_owned(),
+                        Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                     ),
                 );
             }
@@ -69,28 +72,31 @@ impl InvalidVariableType<'_, '_> {
             Self::Function(func) => {
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::InvalidType(format!(
-                        "Function {:?} is not valid as a type",
-                        func.qualified_name(db),
-                    )),
+                    IssueType::InvalidType(
+                        format!(
+                            "Function {:?} is not valid as a type",
+                            func.qualified_name(db),
+                        )
+                        .into(),
+                    ),
                 );
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::Note(
-                        "Perhaps you need \"Callable[...]\" or a callback protocol?".to_owned(),
-                    ),
+                    IssueType::Note(Box::from(
+                        "Perhaps you need \"Callable[...]\" or a callback protocol?",
+                    )),
                 );
             }
             Self::List => {
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::InvalidType(
-                        "Bracketed expression \"[...]\" is not valid as a type".to_owned(),
-                    ),
+                    IssueType::InvalidType(Box::from(
+                        "Bracketed expression \"[...]\" is not valid as a type",
+                    )),
                 );
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::Note("Did you mean \"List[...]\"?".to_owned()),
+                    IssueType::Note(Box::from("Did you mean \"List[...]\"?")),
                 );
             }
             Self::Tuple { .. } => {
@@ -102,9 +108,9 @@ impl InvalidVariableType<'_, '_> {
             Self::Literal(s) => {
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::InvalidType(format!(
-                        "Invalid type: try using Literal[{s}] instead?"
-                    )),
+                    IssueType::InvalidType(
+                        format!("Invalid type: try using Literal[{s}] instead?").into(),
+                    ),
                 );
             }
         }
@@ -417,10 +423,13 @@ where
     fn add_module_issue(&self, file: &'db PythonFile, node_ref: NodeRef<'db>) {
         node_ref.add_typing_issue(
             self.inference.i_s.db,
-            IssueType::InvalidType(format!(
-                "Module {:?} is not valid as a type",
-                Module::new(self.inference.i_s.db, file).qualified_name(self.inference.i_s.db),
-            )),
+            IssueType::InvalidType(
+                format!(
+                    "Module {:?} is not valid as a type",
+                    Module::new(self.inference.i_s.db, file).qualified_name(self.inference.i_s.db),
+                )
+                .into(),
+            ),
         );
     }
 
@@ -728,7 +737,7 @@ where
                                     None,
                                     FormatStyle::Short,
                                 ),
-                                executable: class.name().to_owned(),
+                                executable: Box::from(class.name()),
                                 expected: expected.as_string(i_s, None, FormatStyle::Short),
                             },
                         );
@@ -750,8 +759,8 @@ where
                         slice_content.as_node_ref().add_typing_issue(
                             i_s.db,
                             IssueType::InvalidTypeVarValue {
-                                type_var: type_var.name(i_s.db).to_owned(),
-                                func: format!("{:?}", class.name().to_owned()),
+                                type_var: Box::from(type_var.name(i_s.db)),
+                                func: format!("{:?}", class.name()).into(),
                                 actual: Type::from_db_type(i_s.db, &db_t).as_string(
                                     i_s,
                                     None,
@@ -810,7 +819,7 @@ where
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.db,
                 IssueType::TypeArgumentIssue {
-                    class: class.name().to_owned(),
+                    class: Box::from(class.name()),
                     expected_count,
                     given_count,
                 },

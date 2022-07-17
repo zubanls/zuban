@@ -70,7 +70,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
-                type_: "\"object\"".to_owned(),
+                type_: Box::from("\"object\""),
             },
         );
         Inferred::new_any()

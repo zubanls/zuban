@@ -9,51 +9,51 @@ use crate::node_ref::NodeRef;
 #[derive(Debug)]
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
-    AttributeError { object: String, name: String },
-    ImportAttributeError { module_name: String, name: String },
-    NameError { name: String },
-    ArgumentIssue(String),
-    InvalidType(String),
-    IncompatibleReturn { got: String, expected: String },
-    IncompatibleAssignment { got: String, expected: String },
+    AttributeError { object: Box<str>, name: Box<str> },
+    ImportAttributeError { module_name: Box<str>, name: Box<str> },
+    NameError { name: Box<str> },
+    ArgumentIssue(Box<str>),
+    InvalidType(Box<str>),
+    IncompatibleReturn { got: Box<str>, expected: Box<str> },
+    IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     Redefinition { line: usize },
-    ModuleNotFound { module_name: String },
+    ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
-    OverloadMismatch { name: String, args: Box<[String]>, variants: Box<[String]> },
-    TypeArgumentIssue { class: String, expected_count: usize, given_count: usize },
+    OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
+    TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
-    NotCallable { type_: String },
-    NotIterable { type_: String },
+    NotCallable { type_: Box<str> },
+    NotIterable { type_: Box<str> },
     InvalidCallableParams,
     InvalidCallableArgCount,
-    UnsupportedOperand { operand: String, left: String, right: String },
-    UnsupportedLeftOperand { operand: String, left: String, note: Option<String> },
-    InvalidGetItem { actual: String, type_: String, expected: String },
-    NotIndexable { type_: String },
+    UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
+    UnsupportedLeftOperand { operand: Box<str>, left: Box<str>, note: Option<Box<str>> },
+    InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
+    NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
     OnlyClassTypeApplication,
     InvalidBaseClass,
-    CyclicDefinition { name: String },
+    CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
     UnboundTypeVar { type_var: std::rc::Rc<TypeVar> },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
-    TypeVarBoundViolation { actual: String, executable: String, expected: String },
-    InvalidTypeVarValue { type_var: String, func: String, actual: String },
+    TypeVarBoundViolation { actual: Box<str>, executable: Box<str>, expected: Box<str> },
+    InvalidTypeVarValue { type_var: Box<str>, func: Box<str>, actual: Box<str> },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
-    TypeVarUnexpectedArgument { argument_name: String },
+    TypeVarUnexpectedArgument { argument_name: Box<str> },
     TypeVarTooFewArguments,
     TypeVarFirstArgMustBeString,
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
-    TypeVarNameMismatch { string_name: String, variable_name: String },
+    TypeVarNameMismatch { string_name: Box<str>, variable_name: Box<str> },
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -67,7 +67,7 @@ pub(crate) enum IssueType {
 
     MethodWithoutArguments,
 
-    Note(String),
+    Note(Box<str>),
 }
 
 #[derive(Debug)]
@@ -170,7 +170,7 @@ impl<'db> Diagnostic<'db> {
                 let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
-            IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone(),
+            IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
             IssueType::TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
@@ -314,7 +314,7 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::Note(s) => {
                 type_ = "note";
-                s.clone()
+                s.clone().into()
             }
         };
         let string = String::new();
@@ -348,6 +348,6 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<IssueType>(), 80);
+        assert_eq!(size_of::<IssueType>(), 56);
     }
 }

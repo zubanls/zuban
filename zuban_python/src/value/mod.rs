@@ -36,8 +36,8 @@ pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     Option<&Class<'db, '_>>,
     Option<&Function<'db, '_>>,
     &dyn ParamWithArgument<'db, '_>,
-    String,
-    String,
+    Box<str>,
+    Box<str>,
 );
 pub type OnLookupError<'db, 'a> = &'a dyn Fn(&mut InferenceState<'db, '_>);
 
@@ -255,7 +255,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                 type_: format!(
                     "{:?}",
                     self.class(i_s).as_string(i_s, None, FormatStyle::Short)
-                ),
+                )
+                .into(),
             },
         );
         Inferred::new_unknown()
@@ -282,7 +283,8 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                         type_: format!(
                             "{:?}",
                             self.class(i_s).as_string(i_s, None, FormatStyle::Short)
-                        ),
+                        )
+                        .into(),
                     },
                 );
             })

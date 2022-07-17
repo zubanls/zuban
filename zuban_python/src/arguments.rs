@@ -296,7 +296,7 @@ enum ArgumentIteratorBase<'db, 'a> {
 }
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
-    fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<String> {
+    fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<Box<str>> {
         match self {
             Self::Inferred(inf, _) => {
                 // TODO for now we just skip this, because most of these are instances.
@@ -330,6 +330,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                         inf.class_as_type(i_s)
                             .as_string(i_s, None, FormatStyle::Short)
                     )
+                    .into()
                 })
                 .collect(),
             Self::Comprehension(file, comprehension) => {
@@ -429,7 +430,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         }
     }
 
-    pub fn into_argument_types(mut self, i_s: &mut InferenceState<'db, '_>) -> Box<[String]> {
+    pub fn into_argument_types(mut self, i_s: &mut InferenceState<'db, '_>) -> Box<[Box<str>]> {
         let mut result = vec![];
         loop {
             result.extend(self.current.into_argument_types(i_s));

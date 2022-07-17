@@ -247,7 +247,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         });
         if let Some(expected) = expected {
             for _ in i..expected {
-                strings.push("Any".to_owned());
+                strings.push(Box::from("Any"));
             }
         }
         format!("[{}]", strings.join(", "))
@@ -549,7 +549,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
                 self.args
                     .as_node_ref()
-                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         } else if args_with_params.arguments.peek().is_some() {
             self.matches = Match::False;
@@ -564,7 +564,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 s += " for ";
                                 s += &function.diagnostic_string(class);
                             }
-                            reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                            reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                         }
                         _ => too_many = true,
                     }
@@ -578,7 +578,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
                     self.args
                         .as_node_ref()
-                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 }
             }
         } else if !args_with_params.unused_keyword_arguments.is_empty()
@@ -608,7 +608,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             debug!("TODO this keyword param could also exist");
                             format!("Unexpected keyword argument {name:?}")
                         };
-                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                     }
                     _ => unreachable!(),
                 }
@@ -633,7 +633,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     };
                     self.args
                         .as_node_ref()
-                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
+                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
                     todo!()
                 }
@@ -707,7 +707,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         self.args.as_node_ref().add_typing_issue(
                             i_s.db,
                             IssueType::InvalidTypeVarValue {
-                                type_var: type_var.name(i_s.db).to_owned(),
+                                type_var: Box::from(type_var.name(i_s.db)),
                                 func: f.diagnostic_string(class),
                                 actual: value_type.as_string(i_s, None, FormatStyle::Short),
                             },
@@ -893,7 +893,7 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Match, String, String),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Match, Box<str>, Box<str>),
     ) {
         let value_type = value.class_as_type(i_s);
         let matches = self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant);
@@ -990,19 +990,22 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         style: FormatStyle,
-    ) -> String {
+    ) -> Box<str> {
         match self {
             Self::ClassLike(c) => c.as_string(i_s, class, style),
-            Self::Union(list) => list.iter().fold(String::new(), |a, b| {
-                if a.is_empty() {
-                    a + &b.as_type_string(i_s.db, None, style)
-                } else {
-                    a + " | " + &b.as_type_string(i_s.db, None, style)
-                }
-            }),
-            Self::None => "None".to_owned(),
-            Self::Any => "Any".to_owned(),
-            Self::Never => "<nothing>".to_owned(),
+            Self::Union(list) => list
+                .iter()
+                .fold(String::new(), |a, b| {
+                    if a.is_empty() {
+                        a + &b.as_type_string(i_s.db, None, style)
+                    } else {
+                        a + " | " + &b.as_type_string(i_s.db, None, style)
+                    }
+                })
+                .into(),
+            Self::None => Box::from("None"),
+            Self::Any => Box::from("Any"),
+            Self::Never => Box::from("<nothing>"),
         }
     }
 }

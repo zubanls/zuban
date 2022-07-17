@@ -465,8 +465,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s.db,
                                 IssueType::ImportAttributeError {
-                                    module_name: module.name().to_owned(),
-                                    name: import_name.as_str().to_owned(),
+                                    module_name: Box::from(module.name()),
+                                    name: Box::from(import_name.as_str()),
                                 },
                             );
                             Point::new_unknown(import_file.file_index(), Locality::Todo)
@@ -506,7 +506,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             node_ref.add_typing_issue(
                 self.i_s.db,
                 IssueType::ModuleNotFound {
-                    module_name: name.to_owned(),
+                    module_name: Box::from(name),
                 },
             );
             Point::new_unknown(self.file.file_index(), Locality::Todo)
@@ -532,7 +532,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 node_ref.add_typing_issue(
                     self.i_s.db,
                     IssueType::ModuleNotFound {
-                        module_name: format!("{}.{}", module.name().to_owned(), name.as_str()),
+                        module_name: format!("{}.{}", module.name().to_owned(), name.as_str())
+                            .into(),
                     },
                 );
             }
@@ -631,7 +632,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     node_ref.add_typing_issue(
                                         i_s.db,
                                         IssueType::UnsupportedOperand {
-                                            operand: aug_assign.operand().to_owned(),
+                                            operand: Box::from(aug_assign.operand()),
                                             left: class.unwrap().as_string(i_s, FormatStyle::Short),
                                             right,
                                         },
@@ -957,7 +958,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
-                        operand: op.operand.to_owned(),
+                        operand: Box::from(op.operand),
                         left: value.class(i_s).as_string(i_s, None, FormatStyle::Short),
                         note: None, // TODO check for unions and stuff
                     },
@@ -972,7 +973,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     node_ref.add_typing_issue(
                         i_s.db,
                         IssueType::UnsupportedOperand {
-                            operand: op.operand.to_owned(),
+                            operand: Box::from(op.operand),
                             left: class.unwrap().as_string(i_s, FormatStyle::Short),
                             right,
                         },
@@ -981,11 +982,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         added_note.set(true);
                         node_ref.add_typing_issue(
                             i_s.db,
-                            IssueType::Note(format!(
-                                "Left operand is of type {:?}",
-                                left.class_as_type(i_s)
-                                    .as_string(i_s, None, FormatStyle::Short),
-                            )),
+                            IssueType::Note(
+                                format!(
+                                    "Left operand is of type {:?}",
+                                    left.class_as_type(i_s).as_string(
+                                        i_s,
+                                        None,
+                                        FormatStyle::Short
+                                    ),
+                                )
+                                .into(),
+                            ),
                         );
                     }
                 },
@@ -1019,15 +1026,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
                 match value.lookup(i_s, name.as_str(), &|i_s| {
                     let object = if value.as_module().is_some() {
-                        "Module".to_owned()
+                        Box::from("Module")
                     } else {
-                        format!("{:?}", value.name())
+                        format!("{:?}", value.name()).into()
                     };
                     NodeRef::new(self.file, node_index).add_typing_issue(
                         i_s.db,
                         IssueType::AttributeError {
                             object,
-                            name: name.as_str().to_owned(),
+                            name: Box::from(name.as_str()),
                         },
                     );
                 }) {
@@ -1062,17 +1069,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                      t2| {
                     node_ref.add_typing_issue(
                         i_s.db,
-                        IssueType::ArgumentIssue(format!(
-                            "Argument {} has incompatible type {t1:?}; expected {t2:?}",
-                            match function {
-                                Some(function) => format!(
-                                    "{} to {}",
-                                    p.argument_index(),
-                                    function.diagnostic_string(class),
-                                ),
-                                None => p.argument_index(),
-                            },
-                        )),
+                        IssueType::ArgumentIssue(
+                            format!(
+                                "Argument {} has incompatible type {t1:?}; expected {t2:?}",
+                                match function {
+                                    Some(function) => format!(
+                                        "{} to {}",
+                                        p.argument_index(),
+                                        function.diagnostic_string(class),
+                                    ),
+                                    None => p.argument_index(),
+                                },
+                            )
+                            .into(),
+                        ),
                     )
                 };
                 let x = self
@@ -1283,7 +1293,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             NodeRef::new(self.file, name.index()).add_typing_issue(
                 self.i_s.db,
                 IssueType::NameError {
-                    name: name.as_str().to_owned(),
+                    name: Box::from(name.as_str()),
                 },
             );
             if self
@@ -1297,10 +1307,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 // TODO what about underscore or other vars?
                 NodeRef::new(self.file, name.index()).add_typing_issue(
                     self.i_s.db,
-                    IssueType::Note(format!(
-                        "Did you forget to import it from \"typing\"? \
+                    IssueType::Note(
+                        format!(
+                            "Did you forget to import it from \"typing\"? \
                          (Suggestion: \"from typing import {name_str}\")",
-                    )),
+                        )
+                        .into(),
+                    ),
                 );
             }
             Point::new_unknown(self.file_index, Locality::Todo)
@@ -1536,7 +1549,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     node_ref.add_typing_issue(
                         self.i_s.db,
                         IssueType::CyclicDefinition {
-                            name: node_ref.as_code().to_owned(),
+                            name: Box::from(node_ref.as_code()),
                         },
                     );
                     self.check_point_cache(node_index)

@@ -293,7 +293,11 @@ impl<'db, 'a> Function<'db, 'a> {
         }
     }
 
-    pub fn as_type_string(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn as_type_string(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        style: FormatStyle,
+    ) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
@@ -367,9 +371,9 @@ impl<'db, 'a> Function<'db, 'a> {
             let type_var_str = type_var_string.as_deref().unwrap_or("");
             let result = ret.as_deref().unwrap_or("Any");
             if result == "None" {
-                format!("def {type_var_str}{name}({args})")
+                format!("def {type_var_str}{name}({args})").into()
             } else {
-                format!("def {type_var_str}{name}({args}) -> {result}")
+                format!("def {type_var_str}{name}({args}) -> {result}").into()
             }
         } else {
             let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
@@ -387,20 +391,20 @@ impl<'db, 'a> Function<'db, 'a> {
             let ret = node.return_annotation().map(|a| return_type(i_s, a));
             result += ret.as_deref().unwrap_or("Any");
             result += "]";
-            result
+            result.into()
         }
     }
 
-    pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
+    pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
         match class {
             Some(class) => {
                 if self.name() == "__init__" {
-                    format!("{:?}", class.name())
+                    format!("{:?}", class.name()).into()
                 } else {
-                    format!("{:?} of {:?}", self.name(), class.name())
+                    format!("{:?} of {:?}", self.name(), class.name()).into()
                 }
             }
-            None => format!("{:?}", self.name()),
+            None => format!("{:?}", self.name()).into(),
         }
     }
 }
@@ -737,7 +741,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         None
     }
 
-    fn variants(&self, i_s: &mut InferenceState<'db, '_>) -> Box<[String]> {
+    fn variants(&self, i_s: &mut InferenceState<'db, '_>) -> Box<[Box<str>]> {
         self.overload
             .functions
             .iter()

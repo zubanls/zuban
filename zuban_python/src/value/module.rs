@@ -99,7 +99,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
-                type_: "Module".to_owned(),
+                type_: Box::from("Module"),
             },
         );
         Inferred::new_unknown()

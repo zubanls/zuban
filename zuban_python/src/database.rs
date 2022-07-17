@@ -500,7 +500,7 @@ impl GenericsList {
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
         style: FormatStyle,
-    ) -> String {
+    ) -> Box<str> {
         if let Some(type_var_generics) = type_var_generics {
             // TODO is there no better way than writing this twice???
             self.0
@@ -513,6 +513,7 @@ impl GenericsList {
                         a + ", " + &b
                     }
                 })
+                .into()
         } else {
             self.0
                 .iter()
@@ -524,6 +525,7 @@ impl GenericsList {
                         a + ", " + &b
                     }
                 })
+                .into()
         }
     }
 
@@ -603,37 +605,39 @@ impl DbType {
         db: &Database,
         type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
         style: FormatStyle,
-    ) -> String {
+    ) -> Box<str> {
         let class_name = |link| {
             let class =
                 Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
             match style {
-                FormatStyle::Short | FormatStyle::MypyOverload => class.name().to_owned(),
-                FormatStyle::Qualified | FormatStyle::MypyRevealType => class.qualified_name(db),
+                FormatStyle::Short | FormatStyle::MypyOverload => Box::from(class.name()),
+                FormatStyle::Qualified | FormatStyle::MypyRevealType => {
+                    class.qualified_name(db).into()
+                }
             }
         };
         match self {
             Self::Class(link) => class_name(*link),
-            Self::GenericClass(link, generics_lst) => {
-                format!(
-                    "{}[{}]",
-                    &class_name(*link),
-                    generics_lst.as_string(db, type_var_generics, style)
-                )
-            }
+            Self::GenericClass(link, generics_lst) => format!(
+                "{}[{}]",
+                &class_name(*link),
+                generics_lst.as_string(db, type_var_generics, style)
+            )
+            .into(),
             Self::Union(list) => {
-                format!("Union[{}]", list.as_string(db, type_var_generics, style))
+                format!("Union[{}]", list.as_string(db, type_var_generics, style)).into()
             }
             Self::TypeVar(t) => {
                 if let Some(type_var_generics) = type_var_generics {
                     return type_var_generics(t.index).as_type_string(db, None, style);
                 }
-                t.type_var.name(db).to_owned()
+                Box::from(t.type_var.name(db))
             }
             Self::Type(db_type) => format!(
                 "Type[{}]",
                 db_type.as_type_string(db, type_var_generics, style)
-            ),
+            )
+            .into(),
             Self::Tuple(content) => format!(
                 "{}{}",
                 match style {
@@ -641,12 +645,13 @@ impl DbType {
                     FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
                 },
                 &content.as_string(db, style)
-            ),
-            Self::Callable(content) => content.as_string(db, style),
-            Self::Any => "Any".to_owned(),
-            Self::None => "None".to_owned(),
-            Self::Unknown => "Unknown".to_owned(),
-            Self::Never => "<nothing>".to_owned(),
+            )
+            .into(),
+            Self::Callable(content) => content.as_string(db, style).into(),
+            Self::Any => Box::from("Any"),
+            Self::None => Box::from("None"),
+            Self::Unknown => Box::from("Unknown"),
+            Self::Never => Box::from("<nothing>"),
         }
     }
 
@@ -871,7 +876,7 @@ impl CallableContent {
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
-                if result == "None" {
+                if result.as_ref() == "None" {
                     format!("def ({param_str})")
                 } else {
                     format!("def ({param_str}) -> {result}")
@@ -988,13 +993,14 @@ impl TypeVar {
             .content()
     }
 
-    pub fn qualified_name(&self, db: &Database) -> String {
+    pub fn qualified_name(&self, db: &Database) -> Box<str> {
         let node_ref = NodeRef::from_link(db, self.name_string);
         format!(
             "{}.{}",
             node_ref.in_module(db).qualified_name(db),
             node_ref.maybe_str().unwrap().content()
         )
+        .into()
     }
 
     pub fn constraint_type<'db>(&self, db: &'db Database) -> Type<'db, '_> {

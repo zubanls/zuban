@@ -241,7 +241,7 @@ impl<'a> TupleClass<'a> {
         true
     }
 
-    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
+    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> Box<str> {
         format!(
             "{}{}",
             match style {
@@ -250,6 +250,7 @@ impl<'a> TupleClass<'a> {
             },
             &self.content.as_string(db, style)
         )
+        .into()
     }
 }
 
@@ -525,8 +526,8 @@ impl<'a> CallableClass<'a> {
         Generics::DbType(&self.content.return_class)
     }
 
-    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> String {
-        self.content.as_string(db, style)
+    pub fn as_type_string(&self, db: &Database, style: FormatStyle) -> Box<str> {
+        self.content.as_string(db, style).into()
     }
 }
 
@@ -666,8 +667,10 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
             .infer(i_s)
             .class_as_type(i_s)
             .as_string(i_s, None, FormatStyle::MypyRevealType);
-        args.as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::Note(format!("Revealed type is {s:?}")));
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::Note(format!("Revealed type is {s:?}").into()),
+        );
         if iterator.next().is_some() {
             todo!()
         }
@@ -789,8 +792,8 @@ pub fn maybe_type_var<'db>(
                 name_node.add_typing_issue(
                     i_s.db,
                     IssueType::TypeVarNameMismatch {
-                        string_name: py_string.content().to_owned(),
-                        variable_name: name.as_code().to_owned(),
+                        string_name: Box::from(py_string.content()),
+                        variable_name: Box::from(name.as_code()),
                     },
                 );
             }
@@ -866,7 +869,7 @@ pub fn maybe_type_var<'db>(
                         node.add_typing_issue(
                             i_s.db,
                             IssueType::TypeVarUnexpectedArgument {
-                                argument_name: name.to_owned(),
+                                argument_name: Box::from(name),
                             },
                         );
                         return None;
