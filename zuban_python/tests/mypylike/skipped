@@ -1,7 +1,8 @@
-
+testOverloadWithBoundedTypeVar
+testOverloadConstrainedTypevarNotShadowingAny
+testOverloadBoundedTypevarNotShadowingAny
 
 # Overloading
-testBadOverloadProbableMatch
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
 testOverloadedCallWithVariableTypes

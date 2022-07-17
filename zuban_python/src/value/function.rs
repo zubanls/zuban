@@ -657,12 +657,11 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
-        for link in self.overload.functions.iter() {
-            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let has_generics = class
-                .map(|class| !matches!(class.generics(), Generics::None))
-                .unwrap_or(false);
-            let mut finder = match class {
+        let has_generics = class
+            .map(|class| !matches!(class.generics(), Generics::None))
+            .unwrap_or(false);
+        let create_finder =
+            |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| match class {
                 Some(c) => {
                     if has_generics {
                         let func_type_vars = function.type_vars(i_s);
@@ -700,6 +699,22 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     )
                 }
             };
+        let handle_result = |i_s, finder: TypeVarMatcher, function| {
+            let calculated = if has_generics {
+                if let Some(class) = class {
+                    class.generics.as_generics_list(i_s)
+                } else {
+                    unreachable!();
+                }
+            } else {
+                finder.calculated_type_vars
+            };
+            Some((function, calculated))
+        };
+        let mut first_similar = None;
+        for link in self.overload.functions.iter() {
+            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            let mut finder = create_finder(i_s, function);
             match finder.matches_signature(i_s) {
                 Match::True => {
                     debug!(
@@ -707,33 +722,36 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         self.name(),
                         function.node().short_debug()
                     );
-                    let calculated = if has_generics {
-                        if let Some(class) = class {
-                            class.generics.as_generics_list(i_s)
-                        } else {
-                            unreachable!();
-                        }
-                    } else {
-                        finder.calculated_type_vars
-                    };
-                    return Some((function, calculated));
+                    return handle_result(i_s, finder, function);
                 }
-                Match::FalseButSimilar => todo!(),
+                Match::FalseButSimilar => {
+                    if first_similar.is_none() {
+                        first_similar = Some(function)
+                    }
+                }
                 Match::False => (),
             }
         }
-        let function = Function::new(
-            NodeRef::from_link(i_s.db, self.overload.functions[0]),
-            self.class,
-        );
-        args.as_node_ref().add_typing_issue(
-            i_s.db,
-            IssueType::OverloadMismatch {
-                name: function.diagnostic_string(self.class.as_ref()),
-                args: args.iter_arguments().into_argument_types(i_s),
-                variants: self.variants(i_s),
-            },
-        );
+        if let Some(function) = first_similar {
+            // In case of similar params, we simply use the first similar overload and calculate
+            // its diagnostics and return its types.
+            // This is also how mypy does it. See `check_overload_call` (9943444c7)
+            let finder = create_finder(i_s, function);
+            return handle_result(i_s, finder, function);
+        } else {
+            let function = Function::new(
+                NodeRef::from_link(i_s.db, self.overload.functions[0]),
+                self.class,
+            );
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::OverloadMismatch {
+                    name: function.diagnostic_string(self.class.as_ref()),
+                    args: args.iter_arguments().into_argument_types(i_s),
+                    variants: self.variants(i_s),
+                },
+            );
+        }
         None
     }
 
