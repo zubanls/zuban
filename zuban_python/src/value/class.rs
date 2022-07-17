@@ -57,29 +57,37 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
             }
             Type::ClassLike(c) => {
+                let mut similarity = Match::False;
                 match variance {
                     Variance::Covariant => {
                         for (_, class_like) in c.mro(i_s) {
-                            if self
-                                .check_match(i_s, matcher.as_deref_mut(), &class_like, variance)
-                                .bool()
-                            {
+                            let m = self.check_match(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                &class_like,
+                                variance,
+                            );
+                            if m.bool() {
                                 return Match::True;
+                            } else {
+                                similarity |= m;
                             }
                         }
                     }
                     Variance::Invariant => {
-                        if self.check_match(i_s, matcher, &c, variance).bool() {
+                        similarity = self.check_match(i_s, matcher, &c, variance);
+                        if similarity.bool() {
                             return Match::True;
                         }
                     }
                     Variance::Contravariant => {
                         for (_, class_like) in self.mro(i_s) {
-                            if class_like
-                                .check_match(i_s, matcher.as_deref_mut(), &c, variance)
-                                .bool()
-                            {
+                            let m =
+                                class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance);
+                            if m.bool() {
                                 return Match::True;
+                            } else {
+                                similarity |= m;
                             }
                         }
                     }
@@ -93,7 +101,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         };
                     }
                 }
-                Match::False
+                similarity
             }
             /*
                             Self::TypeVar(t) => match value_class {
@@ -242,7 +250,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     None,
                 );
             }
-            matches
+            if matches!(matches, Match::False) {
+                Match::FalseButSimilar
+            } else {
+                matches
+            }
         } else {
             Match::False
         }

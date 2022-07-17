@@ -14,7 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, GenericsIterator, TypeVarMatcher};
+use crate::generics::{Generics, GenericsIterator, Match, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -700,22 +700,26 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     )
                 }
             };
-            if finder.matches_signature(i_s) {
-                debug!(
-                    "Decided overload for {}: {:?}",
-                    self.name(),
-                    function.node().short_debug()
-                );
-                let calculated = if has_generics {
-                    if let Some(class) = class {
-                        class.generics.as_generics_list(i_s)
+            match finder.matches_signature(i_s) {
+                Match::True => {
+                    debug!(
+                        "Decided overload for {}: {:?}",
+                        self.name(),
+                        function.node().short_debug()
+                    );
+                    let calculated = if has_generics {
+                        if let Some(class) = class {
+                            class.generics.as_generics_list(i_s)
+                        } else {
+                            unreachable!();
+                        }
                     } else {
-                        unreachable!();
-                    }
-                } else {
-                    finder.calculated_type_vars
-                };
-                return Some((function, calculated));
+                        finder.calculated_type_vars
+                    };
+                    return Some((function, calculated));
+                }
+                Match::FalseButSimilar => todo!(),
+                Match::False => (),
             }
         }
         let function = Function::new(

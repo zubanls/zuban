@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
 use parsa_python_ast::{
     Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
@@ -21,7 +21,7 @@ use crate::value::{
     Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum Match {
     True,
     FalseButSimilar,
@@ -52,9 +52,30 @@ impl BitAnd for Match {
     }
 }
 
+impl BitOr for Match {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        match self {
+            Self::True => Self::True,
+            Self::FalseButSimilar => match rhs {
+                Self::True => Self::True,
+                _ => self,
+            },
+            Self::False => rhs,
+        }
+    }
+}
+
 impl BitAndAssign for Match {
     fn bitand_assign(&mut self, rhs: Self) {
         *self = *self & rhs
+    }
+}
+
+impl BitOrAssign for Match {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = *self | rhs
     }
 }
 
@@ -345,7 +366,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     args: &'a dyn Arguments<'db>,
     skip_first_param: bool,
     pub calculated_type_vars: Option<GenericsList>,
-    matches: bool,
+    matches: Match,
     type_vars: Option<&'a TypeVars>,
     match_type: TypeVarType,
     on_type_error: Option<OnTypeError<'db, 'a>>,
@@ -366,7 +387,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             args,
             calculated_type_vars: None,
             skip_first_param,
-            matches: true,
+            matches: Match::True,
             type_vars,
             match_type,
             on_type_error,
@@ -386,7 +407,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             args,
             calculated_type_vars: None,
             skip_first_param: false,
-            matches: true,
+            matches: Match::True,
             type_vars,
             match_type,
             on_type_error: Some(on_type_error),
@@ -483,7 +504,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         let mut missing_params = vec![];
         for p in args_with_params.by_ref() {
             if p.argument.is_none() && !p.param.has_default() {
-                self.matches = false;
+                self.matches = Match::False;
                 missing_params.push(p.param);
                 continue;
             }
@@ -491,20 +512,33 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 if let Some(annotation_type) = p.param.annotation_type(i_s, function) {
                     let value = argument.infer(i_s);
                     let value_class = value.class_as_type(i_s);
-                    let mut matches = true;
+                    let mut matches = Match::True;
                     let on_type_error = self.on_type_error;
-                    annotation_type.error_if_not_matches(i_s, Some(self), &value, |i_s, t1, t2| {
-                        if let Some(on_type_error) = on_type_error {
-                            on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
-                        }
-                        matches = false;
-                    });
+                    annotation_type.error_if_not_matches(
+                        i_s,
+                        Some(self),
+                        &value,
+                        |i_s, m, t1, t2| {
+                            if let Some(on_type_error) = on_type_error {
+                                on_type_error(
+                                    i_s,
+                                    argument.as_node_ref(),
+                                    class,
+                                    function,
+                                    &p,
+                                    t1,
+                                    t2,
+                                );
+                            }
+                            matches &= m;
+                        },
+                    );
                     self.matches &= matches;
                 }
             }
         }
         if args_with_params.too_many_positional_arguments {
-            self.matches = false;
+            self.matches = Match::False;
             if self.should_generate_errors() || true {
                 // TODO remove true and add test
                 let mut s = "Too many positional arguments".to_owned();
@@ -518,7 +552,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s));
             }
         } else if args_with_params.arguments.peek().is_some() {
-            self.matches = false;
+            self.matches = Match::False;
             if self.should_generate_errors() {
                 let mut too_many = false;
                 for arg in args_with_params.arguments {
@@ -679,7 +713,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             },
                         );
                     } else {
-                        self.matches = false;
+                        debug!("TODO this is wrong, because thie might also be Match::False");
+                        self.matches = Match::FalseButSimilar;
                     }
                 }
                 _ => todo!(),
@@ -713,7 +748,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         Match::True
     }
 
-    pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> Match {
         self.calculate_type_vars(i_s);
         self.matches
     }
@@ -858,10 +893,11 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, String, String),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Match, String, String),
     ) {
         let value_type = value.class_as_type(i_s);
-        if !self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant) {
+        let matches = self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant);
+        if !matches {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
@@ -870,7 +906,7 @@ impl<'db, 'a> Type<'db, 'a> {
             debug!("Mismatch between {value_type:?} and {self:?}");
             let input = value_type.as_string(i_s, None, FormatStyle::Short);
             let wanted = self.as_string(i_s, class, FormatStyle::Short);
-            callback(i_s, input, wanted)
+            callback(i_s, matches, input, wanted)
         }
     }
 
