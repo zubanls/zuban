@@ -174,7 +174,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             c2.generics(),
                             variance,
                             Some(type_vars),
-                        );
+                        ) | Match::FalseButSimilar;
                     }
                     false
                 }
@@ -191,7 +191,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::Tuple(t1) => {
                 return match other {
-                    Self::Tuple(t2) => t1.matches(i_s, t2, matcher, variance).into(),
+                    Self::Tuple(t2) => {
+                        let m: Match = t1.matches(i_s, t2, matcher, variance).into();
+                        m | Match::FalseButSimilar
+                    }
                     _ => Match::False,
                 }
             }

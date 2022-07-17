@@ -27,15 +27,13 @@ testOverloadWithDerivedFromAny
 # - No overload variant of "__add__" of "A" matches argument type "str"
 # - wtf List item 0 has incompatible type "List[str]"; expected "int"
 testPreferExactSignatureMatchInOverload
+testBadOverloadProbableMatch
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
 testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 # - wtf Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
-testOverlappingErasedSignatures
-testOverloadWithTupleMatchingTypeVar
-testOverloadTuple
 testOverloadInferUnionReturnBasic
 testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
@@ -74,7 +72,6 @@ testInconsistentOverload2
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 testTypeCheckOverloadWithUntypedImplAndMultipleVariants
 testTypeCheckOverloadImplementationTypeVarDifferingUsage2
-testOverlappingErasedSignatures
 testOverlappingOverloadSignatures
 testPartiallyCovariantOverlappingOverloadSignatures
 testOverlappingOverloadCounting
