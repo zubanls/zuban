@@ -1,3 +1,5 @@
+testOverloadAgainstEmptyCollections
+testOverloadAgainstEmptyCovariantCollections
 
 
 # Overloading
@@ -8,7 +10,6 @@ testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
 
 testOverloadsUsingAny
-testOverloadWithOverlappingItemsAndAnyArgument1
 testOverloadWithOverlappingItemsAndAnyArgument2
 testOverloadWithOverlappingItemsAndAnyArgument3
 testOverloadWithOverlappingItemsAndAnyArgument4

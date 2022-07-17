@@ -712,6 +712,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             Some((function, calculated))
         };
         let mut first_similar = None;
+        let mut multi_any_match = None;
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let mut finder = create_finder(i_s, function);
@@ -724,6 +725,15 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     );
                     return handle_result(i_s, finder, function);
                 }
+                Match::TrueWithAny => {
+                    if multi_any_match.is_some() {
+                        // If multiple signatures match because of Any, we should just return
+                        // without an error message, there is no clear choice, but there should
+                        // alaso not be an error.
+                        return None;
+                    }
+                    multi_any_match = Some((finder, function))
+                }
                 Match::FalseButSimilar => {
                     if first_similar.is_none() {
                         first_similar = Some(function)
@@ -731,6 +741,9 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 }
                 Match::False => (),
             }
+        }
+        if let Some((finder, function)) = multi_any_match {
+            return handle_result(i_s, finder, function);
         }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate

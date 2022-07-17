@@ -68,7 +68,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 variance,
                             );
                             if m.bool() {
-                                return Match::True;
+                                return m;
                             } else {
                                 similarity |= m;
                             }
@@ -85,7 +85,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             let m =
                                 class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance);
                             if m.bool() {
-                                return Match::True;
+                                return m;
                             } else {
                                 similarity |= m;
                             }
@@ -151,7 +151,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => Match::False,
             },
             Type::None => Match::True, // TODO should be false
-            Type::Any => Match::True,
+            Type::Any => Match::TrueWithAny,
             Type::Never => todo!(),
         }
     }

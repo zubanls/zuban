@@ -24,13 +24,14 @@ use crate::value::{
 #[derive(Copy, Clone, Debug)]
 pub enum Match {
     True,
+    TrueWithAny,
     FalseButSimilar,
     False,
 }
 
 impl Match {
     pub fn bool(self) -> bool {
-        matches!(self, Self::True)
+        matches!(self, Self::True | Self::TrueWithAny)
     }
 }
 
@@ -40,6 +41,10 @@ impl BitAnd for Match {
     fn bitand(self, rhs: Self) -> Self::Output {
         match self {
             Self::True => rhs,
+            Self::TrueWithAny => match rhs {
+                Self::True => Self::TrueWithAny,
+                _ => rhs,
+            },
             Self::FalseButSimilar => match rhs {
                 Self::False => Self::False,
                 _ => self,
@@ -55,6 +60,10 @@ impl BitOr for Match {
     fn bitor(self, rhs: Self) -> Self::Output {
         match self {
             Self::True => Self::True,
+            Self::TrueWithAny => match rhs {
+                Self::True => Self::True,
+                _ => Self::TrueWithAny,
+            },
             Self::FalseButSimilar => match rhs {
                 Self::True => Self::True,
                 _ => self,
@@ -80,7 +89,7 @@ impl Not for Match {
     type Output = bool;
 
     fn not(self) -> Self::Output {
-        !matches!(self, Self::True)
+        !matches!(self, Self::True | Self::TrueWithAny)
     }
 }
 
@@ -509,13 +518,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 if let Some(annotation_type) = p.param.annotation_type(i_s, function) {
                     let value = argument.infer(i_s);
                     let value_class = value.class_as_type(i_s);
-                    let mut matches = Match::True;
                     let on_type_error = self.on_type_error;
-                    annotation_type.error_if_not_matches(
+                    let matches = annotation_type.error_if_not_matches(
                         i_s,
                         Some(self),
                         &value,
-                        |i_s, m, t1, t2| {
+                        |i_s, t1, t2| {
                             if let Some(on_type_error) = on_type_error {
                                 on_type_error(
                                     i_s,
@@ -527,7 +535,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                     t2,
                                 );
                             }
-                            matches &= m;
                         },
                     );
                     self.matches &= matches;
@@ -823,7 +830,7 @@ impl<'db, 'a> Type<'db, 'a> {
         value_class: Self,
         variance: Variance,
     ) -> Match {
-        let result = match self {
+        match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
             Self::Union(list1) => match value_class {
                 // TODO this should use the variance argument
@@ -881,10 +888,12 @@ impl<'db, 'a> Type<'db, 'a> {
                     .into(),
             },
             Self::None => matches!(value_class, Self::None).into(),
-            Self::Any => Match::True,
+            Self::Any => match value_class {
+                Self::Any => Match::TrueWithAny,
+                _ => Match::True,
+            },
             Self::Never => todo!(),
-        };
-        result
+        }
     }
 
     pub fn error_if_not_matches<'x>(
@@ -892,8 +901,8 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Match, Box<str>, Box<str>),
-    ) {
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+    ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant);
         if !matches {
@@ -905,8 +914,9 @@ impl<'db, 'a> Type<'db, 'a> {
             debug!("Mismatch between {value_type:?} and {self:?}");
             let input = value_type.format(i_s, None, FormatStyle::Short);
             let wanted = self.format(i_s, class, FormatStyle::Short);
-            callback(i_s, matches, input, wanted)
+            callback(i_s, input, wanted)
         }
+        matches
     }
 
     pub fn execute_and_resolve_type_vars(
