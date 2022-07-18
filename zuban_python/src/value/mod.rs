@@ -1,4 +1,5 @@
 mod bound_method;
+mod callable;
 mod class;
 mod function;
 mod instance;
@@ -18,6 +19,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
+pub use callable::{Callable, CallableClass};
 pub use class::{Class, ClassLike};
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;
@@ -26,8 +28,8 @@ pub use module::Module;
 pub use none::NoneInstance;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    Callable, CallableClass, RevealTypeFunction, Tuple, TupleClass, TypeVarClass, TypeVarInstance,
-    TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
+    RevealTypeFunction, Tuple, TupleClass, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
+    TypingClassVar, TypingType, TypingWithGenerics,
 };
 
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
