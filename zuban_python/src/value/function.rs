@@ -725,14 +725,14 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     );
                     return handle_result(i_s, finder, function);
                 }
-                SignatureMatch::TrueWithAny => {
+                SignatureMatch::TrueWithAny(param_indices) => {
                     if multi_any_match.is_some() {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, but there should
                         // also not be an error.
                         return None;
                     }
-                    multi_any_match = Some((finder, function))
+                    multi_any_match = Some((finder, function, param_indices))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
@@ -742,7 +742,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 SignatureMatch::False => (),
             }
         }
-        if let Some((finder, function)) = multi_any_match {
+        if let Some((finder, function, _)) = multi_any_match {
             return handle_result(i_s, finder, function);
         }
         if let Some(function) = first_similar {

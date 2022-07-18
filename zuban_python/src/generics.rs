@@ -24,7 +24,7 @@ use crate::value::{
 pub enum SignatureMatch {
     False,
     FalseButSimilar,
-    TrueWithAny,
+    TrueWithAny(Vec<usize>),
     True,
 }
 
@@ -521,7 +521,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         'db: 'x,
     {
         let mut missing_params = vec![];
-        for p in args_with_params.by_ref() {
+        let mut any_args = vec![];
+        for (i, p) in args_with_params.by_ref().enumerate() {
             if p.argument.is_none() && !p.param.has_default() {
                 self.matches = Match::False;
                 missing_params.push(p.param);
@@ -551,6 +552,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             }
                         },
                     );
+                    if matches!(matches, Match::TrueWithAny) {
+                        any_args.push(i)
+                    }
                     self.matches &= matches;
                 }
             }
@@ -659,7 +663,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
         match self.matches {
             Match::True => SignatureMatch::True,
-            Match::TrueWithAny => SignatureMatch::TrueWithAny,
+            Match::TrueWithAny => SignatureMatch::TrueWithAny(any_args),
             Match::FalseButSimilar => SignatureMatch::FalseButSimilar,
             Match::False => SignatureMatch::False,
         }
