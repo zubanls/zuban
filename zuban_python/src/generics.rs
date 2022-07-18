@@ -670,7 +670,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .as_node_ref()
                         .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
-                    todo!()
+                    self.args.as_node_ref().add_typing_issue(
+                        i_s.db,
+                        IssueType::ArgumentIssue(Box::from("Too few arguments")),
+                    );
                 }
             }
         }

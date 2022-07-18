@@ -674,11 +674,7 @@ testSkippedClass*
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 
-# Function Subtyping
-testSubtypingFunction*
-testLackOfNames
-testLackOfNamesFastparse
-testFunctionTypeCompatibilityWithOtherTypes
+# Function Subtyping *args
 testVarArgsFunctionSubtyping
 
 testGenericFunctionSubtypingWithTypevarValues
