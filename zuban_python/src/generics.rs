@@ -153,7 +153,9 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => {
                 if n.as_usize() == 0 {
-                    file.inference(i_s).infer_expression(*expr).as_db_type(i_s)
+                    file.inference(i_s)
+                        .use_annotation_expression_or_generic_type(*expr)
+                        .into_db_type(i_s)
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {n:?} was requested",
@@ -214,8 +216,8 @@ impl<'db, 'a> Generics<'db, 'a> {
         match self {
             Self::Expression(file, expr) => Some(GenericsList::new_generics(Box::new([file
                 .inference(i_s)
-                .infer_expression(*expr)
-                .as_db_type(i_s)]))),
+                .use_annotation_expression_or_generic_type(*expr)
+                .into_db_type(i_s)]))),
             Self::Slices(file, slices) => Some(GenericsList::new_generics(
                 slices
                     .iter()
