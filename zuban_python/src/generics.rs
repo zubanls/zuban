@@ -21,17 +21,23 @@ use crate::value::{
     Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
 
-#[derive(Copy, Clone, Debug)]
-pub enum Match {
+pub enum SignatureMatch {
+    False,
+    FalseButSimilar,
     True,
     TrueWithAny,
-    FalseButSimilar,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Match {
     False,
+    FalseButSimilar,
+    True,
 }
 
 impl Match {
     pub fn bool(self) -> bool {
-        matches!(self, Self::True | Self::TrueWithAny)
+        matches!(self, Self::True)
     }
 }
 
@@ -41,10 +47,6 @@ impl BitAnd for Match {
     fn bitand(self, rhs: Self) -> Self::Output {
         match self {
             Self::True => rhs,
-            Self::TrueWithAny => match rhs {
-                Self::True => Self::TrueWithAny,
-                _ => rhs,
-            },
             Self::FalseButSimilar => match rhs {
                 Self::False => Self::False,
                 _ => self,
@@ -60,10 +62,6 @@ impl BitOr for Match {
     fn bitor(self, rhs: Self) -> Self::Output {
         match self {
             Self::True => Self::True,
-            Self::TrueWithAny => match rhs {
-                Self::True => Self::True,
-                _ => Self::TrueWithAny,
-            },
             Self::FalseButSimilar => match rhs {
                 Self::True => Self::True,
                 _ => self,
@@ -89,7 +87,7 @@ impl Not for Match {
     type Output = bool;
 
     fn not(self) -> Self::Output {
-        !matches!(self, Self::True | Self::TrueWithAny)
+        !matches!(self, Self::True)
     }
 }
 
@@ -449,14 +447,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         self_.calculated_type_vars
     }
 
-    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) {
+    fn calculate_type_vars(&mut self, i_s: &mut InferenceState<'db, '_>) -> SignatureMatch {
         // TODO this can be calculated multiple times from different places
         if let Some(type_vars) = self.type_vars {
             if !type_vars.is_empty() {
                 self.calculated_type_vars = Some(GenericsList::new_unknown(type_vars.len()));
             }
         }
-        match self.func_or_callable {
+        let result = match self.func_or_callable {
             FunctionOrCallable::Function(class, function) => {
                 // Make sure the type vars are properly pre-calculated, because we are using type
                 // vars from in use_cached_annotation_type.
@@ -466,7 +464,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     class,
                     Some(&function),
                     function.iter_args_with_params(self.args, self.skip_first_param),
-                );
+                )
             }
             FunctionOrCallable::Callable(callable) => {
                 if let Some(params) = callable.iter_params() {
@@ -478,24 +476,29 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             params,
                             self.args.iter_arguments().peekable(),
                         ),
-                    );
+                    )
+                } else {
+                    SignatureMatch::True
                 }
             }
+        };
+        if cfg!(feature = "zuban_debug") {
+            if let Some(calculated) = &self.calculated_type_vars {
+                let callable_description: String;
+                debug!(
+                    "Calculated type vars: {}[{}]",
+                    match self.func_or_callable {
+                        FunctionOrCallable::Function(_, function) => function.name(),
+                        FunctionOrCallable::Callable(callable) => {
+                            callable_description = callable.description(i_s);
+                            &callable_description
+                        }
+                    },
+                    calculated.format(i_s.db, None, FormatStyle::Short),
+                );
+            }
         }
-        if let Some(calculated) = &self.calculated_type_vars {
-            let callable_description: String;
-            debug!(
-                "Calculated type vars: {}[{}]",
-                match self.func_or_callable {
-                    FunctionOrCallable::Function(_, function) => function.name(),
-                    FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.description(i_s);
-                        &callable_description
-                    }
-                },
-                calculated.format(i_s.db, None, FormatStyle::Short),
-            );
-        }
+        result
     }
 
     fn calculate_type_vars_for_params<'x, P: Param<'x>>(
@@ -504,10 +507,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         class: Option<&Class<'db, '_>>,
         function: Option<&Function<'db, '_>>,
         mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
-    ) where
+    ) -> SignatureMatch
+    where
         'db: 'x,
     {
         let mut missing_params = vec![];
+        let mut had_any_argument = false;
         for p in args_with_params.by_ref() {
             if p.argument.is_none() && !p.param.has_default() {
                 self.matches = Match::False;
@@ -518,6 +523,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 if let Some(annotation_type) = p.param.annotation_type(i_s, function) {
                     let value = argument.infer(i_s);
                     let value_class = value.class_as_type(i_s);
+
+                    if matches!(value_class, Type::Any) {
+                        had_any_argument = true;
+                    }
+
                     let on_type_error = self.on_type_error;
                     let matches = annotation_type.error_if_not_matches(
                         i_s,
@@ -643,6 +653,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
         }
+        match self.matches {
+            Match::True => match had_any_argument {
+                false => SignatureMatch::True,
+                true => SignatureMatch::TrueWithAny,
+            },
+            Match::FalseButSimilar => SignatureMatch::FalseButSimilar,
+            Match::False => SignatureMatch::False,
+        }
     }
 
     fn nth(&mut self, i_s: &mut InferenceState<'db, '_>, index: TypeVarIndex) -> Option<DbType> {
@@ -754,9 +772,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         Match::True
     }
 
-    pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> Match {
-        self.calculate_type_vars(i_s);
-        self.matches
+    pub fn matches_signature(&mut self, i_s: &mut InferenceState<'db, '_>) -> SignatureMatch {
+        self.calculate_type_vars(i_s)
     }
 }
 
@@ -888,10 +905,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     .into(),
             },
             Self::None => matches!(value_class, Self::None).into(),
-            Self::Any => match value_class {
-                Self::Any => Match::TrueWithAny,
-                _ => Match::True,
-            },
+            Self::Any => Match::True,
             Self::Never => todo!(),
         }
     }

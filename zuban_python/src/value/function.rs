@@ -14,7 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, GenericsIterator, Match, TypeVarMatcher};
+use crate::generics::{Generics, GenericsIterator, SignatureMatch, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -717,7 +717,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let mut finder = create_finder(i_s, function);
             match finder.matches_signature(i_s) {
-                Match::True => {
+                SignatureMatch::True => {
                     debug!(
                         "Decided overload for {}: {:?}",
                         self.name(),
@@ -725,7 +725,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     );
                     return handle_result(i_s, finder, function);
                 }
-                Match::TrueWithAny => {
+                SignatureMatch::TrueWithAny => {
                     if multi_any_match.is_some() {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, but there should
@@ -734,12 +734,12 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     }
                     multi_any_match = Some((finder, function))
                 }
-                Match::FalseButSimilar => {
+                SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
                         first_similar = Some(function)
                     }
                 }
-                Match::False => (),
+                SignatureMatch::False => (),
             }
         }
         if let Some((finder, function)) = multi_any_match {
