@@ -163,7 +163,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         "Generic expr {:?} has one item, but {n:?} was requested",
                         expr.short_debug(),
                     );
-                    DbType::Any
+                    todo!()
                 }
             }
             Self::SimpleGenericSlices(file, slices) => slices
@@ -176,7 +176,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         .into_db_type(i_s),
                     SliceContent::Slice(s) => todo!(),
                 })
-                .unwrap_or(DbType::Any),
+                .unwrap_or_else(|| todo!()),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n) {
                     replace_class_vars!(i_s, g, type_var_generics)
@@ -185,16 +185,21 @@ impl<'db, 'a> Generics<'db, 'a> {
                         "Generic list {} given, but item {n:?} was requested",
                         self.format(i_s, FormatStyle::Short, None),
                     );
-                    DbType::Any
+                    todo!()
                 }
             }
             Self::Params(_) => todo!(),
-            Self::DbType(g) => (*g).clone(),
+            Self::DbType(g) => {
+                if n.as_usize() > 0 {
+                    todo!()
+                }
+                (*g).clone()
+            }
             Self::Class(s) => todo!(),
             Self::FunctionParams(f) => todo!(),
             Self::None => {
                 debug!("No generics given, but {n:?} was requested");
-                DbType::Any
+                todo!()
             }
         }
     }
