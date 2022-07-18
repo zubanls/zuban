@@ -729,7 +729,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     if multi_any_match.is_some() {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, but there should
-                        // alaso not be an error.
+                        // also not be an error.
                         return None;
                     }
                     multi_any_match = Some((finder, function))

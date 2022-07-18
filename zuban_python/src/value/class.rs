@@ -151,7 +151,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => Match::False,
             },
             Type::None => Match::True, // TODO should be false
-            Type::Any => Match::True,
+            Type::Any => Match::TrueWithAny,
             Type::Never => todo!(),
         }
     }
