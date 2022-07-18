@@ -520,8 +520,8 @@ impl<'a> CallableClass<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn result_generics<'db>(&self) -> Generics<'db, 'a> {
-        Generics::DbType(&self.content.return_class)
+    pub fn result_type<'db>(&self, db: &'db Database) -> Type<'db, 'a> {
+        Type::from_db_type(db, &self.content.return_class)
     }
 
     pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {

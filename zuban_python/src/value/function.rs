@@ -14,7 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, GenericsIterator, SignatureMatch, TypeVarMatcher};
+use crate::generics::{Generics, GenericsIterator, SignatureMatch, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -235,11 +235,15 @@ impl<'db, 'a> Function<'db, 'a> {
         self.node().params().iter()
     }
 
-    pub fn result_generics(&self) -> Generics<'db, 'a> {
+    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         self.return_annotation()
-            // TODO this is very wrong to use a simple generic expression here
-            .map(|a| Generics::SimpleGenericExpression(self.node_ref.file, a.expression()))
-            .unwrap_or(Generics::None)
+            .map(|a| {
+                self.node_ref
+                    .file
+                    .inference(i_s)
+                    .use_cached_return_annotation_type(a)
+            })
+            .unwrap_or(Type::Any)
     }
 
     fn execute_internal(

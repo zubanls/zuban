@@ -210,12 +210,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         {
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
-                            return c.result_generics().matches(
+                            return c.result_type(i_s.db).matches(
                                 i_s,
                                 matcher.as_deref_mut(),
-                                Generics::Class(cls),
+                                Type::ClassLike(ClassLike::Class(*cls)),
                                 variance,
-                                None,
                             ) & c.param_generics().matches(
                                 i_s,
                                 matcher,
@@ -238,19 +237,18 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::NoneType => todo!(),
         };
         if matches {
-            let (class_generics, class_result_generics) = self.generics();
-            let (value_generics, value_result_generics) = other.generics();
+            let (class_generics, class_result_type) = self.generics(i_s);
+            let (value_generics, value_result_type) = other.generics(i_s);
 
             let mut matches =
                 class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance, None);
             // Result generics are only relevant for callables/functions
-            if let Some(class_result_generics) = class_result_generics {
+            if let Some(class_result_generics) = class_result_type {
                 matches &= class_result_generics.matches(
                     i_s,
                     matcher,
-                    value_result_generics.unwrap(),
+                    value_result_type.unwrap(),
                     variance,
-                    None,
                 );
             }
             if matches!(matches, Match::False) {
@@ -270,14 +268,17 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn generics(&self) -> (Generics<'db, '_>, Option<Generics<'db, '_>>) {
+    fn generics(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> (Generics<'db, '_>, Option<Type<'db, '_>>) {
         match self {
             Self::Class(c) => (c.generics(), None),
             Self::Type(c) => (Generics::Class(c), None),
             Self::TypeWithDbType(g) => (Generics::DbType(g), None),
             Self::Tuple(c) => (c.generics(), None),
-            Self::Callable(c) => (c.param_generics(), Some(c.result_generics())),
-            Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_generics())),
+            Self::Callable(c) => (c.param_generics(), Some(c.result_type(i_s.db))),
+            Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_type(i_s))),
             Self::TypingClass(_)
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
