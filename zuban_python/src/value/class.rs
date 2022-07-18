@@ -3,8 +3,8 @@ use std::fmt;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::{
-    CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
-    ValueKind,
+    CallableClass, CallableLike, Function, LookupResult, Module, OnTypeError, TupleClass,
+    TypingClass, Value, ValueKind,
 };
 use crate::arguments::Arguments;
 use crate::database::{

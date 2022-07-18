@@ -11,6 +11,12 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
+pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
+    fn param_generics(&self) -> Generics<'db, 'a>;
+    fn result_type(&self, db: &'db Database) -> Type<'db, 'a>;
+    fn format(&self, db: &Database, style: FormatStyle) -> Box<str>;
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,
@@ -25,8 +31,10 @@ impl<'a> CallableClass<'a> {
     pub fn as_db_type(&self) -> DbType {
         DbType::Callable(self.content.clone())
     }
+}
 
-    pub fn param_generics<'db>(&self) -> Generics<'db, 'a> {
+impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
+    fn param_generics(&self) -> Generics<'db, 'a> {
         self.content
             .params
             .as_ref()
@@ -34,11 +42,11 @@ impl<'a> CallableClass<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn result_type<'db>(&self, db: &'db Database) -> Type<'db, 'a> {
+    fn result_type(&self, db: &'db Database) -> Type<'db, 'a> {
         Type::from_db_type(db, &self.content.return_class)
     }
 
-    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
+    fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         self.content.format(db, style).into()
     }
 }
