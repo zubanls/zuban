@@ -1,9 +1,7 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{
-    CallableContent, CallableParam, Database, DbType, FormatStyle, TypeVarType, TypeVars,
-};
+use crate::database::{CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::generics::{Generics, Type, TypeVarMatcher};
@@ -12,9 +10,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
 pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
-    fn param_generics(&self) -> Generics<'db, 'a>;
-    fn result_type(&self, db: &'db Database) -> Type<'db, 'a>;
-    fn format(&self, db: &Database, style: FormatStyle) -> Box<str>;
+    fn param_generics(&self) -> Generics<'db, '_>;
+    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a>;
+    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -34,7 +32,7 @@ impl<'a> CallableClass<'a> {
 }
 
 impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
-    fn param_generics(&self) -> Generics<'db, 'a> {
+    fn param_generics(&self) -> Generics<'db, '_> {
         self.content
             .params
             .as_ref()
@@ -42,12 +40,12 @@ impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
             .unwrap_or(Generics::None)
     }
 
-    fn result_type(&self, db: &'db Database) -> Type<'db, 'a> {
-        Type::from_db_type(db, &self.content.return_class)
+    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::from_db_type(i_s.db, &self.content.return_class)
     }
 
-    fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
-        self.content.format(db, style).into()
+    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+        self.content.format(i_s.db, style).into()
     }
 }
 

@@ -210,7 +210,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         {
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
-                            return c.result_type(i_s.db).matches(
+                            return c.result_type(i_s).matches(
                                 i_s,
                                 matcher.as_deref_mut(),
                                 Type::ClassLike(ClassLike::Class(*cls)),
@@ -277,8 +277,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(c) => (Generics::Class(c), None),
             Self::TypeWithDbType(g) => (Generics::DbType(g), None),
             Self::Tuple(c) => (c.generics(), None),
-            Self::Callable(c) => (c.param_generics(), Some(c.result_type(i_s.db))),
-            Self::FunctionType(f) => (Generics::FunctionParams(f), Some(f.result_type(i_s))),
+            Self::Callable(c) => (c.param_generics(), Some(c.result_type(i_s))),
+            Self::FunctionType(f) => (f.param_generics(), Some(f.result_type(i_s))),
             Self::TypingClass(_)
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
@@ -309,7 +309,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s.db, None, style)).into(),
             Self::Tuple(c) => c.format(i_s.db, style),
-            Self::Callable(c) => c.format(i_s.db, style),
+            Self::Callable(c) => c.format(i_s, style),
             Self::FunctionType(f) => f.format(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),

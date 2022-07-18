@@ -5,7 +5,7 @@ use parsa_python_ast::{
 use std::fmt;
 use std::rc::Rc;
 
-use super::{ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{CallableLike, ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -235,17 +235,6 @@ impl<'db, 'a> Function<'db, 'a> {
         self.node().params().iter()
     }
 
-    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        self.return_annotation()
-            .map(|a| {
-                self.node_ref
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation_type(a)
-            })
-            .unwrap_or(Type::Any)
-    }
-
     fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -298,7 +287,37 @@ impl<'db, 'a> Function<'db, 'a> {
         }
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
+        match class {
+            Some(class) => {
+                if self.name() == "__init__" {
+                    format!("{:?}", class.name()).into()
+                } else {
+                    format!("{:?} of {:?}", self.name(), class.name()).into()
+                }
+            }
+            None => format!("{:?}", self.name()).into(),
+        }
+    }
+}
+
+impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
+    fn param_generics(&self) -> Generics<'db, '_> {
+        Generics::FunctionParams(self)
+    }
+
+    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        self.return_annotation()
+            .map(|a| {
+                self.node_ref
+                    .file
+                    .inference(i_s)
+                    .use_cached_return_annotation_type(a)
+            })
+            .unwrap_or(Type::Any)
+    }
+
+    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
@@ -393,19 +412,6 @@ impl<'db, 'a> Function<'db, 'a> {
             result += ret.as_deref().unwrap_or("Any");
             result += "]";
             result.into()
-        }
-    }
-
-    pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
-        match class {
-            Some(class) => {
-                if self.name() == "__init__" {
-                    format!("{:?}", class.name()).into()
-                } else {
-                    format!("{:?} of {:?}", self.name(), class.name()).into()
-                }
-            }
-            None => format!("{:?}", self.name()).into(),
         }
     }
 }
