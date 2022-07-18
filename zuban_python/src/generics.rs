@@ -156,7 +156,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::SimpleGenericExpression(file, expr) => {
                 if n.as_usize() == 0 {
                     file.inference(i_s)
-                        .use_annotation_expression_or_generic_type(*expr)
+                        .use_cached_simple_generic_type(*expr)
                         .into_db_type(i_s)
                 } else {
                     debug!(
@@ -172,8 +172,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                 .map(|slice_content| match slice_content {
                     SliceContent::NamedExpression(n) => file
                         .inference(i_s)
-                        .infer_expression(n.expression())
-                        .as_db_type(i_s),
+                        .use_cached_simple_generic_type(n.expression())
+                        .into_db_type(i_s),
                     SliceContent::Slice(s) => todo!(),
                 })
                 .unwrap_or(DbType::Any),
@@ -223,7 +223,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::SimpleGenericExpression(file, expr) => {
                 Some(GenericsList::new_generics(Box::new([file
                     .inference(i_s)
-                    .use_annotation_expression_or_generic_type(*expr)
+                    .use_cached_simple_generic_type(*expr)
                     .into_db_type(i_s)])))
             }
             Self::SimpleGenericSlices(file, slices) => Some(GenericsList::new_generics(
@@ -232,8 +232,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
                             file.inference(i_s)
-                                .infer_expression(n.expression())
-                                .as_db_type(i_s)
+                                .use_cached_simple_generic_type(n.expression())
+                                .into_db_type(i_s)
                         } else {
                             todo!()
                         }
@@ -323,9 +323,7 @@ impl<'db> GenericsIterator<'db, '_> {
     ) -> Option<T> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
-                let g = file
-                    .inference(i_s)
-                    .use_annotation_expression_or_generic_type(*expr);
+                let g = file.inference(i_s).use_cached_simple_generic_type(*expr);
                 let result = callable(i_s, g);
                 *self = Self::None;
                 Some(result)
@@ -334,7 +332,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
                     let g = file
                         .inference(i_s)
-                        .use_annotation_expression_or_generic_type(s.expression());
+                        .use_cached_simple_generic_type(s.expression());
                     Some(callable(i_s, g))
                 } else {
                     None

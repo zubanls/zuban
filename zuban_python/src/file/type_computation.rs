@@ -1219,31 +1219,13 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn use_annotation_expression_or_generic_type(
-        &mut self,
-        expression: Expression,
-    ) -> Type<'db, 'db> {
-        let point = self.file.points.get(expression.index());
-        if !point.calculated() {
-            todo!("{expression:?}")
-        }
-
-        match point.type_() {
-            PointType::Redirect => {
-                let inferred = self.check_point_cache(expression.index()).unwrap();
-                Type::ClassLike(ClassLike::Class(inferred.maybe_class(self.i_s).unwrap()))
-            }
-            PointType::Complex => {
-                if let ComplexPoint::TypeInstance(t) =
-                    self.file.complex_points.get(point.complex_index())
-                {
-                    Type::from_db_type(self.i_s.db, t)
-                } else {
-                    todo!()
-                }
-            }
-            _ => todo!("{point:?}"),
-        }
+    pub fn use_cached_simple_generic_type(&mut self, expression: Expression) -> Type<'db, 'db> {
+        debug_assert_eq!(
+            self.file.points.get(expression.index()).type_(),
+            PointType::Redirect
+        );
+        let inferred = self.check_point_cache(expression.index()).unwrap();
+        Type::ClassLike(ClassLike::Class(inferred.maybe_class(self.i_s).unwrap()))
     }
 
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {
