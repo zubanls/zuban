@@ -237,7 +237,8 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn result_generics(&self) -> Generics<'db, 'a> {
         self.return_annotation()
-            .map(|a| Generics::Expression(self.node_ref.file, a.expression()))
+            // TODO this is very wrong to use a simple generic expression here
+            .map(|a| Generics::SimpleGenericExpression(self.node_ref.file, a.expression()))
             .unwrap_or(Generics::None)
     }
 

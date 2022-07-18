@@ -658,7 +658,10 @@ impl<'db> Inferred<'db> {
                         cls.with_instance(
                             i_s,
                             instance,
-                            Some(Generics::new_slice(definition.file, p.expect_slice())),
+                            Some(Generics::new_simple_generic_slice(
+                                definition.file,
+                                p.expect_slice(),
+                            )),
                             callable,
                         )
                     } else {
@@ -984,7 +987,10 @@ impl<'db> Inferred<'db> {
             let primary = definition.as_primary();
             match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
-                    return Some(Generics::new_slice(definition.file, slice_type))
+                    return Some(Generics::new_simple_generic_slice(
+                        definition.file,
+                        slice_type,
+                    ))
                 }
                 _ => {
                     unreachable!()

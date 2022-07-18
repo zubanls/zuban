@@ -126,8 +126,8 @@ macro_rules! replace_class_vars {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'db, 'a> {
-    Expression(&'db PythonFile, Expression<'db>),
-    Slices(&'db PythonFile, Slices<'db>),
+    SimpleGenericExpression(&'db PythonFile, Expression<'db>),
+    SimpleGenericSlices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
     Params(&'a [CallableParam]),
     Class(&'a Class<'db, 'a>),
@@ -137,11 +137,13 @@ pub enum Generics<'db, 'a> {
 }
 
 impl<'db, 'a> Generics<'db, 'a> {
-    pub fn new_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
+    pub fn new_simple_generic_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
         match slice_type {
-            SliceType::NamedExpression(named) => Self::Expression(file, named.expression()),
-            SliceType::Slice(_) => Self::None,
-            SliceType::Slices(slices) => Self::Slices(file, slices),
+            SliceType::NamedExpression(named) => {
+                Self::SimpleGenericExpression(file, named.expression())
+            }
+            SliceType::Slice(_) => unreachable!(),
+            SliceType::Slices(slices) => Self::SimpleGenericSlices(file, slices),
         }
     }
 
@@ -151,7 +153,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> DbType {
         match self {
-            Self::Expression(file, expr) => {
+            Self::SimpleGenericExpression(file, expr) => {
                 if n.as_usize() == 0 {
                     file.inference(i_s)
                         .use_annotation_expression_or_generic_type(*expr)
@@ -164,7 +166,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     DbType::Any
                 }
             }
-            Self::Slices(file, slices) => slices
+            Self::SimpleGenericSlices(file, slices) => slices
                 .iter()
                 .nth(n.as_usize())
                 .map(|slice_content| match slice_content {
@@ -199,8 +201,12 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn iter(&self) -> GenericsIterator<'db, 'a> {
         match self {
-            Self::Expression(file, expr) => GenericsIterator::Expression(file, *expr),
-            Self::Slices(file, slices) => GenericsIterator::SliceIterator(file, slices.iter()),
+            Self::SimpleGenericExpression(file, expr) => {
+                GenericsIterator::SimpleGenericExpression(file, *expr)
+            }
+            Self::SimpleGenericSlices(file, slices) => {
+                GenericsIterator::SimpleGenericSliceIterator(file, slices.iter())
+            }
             Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIterator::DbType(g),
             Self::Class(s) => GenericsIterator::Class(*s),
@@ -214,11 +220,13 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         match self {
-            Self::Expression(file, expr) => Some(GenericsList::new_generics(Box::new([file
-                .inference(i_s)
-                .use_annotation_expression_or_generic_type(*expr)
-                .into_db_type(i_s)]))),
-            Self::Slices(file, slices) => Some(GenericsList::new_generics(
+            Self::SimpleGenericExpression(file, expr) => {
+                Some(GenericsList::new_generics(Box::new([file
+                    .inference(i_s)
+                    .use_annotation_expression_or_generic_type(*expr)
+                    .into_db_type(i_s)])))
+            }
+            Self::SimpleGenericSlices(file, slices) => Some(GenericsList::new_generics(
                 slices
                     .iter()
                     .map(|slice| {
@@ -297,13 +305,13 @@ impl<'db, 'a> Generics<'db, 'a> {
 }
 
 pub enum GenericsIterator<'db, 'a> {
-    SliceIterator(&'db PythonFile, SliceIterator<'db>),
+    SimpleGenericSliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'db, 'a>>),
     Params(std::slice::Iter<'a, CallableParam>),
     DbType(&'a DbType),
     Class(&'a Class<'db, 'a>),
     ParamIterator(&'db PythonFile, ParamIterator<'db>),
-    Expression(&'db PythonFile, Expression<'db>),
+    SimpleGenericExpression(&'db PythonFile, Expression<'db>),
     None,
 }
 
@@ -314,7 +322,7 @@ impl<'db> GenericsIterator<'db, '_> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>) -> T,
     ) -> Option<T> {
         match self {
-            Self::Expression(file, expr) => {
+            Self::SimpleGenericExpression(file, expr) => {
                 let g = file
                     .inference(i_s)
                     .use_annotation_expression_or_generic_type(*expr);
@@ -322,7 +330,7 @@ impl<'db> GenericsIterator<'db, '_> {
                 *self = Self::None;
                 Some(result)
             }
-            Self::SliceIterator(file, iter) => {
+            Self::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
                     let g = file
                         .inference(i_s)
