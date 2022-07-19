@@ -988,7 +988,10 @@ impl<'db> WithItem<'db> {
         let mut iterator = self.node.iter_children();
         let expr = iterator.next().unwrap();
         iterator.next();
-        (Expression::new(expr), iterator.next().map(Target::new))
+        (
+            Expression::new(expr),
+            iterator.next().map(Target::new_non_iterator),
+        )
     }
 }
 
@@ -2839,7 +2842,7 @@ impl<'db> Target<'db> {
         } else if node.is_type(Nonterminal(star_target)) {
             Self::Starred(StarTarget::new(node))
         } else {
-            unreachable!();
+            unreachable!("{:?}", node);
         }
     }
 

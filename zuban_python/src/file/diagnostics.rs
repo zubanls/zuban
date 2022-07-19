@@ -115,9 +115,28 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         self.calc_block_diagnostics(else_block.block(), class, func)
                     }
                 }
-                StmtContent::WithStmt(with_stmt) => {}
-                StmtContent::MatchStmt(match_stmt) => {}
-                StmtContent::AsyncStmt(async_stmt) => {}
+                StmtContent::WithStmt(with_stmt) => {
+                    let (with_items, block) = with_stmt.unpack();
+                    for with_item in with_items.iter() {
+                        let (expr, target) = with_item.unpack();
+                        let result = self.infer_expression(expr);
+                        if let Some(target) = target {
+                            self.assign_targets(
+                                target,
+                                &result,
+                                NodeRef::new(self.file, expr.index()),
+                                true,
+                            )
+                        }
+                    }
+                    self.calc_block_diagnostics(block, class, func);
+                }
+                StmtContent::MatchStmt(match_stmt) => {
+                    todo!()
+                }
+                StmtContent::AsyncStmt(async_stmt) => {
+                    todo!()
+                }
                 StmtContent::Newline => {}
             };
             self.file
