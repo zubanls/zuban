@@ -198,8 +198,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => Match::False,
                 }
             }
-            Self::FunctionType(_) => {
-                matches!(other, Self::Callable(_) | Self::FunctionType(_))
+            Self::FunctionType(f1) => {
+                return match other {
+                    Self::Callable(c2) => f1.matches(i_s, matcher, c2),
+                    Self::FunctionType(f2) => f1.matches(i_s, matcher, f2),
+                    _ => Match::False,
+                };
             }
             Self::Callable(c1) => {
                 if let Self::Type(cls) = other {
