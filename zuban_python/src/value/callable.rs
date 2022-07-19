@@ -12,7 +12,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::params::Param;
 
-pub fn matches_signature<'db: 'x, 'x>(
+pub fn matches_params<'db: 'x, 'x>(
     i_s: &mut InferenceState<'db, '_>,
     mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,

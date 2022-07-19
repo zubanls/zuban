@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::callable::matches_signature;
+use super::callable::matches_params;
 use super::{
     CallableClass, CallableLike, Function, LookupResult, Module, OnTypeError, TupleClass,
     TypingClass, Value, ValueKind,
@@ -46,7 +46,7 @@ macro_rules! matches_callable {
             $matcher.as_deref_mut(),
             other_result,
             Variance::Covariant,
-        ) & matches_signature($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
+        ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
             | Match::FalseButSimilar
     }};
 }
