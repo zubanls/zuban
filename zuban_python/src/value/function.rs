@@ -408,11 +408,22 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
             let result = format!(
                 "Callable[[{}], {}]",
                 self.iter_params()
-                    .map(|g| g.annotation_type(i_s).unwrap_or(Type::Any).format(
-                        i_s,
-                        self.class.as_ref(),
-                        style
-                    ))
+                    .map(|param| {
+                        let t = param.annotation_type(i_s).unwrap_or(Type::Any).format(
+                            i_s,
+                            self.class.as_ref(),
+                            style,
+                        );
+                        match param.param_type() {
+                            ParamType::PositionalOnly => todo!(),
+                            ParamType::PositionalOrKeyword => t.into(),
+                            ParamType::KeywordOnly => {
+                                format!("NamedArg({t}, '{}')", param.name().unwrap())
+                            }
+                            ParamType::Starred => todo!(),
+                            ParamType::DoubleStarred => todo!(),
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join(", "),
                 ret.as_deref().unwrap_or("Any"),
