@@ -1,4 +1,25 @@
+testNestedConditionalFunctionDefinitionWithIfElse
+testFunctionDefinitionWithForStatement
+testBareCallable
+testFunctionNestedWithinWith
+testFunctionDefinitionWithWhileStatement
+testCallConditionalMethodInClassBody
+testCallableWithArbitraryArgsInGenericFunction
+testCallableWithArbitraryArgsSubtypingWithGenericFunc
+testRedefineFunction
+testGenericFunctionTypeDecl
+testFunctionReturningGenericFunction
+testFunctionReturningGenericFunctionPartialBinding
+testFunctionReturningGenericFunctionTwoLevelBinding
+testAnonymousArgumentError
+testMissingArgumentErrorMoreThanOneOptional
+testMissingArgumentsError
+testInferredTypeIsObjectMismatch
+testAnyArgument
+testCallableArgument
+
 testSubtypingGenericTypeObject
+testSubtypingTypeTypeAsCallable
 
 testSubtypingFunctionsDefaultsNames
 
@@ -23,6 +44,7 @@ testOverloadWithDerivedFromAny
 # - wtf List item 0 has incompatible type "List[str]"; expected "int"
 testPreferExactSignatureMatchInOverload
 testBadOverloadProbableMatch
+testInferConstraintsUnequalLengths
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
 testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
@@ -133,6 +155,8 @@ testTypevarValuesWithOverloadedFunctionSpecialCase
 testIntersectionTypeCompatibility
 testVeryBrokenOverload
 testVeryBrokenOverload2
+testFunctionTypesWithOverloads
+testOverloadWithThreeItems
 # overload self type
 testOverloadAndSelfTypes
 # overload operator
@@ -163,6 +187,36 @@ testSubtypingIterableUnpacking2
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
+
+# Param spec
+testCallableWithNamedArg
+testCallableWithOptionalArg
+testCallableWithNamedArgFromExpr
+testCallableWithOptionalArgFromExpr
+testCallableParsingSameName
+testCallableParsingFromExpr
+testCallableParsing
+testCallableTypeAnalysis
+testCallableWrongTypeType
+testCallableTooManyVarArg
+testCallableFastParseGood
+testCallableFastParseBadArgArgName
+testCallableKindsOrdering
+testCallableDuplicateNames
+testCallableWithKeywordOnlyArg
+testCallableWithKeywordOnlyOptionalArg
+testCallableWithKwargs
+testCallableWithVarArg
+testCallableArgKindSubtyping
+
+# Cannot use a covariant type variable as a parameter
+testRejectCovariantArgument
+testRejectCovariantArgumentSplitLine
+testRejectCovariantArgumentInLambda
+# Cannot use a contravariant type variable as return type
+testRejectContravariantReturnType
+testAcceptCovariantReturnType
+testAcceptContravariantArgument
 
 # Not matching type vars
 testJoinUnionWithUnionAndAny
@@ -324,6 +378,8 @@ testInvalidArgCountForProperty
 testNewAnalyzerProperty
 testNewAnalyzerNoCrashOnCustomProperty
 testOverloadNotConfusedForProperty
+testForwardReferenceToDynamicallyTypedProperty
+testForwardReferenceToStaticallyTypedProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -347,10 +403,20 @@ testOverloadClassmethodDisappears
 testOverloadWithClassMethods
 testOverloadWithInconsistentClassMethods
 testOverloadAndClassTypes
+testForwardReferenceToDynamicallyTypedClassMethod
+testForwardReferenceToStaticallyTypedClassMethod
 
 # staticmethod
 testStaticmethodAndNonMethod
 testBoundStaticMethod
+testForwardReferenceToDynamicallyTypedStaticMethod
+testForwardReferenceToStaticallyTypedStaticMethod
+
+# All conditional function variants must have identical signatures
+testIncompatibleConditionalFunctionDefinition*
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
+testIncompatibleConditionalMethodDefinition
 
 # NamedTuple
 *NamedTuple*
@@ -358,6 +424,8 @@ testNewAnalyzerTupleIteration
 testDistinctTypes
 testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
+# namedtuple
+testCallableParsingInInheritence
 
 
 # Typing stuff
@@ -396,6 +464,9 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
+
+# typing.no_type_check
+*NoTypeCheck*
 
 # Incomplete Unions: `int | int`
 testNewAnalyzerForwardAliasFromUnion
@@ -439,6 +510,7 @@ testKwargsAllowedInDunderCallKwOnly
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
+testDynamicallyTypedNestedFunction
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -451,10 +523,16 @@ testNewAnalyzerVersionCheck*
 testNewAnalyzerVarTypeVarNoCrash
 testOverloadLambdaUnpackingInference
 testOverloadedToGeneric
+testLambdaSemanal
+testLambdaTypeCheck
+testLambdaTypeInference
+testLambdaDefaultTypeErrors
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
 testNewAnalyzerConditionallyDefineFuncOverVar
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # isinstance flow analysis
 testIsinstanceAndTypeVarValues*
@@ -611,6 +689,9 @@ testDifferentImportSameNameTwice
 testNewAnalyzerRedefineAsOverload
 testImportOnTopOfAlias1
 testImportOnTopOfAlias2
+testUnconditionalRedefinitionOfConditionalFunction
+testUnconditionalRedefinitionOfConditionalMethod
+testRedefineFunction2
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -624,6 +705,10 @@ testModuleAliasRepeated
 testModuleAliasRepeatedComplex
 testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
+# Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
+testRedefineFunctionDefinedAsVariableWithInvalidSignature
+# Incompatible redefinition
+testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 
 # BoundMethod type
 testForwardReferenceToListAlias
@@ -686,6 +771,24 @@ testSubtypingWithGenericFunctionUsingTypevarWithValues
 
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
+testDefaultArgumentsWithSubtypes
+testMultipleDefaultArgumentExpressions
+testMultipleDefaultArgumentExpressions2
+testDefaultArgumentsAndSignatureAsComment
+testMethodDefaultArgumentsAndSignatureAsComment
+# Incompatible default for argument "x"  (default has type "B", argument has type "A")
+testDefaultArgumentExpressions2
+testDefaultArgumentExpressionsGeneric
+
+
+# data attributes Callable as a bound method
+testMethodAsDataAttribute*
+testMethodWithInvalidMethodAsDataAttribute
+testMethodWithDynamicallyTypedMethodAsDataAttribute
+testOverloadedMethodAsDataAttribute
+testInvalidMethodAsDataAttributeInGenericClass
+testPartiallyTypedSelfInMethodDataAttribute
+testCallableDataAttribute
 
 # flow graph
 testAssignAndConditional*
@@ -769,17 +872,22 @@ testSubtypingMappingUnpacking3
 testNotDirectIterableAndMappingSubtyping
 testUnpackInExpression3-only_when_nocache
 
-# "???" does not return a value
+# "???" does not return a value / Function does not return a value
 testCallingVarArgsFunction
+testFunctionTypeCompatibilityWithOtherTypes
 
 # Implicit Param Option X = None -> Optional[X] inference
 testCallingVarArgsFunctionWithDefaultArgs
 testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
+testCallingFunctionsWithDefaultArgumentValues
 
 # Option[X] <-> Union[X, None] mixups
 testOptional
+
+# Cannot call function of unknown type
+testUnknownFunctionNotCallable
 
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
@@ -842,6 +950,7 @@ testInitReturnTypeError
 # Need type annotation for "X"
 testNewAnalyzerLessErrorsNeedAnnotation*
 testErrorInTypeCheckSecondPassThroughPropagation
+testGenericFunctionOnReturnTypeOnly
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -852,6 +961,7 @@ testAssignmentInvariantNoteForDict
 testInvariantListArgNote
 testInvariantDictArgNote
 testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
+testInferredTypeSubTypeOfReturnType
 
 # List unpacking
 testMultipleAssignmentWithLists
@@ -906,6 +1016,8 @@ testVariableDeclWithInvalidNumberOfTypesNested5
 # Syntax error in type annotation
 # Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 testImplicitTuple2
+# Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value
+testReturnEmptyTuple
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same # error twice
 testOperatorAssignmentWithIndexLvalue1
@@ -994,6 +1106,13 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 
+# param with leading __
+testLackOfNames
+testLackOfNamesFastparse
+testPositionalOnlyArg
+testMagicMethodPositionalOnlyArg
+testMagicMethodPositionalOnlyArgFastparse
+
 # for type comment
 testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
@@ -1010,6 +1129,13 @@ testKeywordArgumentAndCommentSignature
 testKeywordArgumentAndCommentSignature2
 testKeywordVarArgsAndCommentSignature
 testWrongNumberOfArguments
+testNestedFunctionInMethodWithTooFewArgumentsInTypeComment
+testDeepNestedFunctionWithTooFewArgumentsInTypeComment
+testDeepNestedMethodInTypeComment
+testEllipsisWithArbitraryArgsOnBareFunctionWithKwargs
+testEllipsisWithArbitraryArgsOnBareFunctionWithVarargs
+testEllipsisWithSomethingAfterItFails
+testEllipsisWithSomethingBeforeItFails
 
 # --scripts-are-modules
 testScriptsAreModules
@@ -1017,6 +1143,9 @@ testScriptsAreModules
 # cmd: mypy ...
 testNonExistentFileOnCommandLine1
 testInlineConfigFineGrained*
+
+# Won't support: reveal_locals
+testRevealLocalsFunction
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
