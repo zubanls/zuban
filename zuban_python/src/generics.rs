@@ -5,7 +5,6 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{Argument, Arguments};
-use crate::database::CallableParam;
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars,
     Variance,
@@ -18,8 +17,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{
-    Callable, CallableClass, CallableLike, Class, ClassLike, Function, OnTypeError, TupleClass,
-    Value,
+    Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
 
 pub enum SignatureMatch {

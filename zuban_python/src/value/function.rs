@@ -5,10 +5,7 @@ use parsa_python_ast::{
 use std::fmt;
 use std::rc::Rc;
 
-use super::{
-    CallableLike, CallableLikeParamIterator, ClassLike, LookupResult, Module, OnTypeError, Value,
-    ValueKind,
-};
+use super::{CallableLike, ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -238,6 +235,10 @@ impl<'db, 'a> Function<'db, 'a> {
         self.node().params().iter()
     }
 
+    pub fn param_iterator(&self) -> Option<ParamIterator<'db>> {
+        Some(self.iter_params())
+    }
+
     fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -305,13 +306,6 @@ impl<'db, 'a> Function<'db, 'a> {
 }
 
 impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
-    fn param_iterator(&self) -> Option<CallableLikeParamIterator<'db, 'a>> {
-        Some(CallableLikeParamIterator::Function(
-            self.node_ref.file,
-            self.iter_params(),
-        ))
-    }
-
     fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         self.return_annotation()
             .map(|a| {

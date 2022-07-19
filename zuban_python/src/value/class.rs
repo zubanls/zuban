@@ -2,6 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
+use super::callable::matches_signature;
 use super::{
     CallableClass, CallableLike, Function, LookupResult, Module, OnTypeError, TupleClass,
     TypingClass, Value, ValueKind,
@@ -35,6 +36,19 @@ pub enum ClassLike<'db, 'a> {
     TypingClassType(TypingClass),
     NoneType,
     AnyType,
+}
+
+macro_rules! matches_callable {
+    ($i_s:ident, $matcher:ident, $c1:ident, $c2:ident) => {{
+        let other_result = $c2.result_type($i_s);
+        $c1.result_type($i_s).matches(
+            $i_s,
+            $matcher.as_deref_mut(),
+            other_result,
+            Variance::Covariant,
+        ) & matches_signature($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
+            | Match::FalseButSimilar
+    }};
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -200,8 +214,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::FunctionType(f1) => {
                 return match other {
-                    Self::Callable(c2) => f1.matches(i_s, matcher, c2, Some(f1), None),
-                    Self::FunctionType(f2) => f1.matches(i_s, matcher, f2, Some(f1), Some(f2)),
+                    Self::Callable(c2) => matches_callable!(i_s, matcher, f1, c2),
+                    Self::FunctionType(f2) => matches_callable!(i_s, matcher, f1, f2),
                     _ => Match::False,
                 };
             }
@@ -233,8 +247,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     return Match::False;
                 }
                 return match other {
-                    Self::Callable(c2) => c1.matches(i_s, matcher, c2, None, None),
-                    Self::FunctionType(f2) => c1.matches(i_s, matcher, f2, None, Some(f2)),
+                    Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
+                    Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
                     _ => Match::False,
                 };
             }
