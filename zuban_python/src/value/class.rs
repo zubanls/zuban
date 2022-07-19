@@ -220,33 +220,33 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 };
             }
             Self::Callable(c1) => {
-                if let Self::Type(cls) = other {
-                    /*
-                    // TODO the __init__ should actually be looked up on the original class, not
-                    // the subclass
-                    if let LookupResult::GotoName(_, init) = cls.lookup_internal(i_s, "__init__") {
-                        if let Type::ClassLike(ClassLike::FunctionType(f)) = init.class_as_type(i_s)
-                        {
-                            // Since __init__ does not have a return, We need to check the params
-                            // of the __init__ functions and the class as a return type separately.
-                            return c1.result_type(i_s).matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                Type::ClassLike(ClassLike::Class(*cls)),
-                                variance,
-                            ) & c1.param_generics().matches(
-                                i_s,
-                                matcher,
-                                Generics::FunctionParams(&f),
-                                variance,
-                                None,
-                            );
-                        }
-                    }
-                    */
-                    return Match::False;
-                }
                 return match other {
+                    Self::Type(cls) => {
+                        // TODO the __init__ should actually be looked up on the original class, not
+                        // the subclass
+                        if let LookupResult::GotoName(_, init) =
+                            cls.lookup_internal(i_s, "__init__")
+                        {
+                            if let Type::ClassLike(ClassLike::FunctionType(f)) =
+                                init.class_as_type(i_s)
+                            {
+                                // Since __init__ does not have a return, We need to check the params
+                                // of the __init__ functions and the class as a return type separately.
+                                return c1.result_type(i_s).matches(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    Type::ClassLike(ClassLike::Class(*cls)),
+                                    Variance::Covariant,
+                                ) & matches_params(
+                                    i_s,
+                                    matcher,
+                                    c1.param_iterator(),
+                                    f.param_iterator().map(|i| i.skip(1)),
+                                );
+                            }
+                        }
+                        return Match::False;
+                    }
                     Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
                     _ => Match::False,

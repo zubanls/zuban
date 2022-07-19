@@ -18,9 +18,6 @@ testInferredTypeIsObjectMismatch
 testAnyArgument
 testCallableArgument
 
-testSubtypingGenericTypeObject
-testSubtypingTypeTypeAsCallable
-
 testSubtypingFunctionsDefaultsNames
 
 # Overloading
