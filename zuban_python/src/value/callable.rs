@@ -18,16 +18,16 @@ use crate::params::Param;
 pub fn matches_signature<'db: 'x, 'x>(
     i_s: &mut InferenceState<'db, '_>,
     mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-    params1: Option<impl Iterator<Item = impl Param<'x>>>,
-    params2: Option<impl Iterator<Item = impl Param<'x>>>,
+    params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+    params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
 ) -> Match {
     if let Some(mut other_params) = params1 {
         if let Some(self_params) = params2 {
             let mut matches = Match::True;
             for param1 in self_params {
                 if let Some(param2) = other_params.next() {
-                    if let Some(t1) = param1.annotation_type(i_s, None) {
-                        if let Some(t2) = param2.annotation_type(i_s, None) {
+                    if let Some(t1) = param1.annotation_type(i_s) {
+                        if let Some(t2) = param2.annotation_type(i_s) {
                             matches &=
                                 t1.matches(i_s, matcher.as_deref_mut(), t2, Variance::Contravariant)
                         }

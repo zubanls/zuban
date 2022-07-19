@@ -508,7 +508,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         result
     }
 
-    fn calculate_type_vars_for_params<'x, P: Param<'x>>(
+    fn calculate_type_vars_for_params<'x, P: Param<'db, 'x>>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
@@ -527,7 +527,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 continue;
             }
             if let Some(argument) = p.argument {
-                if let Some(annotation_type) = p.param.annotation_type(i_s, function) {
+                if let Some(annotation_type) = p.param.annotation_type(i_s) {
                     let value = argument.infer(i_s);
                     let value_class = value.class_as_type(i_s);
 

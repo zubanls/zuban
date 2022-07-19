@@ -14,7 +14,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, GenericsIterator, SignatureMatch, Type, TypeVarMatcher};
+use crate::generics::{Generics, SignatureMatch, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -77,15 +77,23 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator::new(params, args.iter_arguments())
+        InferrableParamIterator::new(self.node_ref.file, params, args.iter_arguments())
     }
 
     pub fn iter_args_with_params<'b>(
         &self,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = ASTParam<'db>>, ASTParam<'db>> {
-        let mut params = self.node().params().iter();
+    ) -> InferrableParamIterator2<
+        'db,
+        'b,
+        impl Iterator<Item = FunctionParam<'db, 'b>>,
+        FunctionParam<'db, 'b>,
+    >
+    where
+        'a: 'b,
+    {
+        let mut params = self.iter_params();
         if skip_first_param {
             params.next();
         }
@@ -230,12 +238,14 @@ impl<'db, 'a> Function<'db, 'a> {
         self.type_vars(i_s)
     }
 
-    pub fn iter_params(&self) -> ParamIterator<'db> {
-        //self.content.params.as_ref().map(Generics::new_list).unwrap_or(Generics::None)
-        self.node().params().iter()
+    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'db, 'a>> {
+        self.node().params().iter().map(|param| FunctionParam {
+            file: self.node_ref.file,
+            param,
+        })
     }
 
-    pub fn param_iterator(&self) -> Option<ParamIterator<'db>> {
+    pub fn param_iterator(&self) -> Option<impl Iterator<Item = FunctionParam<'db, 'a>>> {
         Some(self.iter_params())
     }
 
@@ -337,9 +347,7 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
                 .iter_params()
                 .enumerate()
                 .map(|(i, p)| {
-                    let annotation_str = p
-                        .annotation_type(i_s, Some(self))
-                        .map(|t| t.format(i_s, None, style));
+                    let annotation_str = p.annotation_type(i_s).map(|t| t.format(i_s, None, style));
                     let stars = match p.param_type() {
                         ParamType::Starred => "*",
                         ParamType::DoubleStarred => "**",
@@ -396,21 +404,19 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
                 format!("def {type_var_str}{name}({args}) -> {result}").into()
             }
         } else {
-            let generics = GenericsIterator::ParamIterator(self.node_ref.file, self.iter_params());
-
-            let mut result = "Callable[[".to_owned();
-            let mut first = true;
-            generics.run_on_all(i_s, &mut |i_s, g| {
-                if !first {
-                    result += ", ";
-                }
-                result += &g.format(i_s, self.class.as_ref(), style);
-                first = false;
-            });
-            result += "], ";
             let ret = node.return_annotation().map(|a| return_type(i_s, a));
-            result += ret.as_deref().unwrap_or("Any");
-            result += "]";
+            let result = format!(
+                "Callable[[{}], {}]",
+                self.iter_params()
+                    .map(|g| g.annotation_type(i_s).unwrap_or(Type::Any).format(
+                        i_s,
+                        self.class.as_ref(),
+                        style
+                    ))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                ret.as_deref().unwrap_or("Any"),
+            );
             result.into()
         }
     }
@@ -486,38 +492,72 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct FunctionParam<'db, 'x> {
+    file: &'db PythonFile,
+    param: ASTParam<'x>,
+}
+
+impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
+    fn has_default(&self) -> bool {
+        self.param.default().is_some()
+    }
+
+    fn name(&self) -> Option<&str> {
+        Some(self.param.name_definition().as_code())
+    }
+
+    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
+        self.param.annotation().map(|annotation| {
+            self.file
+                .inference(i_s)
+                .use_cached_annotation_type(annotation)
+        })
+    }
+
+    fn param_type(&self) -> ParamType {
+        self.param.type_()
+    }
+}
+
 pub struct InferrableParamIterator<'db, 'a> {
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
+    file: &'db PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
 
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
-    fn new(params: ParamIterator<'db>, arguments: ArgumentIterator<'db, 'a>) -> Self {
+    fn new(
+        file: &'db PythonFile,
+        params: ParamIterator<'db>,
+        arguments: ArgumentIterator<'db, 'a>,
+    ) -> Self {
         Self {
             arguments,
+            file,
             params,
             unused_keyword_arguments: vec![],
         }
     }
 
-    fn next_argument(&mut self, param: &ASTParam<'db>) -> ParamInput<'db, 'a> {
+    fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match unused {
                 Argument::Keyword(name, reference) => {
-                    if *name == param.name_definition().name().as_str() {
+                    if *name == param.name().unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
                 }
                 _ => unreachable!(),
             }
         }
-        match param.type_() {
+        match param.param_type() {
             ParamType::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument {
                         Argument::Keyword(name, reference) => {
-                            if name == param.name_definition().name().as_str() {
+                            if name == param.name().unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
@@ -531,7 +571,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 for argument in &mut self.arguments {
                     match argument {
                         Argument::Keyword(name, reference) => {
-                            if name == param.name_definition().name().as_str() {
+                            if name == param.name().unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
@@ -567,6 +607,10 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.params.next().map(|param| {
+            let param = FunctionParam {
+                file: self.file,
+                param,
+            };
             let argument = self.next_argument(&param);
             InferrableParam { param, argument }
         })
@@ -596,13 +640,13 @@ pub trait ParamWithArgument<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
-    pub param: ASTParam<'db>,
+    pub param: FunctionParam<'db, 'a>,
     argument: ParamInput<'db, 'a>,
 }
 
 impl<'db> InferrableParam<'db, '_> {
     fn is_at(&self, index: NodeIndex) -> bool {
-        self.param.name_definition().index() == index
+        self.param.param.name_definition().index() == index
     }
 
     pub fn has_argument(&self) -> bool {
@@ -611,10 +655,7 @@ impl<'db> InferrableParam<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         if !matches!(&self.argument, ParamInput::None) {
-            debug!(
-                "Infer param {:?}",
-                self.param.name_definition().name().as_str()
-            );
+            debug!("Infer param {:?}", self.param.name());
         }
         match &self.argument {
             ParamInput::Argument(arg) => Some(arg.infer(i_s)),

@@ -1,52 +1,19 @@
-use parsa_python_ast::{Param as ASTParam, ParamType};
+use parsa_python_ast::ParamType;
 
 use crate::arguments::{Argument, ArgumentIterator};
 use crate::database::CallableParam;
 use crate::generics::Type;
 use crate::inference_state::InferenceState;
-use crate::value::{Function, ParamWithArgument};
+use crate::value::ParamWithArgument;
 
-pub trait Param<'x>: Copy {
+pub trait Param<'db, 'x>: Copy {
     fn has_default(&self) -> bool;
     fn name(&self) -> Option<&str>;
-    fn annotation_type<'db>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'x>>;
+    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
     fn param_type(&self) -> ParamType;
 }
 
-impl<'x> Param<'x> for ASTParam<'x> {
-    fn has_default(&self) -> bool {
-        self.default().is_some()
-    }
-
-    fn name(&self) -> Option<&str> {
-        Some(self.name_definition().as_code())
-    }
-
-    fn annotation_type<'db>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'x>> {
-        self.annotation().map(|annotation| {
-            function
-                .unwrap()
-                .node_ref
-                .file
-                .inference(i_s)
-                .use_cached_annotation_type(annotation)
-        })
-    }
-
-    fn param_type(&self) -> ParamType {
-        self.type_()
-    }
-}
-
-impl<'x> Param<'x> for &'x CallableParam {
+impl<'db, 'x> Param<'db, 'x> for &'x CallableParam {
     fn has_default(&self) -> bool {
         false
     }
@@ -55,11 +22,7 @@ impl<'x> Param<'x> for &'x CallableParam {
         None
     }
 
-    fn annotation_type<'db>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        function: Option<&Function<'db, '_>>,
-    ) -> Option<Type<'db, 'x>> {
+    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
         Some(Type::from_db_type(i_s.db, &self.db_type))
     }
 
@@ -94,7 +57,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'x>> Iterator
+impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
     for InferrableParamIterator2<'db, 'a, I, P>
 {
     type Item = InferrableParam2<'db, 'a, P>;
