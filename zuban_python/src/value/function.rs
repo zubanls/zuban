@@ -420,8 +420,8 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
                             ParamType::KeywordOnly => {
                                 format!("NamedArg({t}, '{}')", param.name().unwrap())
                             }
-                            ParamType::Starred => todo!(),
-                            ParamType::DoubleStarred => todo!(),
+                            ParamType::Starred => format!("VarArg({t})"),
+                            ParamType::DoubleStarred => format!("KwArg({t})"),
                         }
                     })
                     .collect::<Vec<_>>()

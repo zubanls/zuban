@@ -1,5 +1,6 @@
-testSubtypingWithGenericFunctionUsingTypevarWithValues2
 testSubtypingGenericTypeObject
+
+testSubtypingFunctionsDefaultsNames
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1

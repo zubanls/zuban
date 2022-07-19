@@ -23,6 +23,9 @@ pub fn matches_params<'db: 'x, 'x>(
             let mut matches = Match::True;
             for param1 in params1 {
                 if let Some(param2) = params2.next() {
+                    if param1.param_type() != param2.param_type() {
+                        return Match::False;
+                    }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
                             matches &=
