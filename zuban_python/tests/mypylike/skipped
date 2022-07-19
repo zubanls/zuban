@@ -1,4 +1,3 @@
-testNestedConditionalFunctionDefinitionWithIfElse
 testFunctionDefinitionWithForStatement
 testBareCallable
 testFunctionDefinitionWithWhileStatement
@@ -18,6 +17,7 @@ testAnyArgument
 testCallableArgument
 
 testSubtypingFunctionsDefaultsNames
+testSubtypingFunctionsArgsKwargs
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
