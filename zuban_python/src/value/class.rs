@@ -201,7 +201,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(_) => {
                 matches!(other, Self::Callable(_) | Self::FunctionType(_))
             }
-            Self::Callable(c) => {
+            Self::Callable(c1) => {
                 if let Self::Type(cls) = other {
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
@@ -210,12 +210,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         {
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
-                            return c.result_type(i_s).matches(
+                            return c1.result_type(i_s).matches(
                                 i_s,
                                 matcher.as_deref_mut(),
                                 Type::ClassLike(ClassLike::Class(*cls)),
                                 variance,
-                            ) & c.param_generics().matches(
+                            ) & c1.param_generics().matches(
                                 i_s,
                                 matcher,
                                 Generics::FunctionParams(&f),
@@ -226,7 +226,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                     return Match::False;
                 }
-                matches!(other, Self::Callable(_) | Self::FunctionType(_))
+                return match other {
+                    Self::Callable(c2) => c1.matches(i_s, matcher, c2),
+                    Self::FunctionType(f2) => c1.matches(i_s, matcher, f2),
+                    _ => Match::False,
+                };
             }
             Self::TypingClass(c) => match other {
                 Self::Tuple(c2) => c.specific == Specific::TypingTuple,

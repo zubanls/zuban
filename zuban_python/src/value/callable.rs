@@ -1,10 +1,12 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars};
+use crate::database::{
+    CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars, Variance,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::generics::{Generics, Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -13,6 +15,26 @@ pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
     fn param_generics(&self) -> Generics<'db, '_>;
     fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a>;
     fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
+    fn matches<T: CallableLike<'db, 'a>>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        other: &T,
+    ) -> Match {
+        let other_result = other.result_type(i_s);
+        self.result_type(i_s).matches(
+            i_s,
+            matcher.as_deref_mut(),
+            other_result,
+            Variance::Covariant,
+        ) & self.param_generics().matches(
+            i_s,
+            matcher,
+            other.param_generics(),
+            Variance::Contravariant,
+            None,
+        ) | Match::FalseButSimilar
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
