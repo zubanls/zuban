@@ -1,5 +1,3 @@
-use parsa_python_ast::ParamIterator;
-
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
@@ -8,7 +6,6 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonFile;
 use crate::generics::{Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -51,11 +48,6 @@ pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
     fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
 }
 
-pub enum CallableLikeParamIterator<'db, 'a> {
-    Callable(std::slice::Iter<'a, CallableParam>),
-    Function(&'db PythonFile, ParamIterator<'db>),
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,
@@ -85,31 +77,6 @@ impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
         self.content.format(i_s.db, style).into()
     }
 }
-
-/*
-enum foo {
-    Params(&'a [CallableParam]),
-    FunctionParams(&'a Function<'db, 'a>),
-            Self::Params(p) => GenericsIterator::Params(p.iter()),
-            Self::FunctionParams(f) => {
-                GenericsIterator::ParamIterator(f.node_ref.file, f.iter_params())
-            }
-    Params(std::slice::Iter<'a, CallableParam>),
-    ParamIterator(&'db PythonFile, ParamIterator<'db>),
-
-            Self::Params(iterator) => iterator
-                .next()
-                .map(|p| callable(i_s, Type::from_db_type(i_s.db, &p.db_type))),
-            Self::ParamIterator(f, params) => params.next().map(|p| {
-                p.annotation()
-                    .map(|a| {
-                        let t = f.inference(i_s).use_cached_annotation_type(a);
-                        callable(i_s, t)
-                    })
-                    .unwrap_or_else(|| callable(i_s, Type::None))
-            }),
-}
-*/
 
 impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     fn kind(&self) -> ValueKind {
