@@ -18,11 +18,11 @@ pub fn matches_params<'db: 'x, 'x>(
     params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
     params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
 ) -> Match {
-    if let Some(mut other_params) = params1 {
-        if let Some(self_params) = params2 {
+    if let Some(params1) = params1 {
+        if let Some(mut params2) = params2 {
             let mut matches = Match::True;
-            for param1 in self_params {
-                if let Some(param2) = other_params.next() {
+            for param1 in params1 {
+                if let Some(param2) = params2.next() {
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
                             matches &=
@@ -33,7 +33,7 @@ pub fn matches_params<'db: 'x, 'x>(
                     return Match::False;
                 }
             }
-            if other_params.next().is_some() {
+            if params2.next().is_some() {
                 return Match::False;
             }
             return matches;
