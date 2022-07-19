@@ -1,8 +1,6 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 
-use parsa_python_ast::{
-    Expression, ParamIterator, ParamType, SliceContent, SliceIterator, SliceType, Slices,
-};
+use parsa_python_ast::{Expression, ParamType, SliceContent, SliceIterator, SliceType, Slices};
 
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
@@ -301,7 +299,6 @@ impl<'db, 'a> Generics<'db, 'a> {
 pub enum GenericsIterator<'db, 'a> {
     SimpleGenericSliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'db, 'a>>),
-    ParamIterator(&'db PythonFile, ParamIterator<'db>), // TODO remove this
     DbType(&'a DbType),
     Class(&'a Class<'db, 'a>),
     SimpleGenericExpression(&'db PythonFile, Expression<'db>),
@@ -345,14 +342,6 @@ impl<'db> GenericsIterator<'db, '_> {
                 *self = Self::None;
                 Some(result)
             }
-            Self::ParamIterator(f, params) => params.next().map(|p| {
-                p.annotation()
-                    .map(|a| {
-                        let t = f.inference(i_s).use_cached_annotation_type(a);
-                        callable(i_s, t)
-                    })
-                    .unwrap_or_else(|| callable(i_s, Type::None))
-            }),
             Self::None => None,
         }
     }
