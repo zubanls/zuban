@@ -1,4 +1,5 @@
-
+testSubtypingWithGenericFunctionUsingTypevarWithValues2
+testSubtypingGenericTypeObject
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1

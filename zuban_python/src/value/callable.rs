@@ -1,4 +1,6 @@
-use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use parsa_python_ast::ParamIterator;
+
+use super::{ClassLike, Function, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
@@ -6,13 +8,15 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Match, Type, TypeVarMatcher};
+use crate::file::PythonFile;
+use crate::generics::{Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::params::Param;
 
 pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
-    fn param_generics(&self) -> Generics<'db, '_>;
+    fn param_iterator(&self) -> Option<CallableLikeParamIterator<'db, 'a>>;
     fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a>;
     fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
     fn matches<T: CallableLike<'db, 'a>>(
@@ -20,6 +24,8 @@ pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &T,
+        func1: Option<&Function<'db, '_>>,
+        func2: Option<&Function<'db, '_>>,
     ) -> Match {
         let other_result = other.result_type(i_s);
         self.result_type(i_s).matches(
@@ -27,13 +33,57 @@ pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
             matcher.as_deref_mut(),
             other_result,
             Variance::Covariant,
-        ) & self.param_generics().matches(
-            i_s,
-            matcher,
-            other.param_generics(),
-            Variance::Contravariant,
-            None,
-        ) | Match::FalseButSimilar
+        ) & self.matches_params(i_s, matcher, other, func1, func2)
+            | Match::FalseButSimilar
+    }
+
+    fn matches_params<T: CallableLike<'db, 'a>>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        other: &T,
+        func1: Option<&Function<'db, '_>>,
+        func2: Option<&Function<'db, '_>>,
+    ) -> Match {
+        if let Some(mut other_params) = other.param_iterator() {
+            if let Some(self_params) = self.param_iterator() {
+                let matches = Match::True;
+                for param1 in self_params {
+                    if let Some(param2) = other_params.next() {
+                        if let Some(t1) = param1.annotation_type(i_s, func1) {
+                            if let Some(t2) = param2.annotation_type(i_s, func2) {
+                                matches &= t1.matches(i_s, matcher, t2, Variance::Contravariant)
+                            }
+                        }
+                    } else {
+                        return Match::False;
+                    }
+                }
+                if other_params.next().is_some() {
+                    return Match::False;
+                }
+                return matches;
+            }
+        }
+        // If there are no params, it means that anything is accepted, i.e. *args, **kwargs
+        Match::True
+    }
+}
+
+pub enum CallableLikeParamIterator<'db, 'a> {
+    Callable(std::slice::Iter<'a, CallableParam>),
+    Function(&'db PythonFile, ParamIterator<'db>),
+}
+
+struct Foo {
+    foo: &'static dyn Param<'static>,
+}
+
+impl<'db: 'a, 'a> Iterator for CallableLikeParamIterator<'db, 'a> {
+    type Item = &'a dyn Param<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
     }
 }
 
@@ -54,12 +104,11 @@ impl<'a> CallableClass<'a> {
 }
 
 impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
-    fn param_generics(&self) -> Generics<'db, '_> {
+    fn param_iterator(&self) -> Option<CallableLikeParamIterator<'db, 'a>> {
         self.content
             .params
             .as_ref()
-            .map(|p| Generics::Params(p))
-            .unwrap_or(Generics::None)
+            .map(|params| CallableLikeParamIterator::Callable(params.iter()))
     }
 
     fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
@@ -70,6 +119,31 @@ impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
         self.content.format(i_s.db, style).into()
     }
 }
+
+/*
+enum foo {
+    Params(&'a [CallableParam]),
+    FunctionParams(&'a Function<'db, 'a>),
+            Self::Params(p) => GenericsIterator::Params(p.iter()),
+            Self::FunctionParams(f) => {
+                GenericsIterator::ParamIterator(f.node_ref.file, f.iter_params())
+            }
+    Params(std::slice::Iter<'a, CallableParam>),
+    ParamIterator(&'db PythonFile, ParamIterator<'db>),
+
+            Self::Params(iterator) => iterator
+                .next()
+                .map(|p| callable(i_s, Type::from_db_type(i_s.db, &p.db_type))),
+            Self::ParamIterator(f, params) => params.next().map(|p| {
+                p.annotation()
+                    .map(|a| {
+                        let t = f.inference(i_s).use_cached_annotation_type(a);
+                        callable(i_s, t)
+                    })
+                    .unwrap_or_else(|| callable(i_s, Type::None))
+            }),
+}
+*/
 
 impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
     fn kind(&self) -> ValueKind {

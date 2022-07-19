@@ -18,7 +18,8 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{
-    Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
+    Callable, CallableClass, CallableLike, Class, ClassLike, Function, OnTypeError, TupleClass,
+    Value,
 };
 
 pub enum SignatureMatch {
@@ -129,10 +130,8 @@ pub enum Generics<'db, 'a> {
     SimpleGenericExpression(&'db PythonFile, Expression<'db>),
     SimpleGenericSlices(&'db PythonFile, Slices<'db>),
     List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
-    Params(&'a [CallableParam]),
     Class(&'a Class<'db, 'a>),
     DbType(&'a DbType),
-    FunctionParams(&'a Function<'db, 'a>),
     None,
 }
 
@@ -188,7 +187,6 @@ impl<'db, 'a> Generics<'db, 'a> {
                     todo!()
                 }
             }
-            Self::Params(_) => todo!(),
             Self::DbType(g) => {
                 if n.as_usize() > 0 {
                     todo!()
@@ -196,7 +194,6 @@ impl<'db, 'a> Generics<'db, 'a> {
                 (*g).clone()
             }
             Self::Class(s) => todo!(),
-            Self::FunctionParams(f) => todo!(),
             Self::None => {
                 debug!("No generics given, but {n:?} was requested");
                 todo!()
@@ -215,10 +212,6 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIterator::DbType(g),
             Self::Class(s) => GenericsIterator::Class(*s),
-            Self::Params(p) => GenericsIterator::Params(p.iter()),
-            Self::FunctionParams(f) => {
-                GenericsIterator::ParamIterator(f.node_ref.file, f.iter_params())
-            }
             Self::None => GenericsIterator::None,
         }
     }
@@ -247,13 +240,11 @@ impl<'db, 'a> Generics<'db, 'a> {
             )),
             Self::DbType(g) => todo!(),
             Self::Class(_) => todo!(),
-            Self::FunctionParams(f) => todo!(),
             Self::List(l, type_var_generics) => Some(GenericsList::new_generics(
                 l.iter()
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
             )),
-            Self::Params(_) => todo!(),
             Self::None => None,
         }
     }
@@ -312,10 +303,9 @@ impl<'db, 'a> Generics<'db, 'a> {
 pub enum GenericsIterator<'db, 'a> {
     SimpleGenericSliceIterator(&'db PythonFile, SliceIterator<'db>),
     GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'db, 'a>>),
-    Params(std::slice::Iter<'a, CallableParam>),
+    ParamIterator(&'db PythonFile, ParamIterator<'db>), // TODO remove this
     DbType(&'a DbType),
     Class(&'a Class<'db, 'a>),
-    ParamIterator(&'db PythonFile, ParamIterator<'db>),
     SimpleGenericExpression(&'db PythonFile, Expression<'db>),
     None,
 }
@@ -347,9 +337,6 @@ impl<'db> GenericsIterator<'db, '_> {
                 let g = replace_class_vars!(i_s, g, type_var_generics);
                 callable(i_s, Type::from_db_type(i_s.db, &g))
             }),
-            Self::Params(iterator) => iterator
-                .next()
-                .map(|p| callable(i_s, Type::from_db_type(i_s.db, &p.db_type))),
             Self::DbType(g) => {
                 let result = Some(callable(i_s, Type::from_db_type(i_s.db, g)));
                 *self = Self::None;

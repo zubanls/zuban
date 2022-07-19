@@ -200,13 +200,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::FunctionType(f1) => {
                 return match other {
-                    Self::Callable(c2) => f1.matches(i_s, matcher, c2),
-                    Self::FunctionType(f2) => f1.matches(i_s, matcher, f2),
+                    Self::Callable(c2) => f1.matches(i_s, matcher, c2, Some(f1), None),
+                    Self::FunctionType(f2) => f1.matches(i_s, matcher, f2, Some(f1), Some(f2)),
                     _ => Match::False,
                 };
             }
             Self::Callable(c1) => {
                 if let Self::Type(cls) = other {
+                    /*
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
                     if let LookupResult::GotoName(_, init) = cls.lookup_internal(i_s, "__init__") {
@@ -228,11 +229,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             );
                         }
                     }
+                    */
                     return Match::False;
                 }
                 return match other {
-                    Self::Callable(c2) => c1.matches(i_s, matcher, c2),
-                    Self::FunctionType(f2) => c1.matches(i_s, matcher, f2),
+                    Self::Callable(c2) => c1.matches(i_s, matcher, c2, None, None),
+                    Self::FunctionType(f2) => c1.matches(i_s, matcher, f2, None, Some(f2)),
                     _ => Match::False,
                 };
             }
@@ -285,8 +287,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(c) => (Generics::Class(c), None),
             Self::TypeWithDbType(g) => (Generics::DbType(g), None),
             Self::Tuple(c) => (c.generics(), None),
-            Self::Callable(c) => (c.param_generics(), Some(c.result_type(i_s))),
-            Self::FunctionType(f) => (f.param_generics(), Some(f.result_type(i_s))),
+            Self::Callable(c) => unreachable!(),
+            Self::FunctionType(f) => unreachable!(),
             Self::TypingClass(_)
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
