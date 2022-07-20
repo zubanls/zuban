@@ -69,6 +69,7 @@ testUnsafeDunderOverlapInSubclass
 # - The implementation for an overloaded function must come last
 testInconsistentOverload
 testInconsistentOverload2
+
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 testTypeCheckOverloadWithUntypedImplAndMultipleVariants
 testTypeCheckOverloadImplementationTypeVarDifferingUsage2
@@ -107,16 +108,6 @@ testOverloadsTypesAndUnions
 testOverloadTwoTypeArgs
 testOverloadTupleInstance
 testOverloadTupleEllipsisNumargs
-# - Overloaded function implementation does not accept all possible arguments of signature 2
-testTypeCheckOverloadWithImplTooSpecificArg
-# - Overloaded function implementation cannot produce return type of signature 2
-testTypeCheckOverloadWithImplTooSpecificRetType
-testPreviousErrorInOverloadedFunction
-testOverloadsUpdatedTypeRechekConsistency
-testOverloadClassMethodImplementation
-testOverloadItemHasMoreGeneralReturnType
-# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
-testTypeCheckOverloadWithImplTypeVarProblems
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testOverloadRefresh
 testContravariantOverlappingOverloadSignatures
@@ -129,6 +120,17 @@ testOverloadFlagsPossibleMatches
 testOverloadPossibleOverlapWithVarargs
 testOverloadPossibleOverlapWithKwargs
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
+
+# - Overloaded function implementation does not accept all possible arguments of signature 2
+testTypeCheckOverloadWithImplTooSpecificArg
+# - Overloaded function implementation cannot produce return type of signature 2
+testTypeCheckOverloadWithImplTooSpecificRetType
+testPreviousErrorInOverloadedFunction
+testOverloadsUpdatedTypeRechekConsistency
+testOverloadClassMethodImplementation
+testOverloadItemHasMoreGeneralReturnType
+# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
+testTypeCheckOverloadWithImplTypeVarProblems
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 testOverloadWithInconsistentStaticMethods
