@@ -623,26 +623,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
         } else if self.should_generate_errors() {
-            for param in missing_params {
+            let mut missing_positional = vec![];
+            for param in &missing_params {
                 if let Some(param_name) = param.name() {
-                    let s = if param.param_type() == ParamType::KeywordOnly {
+                    if param.param_type() == ParamType::KeywordOnly {
                         let mut s = format!("Missing named argument {:?}", param_name);
                         if let Some(function) = function {
                             s += " for ";
                             s += &function.diagnostic_string(class);
                         }
-                        s
+                        self.args
+                            .as_node_ref()
+                            .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                     } else {
-                        let mut s = format!("Missing positional argument {:?} in call", param_name);
-                        if let Some(function) = function {
-                            s += " to ";
-                            s += &function.diagnostic_string(class);
-                        }
-                        s
-                    };
-                    self.args
-                        .as_node_ref()
-                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                        missing_positional.push(format!("\"{param_name}\""));
+                    }
                 } else {
                     self.args.as_node_ref().add_typing_issue(
                         i_s.db,
@@ -650,6 +645,25 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     );
                 }
             }
+            if let Some(mut s) = match &missing_positional[..] {
+                [] => None,
+                [param_name] => Some(format!(
+                    "Missing positional argument {} in call",
+                    param_name
+                )),
+                _ => Some(format!(
+                    "Missing positional arguments {} in call",
+                    missing_positional.join(", ")
+                )),
+            } {
+                if let Some(function) = function {
+                    s += " to ";
+                    s += &function.diagnostic_string(class);
+                }
+                self.args
+                    .as_node_ref()
+                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            };
         }
         match self.matches {
             Match::True => SignatureMatch::True,
