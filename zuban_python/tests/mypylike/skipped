@@ -1,20 +1,15 @@
-testCallConditionalMethodInClassBody
-testCallableWithArbitraryArgsInGenericFunction
-testCallableWithArbitraryArgsSubtypingWithGenericFunc
-testRedefineFunction
+# Next up
 testGenericFunctionTypeDecl
-testFunctionReturningGenericFunction
-testFunctionReturningGenericFunctionPartialBinding
-testFunctionReturningGenericFunctionTwoLevelBinding
-testAnonymousArgumentError
 testMissingArgumentErrorMoreThanOneOptional
 testMissingArgumentsError
 testInferredTypeIsObjectMismatch
 testAnyArgument
 testCallableArgument
 
-testSubtypingFunctionsDefaultsNames
-testSubtypingFunctionsArgsKwargs
+# Type Var Binding
+testFunctionReturningGenericFunction
+testFunctionReturningGenericFunctionPartialBinding
+testFunctionReturningGenericFunctionTwoLevelBinding
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
@@ -310,6 +305,8 @@ testOverloadAgainstEmptyCovariantCollections
 testGenericArgumentInOverload
 testGenericFunctionAsOverloadItem
 testGenericTypeAliasesBasic2
+# callable return type to param bottom up
+testCallableWithArbitraryArgsSubtypingWithGenericFunc
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
@@ -348,6 +345,9 @@ testNewAnalyzerNestedClass*
 testNewAnalyzerAliasToNotReadyNestedClass*
 testNestedClassOnAliasAsType
 testInvalidTypeWithinNestedGenericClass
+
+# function call in class of function in class
+testCallConditionalMethodInClassBody
 
 # Class in function
 testNewAnalyzerClassInFunction
@@ -762,6 +762,11 @@ testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
 testSubtypingWithGenericFunctionUsingTypevarWithValues
 
+# Function subtyping different names
+testSubtypingFunctionsDefaultsNames
+testSubtypingFunctionsArgsKwargs
+testRedefineFunction
+
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
 testDefaultArgumentsWithSubtypes
@@ -1105,6 +1110,7 @@ testLackOfNamesFastparse
 testPositionalOnlyArg
 testMagicMethodPositionalOnlyArg
 testMagicMethodPositionalOnlyArgFastparse
+testAnonymousArgumentError
 
 # for type comment
 testRefreshForWithTypeComment1
