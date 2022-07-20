@@ -935,7 +935,7 @@ impl<'db> Iterator for StmtIterator<'db> {
 
 impl<'db> ElseBlock<'db> {
     pub fn block(&self) -> Block<'db> {
-        Block::new(self.node.nth_child(1))
+        Block::new(self.node.nth_child(2))
     }
 }
 
