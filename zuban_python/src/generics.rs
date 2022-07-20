@@ -1002,7 +1002,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     .collect(),
             )),
             Self::None => DbType::None,
-            Self::Any => todo!(),
+            Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
     }

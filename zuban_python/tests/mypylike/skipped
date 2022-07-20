@@ -1,4 +1,3 @@
-testBareCallable
 testCallConditionalMethodInClassBody
 testCallableWithArbitraryArgsInGenericFunction
 testCallableWithArbitraryArgsSubtypingWithGenericFunc
