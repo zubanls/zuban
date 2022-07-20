@@ -1,6 +1,5 @@
 # Next up
 testGenericFunctionTypeDecl
-testMissingArgumentErrorMoreThanOneOptional
 testMissingArgumentsError
 testInferredTypeIsObjectMismatch
 testAnyArgument

@@ -1615,14 +1615,16 @@ pub struct Param<'db> {
 impl<'db> Param<'db> {
     fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamType) -> Self {
         let name_def = NameDefinition::new(param_children.next().unwrap());
-        let annot = param_children.next().and_then(|n| {
-            if n.is_type(Nonterminal(annotation)) {
-                Some(Annotation::new(n))
+        let annot = if let Some(annotation_node) = param_children.next() {
+            if annotation_node.is_type(Nonterminal(annotation)) {
+                param_children.next(); // Make sure the next node is skipped for defaults
+                Some(Annotation::new(annotation_node))
             } else {
                 None
             }
-        });
-        param_children.next();
+        } else {
+            None
+        };
         let default_node = param_children.next();
         Self {
             type_,
