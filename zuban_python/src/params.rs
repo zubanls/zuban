@@ -6,7 +6,7 @@ use crate::generics::Type;
 use crate::inference_state::InferenceState;
 use crate::value::ParamWithArgument;
 
-pub trait Param<'db, 'x>: Copy {
+pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
     fn name(&self) -> Option<&str>;
     fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
