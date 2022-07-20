@@ -64,6 +64,7 @@ pub(crate) enum IssueType {
     OverloadImplementationNeeded,
     OverloadStubImplementationNotAllowed,
     OverloadSingleNotAllowed,
+    OverloadUnmatchable { unmatchable_signature_index: usize, matchable_signature_index: usize },
 
     MethodWithoutArguments,
 
@@ -311,6 +312,11 @@ impl<'db> Diagnostic<'db> {
                 "An implementation for an overloaded function is not allowed in a stub file".to_owned(),
             IssueType::OverloadSingleNotAllowed =>
                 "Single overload definition, multiple required".to_owned(),
+            IssueType::OverloadUnmatchable{unmatchable_signature_index, matchable_signature_index} => format!(
+                "Overloaded function signature {unmatchable_signature_index} will never \
+                 be matched: signature {matchable_signature_index}'s parameter type(s) \
+                 are the same or broader"
+            ),
 
             IssueType::Note(s) => {
                 type_ = "note";

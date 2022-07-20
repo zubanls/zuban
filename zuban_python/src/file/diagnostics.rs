@@ -11,7 +11,7 @@ use crate::file::PythonInference;
 use crate::generics::Generics;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function};
+use crate::value::{matches_params, Class, Function};
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn calculate_diagnostics(&mut self) {
@@ -185,23 +185,30 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
+            for (i, link1) in o.functions.iter().enumerate() {
+                let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
+                f1.type_vars(self.i_s);
+                for (k, link2) in o.functions[i + 1..].iter().enumerate() {
+                    let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
+                    f2.type_vars(self.i_s);
+                    if matches_params(self.i_s, None, f2.param_iterator(), f1.param_iterator())
+                        .bool()
+                    {
+                        f2.node_ref.add_typing_issue(
+                            self.i_s.db,
+                            IssueType::OverloadUnmatchable {
+                                matchable_signature_index: i + 1,
+                                unmatchable_signature_index: i + k + 2,
+                            },
+                        );
+                    }
+                }
+            }
         }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
-        /*
-         * TODO I think this is not needed anymore
-        for param in params.iter() {
-            if let Some(annotation) = param.annotation() {
-                self.compute_annotation(annotation);
-            }
-        }
-        if let Some(annotation) = return_annotation {
-            self.compute_return_annotation(annotation);
-        }
-        */
-
         let (i_a, a, i);
         let node_ref = NodeRef::new(self.file, f.index());
         let args: &dyn Arguments = if let Some(class) = class {

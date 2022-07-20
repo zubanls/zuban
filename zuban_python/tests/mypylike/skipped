@@ -1,4 +1,10 @@
 # Next up
+testNoComplainOverloadNone
+testNoComplainOverloadNoneStrict
+testCovariantOverlappingOverloadSignaturesWithAnyType
+testIgnoreOverloadVariantBasedOnKeywordArg
+testUnionMathOverloadingReturnsBestType
+testAnyIsOKAsFallbackInOverloads
 
 # Type Var Binding
 testGenericFunctionTypeDecl
@@ -109,16 +115,10 @@ testOverloadTwoTypeArgs
 testOverloadTupleInstance
 testOverloadTupleEllipsisNumargs
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testOverloadRefresh
-testContravariantOverlappingOverloadSignatures
-testPartiallyContravariantOverloadSignatures
-testContravariantOverlappingOverloadSignaturesWithAnyType
 testOverloadOverlapWithTypeVars
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
-testOverloadPossibleOverlapWithVarargs
-testOverloadPossibleOverlapWithKwargs
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 
 # - Overloaded function implementation does not accept all possible arguments of signature 2
