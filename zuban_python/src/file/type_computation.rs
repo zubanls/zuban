@@ -82,9 +82,13 @@ impl InvalidVariableType<'_, '_> {
                 );
                 node_ref.add_typing_issue(
                     db,
-                    IssueType::Note(Box::from(
-                        "Perhaps you need \"Callable[...]\" or a callback protocol?",
-                    )),
+                    IssueType::Note(Box::from(match func.name() {
+                        "any" => "Perhaps you meant \"typing.Any\" instead of \"any\"?",
+                        "callable" => {
+                            "Perhaps you meant \"typing.Callable\" instead of \"callable\"?"
+                        }
+                        _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
+                    })),
                 );
             }
             Self::List => {

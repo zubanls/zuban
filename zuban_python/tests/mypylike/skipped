@@ -1,10 +1,7 @@
 # Next up
-testGenericFunctionTypeDecl
-testInferredTypeIsObjectMismatch
-testAnyArgument
-testCallableArgument
 
 # Type Var Binding
+testGenericFunctionTypeDecl
 testFunctionReturningGenericFunction
 testFunctionReturningGenericFunctionPartialBinding
 testFunctionReturningGenericFunctionTwoLevelBinding
@@ -305,6 +302,8 @@ testGenericFunctionAsOverloadItem
 testGenericTypeAliasesBasic2
 # callable return type to param bottom up
 testCallableWithArbitraryArgsSubtypingWithGenericFunc
+# questionable list/dict type inference
+testInferredTypeIsObjectMismatch
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
