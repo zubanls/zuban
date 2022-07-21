@@ -1,4 +1,5 @@
 # Next up
+testOverloadedPartiallyOverlappingInheritedTypes1
 testNoComplainOverloadNone
 testNoComplainOverloadNoneStrict
 testCovariantOverlappingOverloadSignaturesWithAnyType
