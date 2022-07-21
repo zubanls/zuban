@@ -19,7 +19,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
-pub use callable::{matches_params, Callable, CallableClass, CallableLike};
+pub use callable::{
+    matches_params, overload_has_overlapping_params, Callable, CallableClass, CallableLike,
+};
 pub use class::{Class, ClassLike};
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;

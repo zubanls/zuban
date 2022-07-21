@@ -11,7 +11,9 @@ use crate::file::PythonInference;
 use crate::generics::Generics;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{matches_params, CallableLike, Class, Function};
+use crate::value::{
+    matches_params, overload_has_overlapping_params, CallableLike, Class, Function,
+};
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn calculate_diagnostics(&mut self) {
@@ -208,9 +210,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         None,
                         f2_result_type,
                         Variance::Contravariant,
-                    ) && matches_params(self.i_s, None, f1.param_iterator(), f2.param_iterator())
-                        .bool()
-                    {
+                    ) && overload_has_overlapping_params(
+                        self.i_s,
+                        f1.iter_params(),
+                        f2.iter_params(),
+                    ) {
                         f1.node_ref.add_typing_issue(
                             self.i_s.db,
                             IssueType::OverloadIncompatibleReturnTypes {

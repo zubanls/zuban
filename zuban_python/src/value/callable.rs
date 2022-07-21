@@ -46,6 +46,33 @@ pub fn matches_params<'db: 'x, 'x>(
     Match::True
 }
 
+pub fn overload_has_overlapping_params<'db: 'x, 'x>(
+    i_s: &mut InferenceState<'db, '_>,
+    params1: impl Iterator<Item = impl Param<'db, 'x>>,
+    mut params2: impl Iterator<Item = impl Param<'db, 'x>>,
+) -> bool {
+    for param1 in params1 {
+        if let Some(param2) = params2.next() {
+            if param1.param_type() != param2.param_type() {
+                return false;
+            }
+            if let Some(t1) = param1.annotation_type(i_s) {
+                if let Some(t2) = param2.annotation_type(i_s) {
+                    if !t1.matches(i_s, None, t2, Variance::Contravariant) {
+                        return false;
+                    }
+                }
+            }
+        } else {
+            return false;
+        }
+    }
+    if params2.next().is_some() {
+        return false;
+    }
+    true
+}
+
 pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
     fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a>;
     fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
