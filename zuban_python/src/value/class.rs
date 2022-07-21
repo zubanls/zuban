@@ -71,8 +71,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Type::ClassLike(ClassLike::TypeVar(t)) if matcher.is_none() => {
                 if self.matches_type_var(t) {
                     Match::True
+                } else if let Some(constraint) = t.type_var.constraint_type(i_s.db) {
+                    self.matches(i_s, constraint, matcher, variance)
                 } else {
-                    self.matches(i_s, t.type_var.constraint_type(i_s.db), matcher, variance)
+                    self.is_object_class(i_s.db)
                 }
             }
             Type::ClassLike(c) => {
@@ -295,6 +297,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::TypeVar(t2) => t1.index == t2.index && t1.type_ == t2.type_,
             _ => false,
+        }
+    }
+
+    fn is_object_class(&self, db: &Database) -> Match {
+        match self {
+            Self::Class(c) => c.is_object_class(db),
+            _ => Match::False,
         }
     }
 

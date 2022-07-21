@@ -1001,13 +1001,13 @@ impl TypeVar {
         .into()
     }
 
-    pub fn constraint_type<'db>(&self, db: &'db Database) -> Type<'db, '_> {
+    pub fn constraint_type<'db>(&self, db: &'db Database) -> Option<Type<'db, '_>> {
         if let Some(bound) = &self.bound {
-            Type::from_db_type(db, bound)
+            Some(Type::from_db_type(db, bound))
         } else if !self.restrictions.is_empty() {
             todo!()
         } else {
-            db.python_state.object_type()
+            None
         }
     }
 }
