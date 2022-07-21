@@ -11,12 +11,13 @@ use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
     MroIndex, Point, PointLink, Specific, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
-use crate::generics::{CheckingVariance, Generics, Match, Type, TypeVarMatcher};
+use crate::generics::{Generics, Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
@@ -44,7 +45,7 @@ macro_rules! matches_callable {
             $i_s,
             $matcher.as_deref_mut(),
             other_result,
-            CheckingVariance::Covariant,
+            Variance::Covariant,
         ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
             | Match::FalseButSimilar
     }};
@@ -56,7 +57,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         value_class: Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        variance: CheckingVariance,
+        variance: Variance,
     ) -> Match {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
@@ -72,7 +73,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Type::ClassLike(c) => {
                 let mut similarity = Match::False;
                 match variance {
-                    CheckingVariance::Covariant => {
+                    Variance::Covariant => {
                         for (_, class_like) in c.mro(i_s) {
                             let m = self.check_match(
                                 i_s,
@@ -87,13 +88,13 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             }
                         }
                     }
-                    CheckingVariance::Invariant => {
+                    Variance::Invariant => {
                         similarity = self.check_match(i_s, matcher, &c, variance);
                         if similarity.bool() {
                             return Match::True;
                         }
                     }
-                    CheckingVariance::Contravariant => {
+                    Variance::Contravariant => {
                         for (_, class_like) in self.mro(i_s) {
                             let m =
                                 class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance);
@@ -104,7 +105,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             }
                         }
                     }
-                    CheckingVariance::Overlapping => {}
                 }
                 // TODO this should probably be checked before normal mro checking?!
                 if let Self::Class(c1) = self {
@@ -175,7 +175,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &Self,
-        variance: CheckingVariance,
+        variance: Variance,
     ) -> Match {
         let matches = match self {
             Self::Class(c1) => match other {
@@ -236,7 +236,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                     i_s,
                                     matcher.as_deref_mut(),
                                     Type::ClassLike(ClassLike::Class(*cls)),
-                                    CheckingVariance::Covariant,
+                                    Variance::Covariant,
                                 ) & matches_params(
                                     i_s,
                                     matcher,

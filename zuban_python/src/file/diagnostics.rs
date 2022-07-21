@@ -3,12 +3,12 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
     ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
-    TypeVarUsage,
+    TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::generics::{CheckingVariance, Generics};
+use crate::generics::Generics;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -209,7 +209,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             self.i_s,
                             None,
                             f2_result_type,
-                            CheckingVariance::Contravariant,
+                            Variance::Contravariant,
                         ) && overload_has_overlapping_params(
                             self.i_s,
                             f1.iter_params(),

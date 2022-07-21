@@ -1,10 +1,12 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars};
+use crate::database::{
+    CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars, Variance,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{CheckingVariance, Match, Type, TypeVarMatcher};
+use crate::generics::{Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -26,12 +28,8 @@ pub fn matches_params<'db: 'x, 'x>(
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
-                            matches &= t1.matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                t2,
-                                CheckingVariance::Contravariant,
-                            )
+                            matches &=
+                                t1.matches(i_s, matcher.as_deref_mut(), t2, Variance::Contravariant)
                         }
                     }
                 } else {
