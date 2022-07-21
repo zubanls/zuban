@@ -9,9 +9,9 @@ testAnyIsOKAsFallbackInOverloads
 testOverloadPossibleOverlapWithVarargs
 testOverloadPossibleOverlapWithKwargs
 
-testOverloadedPartiallyOverlappingInheritedTypes1
-testOverloadTypeVsCallable
-testOverloadWithBoundedTypeVar
+testContravariantOverlappingOverloadSignatures
+testPartiallyContravariantOverloadSignatures
+
 
 # Type Var Binding
 testGenericFunctionTypeDecl

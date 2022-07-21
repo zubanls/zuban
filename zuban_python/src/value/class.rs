@@ -383,35 +383,36 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         let check = {
             #[inline]
             |i_s: &mut _, c1: &_, c2: &_| match c1 {
-                ClassLike::Class(c1) => match other {
-                    Self::Class(c2) if c1.node_ref == c2.node_ref => {
+                ClassLike::Class(c1) => match c2 {
+                    ClassLike::Class(c2) if c1.node_ref == c2.node_ref => {
                         let type_vars = c1.type_vars(i_s);
+                        dbg!(c1, c2);
                         c1.generics().overlaps(i_s, c2.generics(), Some(type_vars))
                     }
                     _ => false,
                 },
-                ClassLike::Type(c) => todo!("{other:?}"),
-                ClassLike::TypeWithDbType(g1) => match other {
-                    Self::Type(c) => todo!("{other:?}"),
-                    Self::TypeWithDbType(g2) => todo!("{other:?}"),
+                ClassLike::Type(c) => todo!("{c2:?}"),
+                ClassLike::TypeWithDbType(g1) => match c2 {
+                    ClassLike::Type(c) => todo!("{c2:?}"),
+                    ClassLike::TypeWithDbType(g2) => todo!("{c2:?}"),
                     _ => false,
                 },
                 ClassLike::TypeVar(t) => {
-                    if t.type_var.bound.is_some() {
-                        todo!("{other:?}")
+                    if let Some(db_t) = &t.type_var.bound {
+                        Type::from_db_type(i_s.db, db_t).overlaps(i_s, &Type::ClassLike(*c2))
                     } else if !t.type_var.restrictions.is_empty() {
-                        todo!("{other:?}")
+                        todo!("{c2:?}")
                     } else {
                         true
                     }
                 }
-                ClassLike::Tuple(t) => todo!("{other:?}"),
-                ClassLike::Callable(c) => todo!("{other:?}"),
-                ClassLike::FunctionType(f) => todo!("{other:?}"),
-                ClassLike::TypingClass(c) => todo!("{other:?}"),
-                ClassLike::TypingClassType(c) => todo!("{other:?}"),
-                ClassLike::NoneType => todo!("{other:?}"),
-                ClassLike::AnyType => todo!("{other:?}"),
+                ClassLike::Tuple(t) => todo!("{c2:?}"),
+                ClassLike::Callable(c) => todo!("{c2:?}"),
+                ClassLike::FunctionType(f) => todo!("{c2:?}"),
+                ClassLike::TypingClass(c) => todo!("{c2:?}"),
+                ClassLike::TypingClassType(c) => todo!("{c2:?}"),
+                ClassLike::NoneType => todo!("{c2:?}"),
+                ClassLike::AnyType => todo!("{c2:?}"),
             }
         };
 
