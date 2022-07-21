@@ -392,7 +392,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 },
                 ClassLike::Type(c) => todo!(),
                 ClassLike::TypeWithDbType(g) => todo!(),
-                ClassLike::TypeVar(t) => other.matches_type_var(t),
+                ClassLike::TypeVar(t) => {
+                    if t.type_var.bound.is_some() {
+                        todo!()
+                    } else if !t.type_var.restrictions.is_empty() {
+                        todo!()
+                    } else {
+                        true
+                    }
+                }
                 ClassLike::Tuple(t) => todo!(),
                 ClassLike::Callable(c) => todo!(),
                 ClassLike::FunctionType(f) => todo!(),
@@ -402,6 +410,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::AnyType => todo!(),
             }
         };
+
+        if matches!(other, ClassLike::TypeVar(_)) && !matches!(self, ClassLike::TypeVar(_)) {
+            // To avoid more complicated code for type var matching, just use this.
+            return other.overlaps(i_s, self);
+        }
 
         match self {
             Self::Class(c1) => match other {
