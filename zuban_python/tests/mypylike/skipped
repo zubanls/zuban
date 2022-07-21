@@ -1,7 +1,6 @@
 # Next up
 testNoComplainOverloadNone
 testNoComplainOverloadNoneStrict
-testCovariantOverlappingOverloadSignaturesWithAnyType
 testIgnoreOverloadVariantBasedOnKeywordArg
 testUnionMathOverloadingReturnsBestType
 testAnyIsOKAsFallbackInOverloads

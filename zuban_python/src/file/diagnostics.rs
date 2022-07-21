@@ -8,7 +8,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::generics::Generics;
+use crate::generics::{Generics, Match};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -193,9 +193,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     f2.type_vars(self.i_s);
-                    if matches_params(self.i_s, None, f2.param_iterator(), f1.param_iterator())
-                        .bool()
-                    {
+                    if matches!(
+                        matches_params(
+                            self.i_s,
+                            None,
+                            f1.param_iterator(),
+                            f2.param_iterator(),
+                            Variance::Covariant
+                        ),
+                        Match::True
+                    ) {
                         f2.node_ref.add_typing_issue(
                             self.i_s.db,
                             IssueType::OverloadUnmatchable {

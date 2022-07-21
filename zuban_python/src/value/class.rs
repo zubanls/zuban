@@ -46,8 +46,13 @@ macro_rules! matches_callable {
             $matcher.as_deref_mut(),
             other_result,
             Variance::Covariant,
-        ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
-            | Match::FalseButSimilar
+        ) & matches_params(
+            $i_s,
+            $matcher,
+            $c1.param_iterator(),
+            $c2.param_iterator(),
+            Variance::Contravariant,
+        ) | Match::FalseButSimilar
     }};
 }
 
@@ -242,6 +247,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                     matcher,
                                     c1.param_iterator(),
                                     f.param_iterator().map(|i| i.skip(1)),
+                                    Variance::Contravariant,
                                 );
                             }
                         }
