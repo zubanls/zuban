@@ -60,7 +60,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x>(
             }
             if let Some(t1) = param1.annotation_type(i_s) {
                 if let Some(t2) = param2.annotation_type(i_s) {
-                    if !t1.matches(i_s, None, t2.clone(), CheckingVariance::Overlapping) {
+                    if !t1.matches(i_s, None, t2.clone(), CheckingVariance::Covariant)
+                        || !t1.matches(i_s, None, t2, CheckingVariance::Contravariant)
+                    {
                         return false;
                     }
                 }

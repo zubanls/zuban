@@ -203,26 +203,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 unmatchable_signature_index: i + k + 2,
                             },
                         );
-                    } else {
-                        let f2_result_type = f2.result_type(self.i_s);
-                        if !f1.result_type(self.i_s).matches(
-                            self.i_s,
-                            None,
-                            f2_result_type,
-                            CheckingVariance::Contravariant,
-                        ) && overload_has_overlapping_params(
-                            self.i_s,
-                            f1.iter_params(),
-                            f2.iter_params(),
-                        ) {
-                            f1.node_ref.add_typing_issue(
-                                self.i_s.db,
-                                IssueType::OverloadIncompatibleReturnTypes {
-                                    first_signature_index: i + 1,
-                                    second_signature_index: i + k + 2,
-                                },
-                            );
-                        }
+                    }
+                    let f2_result_type = f2.result_type(self.i_s);
+                    if !f1.result_type(self.i_s).matches(
+                        self.i_s,
+                        None,
+                        f2_result_type,
+                        CheckingVariance::Contravariant,
+                    ) && overload_has_overlapping_params(
+                        self.i_s,
+                        f1.iter_params(),
+                        f2.iter_params(),
+                    ) {
+                        f1.node_ref.add_typing_issue(
+                            self.i_s.db,
+                            IssueType::OverloadIncompatibleReturnTypes {
+                                first_signature_index: i + 1,
+                                second_signature_index: i + k + 2,
+                            },
+                        );
                     }
                 }
             }

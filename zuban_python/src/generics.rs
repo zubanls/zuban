@@ -301,11 +301,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    if matches!(variance, CheckingVariance::Overlapping) {
-                        variance
-                    } else {
-                        t.variance.into()
-                    }
+                    t.variance.into()
                 } else {
                     variance
                 };
@@ -892,17 +888,15 @@ impl<'db, 'a> Type<'db, 'a> {
                             type_var_usage = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
-                            let m = Type::from_db_type(i_s.db, g1).matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                Type::from_db_type(i_s.db, g2),
-                                variance,
-                            );
-                            if m.bool() {
-                                dbg!(variance);
-                                if matches!(variance, CheckingVariance::Overlapping) {
-                                    return m;
-                                }
+                            if Type::from_db_type(i_s.db, g1)
+                                .matches(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    Type::from_db_type(i_s.db, g2),
+                                    variance,
+                                )
+                                .bool()
+                            {
                                 list2.remove(i);
                                 break;
                             }
