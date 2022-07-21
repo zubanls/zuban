@@ -3,7 +3,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
     ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
-    TypeVarUsage,
+    TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -11,7 +11,7 @@ use crate::file::PythonInference;
 use crate::generics::Generics;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{matches_params, Class, Function};
+use crate::value::{matches_params, CallableLike, Class, Function};
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn calculate_diagnostics(&mut self) {
@@ -199,6 +199,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             IssueType::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
                                 unmatchable_signature_index: i + k + 2,
+                            },
+                        );
+                    }
+                    let f2_result_type = f2.result_type(self.i_s);
+                    if !f1.result_type(self.i_s).matches(
+                        self.i_s,
+                        None,
+                        f2_result_type,
+                        Variance::Contravariant,
+                    ) && matches_params(self.i_s, None, f1.param_iterator(), f2.param_iterator())
+                        .bool()
+                    {
+                        f1.node_ref.add_typing_issue(
+                            self.i_s.db,
+                            IssueType::OverloadIncompatibleReturnTypes {
+                                first_signature_index: i + 1,
+                                second_signature_index: i + k + 2,
                             },
                         );
                     }

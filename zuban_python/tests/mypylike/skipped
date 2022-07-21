@@ -6,6 +6,9 @@ testIgnoreOverloadVariantBasedOnKeywordArg
 testUnionMathOverloadingReturnsBestType
 testAnyIsOKAsFallbackInOverloads
 
+testOverloadPossibleOverlapWithVarargs
+testOverloadPossibleOverlapWithKwargs
+
 # Type Var Binding
 testGenericFunctionTypeDecl
 testFunctionReturningGenericFunction
@@ -77,11 +80,6 @@ testInconsistentOverload
 testInconsistentOverload2
 
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
-testTypeCheckOverloadWithUntypedImplAndMultipleVariants
-testTypeCheckOverloadImplementationTypeVarDifferingUsage2
-testOverlappingOverloadSignatures
-testPartiallyCovariantOverlappingOverloadSignatures
-testOverlappingOverloadCounting
 testOverloadWithOverlappingItemsAndAnyArgument5
 testOverloadWithOverlappingItemsAndAnyArgument10
 testOverloadTupleEllipsisVariance

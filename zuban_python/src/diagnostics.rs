@@ -65,6 +65,7 @@ pub(crate) enum IssueType {
     OverloadStubImplementationNotAllowed,
     OverloadSingleNotAllowed,
     OverloadUnmatchable { unmatchable_signature_index: usize, matchable_signature_index: usize },
+    OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
 
     MethodWithoutArguments,
 
@@ -316,6 +317,10 @@ impl<'db> Diagnostic<'db> {
                 "Overloaded function signature {unmatchable_signature_index} will never \
                  be matched: signature {matchable_signature_index}'s parameter type(s) \
                  are the same or broader"
+            ),
+            IssueType::OverloadIncompatibleReturnTypes{first_signature_index, second_signature_index} => format!(
+                "Overloaded function signatures {first_signature_index} and \
+                 {second_signature_index} overlap with incompatible return types"
             ),
 
             IssueType::Note(s) => {
