@@ -301,7 +301,11 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    t.variance.into()
+                    if matches!(variance, CheckingVariance::Overlapping) {
+                        variance
+                    } else {
+                        t.variance.into()
+                    }
                 } else {
                     variance
                 };
