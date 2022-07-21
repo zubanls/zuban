@@ -9,10 +9,6 @@ testAnyIsOKAsFallbackInOverloads
 testOverloadPossibleOverlapWithVarargs
 testOverloadPossibleOverlapWithKwargs
 
-testContravariantOverlappingOverloadSignatures
-testPartiallyContravariantOverloadSignatures
-
-
 # Type Var Binding
 testGenericFunctionTypeDecl
 testFunctionReturningGenericFunction
