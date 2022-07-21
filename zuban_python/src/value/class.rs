@@ -424,6 +424,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
         if matches!(other, ClassLike::TypeVar(_)) && !matches!(self, ClassLike::TypeVar(_)) {
             // To avoid more complicated code for type var matching, just use this.
+            // TODO this should not be like this, order matters
             return other.overlaps(i_s, self);
         }
 

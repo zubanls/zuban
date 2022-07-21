@@ -879,7 +879,12 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
-                _ => other.overlaps(i_s, self),
+                Self::Union(list2) => list2
+                    .iter()
+                    .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
+                Self::None => todo!(),
+                Self::Any => false,
+                Self::Never => todo!(),
             },
             Self::Union(list1) => list1
                 .iter()
