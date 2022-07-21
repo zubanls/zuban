@@ -392,7 +392,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::Class(c1) => match c2 {
                     ClassLike::Class(c2) if c1.node_ref == c2.node_ref => {
                         let type_vars = c1.type_vars(i_s);
-                        dbg!(c1, c2);
                         c1.generics().overlaps(i_s, c2.generics(), Some(type_vars))
                     }
                     _ => false,
@@ -422,10 +421,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
         };
 
-        if matches!(other, ClassLike::TypeVar(_)) && !matches!(self, ClassLike::TypeVar(_)) {
-            // To avoid more complicated code for type var matching, just use this.
-            // TODO this should not be like this, order matters
-            return other.overlaps(i_s, self);
+        if let ClassLike::TypeVar(t) = other {
+            return if let Some(db_t) = &t.type_var.bound {
+                todo!("{self:?}")
+            } else if !t.type_var.restrictions.is_empty() {
+                todo!("{self:?}")
+            } else {
+                true
+            };
         }
 
         match self {

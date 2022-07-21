@@ -592,7 +592,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 for arg in args_with_params.arguments {
                     match arg {
                         Argument::Keyword(name, reference) => {
-                            dbg!(self.should_generate_errors());
                             let mut s = format!("Unexpected keyword argument {name:?}");
                             if let Some(function) = function {
                                 s += " for ";
