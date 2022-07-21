@@ -313,6 +313,31 @@ impl<'db, 'a> Generics<'db, 'a> {
         });
         matches
     }
+
+    pub fn overlaps(
+        self,
+        i_s: &mut InferenceState<'db, '_>,
+        other_generics: Self,
+        type_vars: Option<&TypeVars>,
+    ) -> bool {
+        let mut other_generics = other_generics.iter();
+        let mut matches = true;
+        let mut type_var_iterator = type_vars.map(|t| t.iter());
+        self.iter().run_on_all(i_s, &mut |i_s, type_| {
+            let appeared = other_generics.run_on_next(i_s, &mut |i_s, g| {
+                let xxx = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
+                    // TODO ?
+                } else {
+                };
+                matches &= type_.overlaps(i_s, &g);
+            });
+            if appeared.is_none() {
+                debug!("Overlap Generic not found for: {type_:?}");
+                todo!();
+            }
+        });
+        matches
+    }
 }
 
 pub enum GenericsIterator<'db, 'a> {
@@ -867,6 +892,21 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::None => DbType::None,
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
+        }
+    }
+
+    pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
+        match self {
+            Self::ClassLike(class1) => match other {
+                Self::ClassLike(class2) => class1.overlaps(i_s, class2),
+                _ => other.overlaps(i_s, self),
+            },
+            Self::Union(list1) => list1
+                .iter()
+                .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
+            Self::None => true,
+            Self::Any => true,
+            Self::Never => todo!(),
         }
     }
 

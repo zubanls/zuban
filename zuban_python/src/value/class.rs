@@ -378,6 +378,51 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
         }
     }
+
+    pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
+        let check = {
+            #[inline]
+            |i_s: &mut _, c1: &_, c2: &_| match c1 {
+                ClassLike::Class(c1) => match other {
+                    Self::Class(c2) if c1.node_ref == c2.node_ref => {
+                        let type_vars = c1.type_vars(i_s);
+                        c1.generics().overlaps(i_s, c2.generics(), Some(type_vars))
+                    }
+                    _ => false,
+                },
+                ClassLike::Type(c) => todo!(),
+                ClassLike::TypeWithDbType(g) => todo!(),
+                ClassLike::TypeVar(t) => other.matches_type_var(t),
+                ClassLike::Tuple(t) => todo!(),
+                ClassLike::Callable(c) => todo!(),
+                ClassLike::FunctionType(f) => todo!(),
+                ClassLike::TypingClass(c) => todo!(),
+                ClassLike::TypingClassType(c) => todo!(),
+                ClassLike::NoneType => todo!(),
+                ClassLike::AnyType => todo!(),
+            }
+        };
+
+        match self {
+            Self::Class(c1) => match other {
+                Self::Class(c2) => {
+                    for (_, c1) in c1.mro(i_s) {
+                        if check(i_s, &c1, other) {
+                            return true;
+                        }
+                    }
+                    for (_, c2) in c2.mro(i_s) {
+                        if check(i_s, self, &c2) {
+                            return true;
+                        }
+                    }
+                    false
+                }
+                _ => false,
+            },
+            _ => check(i_s, self, other),
+        }
+    }
 }
 
 #[derive(Clone, Copy)]
