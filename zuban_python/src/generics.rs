@@ -888,15 +888,17 @@ impl<'db, 'a> Type<'db, 'a> {
                             type_var_usage = Some(t);
                         }
                         for (i, g2) in list2.iter().enumerate() {
-                            if Type::from_db_type(i_s.db, g1)
-                                .matches(
-                                    i_s,
-                                    matcher.as_deref_mut(),
-                                    Type::from_db_type(i_s.db, g2),
-                                    variance,
-                                )
-                                .bool()
-                            {
+                            let m = Type::from_db_type(i_s.db, g1).matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                Type::from_db_type(i_s.db, g2),
+                                variance,
+                            );
+                            if m.bool() {
+                                dbg!(variance);
+                                if matches!(variance, CheckingVariance::Overlapping) {
+                                    return m;
+                                }
                                 list2.remove(i);
                                 break;
                             }

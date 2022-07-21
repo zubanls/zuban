@@ -104,7 +104,30 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             }
                         }
                     }
-                    CheckingVariance::Overlapping => {}
+                    CheckingVariance::Overlapping => {
+                        for (_, class_like) in self.mro(i_s) {
+                            let m =
+                                class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance);
+                            if m.bool() {
+                                return m;
+                            } else {
+                                similarity |= m;
+                            }
+                        }
+                        for (_, class_like) in c.mro(i_s) {
+                            let m = self.check_match(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                &class_like,
+                                variance,
+                            );
+                            if m.bool() {
+                                return m;
+                            } else {
+                                similarity |= m;
+                            }
+                        }
+                    }
                 }
                 // TODO this should probably be checked before normal mro checking?!
                 if let Self::Class(c1) = self {
