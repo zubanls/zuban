@@ -390,24 +390,28 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                     _ => false,
                 },
-                ClassLike::Type(c) => todo!(),
-                ClassLike::TypeWithDbType(g) => todo!(),
+                ClassLike::Type(c) => todo!("{other:?}"),
+                ClassLike::TypeWithDbType(g1) => match other {
+                    Self::Type(c) => todo!("{other:?}"),
+                    Self::TypeWithDbType(g2) => todo!("{other:?}"),
+                    _ => false,
+                },
                 ClassLike::TypeVar(t) => {
                     if t.type_var.bound.is_some() {
-                        todo!()
+                        todo!("{other:?}")
                     } else if !t.type_var.restrictions.is_empty() {
-                        todo!()
+                        todo!("{other:?}")
                     } else {
                         true
                     }
                 }
-                ClassLike::Tuple(t) => todo!(),
-                ClassLike::Callable(c) => todo!(),
-                ClassLike::FunctionType(f) => todo!(),
-                ClassLike::TypingClass(c) => todo!(),
-                ClassLike::TypingClassType(c) => todo!(),
-                ClassLike::NoneType => todo!(),
-                ClassLike::AnyType => todo!(),
+                ClassLike::Tuple(t) => todo!("{other:?}"),
+                ClassLike::Callable(c) => todo!("{other:?}"),
+                ClassLike::FunctionType(f) => todo!("{other:?}"),
+                ClassLike::TypingClass(c) => todo!("{other:?}"),
+                ClassLike::TypingClassType(c) => todo!("{other:?}"),
+                ClassLike::NoneType => todo!("{other:?}"),
+                ClassLike::AnyType => todo!("{other:?}"),
             }
         };
 
