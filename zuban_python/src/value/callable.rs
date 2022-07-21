@@ -1,12 +1,10 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{
-    CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars, Variance,
-};
+use crate::database::{CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars};
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Match, Type, TypeVarMatcher};
+use crate::generics::{CheckingVariance, Match, Type, TypeVarMatcher};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -28,8 +26,12 @@ pub fn matches_params<'db: 'x, 'x>(
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
-                            matches &=
-                                t1.matches(i_s, matcher.as_deref_mut(), t2, Variance::Contravariant)
+                            matches &= t1.matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                t2,
+                                CheckingVariance::Contravariant,
+                            )
                         }
                     }
                 } else {
@@ -58,7 +60,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x>(
             }
             if let Some(t1) = param1.annotation_type(i_s) {
                 if let Some(t2) = param2.annotation_type(i_s) {
-                    if !t1.matches(i_s, None, t2, Variance::Contravariant) {
+                    if !t1.matches(i_s, None, t2.clone(), CheckingVariance::Covariant)
+                        || !t1.matches(i_s, None, t2, CheckingVariance::Contravariant)
+                    {
                         return false;
                     }
                 }

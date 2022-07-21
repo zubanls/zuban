@@ -13,7 +13,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::generics::{CheckingVariance, Generics, Type, TypeVarMatcher};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
@@ -198,7 +198,7 @@ impl<'a> TupleClass<'a> {
         i_s: &mut InferenceState<'db, '_>,
         other: &TupleClass,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        variance: Variance,
+        variance: CheckingVariance,
     ) -> bool {
         if let Some(generics1) = &self.content.generics {
             if let Some(generics2) = &other.content.generics {

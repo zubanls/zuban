@@ -18,6 +18,25 @@ use crate::value::{
     Callable, CallableClass, Class, ClassLike, Function, OnTypeError, TupleClass, Value,
 };
 
+#[derive(Debug, Clone, Copy)]
+#[repr(u32)]
+pub enum CheckingVariance {
+    Invariant = 0,
+    Covariant,
+    Contravariant,
+    Overlapping,
+}
+
+impl From<Variance> for CheckingVariance {
+    fn from(item: Variance) -> Self {
+        match item {
+            Variance::Invariant => Self::Invariant,
+            Variance::Covariant => Self::Covariant,
+            Variance::Contravariant => Self::Contravariant,
+        }
+    }
+}
+
 pub enum SignatureMatch {
     False,
     FalseButSimilar,
@@ -273,7 +292,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_generics: Self,
-        variance: Variance,
+        variance: CheckingVariance,
         type_vars: Option<&TypeVars>,
     ) -> Match {
         let mut value_generics = value_generics.iter();
@@ -282,7 +301,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    t.variance
+                    t.variance.into()
                 } else {
                     variance
                 };
@@ -704,14 +723,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             &mut self.func_or_callable,
                             FunctionOrCallable::Function(class, new_func),
                         );
-                        let result = g.matches(i_s, Some(self), value_type, type_var.variance);
+                        let result =
+                            g.matches(i_s, Some(self), value_type, type_var.variance.into());
                         self.func_or_callable = old;
                         return result;
                     } else if !matches!(f.class.unwrap().generics, Generics::None) {
                         let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                         // TODO nth should return a type instead of DbType
                         let g = Type::from_db_type(i_s.db, &g);
-                        return g.matches(i_s, Some(self), value_type, type_var.variance);
+                        return g.matches(i_s, Some(self), value_type, type_var.variance.into());
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -720,7 +740,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         let mut mismatch_constraints = !type_var.restrictions.is_empty()
             && !type_var.restrictions.iter().any(|t| {
                 Type::from_db_type(i_s.db, t)
-                    .matches(i_s, None, value_type.clone(), Variance::Covariant)
+                    .matches(i_s, None, value_type.clone(), CheckingVariance::Covariant)
                     .bool()
             });
         if let Some(bound) = &type_var.bound {
@@ -729,7 +749,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     i_s,
                     None,
                     value_type.clone(),
-                    Variance::Covariant,
+                    CheckingVariance::Covariant,
                 );
         }
         if mismatch_constraints {
@@ -855,7 +875,7 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_class: Self,
-        variance: Variance,
+        variance: CheckingVariance,
     ) -> Match {
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
@@ -931,7 +951,12 @@ impl<'db, 'a> Type<'db, 'a> {
         mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
     ) -> Match {
         let value_type = value.class_as_type(i_s);
-        let matches = self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant);
+        let matches = self.matches(
+            i_s,
+            matcher.as_deref_mut(),
+            value_type,
+            CheckingVariance::Covariant,
+        );
         if !matches {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
