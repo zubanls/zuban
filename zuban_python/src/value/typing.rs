@@ -158,7 +158,7 @@ pub struct TupleClass<'a> {
     pub content: &'a TupleContent,
 }
 
-impl<'a> TupleClass<'a> {
+impl<'db, 'a> TupleClass<'a> {
     pub fn new(content: &'a TupleContent) -> Self {
         Self { content }
     }
@@ -167,7 +167,7 @@ impl<'a> TupleClass<'a> {
         DbType::Tuple(self.content.clone())
     }
 
-    pub fn mro<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
+    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
         let class_infos = i_s.db.python_state.tuple(Generics::None).class_infos(i_s);
         if !self.content.arbitrary_length {
             debug!("TODO Only used TypeVarIndex #0, and not all of them");
@@ -194,7 +194,7 @@ impl<'a> TupleClass<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn matches<'db>(
+    pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         other: &TupleClass,
@@ -235,6 +235,47 @@ impl<'a> TupleClass<'a> {
                             }
                         }
                         true
+                    }
+                };
+            }
+        }
+        true
+    }
+
+    pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
+        if let Some(generics1) = &self.content.generics {
+            if let Some(generics2) = &other.content.generics {
+                return match (
+                    self.content.arbitrary_length,
+                    other.content.arbitrary_length,
+                ) {
+                    (false, false) | (true, true) => {
+                        generics1.len() == generics2.len()
+                            && Generics::new_list(generics1).overlaps(
+                                i_s,
+                                Generics::new_list(generics2),
+                                None,
+                            )
+                    }
+                    (false, true) => todo!(),
+                    (true, false) => {
+                        todo!()
+                        /*
+                            let t1 = Type::from_db_type(
+                                i_s.db,
+                                generics1.nth(TypeVarIndex::new(0)).unwrap(),
+                            );
+                            for g in generics2.iter() {
+                                let t2 = Type::from_db_type(
+                                    i_s.db,
+                                    generics2.nth(TypeVarIndex::new(0)).unwrap(),
+                                );
+                                if !t1.overlaps(i_s, matcher.as_deref_mut(), t2, variance) {
+                                    return false;
+                                }
+                            }
+                            true
+                        */
                     }
                 };
             }

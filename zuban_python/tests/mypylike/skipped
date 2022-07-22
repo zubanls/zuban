@@ -103,7 +103,6 @@ testOverloadPartiallyOverlappingTypeVarsIdentical
 testOverloadedPartiallyOverlappingCallables
 testNestedOverloadsTypeVarOverlap
 testOverloadTwoTypeArgs
-testOverloadTupleInstance
 testOverloadTupleEllipsisNumargs
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testOverloadOverlapWithTypeVars

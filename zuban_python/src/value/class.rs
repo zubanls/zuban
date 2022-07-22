@@ -427,7 +427,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         true
                     }
                 }
-                ClassLike::Tuple(t) => todo!("{c2:?}"),
+                ClassLike::Tuple(t1) => match c2 {
+                    ClassLike::Tuple(t2) => t1.overlaps(i_s, t2),
+                    _ => false,
+                },
                 ClassLike::Callable(c) => todo!("{c2:?}"),
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
                 ClassLike::TypingClass(c) => todo!("{c2:?}"),
