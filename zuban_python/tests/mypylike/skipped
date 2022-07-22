@@ -1,13 +1,8 @@
 # Next up
 testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
-testOverloadDetectsPossibleMatchesWithGenerics
 testNoComplainOverloadNoneStrict
-testIgnoreOverloadVariantBasedOnKeywordArg
-testUnionMathOverloadingReturnsBestType
 
-testOverloadPossibleOverlapWithVarargs
-testOverloadPossibleOverlapWithKwargs
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
@@ -100,6 +95,7 @@ testOverloadPartiallyOverlappingTypeVarsIdentical
 testNestedOverloadsTypeVarOverlap
 testOverloadTwoTypeArgs
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+testIgnoreOverloadVariantBasedOnKeywordArg
 testOverloadOverlapWithTypeVars
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
