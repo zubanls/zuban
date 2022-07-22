@@ -1119,7 +1119,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
         DbType::Unknown => todo!(),
-        DbType::Never => callable(i_s, &NeverInstance(db_type)),
+        DbType::Never => callable(i_s, &NeverInstance()),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
     }
 }

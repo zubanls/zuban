@@ -357,7 +357,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
             Self::AnyType => Box::from("builtins.type"),
-            Self::Never => Box::from("<never>"),
+            Self::Never => Box::from("<nothing>"),
         }
     }
 
