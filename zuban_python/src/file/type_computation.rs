@@ -104,10 +104,16 @@ impl InvalidVariableType<'_, '_> {
                 );
             }
             Self::Tuple { .. } => {
-                // Should be something like:
-                // error: Syntax error in type annotation
-                // note: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
-                todo!()
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(Box::from("Syntax error in type annotation")),
+                );
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::Note(Box::from(
+                        "Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)",
+                    )),
+                );
             }
             Self::Literal(s) => {
                 node_ref.add_typing_issue(

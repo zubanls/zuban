@@ -1,12 +1,13 @@
 [case tuple_none]
 x: tuple[None]
-reveal_type(x.index(0)) # N: Revealed type is "int"
 reveal_type(x.__getitem__(0)) # N: Revealed type is "None"
+reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_empty]
 x: tuple[()]
-reveal_type(x.index(0)) # N: Revealed type is "int"
+-- TODO reenable
 -- reveal_type(x.__getitem__(0)) # N: Revealed type is "<nothing>"
+reveal_type(x.index(0)) # N: Revealed type is "int"
 
 [case tuple_methods_one]
 x: tuple[str]
@@ -18,3 +19,34 @@ x: tuple[int, str]
 reveal_type(x.__getitem__(0)) # N: Revealed type is "object"
 reveal_type(x.index(0)) # N: Revealed type is "int"
 
+[case tuple_none_arbitrary]
+x: tuple[None, ...]
+reveal_type(x.__getitem__(0)) # N: Revealed type is "None"
+reveal_type(x.index(0)) # N: Revealed type is "int"
+
+[case tuple_methods_empty_arbitrary]
+x: tuple[(), ...]  # E: Syntax error in type annotation \
+                   # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
+reveal_type(x.__getitem__(0)) # N: Revealed type is "Any"
+reveal_type(x.index(0)) # N: Revealed type is "int"
+
+[case tuple_methods_one_arbitrary]
+x: tuple[str, ...]
+reveal_type(x.__getitem__(0)) # N: Revealed type is "str"
+reveal_type(x.index(0)) # N: Revealed type is "int"
+
+[case tuple_methods_multiple_illegal_arbitrary]
+-- TODO reenable this
+-- x: tuple[int, str, ...]
+-- reveal_type(x.__getitem__(0)) # N: Revealed type is "object"
+-- reveal_type(x.index(0)) # N: Revealed type is "int"
+
+[case tuple_methods_multiple_arbitrary]
+y: tuple[int | str, ...]
+reveal_type(y.__getitem__(0)) # N: Revealed type is "int | str"
+reveal_type(y.index(0)) # N: Revealed type is "int"
+
+[case tuple_methods_no_generic]
+y: tuple
+reveal_type(y.__getitem__(0)) # N: Revealed type is "Any"
+reveal_type(y.index(0)) # N: Revealed type is "int"

@@ -328,7 +328,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                                         [t] => t.clone(),
                                         _ => i_s.db.python_state.object_db_type(),
                                     },
-                                    None => todo!(),
+                                    None => DbType::Any,
                                 },
                             ]))),
                         ))
