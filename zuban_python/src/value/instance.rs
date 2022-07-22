@@ -57,9 +57,10 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                     );
                 }
             }
-            let result = class
-                .lookup_symbol(i_s, name)
-                .map(|inf| inf.resolve_function_return(i_s).bind(i_s, self, mro_index));
+            let result = class.lookup_symbol(i_s, name).map(|inf| {
+                inf.resolve_function_return(i_s)
+                    .bind(i_s, |i_s| self.as_inferred(i_s), mro_index)
+            });
             if !matches!(result, LookupResult::None) {
                 return result;
             }

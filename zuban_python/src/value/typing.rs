@@ -20,6 +20,7 @@ use crate::inferred::{run_on_db_type, Inferred};
 use crate::node_ref::NodeRef;
 
 const ANY: DbType = DbType::Any;
+const NEVER: DbType = DbType::Never;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
@@ -178,7 +179,7 @@ impl<'a> TupleClass<'a> {
                 self.content
                     .generics
                     .as_ref()
-                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap())
+                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap_or(&NEVER))
                     .unwrap_or(&ANY),
             )),
             class_infos.mro.iter(),
@@ -312,7 +313,23 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        for (mro_index, class) in TupleClass::new(self.content).mro(i_s) {
+            let result = class.lookup_symbol(i_s, name).map(|inf| {
+                inf.bind(
+                    i_s,
+                    |i_s| {
+                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                            DbType::Tuple(self.content.clone()),
+                        )))
+                    },
+                    mro_index,
+                )
+            });
+            if !matches!(result, LookupResult::None) {
+                return result;
+            }
+        }
+        LookupResult::None
     }
 
     fn iter(

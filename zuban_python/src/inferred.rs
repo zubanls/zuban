@@ -897,7 +897,7 @@ impl<'db> Inferred<'db> {
     pub fn bind(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        instance: &Instance<'db, '_>,
+        get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred<'db>,
         mro_index: MroIndex,
     ) -> Self {
         match &self.state {
@@ -905,7 +905,7 @@ impl<'db> Inferred<'db> {
                 PointType::Specific => {
                     if point.specific() == Specific::Function {
                         let complex = ComplexPoint::BoundMethod(
-                            instance.as_inferred(i_s).as_any_link(i_s),
+                            get_inferred(i_s).as_any_link(i_s),
                             mro_index,
                             definition.as_link(),
                         );
@@ -917,7 +917,7 @@ impl<'db> Inferred<'db> {
                         definition.file.complex_points.get(point.complex_index())
                     {
                         let complex = ComplexPoint::BoundMethod(
-                            instance.as_inferred(i_s).as_any_link(i_s),
+                            get_inferred(i_s).as_any_link(i_s),
                             mro_index,
                             definition.as_link(),
                         );
