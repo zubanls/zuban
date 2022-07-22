@@ -36,6 +36,7 @@ pub enum ClassLike<'db, 'a> {
     TypingClassType(TypingClass),
     NoneType,
     AnyType,
+    Never,
 }
 
 macro_rules! matches_callable {
@@ -173,7 +174,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             },
             Type::None => Match::True, // TODO should be false
             Type::Any => Match::TrueWithAny,
-            Type::Never => todo!(),
         }
     }
 
@@ -267,6 +267,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClassType(c) => todo!(),
             Self::AnyType => todo!(),
             Self::NoneType => todo!(),
+            Self::Never => todo!(),
         };
         if matches {
             let (class_generics, class_result_type) = self.generics(i_s);
@@ -322,6 +323,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
             | Self::AnyType
+            | Self::Never
             | Self::NoneType => (Generics::None, None),
         }
     }
@@ -355,6 +357,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::NoneType => Box::from("None"),
             // TODO this does not respect formatstyle
             Self::AnyType => Box::from("builtins.type"),
+            Self::Never => Box::from("<never>"),
         }
     }
 
@@ -391,6 +394,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
             Self::NoneType => DbType::Type(Box::new(DbType::None)),
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
+            Self::Never => DbType::Never,
         }
     }
 
@@ -430,6 +434,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),
                 ClassLike::NoneType => todo!("{c2:?}"),
                 ClassLike::AnyType => todo!("{c2:?}"),
+                ClassLike::Never => todo!(),
             }
         };
 
