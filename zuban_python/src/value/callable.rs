@@ -52,11 +52,11 @@ pub fn has_overlapping_params<'db: 'x, 'x>(
     params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
 ) -> bool {
     if let Some(params1) = params1 {
-        if let Some(mut params2) = params2 {
+        if let Some(params2) = params2 {
             return overload_has_overlapping_params(i_s, params1, params2);
         }
     }
-    false
+    todo!()
 }
 pub fn overload_has_overlapping_params<'db: 'x, 'x>(
     i_s: &mut InferenceState<'db, '_>,
