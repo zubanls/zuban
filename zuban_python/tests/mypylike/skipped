@@ -83,8 +83,6 @@ testInconsistentOverload2
 
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 testOverloadWithOverlappingItemsAndAnyArgument10
-testOverloadWithMethodOverrideAndImplementation
-testOverloadAnyIsConsideredValidReturnSubtype
 testOverloadWithVariableArgsAreOverlapping
 testOverloadPossibleOverlapWithArgsAndKwargs
 testOverloadPossibleOverlapWithVarargs2
@@ -111,6 +109,7 @@ testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
 # - Overloaded function implementation cannot produce return type of signature 2
+testOverloadWithMethodOverrideAndImplementation
 testTypeCheckOverloadWithImplTooSpecificRetType
 testPreviousErrorInOverloadedFunction
 testOverloadsUpdatedTypeRechekConsistency

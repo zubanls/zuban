@@ -447,7 +447,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
                 ClassLike::TypingClass(c) => todo!("{c2:?}"),
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),
-                ClassLike::None => todo!("{c2:?}"),
+                ClassLike::None => true, // TODO this is probably not correct
                 ClassLike::AnyType => todo!("{c2:?}"),
                 ClassLike::Never => todo!(),
             }
