@@ -406,9 +406,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => false,
                 },
                 ClassLike::Type(c) => todo!("{c2:?}"),
-                ClassLike::TypeWithDbType(g1) => match c2 {
+                ClassLike::TypeWithDbType(d1) => match c2 {
                     ClassLike::Type(c) => todo!("{c2:?}"),
-                    ClassLike::TypeWithDbType(g2) => todo!("{c2:?}"),
+                    ClassLike::TypeWithDbType(d2) => {
+                        let t2 = Type::from_db_type(i_s.db, d2);
+                        Type::from_db_type(i_s.db, d1).overlaps(i_s, &t2)
+                    }
                     _ => false,
                 },
                 ClassLike::TypeVar(t) => {

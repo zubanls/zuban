@@ -100,8 +100,6 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadPartiallyOverlappingTypeVarsIdentical
 testOverloadedPartiallyOverlappingCallables
 testNestedOverloadsTypeVarOverlap
-testOverloadsIgnorePromotions
-testOverloadsTypesAndUnions
 testOverloadTwoTypeArgs
 testOverloadTupleInstance
 testOverloadTupleEllipsisNumargs
@@ -530,6 +528,7 @@ testUnion3
 testUnionAnyIsInstance
 testNestedUnionsProcessedCorrectly
 testGenericTypeAliasesUnion
+testOverloadsIgnorePromotions
 
 # check after flow analysis
 testAssignAnyToUnionWithAny
