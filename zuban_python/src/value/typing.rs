@@ -219,17 +219,14 @@ impl<'db, 'a> TupleClass<'a> {
                                 )
                                 .bool()
                     }
-                    (false, true) => todo!(),
+                    (false, true) => false,
                     (true, false) => {
                         let t1 = Type::from_db_type(
                             i_s.db,
                             generics1.nth(TypeVarIndex::new(0)).unwrap(),
                         );
                         for g in generics2.iter() {
-                            let t2 = Type::from_db_type(
-                                i_s.db,
-                                generics2.nth(TypeVarIndex::new(0)).unwrap(),
-                            );
+                            let t2 = Type::from_db_type(i_s.db, g);
                             if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
                                 return false;
                             }
@@ -257,25 +254,32 @@ impl<'db, 'a> TupleClass<'a> {
                                 None,
                             )
                     }
-                    (false, true) => todo!(),
-                    (true, false) => {
-                        todo!()
-                        /*
-                            let t1 = Type::from_db_type(
-                                i_s.db,
-                                generics1.nth(TypeVarIndex::new(0)).unwrap(),
-                            );
-                            for g in generics2.iter() {
-                                let t2 = Type::from_db_type(
-                                    i_s.db,
-                                    generics2.nth(TypeVarIndex::new(0)).unwrap(),
-                                );
-                                if !t1.overlaps(i_s, matcher.as_deref_mut(), t2, variance) {
-                                    return false;
-                                }
+                    (false, true) => {
+                        let t2 = Type::from_db_type(
+                            i_s.db,
+                            generics2.nth(TypeVarIndex::new(0)).unwrap(),
+                        );
+                        for g in generics1.iter() {
+                            let t1 = Type::from_db_type(i_s.db, g);
+                            if !t1.overlaps(i_s, &t2) {
+                                dbg!();
+                                return false;
                             }
-                            true
-                        */
+                        }
+                        true
+                    }
+                    (true, false) => {
+                        let t1 = Type::from_db_type(
+                            i_s.db,
+                            generics1.nth(TypeVarIndex::new(0)).unwrap(),
+                        );
+                        for g in generics2.iter() {
+                            let t2 = Type::from_db_type(i_s.db, g);
+                            if !t1.overlaps(i_s, &t2) {
+                                return false;
+                            }
+                        }
+                        true
                     }
                 };
             }
