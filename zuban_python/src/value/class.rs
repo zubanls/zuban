@@ -35,7 +35,6 @@ pub enum ClassLike<'db, 'a> {
     TypingClass(TypingClass),
     TypingClassType(TypingClass),
     None,
-    AnyType,
     Never,
 }
 
@@ -273,7 +272,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => todo!(),
             },
             Self::TypingClassType(c) => todo!(),
-            Self::AnyType => todo!(),
             Self::None => true,
             Self::Never => todo!(),
         };
@@ -330,7 +328,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClass(_)
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
-            | Self::AnyType
             | Self::Never
             | Self::None => (Generics::None, None),
         }
@@ -364,7 +361,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClassType(c) => todo!(),
             Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
-            Self::AnyType => Box::from("builtins.type"),
             Self::Never => Box::from("<nothing>"),
         }
     }
@@ -401,7 +397,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClass(c) => c.as_db_type(),
             Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
             Self::None => DbType::None,
-            Self::AnyType => DbType::Type(Box::new(DbType::Any)),
             Self::Never => DbType::Never,
         }
     }
@@ -448,7 +443,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::TypingClass(c) => todo!("{c2:?}"),
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),
                 ClassLike::None => true, // TODO this is probably not correct
-                ClassLike::AnyType => todo!("{c2:?}"),
                 ClassLike::Never => todo!(),
             }
         };
