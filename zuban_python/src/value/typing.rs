@@ -19,9 +19,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
 use crate::node_ref::NodeRef;
 
-const ANY: DbType = DbType::Any;
-const NEVER: DbType = DbType::Never;
-
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
     pub specific: Specific,
@@ -179,8 +176,8 @@ impl<'db, 'a> TupleClass<'a> {
                 self.content
                     .generics
                     .as_ref()
-                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap_or(&NEVER))
-                    .unwrap_or(&ANY),
+                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap_or(&DbType::Never))
+                    .unwrap_or(&DbType::Any),
             )),
             class_infos.mro.iter(),
         )
