@@ -112,6 +112,11 @@ impl PythonState {
     }
 
     #[inline]
+    pub fn object_db_type(&self) -> DbType {
+        DbType::Class(self.object().as_link())
+    }
+
+    #[inline]
     pub fn object_class(&self) -> Class {
         Class::from_position(self.object(), Generics::None, None).unwrap()
     }
