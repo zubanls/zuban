@@ -34,7 +34,7 @@ pub enum ClassLike<'db, 'a> {
     TypeVar(&'a TypeVarUsage),
     TypingClass(TypingClass),
     TypingClassType(TypingClass),
-    NoneType,
+    None,
     AnyType,
     Never,
 }
@@ -78,6 +78,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     self.is_object_class(i_s.db)
                 }
             }
+            Type::ClassLike(ClassLike::None) => Match::True,
             Type::ClassLike(c) => {
                 let mut similarity = Match::False;
                 match variance {
@@ -172,7 +173,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c1) => c1.is_object_class(i_s.db),
                 _ => Match::False,
             },
-            Type::None => Match::True, // TODO should be false
             Type::Any => Match::TrueWithAny,
         }
     }
@@ -266,7 +266,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             },
             Self::TypingClassType(c) => todo!(),
             Self::AnyType => todo!(),
-            Self::NoneType => todo!(),
+            Self::None => true,
             Self::Never => todo!(),
         };
         if matches {
@@ -324,7 +324,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             | Self::TypingClassType(_)
             | Self::AnyType
             | Self::Never
-            | Self::NoneType => (Generics::None, None),
+            | Self::None => (Generics::None, None),
         }
     }
 
@@ -354,7 +354,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(f) => f.format(i_s, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
-            Self::NoneType => Box::from("None"),
+            Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
             Self::AnyType => Box::from("builtins.type"),
             Self::Never => Box::from("<never>"),
@@ -392,7 +392,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::FunctionType(f) => todo!(),
             Self::TypingClass(c) => c.as_db_type(),
             Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
-            Self::NoneType => DbType::Type(Box::new(DbType::None)),
+            Self::None => DbType::None,
             Self::AnyType => DbType::Type(Box::new(DbType::Any)),
             Self::Never => DbType::Never,
         }
@@ -432,7 +432,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
                 ClassLike::TypingClass(c) => todo!("{c2:?}"),
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),
-                ClassLike::NoneType => todo!("{c2:?}"),
+                ClassLike::None => todo!("{c2:?}"),
                 ClassLike::AnyType => todo!("{c2:?}"),
                 ClassLike::Never => todo!(),
             }

@@ -1,5 +1,7 @@
 # Next up
 testNoComplainOverloadNone
+testFunctionSubtypingWithVoid
+testOverloadDetectsPossibleMatchesWithGenerics
 testNoComplainOverloadNoneStrict
 testIgnoreOverloadVariantBasedOnKeywordArg
 testUnionMathOverloadingReturnsBestType

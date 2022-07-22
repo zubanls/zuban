@@ -816,7 +816,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     Union(Vec<DbType>),
-    None,
     Any,
 }
 
@@ -829,7 +828,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     Class::from_position(node_ref, Generics::None, None).unwrap(),
                 ))
             }
-            DbType::None => Type::None,
+            DbType::None => Self::ClassLike(ClassLike::None),
             DbType::Any | DbType::Unknown => Type::Any,
             DbType::Never => Self::ClassLike(ClassLike::Never),
             DbType::GenericClass(link, generics) => {
@@ -867,7 +866,6 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list)),
-            Self::None => DbType::None,
             Self::Any => DbType::Any,
         }
     }
@@ -879,13 +877,11 @@ impl<'db, 'a> Type<'db, 'a> {
                 Self::Union(list2) => list2
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
-                Self::None => todo!(),
                 Self::Any => false,
             },
             Self::Union(list1) => list1
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
-            Self::None => true,
             Self::Any => true,
         }
     }
@@ -954,7 +950,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     })
                     .into(),
             },
-            Self::None => matches!(value_class, Self::None).into(),
             Self::Any => match value_class {
                 Self::Any => Match::TrueWithAny,
                 _ => Match::True,
@@ -1054,7 +1049,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     })
                     .collect(),
             )),
-            Self::None => DbType::None,
             Self::Any => DbType::Any,
         }
     }
@@ -1077,7 +1071,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 })
                 .into(),
-            Self::None => Box::from("None"),
             Self::Any => Box::from("Any"),
         }
     }

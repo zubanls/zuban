@@ -194,10 +194,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(
             i_s,
             // TODO is this is_none necessary? It was added because None class was not implemented
-            &mut |i_s, v| match v.is_none() {
-                true => Type::None,
-                false => Type::ClassLike(v.class(i_s)),
-            },
+            &mut |i_s, v| Type::ClassLike(v.class(i_s)),
             &|i_s, g1, g2| g1.union(i_s, g2),
             &mut |i_s| Type::Any,
         )
