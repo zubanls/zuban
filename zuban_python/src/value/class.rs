@@ -2,7 +2,7 @@ use std::fmt;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
-use super::callable::matches_params;
+use super::callable::{has_overlapping_params, matches_params};
 use super::{
     CallableClass, CallableLike, Function, LookupResult, Module, OnTypeError, TupleClass,
     TypingClass, Value, ValueKind,
@@ -54,6 +54,14 @@ macro_rules! matches_callable {
             $c2.param_iterator(),
             Variance::Contravariant,
         ) | Match::FalseButSimilar
+    }};
+}
+
+macro_rules! overlaps_callable {
+    ($i_s:ident, $c1:ident, $c2:ident) => {{
+        let other_result = $c2.result_type($i_s);
+        $c1.result_type($i_s).overlaps($i_s, &other_result)
+            && has_overlapping_params($i_s, $c1.param_iterator(), $c2.param_iterator())
     }};
 }
 
@@ -431,7 +439,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     ClassLike::Tuple(t2) => t1.overlaps(i_s, t2),
                     _ => false,
                 },
-                ClassLike::Callable(c) => todo!("{c2:?}"),
+                ClassLike::Callable(c1) => match c2 {
+                    ClassLike::Callable(c2) => overlaps_callable!(i_s, c1, c2),
+                    ClassLike::FunctionType(f2) => todo!(),
+                    _ => todo!(),
+                },
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
                 ClassLike::TypingClass(c) => todo!("{c2:?}"),
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),

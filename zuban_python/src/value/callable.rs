@@ -46,6 +46,18 @@ pub fn matches_params<'db: 'x, 'x>(
     Match::True
 }
 
+pub fn has_overlapping_params<'db: 'x, 'x>(
+    i_s: &mut InferenceState<'db, '_>,
+    params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+    params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+) -> bool {
+    if let Some(params1) = params1 {
+        if let Some(mut params2) = params2 {
+            return overload_has_overlapping_params(i_s, params1, params2);
+        }
+    }
+    false
+}
 pub fn overload_has_overlapping_params<'db: 'x, 'x>(
     i_s: &mut InferenceState<'db, '_>,
     params1: impl Iterator<Item = impl Param<'db, 'x>>,
