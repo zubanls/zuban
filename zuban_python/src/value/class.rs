@@ -276,25 +276,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Never => todo!(),
         };
         if matches {
-            let (class_generics, class_result_type) = self.generics(i_s);
-            let (value_generics, value_result_type) = other.generics(i_s);
-
-            let mut matches =
-                class_generics.matches(i_s, matcher.as_deref_mut(), value_generics, variance, None);
-            // Result generics are only relevant for callables/functions
-            if let Some(class_result_generics) = class_result_type {
-                matches &= class_result_generics.matches(
-                    i_s,
-                    matcher,
-                    value_result_type.unwrap(),
-                    variance,
-                );
-            }
-            if matches!(matches, Match::False) {
-                Match::FalseButSimilar
-            } else {
-                matches
-            }
+            let g1 = self.generics(i_s);
+            let g2 = other.generics(i_s);
+            g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None) | Match::FalseButSimilar
         } else {
             Match::False
         }
@@ -314,22 +298,19 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn generics(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> (Generics<'db, '_>, Option<Type<'db, '_>>) {
+    fn generics(&self, i_s: &mut InferenceState<'db, '_>) -> Generics<'db, '_> {
         match self {
-            Self::Class(c) => (c.generics(), None),
-            Self::Type(c) => (Generics::Class(c), None),
-            Self::TypeWithDbType(g) => (Generics::DbType(g), None),
-            Self::Tuple(c) => (c.generics(), None),
+            Self::Class(c) => c.generics(),
+            Self::Type(c) => Generics::Class(c),
+            Self::TypeWithDbType(g) => Generics::DbType(g),
+            Self::Tuple(c) => c.generics(),
             Self::Callable(c) => unreachable!(),
             Self::FunctionType(f) => unreachable!(),
             Self::TypingClass(_)
             | Self::TypeVar(_)
             | Self::TypingClassType(_)
             | Self::Never
-            | Self::None => (Generics::None, None),
+            | Self::None => Generics::None,
         }
     }
 
