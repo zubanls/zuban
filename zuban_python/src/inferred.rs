@@ -18,9 +18,9 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
-    Tuple, TupleClass, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
-    TypingClassVar, TypingType, TypingWithGenerics, Value,
+    IteratorContent, ListLiteral, Module, NeverInstance, NoneInstance, OverloadedFunction,
+    RevealTypeFunction, Tuple, TupleClass, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast,
+    TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 #[derive(Debug)]
@@ -147,7 +147,9 @@ impl<'db> Inferred<'db> {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            DbType::Never => todo!(),
+            DbType::Never => {
+                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
+            }
             DbType::TypeVar(ref t) => {
                 if t.type_ == TypeVarType::Class {
                     if let Some(class) = i_s.current_class {
@@ -1120,7 +1122,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
         DbType::Unknown => todo!(),
-        DbType::Never => todo!(),
+        DbType::Never => callable(i_s, &NeverInstance(db_type)),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
     }
 }

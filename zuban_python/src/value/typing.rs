@@ -8,8 +8,8 @@ use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Val
 use crate::arguments::{Argument, Arguments};
 use crate::base_description;
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
-    TypeVarIndex, TypeVarUsage, Variance,
+    ComplexPoint, Database, DbType, FormatStyle, GenericsList, PointLink, Specific, TupleContent,
+    TypeVar, TypeVarIndex, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -168,7 +168,7 @@ impl<'a> TupleClass<'a> {
     }
 
     pub fn mro<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+        let class_infos = i_s.db.python_state.tuple(Generics::None).class_infos(i_s);
         if !self.content.arbitrary_length {
             debug!("TODO Only used TypeVarIndex #0, and not all of them");
         }
@@ -313,14 +313,16 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        for (mro_index, class) in TupleClass::new(self.content).mro(i_s) {
+        let tuple_cls = i_s.db.python_state.tuple(Generics::None);
+        for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
                 inf.bind(
                     i_s,
                     |i_s| {
-                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                            DbType::Tuple(self.content.clone()),
-                        )))
+                        Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                            tuple_cls.node_ref.as_link(),
+                            Some(GenericsList::new_generics(Box::new([DbType::Never]))),
+                        ))
                     },
                     mro_index,
                 )
@@ -329,6 +331,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 return result;
             }
         }
+        // TODO object lookups
         LookupResult::None
     }
 

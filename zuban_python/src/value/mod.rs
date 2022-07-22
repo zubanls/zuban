@@ -5,6 +5,7 @@ mod function;
 mod instance;
 mod iterable;
 mod module;
+mod never;
 mod none;
 mod type_alias;
 mod typing;
@@ -27,6 +28,7 @@ pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgum
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
+pub use never::NeverInstance;
 pub use none::NoneInstance;
 pub use type_alias::TypeAlias;
 pub use typing::{

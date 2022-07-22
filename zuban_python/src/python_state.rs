@@ -123,12 +123,12 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple(&self) -> Class {
+    pub fn tuple<'db>(&'db self, generics: Generics<'db, 'db>) -> Class<'db, 'db> {
         debug_assert!(self.builtins_tuple_index != 0);
         // TODO might be unused???
         Class::from_position(
             NodeRef::new(self.builtins(), self.builtins_tuple_index),
-            Generics::None,
+            generics,
             None,
         )
         .unwrap()

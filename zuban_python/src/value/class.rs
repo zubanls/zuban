@@ -374,7 +374,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(c) => todo!(),
-            _ => todo!(),
+            _ => todo!("{name:?} {self:?}"),
         }
     }
 
