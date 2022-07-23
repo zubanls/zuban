@@ -1,3 +1,5 @@
+use parsa_python_ast::ParamType;
+
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
@@ -58,25 +60,96 @@ pub fn has_overlapping_params<'db: 'x, 'x>(
     }
     todo!()
 }
-pub fn overload_has_overlapping_params<'db: 'x, 'x>(
+pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    params1: impl Iterator<Item = impl Param<'db, 'x>>,
-    mut params2: impl Iterator<Item = impl Param<'db, 'x>>,
+    params1: impl Iterator<Item = P1>,
+    params2: impl Iterator<Item = P2>,
 ) -> bool {
-    for param1 in params1 {
-        if let Some(param2) = params2.next() {
-            if param1.param_type() != param2.param_type() {
-                return false;
+    let mut check_type = |param1: P1, param2: P2| {
+        if let Some(t1) = param1.annotation_type(i_s) {
+            if let Some(t2) = param2.annotation_type(i_s) {
+                return t1.overlaps(i_s, &t2);
             }
-            if let Some(t1) = param1.annotation_type(i_s) {
-                if let Some(t2) = param2.annotation_type(i_s) {
-                    if !t1.overlaps(i_s, &t2) {
+        }
+        true
+    };
+    let mut params2 = params2.peekable();
+    for param1 in params1 {
+        // TODO
+        match param1.param_type() {
+            ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
+                if let Some(param2) = params2.peek() {
+                    if !check_type(param1, *param2) {
+                        return false;
+                    }
+                    match param2.param_type() {
+                        ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
+                            params2.next(); // We only peeked.
+                        }
+                        ParamType::KeywordOnly => {
+                            todo!()
+                        }
+                        ParamType::Starred => (),
+                        ParamType::DoubleStarred => {
+                            todo!()
+                        }
+                    }
+                } else {
+                    return false;
+                }
+            }
+            ParamType::KeywordOnly => {
+                if let Some(param2) = params2.peek() {
+                    if param2.param_type() == ParamType::Starred {
+                        params2.next();
+                    }
+                }
+                if let Some(param2) = params2.peek() {
+                    if !check_type(param1, *param2) {
+                        return false;
+                    }
+                    match param2.param_type() {
+                        ParamType::PositionalOrKeyword => {
+                            todo!()
+                        }
+                        ParamType::PositionalOnly => todo!(),
+                        ParamType::Starred => {
+                            todo!()
+                        }
+                        ParamType::KeywordOnly => {
+                            todo!()
+                        }
+                        ParamType::DoubleStarred => (),
+                    }
+                } else {
+                    return false;
+                }
+            }
+            ParamType::Starred => {
+                while match params2.peek() {
+                    Some(p) => !matches!(
+                        p.param_type(),
+                        ParamType::KeywordOnly | ParamType::DoubleStarred
+                    ),
+                    None => true,
+                } {
+                    if let Some(param2) = params2.next() {
+                        if !check_type(param1, param2) {
+                            return false;
+                        }
+                    } else {
                         return false;
                     }
                 }
             }
-        } else {
-            return false;
+            ParamType::DoubleStarred => {
+                for param2 in params2 {
+                    if !check_type(param1, param2) {
+                        return false;
+                    }
+                }
+                return true;
+            }
         }
     }
     if params2.next().is_some() {
