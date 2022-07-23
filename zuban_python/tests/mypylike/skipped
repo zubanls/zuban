@@ -3,9 +3,6 @@ testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
 testNoComplainOverloadNoneStrict
 
-testSubtypingFunctionsDoubleCorrespondence
-testSubtypingFunctionsRequiredLeftArgNotPresent
-
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
@@ -741,8 +738,6 @@ testSubtypingWithGenericFunctionUsingTypevarWithValues
 
 # Function subtyping different names
 testSubtypingFunctionsArgsKwargs
-testRedefineFunction
-testSubtypingFunctionsImplicitNames
 
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
@@ -764,6 +759,11 @@ testOverloadedMethodAsDataAttribute
 testInvalidMethodAsDataAttributeInGenericClass
 testPartiallyTypedSelfInMethodDataAttribute
 testCallableDataAttribute
+
+# Reporting of Callable issues formatting
+testSubtypingFunctionsDoubleCorrespondence
+testSubtypingFunctionsRequiredLeftArgNotPresent
+testRedefineFunction
 
 # flow graph
 testAssignAndConditional*
@@ -875,6 +875,9 @@ testOverloadDeferredNode
 # Function Not checked, missing return annotations (untyped)
 testPositionalAndKeywordForSameArg
 testTypeCheckOverloadWithImplementationError
+
+# function type mismatch when untyped
+testSubtypingFunctionsImplicitNames
 
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
