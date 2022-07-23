@@ -73,20 +73,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
         }
         true
     };
-    let mut params2 = params2.peekable();
-    for param1 in params1 {
-        // Get rid of defaults first, because they always overlap.
-        if param1.has_default() {
-            continue;
-        }
-        while let Some(param2) = params2.peek() {
-            if param2.has_default() {
-                params2.next();
-            } else {
-                break;
-            }
-        }
-
+    // Get rid of defaults first, because they always overlap.
+    let mut params2 = params2.filter(|p| !p.has_default()).peekable();
+    for param1 in params1.filter(|p| !p.has_default()) {
         match param1.param_type() {
             ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
                 if let Some(param2) = params2.peek() {
@@ -151,7 +140,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             }
             ParamType::DoubleStarred => {
                 for param2 in params2 {
-                    if !param2.has_default() && !check_type(param1, param2) {
+                    if !check_type(param1, param2) {
                         return false;
                     }
                 }
