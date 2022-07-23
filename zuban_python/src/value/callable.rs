@@ -30,7 +30,9 @@ pub fn matches_params<'db: 'x, 'x>(
                     let pt2 = param2.param_type();
                     if !(pt1 == pt2
                         || pt1 == ParamType::PositionalOnly
-                            && pt2 == ParamType::PositionalOrKeyword)
+                            && pt2 == ParamType::PositionalOrKeyword
+                        // TODO This is not good enough, there might be Callable[int, int] against *int
+                        || pt1 == ParamType::PositionalOnly && pt2 == ParamType::Starred)
                     {
                         return Match::False;
                     }

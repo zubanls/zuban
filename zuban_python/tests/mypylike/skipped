@@ -729,8 +729,6 @@ testSkippedClass*
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 
 # Function Subtyping *args
-testVarArgsFunctionSubtyping
-
 testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
