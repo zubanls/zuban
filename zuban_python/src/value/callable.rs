@@ -142,14 +142,12 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                         p.param_type(),
                         ParamType::KeywordOnly | ParamType::DoubleStarred
                     ),
-                    None => true,
+                    None => false,
                 } {
                     if let Some(param2) = params2.next() {
                         if !check_type(param1, param2) {
                             return false;
                         }
-                    } else {
-                        return false;
                     }
                 }
             }
