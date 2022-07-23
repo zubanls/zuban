@@ -101,9 +101,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                             todo!()
                         }
                         ParamType::Starred => (),
-                        ParamType::DoubleStarred => {
-                            todo!()
-                        }
+                        ParamType::DoubleStarred => (),
                     }
                 } else {
                     return false;
@@ -153,7 +151,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             }
             ParamType::DoubleStarred => {
                 for param2 in params2 {
-                    if !check_type(param1, param2) {
+                    if !param2.has_default() && !check_type(param1, param2) {
                         return false;
                     }
                 }
