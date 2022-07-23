@@ -26,7 +26,22 @@ pub fn matches_params<'db: 'x, 'x>(
             let mut matches = Match::True;
             for param1 in params1 {
                 if let Some(param2) = params2.next() {
-                    if param1.param_type() != param2.param_type() {
+                    let pt1 = param1.param_type();
+                    let pt2 = param2.param_type();
+                    if !(pt1 == pt2
+                        || pt1 == ParamType::PositionalOnly
+                            && pt2 == ParamType::PositionalOrKeyword)
+                    {
+                        return Match::False;
+                    }
+                    if param1.has_default() && !param2.has_default() {
+                        return Match::False;
+                    }
+                    if matches!(
+                        param1.param_type(),
+                        ParamType::PositionalOrKeyword | ParamType::KeywordOnly
+                    ) && param1.name() != param2.name()
+                    {
                         return Match::False;
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {

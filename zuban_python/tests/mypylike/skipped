@@ -3,6 +3,7 @@ testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
 testNoComplainOverloadNoneStrict
 
+
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
@@ -86,7 +87,6 @@ testOverloadPartialOverlapWithUnrestrictedTypeVarInClassNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadPartiallyOverlappingTypeVarsIdentical
 testNestedOverloadsTypeVarOverlap
-testOverloadTwoTypeArgs
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testIgnoreOverloadVariantBasedOnKeywordArg
 testOverloadOverlapWithTypeVars
@@ -738,9 +738,9 @@ testSubtypingWithGenericInnerFunctions
 testSubtypingWithGenericFunctionUsingTypevarWithValues
 
 # Function subtyping different names
-testSubtypingFunctionsDefaultsNames
 testSubtypingFunctionsArgsKwargs
 testRedefineFunction
+testSubtypingFunctionsImplicitNames
 
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
