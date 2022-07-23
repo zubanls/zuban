@@ -416,7 +416,10 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
                         );
                         match param.param_type() {
                             ParamType::PositionalOnly => todo!(),
-                            ParamType::PositionalOrKeyword => t.into(),
+                            ParamType::PositionalOrKeyword => match param.has_default() {
+                                true => format!("DefaultArg({t}, '{}')", param.name().unwrap()),
+                                false => format!("Arg({t}, '{}')", param.name().unwrap()),
+                            },
                             ParamType::KeywordOnly => {
                                 format!("NamedArg({t}, '{}')", param.name().unwrap())
                             }

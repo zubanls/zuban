@@ -3,6 +3,8 @@ testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
 testNoComplainOverloadNoneStrict
 
+testSubtypingFunctionsDoubleCorrespondence
+testSubtypingFunctionsRequiredLeftArgNotPresent
 
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
