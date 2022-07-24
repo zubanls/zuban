@@ -5,7 +5,7 @@ use parsa_python_ast::{
 use std::fmt;
 use std::rc::Rc;
 
-use super::{CallableLike, ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -313,10 +313,8 @@ impl<'db, 'a> Function<'db, 'a> {
             None => format!("{:?}", self.name()).into(),
         }
     }
-}
 
-impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
-    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         self.return_annotation()
             .map(|a| {
                 self.node_ref
@@ -327,7 +325,7 @@ impl<'db, 'a> CallableLike<'db, 'a> for Function<'db, 'a> {
             .unwrap_or(Type::Any)
     }
 
-    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 

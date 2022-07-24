@@ -176,18 +176,13 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     true
 }
 
-pub trait CallableLike<'db: 'a, 'a>: Value<'db, 'a> {
-    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a>;
-    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str>;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
     pub content: &'a CallableContent,
     db_type: &'a DbType,
 }
 
-impl<'a> CallableClass<'a> {
+impl<'db, 'a> CallableClass<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
     }
@@ -199,14 +194,12 @@ impl<'a> CallableClass<'a> {
     pub fn param_iterator(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
         self.content.params.as_ref().map(|params| params.iter())
     }
-}
 
-impl<'db: 'a, 'a> CallableLike<'db, 'a> for CallableClass<'a> {
-    fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         Type::from_db_type(i_s.db, &self.content.return_class)
     }
 
-    fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         self.content.format(i_s.db, style).into()
     }
 }

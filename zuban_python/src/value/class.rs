@@ -4,8 +4,8 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::callable::{has_overlapping_params, matches_params};
 use super::{
-    CallableClass, CallableLike, Function, LookupResult, Module, OnTypeError, TupleClass,
-    TypingClass, Value, ValueKind,
+    CallableClass, Function, LookupResult, Module, OnTypeError, TupleClass, TypingClass, Value,
+    ValueKind,
 };
 use crate::arguments::Arguments;
 use crate::database::{
