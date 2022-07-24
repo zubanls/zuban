@@ -76,22 +76,34 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         match value_class {
-            Type::ClassLike(ClassLike::TypeVar(t)) => {
-                if self.matches_type_var(t) {
-                    Match::True
-                } else if let Some(bound) = &t.type_var.bound {
-                    self.matches(i_s, Type::from_db_type(i_s.db, bound), None, variance)
-                } else if !t.type_var.restrictions.is_empty() {
-                    t.type_var
-                        .restrictions
-                        .iter()
-                        .any(|r| {
-                            self.matches(i_s, Type::from_db_type(i_s.db, r), None, variance)
-                                .bool()
-                        })
-                        .into()
-                } else {
-                    self.is_object_class(i_s.db)
+            Type::ClassLike(ClassLike::TypeVar(t2)) => {
+                match self {
+                    Self::TypeVar(t1) => {
+                        if let Some(matcher) = matcher {
+                            matcher.match_or_add_type_var(i_s, t1, value_class)
+                        } else {
+                            self.matches_type_var(t2).into() // TODO does this check make sense?
+                        }
+                    }
+                    _ => {
+                        if self.matches_type_var(t2) {
+                            // TODO does this check make sense?
+                            Match::True
+                        } else if let Some(bound) = &t2.type_var.bound {
+                            self.matches(i_s, Type::from_db_type(i_s.db, bound), None, variance)
+                        } else if !t2.type_var.restrictions.is_empty() {
+                            t2.type_var
+                                .restrictions
+                                .iter()
+                                .any(|r| {
+                                    self.matches(i_s, Type::from_db_type(i_s.db, r), None, variance)
+                                        .bool()
+                                })
+                                .into()
+                        } else {
+                            self.is_object_class(i_s.db)
+                        }
+                    }
                 }
             }
             Type::ClassLike(ClassLike::None) => Match::True,
