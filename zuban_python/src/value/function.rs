@@ -790,6 +790,8 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     return handle_result(i_s, finder, function);
                 }
                 SignatureMatch::TrueWithAny(param_indices) => {
+                    // TODO there could be three matches or more?
+                    // TODO maybe merge list[any] and list[int]
                     if multi_any_match.is_some() {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, but there should

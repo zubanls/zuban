@@ -19,7 +19,6 @@ pub fn matches_params<'db: 'x, 'x>(
     mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
     params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
-    variance: Variance,
 ) -> Match {
     if let Some(params1) = params1 {
         if let Some(mut params2) = params2 {
@@ -48,7 +47,8 @@ pub fn matches_params<'db: 'x, 'x>(
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
-                            matches &= t1.matches(i_s, matcher.as_deref_mut(), t2, variance)
+                            matches &=
+                                t1.matches(i_s, matcher.as_deref_mut(), t2, Variance::Contravariant)
                         }
                     }
                 } else {

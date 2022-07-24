@@ -192,13 +192,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     f2.type_vars(self.i_s);
                     if matches!(
-                        matches_params(
-                            self.i_s,
-                            None,
-                            f1.param_iterator(),
-                            f2.param_iterator(),
-                            Variance::Covariant
-                        ),
+                        matches_params(self.i_s, None, f2.param_iterator(), f1.param_iterator(),),
                         Match::True
                     ) {
                         f2.node_ref.add_typing_issue(
