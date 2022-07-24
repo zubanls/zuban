@@ -288,10 +288,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => Match::False,
                 };
             }
-            Self::TypingClass(c) => match other {
-                Self::Tuple(c2) => c.specific == Specific::TypingTuple,
-                _ => todo!(),
-            },
+            Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
             Self::None => true,
             Self::Never => todo!(),
