@@ -757,11 +757,11 @@ testInvalidMethodAsDataAttributeInGenericClass
 testPartiallyTypedSelfInMethodDataAttribute
 testCallableDataAttribute
 
-# Reporting of Callable issues formatting
-testSubtypingFunctionsDoubleCorrespondence
-testSubtypingFunctionsRequiredLeftArgNotPresent
-testRedefineFunction
-testSubtypingWithGenericFunctionUsingTypevarWithValues
+# Reporting of Callable issues formatting (for now just changed in tests)
+# testSubtypingFunctionsDoubleCorrespondence
+# testSubtypingFunctionsRequiredLeftArgNotPresent
+# testRedefineFunction
+# testSubtypingWithGenericFunctionUsingTypevarWithValues
 
 # flow graph
 testAssignAndConditional*
