@@ -3,6 +3,11 @@ testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
 testNoComplainOverloadNoneStrict
 
+testGenericTypeAliasesSubclassing
+testFunctionForwardRefAlias
+testBoundOnGenericFunction
+testBoundGenericFunctions
+
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
