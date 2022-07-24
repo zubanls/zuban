@@ -941,14 +941,17 @@ impl<'db, 'a> Type<'db, 'a> {
                         list2.is_empty().into()
                     }
                 }
-                _ => list1
-                    .iter()
-                    .any(|g| {
-                        Type::from_db_type(i_s.db, g)
-                            .matches(i_s, matcher.as_deref_mut(), value_class.clone(), variance)
-                            .bool()
-                    })
-                    .into(),
+                _ => match variance {
+                    Variance::Contravariant => Match::False,
+                    Variance::Covariant | Variance::Invariant => list1
+                        .iter()
+                        .any(|g| {
+                            Type::from_db_type(i_s.db, g)
+                                .matches(i_s, matcher.as_deref_mut(), value_class.clone(), variance)
+                                .bool()
+                        })
+                        .into(),
+                },
             },
             Self::Any => match value_class {
                 Self::Any => Match::TrueWithAny,
