@@ -12,6 +12,11 @@ testFunctionReturningGenericFunction
 testFunctionReturningGenericFunctionPartialBinding
 testFunctionReturningGenericFunctionTwoLevelBinding
 
+# Function Subtyping inverse type var binding
+testGenericFunctionSubtypingWithTypevarValues
+testSubtypingWithGenericFunctions
+testSubtypingWithGenericInnerFunctions
+
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
@@ -87,7 +92,6 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadPartiallyOverlappingTypeVarsIdentical
 testNestedOverloadsTypeVarOverlap
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testIgnoreOverloadVariantBasedOnKeywordArg
 testOverloadOverlapWithTypeVars
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
@@ -727,11 +731,6 @@ testSkippedClass*
 
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
-
-# Function Subtyping *args
-testGenericFunctionSubtypingWithTypevarValues
-testSubtypingWithGenericFunctions
-testSubtypingWithGenericInnerFunctions
 
 # Function subtyping different names
 testSubtypingFunctionsArgsKwargs
