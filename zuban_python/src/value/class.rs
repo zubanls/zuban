@@ -229,10 +229,15 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Type(_) | Self::TypeWithDbType(_) => {
                 matches!(other, Self::Type(_) | Self::TypeWithDbType(_))
             }
-            Self::TypeVar(t) => {
+            Self::TypeVar(t1) => {
                 return match matcher {
-                    Some(matcher) => matcher.match_or_add_type_var(i_s, t, Type::ClassLike(*other)),
-                    None => other.matches_type_var(i_s, t).into(),
+                    Some(matcher) => {
+                        matcher.match_or_add_type_var(i_s, t1, Type::ClassLike(*other))
+                    }
+                    None => match other {
+                        Self::TypeVar(t2) => (t1.index == t2.index && t1.type_ == t2.type_).into(),
+                        _ => Match::False,
+                    },
                 }
             }
             Self::Tuple(t1) => {
