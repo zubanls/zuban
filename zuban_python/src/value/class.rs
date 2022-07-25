@@ -100,7 +100,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                 }
             }
-            Type::ClassLike(ClassLike::None) => Match::True,
+            Type::ClassLike(ClassLike::None) => match variance {
+                Variance::Contravariant => (matches!(self, Self::None)).into(),
+                _ => Match::True,
+            },
             Type::ClassLike(c) => {
                 let mut similarity = Match::False;
                 match variance {
@@ -283,7 +286,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
-            Self::None => true,
+            Self::None => match variance {
+                Variance::Contravariant => matches!(self, Self::None),
+                _ => true,
+            },
             Self::Never => todo!(),
         };
         if matches {

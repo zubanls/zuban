@@ -933,7 +933,7 @@ impl TypeVarManager {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[repr(u32)]
 pub enum Variance {
     Invariant = 0,
