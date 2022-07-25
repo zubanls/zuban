@@ -76,11 +76,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         if let Some(matcher) = matcher {
                             matcher.match_or_add_type_var(i_s, t1, value_class)
                         } else {
-                            self.matches_type_var(t2).into() // TODO does this check make sense?
+                            self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
                         }
                     }
                     _ => {
-                        if self.matches_type_var(t2) {
+                        if self.matches_type_var(i_s, t2) {
                             // TODO does this check make sense?
                             Match::True
                         } else if let Some(bound) = &t2.type_var.bound {
@@ -232,7 +232,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t) => {
                 return match matcher {
                     Some(matcher) => matcher.match_or_add_type_var(i_s, t, Type::ClassLike(*other)),
-                    None => other.matches_type_var(t).into(),
+                    None => other.matches_type_var(i_s, t).into(),
                 }
             }
             Self::Tuple(t1) => {
@@ -301,10 +301,32 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    fn matches_type_var(&self, t1: &TypeVarUsage) -> bool {
-        match self {
-            Self::TypeVar(t2) => t1.index == t2.index && t1.type_ == t2.type_,
-            _ => false,
+    fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
+        if let Self::TypeVar(t1) = self {
+            if t1.index == t2.index && t1.type_ == t2.type_ {
+                return true;
+            }
+        }
+        if let Some(bound) = &t2.type_var.bound {
+            self.matches(
+                i_s,
+                Type::from_db_type(i_s.db, bound),
+                None,
+                Variance::Covariant,
+            )
+            .bool()
+        } else if !t2.type_var.restrictions.is_empty() {
+            t2.type_var.restrictions.iter().any(|r| {
+                self.matches(
+                    i_s,
+                    Type::from_db_type(i_s.db, r),
+                    None,
+                    Variance::Covariant,
+                )
+                .bool()
+            })
+        } else {
+            false
         }
     }
 
@@ -446,8 +468,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         };
 
         if let ClassLike::TypeVar(t) = other {
-            return if let Some(db_t) = &t.type_var.bound {
-                todo!("{self:?}")
+            return if let Some(bound) = &t.type_var.bound {
+                Type::ClassLike(*self).overlaps(i_s, &Type::from_db_type(i_s.db, bound))
             } else if !t.type_var.restrictions.is_empty() {
                 todo!("{self:?}")
             } else {

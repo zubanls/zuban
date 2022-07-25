@@ -8,6 +8,10 @@ overload_unmatchable_none
 overload_not_overlapping_optional
 overload_overlapping_any
 
+testSubtypingWithGenericFunctionUsingTypevarWithValues
+testTypeVarSubtypeUnion
+testOverloadOverlapWithTypeVars
+
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
@@ -103,7 +107,6 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadPartiallyOverlappingTypeVarsIdentical
 testNestedOverloadsTypeVarOverlap
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testOverloadOverlapWithTypeVars
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
