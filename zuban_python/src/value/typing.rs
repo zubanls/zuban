@@ -225,27 +225,19 @@ impl<'db, 'a> TupleClass<'a> {
                             i_s.db,
                             generics1.nth(TypeVarIndex::new(0)).unwrap(),
                         );
-                        for g in generics2.iter() {
-                            let t2 = Type::from_db_type(i_s.db, g);
-                            if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
-                                return false;
-                            }
-                        }
-                        true
+                        generics2.iter().all(|g2| {
+                            let t2 = Type::from_db_type(i_s.db, g2);
+                            t1.matches(i_s, matcher.as_deref_mut(), t2, variance).bool()
+                        })
                     }
-                    (false, true, Variance::Contravariant) => {
-                        for g1 in generics1.iter() {
-                            let t1 = Type::from_db_type(i_s.db, g1);
-                            let t2 = Type::from_db_type(
-                                i_s.db,
-                                generics2.nth(TypeVarIndex::new(0)).unwrap(),
-                            );
-                            if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
-                                return false;
-                            }
-                        }
-                        true
-                    }
+                    (false, true, Variance::Contravariant) => generics1.iter().all(|g1| {
+                        let t1 = Type::from_db_type(i_s.db, g1);
+                        let t2 = Type::from_db_type(
+                            i_s.db,
+                            generics2.nth(TypeVarIndex::new(0)).unwrap(),
+                        );
+                        t1.matches(i_s, matcher.as_deref_mut(), t2, variance).bool()
+                    }),
                 };
             }
         }
