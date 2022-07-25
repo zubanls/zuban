@@ -4,8 +4,8 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
-    Locality, Point, PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex,
-    TypeVarManager, TypeVarType, TypeVarUsage, Variance,
+    Locality, Point, PointLink, PointType, Specific, TupleContent, TypeAlias, TypeVar,
+    TypeVarIndex, TypeVarManager, TypeVarType, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -221,14 +221,14 @@ pub(super) fn type_computation_for_variable_annotation(
     if let Some(class) = i_s.current_class {
         if let Some(usage) = class
             .type_vars(i_s)
-            .find(type_var.clone(), TypeVarType::Class)
+            .find(type_var.clone(), class.node_ref.as_link())
         {
             return Some(usage);
         }
     }
     if let Some((func, _)) = i_s.current_execution {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var.clone(), TypeVarType::Function);
+            let usage = type_vars.find(type_var.clone(), func.node_ref.as_link());
             if usage.is_some() {
                 return usage;
             }
@@ -1287,7 +1287,10 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                                 Some(TypeVarUsage {
                                     type_var,
                                     index,
-                                    type_: TypeVarType::Alias,
+                                    in_definition: PointLink::new(
+                                        self.file.file_index(),
+                                        assignment.index(),
+                                    ),
                                 })
                             },
                         has_type_vars: false,

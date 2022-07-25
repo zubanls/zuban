@@ -717,7 +717,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         value_type: Type<'db, '_>,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
-        if type_var_usage.type_ == TypeVarType::Class {
+        if type_var_usage.in_definition == TypeVarType::Class {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
                     if let Some(type_var_remap) = f.class.unwrap().type_var_remap {
@@ -804,7 +804,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             //     def __init__(self, t: T) -> None: pass
             debug!(
                 "TODO free type param annotations; searched {:?}, found {:?}",
-                self.match_type, type_var_usage.type_
+                self.match_type, type_var_usage.in_definition
             )
         }
         Match::True

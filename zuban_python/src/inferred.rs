@@ -7,7 +7,7 @@ use crate::arguments::{
 };
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVar, TypeVarType,
+    PointLink, PointType, Specific, TypeVar,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -151,8 +151,8 @@ impl<'db> Inferred<'db> {
                 InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
             }
             DbType::TypeVar(ref t) => {
-                if t.type_ == TypeVarType::Class {
-                    if let Some(class) = i_s.current_class {
+                if let Some(class) = i_s.current_class {
+                    if t.in_definition == class.node_ref.as_link() {
                         let g = class.generics().nth(i_s, t.index);
                         return Inferred::execute_db_type(i_s, g);
                     }

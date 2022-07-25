@@ -206,7 +206,7 @@ impl<'db, 'a> Function<'db, 'a> {
             if let Some(class) = self.class {
                 if let Some(usage) = class
                     .type_vars(i_s)
-                    .find(type_var.clone(), TypeVarType::Class)
+                    .find(type_var.clone(), class.node_ref.as_link())
                 {
                     return Some(usage);
                 }
@@ -215,7 +215,7 @@ impl<'db, 'a> Function<'db, 'a> {
             Some(TypeVarUsage {
                 type_var,
                 index,
-                type_: TypeVarType::Function,
+                in_definition: self.node_ref.as_link(),
             })
         };
         for param in func_node.params().iter() {
