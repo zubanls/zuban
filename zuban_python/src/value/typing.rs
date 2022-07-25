@@ -203,8 +203,9 @@ impl<'db, 'a> TupleClass<'a> {
                 return match (
                     self.content.arbitrary_length,
                     other.content.arbitrary_length,
+                    variance,
                 ) {
-                    (false, false) | (true, true) => {
+                    (false, false, _) | (true, true, _) => {
                         generics1.len() == generics2.len()
                             && Generics::new_list(generics1)
                                 .matches(
@@ -216,14 +217,29 @@ impl<'db, 'a> TupleClass<'a> {
                                 )
                                 .bool()
                     }
-                    (false, true) => false,
-                    (true, false) => {
+                    (false, true, Variance::Covariant)
+                    | (true, false, Variance::Contravariant)
+                    | (_, _, Variance::Invariant) => false,
+                    (true, false, Variance::Covariant) => {
                         let t1 = Type::from_db_type(
                             i_s.db,
                             generics1.nth(TypeVarIndex::new(0)).unwrap(),
                         );
                         for g in generics2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g);
+                            if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
+                                return false;
+                            }
+                        }
+                        true
+                    }
+                    (false, true, Variance::Contravariant) => {
+                        for g1 in generics1.iter() {
+                            let t1 = Type::from_db_type(i_s.db, g1);
+                            let t2 = Type::from_db_type(
+                                i_s.db,
+                                generics2.nth(TypeVarIndex::new(0)).unwrap(),
+                            );
                             if !t1.matches(i_s, matcher.as_deref_mut(), t2, variance) {
                                 return false;
                             }
