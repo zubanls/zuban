@@ -7,10 +7,6 @@ overload_not_overlapping_none
 overload_unmatchable_none
 overload_not_overlapping_optional
 overload_overlapping_any
-testCovariantOverlappingOverloadSignaturesWithAnyType
-testContravariantOverlappingOverloadSignaturesWithAnyType
-testAnyIsOKAsFallbackInOverloads
-testOverloadRefresh
 
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
@@ -41,6 +37,12 @@ testOverloadWithOverlappingItemsAndAnyArgument15
 testOverloadWithOverlappingItemsAndAnyArgument16
 
 testOverloadWithDerivedFromAny
+
+# overload any fallback
+testCovariantOverlappingOverloadSignaturesWithAnyType
+testContravariantOverlappingOverloadSignaturesWithAnyType
+testAnyIsOKAsFallbackInOverloads
+
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
@@ -350,6 +352,9 @@ testProhibitBoundTypeVariableReuseForAliases
 testGenericInnerClass
 testGenericClassInnerFunctionTypeVariable
 testListComprehensionSpecialScoping
+
+# Unknown != Any (shouldn't produce issues)
+testOverloadRefresh
 
 # Property
 testNonMethodProperty
