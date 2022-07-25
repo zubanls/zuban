@@ -235,7 +235,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         matcher.match_or_add_type_var(i_s, t1, Type::ClassLike(*other))
                     }
                     None => match other {
-                        Self::TypeVar(t2) => (t1.index == t2.index && t1.type_ == t2.type_).into(),
+                        Self::TypeVar(t2) => {
+                            (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
+                        }
                         _ => Match::False,
                     },
                 }
@@ -308,7 +310,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
 
     fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
         if let Self::TypeVar(t1) = self {
-            if t1.index == t2.index && t1.type_ == t2.type_ {
+            if t1.index == t2.index && t1.in_definition == t2.in_definition {
                 return true;
             }
         }
@@ -368,8 +370,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Class(c) => c.format(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.format(i_s, style)).into(),
             Self::TypeVar(t) => {
-                if t.type_ == TypeVarType::Class {
-                    if let Some(class) = class {
+                if let Some(class) = class {
+                    if t.in_definition == class.node_ref.as_link() {
                         return class
                             .generics()
                             .nth(i_s, t.index)

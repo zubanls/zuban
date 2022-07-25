@@ -804,7 +804,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             //     def __init__(self, t: T) -> None: pass
             debug!(
                 "TODO free type param annotations; searched {:?}, found {:?}",
-                self.match_type, type_var_usage.type_
+                self.match_type, type_var_usage.in_definition
             )
         }
         Match::True
