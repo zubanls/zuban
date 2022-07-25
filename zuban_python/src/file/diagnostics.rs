@@ -244,6 +244,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             DbType::TypeVar(TypeVarUsage {
                                 type_var: t.clone(),
                                 index: TypeVarIndex::new(i),
+                                in_definition: class.node_ref.as_link(),
                                 type_: TypeVarType::Class,
                             })
                         })

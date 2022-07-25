@@ -157,7 +157,7 @@ pub enum BaseClass<'db, 'a> {
 }
 
 macro_rules! compute_type_application {
-    ($self:ident, $method:ident $args:tt) => {{
+    ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
         let mut type_vars = TypeVarManager::default();
         let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
             let index = type_vars.add(type_var.clone());
@@ -165,6 +165,7 @@ macro_rules! compute_type_application {
                 type_var,
                 index,
                 type_: TypeVarType::Alias,
+                in_definition: $slice_type.as_node_ref().as_link(),
             })
         };
         let mut tcomp = TypeComputation::new($self, &mut on_type_var);
@@ -219,16 +220,21 @@ pub(super) fn type_computation_for_variable_annotation(
     node_ref: NodeRef,
 ) -> Option<TypeVarUsage> {
     if let Some(class) = i_s.current_class {
-        if let Some(usage) = class
-            .type_vars(i_s)
-            .find(type_var.clone(), TypeVarType::Class)
-        {
+        if let Some(usage) = class.type_vars(i_s).find(
+            type_var.clone(),
+            TypeVarType::Class,
+            class.node_ref.as_link(),
+        ) {
             return Some(usage);
         }
     }
     if let Some((func, _)) = i_s.current_execution {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var.clone(), TypeVarType::Function);
+            let usage = type_vars.find(
+                type_var.clone(),
+                TypeVarType::Function,
+                func.node_ref.as_link(),
+            );
             if usage.is_some() {
                 return usage;
             }
@@ -1105,6 +1111,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     ) -> Inferred<'db> {
         compute_type_application!(
             self,
+            slice_type,
             compute_type_get_item_on_class(class, slice_type, None)
         )
     }
@@ -1123,7 +1130,11 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 .add_typing_issue(self.i_s.db, IssueType::OnlyClassTypeApplication);
             return Inferred::new_any();
         }
-        compute_type_application!(self, compute_type_get_item_on_alias(alias, slice_type))
+        compute_type_application!(
+            self,
+            slice_type,
+            compute_type_get_item_on_alias(alias, slice_type)
+        )
     }
 
     pub fn compute_type_application_on_typing_class(
@@ -1136,19 +1147,39 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 todo!()
             }
             Specific::TypingTuple => {
-                compute_type_application!(self, compute_type_get_item_on_tuple(slice_type))
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    compute_type_get_item_on_tuple(slice_type)
+                )
             }
             Specific::TypingCallable => {
-                compute_type_application!(self, compute_type_get_item_on_callable(slice_type))
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    compute_type_get_item_on_callable(slice_type)
+                )
             }
             Specific::TypingUnion => {
-                compute_type_application!(self, compute_type_get_item_on_union(slice_type))
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    compute_type_get_item_on_union(slice_type)
+                )
             }
             Specific::TypingOptional => {
-                compute_type_application!(self, compute_type_get_item_on_optional(slice_type))
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    compute_type_get_item_on_optional(slice_type)
+                )
             }
             Specific::TypingType => {
-                compute_type_application!(self, compute_type_get_item_on_type(slice_type))
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    compute_type_get_item_on_type(slice_type)
+                )
             }
             _ => unreachable!("{:?}", specific),
         }
@@ -1277,6 +1308,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             } else {
                 let mut type_vars = TypeVarManager::default();
                 let p = self.file.points.get(expr.index());
+                let file = self.file;
                 let mut comp =
                     TypeComputation {
                         inference: self,
@@ -1287,6 +1319,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                                 Some(TypeVarUsage {
                                     type_var,
                                     index,
+                                    in_definition: NodeRef::new(file, assignment.index()).as_link(),
                                     type_: TypeVarType::Alias,
                                 })
                             },

@@ -686,6 +686,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     type_var,
                                     index,
                                     type_: TypeVarType::Class,
+                                    in_definition: self.node_ref.as_link(),
                                 })
                             },
                         )

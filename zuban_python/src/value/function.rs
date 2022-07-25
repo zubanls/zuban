@@ -204,10 +204,11 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
             if let Some(class) = self.class {
-                if let Some(usage) = class
-                    .type_vars(i_s)
-                    .find(type_var.clone(), TypeVarType::Class)
-                {
+                if let Some(usage) = class.type_vars(i_s).find(
+                    type_var.clone(),
+                    TypeVarType::Class,
+                    class.node_ref.as_link(),
+                ) {
                     return Some(usage);
                 }
             }
@@ -215,6 +216,7 @@ impl<'db, 'a> Function<'db, 'a> {
             Some(TypeVarUsage {
                 type_var,
                 index,
+                in_definition: self.node_ref.as_link(),
                 type_: TypeVarType::Function,
             })
         };
