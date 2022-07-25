@@ -195,7 +195,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             },
             */
             Type::Union(list) => match self {
-                Self::Class(c1) => c1.is_object_class(i_s.db),
+                Self::Class(c1) if variance == Variance::Covariant => c1.is_object_class(i_s.db),
                 _ => Match::False,
             },
             Type::Any => Match::TrueWithAny,
