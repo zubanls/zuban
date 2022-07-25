@@ -282,7 +282,11 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    t.variance
+                    match variance {
+                        // TODO wtf this shouldn't be this way
+                        Variance::Contravariant => Variance::Contravariant,
+                        _ => t.variance,
+                    }
                 } else {
                     variance
                 };
@@ -897,50 +901,67 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
             Self::Union(list1) => match value_class {
                 // TODO this should use the variance argument
-                Self::Union(mut list2) => {
-                    let mut type_var_usage = None;
-                    for g1 in list1 {
-                        if let Some(t) = g1.maybe_type_var_index() {
-                            type_var_usage = Some(t);
+                Self::Union(mut list2) => match variance {
+                    Variance::Covariant | Variance::Invariant => {
+                        let mut type_var_usage = None;
+                        for g1 in list1 {
+                            if let Some(t) = g1.maybe_type_var_index() {
+                                type_var_usage = Some(t);
+                            }
+                            for (i, g2) in list2.iter().enumerate() {
+                                if Type::from_db_type(i_s.db, g1)
+                                    .matches(
+                                        i_s,
+                                        matcher.as_deref_mut(),
+                                        Type::from_db_type(i_s.db, g2),
+                                        variance,
+                                    )
+                                    .bool()
+                                {
+                                    list2.remove(i);
+                                    break;
+                                }
+                            }
                         }
-                        for (i, g2) in list2.iter().enumerate() {
-                            if Type::from_db_type(i_s.db, g1)
-                                .matches(
+                        /*
+                        if type_var_usage.is_some() {
+                                Type::from_db_type(i_s.db, g1).matches(
+                                    i_s,
+                                    matcher,
+                                    Type::from_db_type(i_s.db, g2),
+                                );
+                        }*/
+                        if let Some(type_var_usage) = type_var_usage {
+                            if let Some(matcher) = matcher {
+                                let g = match list2.len() {
+                                    0 => unreachable!(),
+                                    1 => Type::from_db_type(i_s.db, &list2[0]),
+                                    _ => Type::Union(list2),
+                                };
+                                matcher.match_or_add_type_var(i_s, type_var_usage, g)
+                            } else {
+                                Match::True
+                            }
+                        } else {
+                            list2.is_empty().into()
+                        }
+                    }
+                    Variance::Contravariant => list1
+                        .iter()
+                        .all(|g1| {
+                            let t1 = Type::from_db_type(i_s.db, g1);
+                            list2.iter().any(|g2| {
+                                t1.matches(
                                     i_s,
                                     matcher.as_deref_mut(),
                                     Type::from_db_type(i_s.db, g2),
                                     variance,
                                 )
                                 .bool()
-                            {
-                                list2.remove(i);
-                                break;
-                            }
-                        }
-                    }
-                    /*
-                    if type_var_usage.is_some() {
-                            Type::from_db_type(i_s.db, g1).matches(
-                                i_s,
-                                matcher,
-                                Type::from_db_type(i_s.db, g2),
-                            );
-                    }*/
-                    if let Some(type_var_usage) = type_var_usage {
-                        if let Some(matcher) = matcher {
-                            let g = match list2.len() {
-                                0 => unreachable!(),
-                                1 => Type::from_db_type(i_s.db, &list2[0]),
-                                _ => Type::Union(list2),
-                            };
-                            matcher.match_or_add_type_var(i_s, type_var_usage, g)
-                        } else {
-                            Match::True
-                        }
-                    } else {
-                        list2.is_empty().into()
-                    }
-                }
+                            })
+                        })
+                        .into(),
+                },
                 _ => match variance {
                     Variance::Contravariant => Match::False,
                     Variance::Covariant | Variance::Invariant => list1
