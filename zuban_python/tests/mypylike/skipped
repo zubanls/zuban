@@ -332,9 +332,6 @@ testSimplifyingUnionAndTypePromotions
 testFlattenTypeAliasWhenAliasedAsUnion
 testOverloadingAndIntFloatSubtyping
 
-# Class in Class
-testInvalidTypeWithinNestedGenericClass
-
 # function call in class of function in class
 testCallConditionalMethodInClassBody
 

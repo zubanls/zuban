@@ -1,4 +1,5 @@
 use std::fmt;
+use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
@@ -10,8 +11,8 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
-    Variance,
+    MroIndex, ParentScope, Point, PointLink, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
+    TypeVars, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
@@ -624,6 +625,34 @@ impl<'db, 'a> Class<'db, 'a> {
         &self.class_infos(i_s).type_vars
     }
 
+    pub fn maybe_type_var_in_parent(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_var: &Rc<TypeVar>,
+    ) -> Option<TypeVarUsage> {
+        match self.class_storage.parent_scope {
+            ParentScope::Module => None,
+            ParentScope::Class(node_index) => {
+                let parent_class = Self::from_position(
+                    NodeRef::new(self.node_ref.file, node_index),
+                    Generics::None,
+                    None,
+                )
+                .unwrap();
+                parent_class
+                    .maybe_type_var_in_parent(i_s, type_var)
+                    .or_else(|| {
+                        parent_class.type_vars(i_s).find(
+                            type_var.clone(),
+                            TypeVarType::Class,
+                            parent_class.node_ref.as_link(),
+                        )
+                    })
+            }
+            ParentScope::Function(node_index) => todo!(),
+        }
+    }
+
     fn is_calculating_class_infos(&self) -> bool {
         self.class_info_node_ref().point().calculating()
     }
@@ -670,8 +699,12 @@ impl<'db, 'a> Class<'db, 'a> {
                         let mut inference = self.node_ref.file.inference(&mut i_s);
                         let base = TypeComputation::new(
                             &mut inference,
-                            &mut |_, type_var, is_generic_or_protocol, _| {
+                            &mut |i_s, type_var, is_generic_or_protocol, _| {
+                                let parent_type_var = self.maybe_type_var_in_parent(i_s, &type_var);
                                 let index = if let Some(force_index) = is_generic_or_protocol {
+                                    if parent_type_var.is_some() {
+                                        return None;
+                                    }
                                     let old_index = type_vars.add(type_var.clone());
                                     if old_index < force_index {
                                         had_generic_or_protocol_issue = true;
@@ -683,6 +716,9 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                     force_index
                                 } else {
+                                    if parent_type_var.is_some() {
+                                        return parent_type_var;
+                                    }
                                     type_vars.add(type_var.clone())
                                 };
                                 Some(TypeVarUsage {
