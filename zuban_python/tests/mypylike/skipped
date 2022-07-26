@@ -330,17 +330,14 @@ testFlattenTypeAliasWhenAliasedAsUnion
 testOverloadingAndIntFloatSubtyping
 
 # Class in Class
-testNewAnalyzerNestedClass*
-testNewAnalyzerAliasToNotReadyNestedClass*
-testNestedClassOnAliasAsType
+testNewAnalyzerAliasToNotReadyNestedClass
+testNewAnalyzerAliasToNotReadyNestedClass2
 testInvalidTypeWithinNestedGenericClass
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
 
-# Class in function
-testNewAnalyzerNestedClassInMethod
-testNewAnalyzerDeeplyNestedFunctions
+# Class in function special cases
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 

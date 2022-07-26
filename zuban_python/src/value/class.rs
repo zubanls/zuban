@@ -917,7 +917,15 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     fn qualified_name(&self, db: &'db Database) -> String {
         match self.class_storage.parent_scope {
             ParentScope::Module => base_qualified_name!(self, db, self.name()),
-            ParentScope::Class(node_index) => todo!("{}.{}", self.name(), "other"),
+            ParentScope::Class(node_index) => {
+                let parent_class = Self::from_position(
+                    NodeRef::new(self.node_ref.file, node_index),
+                    Generics::None,
+                    None,
+                )
+                .unwrap();
+                format!("{}.{}", parent_class.qualified_name(db), self.name())
+            }
             ParentScope::Function(node_index) => {
                 let node_ref = NodeRef::new(self.node_ref.file, node_index);
                 let line = self
