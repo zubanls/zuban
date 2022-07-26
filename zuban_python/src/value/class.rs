@@ -10,9 +10,9 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, Point, PointLink, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    MroIndex, ParentScope, Point, PointLink, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
@@ -21,6 +21,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::node_ref::NodeRef;
+use crate::{base_qualified_name, debug};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
@@ -911,6 +912,23 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 
     fn name(&self) -> &'db str {
         self.node().name().as_str()
+    }
+
+    fn qualified_name(&self, db: &'db Database) -> String {
+        match self.class_storage.parent_scope {
+            ParentScope::Module => base_qualified_name!(self, db, self.name()),
+            ParentScope::Class(node_index) => todo!("{}.{}", self.name(), "other"),
+            ParentScope::Function(node_index) => {
+                let node_ref = NodeRef::new(self.node_ref.file, node_index);
+                let line = self
+                    .node_ref
+                    .file
+                    .byte_to_line_column(self.node().start())
+                    .0;
+                // Add the position like `foo.Bar@7`
+                base_qualified_name!(self, db, format!("{}@{line}", self.name()))
+            }
+        }
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {

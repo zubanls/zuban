@@ -1253,18 +1253,17 @@ impl Database {
 }
 
 #[derive(Debug)]
+pub enum ParentScope {
+    Module,
+    Function(NodeIndex),
+    Class(NodeIndex),
+}
+
+#[derive(Debug)]
 pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
-}
-
-impl ClassStorage {
-    pub fn new(class_symbol_table: SymbolTable, self_symbol_table: SymbolTable) -> Self {
-        Self {
-            class_symbol_table,
-            self_symbol_table,
-        }
-    }
+    pub parent_scope: ParentScope,
 }
 
 #[derive(Debug, Clone, PartialEq)]

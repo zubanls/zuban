@@ -339,7 +339,6 @@ testInvalidTypeWithinNestedGenericClass
 testCallConditionalMethodInClassBody
 
 # Class in function
-testNewAnalyzerClassInFunction
 testNewAnalyzerNestedClassInMethod
 testNewAnalyzerDeeplyNestedFunctions
 testNewAnalyzerUnsupportedBaseClassInsideFunction

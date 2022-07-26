@@ -99,6 +99,13 @@ macro_rules! base_description {
     };
 }
 
+#[macro_export]
+macro_rules! base_qualified_name {
+    ($value:ident, $db:ident, $name:expr) => {
+        format!("{}.{}", $value.module($db).qualified_name($db), $name)
+    };
+}
+
 #[derive(Debug)]
 pub enum IteratorContent<'db, 'a> {
     Inferred(Inferred<'db>),
@@ -203,11 +210,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn name(&self) -> &'db str;
 
     fn qualified_name(&self, db: &'db Database) -> String {
-        format!(
-            "{}.{}",
-            self.module(db).qualified_name(db),
-            self.name().to_owned()
-        )
+        base_qualified_name!(self, db, self.name())
     }
 
     fn module(&self, db: &'db Database) -> Module<'db> {
