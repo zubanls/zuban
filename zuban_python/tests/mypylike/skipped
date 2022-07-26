@@ -1,7 +1,5 @@
 # Next up
-testNoComplainOverloadNone
 testFunctionSubtypingWithVoid
-testNoComplainOverloadNoneStrict
 
 overload_not_overlapping_none
 overload_unmatchable_none
