@@ -222,6 +222,9 @@ testRecursiveAliasesErrors*
 testJSONAliasApproximation
 testChangeBaseClassAttributeType
 testGenericTypeBody1
+# Class inheritance cycles
+testNewAnalyzerAliasToNotReadyNestedClass
+testNewAnalyzerAliasToNotReadyNestedClass2
 
 # Module Values
 testModuleImplicitAttributes
@@ -330,8 +333,6 @@ testFlattenTypeAliasWhenAliasedAsUnion
 testOverloadingAndIntFloatSubtyping
 
 # Class in Class
-testNewAnalyzerAliasToNotReadyNestedClass
-testNewAnalyzerAliasToNotReadyNestedClass2
 testInvalidTypeWithinNestedGenericClass
 
 # function call in class of function in class

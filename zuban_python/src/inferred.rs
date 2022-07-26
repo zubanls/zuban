@@ -781,8 +781,7 @@ impl<'db> Inferred<'db> {
                     && point.maybe_specific() != Some(Specific::Cycle)
                 {
                     todo!(
-                        "{self:?} {:?} {index:?}, {}",
-                        file.points.get(index),
+                        "{self:?} >>>> {p:?} {index:?}, {}",
                         file.tree.short_debug_of_index(index)
                     );
                 }
