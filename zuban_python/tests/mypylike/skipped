@@ -7,6 +7,7 @@ overload_not_overlapping_none
 overload_unmatchable_none
 overload_not_overlapping_optional
 overload_overlapping_any
+type_var_value_restriction_in_callable
 
 testSubtypingWithGenericFunctionUsingTypevarWithValues
 testOverloadOverlapWithTypeVars

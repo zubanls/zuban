@@ -198,7 +198,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
             actual_lines.sort();
 
             // For now we want to compare lower cases, because mypy mixes up list[] and List[]
-            let wanted_lower: Vec<_> = wanted.iter().map(|s| s.to_lowercase()).collect();
+            let mut wanted_lower: Vec<_> = wanted.iter().map(|s| s.to_lowercase()).collect();
+            wanted_lower.sort();
 
             assert_eq!(
                 actual_lines,
@@ -328,9 +329,9 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
         wanted.pop();
     }
 
-    let mut sorted: Vec<_> = step.files.iter().collect();
-    sorted.sort();
-    for (&path, &code) in &sorted {
+    let mut sorted_files: Vec<_> = step.files.iter().collect();
+    sorted_files.sort();
+    for (&path, &code) in &sorted_files {
         let p = if path == "__main__" {
             // TODO this if is so weird. Why is this shit needed???
             "main"
@@ -348,7 +349,6 @@ fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String
     for line in &mut wanted {
         replace_unions(line)
     }
-    wanted.sort();
     wanted
 }
 
