@@ -172,7 +172,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     steps.steps.len()
                 );
             }
-            let wanted = wanted_output(project, step);
+            let mut wanted = wanted_output(project, step);
 
             for path in &step.deletions {
                 #[allow(unused_must_use)]
@@ -200,6 +200,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
             // For now we want to compare lower cases, because mypy mixes up list[] and List[]
             let mut wanted_lower: Vec<_> = wanted.iter().map(|s| s.to_lowercase()).collect();
             wanted_lower.sort();
+
+            // To check output only sort by filenames, which should be enough.
+            wanted.sort_by_key(|line| line.split(":").next().unwrap().to_owned());
 
             assert_eq!(
                 actual_lines,
