@@ -11,6 +11,8 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
+type OnConstraintMismatch<'db, 'a> =
+    &'a mut dyn FnMut(&mut InferenceState<'db, '_>, &TypeVar, &Type<'db, '_>);
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'db, 'a> {
     Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
@@ -22,8 +24,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     calculated_type_vars: GenericsList,
     match_type: TypeVarType,
     generics_length: usize,
-    on_constraint_mismatch:
-        &'a mut dyn FnMut(&mut InferenceState<'db, '_>, &TypeVar, &Type<'db, '_>),
+    on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -31,11 +32,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_type: TypeVarType,
         generics_length: usize,
-        on_constraint_mismatch: &'a mut dyn FnMut(
-            &mut InferenceState<'db, '_>,
-            &TypeVar,
-            &Type<'db, '_>,
-        ),
+        on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable,
