@@ -259,7 +259,8 @@ impl<'db, 'a> Function<'db, 'a> {
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
-        let mut finder = TypeVarMatcher::new(
+        let calculated_type_vars = TypeVarMatcher::calculate_and_return(
+            i_s,
             self.class.as_ref(),
             *self,
             args,
@@ -268,7 +269,6 @@ impl<'db, 'a> Function<'db, 'a> {
             TypeVarType::Function,
             Some(on_type_error),
         );
-        finder.matches_signature(i_s); // TODO this should be different
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
@@ -291,7 +291,11 @@ impl<'db, 'a> Function<'db, 'a> {
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(i_s, self.class.as_ref(), Some(&mut finder))
+                    .execute_and_resolve_type_vars(
+                        i_s,
+                        self.class.as_ref(),
+                        calculated_type_vars.as_ref(),
+                    )
             } else {
                 self.node_ref
                     .file

@@ -201,9 +201,9 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        calculated_type_vars: Option<&GenericsList>,
     ) -> Inferred<'db> {
-        let db_type = self.internal_resolve_type_vars(i_s, class, function_matcher);
+        let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_vars);
         debug!(
             "Resolved type vars: {}",
             db_type.format(i_s.db, None, FormatStyle::Short)
@@ -215,10 +215,10 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        mut function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        calculated_type_vars: Option<&GenericsList>,
     ) -> DbType {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                function_matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+                                calculated_type_vars: Option<&GenericsList>,
                                 usage: &TypeVarUsage| {
             match usage.type_ {
                 TypeVarType::Class => {
@@ -230,8 +230,8 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 TypeVarType::Function => {
-                    if let Some(fm) = function_matcher {
-                        fm.nth(i_s, usage.index).unwrap_or_else(|| unreachable!())
+                    if let Some(fm) = calculated_type_vars {
+                        fm.nth(usage.index).unwrap().clone()
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
                         DbType::TypeVar(usage.clone())
@@ -247,14 +247,14 @@ impl<'db, 'a> Type<'db, 'a> {
         };
 
         match self {
-            Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
-                resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
-            }),
+            Self::ClassLike(c) => c
+                .as_db_type(i_s)
+                .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
             Self::Union(list) => DbType::Union(GenericsList::new_union(
                 list.iter()
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |t| {
-                            resolve_type_var(i_s, function_matcher.as_deref_mut(), t)
+                            resolve_type_var(i_s, calculated_type_vars, t)
                         })
                     })
                     .collect(),

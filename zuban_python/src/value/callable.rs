@@ -128,16 +128,16 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             }
         }
         let type_vars = TypeVars::from_vec(type_vars);
-        let mut finder = TypeVarMatcher::from_callable(
+        let calculated_type_vars = TypeVarMatcher::calculate_callable_type_vars_and_return(
+            i_s,
             self,
             args,
             Some(&type_vars),
             TypeVarType::LateBound,
             on_type_error,
         );
-        finder.matches_signature(i_s); // TODO this should be different
         let g_o = Type::from_db_type(i_s.db, &self.content.return_class);
-        g_o.execute_and_resolve_type_vars(i_s, None, Some(&mut finder))
+        g_o.execute_and_resolve_type_vars(i_s, None, calculated_type_vars.as_ref())
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

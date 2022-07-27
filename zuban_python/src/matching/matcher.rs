@@ -51,14 +51,15 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
     // TODO the structure of this impl looks very weird, strange funcs
 
-    pub fn from_callable(
+    pub fn calculate_callable_type_vars_and_return(
+        i_s: &mut InferenceState<'db, '_>,
         callable: &'a Callable<'a>,
         args: &'a dyn Arguments<'db>,
         type_vars: Option<&'a TypeVars>,
         match_type: TypeVarType,
         on_type_error: OnTypeError<'db, 'a>,
-    ) -> Self {
-        Self {
+    ) -> Option<GenericsList> {
+        let mut self_ = Self {
             func_or_callable: FunctionOrCallable::Callable(callable),
             args,
             calculated_type_vars: None,
@@ -67,7 +68,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             type_vars,
             match_type,
             on_type_error: Some(on_type_error),
-        }
+        };
+        self_.calculate_type_vars(i_s);
+        self_.calculated_type_vars
     }
 
     #[inline]
