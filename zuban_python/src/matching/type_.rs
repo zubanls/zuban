@@ -177,6 +177,15 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn error_if_not_matches<'x>(
         &self,
         i_s: &mut InferenceState<'db, 'x>,
+        value: &Inferred<'db>,
+        callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+    ) -> Match {
+        self.error_if_not_matches_with_matcher(i_s, None, value, callback)
+    }
+
+    pub fn error_if_not_matches_with_matcher<'x>(
+        &self,
+        i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
         mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),

@@ -7,8 +7,8 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::calculate_callable_type_vars_and_return;
 use crate::matching::Type;
-use crate::matching::TypeVarMatcher;
 
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
@@ -128,7 +128,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             }
         }
         let type_vars = TypeVars::from_vec(type_vars);
-        let calculated_type_vars = TypeVarMatcher::calculate_callable_type_vars_and_return(
+        let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             self,
             args,

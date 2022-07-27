@@ -233,23 +233,25 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         let (i_a, a, i);
         let node_ref = NodeRef::new(self.file, f.index());
         let args: &dyn Arguments = if let Some(class) = class {
+            // TODO performancewise I don't like at all that this allocates
             i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                 class.node_ref.as_link(),
-                Some(GenericsList::new_generics(
-                    class
-                        .type_vars(self.i_s)
-                        .iter()
-                        .enumerate()
-                        .map(|(i, t)| {
-                            DbType::TypeVar(TypeVarUsage {
-                                type_var: t.clone(),
-                                index: TypeVarIndex::new(i),
-                                in_definition: class.node_ref.as_link(),
-                                type_: TypeVarType::Class,
+                class.type_vars(self.i_s).map(|type_vars| {
+                    GenericsList::new_generics(
+                        type_vars
+                            .iter()
+                            .enumerate()
+                            .map(|(i, t)| {
+                                DbType::TypeVar(TypeVarUsage {
+                                    type_var: t.clone(),
+                                    index: TypeVarIndex::new(i),
+                                    in_definition: class.node_ref.as_link(),
+                                    type_: TypeVarType::Class,
+                                })
                             })
-                        })
-                        .collect(),
-                )),
+                            .collect(),
+                    )
+                }),
             ));
             i_a = KnownArguments::new(&i, None);
             &i_a
@@ -272,7 +274,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
                     let inf = self.infer_star_expressions(star_expressions);
                     self.use_cached_return_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, None, &inf, |i_s, got, expected| {
+                        .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
                             NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
                                 i_s.db,
                                 IssueType::IncompatibleReturn { got, expected },

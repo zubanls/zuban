@@ -572,7 +572,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         let (r, type_) =
                             self.compute_type_comment(assignment.end() + start as CodeIndex, s);
                         is_definition = true;
-                        type_.error_if_not_matches(self.i_s, None, &right, |i_s, got, expected| {
+                        type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                             node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
@@ -593,7 +593,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let right = self.infer_assignment_right_side(right_side);
                     self.use_cached_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, None, &right, |i_s, got, expected| {
+                        .error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                             node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
@@ -699,7 +699,6 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let inferred = self.infer_name_by_index(first_definition);
                     inferred.class_as_type(self.i_s).error_if_not_matches(
                         self.i_s,
-                        None,
                         value,
                         |i_s, got, expected| {
                             NodeRef::new(self.file, name_def.index()).add_typing_issue(
@@ -721,7 +720,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, None, value, |i_s, got, expected| {
+                        .error_if_not_matches(self.i_s, value, |i_s, got, expected| {
                             NodeRef::new(self.file, primary_target.index()).add_typing_issue(
                                 self.i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
@@ -1081,7 +1080,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .and_then(|x| x.1.as_execution(x.0));
                 if x.is_none() && !is_target {
                     if let Some(class) = base.maybe_class(self.i_s) {
-                        if class.type_vars(self.i_s).is_empty()
+                        if class.type_vars(self.i_s).is_none()
                             && class.has_non_overloaded_init_func(self.i_s)
                         {
                             class.type_check_init_func(

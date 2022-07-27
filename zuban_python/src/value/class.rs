@@ -16,7 +16,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
-use crate::matching::{ClassLike, Generics, Match, TypeVarMatcher};
+use crate::matching::{calculate_function_type_vars_and_return, ClassLike, Generics, Match};
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
 
@@ -85,7 +85,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 let type_vars = self.type_vars(i_s);
                 let list = if has_generics {
                     let func_type_vars = func.type_vars(i_s);
-                    TypeVarMatcher::calculate_and_return(
+                    calculate_function_type_vars_and_return(
                         i_s,
                         Some(self),
                         func,
@@ -97,16 +97,17 @@ impl<'db, 'a> Class<'db, 'a> {
                     );
                     self.generics.as_generics_list(i_s)
                 } else {
-                    TypeVarMatcher::calculate_and_return(
+                    calculate_function_type_vars_and_return(
                         i_s,
                         Some(self),
                         func,
                         args,
                         true,
-                        Some(type_vars),
+                        type_vars,
                         TypeVarType::Class,
                         Some(on_type_error),
                     )
+                    .1
                 };
                 Some((func, list, false))
             }
@@ -134,8 +135,9 @@ impl<'db, 'a> Class<'db, 'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> &'db TypeVars {
-        &self.class_infos(i_s).type_vars
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
+        let type_vars = &self.class_infos(i_s).type_vars;
+        (!type_vars.is_empty()).then(|| type_vars)
     }
 
     pub fn maybe_type_var_in_parent(
@@ -155,11 +157,13 @@ impl<'db, 'a> Class<'db, 'a> {
                 parent_class
                     .maybe_type_var_in_parent(i_s, type_var)
                     .or_else(|| {
-                        parent_class.type_vars(i_s).find(
-                            type_var.clone(),
-                            TypeVarType::Class,
-                            parent_class.node_ref.as_link(),
-                        )
+                        parent_class.type_vars(i_s).and_then(|t| {
+                            t.find(
+                                type_var.clone(),
+                                TypeVarType::Class,
+                                parent_class.node_ref.as_link(),
+                            )
+                        })
                     })
             }
             ParentScope::Function(node_index) => todo!(),

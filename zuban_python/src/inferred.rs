@@ -376,7 +376,7 @@ impl<'db> Inferred<'db> {
                 if let ComplexPoint::Class(cls_storage) = complex {
                     let args = SimpleArguments::from_execution(i_s.db, execution);
                     let class = Class::new(def, cls_storage, Generics::None, None);
-                    debug_assert!(class.type_vars(i_s).is_empty());
+                    debug_assert!(class.type_vars(i_s).is_none());
                     let instance = Instance::new(class, None);
                     // TODO is this MroIndex fine? probably not!
                     let instance_arg = KnownArguments::new(self, None);
@@ -591,7 +591,7 @@ impl<'db> Inferred<'db> {
                             .infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
                         let class = inf_cls.maybe_class(i_s).unwrap();
-                        debug_assert!(class.type_vars(i_s).is_empty());
+                        debug_assert!(class.type_vars(i_s).is_none());
                         let args = SimpleArguments::from_primary(
                             definition.file,
                             definition.as_primary(),

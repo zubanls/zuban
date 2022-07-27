@@ -220,11 +220,13 @@ pub(super) fn type_computation_for_variable_annotation(
     node_ref: NodeRef,
 ) -> Option<TypeVarUsage> {
     if let Some(class) = i_s.current_class {
-        if let Some(usage) = class.type_vars(i_s).find(
-            type_var.clone(),
-            TypeVarType::Class,
-            class.node_ref.as_link(),
-        ) {
+        if let Some(usage) = class.type_vars(i_s).and_then(|t| {
+            t.find(
+                type_var.clone(),
+                TypeVarType::Class,
+                class.node_ref.as_link(),
+            )
+        }) {
             return Some(usage);
         }
     }
@@ -706,79 +708,81 @@ where
             todo!("{:?}", class)
         }
         let type_vars = class.type_vars(self.inference.i_s);
-        let expected_count = type_vars.len();
+        let expected_count = type_vars.map(|t| t.len()).unwrap_or(0);
         let mut given_count = 0;
         let mut generics = vec![];
         let mut iterator = slice_type.iter();
-        for type_var in type_vars.iter() {
-            let db_type = if let Some(slice_content) = iterator.next() {
-                let t = self.compute_slice_type(slice_content, None);
-                if let Some(bound) = &type_var.bound {
-                    // Performance: This could be optimized to not create new objects all the time.
-                    let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
-                    let i_s = &mut self.inference.i_s;
-                    let actual = Type::from_db_type(i_s.db, &db_t);
-                    let expected = Type::from_db_type(i_s.db, bound);
-                    if !expected.matches(i_s, None, actual, Variance::Covariant) {
-                        slice_content.as_node_ref().add_typing_issue(
-                            i_s.db,
-                            IssueType::TypeVarBoundViolation {
-                                actual: Type::from_db_type(i_s.db, &db_t).format(
+        if let Some(type_vars) = type_vars {
+            for type_var in type_vars.iter() {
+                let db_type = if let Some(slice_content) = iterator.next() {
+                    let t = self.compute_slice_type(slice_content, None);
+                    if let Some(bound) = &type_var.bound {
+                        // Performance: This could be optimized to not create new objects all the time.
+                        let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                        let i_s = &mut self.inference.i_s;
+                        let actual = Type::from_db_type(i_s.db, &db_t);
+                        let expected = Type::from_db_type(i_s.db, bound);
+                        if !expected.matches(i_s, None, actual, Variance::Covariant) {
+                            slice_content.as_node_ref().add_typing_issue(
+                                i_s.db,
+                                IssueType::TypeVarBoundViolation {
+                                    actual: Type::from_db_type(i_s.db, &db_t).format(
+                                        i_s,
+                                        None,
+                                        FormatStyle::Short,
+                                    ),
+                                    executable: Box::from(class.name()),
+                                    expected: expected.format(i_s, None, FormatStyle::Short),
+                                },
+                            );
+                        }
+                    } else if !type_var.restrictions.is_empty() {
+                        // Performance: This could be optimized to not create new objects all the time.
+                        let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                        let i_s = &mut self.inference.i_s;
+                        if !type_var.restrictions.iter().any(|t| {
+                            Type::from_db_type(i_s.db, t)
+                                .matches(
                                     i_s,
                                     None,
-                                    FormatStyle::Short,
-                                ),
-                                executable: Box::from(class.name()),
-                                expected: expected.format(i_s, None, FormatStyle::Short),
-                            },
-                        );
-                    }
-                } else if !type_var.restrictions.is_empty() {
-                    // Performance: This could be optimized to not create new objects all the time.
-                    let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
-                    let i_s = &mut self.inference.i_s;
-                    if !type_var.restrictions.iter().any(|t| {
-                        Type::from_db_type(i_s.db, t)
-                            .matches(
-                                i_s,
-                                None,
-                                Type::from_db_type(i_s.db, &db_t),
-                                Variance::Covariant,
-                            )
-                            .bool()
-                    }) {
-                        slice_content.as_node_ref().add_typing_issue(
-                            i_s.db,
-                            IssueType::InvalidTypeVarValue {
-                                type_var: Box::from(type_var.name(i_s.db)),
-                                func: format!("{:?}", class.name()).into(),
-                                actual: Type::from_db_type(i_s.db, &db_t).format(
-                                    i_s,
-                                    None,
-                                    FormatStyle::Short,
-                                ),
-                            },
-                        );
-                    }
-                }
-                given_count += 1;
-                if generics.is_empty() {
-                    if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
-                        continue;
-                    } else {
-                        for slice_content in slice_type.iter().take(given_count - 1) {
-                            generics.push(self.compute_slice_db_type(slice_content));
+                                    Type::from_db_type(i_s.db, &db_t),
+                                    Variance::Covariant,
+                                )
+                                .bool()
+                        }) {
+                            slice_content.as_node_ref().add_typing_issue(
+                                i_s.db,
+                                IssueType::InvalidTypeVarValue {
+                                    type_var: Box::from(type_var.name(i_s.db)),
+                                    func: format!("{:?}", class.name()).into(),
+                                    actual: Type::from_db_type(i_s.db, &db_t).format(
+                                        i_s,
+                                        None,
+                                        FormatStyle::Short,
+                                    ),
+                                },
+                            );
                         }
                     }
-                }
-                self.as_db_type(t, slice_content.as_node_ref())
-            } else {
-                for slice_content in slice_type.iter().take(given_count) {
-                    generics.push(self.compute_slice_db_type(slice_content));
-                }
-                DbType::Any
-            };
-            generics.push(db_type);
+                    given_count += 1;
+                    if generics.is_empty() {
+                        if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
+                            continue;
+                        } else {
+                            for slice_content in slice_type.iter().take(given_count - 1) {
+                                generics.push(self.compute_slice_db_type(slice_content));
+                            }
+                        }
+                    }
+                    self.as_db_type(t, slice_content.as_node_ref())
+                } else {
+                    for slice_content in slice_type.iter().take(given_count) {
+                        generics.push(self.compute_slice_db_type(slice_content));
+                    }
+                    DbType::Any
+                };
+                generics.push(db_type);
+            }
         }
         for slice_content in iterator {
             // Still calculate errors for the rest of the types given. After all they are still

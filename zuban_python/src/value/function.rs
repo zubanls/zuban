@@ -18,7 +18,9 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
-use crate::matching::{ClassLike, Generics, SignatureMatch, Type, TypeVarMatcher};
+use crate::matching::{
+    calculate_function_type_vars_and_return, ClassLike, Generics, SignatureMatch, Type,
+};
 use crate::node_ref::NodeRef;
 use crate::value::Class;
 
@@ -204,11 +206,13 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
             if let Some(class) = self.class {
-                if let Some(usage) = class.type_vars(i_s).find(
-                    type_var.clone(),
-                    TypeVarType::Class,
-                    class.node_ref.as_link(),
-                ) {
+                if let Some(usage) = class.type_vars(i_s).and_then(|t| {
+                    t.find(
+                        type_var.clone(),
+                        TypeVarType::Class,
+                        class.node_ref.as_link(),
+                    )
+                }) {
                     return Some(usage);
                 }
             }
@@ -259,7 +263,7 @@ impl<'db, 'a> Function<'db, 'a> {
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
-        let calculated_type_vars = TypeVarMatcher::calculate_and_return(
+        let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
             self.class.as_ref(),
             *self,
@@ -268,7 +272,8 @@ impl<'db, 'a> Function<'db, 'a> {
             func_type_vars,
             TypeVarType::Function,
             Some(on_type_error),
-        );
+        )
+        .1;
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
@@ -730,12 +735,13 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         let has_generics = class
             .map(|class| !matches!(class.generics(), Generics::None))
             .unwrap_or(false);
-        let create_finder =
+        let match_signature =
             |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| match class {
                 Some(c) => {
                     if has_generics {
                         let func_type_vars = function.type_vars(i_s);
-                        TypeVarMatcher::new(
+                        calculate_function_type_vars_and_return(
+                            i_s,
                             class,
                             function,
                             args,
@@ -745,12 +751,14 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             None,
                         )
                     } else {
-                        TypeVarMatcher::new(
+                        let type_vars = c.type_vars(i_s);
+                        calculate_function_type_vars_and_return(
+                            i_s,
                             class,
                             function,
                             args,
                             true,
-                            Some(c.type_vars(i_s)),
+                            type_vars,
                             TypeVarType::Class,
                             None,
                         )
@@ -758,7 +766,8 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 }
                 None => {
                     let func_type_vars = function.type_vars(i_s);
-                    TypeVarMatcher::new(
+                    calculate_function_type_vars_and_return(
+                        i_s,
                         None,
                         function,
                         args,
@@ -769,7 +778,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     )
                 }
             };
-        let handle_result = |i_s, finder: TypeVarMatcher, function| {
+        let handle_result = |i_s, calculated_type_vars, function| {
             let calculated = if has_generics {
                 if let Some(class) = class {
                     class.generics.as_generics_list(i_s)
@@ -777,7 +786,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     unreachable!();
                 }
             } else {
-                finder.calculated_type_vars
+                calculated_type_vars
             };
             Some((function, calculated))
         };
@@ -785,15 +794,15 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         let mut multi_any_match = None;
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let mut finder = create_finder(i_s, function);
-            match finder.matches_signature(i_s) {
+            let (matched, calculated_type_vars) = match_signature(i_s, function);
+            match matched {
                 SignatureMatch::True => {
                     debug!(
                         "Decided overload for {}: {:?}",
                         self.name(),
                         function.node().short_debug()
                     );
-                    return handle_result(i_s, finder, function);
+                    return handle_result(i_s, calculated_type_vars, function);
                 }
                 SignatureMatch::TrueWithAny(param_indices) => {
                     // TODO there could be three matches or more?
@@ -804,7 +813,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         // also not be an error.
                         return None;
                     }
-                    multi_any_match = Some((finder, function, param_indices))
+                    multi_any_match = Some((calculated_type_vars, function, param_indices))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
@@ -814,15 +823,15 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 SignatureMatch::False => (),
             }
         }
-        if let Some((finder, function, _)) = multi_any_match {
-            return handle_result(i_s, finder, function);
+        if let Some((calculated_type_vars, function, _)) = multi_any_match {
+            return handle_result(i_s, calculated_type_vars, function);
         }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let finder = create_finder(i_s, function);
-            return handle_result(i_s, finder, function);
+            let (_, calculated_type_vars) = match_signature(i_s, function);
+            return handle_result(i_s, calculated_type_vars, function);
         } else {
             let function = Function::new(
                 NodeRef::from_link(i_s.db, self.overload.functions[0]),

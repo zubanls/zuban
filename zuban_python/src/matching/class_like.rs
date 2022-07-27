@@ -203,7 +203,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             matcher,
                             c2.generics(),
                             variance,
-                            Some(type_vars),
+                            type_vars,
                         ) | Match::FalseButSimilar;
                     }
                     false
@@ -419,7 +419,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 ClassLike::Class(c1) => match c2 {
                     ClassLike::Class(c2) if c1.node_ref == c2.node_ref => {
                         let type_vars = c1.type_vars(i_s);
-                        c1.generics().overlaps(i_s, c2.generics(), Some(type_vars))
+                        c1.generics().overlaps(i_s, c2.generics(), type_vars)
                     }
                     _ => false,
                 },
