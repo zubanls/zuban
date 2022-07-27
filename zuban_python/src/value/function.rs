@@ -14,10 +14,11 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, SignatureMatch, Type, TypeVarMatcher};
+use crate::generics::{Generics, SignatureMatch, Type};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matcher::TypeVarMatcher;
 use crate::node_ref::NodeRef;
 use crate::params::{InferrableParamIterator2, Param};
 use crate::value::Class;

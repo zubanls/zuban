@@ -8,10 +8,11 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Match, Type, TypeVarMatcher};
+use crate::generics::{Match, Type};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matcher::TypeVarMatcher;
 use crate::params::Param;
 
 pub fn matches_params<'db: 'x, 'x>(

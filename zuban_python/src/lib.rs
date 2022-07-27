@@ -15,6 +15,7 @@ mod imports;
 mod inference_state;
 mod inferred;
 mod lines;
+mod matcher;
 mod name;
 mod node_ref;
 mod params;

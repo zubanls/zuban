@@ -17,10 +17,11 @@ use crate::database::{
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
 use crate::file_state::File;
-use crate::generics::{Generics, Match, Type, TypeVarMatcher};
+use crate::generics::{Generics, Match, Type};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
+use crate::matcher::TypeVarMatcher;
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
 

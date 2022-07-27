@@ -13,10 +13,11 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Type, TypeVarMatcher};
+use crate::generics::{Generics, Type};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
+use crate::matcher::TypeVarMatcher;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
