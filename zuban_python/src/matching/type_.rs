@@ -238,13 +238,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 TypeVarType::LateBound => {
-                    if let Some(function_matcher) = function_matcher {
-                        if function_matcher.match_type == TypeVarType::LateBound {
-                            if let Some(calculated) = function_matcher.nth(i_s, usage.index) {
-                                return calculated;
-                            }
-                        }
-                    }
                     // Just pass the type var again, because it might be resolved by a future
                     // callable, that is late bound, like Callable[..., Callable[[T], T]]
                     DbType::TypeVar(usage.clone())
