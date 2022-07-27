@@ -4,7 +4,7 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{Generics, Match, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    DbType, FormatStyle, GenericsList, TypeVar, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -19,30 +19,30 @@ pub enum FunctionOrCallable<'db, 'a> {
 
 pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
-    args: Option<&'a dyn Arguments<'db>>,
     calculated_type_vars: GenericsList,
-    matches: Match,
     match_type: TypeVarType,
-    should_generate_errors: bool,
     generics_length: usize,
+    on_constraint_mismatch:
+        &'a mut dyn FnMut(&mut InferenceState<'db, '_>, &TypeVar, &Type<'db, '_>),
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
         func_or_callable: FunctionOrCallable<'db, 'a>,
-        args: Option<&'a dyn Arguments<'db>>,
         match_type: TypeVarType,
-        should_generate_errors: bool,
         generics_length: usize,
+        on_constraint_mismatch: &'a mut dyn FnMut(
+            &mut InferenceState<'db, '_>,
+            &TypeVar,
+            &Type<'db, '_>,
+        ),
     ) -> Self {
         Self {
             func_or_callable,
-            args,
             calculated_type_vars: GenericsList::new_unknown(generics_length),
-            matches: Match::True,
             match_type,
-            should_generate_errors,
             generics_length,
+            on_constraint_mismatch,
         }
     }
 
@@ -97,29 +97,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 );
         }
         if mismatch_constraints {
-            match self.func_or_callable {
-                FunctionOrCallable::Function(class, f) => {
-                    if self.should_generate_errors {
-                        self.args
-                            .unwrap_or_else(|| todo!())
-                            .as_node_ref()
-                            .add_typing_issue(
-                                i_s.db,
-                                IssueType::InvalidTypeVarValue {
-                                    type_var: Box::from(type_var.name(i_s.db)),
-                                    func: f.diagnostic_string(class),
-                                    actual: value_type.format(i_s, None, FormatStyle::Short),
-                                },
-                            );
-                    } else {
-                        debug!(
-                            "TODO this is wrong, because this might also be Match::FalseButSimilar"
-                        );
-                        self.matches = Match::False;
-                    }
-                }
-                _ => todo!(),
-            }
+            (self.on_constraint_mismatch)(i_s, type_var, &value_type);
         }
         if self.match_type == type_var_usage.type_ {
             let current = self.calculated_type_vars.nth(type_var_usage.index).unwrap();
@@ -203,33 +181,58 @@ fn calculate_type_vars<'db>(
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
-    let matcher = type_vars
-        .map(|t| {
-            TypeVarMatcher::new(
-                func_or_callable,
-                Some(args),
-                match_type,
-                on_type_error.is_some(),
-                t.len(),
-            )
-        })
-        .or_else(|| {
-            if let FunctionOrCallable::Function(_, function) = func_or_callable {
-                if let Some(class) = function.class {
-                    if let Some(type_vars) = class.type_vars(i_s) {
-                        return Some(TypeVarMatcher::new(
-                            func_or_callable,
-                            Some(args),
-                            match_type,
-                            on_type_error.is_some(),
-                            type_vars.len(),
-                        ));
+    let should_generate_errors = on_type_error.is_some();
+    let mut matches_constraints = true;
+    let mut on_constraint_mismatch =
+        |i_s: &mut InferenceState<'db, '_>, type_var: &TypeVar, value_type: &Type<'db, '_>| {
+            match func_or_callable {
+                FunctionOrCallable::Function(class, f) => {
+                    if should_generate_errors {
+                        args.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::InvalidTypeVarValue {
+                                type_var: Box::from(type_var.name(i_s.db)),
+                                func: f.diagnostic_string(class),
+                                actual: value_type.format(i_s, None, FormatStyle::Short),
+                            },
+                        );
+                    } else {
+                        debug!(
+                            "TODO this is wrong, because this might also be Match::FalseButSimilar"
+                        );
+                        matches_constraints = false;
                     }
                 }
+                _ => todo!(),
             }
-            None
-        });
-    let result = match func_or_callable {
+        };
+    let matcher = match type_vars {
+        Some(type_vars) => Some(TypeVarMatcher::new(
+            func_or_callable,
+            match_type,
+            type_vars.len(),
+            &mut on_constraint_mismatch,
+        )),
+        None => {
+            if let FunctionOrCallable::Function(_, function) = func_or_callable {
+                if let Some(class) = function.class {
+                    class.type_vars(i_s).map(|type_vars| {
+                        TypeVarMatcher::new(
+                            func_or_callable,
+                            match_type,
+                            type_vars.len(),
+                            &mut on_constraint_mismatch,
+                        )
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        }
+    };
+    let mut result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
             // vars from in use_cached_annotation_type.
@@ -275,6 +278,9 @@ fn calculate_type_vars<'db>(
                 calculated.format(i_s.db, None, FormatStyle::Short),
             );
         }
+    }
+    if !matches_constraints {
+        result.0 = SignatureMatch::False
     }
     result
 }
@@ -433,9 +439,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             args.as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
-    }
-    if let Some(matcher) = &matcher {
-        matches &= matcher.matches;
     }
     (
         match matches {
