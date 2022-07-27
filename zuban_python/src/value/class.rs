@@ -93,6 +93,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         true,
                         func_type_vars,
                         TypeVarType::Function,
+                        func.node_ref.as_link(),
                         Some(on_type_error),
                     );
                     self.generics.as_generics_list(i_s)
@@ -105,6 +106,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         true,
                         type_vars,
                         TypeVarType::Class,
+                        self.node_ref.as_link(),
                         Some(on_type_error),
                     )
                     .1

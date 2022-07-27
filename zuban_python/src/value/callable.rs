@@ -1,7 +1,10 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{CallableContent, CallableParam, DbType, FormatStyle, TypeVarType, TypeVars};
+use crate::database::{
+    CallableContent, CallableParam, DbType, FileIndex, FormatStyle, PointLink, TypeVarType,
+    TypeVars,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -134,6 +137,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             args,
             None,
             TypeVarType::LateBound,
+            PointLink::new(FileIndex(0), 0), // TODO this is completely wrong
             on_type_error,
         );
         let g_o = Type::from_db_type(i_s.db, &self.content.return_class);

@@ -4,7 +4,8 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{Generics, Match, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, TypeVar, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    DbType, FormatStyle, GenericsList, PointLink, TypeVar, TypeVarType, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -23,6 +24,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: GenericsList,
     match_type: TypeVarType,
+    match_in_definition: PointLink,
     on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
 }
 
@@ -30,6 +32,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn new(
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_type: TypeVarType,
+        match_in_definition: PointLink,
         generics_length: usize,
         on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
     ) -> Self {
@@ -37,6 +40,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable,
             calculated_type_vars: GenericsList::new_unknown(generics_length),
             match_type,
+            match_in_definition,
             on_constraint_mismatch,
         }
     }
@@ -130,6 +134,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
+    match_in_definition: PointLink,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     calculate_type_vars(
@@ -140,6 +145,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
         skip_first_param,
         type_vars,
         match_type,
+        match_in_definition,
         on_type_error,
     )
 }
@@ -150,6 +156,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     args: &dyn Arguments<'db>,
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
+    match_in_definition: PointLink,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Option<GenericsList> {
     calculate_type_vars(
@@ -160,6 +167,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         false,
         type_vars,
         match_type,
+        match_in_definition,
         Some(on_type_error),
     )
     .1
@@ -173,6 +181,7 @@ fn calculate_type_vars<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
+    match_in_definition: PointLink,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
@@ -205,6 +214,7 @@ fn calculate_type_vars<'db>(
         Some(type_vars) => Some(TypeVarMatcher::new(
             func_or_callable,
             match_type,
+            match_in_definition,
             type_vars.len(),
             &mut on_constraint_mismatch,
         )),
@@ -215,6 +225,7 @@ fn calculate_type_vars<'db>(
                         TypeVarMatcher::new(
                             func_or_callable,
                             match_type,
+                            match_in_definition,
                             type_vars.len(),
                             &mut on_constraint_mismatch,
                         )
