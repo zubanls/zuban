@@ -12,15 +12,15 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::{Generics, Type};
 use crate::inference_state::InferenceState;
+use crate::matching::{ClassLike, Generics, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, Callable, CallableClass, Class, ClassLike, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NeverInstance, NoneInstance, OverloadedFunction,
-    RevealTypeFunction, Tuple, TupleClass, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast,
-    TypingClass, TypingClassVar, TypingType, TypingWithGenerics, Value,
+    BoundMethod, Callable, CallableClass, Class, DictLiteral, Function, Instance, IteratorContent,
+    ListLiteral, Module, NeverInstance, NoneInstance, OverloadedFunction, RevealTypeFunction,
+    Tuple, TupleClass, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
+    TypingClassVar, TypingType, TypingWithGenerics, Value,
 };
 
 #[derive(Debug)]

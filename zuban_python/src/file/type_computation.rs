@@ -11,12 +11,12 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
-use crate::generics::{Generics, Type};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::{ClassLike, Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::value::{Class, ClassLike, Function, Module, Value};
+use crate::value::{Class, Function, Module, Value};
 
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 

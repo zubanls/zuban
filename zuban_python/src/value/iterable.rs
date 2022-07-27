@@ -1,12 +1,12 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
-use super::{Class, ClassLike, Instance, IteratorContent, LookupResult, Value, ValueKind};
+use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality, TypeVarIndex};
 use crate::debug;
-use crate::generics::Generics;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::{ClassLike, Generics};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]

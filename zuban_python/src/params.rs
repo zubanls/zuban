@@ -2,8 +2,8 @@ use parsa_python_ast::ParamType;
 
 use crate::arguments::{Argument, ArgumentIterator};
 use crate::database::CallableParam;
-use crate::generics::Type;
 use crate::inference_state::InferenceState;
+use crate::matching::Type;
 use crate::value::ParamWithArgument;
 
 pub trait Param<'db, 'x>: Copy + std::fmt::Debug {

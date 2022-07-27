@@ -8,8 +8,8 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::generics::{Generics, Match};
 use crate::inferred::Inferred;
+use crate::matching::{Generics, Match};
 use crate::node_ref::NodeRef;
 use crate::value::{matches_params, overload_has_overlapping_params, Class, Function};
 

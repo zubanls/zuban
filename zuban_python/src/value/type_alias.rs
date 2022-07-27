@@ -1,4 +1,4 @@
-use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
@@ -6,6 +6,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ClassLike;
 use parsa_python_ast::SliceType as ASTSliceType;
 
 #[derive(Debug)]

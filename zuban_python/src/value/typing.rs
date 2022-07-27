@@ -4,7 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::PrimaryContent;
 
 use super::class::MroIterator;
-use super::{ClassLike, Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, Arguments};
 use crate::base_description;
 use crate::database::{
@@ -13,11 +13,10 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Type};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matcher::TypeVarMatcher;
+use crate::matching::{ClassLike, Generics, Type, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -184,7 +183,7 @@ impl<'db, 'a> TupleClass<'a> {
         )
     }
 
-    pub(super) fn generics(&self) -> Generics<'static, 'a> {
+    pub fn generics(&self) -> Generics<'static, 'a> {
         self.content
             .generics
             .as_ref()

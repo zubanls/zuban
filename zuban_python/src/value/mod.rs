@@ -18,13 +18,14 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ClassLike;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use callable::{
     has_overlapping_params, matches_params, overload_has_overlapping_params, Callable,
     CallableClass,
 };
-pub use class::{Class, ClassLike};
+pub use class::Class;
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};

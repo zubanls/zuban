@@ -1,8 +1,9 @@
-use super::{ClassLike, LookupResult, Value, ValueKind};
+use super::{LookupResult, Value, ValueKind};
 use crate::debug;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ClassLike;
 
 #[derive(Debug)]
 pub struct NoneInstance();

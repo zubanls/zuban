@@ -12,7 +12,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::generics::Generics;
+use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};

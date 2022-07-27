@@ -5,7 +5,7 @@ use parsa_python_ast::{
 use std::fmt;
 use std::rc::Rc;
 
-use super::{ClassLike, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
@@ -14,11 +14,10 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
-use crate::generics::{Generics, SignatureMatch, Type};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matcher::TypeVarMatcher;
+use crate::matching::{ClassLike, Generics, SignatureMatch, Type, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 use crate::params::{InferrableParamIterator2, Param};
 use crate::value::Class;

@@ -1,18 +1,18 @@
 use parsa_python_ast::ParamType;
 
+use super::{Generics, Match, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::generics::{Generics, Match, SignatureMatch, Type};
 use crate::inference_state::InferenceState;
 use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
 #[derive(Debug)]
-pub enum FunctionOrCallable<'db, 'a> {
+pub(super) enum FunctionOrCallable<'db, 'a> {
     Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
     Callable(&'a Callable<'a>),
 }

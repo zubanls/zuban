@@ -4,7 +4,7 @@ use std::ptr::null;
 use crate::database::{Database, DbType, Locality, Point, PointLink, PointType, Specific};
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::generics::Generics;
+use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::Class;
 

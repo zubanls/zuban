@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{Database, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
@@ -9,6 +9,7 @@ use crate::file_state::File;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ClassLike;
 
 impl<'db> fmt::Debug for Module<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

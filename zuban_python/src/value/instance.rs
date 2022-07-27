@@ -1,4 +1,4 @@
-use super::{Class, ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, FormatStyle, PointLink};
 use crate::diagnostics::IssueType;
@@ -6,6 +6,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ClassLike;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
