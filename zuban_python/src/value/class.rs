@@ -84,16 +84,17 @@ impl<'db, 'a> Class<'db, 'a> {
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
                 let list = if has_generics {
-                    let mut finder = TypeVarMatcher::new(
+                    let func_type_vars = func.type_vars(i_s);
+                    TypeVarMatcher::calculate_and_return(
+                        i_s,
                         Some(self),
                         func,
                         args,
                         true,
-                        func.type_vars(i_s),
+                        func_type_vars,
                         TypeVarType::Function,
                         Some(on_type_error),
                     );
-                    finder.matches_signature(i_s); // TODO this should be different
                     self.generics.as_generics_list(i_s)
                 } else {
                     TypeVarMatcher::calculate_and_return(
