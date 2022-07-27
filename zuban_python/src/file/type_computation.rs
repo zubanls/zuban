@@ -487,37 +487,7 @@ where
                     d
                 }
             }
-            TypeContent::Module(m) => {
-                if !self.errors_already_calculated {
-                    self.add_module_issue(m, NodeRef::new(self.inference.file, expr.index()));
-                }
-                DbType::Any
-            }
-            TypeContent::TypeAlias(a) => a.as_db_type(),
-            TypeContent::SpecialType(special) => match special {
-                SpecialType::Any => DbType::Any,
-                SpecialType::Type => DbType::Type(Box::new(DbType::Class(
-                    self.inference.i_s.db.python_state.object().as_link(),
-                ))),
-                SpecialType::Tuple => DbType::Tuple(TupleContent {
-                    generics: None,
-                    arbitrary_length: true,
-                }),
-                SpecialType::Callable => DbType::Callable(CallableContent {
-                    defined_at: NodeRef::new(self.inference.file, expr.index()).as_link(),
-                    params: None,
-                    return_class: Box::new(DbType::Any),
-                }),
-                _ => todo!("{special:?}"),
-            },
-            TypeContent::InvalidVariable(t) => {
-                let node_ref = NodeRef::new(self.inference.file, expr.index());
-                if !self.errors_already_calculated {
-                    t.add_issue(self.inference.i_s.db, node_ref);
-                }
-                DbType::Any
-            }
-            TypeContent::Unknown => DbType::Any,
+            _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
         };
         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
         unsaved.save_redirect(self.inference.file, annotation_index);
@@ -541,7 +511,13 @@ where
                     return_class: Box::new(DbType::Any),
                 }),
                 SpecialType::Any => DbType::Any,
-                SpecialType::Type => DbType::Type(Box::new(DbType::Any)),
+                SpecialType::Type => DbType::Type(Box::new(DbType::Class(
+                    self.inference.i_s.db.python_state.object().as_link(),
+                ))),
+                SpecialType::Tuple => DbType::Tuple(TupleContent {
+                    generics: None,
+                    arbitrary_length: true,
+                }),
                 _ => todo!("{m:?}"),
             },
             TypeContent::Unknown => DbType::Any,
