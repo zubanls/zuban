@@ -504,6 +504,7 @@ where
                     arbitrary_length: true,
                 }),
                 SpecialType::Callable => DbType::Callable(CallableContent {
+                    defined_at: NodeRef::new(self.inference.file, expr.index()).as_link(),
                     params: None,
                     return_class: Box::new(DbType::Any),
                 }),
@@ -535,6 +536,7 @@ where
             TypeContent::TypeAlias(a) => a.as_db_type(),
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(CallableContent {
+                    defined_at: node_ref.as_link(),
                     params: None,
                     return_class: Box::new(DbType::Any),
                 }),
@@ -899,6 +901,7 @@ where
             }
         };
 
+        let defined_at = slice_type.as_node_ref().as_link();
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             let param_node = iterator.next().map(|slice_content| match slice_content {
@@ -930,6 +933,7 @@ where
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
                 .unwrap_or(DbType::Any);
             CallableContent {
+                defined_at,
                 params: params.map(|p| p.into_boxed_slice()),
                 return_class: Box::new(return_class),
             }
@@ -938,6 +942,7 @@ where
                 .as_node_ref()
                 .add_typing_issue(db, IssueType::InvalidCallableArgCount);
             CallableContent {
+                defined_at,
                 params: None,
                 return_class: Box::new(DbType::Any),
             }

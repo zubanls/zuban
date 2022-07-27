@@ -861,6 +861,7 @@ pub struct CallableParam {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
+    pub defined_at: PointLink,
     pub params: Option<Box<[CallableParam]>>,
     pub return_class: Box<DbType>,
 }
