@@ -23,7 +23,6 @@ pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: GenericsList,
     match_type: TypeVarType,
-    generics_length: usize,
     on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
 }
 
@@ -38,7 +37,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable,
             calculated_type_vars: GenericsList::new_unknown(generics_length),
             match_type,
-            generics_length,
             on_constraint_mismatch,
         }
     }
