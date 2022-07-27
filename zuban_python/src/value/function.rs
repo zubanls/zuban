@@ -17,9 +17,9 @@ use crate::file::{PythonFile, TypeComputation};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{ClassLike, Generics, SignatureMatch, Type, TypeVarMatcher};
 use crate::node_ref::NodeRef;
-use crate::params::{InferrableParamIterator2, Param};
 use crate::value::Class;
 
 #[derive(Clone, Copy)]

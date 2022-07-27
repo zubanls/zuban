@@ -21,10 +21,7 @@ use crate::inferred::Inferred;
 use crate::matching::ClassLike;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
-pub use callable::{
-    has_overlapping_params, matches_params, overload_has_overlapping_params, Callable,
-    CallableClass,
-};
+pub use callable::{Callable, CallableClass};
 pub use class::Class;
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;

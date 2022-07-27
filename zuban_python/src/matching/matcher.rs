@@ -1,5 +1,6 @@
 use parsa_python_ast::ParamType;
 
+use super::params::{InferrableParamIterator2, Param};
 use super::{Generics, Match, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
@@ -8,7 +9,6 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
-use crate::params::{InferrableParamIterator2, Param};
 use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
 #[derive(Debug)]

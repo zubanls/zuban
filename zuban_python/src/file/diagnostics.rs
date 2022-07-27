@@ -9,9 +9,9 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, Match};
+use crate::matching::{matches_params, overload_has_overlapping_params, Generics, Match};
 use crate::node_ref::NodeRef;
-use crate::value::{matches_params, overload_has_overlapping_params, Class, Function};
+use crate::value::{Class, Function};
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn calculate_diagnostics(&mut self) {

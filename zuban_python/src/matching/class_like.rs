@@ -1,4 +1,4 @@
-use super::callable::{has_overlapping_params, matches_params};
+use super::params::{has_overlapping_params, matches_params};
 use super::{Generics, Match, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
