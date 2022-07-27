@@ -436,19 +436,6 @@ where
         self.cache_annotation_internal(annotation.index(), annotation.expression());
     }
 
-    fn add_module_issue(&self, file: &'db PythonFile, node_ref: NodeRef<'db>) {
-        node_ref.add_typing_issue(
-            self.inference.i_s.db,
-            IssueType::InvalidType(
-                format!(
-                    "Module {:?} is not valid as a type",
-                    Module::new(self.inference.i_s.db, file).qualified_name(self.inference.i_s.db),
-                )
-                .into(),
-            ),
-        );
-    }
-
     fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression) {
         let point = self.inference.file.points.get(annotation_index);
         if point.calculated() {
@@ -499,7 +486,17 @@ where
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 if !self.errors_already_calculated {
-                    self.add_module_issue(m, node_ref);
+                    node_ref.add_typing_issue(
+                        self.inference.i_s.db,
+                        IssueType::InvalidType(
+                            format!(
+                                "Module {:?} is not valid as a type",
+                                Module::new(self.inference.i_s.db, m)
+                                    .qualified_name(self.inference.i_s.db),
+                            )
+                            .into(),
+                        ),
+                    );
                 }
                 DbType::Any
             }
