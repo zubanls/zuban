@@ -203,15 +203,32 @@ fn calculate_type_vars<'db>(
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
-    let matcher = type_vars.map(|t| {
-        TypeVarMatcher::new(
-            func_or_callable,
-            Some(args),
-            match_type,
-            on_type_error.is_some(),
-            t.len(),
-        )
-    });
+    let matcher = type_vars
+        .map(|t| {
+            TypeVarMatcher::new(
+                func_or_callable,
+                Some(args),
+                match_type,
+                on_type_error.is_some(),
+                t.len(),
+            )
+        })
+        .or_else(|| {
+            if let FunctionOrCallable::Function(_, function) = func_or_callable {
+                if let Some(class) = function.class {
+                    if let Some(type_vars) = class.type_vars(i_s) {
+                        return Some(TypeVarMatcher::new(
+                            func_or_callable,
+                            Some(args),
+                            match_type,
+                            on_type_error.is_some(),
+                            type_vars.len(),
+                        ));
+                    }
+                }
+            }
+            None
+        });
     let result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
@@ -416,6 +433,9 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             args.as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
+    }
+    if let Some(matcher) = &matcher {
+        matches &= matcher.matches;
     }
     (
         match matches {

@@ -132,7 +132,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             i_s,
             self,
             args,
-            Some(&type_vars),
+            None,
             TypeVarType::LateBound,
             on_type_error,
         );

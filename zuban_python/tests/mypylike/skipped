@@ -10,6 +10,9 @@ type_var_value_restriction_in_callable
 testSubtypingWithGenericFunctionUsingTypevarWithValues
 testOverloadOverlapWithTypeVars
 
+# func type var in __init__
+testInvalidNumberOfTypeArgs
+
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
