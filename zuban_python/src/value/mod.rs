@@ -22,7 +22,7 @@ use crate::matching::ClassLike;
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use callable::{Callable, CallableClass};
-pub use class::Class;
+pub use class::{Class, MroIterator};
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};

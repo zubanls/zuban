@@ -2,7 +2,9 @@ use super::params::{has_overlapping_params, matches_params};
 use super::{Generics, Match, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
-use crate::value::{CallableClass, Class, Function, LookupResult, TupleClass, TypingClass, Value};
+use crate::value::{
+    CallableClass, Class, Function, LookupResult, MroIterator, TupleClass, TypingClass, Value,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {

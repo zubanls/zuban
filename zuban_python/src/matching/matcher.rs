@@ -18,7 +18,7 @@ pub(super) enum FunctionOrCallable<'db, 'a> {
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
-    pub func_or_callable: FunctionOrCallable<'db, 'a>,
+    pub(super) func_or_callable: FunctionOrCallable<'db, 'a>,
     args: &'a dyn Arguments<'db>,
     skip_first_param: bool,
     pub calculated_type_vars: Option<GenericsList>,
