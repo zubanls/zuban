@@ -167,7 +167,7 @@ impl<'db, 'a> TupleClass<'a> {
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
         let class_infos = i_s.db.python_state.tuple(Generics::None).class_infos(i_s);
         if !self.content.arbitrary_length {
-            debug!("TODO Only used TypeVarIndex #0, and not all of them");
+            debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
         }
         MroIterator::new(
             i_s.db,
