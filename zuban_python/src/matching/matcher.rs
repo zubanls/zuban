@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Generics, Match, SignatureMatch, Type};
+use super::{Match, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVar, TypeVarType, TypeVarUsage, TypeVars,
@@ -70,7 +70,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         let result = g.matches(i_s, Some(self), value_type, type_var.variance);
                         self.func_or_callable = old;
                         return result;
-                    } else if !matches!(f.class.unwrap().generics, Generics::None) {
+                    } else if type_var_usage.in_definition != self.match_in_definition {
                         let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                         // TODO nth should return a type instead of DbType
                         let g = Type::from_db_type(i_s.db, &g);
@@ -117,9 +117,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             // Happens e.g. for testInvalidNumberOfTypeArgs
             // class C:  # Forgot to add type params here
             //     def __init__(self, t: T) -> None: pass
-            debug!(
-                "TODO free type param annotations; searched {:?}, found {:?}",
-                self.match_type, type_var_usage.in_definition
+            todo!(
+                "TODO free type param annotations; searched {:?} ({:?}), found {:?} ({:?})",
+                self.match_type,
+                self.match_in_definition,
+                type_var_usage.type_,
+                type_var_usage.in_definition,
             )
         }
         Match::True

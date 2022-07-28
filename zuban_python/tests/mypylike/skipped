@@ -12,6 +12,7 @@ testOverloadOverlapWithTypeVars
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
+testInheritedConstructor2
 
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
