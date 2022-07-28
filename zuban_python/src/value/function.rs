@@ -749,7 +749,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             true,
                             func_type_vars,
                             TypeVarType::Function,
-                            self.node_ref.as_link(),
+                            function.node_ref.as_link(),
                             None,
                         )
                     } else {
@@ -777,7 +777,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         false,
                         func_type_vars,
                         TypeVarType::Function,
-                        self.node_ref.as_link(),
+                        function.node_ref.as_link(),
                         None,
                     )
                 }
