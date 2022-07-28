@@ -74,7 +74,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
                         // TODO nth should return a type instead of DbType
                         let g = Type::from_db_type(i_s.db, &g);
-                        return g.matches(i_s, Some(self), value_type, type_var.variance);
+                        return g.matches(i_s, None, value_type, type_var.variance);
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -98,7 +98,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if mismatch_constraints {
             (self.on_constraint_mismatch)(i_s, type_var, &value_type);
         }
-        if self.match_type == type_var_usage.type_ {
+        if self.match_in_definition == type_var_usage.in_definition {
             let current = self.calculated_type_vars.nth(type_var_usage.index).unwrap();
             if current == &DbType::Unknown {
                 self.calculated_type_vars
@@ -106,7 +106,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             } else {
                 let value_db_type = value_type.into_db_type(i_s);
                 if current != &value_db_type {
-                    dbg!(current, value_db_type);
                     todo!(
                         "should be: Cannot infer type argument {}",
                         type_var_usage.type_var.name(i_s.db)
@@ -140,6 +139,11 @@ pub fn calculate_function_type_vars_and_return<'db>(
     match_in_definition: PointLink,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
+    debug!(
+        "Calculate type vars for {} in {}",
+        function.name(),
+        class.map(|c| c.name()).unwrap_or("-")
+    );
     calculate_type_vars(
         i_s,
         class,
