@@ -70,17 +70,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let type_var_remap = func_class.type_var_remap.unwrap();
                             let g = type_var_remap.nth(type_var_usage.index).unwrap();
                             let g = Type::from_db_type(i_s.db, g);
-                            let mut new_func = f;
-                            new_func.class.as_mut().unwrap().type_var_remap = None;
-                            // Since we now used the type_var_remap, it needs to be temporarily
-                            // replaced with no type_var_remap, to avoid looping when we find type vars
-                            // again in the type_var_remap.
-                            let old = std::mem::replace(
-                                &mut self.func_or_callable,
-                                FunctionOrCallable::Function(Some(class), new_func),
-                            );
+                            // The remapping of type vars needs to be checked now. In a lot of
+                            // cases this is T -> T and S -> S, but it could also be T -> S and S
+                            // -> List[T] or something completely arbitrary.
                             let result = g.matches(i_s, Some(self), value_type, type_var.variance);
-                            self.func_or_callable = old;
                             return result;
                         }
                     } else {
