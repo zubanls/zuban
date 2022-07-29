@@ -52,43 +52,39 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         value_type: Type<'db, '_>,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
-        if type_var_usage.type_ == TypeVarType::Class
-            && type_var_usage.in_definition != self.match_in_definition
-        {
+        if type_var_usage.in_definition != self.match_in_definition {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
-                    if let Some(type_var_remap) = f.class.unwrap().type_var_remap {
-                        assert_eq!(
-                            type_var_usage.in_definition,
-                            f.class.unwrap().node_ref.as_link()
-                        );
-                        let g = type_var_remap.nth(type_var_usage.index).unwrap();
-                        let g = Type::from_db_type(i_s.db, g);
-                        let mut new_func = f;
-                        new_func.class.as_mut().unwrap().type_var_remap = None;
-                        // Since we now used the type_var_remap, it needs to be temporarily
-                        // replaced with no type_var_remap, to avoid looping when we find type vars
-                        // again in the type_var_remap.
-                        let old = std::mem::replace(
-                            &mut self.func_or_callable,
-                            FunctionOrCallable::Function(class, new_func),
-                        );
-                        let result = g.matches(i_s, Some(self), value_type, type_var.variance);
-                        self.func_or_callable = old;
-                        return result;
-                    } else if type_var_usage.in_definition != self.match_in_definition {
-                        if let Some(func_class) = f.class {
-                            if class.unwrap().node_ref.as_link() == type_var_usage.in_definition {
-                                let g = func_class.generics.nth(i_s, type_var_usage.index);
-                                // TODO nth should return a type instead of DbType
-                                let g = Type::from_db_type(i_s.db, &g);
-                                return g.matches(i_s, None, value_type, type_var.variance);
-                            } else {
-                                todo!()
-                            }
-                        } else {
-                            todo!()
+                    if let Some(class) = class {
+                        if class.node_ref.as_link() == type_var_usage.in_definition {
+                            let g = class.generics.nth(i_s, type_var_usage.index);
+                            // TODO nth should return a type instead of DbType
+                            let g = Type::from_db_type(i_s.db, &g);
+                            return g.matches(i_s, None, value_type, type_var.variance);
                         }
+                        // If we're in a class context, we must also be in a method.
+                        let func_class = f.class.unwrap();
+                        if type_var_usage.in_definition == func_class.node_ref.as_link() {
+                            // By definition, because the class did not match there will never be a
+                            // type_var_remap that is not defined.
+                            let type_var_remap = func_class.type_var_remap.unwrap();
+                            let g = type_var_remap.nth(type_var_usage.index).unwrap();
+                            let g = Type::from_db_type(i_s.db, g);
+                            let mut new_func = f;
+                            new_func.class.as_mut().unwrap().type_var_remap = None;
+                            // Since we now used the type_var_remap, it needs to be temporarily
+                            // replaced with no type_var_remap, to avoid looping when we find type vars
+                            // again in the type_var_remap.
+                            let old = std::mem::replace(
+                                &mut self.func_or_callable,
+                                FunctionOrCallable::Function(Some(class), new_func),
+                            );
+                            let result = g.matches(i_s, Some(self), value_type, type_var.variance);
+                            self.func_or_callable = old;
+                            return result;
+                        }
+                    } else {
+                        todo!("Probably nested generic functions???")
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
