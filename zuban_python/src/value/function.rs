@@ -255,17 +255,18 @@ impl<'db, 'a> Function<'db, 'a> {
         Some(self.iter_params())
     }
 
-    fn execute_internal(
+    pub fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
+        class: Option<&Class<'db, '_>>,
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
-            self.class.as_ref(),
+            class,
             *self,
             args,
             false,
@@ -319,7 +320,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 if self.name() == "__init__" {
                     format!("{:?}", class.name()).into()
                 } else {
-                    format!("{:?} of {:?}", self.name(), class.name()).into()
+                    format!("{:?} of {:?}", self.name(), self.class.unwrap().name()).into()
                 }
             }
             None => format!("{:?}", self.name()).into(),
@@ -466,10 +467,15 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        if let Some(class) = self.class {
-            self.execute_internal(&mut i_s.with_class_context(&class), args, on_type_error)
+        if let Some(class) = &self.class {
+            self.execute_internal(
+                &mut i_s.with_class_context(class),
+                args,
+                on_type_error,
+                Some(class),
+            )
         } else {
-            self.execute_internal(i_s, args, on_type_error)
+            self.execute_internal(i_s, args, on_type_error, None)
         }
     }
 

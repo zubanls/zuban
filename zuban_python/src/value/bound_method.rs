@@ -47,6 +47,16 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         let instance_inf = self.instance.as_inferred(i_s);
         let instance_arg = KnownArguments::with_mro_index(&instance_inf, self.mro_index, None);
         let args = CombinedArguments::new(&instance_arg, args);
-        self.function.execute(i_s, &args, on_type_error)
+        let class = &self.instance.class;
+        match self.function.as_function() {
+            Some(f) => f.execute_internal(
+                &mut i_s.with_class_context(class),
+                &args,
+                on_type_error,
+                Some(class),
+            ),
+            // TODO this kind of loses access the class
+            None => self.function.execute(i_s, &args, on_type_error),
+        }
     }
 }
