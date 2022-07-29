@@ -71,10 +71,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         self.func_or_callable = old;
                         return result;
                     } else if type_var_usage.in_definition != self.match_in_definition {
-                        let g = f.class.unwrap().generics.nth(i_s, type_var_usage.index);
-                        // TODO nth should return a type instead of DbType
-                        let g = Type::from_db_type(i_s.db, &g);
-                        return g.matches(i_s, None, value_type, type_var.variance);
+                        if let Some(func_class) = f.class {
+                            if class.unwrap().node_ref.as_link() == type_var_usage.in_definition {
+                                let g = func_class.generics.nth(i_s, type_var_usage.index);
+                                // TODO nth should return a type instead of DbType
+                                let g = Type::from_db_type(i_s.db, &g);
+                                return g.matches(i_s, None, value_type, type_var.variance);
+                            } else {
+                                todo!()
+                            }
+                        } else {
+                            todo!()
+                        }
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -227,8 +235,8 @@ fn calculate_type_vars<'db>(
         )),
         None => {
             if let FunctionOrCallable::Function(_, function) = func_or_callable {
-                if let Some(class) = function.class {
-                    class.type_vars(i_s).map(|type_vars| {
+                if let Some(func_class) = function.class {
+                    func_class.type_vars(i_s).map(|type_vars| {
                         TypeVarMatcher::new(
                             func_or_callable,
                             match_type,
