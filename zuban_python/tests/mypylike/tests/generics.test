@@ -33,3 +33,51 @@ class P6(Generic[T], Protocol[S], Protocol[U]): # E: Only single Generic[...] or
 [case type_type_application]
 from typing import Type
 reveal_type(Type[int]) # N: Revealed type is "Type[int]"
+
+[case subtyping_only_result_generics]
+-- It feels like this test is a bit weird, because a generic as a result in
+-- Python doesn't really make sense.
+from typing import TypeVar
+class A: pass
+T = TypeVar('T', int, str)
+U = TypeVar('U', str, A, int)
+def f(x: int) -> T: pass
+def g(x: int) -> U: pass
+a = f
+if int():
+    a = f
+if int():
+    a = g
+b = g
+if int():
+    b = g
+if int():
+    b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+
+[case subtyping_complex_generics]
+from typing import TypeVar
+T = TypeVar('T')
+U = TypeVar('U')
+def f(x: T, y: int, /) -> T: pass
+def g(x: T, y: U, /) -> U: pass
+def h(x: U, y: U, /) -> U: pass
+if int():
+    f = f
+if int():
+    f = g # E: Incompatible types in assignment (expression has type "Callable[[T, U], U]", variable has type "Callable[[T, int], T]")
+if int():
+    f = h # E: Incompatible types in assignment (expression has type "Callable[[U, U], U]", variable has type "Callable[[T, int], T]")
+
+if int():
+    g = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+if int():
+    g = g
+if int():
+    g = h # E: Incompatible types in assignment (expression has type "Callable[[U, U], U]", variable has type "Callable[[T, U], U]")
+
+if int():
+    h = f # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[U, U], U]")
+if int():
+    h = g
+if int():
+    h = h

@@ -426,7 +426,7 @@ impl<'db, 'a> Function<'db, 'a> {
                             style,
                         );
                         match param.param_type() {
-                            ParamType::PositionalOnly => todo!(),
+                            ParamType::PositionalOnly => t.to_string(),
                             ParamType::PositionalOrKeyword => match param.has_default() {
                                 true => format!("DefaultArg({t}, '{}')", param.name().unwrap()),
                                 false => format!("Arg({t}, '{}')", param.name().unwrap()),
