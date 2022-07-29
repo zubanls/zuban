@@ -27,7 +27,7 @@ macro_rules! matches_callable {
         $c1.result_type($i_s).matches(
             $i_s,
             $matcher.as_deref_mut(),
-            other_result,
+            &other_result,
             Variance::Covariant,
         ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
             | Match::FalseButSimilar
@@ -46,7 +46,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value_class: Type<'db, '_>,
+        value_class: &Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         variance: Variance,
     ) -> Match {
@@ -68,14 +68,19 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             // TODO does this check make sense?
                             Match::True
                         } else if let Some(bound) = &t2.type_var.bound {
-                            self.matches(i_s, Type::from_db_type(i_s.db, bound), None, variance)
+                            self.matches(i_s, &Type::from_db_type(i_s.db, bound), None, variance)
                         } else if !t2.type_var.restrictions.is_empty() {
                             t2.type_var
                                 .restrictions
                                 .iter()
                                 .any(|r| {
-                                    self.matches(i_s, Type::from_db_type(i_s.db, r), None, variance)
-                                        .bool()
+                                    self.matches(
+                                        i_s,
+                                        &Type::from_db_type(i_s.db, r),
+                                        None,
+                                        variance,
+                                    )
+                                    .bool()
                                 })
                                 .into()
                         } else {
@@ -128,7 +133,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 if let Self::Class(c1) = self {
                     if c1.class_infos(i_s).is_protocol {
                         return match c {
-                            ClassLike::Class(c2) => c1.check_protocol_match(i_s, c2).into(),
+                            ClassLike::Class(c2) => c1.check_protocol_match(i_s, *c2).into(),
                             _ => Match::False,
                         };
                     }
@@ -216,7 +221,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t1) => {
                 return match matcher {
                     Some(matcher) => {
-                        matcher.match_or_add_type_var(i_s, t1, Type::ClassLike(*other))
+                        matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other))
                     }
                     None => match other {
                         Self::TypeVar(t2) => {
@@ -258,7 +263,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 return c1.result_type(i_s).matches(
                                     i_s,
                                     matcher.as_deref_mut(),
-                                    Type::ClassLike(ClassLike::Class(*cls)),
+                                    &Type::ClassLike(ClassLike::Class(*cls)),
                                     Variance::Covariant,
                                 ) & matches_params(
                                     i_s,
@@ -301,7 +306,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         if let Some(bound) = &t2.type_var.bound {
             self.matches(
                 i_s,
-                Type::from_db_type(i_s.db, bound),
+                &Type::from_db_type(i_s.db, bound),
                 None,
                 Variance::Covariant,
             )
@@ -310,7 +315,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             t2.type_var.restrictions.iter().any(|r| {
                 self.matches(
                     i_s,
-                    Type::from_db_type(i_s.db, r),
+                    &Type::from_db_type(i_s.db, r),
                     None,
                     Variance::Covariant,
                 )

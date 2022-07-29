@@ -227,17 +227,21 @@ impl<'db, 'a> TupleClass<'a> {
                         );
                         generics2.iter().all(|g2| {
                             let t2 = Type::from_db_type(i_s.db, g2);
-                            t1.matches(i_s, matcher.as_deref_mut(), t2, variance).bool()
+                            t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
+                                .bool()
                         })
                     }
-                    (false, true, Variance::Contravariant) => generics1.iter().all(|g1| {
-                        let t1 = Type::from_db_type(i_s.db, g1);
+                    (false, true, Variance::Contravariant) => {
                         let t2 = Type::from_db_type(
                             i_s.db,
                             generics2.nth(TypeVarIndex::new(0)).unwrap(),
                         );
-                        t1.matches(i_s, matcher.as_deref_mut(), t2, variance).bool()
-                    }),
+                        generics1.iter().all(|g1| {
+                            let t1 = Type::from_db_type(i_s.db, g1);
+                            t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
+                                .bool()
+                        })
+                    }
                 };
             }
         }

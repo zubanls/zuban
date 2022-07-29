@@ -718,36 +718,27 @@ where
                     let t = self.compute_slice_type(slice_content, None);
                     if let Some(bound) = &type_var.bound {
                         // Performance: This could be optimized to not create new objects all the time.
-                        let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                        let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
-                        let actual = Type::from_db_type(i_s.db, &db_t);
+                        let actual = Type::from_db_type(i_s.db, &t);
                         let expected = Type::from_db_type(i_s.db, bound);
-                        if !expected.matches(i_s, None, actual, Variance::Covariant) {
+                        if !expected.matches(i_s, None, &actual, Variance::Covariant) {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {
-                                    actual: Type::from_db_type(i_s.db, &db_t).format(
-                                        i_s,
-                                        None,
-                                        FormatStyle::Short,
-                                    ),
+                                    actual: actual.format(i_s, None, FormatStyle::Short),
                                     executable: Box::from(class.name()),
                                     expected: expected.format(i_s, None, FormatStyle::Short),
                                 },
                             );
                         }
                     } else if !type_var.restrictions.is_empty() {
-                        // Performance: This could be optimized to not create new objects all the time.
-                        let db_t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                        let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
+                        let t2 = Type::from_db_type(i_s.db, &t2);
                         if !type_var.restrictions.iter().any(|t| {
                             Type::from_db_type(i_s.db, t)
-                                .matches(
-                                    i_s,
-                                    None,
-                                    Type::from_db_type(i_s.db, &db_t),
-                                    Variance::Covariant,
-                                )
+                                .matches(i_s, None, &t2, Variance::Covariant)
                                 .bool()
                         }) {
                             slice_content.as_node_ref().add_typing_issue(
@@ -755,11 +746,7 @@ where
                                 IssueType::InvalidTypeVarValue {
                                     type_var: Box::from(type_var.name(i_s.db)),
                                     func: format!("{:?}", class.name()).into(),
-                                    actual: Type::from_db_type(i_s.db, &db_t).format(
-                                        i_s,
-                                        None,
-                                        FormatStyle::Short,
-                                    ),
+                                    actual: t2.format(i_s, None, FormatStyle::Short),
                                 },
                             );
                         }

@@ -67,6 +67,14 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+        match self {
+            Self::ClassLike(class_like) => class_like.as_db_type(i_s),
+            Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list.clone())),
+            Self::Any => DbType::Any,
+        }
+    }
+
     pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
         match self {
             Self::ClassLike(class1) => match other {
@@ -87,12 +95,13 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        value_class: Self,
+        value_class: &Self,
         variance: Variance,
     ) -> Match {
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
-            Self::Union(list1) => match value_class {
+            // TODO this is fucked up that we clone.
+            Self::Union(list1) => match value_class.clone() {
                 // TODO this should use the variance argument
                 Self::Union(mut list2) => match variance {
                     Variance::Covariant | Variance::Invariant => {
@@ -101,12 +110,13 @@ impl<'db, 'a> Type<'db, 'a> {
                             if let Some(t) = g1.maybe_type_var_index() {
                                 type_var_usage = Some(t);
                             }
+                            let t1 = Type::from_db_type(i_s.db, g1);
                             for (i, g2) in list2.iter().enumerate() {
-                                if Type::from_db_type(i_s.db, g1)
+                                if t1
                                     .matches(
                                         i_s,
                                         matcher.as_deref_mut(),
-                                        Type::from_db_type(i_s.db, g2),
+                                        &Type::from_db_type(i_s.db, g2),
                                         variance,
                                     )
                                     .bool()
@@ -131,7 +141,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                     1 => Type::from_db_type(i_s.db, &list2[0]),
                                     _ => Type::Union(list2),
                                 };
-                                matcher.match_or_add_type_var(i_s, type_var_usage, g)
+                                matcher.match_or_add_type_var(i_s, type_var_usage, &g)
                             } else {
                                 Match::True
                             }
@@ -147,7 +157,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                 t1.matches(
                                     i_s,
                                     matcher.as_deref_mut(),
-                                    Type::from_db_type(i_s.db, g2),
+                                    &Type::from_db_type(i_s.db, g2),
                                     variance,
                                 )
                                 .bool()
@@ -161,7 +171,7 @@ impl<'db, 'a> Type<'db, 'a> {
                         .iter()
                         .any(|g| {
                             Type::from_db_type(i_s.db, g)
-                                .matches(i_s, matcher.as_deref_mut(), value_class.clone(), variance)
+                                .matches(i_s, matcher.as_deref_mut(), value_class, variance)
                                 .bool()
                         })
                         .into(),
@@ -191,7 +201,12 @@ impl<'db, 'a> Type<'db, 'a> {
         mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
     ) -> Match {
         let value_type = value.class_as_type(i_s);
-        let matches = self.matches(i_s, matcher.as_deref_mut(), value_type, Variance::Covariant);
+        let matches = self.matches(
+            i_s,
+            matcher.as_deref_mut(),
+            &value_type,
+            Variance::Covariant,
+        );
         if !matches {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),

@@ -49,7 +49,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
-        value_type: Type<'db, '_>,
+        value_type: &Type<'db, '_>,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
         if type_var_usage.in_definition != self.match_in_definition {
@@ -86,7 +86,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         let mut mismatch_constraints = !type_var.restrictions.is_empty()
             && !type_var.restrictions.iter().any(|t| {
                 Type::from_db_type(i_s.db, t)
-                    .matches(i_s, None, value_type.clone(), Variance::Covariant)
+                    .matches(i_s, None, value_type, Variance::Covariant)
                     .bool()
             });
         if let Some(bound) = &type_var.bound {
@@ -94,7 +94,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 || !Type::from_db_type(i_s.db, bound).matches(
                     i_s,
                     None,
-                    value_type.clone(),
+                    value_type,
                     Variance::Covariant,
                 );
         }
@@ -105,9 +105,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             let current = self.calculated_type_vars.nth(type_var_usage.index).unwrap();
             if current == &DbType::Unknown {
                 self.calculated_type_vars
-                    .set_generic(type_var_usage.index, value_type.into_db_type(i_s));
+                    .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
             } else {
-                let value_db_type = value_type.into_db_type(i_s);
+                let value_db_type = value_type.as_db_type(i_s);
                 if current != &value_db_type {
                     todo!(
                         "should be: Cannot infer type argument {}",

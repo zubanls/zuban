@@ -188,6 +188,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 f1.type_vars(self.i_s);
+                let f1_result_type = f1.result_type(self.i_s);
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     f2.type_vars(self.i_s);
@@ -204,10 +205,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
-                        if !f1.result_type(self.i_s).matches(
+                        if !f1_result_type.matches(
                             self.i_s,
                             None,
-                            f2_result_type,
+                            &f2_result_type,
                             Variance::Contravariant,
                         ) && overload_has_overlapping_params(
                             self.i_s,

@@ -193,7 +193,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     variance
                 };
-                matches &= type_.matches(i_s, matcher.as_deref_mut(), g, v);
+                matches &= type_.matches(i_s, matcher.as_deref_mut(), &g, v);
             });
             if appeared.is_none() {
                 debug!("Generic not found for: {type_:?}");
