@@ -100,31 +100,26 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> Match {
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
-            // TODO this is fucked up that we clone.
-            Self::Union(list1) => match value_class.clone() {
+            Self::Union(list1) => match value_class {
                 // TODO this should use the variance argument
-                Self::Union(mut list2) => match variance {
+                Self::Union(list2) => match variance {
                     Variance::Covariant | Variance::Invariant => {
                         let mut type_var_usage = None;
+                        let mut matches = true;
                         for g1 in list1 {
                             if let Some(t) = g1.maybe_type_var_index() {
                                 type_var_usage = Some(t);
                             }
                             let t1 = Type::from_db_type(i_s.db, g1);
-                            for (i, g2) in list2.iter().enumerate() {
-                                if t1
-                                    .matches(
-                                        i_s,
-                                        matcher.as_deref_mut(),
-                                        &Type::from_db_type(i_s.db, g2),
-                                        variance,
-                                    )
-                                    .bool()
-                                {
-                                    list2.remove(i);
-                                    break;
-                                }
-                            }
+                            matches &= list2.iter().any(|g2| {
+                                t1.matches(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    &Type::from_db_type(i_s.db, g2),
+                                    variance,
+                                )
+                                .bool()
+                            })
                         }
                         /*
                         if type_var_usage.is_some() {
@@ -135,18 +130,20 @@ impl<'db, 'a> Type<'db, 'a> {
                                 );
                         }*/
                         if let Some(type_var_usage) = type_var_usage {
+                            // TODO WHY IS matches NOT USED IN THIS BRANCH
                             if let Some(matcher) = matcher {
                                 let g = match list2.len() {
                                     0 => unreachable!(),
                                     1 => Type::from_db_type(i_s.db, &list2[0]),
-                                    _ => Type::Union(list2),
+                                    // TODO should not clone!!
+                                    _ => Type::Union(list2.clone()),
                                 };
                                 matcher.match_or_add_type_var(i_s, type_var_usage, &g)
                             } else {
                                 Match::True
                             }
                         } else {
-                            list2.is_empty().into()
+                            matches.into()
                         }
                     }
                     Variance::Contravariant => list1
