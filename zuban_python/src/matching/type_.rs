@@ -130,6 +130,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                 );
                         }*/
                         if let Some(type_var_usage) = type_var_usage {
+                            /*
                             // TODO WHY IS matches NOT USED IN THIS BRANCH
                             if let Some(matcher) = matcher {
                                 let g = match list2.len() {
@@ -141,7 +142,9 @@ impl<'db, 'a> Type<'db, 'a> {
                                 matcher.match_or_add_type_var(i_s, type_var_usage, &g)
                             } else {
                                 Match::True
-                            }
+                            };
+                            */
+                            todo!();
                         } else {
                             matches.into()
                         }
