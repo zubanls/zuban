@@ -52,7 +52,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         value_type: Type<'db, '_>,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
-        if type_var_usage.type_ == TypeVarType::Class {
+        if type_var_usage.type_ == TypeVarType::Class
+            && type_var_usage.in_definition != self.match_in_definition
+        {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
                     if let Some(type_var_remap) = f.class.unwrap().type_var_remap {
