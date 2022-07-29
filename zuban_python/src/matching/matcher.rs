@@ -236,7 +236,7 @@ fn calculate_type_vars<'db>(
                             func_or_callable,
                             match_type,
                             match_in_definition,
-                            type_vars.len(),
+                            1, // TODO There rae no type vars in there, should set it to 0
                             &mut on_constraint_mismatch,
                         )
                     })
