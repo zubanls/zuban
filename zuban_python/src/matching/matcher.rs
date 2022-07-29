@@ -99,7 +99,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 );
         }
         if mismatch_constraints {
-            (self.on_constraint_mismatch)(i_s, type_var, &value_type);
+            (self.on_constraint_mismatch)(i_s, type_var, value_type);
         }
         if self.match_in_definition == type_var_usage.in_definition {
             let current = self.calculated_type_vars.nth(type_var_usage.index).unwrap();

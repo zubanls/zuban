@@ -112,7 +112,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         }
                     }
                     Variance::Invariant => {
-                        similarity = self.check_match(i_s, matcher, &c, variance);
+                        similarity = self.check_match(i_s, matcher, c, variance);
                         if similarity.bool() {
                             return Match::True;
                         }
@@ -120,7 +120,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     Variance::Contravariant => {
                         for (_, class_like) in self.mro(i_s) {
                             let m =
-                                class_like.check_match(i_s, matcher.as_deref_mut(), &c, variance);
+                                class_like.check_match(i_s, matcher.as_deref_mut(), c, variance);
                             if m.bool() {
                                 return m;
                             } else {
