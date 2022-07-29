@@ -56,6 +56,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
                     if let Some(type_var_remap) = f.class.unwrap().type_var_remap {
+                        assert_eq!(
+                            type_var_usage.in_definition,
+                            f.class.unwrap().node_ref.as_link()
+                        );
                         let g = type_var_remap.nth(type_var_usage.index).unwrap();
                         let g = Type::from_db_type(i_s.db, g);
                         let mut new_func = f;
