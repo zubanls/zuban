@@ -56,7 +56,15 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
                 Some(class),
             ),
             // TODO this kind of loses access the class
-            None => self.function.execute(i_s, &args, on_type_error),
+            None => match self.function.as_overloaded_function() {
+                Some(f) => f.execute_internal(
+                    &mut i_s.with_class_context(class),
+                    &args,
+                    on_type_error,
+                    Some(class),
+                ),
+                None => todo!(), //self.function.execute(i_s, &args, on_type_error),
+            },
         }
     }
 }

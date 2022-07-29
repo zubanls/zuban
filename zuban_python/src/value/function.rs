@@ -255,7 +255,7 @@ impl<'db, 'a> Function<'db, 'a> {
         Some(self.iter_params())
     }
 
-    pub fn execute_internal(
+    pub(super) fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -733,19 +733,19 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         }
     }
 
-    pub fn find_matching_function(
+    pub(super) fn find_matching_function(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
+        search_init: bool, // TODO this feels weird, maybe use a callback?
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
-        let has_generics = class
-            .map(|class| !matches!(class.generics(), Generics::None))
-            .unwrap_or(false);
+        let has_already_calculated_class_generics =
+            search_init && !matches!(class.unwrap().generics(), Generics::None);
         let match_signature =
-            |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| match class {
-                Some(c) => {
-                    if has_generics {
+            |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| match search_init {
+                true => {
+                    if has_already_calculated_class_generics {
                         let func_type_vars = function.type_vars(i_s);
                         calculate_function_type_vars_and_return(
                             i_s,
@@ -759,6 +759,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             None,
                         )
                     } else {
+                        let c = class.unwrap();
                         let type_vars = c.type_vars(i_s);
                         calculate_function_type_vars_and_return(
                             i_s,
@@ -773,11 +774,11 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         )
                     }
                 }
-                None => {
+                false => {
                     let func_type_vars = function.type_vars(i_s);
                     calculate_function_type_vars_and_return(
                         i_s,
-                        None,
+                        class,
                         function,
                         args,
                         false,
@@ -789,7 +790,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 }
             };
         let handle_result = |i_s, calculated_type_vars, function| {
-            let calculated = if has_generics {
+            let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {
                     class.generics.as_generics_list(i_s)
                 } else {
@@ -869,9 +870,22 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             })
             .collect()
     }
+
+    pub(super) fn execute_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
+        class: Option<&Class<'db, '_>>,
+    ) -> Inferred<'db> {
+        debug!("Execute overloaded function {}", self.name());
+        self.find_matching_function(i_s, args, class, false)
+            .map(|(function, _)| function.execute(i_s, args, on_type_error))
+            .unwrap_or_else(Inferred::new_unknown)
+    }
 }
 
-impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
+impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -890,10 +904,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, None)
-            .map(|(function, _)| function.execute(i_s, args, on_type_error))
-            .unwrap_or_else(Inferred::new_unknown)
+        self.execute_internal(i_s, args, on_type_error, None)
     }
 
     fn get_item(
@@ -906,5 +917,9 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, '_> {
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         todo!("Please write a test that checks this");
         //Inferred::new_unknown()
+    }
+
+    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'db, 'a>> {
+        Some(self)
     }
 }

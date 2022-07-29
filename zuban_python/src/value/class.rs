@@ -114,7 +114,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 Some((func, list, false))
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
-                .find_matching_function(i_s, args, class.as_ref())
+                .find_matching_function(i_s, args, class.as_ref(), true)
                 .map(|(func, list)| (func, list, true)),
             None => unreachable!("Should never happen, because there's always object.__init__"),
         }
