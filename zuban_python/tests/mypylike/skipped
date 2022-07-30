@@ -4,6 +4,18 @@ testInferringTypesFromIterable
 testConstraintSolvingFailureWithSimpleGenerics
 testGenericFunctionSubtypingWithUnions
 
+testUnionGenericWithBoundedVariable
+testOptionalTypeVarAgainstOptional
+
+testRegression11705_NoStrict
+
+testUnificationRedundantUnion
+testUnificationEmptyList*
+testUnificationEmptySet*
+testUnificationEmptyDict*
+testUnificationDictWithEmptyList*
+testMisguidedSetItem
+
 testInferenceOfFor*
 testReusingInferredForIndex*
 
@@ -474,6 +486,7 @@ testNoReturnTypeAlias
 testUnionWithNoReturn
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
+testDontNeedAnnotationForCallable
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
@@ -550,6 +563,9 @@ testInferLambdaNone
 testLambdaDefaultContext
 testLambdaVarargContext
 testLambdaDeferredSpecialCase
+testInferCallableReturningNone1
+testInferCallableReturningNone2
+testErasedTypeRuntimeCoverage
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -571,6 +587,12 @@ testUnionAnyIsInstance
 testNestedUnionsProcessedCorrectly
 testGenericTypeAliasesUnion
 testOverloadsIgnorePromotions
+
+# weird narrowing
+testInferredTypeIsSimpleNestedList
+testInferredTypeIsSimpleNestedIterable
+testInferredTypeIsSimpleNestedListLoop
+testInferredTypeIsSimpleNestedIterableLoop
 
 # check after flow analysis
 testAssignAnyToUnionWithAny
@@ -839,6 +861,8 @@ test__aiter__and__anext__
 testThreePassesRequired
 testAccessGlobalVarBeforeItsTypeIsAvailable
 testAccessDataAttributeBeforeItsTypeIsAvailable
+testMultipassAndTopLevelVariable
+testMultipassAndCircularDependency
 
 # __new__
 *DunderNew*
@@ -924,6 +948,8 @@ testPartiallyInitializedToNone*
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
 testGlobalInitializedToNoneSetFromFunction
 testGlobalInitializedToNoneSetFromMethod
+testNoCrashOnPartialVariable
+testNoCrashOnPartialVariable3
 
 # Option[X] <-> Union[X, None] mixups
 testOptional
@@ -997,6 +1023,10 @@ testNewAnalyzerLessErrorsNeedAnnotation*
 testErrorInTypeCheckSecondPassThroughPropagation
 testGenericFunctionOnReturnTypeOnly
 testUnderspecifiedInferenceResult
+testNoCrashOnPartialMember
+testDontMarkUnreachableAfterInferenceUninhabited*
+testNeedAnnotationForCallable
+testPartialDefaultDict*
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -1045,6 +1075,18 @@ testInferringLvarTypesInMultiDefWithInvalidTuple
 # Type execution
 testNoneAlias
 testNoneAliasStrict
+
+# Special case for assignment to '_'
+testUnusedTargetLocal
+testUnusedTargetNotClass
+testUnusedTargetNotClass2
+testUnusedTargetTupleUnpacking
+testUnusedTargetMultipleTargets
+testUnusedTargetNotImport
+testUnderscoreClass
+testUnusedTargetForLoop
+testUnusedTargetWithClause
+testUnusedTargetNotExceptClause
 
 # Wtfs
 testEmptyTupleTypeAlias
@@ -1118,6 +1160,7 @@ testTestExtendPrimitives
 testAssignToFuncDefViaImport
 testUnionWithNoneItem
 testBoundHigherOrderWithVoid
+testRegression11705_Strict
 
 # type: ignore leads to Any type?
 testDunderCallAddition
@@ -1136,6 +1179,9 @@ testIgnoreErrorFromMissingStubs2
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
 testRefreshOptions
+
+# --allow-untyped-globals
+testPermissiveAttributeOverride1
 
 # --disallow-any-expr
 testDoNotLimitErrorVolumeIfNotImportErrors
