@@ -103,7 +103,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                     }
                 }
-                StmtContent::ForStmt(for_stmt) => {}
+                StmtContent::ForStmt(for_stmt) => {
+                    self.calc_for_stmt_diagnostics(for_stmt, class, func)
+                }
                 StmtContent::TryStmt(try_stmt) => {
                     self.calc_try_stmt_diagnostics(try_stmt, class, func)
                 }
@@ -285,6 +287,43 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     debug!("TODO what about an implicit None?");
                 }
             }
+        }
+    }
+
+    pub fn cache_for_stmt_names(&mut self, star_targets: StarTargets, star_exprs: StarExpressions) {
+        let star_targets_point = self.file.points.get(star_targets.index());
+        if star_targets_point.calculated() {
+            debug_assert_eq!(star_targets_point.type_(), PointType::NodeAnalysis);
+            return;
+        }
+        let element = self
+            .infer_star_expressions(star_exprs)
+            .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
+            .infer_all(self.i_s);
+        debug!("For loop input: {}", element.description(self.i_s));
+        self.assign_targets(
+            star_targets.as_target(),
+            &element,
+            NodeRef::new(self.file, star_exprs.index()),
+            false,
+        );
+        self.file.points.set(
+            star_targets.index(),
+            Point::new_node_analysis(Locality::Todo),
+        );
+    }
+
+    fn calc_for_stmt_diagnostics(
+        &mut self,
+        for_stmt: ForStmt,
+        class: Option<Class<'db, '_>>,
+        func: Option<&Function<'db, '_>>,
+    ) {
+        let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
+        self.cache_for_stmt_names(star_targets, star_exprs);
+        self.calc_block_diagnostics(block, class, func);
+        if let Some(else_block) = else_block {
+            self.calc_block_diagnostics(else_block.block(), class, func);
         }
     }
 

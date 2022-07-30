@@ -363,17 +363,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
-                let element = self
-                    .infer_star_expressions(star_exprs)
-                    .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
-                    .infer_all(self.i_s);
-                debug!("For loop input: {}", element.description(self.i_s));
-                self.assign_targets(
-                    star_targets.as_target(),
-                    &element,
-                    NodeRef::new(self.file, star_exprs.index()),
-                    false,
-                )
+                // Performance: We probably do not need to calculate diagnostics just for
+                // calculating the names.
+                self.cache_for_stmt_names(star_targets, star_exprs);
             }
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
