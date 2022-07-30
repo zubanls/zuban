@@ -1,4 +1,20 @@
 # Next up
+testInvalidRvalueTypeInInferredNestedTupleAssignment
+testInferringTypesFromIterable
+testConstraintSolvingFailureWithSimpleGenerics
+testGenericFunctionSubtypingWithUnions
+
+testInferenceOfFor*
+testReusingInferredForIndex*
+
+testTypeInferenceWithCalleeDefaultArgs
+testGenericFunctionInferenceWithMultipleInheritance
+testGenericFunctionInferenceWithMultipleInheritance2
+testGenericFunctionInferenceWithMultipleInheritance3
+testPrecedenceOfFirstBaseAsInferenceResult
+testUnionInference
+testUnionInferenceWithTypeVarValues
+
 testFunctionSubtypingWithVoid
 
 overload_not_overlapping_none
@@ -232,8 +248,13 @@ testGenericTypeBody1
 testNewAnalyzerAliasToNotReadyNestedClass
 testNewAnalyzerAliasToNotReadyNestedClass2
 
-# Module Values
+# Module attributes
 testModuleImplicitAttributes
+# Function attributes
+testInvalidRvalueTypeInInferredMultipleLvarDefinition
+
+# boolean operators
+testOrOperationWithGenericOperands
 
 # generics special cases
 testGenericFunctionsWithUnalignedIds
@@ -305,6 +326,9 @@ testGenericTypeAliasesBasic2
 testCallableWithArbitraryArgsSubtypingWithGenericFunc
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
+# some more
+testInferenceWithMultipleVariables
+testConstraintSolvingWithSimpleGenerics
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
@@ -313,6 +337,7 @@ testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 # Type var formatting as nothing
 testInheritedConstructor
 testImportedTypeAliasInRuntimeContext
+testUnionContext
 
 # Special Type Var Binding
 testGenericTypeAliasesRuntimeExpressionsInstance
@@ -321,6 +346,7 @@ testGenericTypeAliasesTypeVarBinding
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
+testInferenceWithMultipleConstraints
 
 # Cannot declare the type of a TypeVar or similar construct
 testTypevarWithType
@@ -441,6 +467,8 @@ testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
 testNewAnalyzerCastForward*
 testCastConfusion
+testMultipleAssignmentWithPartialDefinition3
+
 # NoReturn
 testNoReturnTypeAlias
 testUnionWithNoReturn
@@ -496,6 +524,8 @@ testKwargsAllowedInDunderCallKwOnly
 testNoInvalidTypeInDynamicFunctions
 testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
 testDynamicallyTypedNestedFunction
+testInferringImplicitDynamicTypeForLvar
+testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -512,6 +542,14 @@ testLambdaSemanal
 testLambdaTypeCheck
 testLambdaTypeInference
 testLambdaDefaultTypeErrors
+testInferLambdaType
+testInferLambdaType2
+testUninferableLambda
+testUninferableLambdaWithTypeError
+testInferLambdaNone
+testLambdaDefaultContext
+testLambdaVarargContext
+testLambdaDeferredSpecialCase
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -735,6 +773,9 @@ testSubclassingGenericABC1
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
 
+# class attributes
+testInferAttributeTypeAndAssignInInit
+
 # class issues
 testAddBaseClassAttributeCausingErrorInSubclass
 testConstructorSignatureChanged2
@@ -796,6 +837,8 @@ test__aiter__and__anext__
 
 # "Cannot determine type of"
 testThreePassesRequired
+testAccessGlobalVarBeforeItsTypeIsAvailable
+testAccessDataAttributeBeforeItsTypeIsAvailable
 
 # __new__
 *DunderNew*
@@ -862,6 +905,8 @@ testUnpackInExpression3-only_when_nocache
 # "???" does not return a value / Function does not return a value
 testCallingVarArgsFunction
 testFunctionTypeCompatibilityWithOtherTypes
+testLvarInitializedToVoid
+testForStatementInferenceWithVoid
 
 # Implicit Param Option X = None -> Optional[X] inference
 testCallingVarArgsFunctionWithDefaultArgs
@@ -869,6 +914,16 @@ testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 testCallingFunctionsWithDefaultArgumentValues
+
+# None late binding, because it's None (x = None; x = 3)
+testAssigningAnyStrToNone
+testLocalVariablePartiallyInitializedToNone
+testLocalVariablePartiallyTwiceInitializedToNone
+testGvarPartiallyInitializedToNone
+testPartiallyInitializedToNone*
+testAttributePartiallyInitializedToNoneWithMissingAnnotation
+testGlobalInitializedToNoneSetFromFunction
+testGlobalInitializedToNoneSetFromMethod
 
 # Option[X] <-> Union[X, None] mixups
 testOptional
@@ -941,6 +996,7 @@ testInitReturnTypeError
 testNewAnalyzerLessErrorsNeedAnnotation*
 testErrorInTypeCheckSecondPassThroughPropagation
 testGenericFunctionOnReturnTypeOnly
+testUnderspecifiedInferenceResult
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -952,12 +1008,39 @@ testInvariantListArgNote
 testInvariantDictArgNote
 testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
 testInferredTypeSubTypeOfReturnType
+testListWithDucktypeCompatibility
+testListWithDucktypeCompatibilityAndTransitivity
 
 # List unpacking
 testMultipleAssignmentWithLists
 testMultipleAssignmentWithListsInInitialization
 testMultipleAssignmentWithListAndIndexing
 testMultipleAssignmentAndGenericSubtyping
+testInferringLvarTypesInNestedListAssignment
+testInferringMultipleLvarDefinitionWithListRvalue
+
+# List different types weirdness
+testListLiteralWithFunctionsErasesNames
+testListLiteralWithSimilarFunctionsErasesName
+testListLiteralWithNameOnlyArgsDoesNotEraseNames
+
+# List/Set/Dict Inferring type of variable when initialized to an empty collection
+testInferListInitialized*
+testInferSetInitialized*
+testInferDictInitialized*
+testSpecialCaseEmptyListInitialization*
+testInferListInitializedToEmptyAndAssigned
+testInferOrderedDictInitializedToEmpty
+testEmptyCollectionAssignedToVariableTwiceIncremental
+testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
+testInferAttributeInitializedToEmpty*
+testInferAttributeInitializedToNone*
+testInferFromEmptyDictWhen*
+testInferListTypeFromInplaceAdd
+testInferSetTypeFromInplaceOr
+
+# Too many values to unpack (2 expected, 3 provided)
+testInferringLvarTypesInMultiDefWithInvalidTuple
 
 # Type execution
 testNoneAlias
@@ -1156,3 +1239,4 @@ testTrailingCommaParsing-skip
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testFunctionInGenericInnerClassTypeVariable-skip
 testOverloadInferringArgumentsUsingContext2-skip
+testUnionTwoPassInference-skip
