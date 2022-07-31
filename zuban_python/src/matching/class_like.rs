@@ -409,7 +409,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
-            Self::FunctionType(f) => todo!(),
+            Self::FunctionType(f) => f.as_db_type(i_s),
             Self::TypingClass(c) => c.as_db_type(),
             Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
             Self::None => DbType::None,

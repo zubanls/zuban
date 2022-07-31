@@ -8,8 +8,9 @@ use std::rc::Rc;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, Locality, Overload,
-    Point, TupleContent, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage, TypeVars,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
+    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVarManager, TypeVarType,
+    TypeVarUsage, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -242,6 +243,25 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         debug_assert!(type_var_reference.point().calculated());
         self.type_vars(i_s)
+    }
+
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+        self.type_vars(i_s); // Cache annotation types
+        DbType::Callable(CallableContent {
+            defined_at: self.node_ref.as_link(),
+            params: Some(
+                self.iter_params()
+                    .map(|p| CallableParam {
+                        db_type: p
+                            .annotation_type(i_s)
+                            .map(|t| t.as_db_type(i_s))
+                            .unwrap_or(DbType::Any),
+                        param_type: p.param_type(),
+                    })
+                    .collect(),
+            ),
+            return_class: Box::new(self.result_type(i_s).as_db_type(i_s)),
+        })
     }
 
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'db, 'a>> {
