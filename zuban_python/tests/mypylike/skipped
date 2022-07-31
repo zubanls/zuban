@@ -1,9 +1,5 @@
 # Next up
-testCallableListJoinInference
-
-testInvalidRvalueTypeInInferredNestedTupleAssignment
 testInferringTypesFromIterable
-testConstraintSolvingFailureWithSimpleGenerics
 testGenericFunctionSubtypingWithUnions
 
 testUnionGenericWithBoundedVariable
@@ -337,6 +333,7 @@ testGenericTypeAliasesBasic2
 testCallableWithArbitraryArgsSubtypingWithGenericFunc
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
+testCallableListJoinInference
 # some more
 testInferenceWithMultipleVariables
 testConstraintSolvingWithSimpleGenerics
@@ -358,6 +355,7 @@ testGenericTypeAliasesTypeVarBinding
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 testInferenceWithMultipleConstraints
+testConstraintSolvingFailureWithSimpleGenerics
 
 # Cannot declare the type of a TypeVar or similar construct
 testTypevarWithType

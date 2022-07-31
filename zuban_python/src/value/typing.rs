@@ -394,7 +394,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 return result;
             }
         }
-        // TODO object lookups
+        debug!("TODO tuple object lookups");
         LookupResult::None
     }
 

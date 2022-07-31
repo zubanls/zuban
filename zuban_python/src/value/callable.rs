@@ -109,7 +109,8 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        debug!("TODO callable lookups");
+        LookupResult::None
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
