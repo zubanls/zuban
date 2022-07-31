@@ -1,11 +1,11 @@
 # Next up
-testInferringTypesFromIterable
+testPrecedenceOfFirstBaseAsInferenceResult
+
 testGenericFunctionSubtypingWithUnions
-
 testUnionGenericWithBoundedVariable
+testUnionInference
+testUnionInferenceWithTypeVarValues
 testOptionalTypeVarAgainstOptional
-
-testRegression11705_NoStrict
 
 testUnificationRedundantUnion
 testUnificationEmptyList*
@@ -13,14 +13,6 @@ testUnificationEmptySet*
 testUnificationEmptyDict*
 testUnificationDictWithEmptyList*
 testMisguidedSetItem
-
-testTypeInferenceWithCalleeDefaultArgs
-testGenericFunctionInferenceWithMultipleInheritance
-testGenericFunctionInferenceWithMultipleInheritance2
-testGenericFunctionInferenceWithMultipleInheritance3
-testPrecedenceOfFirstBaseAsInferenceResult
-testUnionInference
-testUnionInferenceWithTypeVarValues
 
 testFunctionSubtypingWithVoid
 
@@ -356,6 +348,11 @@ testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 testInferenceWithMultipleConstraints
 testConstraintSolvingFailureWithSimpleGenerics
+# use base classes for T
+testTypeInferenceWithCalleeDefaultArgs
+testGenericFunctionInferenceWithMultipleInheritance
+testGenericFunctionInferenceWithMultipleInheritance2
+testGenericFunctionInferenceWithMultipleInheritance3
 
 # Cannot declare the type of a TypeVar or similar construct
 testTypevarWithType
@@ -444,6 +441,7 @@ testNewAnalyzerTupleIteration
 testDistinctTypes
 testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testRegression11705_NoStrict
 # namedtuple
 testCallableParsingInInheritence
 
@@ -543,6 +541,8 @@ testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
 testDynamicallyTypedNestedFunction
 testInferringImplicitDynamicTypeForLvar
 testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
+# Dynamic functions are ignored in classes and the super class is used?
+testInferringTypesFromIterable
 
 # Comprehensions
 testNewAnalyzerListComprehension
