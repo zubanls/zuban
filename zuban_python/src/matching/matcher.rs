@@ -14,6 +14,9 @@ use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
 type OnConstraintMismatch<'db, 'a> =
     &'a mut dyn FnMut(&mut InferenceState<'db, '_>, &TypeVar, &Type<'db, '_>);
+type OnCannotInferTypeArgument<'db, 'a> =
+    &'a mut dyn FnMut(&mut InferenceState<'db, '_>, &TypeVarUsage);
+
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'db, 'a> {
     Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
@@ -26,6 +29,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     match_type: TypeVarType,
     match_in_definition: PointLink,
     on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
+    on_cannot_infer_type_argument: OnCannotInferTypeArgument<'db, 'a>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -35,6 +39,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         match_in_definition: PointLink,
         generics_length: usize,
         on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
+        on_cannot_infer_type_argument: OnCannotInferTypeArgument<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable,
@@ -42,6 +47,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             match_type,
             match_in_definition,
             on_constraint_mismatch,
+            on_cannot_infer_type_argument,
         }
     }
 
@@ -109,10 +115,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             } else {
                 let value_db_type = value_type.as_db_type(i_s);
                 if current != &value_db_type {
-                    todo!(
-                        "should be: Cannot infer type argument {}",
-                        type_var_usage.type_var.name(i_s.db)
-                    )
+                    (self.on_cannot_infer_type_argument)(i_s, type_var_usage);
                 }
             }
         } else {
@@ -220,6 +223,23 @@ fn calculate_type_vars<'db>(
                 _ => todo!(),
             }
         };
+    let mut on_cannot_infer_type_argument =
+        |i_s: &mut InferenceState<'db, '_>, type_var_usage: &TypeVarUsage| {
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::CannotInferTypeArgument {
+                    index: type_var_usage.index,
+                    callable: match func_or_callable {
+                        FunctionOrCallable::Function(class, function) => {
+                            function.diagnostic_string(class)
+                        }
+                        FunctionOrCallable::Callable(callable) => {
+                            Box::from(callable.content.format(i_s.db, FormatStyle::Short))
+                        }
+                    },
+                },
+            );
+        };
     let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             func_or_callable,
@@ -227,6 +247,7 @@ fn calculate_type_vars<'db>(
             match_in_definition,
             type_vars.len(),
             &mut on_constraint_mismatch,
+            &mut on_cannot_infer_type_argument,
         )),
         None => {
             if let FunctionOrCallable::Function(_, function) = func_or_callable {
@@ -238,6 +259,7 @@ fn calculate_type_vars<'db>(
                             match_in_definition,
                             1, // TODO There rae no type vars in there, should set it to 0
                             &mut on_constraint_mismatch,
+                            &mut on_cannot_infer_type_argument,
                         )
                     })
                 } else {

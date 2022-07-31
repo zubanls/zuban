@@ -78,7 +78,7 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
 #[derive(Debug)]
 pub struct Callable<'a> {
     db_type: &'a DbType,
-    content: &'a CallableContent,
+    pub content: &'a CallableContent,
 }
 
 impl<'a> Callable<'a> {

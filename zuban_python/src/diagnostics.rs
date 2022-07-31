@@ -1,6 +1,6 @@
 use parsa_python_ast::{CodeIndex, NodeIndex};
 
-use crate::database::{Database, TypeVar};
+use crate::database::{Database, TypeVar, TypeVarIndex};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::name::TreePosition;
@@ -45,6 +45,7 @@ pub(crate) enum IssueType {
     TypeVarExpected { class: &'static str },
     TypeVarBoundViolation { actual: Box<str>, executable: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var: Box<str>, func: Box<str>, actual: Box<str> },
+    CannotInferTypeArgument { index: TypeVarIndex, callable: Box<str> },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
@@ -279,6 +280,8 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::InvalidTypeVarValue{type_var, func, actual} =>
                 format!("Value of type variable {type_var:?} of {func} cannot be {actual:?}"),
+            IssueType::CannotInferTypeArgument{index, callable} =>
+                format!("Cannot infer type argument {} of {callable}", index.as_usize() + 1),
             IssueType::TypeVarCoAndContravariant =>
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
             IssueType::TypeVarValuesAndUpperBound =>
