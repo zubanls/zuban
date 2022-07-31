@@ -1,4 +1,6 @@
 # Next up
+testCallableListJoinInference
+
 testInvalidRvalueTypeInInferredNestedTupleAssignment
 testInferringTypesFromIterable
 testConstraintSolvingFailureWithSimpleGenerics
@@ -15,9 +17,6 @@ testUnificationEmptySet*
 testUnificationEmptyDict*
 testUnificationDictWithEmptyList*
 testMisguidedSetItem
-
-testInferenceOfFor*
-testReusingInferredForIndex*
 
 testTypeInferenceWithCalleeDefaultArgs
 testGenericFunctionInferenceWithMultipleInheritance
@@ -525,6 +524,13 @@ testUnionUnpacking*
 testNestedUnionUnpackingFromNestedTuples
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnpackUnionNoCrashOnPartialNone*
+testReusingInferredForIndex*
+testNestedProtocolUnions
+testNestedProtocolGenericUnions
+testNestedProtocolGenericUnionsDeep
+testNestedInstanceUnsimplifiedUnion
+testNestedInstanceTypeAlias
+testNestedInstanceTypeAliasUnsimplifiedUnion
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
@@ -1027,6 +1033,7 @@ testNoCrashOnPartialMember
 testDontMarkUnreachableAfterInferenceUninhabited*
 testNeedAnnotationForCallable
 testPartialDefaultDict*
+testInferenceOfFor*
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
