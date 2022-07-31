@@ -1,0 +1,12 @@
+[case type_var_value_restriction_in_callable]
+from typing import TypeVar, Callable
+T = TypeVar('T', int, str)
+def f(x: T) -> T: pass
+def g1(f: Callable[[str], str]) -> None: pass
+g1(f)
+def g2(f: Callable[[int], int]) -> None: pass
+g2(f)
+def g3(f: Callable[[object], object]) -> None: pass
+g3(f)  # E: Argument 1 to "g3" has incompatible type "Callable[[T], T]"; expected "Callable[[object], object]"
+def g4(f: Callable[[int], str]) -> None: pass
+g4(f)  # E: Argument 1 to "g4" has incompatible type "Callable[[T], T]"; expected "Callable[[int], str]"

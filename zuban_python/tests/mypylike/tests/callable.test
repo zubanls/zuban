@@ -1,0 +1,6 @@
+[case callable_cannot_infer_type_var]
+from typing import TypeVar
+T = TypeVar("T")
+x: Callable[[T, T], T]
+--zuban-diff x(1, "") # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[U, U], U]")
+x(1, "") # E: Cannot infer type argument 1 of -> Callable[[T, T] T]

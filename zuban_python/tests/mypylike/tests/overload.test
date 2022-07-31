@@ -1,0 +1,46 @@
+[case overload_not_overlapping_none]
+@overload
+def f(x: None) -> object: ...
+@overload
+def f(x: str) -> str: ...
+@overload
+def f(x: Any) -> str: ...
+def f(x): pass
+
+[case overload_unmatchable_none]
+@overload
+def g(x: str) -> object: ...
+@overload
+def g(x: None) -> str: ...  # E: Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
+@overload
+def g(x: Any) -> str: ...
+def g(x): pass
+
+[case overload_not_overlapping_optional]
+from typing import overload, List, Dict, Optional, Sequence, Union, Tuple
+
+@overload
+def f(a: List[Dict]) -> List[int]: # E: overloaded function signatures 1 and 2 overlap with incompatible return types
+    ...
+
+@overload
+def f(a: List[Optional[Dict]]) -> List[Optional[int]]:
+    ...
+
+def f(
+    a: Union[List[Dict], List[Optional[Dict]]]
+) -> Union[List[int], List[Optional[int]]]:
+    return [1]
+
+[case overload_overlapping_any]
+from typing import overload, TypeVar
+
+T = TypeVar("T")
+
+@overload
+def f(x: T) -> T: pass
+@overload
+def f(x: Any) -> Any: pass
+@overload
+def f(x: Any) -> Any: pass  # TODO should complain here
+def f(x: Any) -> Any: pass
