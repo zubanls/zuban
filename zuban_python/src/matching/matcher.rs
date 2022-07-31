@@ -56,6 +56,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
         value_type: &Type<'db, '_>,
+        variance: Variance,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
         if type_var_usage.in_definition != self.match_in_definition {
@@ -114,12 +115,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
             } else {
                 let current_type = Type::from_db_type(i_s.db, current);
-                if !current_type
-                    .matches(i_s, None, value_type, Variance::Covariant)
-                    .bool()
-                {
+                if !current_type.matches(i_s, None, value_type, variance).bool() {
                     if value_type
-                        .matches(i_s, None, &current_type, Variance::Covariant)
+                        .matches(i_s, None, &current_type, variance)
                         .bool()
                     {
                         // In case A(B) and B are given, use B, because it's the super class.

@@ -1,6 +1,5 @@
 # Next up
 testPrecedenceOfFirstBaseAsInferenceResult
-testConstraintSolvingFailureWithSimpleGenerics
 
 testGenericFunctionSubtypingWithUnions
 testUnionGenericWithBoundedVariable

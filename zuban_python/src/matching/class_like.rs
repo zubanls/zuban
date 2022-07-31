@@ -58,7 +58,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 match self {
                     Self::TypeVar(t1) => {
                         if let Some(matcher) = matcher {
-                            matcher.match_or_add_type_var(i_s, t1, value_class)
+                            matcher.match_or_add_type_var(i_s, t1, value_class, variance)
                         } else {
                             self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
                         }
@@ -221,7 +221,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t1) => {
                 return match matcher {
                     Some(matcher) => {
-                        matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other))
+                        matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other), variance)
                     }
                     None => match other {
                         Self::TypeVar(t2) => {
