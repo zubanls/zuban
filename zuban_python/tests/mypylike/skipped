@@ -1,5 +1,6 @@
 # Next up
 testPrecedenceOfFirstBaseAsInferenceResult
+testConstraintSolvingFailureWithSimpleGenerics
 
 testGenericFunctionSubtypingWithUnions
 testUnionGenericWithBoundedVariable
@@ -347,7 +348,6 @@ testGenericTypeAliasesTypeVarBinding
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
-testInferenceWithMultipleConstraints
 # use base classes for T
 testTypeInferenceWithCalleeDefaultArgs
 testGenericFunctionInferenceWithMultipleInheritance

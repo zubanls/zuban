@@ -113,9 +113,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 self.calculated_type_vars
                     .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
             } else {
-                let value_db_type = value_type.as_db_type(i_s);
-                if current != &value_db_type {
-                    (self.on_cannot_infer_type_argument)(i_s, type_var_usage);
+                let current_type = Type::from_db_type(i_s.db, current);
+                if !current_type
+                    .matches(i_s, None, value_type, Variance::Covariant)
+                    .bool()
+                {
+                    if value_type
+                        .matches(i_s, None, &current_type, Variance::Covariant)
+                        .bool()
+                    {
+                        // In case A(B) and B are given, use B, because it's the super class.
+                        self.calculated_type_vars
+                            .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
+                    } else {
+                        (self.on_cannot_infer_type_argument)(i_s, type_var_usage);
+                    }
                 }
             }
         } else {
