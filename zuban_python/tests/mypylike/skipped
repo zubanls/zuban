@@ -5,12 +5,6 @@ testUnionInference
 testUnionInferenceWithTypeVarValues
 testOptionalTypeVarAgainstOptional
 
-testUnificationEmptyList*
-testUnificationEmptySet*
-testUnificationEmptyDict*
-testUnificationDictWithEmptyList*
-testMisguidedSetItem
-
 testFunctionSubtypingWithVoid
 
 overload_not_overlapping_none
@@ -212,11 +206,15 @@ testRejectContravariantReturnType
 testAcceptCovariantReturnType
 testAcceptContravariantArgument
 
-# Not matching type vars
-testJoinUnionWithUnionAndAny
+# Union of empty lists dicts sets with used ones
+testUnificationEmptyList*
+testUnificationEmptySet*
+testUnificationEmptyDict*
+testUnificationDictWithEmptyList*
+testMisguidedSetItem
 
-# Type mismatches for x[Any] | int and x[int] | int
-testAssignUnionWithTenaryExprWithEmptyCollection
+# Union Not matching type vars
+testJoinUnionWithUnionAndAny
 
 # Duplicate in Union
 testUnionMethodCalls
