@@ -1,13 +1,10 @@
 # Next up
-testPrecedenceOfFirstBaseAsInferenceResult
-
 testGenericFunctionSubtypingWithUnions
 testUnionGenericWithBoundedVariable
 testUnionInference
 testUnionInferenceWithTypeVarValues
 testOptionalTypeVarAgainstOptional
 
-testUnificationRedundantUnion
 testUnificationEmptyList*
 testUnificationEmptySet*
 testUnificationEmptyDict*
@@ -223,6 +220,7 @@ testAssignUnionWithTenaryExprWithEmptyCollection
 
 # Duplicate in Union
 testUnionMethodCalls
+testUnificationRedundantUnion
 
 # Duplicate base class
 testIncludingBaseClassTwice
@@ -626,6 +624,7 @@ testInvariance
 testSubtypingAndABCExtension
 testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
+testPrecedenceOfFirstBaseAsInferenceResult
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
