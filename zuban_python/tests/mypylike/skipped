@@ -1,9 +1,15 @@
 # Next up
+testInferenceInGenericFunction
+testInferenceInGenericClass
 testGenericFunctionSubtypingWithUnions
 testUnionGenericWithBoundedVariable
 testUnionInference
 testUnionInferenceWithTypeVarValues
+testGenericMethodCalledInGenericContext2
 testOptionalTypeVarAgainstOptional
+testInferTypeVariableFromTwoGenericTypes4
+testWideOuterContextOptional
+testWideOuterContextOptionalGenericReturn
 
 testFunctionSubtypingWithVoid
 
@@ -61,10 +67,6 @@ testAnyIsOKAsFallbackInOverloads
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
-# - wtf List item 0 has incompatible type "List[str]"; expected "int"
-testPreferExactSignatureMatchInOverload
-testBadOverloadProbableMatch
-testInferConstraintsUnequalLengths
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
 testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
@@ -145,6 +147,7 @@ testVeryBrokenOverload
 testVeryBrokenOverload2
 testFunctionTypesWithOverloads
 testOverloadWithThreeItems
+testMapWithOverloadedFunc
 # overload self type
 testOverloadAndSelfTypes
 # overload operator
@@ -251,6 +254,7 @@ testInvalidRvalueTypeInInferredMultipleLvarDefinition
 
 # boolean operators
 testOrOperationWithGenericOperands
+testOrOperationInferredFromContext
 
 # generics special cases
 testGenericFunctionsWithUnalignedIds
@@ -326,6 +330,38 @@ testCallableListJoinInference
 # some more
 testInferenceWithMultipleVariables
 testConstraintSolvingWithSimpleGenerics
+testIncompatibleContextInference
+testInferLocalVariableTypeWithUnderspecifiedGenericType
+testInferenceWithTypeVariableTwiceInReturnType
+testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
+testMultipleTvatInstancesInArgs
+testNestedGenericFunctionCall1
+testNestedGenericFunctionCall2
+testNestedGenericFunctionCall3
+testMethodCallWithContextInference
+testParenthesesAndContext
+testComplexTypeInferenceWithTuple
+testInitializationWithInferredGenericType
+testInferredGenericTypeAsReturnValue
+testSomeTypeVarsInferredFromContext
+testSomeTypeVarsInferredFromContext2
+testUseCovariantGenericOuterContext
+# bottom up across reveal_type
+testRevealTypeContext
+
+# bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
+testPreferExactSignatureMatchInOverload
+testBadOverloadProbableMatch
+testInferConstraintsUnequalLengths
+testSingleItemListExpressions
+testMultiItemListExpressions
+testLocalVariableInferenceFromEmptyList
+testNestedListExpressions
+testContextForAttributeDeclaredInInit
+testListMultiplyInContext
+
+# bottom up dict
+testDictionaryLiteralInContext
 
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
@@ -335,6 +371,18 @@ testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritedConstructor
 testImportedTypeAliasInRuntimeContext
 testUnionContext
+testBasicContextInference
+testBasicContextInferenceForConstructor
+testEmptyListExpression
+testUnionTypeContext
+
+# Chained assignments are not legal like a = b = [] if a and b are list[int]
+# and list[str].
+testChainedAssignmentInferenceContexts
+
+# Union nothing should disappear
+testUnionWithGenericTypeItemContext
+testUnionWithGenericTypeItemContextInMethod
 
 # Special Type Var Binding
 testGenericTypeAliasesRuntimeExpressionsInstance
@@ -565,6 +613,23 @@ testLambdaDeferredSpecialCase
 testInferCallableReturningNone1
 testInferCallableReturningNone2
 testErasedTypeRuntimeCoverage
+# Lambda with defined return types (inferred context)
+testInferLambdaArgumentTypeUsingContext
+testInferLambdaReturnTypeUsingContext
+testInferLambdaTypeUsingContext
+testInferLambdaAsGenericFunctionArgument
+testLambdaWithoutContext
+testLambdaContextVararg
+testInvalidContextForLambda
+testEllipsisContextForLambda
+testEllipsisContextForLambda2
+testLambdaNoneInContext
+testIsinstanceInInferredLambda
+testLambdaInListAndHigherOrderFunction
+testLambdaInGenericFunction
+testLambdaInGenericClass
+testLambdaDeferredCrash
+testWideOuterContextOptionalTypeVarReturnLambda
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -918,6 +983,7 @@ testKeywordUnpackWithDifferentTypes
 testOverloadWithOverlappingItemsAndAnyArgument11
 testOverloadKwargsSelectionWithDict
 testOverloadVarargsAndKwargsSelection
+testStar2Context
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -1041,6 +1107,8 @@ testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
 testInferredTypeSubTypeOfReturnType
 testListWithDucktypeCompatibility
 testListWithDucktypeCompatibilityAndTransitivity
+testWideOuterContextEmptyError
+testWideOuterContextNoArgsError
 
 # List unpacking
 testMultipleAssignmentWithLists
@@ -1069,6 +1137,8 @@ testInferAttributeInitializedToNone*
 testInferFromEmptyDictWhen*
 testInferListTypeFromInplaceAdd
 testInferSetTypeFromInplaceOr
+testConditionalExpressionWithEmptyListAndUnionWithAny
+testConditionalExpressionWithEmptyIteableAndUnionWithAny
 
 # Too many values to unpack (2 expected, 3 provided)
 testInferringLvarTypesInMultiDefWithInvalidTuple
@@ -1162,6 +1232,7 @@ testAssignToFuncDefViaImport
 testUnionWithNoneItem
 testBoundHigherOrderWithVoid
 testRegression11705_Strict
+testGenericMethodCalledInGenericContext
 
 # type: ignore leads to Any type?
 testDunderCallAddition
