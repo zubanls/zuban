@@ -673,8 +673,9 @@ impl DbType {
                 replace_list(&mut generics.0, callable);
                 Self::GenericClass(link, generics)
             }
-            Self::Union(list) => {
-                todo!()
+            Self::Union(mut list) => {
+                replace_list(&mut list.0, callable);
+                Self::Union(list)
             }
             Self::TypeVar(t) => callable(&t),
             Self::Type(mut db_type) => {
