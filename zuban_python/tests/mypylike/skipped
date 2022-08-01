@@ -349,7 +349,7 @@ testGenericFunctionInferenceWithMultipleInheritance
 testGenericFunctionInferenceWithMultipleInheritance2
 testGenericFunctionInferenceWithMultipleInheritance3
 
-# Cannot declare the type of a TypeVar or similar construct
+# Cannot declare the type of a TypeVar or similar construct (semanal)
 testTypevarWithType
 
 # Literal
