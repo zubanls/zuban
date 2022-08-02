@@ -20,7 +20,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
-    calculate_function_type_vars_and_return, ClassLike, Generics, SignatureMatch, Type,
+    calculate_function_type_vars_and_return, ClassLike, Generics, ResultContext, SignatureMatch,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -281,6 +282,7 @@ impl<'db, 'a> Function<'db, 'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class<'db, '_>>,
+        result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
@@ -485,6 +487,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         if let Some(class) = &self.class {
@@ -493,9 +496,10 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
                 args,
                 on_type_error,
                 Some(class),
+                result_context,
             )
         } else {
-            self.execute_internal(i_s, args, on_type_error, None)
+            self.execute_internal(i_s, args, on_type_error, None, result_context)
         }
     }
 
@@ -897,10 +901,11 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class<'db, '_>>,
+        result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, class, false)
-            .map(|(function, _)| function.execute(i_s, args, on_type_error))
+            .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
             .unwrap_or_else(Inferred::new_unknown)
     }
 }
@@ -922,9 +927,10 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        self.execute_internal(i_s, args, on_type_error, None)
+        self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
     fn get_item(

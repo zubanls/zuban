@@ -23,6 +23,7 @@ use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
+use crate::matching::ResultContext;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
@@ -615,6 +616,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             v.execute(
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
+                                ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, right, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -746,6 +748,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     &slice.as_args(),
                                     &KnownArguments::new(value, None),
                                 ),
+                                ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, actual, expected| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -953,6 +956,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
+                ResultContext::Unknown,
                 &|i_s, node_ref, class, function, p, right, _| {
                     node_ref.add_typing_issue(
                         i_s.db,
@@ -1103,6 +1107,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 x.as_ref(),
                                 value.as_class().cloned(),
                             ),
+                            ResultContext::Unknown,
                             &on_type_error,
                         )
                     },

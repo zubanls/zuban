@@ -16,7 +16,9 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
-use crate::matching::{calculate_function_type_vars_and_return, ClassLike, Generics, Match};
+use crate::matching::{
+    calculate_function_type_vars_and_return, ClassLike, Generics, Match, ResultContext,
+};
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
 
@@ -514,6 +516,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!

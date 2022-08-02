@@ -9,7 +9,7 @@ use crate::file_state::File;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::ClassLike;
+use crate::matching::{ClassLike, ResultContext};
 
 impl<'db> fmt::Debug for Module<'db> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -95,6 +95,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.as_node_ref().add_typing_issue(

@@ -15,3 +15,9 @@ pub use matcher::{
 };
 pub use params::{matches_params, overload_has_overlapping_params};
 pub use type_::Type;
+
+#[derive(Clone, Debug)]
+pub enum ResultContext<'db, 'a> {
+    Known(Type<'db, 'a>),
+    Unknown,
+}

@@ -18,7 +18,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::ClassLike;
+use crate::matching::{ClassLike, ResultContext};
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use callable::{Callable, CallableClass};
@@ -255,6 +255,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.as_node_ref().add_typing_issue(
@@ -297,7 +298,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                 );
             })
             .run_on_value(i_s, &mut |i_s, value| {
-                value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| todo!())
+                value.execute(
+                    i_s,
+                    &NoArguments::new(from),
+                    ResultContext::Unknown,
+                    &|_, _, _, _, _, _, _| todo!(),
+                )
             })
             .execute_function(i_s, "__next__", from),
         )

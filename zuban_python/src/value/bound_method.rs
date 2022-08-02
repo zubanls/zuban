@@ -3,6 +3,7 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::ResultContext;
 
 #[derive(Debug)]
 pub struct BoundMethod<'db, 'a> {
@@ -42,6 +43,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let instance_inf = self.instance.as_inferred(i_s);
@@ -54,6 +56,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
                 &args,
                 on_type_error,
                 Some(class),
+                result_context,
             ),
             // TODO this kind of loses access the class
             None => match self.function.as_overloaded_function() {
@@ -62,6 +65,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
                     &args,
                     on_type_error,
                     Some(class),
+                    result_context,
                 ),
                 None => todo!(), //self.function.execute(i_s, &args, on_type_error),
             },

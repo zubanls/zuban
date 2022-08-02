@@ -10,8 +10,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::calculate_callable_type_vars_and_return;
-use crate::matching::Type;
+use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
@@ -121,6 +120,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let mut type_vars = vec![]; // todo!()

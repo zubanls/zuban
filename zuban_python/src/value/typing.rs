@@ -16,7 +16,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{ClassLike, Generics, Type, TypeVarMatcher};
+use crate::matching::{ClassLike, Generics, ResultContext, Type, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -90,6 +90,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let mut iterator = args.iter_arguments();
@@ -330,6 +331,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
@@ -568,6 +570,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.iter_arguments()
@@ -600,6 +603,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let mut iterator = args.iter_arguments();
@@ -868,6 +872,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         if let Some(t) = maybe_type_var(i_s, args) {

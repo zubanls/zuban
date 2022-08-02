@@ -13,7 +13,7 @@ use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
-use crate::matching::{ClassLike, Generics, Type};
+use crate::matching::{ClassLike, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -1041,9 +1041,12 @@ impl<'db> Inferred<'db> {
             value.lookup_implicit(i_s, name, &|i_s| todo!("{value:?}"))
         })
         .run_on_value(i_s, &mut |i_s, value| {
-            value.execute(i_s, &NoArguments::new(from), &|_, _, _, _, _, _, _| {
-                todo!("currently only used for __next__")
-            })
+            value.execute(
+                i_s,
+                &NoArguments::new(from),
+                ResultContext::Unknown,
+                &|_, _, _, _, _, _, _| todo!("currently only used for __next__"),
+            )
         })
     }
 
