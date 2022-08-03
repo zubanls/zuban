@@ -556,27 +556,34 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
-                let mut right =
-                    self.infer_assignment_right_side(right_side, &ResultContext::Unknown);
                 const TYPE: &str = "# type: ";
-                let mut is_definition = false;
+                let mut type_comment_result = None;
                 if let Some(start) = suffix.find(TYPE) {
                     let start = start + TYPE.len();
                     let s = &suffix[start..];
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
-                        let (r, type_) =
-                            self.compute_type_comment(assignment.end() + start as CodeIndex, s);
-                        is_definition = true;
-                        type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                            node_ref.add_typing_issue(
-                                i_s.db,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                        });
-                        right = r;
+                        type_comment_result = Some(
+                            self.compute_type_comment(assignment.end() + start as CodeIndex, s),
+                        );
                     }
                 }
+                let is_definition = type_comment_result.is_some();
+                let right = if let Some((r, type_)) = type_comment_result {
+                    let right = self.infer_assignment_right_side(
+                        right_side,
+                        &ResultContext::Known(type_.clone()),
+                    );
+                    type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::IncompatibleAssignment { got, expected },
+                        );
+                    });
+                    r
+                } else {
+                    self.infer_assignment_right_side(right_side, &ResultContext::Unknown)
+                };
                 for target in targets {
                     self.assign_targets(target, &right, node_ref, is_definition)
                 }
@@ -587,8 +594,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 })
                 .compute_annotation(annotation);
                 if let Some(right_side) = right_side {
+                    let t = self.use_cached_annotation_type(annotation);
                     let right =
-                        self.infer_assignment_right_side(right_side, &ResultContext::Unknown);
+                        self.infer_assignment_right_side(right_side, &ResultContext::Known(t));
                     self.use_cached_annotation_type(annotation)
                         .error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                             node_ref.add_typing_issue(
@@ -896,6 +904,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_expression(&mut self, expr: Expression) -> Inferred<'db> {
         self.infer_expression_with_context(expr, &ResultContext::Unknown)
     }
+
     check_point_cache_with!(
         infer_expression_with_context,
         Self::_infer_expression,

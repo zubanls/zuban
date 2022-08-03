@@ -212,6 +212,10 @@ fn calculate_type_vars<'db>(
     result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
+    if let ResultContext::Known(k) = result_context {
+        dbg!(result_context);
+        todo!()
+    }
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
     let should_generate_errors = on_type_error.is_some();
     let mut matches_constraints = true;
