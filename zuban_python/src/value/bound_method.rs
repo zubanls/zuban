@@ -43,7 +43,7 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: &ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let instance_inf = self.instance.as_inferred(i_s);

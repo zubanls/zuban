@@ -76,7 +76,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: &ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'db, '_>, Option<GenericsList>, bool)> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
@@ -519,7 +519,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: &ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         // TODO locality!!!

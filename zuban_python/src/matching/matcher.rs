@@ -153,7 +153,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
-    result_context: ResultContext<'db, '_>,
+    result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     debug!(
@@ -182,7 +182,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
-    result_context: ResultContext<'db, '_>,
+    result_context: &ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Option<GenericsList> {
     calculate_type_vars(
@@ -209,7 +209,7 @@ fn calculate_type_vars<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
-    result_context: ResultContext<'db, '_>,
+    result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));

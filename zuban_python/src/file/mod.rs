@@ -616,7 +616,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             v.execute(
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
-                                ResultContext::Unknown,
+                                &ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, right, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -748,7 +748,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     &slice.as_args(),
                                     &KnownArguments::new(value, None),
                                 ),
-                                ResultContext::Unknown,
+                                &ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, actual, expected| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -956,7 +956,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
-                ResultContext::Unknown,
+                &ResultContext::Unknown,
                 &|i_s, node_ref, class, function, p, right, _| {
                     node_ref.add_typing_issue(
                         i_s.db,
@@ -1088,7 +1088,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     x.as_ref(),
                                     Some(class),
                                 ),
-                                ResultContext::Unknown, // TODO this should probably not be empty
+                                &ResultContext::Unknown, // TODO this should probably not be empty
                                 &on_type_error,
                             );
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
@@ -1108,7 +1108,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 x.as_ref(),
                                 value.as_class().cloned(),
                             ),
-                            ResultContext::Unknown, // TODO this should be typed
+                            &ResultContext::Unknown, // TODO this should be typed
                             &on_type_error,
                         )
                     },
