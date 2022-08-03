@@ -212,10 +212,6 @@ fn calculate_type_vars<'db>(
     result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
-    if let ResultContext::Known(k) = result_context {
-        dbg!(result_context);
-        todo!()
-    }
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
     let should_generate_errors = on_type_error.is_some();
     let mut matches_constraints = true;
@@ -259,7 +255,7 @@ fn calculate_type_vars<'db>(
                 },
             );
         };
-    let matcher = match type_vars {
+    let mut matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             func_or_callable,
             match_type,
@@ -289,6 +285,13 @@ fn calculate_type_vars<'db>(
             }
         }
     };
+    if let ResultContext::Known(type_) = result_context {
+        let result_type = match func_or_callable {
+            FunctionOrCallable::Function(_, f) => f.result_type(i_s),
+            FunctionOrCallable::Callable(c) => c.result_type(i_s),
+        };
+        result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
+    }
     let mut result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type

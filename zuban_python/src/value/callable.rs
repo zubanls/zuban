@@ -80,7 +80,7 @@ pub struct Callable<'a> {
     pub content: &'a CallableContent,
 }
 
-impl<'a> Callable<'a> {
+impl<'db, 'a> Callable<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
     }
@@ -95,6 +95,10 @@ impl<'a> Callable<'a> {
 
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
         self.content.params.as_ref().map(|params| params.iter())
+    }
+
+    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::from_db_type(i_s.db, &self.content.return_class)
     }
 }
 
