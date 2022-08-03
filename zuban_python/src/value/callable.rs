@@ -139,6 +139,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             None,
             TypeVarType::LateBound,
             PointLink::new(FileIndex(0), 0), // TODO this is completely wrong
+            result_context,
             on_type_error,
         );
         let g_o = Type::from_db_type(i_s.db, &self.content.return_class);

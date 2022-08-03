@@ -1088,6 +1088,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     x.as_ref(),
                                     Some(class),
                                 ),
+                                ResultContext::Unknown, // TODO this should probably not be empty
                                 &on_type_error,
                             );
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
@@ -1107,7 +1108,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 x.as_ref(),
                                 value.as_class().cloned(),
                             ),
-                            ResultContext::Unknown,
+                            ResultContext::Unknown, // TODO this should be typed
                             &on_type_error,
                         )
                     },

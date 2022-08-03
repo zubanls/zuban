@@ -76,6 +76,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'db, '_>, Option<GenericsList>, bool)> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
@@ -96,6 +97,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         func_type_vars,
                         TypeVarType::Function,
                         func.node_ref.as_link(),
+                        result_context,
                         Some(on_type_error),
                     );
                     self.generics.as_generics_list(i_s)
@@ -109,6 +111,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         type_vars,
                         TypeVarType::Class,
                         self.node_ref.as_link(),
+                        result_context,
                         Some(on_type_error),
                     )
                     .1
@@ -116,7 +119,7 @@ impl<'db, 'a> Class<'db, 'a> {
                 Some((func, list, false))
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
-                .find_matching_function(i_s, args, class.as_ref(), true)
+                .find_matching_function(i_s, args, class.as_ref(), true, result_context)
                 .map(|(func, list)| (func, list, true)),
             None => unreachable!("Should never happen, because there's always object.__init__"),
         }
@@ -521,7 +524,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     ) -> Inferred<'db> {
         // TODO locality!!!
         if let Some((func, generics_list, is_overload)) =
-            self.type_check_init_func(i_s, args, on_type_error)
+            self.type_check_init_func(i_s, args, result_context, on_type_error)
         {
             debug!(
                 "Class execute: {}{}",

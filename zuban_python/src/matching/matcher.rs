@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Match, SignatureMatch, Type};
+use super::{Match, ResultContext, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVar, TypeVarType, TypeVarUsage, TypeVars,
@@ -153,6 +153,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
+    result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     debug!(
@@ -169,6 +170,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
         type_vars,
         match_type,
         match_in_definition,
+        result_context,
         on_type_error,
     )
 }
@@ -180,6 +182,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
+    result_context: ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Option<GenericsList> {
     calculate_type_vars(
@@ -191,6 +194,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         type_vars,
         match_type,
         match_in_definition,
+        result_context,
         Some(on_type_error),
     )
     .1
@@ -205,6 +209,7 @@ fn calculate_type_vars<'db>(
     type_vars: Option<&TypeVars>,
     match_type: TypeVarType,
     match_in_definition: PointLink,
+    result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));

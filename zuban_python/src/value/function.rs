@@ -295,6 +295,7 @@ impl<'db, 'a> Function<'db, 'a> {
             func_type_vars,
             TypeVarType::Function,
             self.node_ref.as_link(),
+            result_context,
             Some(on_type_error),
         )
         .1;
@@ -763,6 +764,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         args: &dyn Arguments<'db>,
         class: Option<&Class<'db, '_>>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
+        result_context: ResultContext<'db, '_>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         let has_already_calculated_class_generics =
             search_init && !matches!(class.unwrap().generics(), Generics::None);
@@ -780,6 +782,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             func_type_vars,
                             TypeVarType::Function,
                             function.node_ref.as_link(),
+                            result_context,
                             None,
                         )
                     } else {
@@ -794,6 +797,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                             type_vars,
                             TypeVarType::Class,
                             c.node_ref.as_link(),
+                            result_context,
                             None,
                         )
                     }
@@ -809,6 +813,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         func_type_vars,
                         TypeVarType::Function,
                         function.node_ref.as_link(),
+                        result_context,
                         None,
                     )
                 }
@@ -904,7 +909,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, class, false)
+        self.find_matching_function(i_s, args, class, false, result_context)
             .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
             .unwrap_or_else(Inferred::new_unknown)
     }
