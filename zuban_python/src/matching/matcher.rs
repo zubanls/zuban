@@ -120,7 +120,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(current_type) = &current.type_ {
                 let current_type = Type::from_db_type(i_s.db, current_type);
                 if !current_type.matches(i_s, None, value_type, variance).bool() {
-                    if value_type
+                    if current.defined_by_result_type {
+                        return Match::False;
+                    } else if value_type
                         .matches(i_s, None, &current_type, variance)
                         .bool()
                     {
@@ -303,6 +305,13 @@ fn calculate_type_vars<'db>(
             FunctionOrCallable::Callable(c) => c.result_type(i_s),
         };
         result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
+        if let Some(matcher) = &mut matcher {
+            for calculated in matcher.calculated_type_vars.iter_mut() {
+                if calculated.type_.is_some() {
+                    calculated.defined_by_result_type = true;
+                }
+            }
+        }
     }
     let mut result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
