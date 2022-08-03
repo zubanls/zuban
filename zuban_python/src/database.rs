@@ -2,7 +2,6 @@ use parsa_python_ast::{NodeIndex, ParamType};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
-use std::iter::repeat;
 use std::mem;
 use std::path::Path;
 use std::pin::Pin;
@@ -475,16 +474,6 @@ impl GenericsList {
 
     pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
         Self::new_generics(parts.into_boxed_slice())
-    }
-
-    pub fn new_unknown(length: usize) -> Self {
-        debug_assert!(length > 0);
-        let vec: Vec<_> = repeat(DbType::Unknown).take(length).collect();
-        Self(vec.into_boxed_slice())
-    }
-
-    pub fn set_generic(&mut self, index: TypeVarIndex, generic: DbType) {
-        self.0[index.0 as usize] = generic;
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {

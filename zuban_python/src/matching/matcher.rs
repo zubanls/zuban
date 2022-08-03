@@ -23,9 +23,16 @@ pub enum FunctionOrCallable<'db, 'a> {
     Callable(&'a Callable<'a>),
 }
 
+#[derive(Debug, Default)]
+struct CalculatedTypeVar {
+    type_: Option<DbType>,
+    //variance: Variance,
+    defined_by_result_type: bool,
+}
+
 pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
-    calculated_type_vars: GenericsList,
+    calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_type: TypeVarType,
     match_in_definition: PointLink,
     on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
@@ -33,17 +40,17 @@ pub struct TypeVarMatcher<'db, 'a> {
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
-    pub fn new(
+    fn new(
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_type: TypeVarType,
         match_in_definition: PointLink,
-        generics_length: usize,
+        calculated_type_vars: &'a mut [CalculatedTypeVar],
         on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
         on_cannot_infer_type_argument: OnCannotInferTypeArgument<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable,
-            calculated_type_vars: GenericsList::new_unknown(generics_length),
+            calculated_type_vars,
             match_type,
             match_in_definition,
             on_constraint_mismatch,
@@ -109,24 +116,22 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             (self.on_constraint_mismatch)(i_s, type_var, value_type);
         }
         if self.match_in_definition == type_var_usage.in_definition {
-            let current = self.calculated_type_vars.nth(type_var_usage.index).unwrap();
-            if current == &DbType::Unknown {
-                self.calculated_type_vars
-                    .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
-            } else {
-                let current_type = Type::from_db_type(i_s.db, current);
+            let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
+            if let Some(current_type) = &current.type_ {
+                let current_type = Type::from_db_type(i_s.db, current_type);
                 if !current_type.matches(i_s, None, value_type, variance).bool() {
                     if value_type
                         .matches(i_s, None, &current_type, variance)
                         .bool()
                     {
                         // In case A(B) and B are given, use B, because it's the super class.
-                        self.calculated_type_vars
-                            .set_generic(type_var_usage.index, value_type.as_db_type(i_s));
+                        current.type_ = Some(value_type.as_db_type(i_s));
                     } else {
                         (self.on_cannot_infer_type_argument)(i_s, type_var_usage);
                     }
                 }
+            } else {
+                current.type_ = Some(value_type.as_db_type(i_s));
             }
         } else {
             // Happens e.g. for testInvalidNumberOfTypeArgs
@@ -212,7 +217,6 @@ fn calculate_type_vars<'db>(
     result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
-    let calculated_type_vars = type_vars.map(|t| GenericsList::new_unknown(t.len()));
     let should_generate_errors = on_type_error.is_some();
     let mut matches_constraints = true;
     let mut on_constraint_mismatch =
@@ -255,12 +259,20 @@ fn calculate_type_vars<'db>(
                 },
             );
         };
+    // We could allocate on stack as described here:
+    // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
+    let type_vars_len = match type_vars {
+        Some(type_vars) => type_vars.len(),
+        None => 0,
+    };
+    let mut calculated_type_vars = vec![];
+    calculated_type_vars.resize_with(type_vars_len, Default::default);
     let mut matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             func_or_callable,
             match_type,
             match_in_definition,
-            type_vars.len(),
+            &mut calculated_type_vars,
             &mut on_constraint_mismatch,
             &mut on_cannot_infer_type_argument,
         )),
@@ -272,7 +284,7 @@ fn calculate_type_vars<'db>(
                             func_or_callable,
                             match_type,
                             match_in_definition,
-                            1, // TODO There rae no type vars in there, should set it to 0
+                            &mut calculated_type_vars, // TODO There rae no type vars in there, should set it to 0
                             &mut on_constraint_mismatch,
                             &mut on_cannot_infer_type_argument,
                         )
@@ -299,7 +311,7 @@ fn calculate_type_vars<'db>(
             function.type_vars(i_s);
             calculate_type_vars_for_params(
                 i_s,
-                matcher,
+                matcher.as_mut(),
                 class,
                 Some(&function),
                 args,
@@ -311,7 +323,7 @@ fn calculate_type_vars<'db>(
             if let Some(params) = callable.iter_params() {
                 calculate_type_vars_for_params(
                     i_s,
-                    matcher,
+                    matcher.as_mut(),
                     None,
                     None,
                     args,
@@ -319,12 +331,20 @@ fn calculate_type_vars<'db>(
                     InferrableParamIterator2::new(params, args.iter_arguments().peekable()),
                 )
             } else {
-                (SignatureMatch::True, None)
+                SignatureMatch::True
             }
         }
     };
+    let generics_out = matcher.is_some().then(|| {
+        GenericsList::new_generics(
+            calculated_type_vars
+                .into_iter()
+                .map(|c| c.type_.unwrap_or(DbType::Never))
+                .collect(),
+        )
+    });
     if cfg!(feature = "zuban_debug") {
-        if let Some(calculated) = &result.1 {
+        if let Some(generics_out) = &generics_out {
             let callable_description: String;
             debug!(
                 "Calculated type vars: {}[{}]",
@@ -335,25 +355,25 @@ fn calculate_type_vars<'db>(
                         &callable_description
                     }
                 },
-                calculated.format(i_s.db, None, FormatStyle::Short),
+                generics_out.format(i_s.db, None, FormatStyle::Short),
             );
         }
     }
     if !matches_constraints {
-        result.0 = SignatureMatch::False
+        result = SignatureMatch::False
     }
-    result
+    (result, generics_out)
 }
 
 fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    mut matcher: Option<TypeVarMatcher<'db, '_>>,
+    mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     class: Option<&Class<'db, '_>>,
     function: Option<&Function<'db, '_>>,
     args: &dyn Arguments<'db>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
-) -> (SignatureMatch, Option<GenericsList>) {
+) -> SignatureMatch {
     // TODO this can be calculated multiple times from different places
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
@@ -373,7 +393,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                 let on_type_error = on_type_error;
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
-                    matcher.as_mut(),
+                    matcher.as_deref_mut(),
                     &value,
                     |i_s, t1, t2| {
                         if let Some(on_type_error) = on_type_error {
@@ -500,13 +520,10 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
     }
-    (
-        match matches {
-            Match::True => SignatureMatch::True,
-            Match::TrueWithAny => SignatureMatch::TrueWithAny(any_args),
-            Match::FalseButSimilar => SignatureMatch::FalseButSimilar,
-            Match::False => SignatureMatch::False,
-        },
-        matcher.map(|m| m.calculated_type_vars),
-    )
+    match matches {
+        Match::True => SignatureMatch::True,
+        Match::TrueWithAny => SignatureMatch::TrueWithAny(any_args),
+        Match::FalseButSimilar => SignatureMatch::FalseButSimilar,
+        Match::False => SignatureMatch::False,
+    }
 }
