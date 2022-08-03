@@ -160,7 +160,7 @@ impl<'db, 'a> Function<'db, 'a> {
                             .node_ref
                             .file
                             .inference(&mut inner_i_s)
-                            .infer_star_expressions(star_expressions)
+                            .infer_star_expressions(star_expressions, &ResultContext::Unknown)
                             .resolve_function_return(&mut inner_i_s);
                     } else {
                         todo!()
