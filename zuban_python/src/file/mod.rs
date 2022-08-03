@@ -548,6 +548,32 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
+    fn from_original_definition(&mut self, assignment: Assignment) -> Option<Inferred<'db>> {
+        // TODO it's weird that we unpack assignments here again.
+        if let AssignmentContent::Normal(targets, _) = assignment.unpack() {
+            for target in targets {
+                if let Target::Name(name_def) = target {
+                    let point = self.file.points.get(name_def.name_index());
+                    if point.calculated() {
+                        debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{target:?}");
+                        let mut first_definition = point.node_index();
+                        loop {
+                            let point = self.file.points.get(first_definition);
+                            if point.calculated() && point.type_() == PointType::MultiDefinition {
+                                first_definition = point.node_index();
+                            } else {
+                                break;
+                            }
+                        }
+                        let inferred = self.infer_name_by_index(first_definition);
+                        return Some(inferred);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     fn cache_assignment_nodes(&mut self, assignment: Assignment) {
         if self.file.points.get(assignment.index()).calculated() {
             return;
@@ -582,7 +608,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     });
                     r
                 } else {
-                    self.infer_assignment_right_side(right_side, &ResultContext::Unknown)
+                    let original_def = self.from_original_definition(assignment);
+                    let result_context = match &original_def {
+                        Some(inf) => ResultContext::Known(inf.class_as_type(self.i_s)),
+                        None => ResultContext::Unknown,
+                    };
+                    self.infer_assignment_right_side(right_side, &result_context)
                 };
                 for target in targets {
                     self.assign_targets(target, &right, node_ref, is_definition)

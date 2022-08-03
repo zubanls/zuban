@@ -1727,6 +1727,8 @@ impl<'db> Assignment<'db> {
         unreachable!()
     }
 
+    // TODO this methods feels wrong. I don't think assignments can ever be simpler. The grammar is
+    // the same.
     pub fn unpack_with_simple_targets(&self) -> AssignmentContentWithSimpleTargets<'db> {
         // | (star_targets "=" )+ (yield_expr | star_expressions)
         // | single_target annotation ["=" (yield_expr | star_expressions)]
