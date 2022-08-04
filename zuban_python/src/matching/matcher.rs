@@ -4,7 +4,7 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, PointLink, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -27,21 +27,18 @@ struct CalculatedTypeVar {
 pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
-    match_type: TypeVarType,
     match_in_definition: PointLink,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     fn new(
         func_or_callable: FunctionOrCallable<'db, 'a>,
-        match_type: TypeVarType,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
     ) -> Self {
         Self {
             func_or_callable,
             calculated_type_vars,
-            match_type,
             match_in_definition,
         }
     }
@@ -130,8 +127,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             // class C:  # Forgot to add type params here
             //     def __init__(self, t: T) -> None: pass
             todo!(
-                "TODO free type param annotations; searched {:?} ({:?}), found {:?} ({:?})",
-                self.match_type,
+                "TODO free type param annotations; searched ({:?}), found {:?} ({:?})",
                 self.match_in_definition,
                 type_var_usage.type_,
                 type_var_usage.in_definition,
@@ -148,7 +144,6 @@ pub fn calculate_function_type_vars_and_return<'db>(
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
-    match_type: TypeVarType,
     match_in_definition: PointLink,
     result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -165,7 +160,6 @@ pub fn calculate_function_type_vars_and_return<'db>(
         args,
         skip_first_param,
         type_vars,
-        match_type,
         match_in_definition,
         result_context,
         on_type_error,
@@ -177,7 +171,6 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     callable: &Callable,
     args: &dyn Arguments<'db>,
     type_vars: Option<&TypeVars>,
-    match_type: TypeVarType,
     match_in_definition: PointLink,
     result_context: &ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
@@ -189,7 +182,6 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         args,
         false,
         type_vars,
-        match_type,
         match_in_definition,
         result_context,
         Some(on_type_error),
@@ -204,7 +196,6 @@ fn calculate_type_vars<'db>(
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
-    match_type: TypeVarType,
     match_in_definition: PointLink,
     result_context: &ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -220,7 +211,6 @@ fn calculate_type_vars<'db>(
     let mut matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             func_or_callable,
-            match_type,
             match_in_definition,
             &mut calculated_type_vars,
         )),
@@ -230,7 +220,6 @@ fn calculate_type_vars<'db>(
                     func_class.type_vars(i_s).map(|type_vars| {
                         TypeVarMatcher::new(
                             func_or_callable,
-                            match_type,
                             match_in_definition,
                             &mut calculated_type_vars, // TODO There rae no type vars in there, should set it to 0
                         )

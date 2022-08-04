@@ -2,8 +2,7 @@ use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{
-    CallableContent, CallableParam, DbType, FileIndex, FormatStyle, PointLink, TypeVarType,
-    TypeVars,
+    CallableContent, CallableParam, DbType, FileIndex, FormatStyle, PointLink, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -141,7 +140,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             self,
             args,
             None,
-            TypeVarType::LateBound,
             PointLink::new(FileIndex(0), 0), // TODO this is completely wrong
             result_context,
             on_type_error,
