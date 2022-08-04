@@ -105,12 +105,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             });
         if let Some(bound) = &type_var.bound {
             mismatch_constraints = mismatch_constraints
-                || !Type::from_db_type(i_s.db, bound).matches(
-                    i_s,
-                    None,
-                    value_type,
-                    Variance::Covariant,
-                );
+                || !Type::from_db_type(i_s.db, bound)
+                    .matches(i_s, None, value_type, Variance::Covariant)
+                    .bool();
         }
         if mismatch_constraints {
             (self.on_constraint_mismatch)(i_s, type_var, value_type);

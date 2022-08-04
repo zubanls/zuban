@@ -203,7 +203,7 @@ impl<'db, 'a> Type<'db, 'a> {
             &value_type,
             Variance::Covariant,
         );
-        if !matches {
+        if !matches.bool() {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,

@@ -722,7 +722,10 @@ where
                         let i_s = &mut self.inference.i_s;
                         let actual = Type::from_db_type(i_s.db, &t);
                         let expected = Type::from_db_type(i_s.db, bound);
-                        if !expected.matches(i_s, None, &actual, Variance::Covariant) {
+                        if !expected
+                            .matches(i_s, None, &actual, Variance::Covariant)
+                            .bool()
+                        {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {

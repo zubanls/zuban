@@ -209,16 +209,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         );
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
-                        if !f1_result_type.matches(
-                            self.i_s,
-                            None,
-                            &f2_result_type,
-                            Variance::Contravariant,
-                        ) && overload_has_overlapping_params(
-                            self.i_s,
-                            f1.iter_params(),
-                            f2.iter_params(),
-                        ) {
+                        if !f1_result_type
+                            .matches(self.i_s, None, &f2_result_type, Variance::Contravariant)
+                            .bool()
+                            && overload_has_overlapping_params(
+                                self.i_s,
+                                f1.iter_params(),
+                                f2.iter_params(),
+                            )
+                        {
                             f1.node_ref.add_typing_issue(
                                 self.i_s.db,
                                 IssueType::OverloadIncompatibleReturnTypes {

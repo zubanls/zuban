@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
 
 pub enum SignatureMatch {
     False,
@@ -7,7 +7,7 @@ pub enum SignatureMatch {
     True,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub enum Match {
     False,
     FalseButSimilar,
@@ -16,7 +16,7 @@ pub enum Match {
 }
 
 impl Match {
-    pub fn bool(self) -> bool {
+    pub fn bool(&self) -> bool {
         matches!(self, Self::True | Self::TrueWithAny)
     }
 }
@@ -61,21 +61,15 @@ impl BitOr for Match {
 
 impl BitAndAssign for Match {
     fn bitand_assign(&mut self, rhs: Self) {
-        *self = *self & rhs
+        let left = std::mem::replace(self, Match::True);
+        *self = left & rhs
     }
 }
 
 impl BitOrAssign for Match {
     fn bitor_assign(&mut self, rhs: Self) {
-        *self = *self | rhs
-    }
-}
-
-impl Not for Match {
-    type Output = bool;
-
-    fn not(self) -> Self::Output {
-        !matches!(self, Self::True | Self::TrueWithAny)
+        let left = std::mem::replace(self, Match::True);
+        *self = left | rhs
     }
 }
 
