@@ -1,6 +1,4 @@
 # Next up
-testConstructGenericTypeWithTypevarValuesAndTypeInference
-
 testInferSimpleGenericFunction
 testInferringGenericFunctionTypeForLvar
 testInferenceWithMultipleConstraints

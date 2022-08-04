@@ -357,10 +357,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypeVar(t) => {
                 if let Some(class) = class {
                     if t.in_definition == class.node_ref.as_link() {
-                        return class
-                            .generics()
-                            .nth(i_s, t.index)
-                            .format(i_s.db, None, style);
+                        let generics = class.generics();
+                        // TODO hmm is this if right? if we do not do this how would we format the
+                        // generics then?
+                        if !matches!(generics, Generics::None) {
+                            return generics.nth(i_s, t.index).format(i_s.db, None, style);
+                        }
                     }
                 }
                 Box::from(t.type_var.name(i_s.db))
