@@ -1,13 +1,11 @@
 # Next up
+testConstructGenericTypeWithTypevarValuesAndTypeInference
+
 testInferSimpleGenericFunction
 testInferringGenericFunctionTypeForLvar
 testInferenceWithMultipleConstraints
 
 testIncompatibleContextInference
-
-testGenericFineCallableNormal
-testGenericFineCallableAddedBound
-testGenericFineCallableBoundDeleted-only_when_cache
 
 testWideOuterContextSubClassBound
 testWideOuterContextSubClassValues
