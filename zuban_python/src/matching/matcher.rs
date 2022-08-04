@@ -348,7 +348,8 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .map(|c| c.type_.unwrap_or(DbType::Never))
+                // TODO this DbType::Any is probably wrong here and it should be Never
+                .map(|c| c.type_.unwrap_or(DbType::Any))
                 .collect(),
         )
     });

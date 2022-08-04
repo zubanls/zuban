@@ -548,7 +548,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn from_original_definition(&mut self, assignment: Assignment) -> Option<Inferred<'db>> {
+    fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred<'db>> {
         // TODO it's weird that we unpack assignments here again.
         if let AssignmentContent::Normal(targets, _) = assignment.unpack() {
             for target in targets {
@@ -608,7 +608,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     });
                     r
                 } else {
-                    let original_def = self.from_original_definition(assignment);
+                    let original_def = self.original_definition(assignment);
                     let result_context = match &original_def {
                         Some(inf) => ResultContext::Known(inf.class_as_type(self.i_s)),
                         None => ResultContext::Unknown,
