@@ -118,7 +118,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 let current_type = Type::from_db_type(i_s.db, current_type);
                 if !current_type.matches(i_s, None, value_type, variance).bool() {
                     if current.defined_by_result_type {
-                        return Match::False;
+                        return Match::new_false();
                     } else if value_type
                         .matches(i_s, None, &current_type, variance)
                         .bool()
@@ -388,7 +388,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     let mut matches = Match::True;
     for (i, p) in args_with_params.by_ref().enumerate() {
         if p.argument.is_none() && !p.param.has_default() {
-            matches = Match::False;
+            matches = Match::new_false();
             missing_params.push(p.param);
             continue;
         }
@@ -416,7 +416,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     }
     if args_with_params.too_many_positional_arguments {
-        matches = Match::False;
+        matches = Match::new_false();
         if should_generate_errors || true {
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
@@ -429,7 +429,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.arguments.peek().is_some() {
-        matches = Match::False;
+        matches = Match::new_false();
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
@@ -530,7 +530,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     match matches {
         Match::True => SignatureMatch::True,
         Match::TrueWithAny => SignatureMatch::TrueWithAny(any_args),
-        Match::FalseButSimilar => SignatureMatch::FalseButSimilar,
-        Match::False => SignatureMatch::False,
+        Match::FalseButSimilar(_) => SignatureMatch::FalseButSimilar,
+        Match::False(_) => SignatureMatch::False,
     }
 }

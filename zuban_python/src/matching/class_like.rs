@@ -1,5 +1,5 @@
 use super::params::{has_overlapping_params, matches_params};
-use super::{Generics, Match, Type, TypeVarMatcher};
+use super::{Generics, Match, MismatchReason, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
 use crate::value::{
@@ -30,7 +30,7 @@ macro_rules! matches_callable {
             &other_result,
             Variance::Covariant,
         ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
-            | Match::FalseButSimilar
+            | Match::FalseButSimilar(MismatchReason::None)
     }};
 }
 
@@ -94,7 +94,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => Match::True,
             },
             Type::ClassLike(c) => {
-                let mut similarity = Match::False;
+                let mut similarity = Match::new_false();
                 match variance {
                     Variance::Covariant => {
                         for (_, class_like) in c.mro(i_s) {
@@ -134,7 +134,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     if c1.class_infos(i_s).is_protocol {
                         return match c {
                             ClassLike::Class(c2) => c1.check_protocol_match(i_s, *c2).into(),
-                            _ => Match::False,
+                            _ => Match::new_false(),
                         };
                     }
                 }
@@ -185,7 +185,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             */
             Type::Union(list) => match self {
                 Self::Class(c1) if variance == Variance::Covariant => c1.is_object_class(i_s.db),
-                _ => Match::False,
+                _ => Match::new_false(),
             },
             Type::Any => Match::TrueWithAny,
         }
@@ -209,7 +209,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             c2.generics(),
                             variance,
                             type_vars,
-                        ) | Match::FalseButSimilar;
+                        ) | Match::FalseButSimilar(MismatchReason::None);
                     }
                     false
                 }
@@ -227,7 +227,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         Self::TypeVar(t2) => {
                             (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
                         }
-                        _ => Match::False,
+                        _ => Match::False(MismatchReason::None),
                     },
                 }
             }
@@ -235,16 +235,16 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 return match other {
                     Self::Tuple(t2) => {
                         let m: Match = t1.matches(i_s, t2, matcher, variance).into();
-                        m | Match::FalseButSimilar
+                        m | Match::FalseButSimilar(MismatchReason::None)
                     }
-                    _ => Match::False,
+                    _ => Match::False(MismatchReason::None),
                 }
             }
             Self::FunctionType(f1) => {
                 return match other {
                     Self::Callable(c2) => matches_callable!(i_s, matcher, f1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, f1, f2),
-                    _ => Match::False,
+                    _ => Match::new_false(),
                 };
             }
             Self::Callable(c1) => {
@@ -273,11 +273,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 );
                             }
                         }
-                        return Match::False;
+                        return Match::new_false();
                     }
                     Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
-                    _ => Match::False,
+                    _ => Match::new_false(),
                 };
             }
             Self::TypingClass(c) => todo!(),
@@ -291,9 +291,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         if matches {
             let g1 = self.generics(i_s);
             let g2 = other.generics(i_s);
-            g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None) | Match::FalseButSimilar
+            g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
+                | Match::FalseButSimilar(MismatchReason::None)
         } else {
-            Match::False
+            Match::new_false()
         }
     }
 
@@ -329,7 +330,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     fn is_object_class(&self, db: &Database) -> Match {
         match self {
             Self::Class(c) => c.is_object_class(db),
-            _ => Match::False,
+            _ => Match::new_false(),
         }
     }
 

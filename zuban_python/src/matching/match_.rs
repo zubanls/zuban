@@ -1,4 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
+use std::rc::Rc;
+
+use crate::database::{DbType, TypeVar, TypeVarIndex};
 
 pub enum SignatureMatch {
     False,
@@ -9,13 +12,27 @@ pub enum SignatureMatch {
 
 #[derive(Clone, Debug)]
 pub enum Match {
-    False,
-    FalseButSimilar,
+    False(MismatchReason),
+    FalseButSimilar(MismatchReason),
     TrueWithAny,
     True,
 }
 
+#[derive(Clone, Debug)]
+pub enum MismatchReason {
+    None,
+    CannotInferTypeArgument(TypeVarIndex),
+    ConstraintMismatch {
+        expected: DbType,
+        type_var: Rc<TypeVar>,
+    },
+}
+
 impl Match {
+    pub fn new_false() -> Self {
+        Self::False(MismatchReason::None)
+    }
+
     pub fn bool(&self) -> bool {
         matches!(self, Self::True | Self::TrueWithAny)
     }
@@ -31,11 +48,11 @@ impl BitAnd for Match {
                 Self::True => Self::TrueWithAny,
                 _ => rhs,
             },
-            Self::FalseButSimilar => match rhs {
-                Self::False => Self::False,
-                _ => self,
+            Self::FalseButSimilar(reason) => match rhs {
+                Self::False(_) => Self::False(reason),
+                _ => Self::FalseButSimilar(reason),
             },
-            Self::False => Self::False,
+            Self::False(reason) => Self::False(reason),
         }
     }
 }
@@ -50,11 +67,11 @@ impl BitOr for Match {
                 Self::True => Self::True,
                 _ => Self::TrueWithAny,
             },
-            Self::FalseButSimilar => match rhs {
+            Self::FalseButSimilar(_) => match rhs {
                 Self::True => Self::True,
                 _ => self,
             },
-            Self::False => rhs,
+            Self::False(_) => rhs,
         }
     }
 }
@@ -77,7 +94,7 @@ impl From<bool> for Match {
     fn from(item: bool) -> Self {
         match item {
             true => Match::True,
-            _ => Match::False,
+            _ => Match::False(MismatchReason::None),
         }
     }
 }

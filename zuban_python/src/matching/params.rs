@@ -33,17 +33,17 @@ pub fn matches_params<'db: 'x, 'x>(
                         // TODO This is not good enough, there might be Callable[int, int] against *int
                         || pt1 == ParamType::PositionalOnly && pt2 == ParamType::Starred)
                     {
-                        return Match::False;
+                        return Match::new_false();
                     }
                     if param1.has_default() && !param2.has_default() {
-                        return Match::False;
+                        return Match::new_false();
                     }
                     if matches!(
                         param1.param_type(),
                         ParamType::PositionalOrKeyword | ParamType::KeywordOnly
                     ) && param1.name() != param2.name()
                     {
-                        return Match::False;
+                        return Match::new_false();
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
@@ -56,11 +56,11 @@ pub fn matches_params<'db: 'x, 'x>(
                         }
                     }
                 } else {
-                    return Match::False;
+                    return Match::new_false();
                 }
             }
             if params2.next().is_some() {
-                return Match::False;
+                return Match::new_false();
             }
             return matches;
         }

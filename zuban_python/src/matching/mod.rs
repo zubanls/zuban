@@ -7,7 +7,7 @@ mod type_;
 
 pub use class_like::ClassLike;
 pub use generics::Generics;
-pub use match_::{Match, SignatureMatch};
+pub use match_::{Match, MismatchReason, SignatureMatch};
 pub(self) use matcher::FunctionOrCallable;
 pub use matcher::{
     calculate_callable_type_vars_and_return, calculate_function_type_vars_and_return,

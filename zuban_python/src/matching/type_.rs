@@ -162,7 +162,7 @@ impl<'db, 'a> Type<'db, 'a> {
                         .into(),
                 },
                 _ => match variance {
-                    Variance::Contravariant => Match::False,
+                    Variance::Contravariant => Match::new_false(),
                     Variance::Covariant | Variance::Invariant => list1
                         .iter()
                         .any(|g| {
