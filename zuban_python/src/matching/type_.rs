@@ -1,4 +1,4 @@
-use super::{ClassLike, FunctionOrCallable, Generics, Match, TypeVarMatcher};
+use super::{ClassLike, FunctionOrCallable, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, Variance,
 };
@@ -184,9 +184,11 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, 'x>,
         value: &Inferred<'db>,
-        callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
     ) -> Match {
-        self.error_if_not_matches_with_matcher(i_s, None, value, callback)
+        self.error_if_not_matches_with_matcher(i_s, None, value, |i_s, t1, t2, _| {
+            callback(i_s, t1, t2)
+        })
     }
 
     pub fn error_if_not_matches_with_matcher<'x>(
@@ -194,7 +196,7 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, MismatchReason),
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.matches(
@@ -203,7 +205,7 @@ impl<'db, 'a> Type<'db, 'a> {
             &value_type,
             Variance::Covariant,
         );
-        if !matches.bool() {
+        if let Match::False(reason) | Match::FalseButSimilar(reason) = matches {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
@@ -212,9 +214,11 @@ impl<'db, 'a> Type<'db, 'a> {
             debug!("Mismatch between {value_type:?} and {self:?}");
             let input = value_type.format(i_s, None, FormatStyle::Short);
             let wanted = self.format(i_s, class, FormatStyle::Short);
-            callback(i_s, input, wanted)
+            callback(i_s, input, wanted, reason);
+            Match::new_false()
+        } else {
+            matches
         }
-        matches
     }
 
     pub fn execute_and_resolve_type_vars(

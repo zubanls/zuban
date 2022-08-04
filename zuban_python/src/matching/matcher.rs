@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Match, ResultContext, SignatureMatch, Type};
+use super::{Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{Argument, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVar, TypeVarType, TypeVarUsage, TypeVars,
@@ -36,7 +36,6 @@ pub struct TypeVarMatcher<'db, 'a> {
     match_type: TypeVarType,
     match_in_definition: PointLink,
     on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
-    on_cannot_infer_type_argument: OnCannotInferTypeArgument<'db, 'a>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -46,7 +45,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
         on_constraint_mismatch: OnConstraintMismatch<'db, 'a>,
-        on_cannot_infer_type_argument: OnCannotInferTypeArgument<'db, 'a>,
     ) -> Self {
         Self {
             func_or_callable,
@@ -54,7 +52,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             match_type,
             match_in_definition,
             on_constraint_mismatch,
-            on_cannot_infer_type_argument,
         }
     }
 
@@ -126,7 +123,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         // In case A(B) and B are given, use B, because it's the super class.
                         current.type_ = Some(value_type.as_db_type(i_s));
                     } else {
-                        (self.on_cannot_infer_type_argument)(i_s, type_var_usage);
+                        return Match::False(MismatchReason::CannotInferTypeArgument(
+                            type_var_usage.index,
+                        ));
                     }
                 }
             } else {
@@ -241,23 +240,6 @@ fn calculate_type_vars<'db>(
                 _ => todo!(),
             }
         };
-    let mut on_cannot_infer_type_argument =
-        |i_s: &mut InferenceState<'db, '_>, type_var_usage: &TypeVarUsage| {
-            args.as_node_ref().add_typing_issue(
-                i_s.db,
-                IssueType::CannotInferTypeArgument {
-                    index: type_var_usage.index,
-                    callable: match func_or_callable {
-                        FunctionOrCallable::Function(class, function) => {
-                            function.diagnostic_string(class)
-                        }
-                        FunctionOrCallable::Callable(callable) => {
-                            Box::from(callable.content.format(i_s.db, FormatStyle::Short))
-                        }
-                    },
-                },
-            );
-        };
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
     let type_vars_len = match type_vars {
@@ -273,7 +255,6 @@ fn calculate_type_vars<'db>(
             match_in_definition,
             &mut calculated_type_vars,
             &mut on_constraint_mismatch,
-            &mut on_cannot_infer_type_argument,
         )),
         None => {
             if let FunctionOrCallable::Function(_, function) = func_or_callable {
@@ -285,7 +266,6 @@ fn calculate_type_vars<'db>(
                             match_in_definition,
                             &mut calculated_type_vars, // TODO There rae no type vars in there, should set it to 0
                             &mut on_constraint_mismatch,
-                            &mut on_cannot_infer_type_argument,
                         )
                     })
                 } else {
@@ -402,16 +382,41 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     i_s,
                     matcher.as_deref_mut(),
                     &value,
-                    |i_s, t1, t2| {
+                    |i_s, t1, t2, reason| {
                         if let Some(on_type_error) = on_type_error {
-                            on_type_error(i_s, argument.as_node_ref(), class, function, &p, t1, t2);
+                            match reason {
+                                MismatchReason::None => on_type_error(
+                                    i_s,
+                                    argument.as_node_ref(),
+                                    class,
+                                    function,
+                                    &p,
+                                    t1,
+                                    t2,
+                                ),
+                                MismatchReason::CannotInferTypeArgument(index) => {
+                                    args.as_node_ref().add_typing_issue(
+                                        i_s.db,
+                                        IssueType::CannotInferTypeArgument {
+                                            index,
+                                            callable: match function {
+                                                Some(f) => f.diagnostic_string(class),
+                                                None => Box::from("Callable"),
+                                            },
+                                        },
+                                    );
+                                }
+                                MismatchReason::ConstraintMismatch { .. } => {
+                                    todo!()
+                                }
+                            }
                         }
                     },
                 );
                 if matches!(m, Match::TrueWithAny) {
                     any_args.push(i)
                 }
-                matches &= m;
+                matches &= m
             }
         }
     }

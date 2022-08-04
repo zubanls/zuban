@@ -104,10 +104,14 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 &class_like,
                                 variance,
                             );
-                            if m.bool() {
-                                return m;
-                            } else {
-                                similarity |= m;
+                            match m {
+                                // The other mismatch reasons mean that the class kind of matched,
+                                // but some inner type vars had issues.
+                                Match::False(MismatchReason::None)
+                                | Match::FalseButSimilar(MismatchReason::None) => {
+                                    similarity |= m;
+                                }
+                                _ => return m,
                             }
                         }
                     }
@@ -121,10 +125,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         for (_, class_like) in self.mro(i_s) {
                             let m =
                                 class_like.check_match(i_s, matcher.as_deref_mut(), c, variance);
-                            if m.bool() {
-                                return m;
-                            } else {
-                                similarity |= m;
+                            match m {
+                                Match::False(MismatchReason::None)
+                                | Match::FalseButSimilar(MismatchReason::None) => {
+                                    similarity |= m;
+                                }
+                                _ => return m,
                             }
                         }
                     }
