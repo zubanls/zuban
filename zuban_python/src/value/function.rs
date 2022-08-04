@@ -768,56 +768,53 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
         let has_already_calculated_class_generics =
             search_init && !matches!(class.unwrap().generics(), Generics::None);
-        let match_signature =
-            |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| match search_init {
-                true => {
-                    if has_already_calculated_class_generics {
-                        let func_type_vars = function.type_vars(i_s);
-                        calculate_function_type_vars_and_return(
-                            i_s,
-                            class,
-                            function,
-                            args,
-                            true,
-                            func_type_vars,
-                            TypeVarType::Function,
-                            function.node_ref.as_link(),
-                            result_context,
-                            None,
-                        )
-                    } else {
-                        let c = class.unwrap();
-                        let type_vars = c.type_vars(i_s);
-                        calculate_function_type_vars_and_return(
-                            i_s,
-                            class,
-                            function,
-                            args,
-                            true,
-                            type_vars,
-                            TypeVarType::Class,
-                            c.node_ref.as_link(),
-                            result_context,
-                            None,
-                        )
-                    }
-                }
-                false => {
-                    let func_type_vars = function.type_vars(i_s);
+        let match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| {
+            let func_type_vars = function.type_vars(i_s);
+            if search_init {
+                if has_already_calculated_class_generics {
                     calculate_function_type_vars_and_return(
                         i_s,
                         class,
                         function,
                         args,
-                        false,
+                        true,
                         func_type_vars,
                         TypeVarType::Function,
                         function.node_ref.as_link(),
                         result_context,
                         None,
                     )
+                } else {
+                    let c = class.unwrap();
+                    let type_vars = c.type_vars(i_s);
+                    calculate_function_type_vars_and_return(
+                        i_s,
+                        class,
+                        function,
+                        args,
+                        true,
+                        type_vars,
+                        TypeVarType::Class,
+                        c.node_ref.as_link(),
+                        result_context,
+                        None,
+                    )
                 }
-            };
+            } else {
+                calculate_function_type_vars_and_return(
+                    i_s,
+                    class,
+                    function,
+                    args,
+                    false,
+                    func_type_vars,
+                    TypeVarType::Function,
+                    function.node_ref.as_link(),
+                    result_context,
+                    None,
+                )
+            }
+        };
         let handle_result = |i_s, calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {

@@ -1204,7 +1204,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         expr: Expression,
     ) -> Type<'db, 'db> {
         let point = self.file.points.get(annotation_index);
-        assert!(point.calculated());
+        assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationClassInstance {
                 return Type::ClassLike(ClassLike::Class(

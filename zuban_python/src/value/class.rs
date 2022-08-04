@@ -86,8 +86,9 @@ impl<'db, 'a> Class<'db, 'a> {
                 let has_generics = !matches!(self.generics, Generics::None);
                 // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
+                // Function type vars need to be calculated, so annotations are used.
+                let func_type_vars = func.type_vars(i_s);
                 let list = if has_generics {
-                    let func_type_vars = func.type_vars(i_s);
                     calculate_function_type_vars_and_return(
                         i_s,
                         Some(self),
