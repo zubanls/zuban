@@ -398,7 +398,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                     args.as_node_ref().add_typing_issue(
                                         i_s.db,
                                         IssueType::CannotInferTypeArgument {
-                                            index,
+                                            index: *index,
                                             callable: match function {
                                                 Some(f) => f.diagnostic_string(class),
                                                 None => Box::from("Callable"),

@@ -43,12 +43,6 @@ impl Match {
             _ => self,
         }
     }
-
-    pub fn update_if_any_was_involved(&mut self, other: Self) {
-        if matches!(other, Match::TrueWithAny) && matches!(self, Match::True) {
-            *self = Match::TrueWithAny;
-        }
-    }
 }
 
 impl BitAnd for Match {

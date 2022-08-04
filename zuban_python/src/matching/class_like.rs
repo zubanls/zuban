@@ -104,33 +104,25 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 &class_like,
                                 variance,
                             );
-                            match m {
+                            if !matches!(m, Match::False(MismatchReason::None)) {
                                 // The other mismatch reasons mean that the class kind of matched,
-                                // but some inner type vars had issues.
-                                Match::False(MismatchReason::None)
-                                | Match::FalseButSimilar(MismatchReason::None) => {
-                                    similarity.update_if_any_was_involved(m);
-                                }
-                                _ => return m,
+                                // but some generics had issues.
+                                return m;
                             }
                         }
                     }
                     Variance::Invariant => {
                         similarity = self.check_match(i_s, matcher, c, variance);
                         if similarity.bool() {
-                            return Match::True;
+                            return similarity;
                         }
                     }
                     Variance::Contravariant => {
                         for (_, class_like) in self.mro(i_s) {
                             let m =
                                 class_like.check_match(i_s, matcher.as_deref_mut(), c, variance);
-                            match m {
-                                Match::False(MismatchReason::None)
-                                | Match::FalseButSimilar(MismatchReason::None) => {
-                                    similarity.update_if_any_was_involved(m);
-                                }
-                                _ => return m,
+                            if !matches!(m, Match::False(MismatchReason::None)) {
+                                return m;
                             }
                         }
                     }

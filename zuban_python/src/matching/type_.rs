@@ -196,7 +196,7 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, MismatchReason),
+        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.matches(
@@ -205,20 +205,21 @@ impl<'db, 'a> Type<'db, 'a> {
             &value_type,
             Variance::Covariant,
         );
-        if let Match::False(reason) | Match::FalseButSimilar(reason) = matches {
+        if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
             let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
                 FunctionOrCallable::Function(_, func) => func.class.as_ref(),
                 FunctionOrCallable::Callable(_) => None,
             });
             let value_type = value.class_as_type(i_s);
-            debug!("Mismatch between {value_type:?} and {self:?}");
+            debug!(
+                "Mismatch between {value_type:?} and {self:?} -> {:?}",
+                matches.clone()
+            );
             let input = value_type.format(i_s, None, FormatStyle::Short);
             let wanted = self.format(i_s, class, FormatStyle::Short);
             callback(i_s, input, wanted, reason);
-            Match::new_false()
-        } else {
-            matches
         }
+        matches
     }
 
     pub fn execute_and_resolve_type_vars(
