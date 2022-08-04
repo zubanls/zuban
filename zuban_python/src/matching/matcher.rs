@@ -335,8 +335,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     i_s,
                     matcher.as_deref_mut(),
                     &value,
-                    |i_s, t1, t2, reason| {
-                        if let Some(on_type_error) = on_type_error {
+                    on_type_error.map(|on_type_error| {
+                        |i_s: &mut InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
                             match reason {
                                 MismatchReason::None => on_type_error(
                                     i_s,
@@ -380,7 +380,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                 }
                             }
                         }
-                    },
+                    }),
                 );
                 if matches!(m, Match::TrueWithAny) {
                     any_args.push(i)

@@ -185,10 +185,17 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         value: &Inferred<'db>,
         mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
-    ) -> Match {
-        self.error_if_not_matches_with_matcher(i_s, None, value, |i_s, t1, t2, _| {
-            callback(i_s, t1, t2)
-        })
+    ) {
+        self.error_if_not_matches_with_matcher(
+            i_s,
+            None,
+            value,
+            Some(
+                |i_s: &mut InferenceState<'db, 'x>, t1, t2, reason: &MismatchReason| {
+                    callback(i_s, t1, t2)
+                },
+            ),
+        );
     }
 
     pub fn error_if_not_matches_with_matcher<'x>(
@@ -196,7 +203,9 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
+        callback: Option<
+            impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
+        >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.matches(
@@ -217,7 +226,9 @@ impl<'db, 'a> Type<'db, 'a> {
             );
             let input = value_type.format(i_s, None, FormatStyle::Short);
             let wanted = self.format(i_s, class, FormatStyle::Short);
-            callback(i_s, input, wanted, reason);
+            if let Some(mut callback) = callback {
+                callback(i_s, input, wanted, reason)
+            }
         }
         matches
     }

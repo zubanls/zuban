@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::database::{DbType, TypeVar, TypeVarIndex};
 
+#[derive(Debug)]
 pub enum SignatureMatch {
     False,
     FalseButSimilar,
