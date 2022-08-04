@@ -1,4 +1,4 @@
-use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign};
+use std::ops::{BitAnd, BitAndAssign};
 use std::rc::Rc;
 
 use crate::database::{DbType, TypeVar, TypeVarIndex};
@@ -36,6 +36,19 @@ impl Match {
     pub fn bool(&self) -> bool {
         matches!(self, Self::True | Self::TrueWithAny)
     }
+
+    pub fn similar_if_false(self) -> Self {
+        match self {
+            Self::False(reason) => Self::FalseButSimilar(reason),
+            _ => self,
+        }
+    }
+
+    pub fn update_if_any_was_involved(&mut self, other: Self) {
+        if matches!(other, Match::TrueWithAny) && matches!(self, Match::True) {
+            *self = Match::TrueWithAny;
+        }
+    }
 }
 
 impl BitAnd for Match {
@@ -57,36 +70,10 @@ impl BitAnd for Match {
     }
 }
 
-impl BitOr for Match {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        match self {
-            Self::True => Self::True,
-            Self::TrueWithAny => match rhs {
-                Self::True => Self::True,
-                _ => Self::TrueWithAny,
-            },
-            Self::FalseButSimilar(_) => match rhs {
-                Self::True => Self::True,
-                _ => self,
-            },
-            Self::False(_) => rhs,
-        }
-    }
-}
-
 impl BitAndAssign for Match {
     fn bitand_assign(&mut self, rhs: Self) {
         let left = std::mem::replace(self, Match::True);
         *self = left & rhs
-    }
-}
-
-impl BitOrAssign for Match {
-    fn bitor_assign(&mut self, rhs: Self) {
-        let left = std::mem::replace(self, Match::True);
-        *self = left | rhs
     }
 }
 

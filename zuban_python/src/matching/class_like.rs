@@ -24,13 +24,13 @@ pub enum ClassLike<'db, 'a> {
 macro_rules! matches_callable {
     ($i_s:ident, $matcher:ident, $c1:ident, $c2:ident) => {{
         let other_result = $c2.result_type($i_s);
-        $c1.result_type($i_s).matches(
+        ($c1.result_type($i_s).matches(
             $i_s,
             $matcher.as_deref_mut(),
             &other_result,
             Variance::Covariant,
-        ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator())
-            | Match::FalseButSimilar(MismatchReason::None)
+        ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator()))
+        .similar_if_false()
     }};
 }
 
@@ -109,7 +109,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 // but some inner type vars had issues.
                                 Match::False(MismatchReason::None)
                                 | Match::FalseButSimilar(MismatchReason::None) => {
-                                    similarity |= m;
+                                    similarity.update_if_any_was_involved(m);
                                 }
                                 _ => return m,
                             }
@@ -128,7 +128,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             match m {
                                 Match::False(MismatchReason::None)
                                 | Match::FalseButSimilar(MismatchReason::None) => {
-                                    similarity |= m;
+                                    similarity.update_if_any_was_involved(m);
                                 }
                                 _ => return m,
                             }
@@ -209,13 +209,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c2) => {
                     if c1.node_ref == c2.node_ref {
                         let type_vars = c1.type_vars(i_s);
-                        return c1.generics().matches(
-                            i_s,
-                            matcher,
-                            c2.generics(),
-                            variance,
-                            type_vars,
-                        ) | Match::FalseButSimilar(MismatchReason::None);
+                        return c1
+                            .generics()
+                            .matches(i_s, matcher, c2.generics(), variance, type_vars)
+                            .similar_if_false();
                     }
                     false
                 }
@@ -241,7 +238,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 return match other {
                     Self::Tuple(t2) => {
                         let m: Match = t1.matches(i_s, t2, matcher, variance).into();
-                        m | Match::FalseButSimilar(MismatchReason::None)
+                        m.similar_if_false()
                     }
                     _ => Match::False(MismatchReason::None),
                 }
@@ -298,7 +295,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             let g1 = self.generics(i_s);
             let g2 = other.generics(i_s);
             g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
-                | Match::FalseButSimilar(MismatchReason::None)
+                .similar_if_false()
         } else {
             Match::new_false()
         }
