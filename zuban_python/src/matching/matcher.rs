@@ -28,6 +28,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     pub func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
+    parent_matcher: Option<&'a mut Self>,
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -35,11 +36,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
+        parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
+            parent_matcher,
         }
     }
 
@@ -69,6 +72,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 type_var: type_var_usage.type_var.clone(),
             });
         }
+
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
             if let Some(current_type) = &current.type_ {
@@ -95,6 +99,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 Match::True
             }
         } else {
+            if let Some(parent_matcher) = self.parent_matcher {
+                return parent_matcher.match_or_add_type_var(
+                    i_s,
+                    type_var_usage,
+                    value_type,
+                    variance,
+                );
+            }
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {
                     if let Some(class) = class {
