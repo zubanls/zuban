@@ -181,7 +181,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     if let Some(class) = class {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             let t = class.generics.nth(i_s, type_var_usage.index);
-                            return Type::from_db_type(i_s.db, &t).format(i_s, Some(self), style);
+                            return Type::from_db_type(i_s.db, &t).format(i_s, None, style);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
@@ -189,7 +189,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let g = type_var_remap.nth(type_var_usage.index).unwrap();
                             Type::from_db_type(i_s.db, g).format(i_s, Some(self), style)
                         } else {
-                            type_var_usage.type_var.name(i_s.db).into()
+                            todo!()
                         }
                     } else {
                         todo!("Probably nested generic functions???")

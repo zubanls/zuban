@@ -1,14 +1,14 @@
 # Next up
 testBoundOnGenericFunction
-
 testInferenceInGenericClass
+testInferTypeVariableFromTwoGenericTypes4
 
+# union type var stuff
 testUnionGenericWithBoundedVariable
 testUnionInference
 testUnionInferenceWithTypeVarValues
 testGenericMethodCalledInGenericContext2
 testOptionalTypeVarAgainstOptional
-testInferTypeVariableFromTwoGenericTypes4
 testWideOuterContextOptional
 testWideOuterContextOptionalGenericReturn
 nested_generic_mismatch_function_and_callable
