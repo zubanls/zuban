@@ -307,9 +307,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 .iter()
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
-                        a + &b.format(i_s, None, style)
+                        a + &b.format(i_s, matcher, style)
                     } else {
-                        a + " | " + &b.format(i_s, None, style)
+                        a + " | " + &b.format(i_s, matcher, style)
                     }
                 })
                 .into(),
