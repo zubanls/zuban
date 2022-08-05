@@ -1,4 +1,4 @@
-use super::{ClassLike, FunctionOrCallable, Generics, Match, MismatchReason, TypeVarMatcher};
+use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, Variance,
 };
@@ -215,17 +215,14 @@ impl<'db, 'a> Type<'db, 'a> {
             Variance::Covariant,
         );
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
-            let class = matcher.and_then(|matcher| match &matcher.func_or_callable {
-                FunctionOrCallable::Function(_, func) => func.class.as_ref(),
-                FunctionOrCallable::Callable(_) => None,
-            });
+            let class = matcher.and_then(|matcher| matcher.class());
             let value_type = value.class_as_type(i_s);
             debug!(
                 "Mismatch between {value_type:?} and {self:?} -> {:?}",
                 matches.clone()
             );
             let input = value_type.format(i_s, None, FormatStyle::Short);
-            let wanted = self.format(i_s, class, FormatStyle::Short);
+            let wanted = self.format(i_s, class.as_ref(), FormatStyle::Short);
             if let Some(mut callback) = callback {
                 callback(i_s, input, wanted, reason)
             }

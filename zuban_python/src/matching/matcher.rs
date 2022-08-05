@@ -12,7 +12,7 @@ use crate::inference_state::InferenceState;
 use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
-pub enum FunctionOrCallable<'db, 'a> {
+enum FunctionOrCallable<'db, 'a> {
     Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
     Callable(&'a Callable<'a>),
 }
@@ -25,7 +25,7 @@ struct CalculatedTypeVar {
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
-    pub func_or_callable: FunctionOrCallable<'db, 'a>,
+    func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
     parent_matcher: Option<&'a mut Self>,
@@ -36,13 +36,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
-        parent_matcher: Option<&'a mut Self>,
+        //parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
-            parent_matcher,
+            parent_matcher: None, //parent_matcher,
+        }
+    }
+
+    pub(super) fn class(&self) -> Option<Class<'db, '_>> {
+        // Currently this is used for formatting, but it probably shouldn't be.
+        match self.func_or_callable {
+            FunctionOrCallable::Function(_, func) => func.class,
+            FunctionOrCallable::Callable(_) => None,
         }
     }
 
@@ -99,7 +107,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 Match::True
             }
         } else {
-            if let Some(parent_matcher) = self.parent_matcher {
+            if let Some(parent_matcher) = self.parent_matcher.as_mut() {
                 return parent_matcher.match_or_add_type_var(
                     i_s,
                     type_var_usage,
