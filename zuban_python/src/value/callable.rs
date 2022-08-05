@@ -9,7 +9,9 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
+use crate::matching::{
+    calculate_callable_type_vars_and_return, ResultContext, Type, TypeVarMatcher,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct CallableClass<'a> {
@@ -34,8 +36,13 @@ impl<'db, 'a> CallableClass<'a> {
         Type::from_db_type(i_s.db, &self.content.return_class)
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
-        self.content.format(i_s, style).into()
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
+        self.content.format(i_s, matcher, style).into()
     }
 }
 
@@ -89,7 +96,7 @@ impl<'db, 'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
     }
 
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
@@ -149,6 +156,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
     }
 }

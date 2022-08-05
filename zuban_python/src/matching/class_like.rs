@@ -352,8 +352,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::Class(c) => c.format(i_s, style),
-            Self::Type(c) => format!("Type[{}]", c.format(i_s, style)).into(),
+            Self::Class(c) => c.format(i_s, matcher, style),
+            Self::Type(c) => format!("Type[{}]", c.format(i_s, matcher, style)).into(),
             Self::TypeVar(t) => {
                 if let Some(matcher) = matcher {
                     matcher.format(i_s, t, style)
@@ -362,9 +362,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
             }
             Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s, matcher, style)).into(),
-            Self::Tuple(c) => c.format(i_s, style),
-            Self::Callable(c) => c.format(i_s, style),
-            Self::FunctionType(f) => f.format(i_s, style),
+            Self::Tuple(c) => c.format(i_s, matcher, style),
+            Self::Callable(c) => c.format(i_s, matcher, style),
+            Self::FunctionType(f) => f.format(i_s, matcher, style),
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
             Self::None => Box::from("None"),

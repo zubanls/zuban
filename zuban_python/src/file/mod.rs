@@ -665,7 +665,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         i_s.db,
                                         IssueType::UnsupportedOperand {
                                             operand: Box::from(aug_assign.operand()),
-                                            left: class.unwrap().format(i_s, FormatStyle::Short),
+                                            left: class.unwrap().format(
+                                                i_s,
+                                                None,
+                                                FormatStyle::Short,
+                                            ),
                                             right,
                                         },
                                     )
@@ -801,7 +805,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         i_s.db,
                                         IssueType::InvalidGetItem {
                                             actual,
-                                            type_: class.unwrap().format(i_s, FormatStyle::Short),
+                                            type_: class.unwrap().format(
+                                                i_s,
+                                                None,
+                                                FormatStyle::Short,
+                                            ),
                                             expected,
                                         },
                                     )
@@ -1030,7 +1038,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         i_s.db,
                         IssueType::UnsupportedOperand {
                             operand: Box::from(op.operand),
-                            left: class.unwrap().format(i_s, FormatStyle::Short),
+                            left: class.unwrap().format(i_s, None, FormatStyle::Short),
                             right,
                         },
                     );
@@ -1306,7 +1314,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         debug!(
             "Inferred literal: Tuple{}",
-            content.format(self.i_s, FormatStyle::Short)
+            content.format(self.i_s, None, FormatStyle::Short)
         );
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
     }

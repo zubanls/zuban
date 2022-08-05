@@ -633,10 +633,10 @@ impl DbType {
                     FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                     FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
                 },
-                &content.format(i_s, style)
+                &content.format(i_s, matcher, style)
             )
             .into(),
-            Self::Callable(content) => content.format(i_s, style).into(),
+            Self::Callable(content) => content.format(i_s, matcher, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Unknown => Box::from("Unknown"),
@@ -827,9 +827,14 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn format<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> String {
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.format(i_s, None, style);
+            let list = generics.format(i_s, matcher, style);
             if self.arbitrary_length {
                 format!("[{list}, ...]")
             } else {
@@ -855,15 +860,20 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
+    pub fn format<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> String {
         let param_string = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.db_type.format(i_s, None, style))
+                .map(|p| p.db_type.format(i_s, matcher, style))
                 .collect::<Vec<_>>()
                 .join(", ")
         });
-        let result = self.return_class.format(i_s, None, style);
+        let result = self.return_class.format(i_s, matcher, style);
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");

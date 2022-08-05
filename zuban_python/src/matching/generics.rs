@@ -81,7 +81,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {n:?} was requested",
-                        self.format(i_s, FormatStyle::Short, None),
+                        self.format(i_s, None, FormatStyle::Short, None),
                     );
                     todo!()
                 }
@@ -151,6 +151,7 @@ impl<'db, 'a> Generics<'db, 'a> {
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
         expected: Option<usize>,
     ) -> String {
@@ -159,7 +160,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut i = 0;
         self.iter().run_on_all(i_s, &mut |i_s, g| {
             if expected.map(|e| i < e).unwrap_or(false) {
-                strings.push(g.format(i_s, None, style));
+                strings.push(g.format(i_s, matcher, style));
                 i += 1;
             }
         });

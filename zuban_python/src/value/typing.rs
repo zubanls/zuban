@@ -297,14 +297,19 @@ impl<'db, 'a> TupleClass<'a> {
         true
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
         format!(
             "{}{}",
             match style {
                 FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
             },
-            &self.content.format(i_s, style)
+            &self.content.format(i_s, matcher, style)
         )
         .into()
     }
@@ -340,7 +345,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.format(i_s, FormatStyle::Short)
+        base_description!(self) + &self.format(i_s, None, FormatStyle::Short)
     }
 }
 
@@ -462,7 +467,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
     }
 }
 

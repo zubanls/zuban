@@ -18,6 +18,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_function_type_vars_and_return, ClassLike, Generics, Match, ResultContext,
+    TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -448,14 +449,21 @@ impl<'db, 'a> Class<'db, 'a> {
         (self.node_ref == db.python_state.object()).into()
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
         let mut result = match style {
             FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
         };
         let type_var_count = self.class_infos(i_s).type_vars.len();
         if type_var_count > 0 {
-            result += &self.generics().format(i_s, style, Some(type_var_count));
+            result += &self
+                .generics()
+                .format(i_s, matcher, style, Some(type_var_count));
         }
         result.into()
     }
@@ -529,8 +537,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) =>
-                        Generics::new_list(generics_list).format(i_s, FormatStyle::Short, None),
+                    Some(generics_list) => Generics::new_list(generics_list).format(
+                        i_s,
+                        None,
+                        FormatStyle::Short,
+                        None
+                    ),
                     None => "".to_owned(),
                 }
             );
@@ -573,7 +585,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.format(i_s, FormatStyle::Short),
+            self.format(i_s, None, FormatStyle::Short),
         )
     }
 

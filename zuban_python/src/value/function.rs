@@ -21,7 +21,7 @@ use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
     calculate_function_type_vars_and_return, ClassLike, Generics, ResultContext, SignatureMatch,
-    Type,
+    Type, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -312,7 +312,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.format(i_s, FormatStyle::Short)))
+                        .map(|c| format!("{}.", c.format(i_s, None, FormatStyle::Short)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -360,7 +360,12 @@ impl<'db, 'a> Function<'db, 'a> {
             .unwrap_or(Type::Any)
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
@@ -369,7 +374,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(i_s, None, style)
+                .format(i_s, matcher, style)
         };
         let node = self.node();
         if matches!(
@@ -380,7 +385,9 @@ impl<'db, 'a> Function<'db, 'a> {
                 .iter_params()
                 .enumerate()
                 .map(|(i, p)| {
-                    let annotation_str = p.annotation_type(i_s).map(|t| t.format(i_s, None, style));
+                    let annotation_str = p
+                        .annotation_type(i_s)
+                        .map(|t| t.format(i_s, matcher, style));
                     let stars = match p.param_type() {
                         ParamType::Starred => "*",
                         ParamType::DoubleStarred => "**",
@@ -409,14 +416,16 @@ impl<'db, 'a> Function<'db, 'a> {
                         .map(|t| {
                             let mut s = t.name(i_s.db).to_owned();
                             if let Some(bound) = &t.bound {
-                                s +=
-                                    &format!(" <: {}", bound.format(i_s, None, FormatStyle::Short));
+                                s += &format!(
+                                    " <: {}",
+                                    bound.format(i_s, matcher, FormatStyle::Short)
+                                );
                             } else if !t.restrictions.is_empty() {
                                 s += &format!(
                                     " in ({})",
                                     t.restrictions
                                         .iter()
-                                        .map(|t| t.format(i_s, None, FormatStyle::Short))
+                                        .map(|t| t.format(i_s, matcher, FormatStyle::Short))
                                         .collect::<Vec<_>>()
                                         .join(", ")
                                 );
@@ -443,7 +452,7 @@ impl<'db, 'a> Function<'db, 'a> {
                         let t = param
                             .annotation_type(i_s)
                             .unwrap_or(Type::Any)
-                            .format(i_s, None, style);
+                            .format(i_s, matcher, style);
                         match param.param_type() {
                             ParamType::PositionalOnly => t.to_string(),
                             ParamType::PositionalOrKeyword => match param.has_default() {
@@ -885,7 +894,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.format(i_s, FormatStyle::MypyOverload)
+                func.format(i_s, None, FormatStyle::MypyOverload)
             })
             .collect()
     }
