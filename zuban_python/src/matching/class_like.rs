@@ -348,24 +348,18 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         match self {
             Self::Class(c) => c.format(i_s, style),
             Self::Type(c) => format!("Type[{}]", c.format(i_s, style)).into(),
             Self::TypeVar(t) => {
-                if let Some(class) = class {
-                    if t.in_definition == class.node_ref.as_link() {
-                        let generics = class.generics();
-                        // TODO hmm is this if right? if we do not do this how would we format the
-                        // generics then?
-                        if !matches!(generics, Generics::None) {
-                            return generics.nth(i_s, t.index).format(i_s.db, None, style);
-                        }
-                    }
+                if let Some(matcher) = matcher {
+                    matcher.format(i_s, t, style)
+                } else {
+                    Box::from(t.type_var.name(i_s.db))
                 }
-                Box::from(t.type_var.name(i_s.db))
             }
             Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s.db, None, style)).into(),
             Self::Tuple(c) => c.format(i_s.db, style),

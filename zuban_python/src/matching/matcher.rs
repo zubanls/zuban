@@ -155,6 +155,50 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         }
     }
+
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_var_usage: &TypeVarUsage,
+        style: FormatStyle,
+    ) -> Box<str> {
+        if self.match_in_definition == type_var_usage.in_definition {
+            todo!()
+        } else {
+            match self.func_or_callable {
+                FunctionOrCallable::Function(class, f) => {
+                    if let Some(class) = class {
+                        if class.node_ref.as_link() == type_var_usage.in_definition {
+                            let t = class.generics.nth(i_s, type_var_usage.index);
+                            return Type::from_db_type(i_s.db, &t).format(i_s, Some(self), style);
+                        }
+                        // If we're in a class context, we must also be in a method.
+                        let func_class = f.class.unwrap();
+                        if type_var_usage.in_definition == func_class.node_ref.as_link() {
+                            // By definition, because the class did not match there will never be a
+                            // type_var_remap that is not defined.
+                            let type_var_remap = func_class.type_var_remap.unwrap();
+                            let g = type_var_remap.nth(type_var_usage.index).unwrap();
+                            Type::from_db_type(i_s.db, g).format(i_s, Some(self), style)
+                        } else {
+                            // Happens e.g. for testInvalidNumberOfTypeArgs
+                            // class C:  # Forgot to add type params here
+                            //     def __init__(self, t: T) -> None: pass
+                            todo!(
+                                "TODO free type param annotations; searched ({:?}), found {:?} ({:?})",
+                                self.match_in_definition,
+                                type_var_usage.type_,
+                                type_var_usage.in_definition,
+                            )
+                        }
+                    } else {
+                        todo!("Probably nested generic functions???")
+                    }
+                }
+                FunctionOrCallable::Callable(c) => todo!(),
+            }
+        }
+    }
 }
 
 pub fn calculate_function_type_vars_and_return<'db>(

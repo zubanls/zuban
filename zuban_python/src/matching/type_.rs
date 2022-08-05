@@ -215,14 +215,13 @@ impl<'db, 'a> Type<'db, 'a> {
             Variance::Covariant,
         );
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
-            let class = matcher.and_then(|matcher| matcher.class());
             let value_type = value.class_as_type(i_s);
             debug!(
                 "Mismatch between {value_type:?} and {self:?} -> {:?}",
                 matches.clone()
             );
             let input = value_type.format(i_s, None, FormatStyle::Short);
-            let wanted = self.format(i_s, class.as_ref(), FormatStyle::Short);
+            let wanted = self.format(i_s, matcher.as_deref(), FormatStyle::Short);
             if let Some(mut callback) = callback {
                 callback(i_s, input, wanted, reason)
             }
@@ -299,11 +298,11 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::ClassLike(c) => c.format(i_s, class, style),
+            Self::ClassLike(c) => c.format(i_s, matcher, style),
             Self::Union(list) => list
                 .iter()
                 .fold(String::new(), |a, b| {

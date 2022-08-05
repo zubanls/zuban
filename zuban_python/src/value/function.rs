@@ -369,7 +369,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(i_s, self.class.as_ref(), style)
+                .format(i_s, None, style)
         };
         let node = self.node();
         if matches!(
@@ -442,11 +442,10 @@ impl<'db, 'a> Function<'db, 'a> {
                 "Callable[[{}], {}]",
                 self.iter_params()
                     .map(|param| {
-                        let t = param.annotation_type(i_s).unwrap_or(Type::Any).format(
-                            i_s,
-                            self.class.as_ref(),
-                            style,
-                        );
+                        let t = param
+                            .annotation_type(i_s)
+                            .unwrap_or(Type::Any)
+                            .format(i_s, None, style);
                         match param.param_type() {
                             ParamType::PositionalOnly => t.to_string(),
                             ParamType::PositionalOrKeyword => match param.has_default() {
