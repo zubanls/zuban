@@ -93,3 +93,56 @@ a: List[int]
 b: List[str]
 
 e: List[Union[int, str]] = add(a, b)
+
+[case nested_generic_mismatch_function]
+from typing import TypeVar
+T = TypeVar('T')
+
+def add(x: list[T]) -> list[T]: ...
+
+a: list[int] = add([""]) # E: Argument 1 to "add" has incompatible type "list[str]"; expected "list[int]"
+
+[case nested_generic_mismatch_class]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def add(self, x: list[T]) -> list[T]: ...
+
+a: list[int] = Foo[int]().add([""]) # E: Argument 1 to "add" of "Foo" has incompatible type "list[str]"; expected "list[int]"
+
+[case nested_generic_mismatch_function_and_tuple]
+from typing import TypeVar
+T = TypeVar('T')
+
+def add(tuple[T]) -> tuple[T]: ...
+
+a: tuple[int] = add([""]) # E: Argument 1 to "add" has incompatible type "tuple[str]"; expected "tuple[int]"
+
+[case nested_generic_mismatch_class_and_tuple]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def add(self, x: tuple[T]) -> tuple[T]: ...
+
+a: tuple[int] = Foo[int]().add(("",)) # E: Argument 1 to "add" of "Foo" has incompatible type "tuple[str]"; expected "tuple[int]"
+
+[case nested_generic_mismatch_function_and_callable]
+from typing import TypeVar, Callable
+T = TypeVar('T')
+
+def add(c: Callable[[T], T | list[T]]) -> T: ...
+
+c: Callable[[str], int | list[str]]
+a: int = add(c) # E: Argument 1 to "add" has incompatible type "Callable[[str], int | list[str]]"; expected "Callable[[int], int | list[int]]"
+
+[case nested_generic_mismatch_class_and_callable]
+from typing import TypeVar, Generic, Callable
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def add(self, x: Callable[[T], T | list[T]]) -> T: ...
+
+c: Callable[[int], int | list[str]]
+a: int = Foo[int]().add(c) # E: Argument 1 to "add" has incompatible type "Callable[[int], int | list[str]]"; expected "Callable[[int], int | list[int]]"
