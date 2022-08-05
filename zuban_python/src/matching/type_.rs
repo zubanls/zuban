@@ -305,13 +305,9 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c.format(i_s, matcher, style),
             Self::Union(list) => list
                 .iter()
-                .fold(String::new(), |a, b| {
-                    if a.is_empty() {
-                        a + &b.format(i_s, matcher, style)
-                    } else {
-                        a + " | " + &b.format(i_s, matcher, style)
-                    }
-                })
+                .map(|t| t.format(i_s, matcher, style))
+                .collect::<Vec<_>>()
+                .join(" | ")
                 .into(),
             Self::Any => Box::from("Any"),
         }
