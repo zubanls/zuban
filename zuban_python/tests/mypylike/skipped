@@ -7,9 +7,8 @@ testInferringGenericFunctionTypeForLvar
 testInferenceWithMultipleConstraints
 testBoundOnGenericFunction
 
-testIncompatibleContextInference
-testGenericOverloadVariant
-nested_generic_mismatch_*
+nested_generic_mismatch_function_and_callable
+nested_generic_mismatch_class_and_callable
 
 unite_type_vars_mypy_issue_5874
 

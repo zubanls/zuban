@@ -163,7 +163,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         style: FormatStyle,
     ) -> Box<str> {
         if self.match_in_definition == type_var_usage.in_definition {
-            type_var_usage.type_var.name(i_s.db).into()
+            let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
+            if current.defined_by_result_type {
+                current
+                    .type_
+                    .as_ref()
+                    .unwrap()
+                    .format(i_s, Some(self), style)
+            } else {
+                type_var_usage.type_var.name(i_s.db).into()
+            }
         } else {
             match self.func_or_callable {
                 FunctionOrCallable::Function(class, f) => {

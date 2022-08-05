@@ -115,9 +115,9 @@ a: list[int] = Foo[int]().add([""]) # E: Argument 1 to "add" of "Foo" has incomp
 from typing import TypeVar
 T = TypeVar('T')
 
-def add(tuple[T]) -> tuple[T]: ...
+def add(x: tuple[T]) -> tuple[T]: ...
 
-a: tuple[int] = add([""]) # E: Argument 1 to "add" has incompatible type "tuple[str]"; expected "tuple[int]"
+a: tuple[int] = add(("",)) # E: Argument 1 to "add" has incompatible type "tuple[str]"; expected "tuple[int]"
 
 [case nested_generic_mismatch_class_and_tuple]
 from typing import TypeVar, Generic
