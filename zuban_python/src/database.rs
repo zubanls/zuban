@@ -11,7 +11,8 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::matching::Generics;
+use crate::inference_state::InferenceState;
+use crate::matching::{Generics, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
@@ -488,17 +489,17 @@ impl GenericsList {
         self.0.len()
     }
 
-    pub fn format(
+    pub fn format<'db>(
         &self,
-        db: &Database,
-        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
-        if let Some(type_var_generics) = type_var_generics {
+        if let Some(matcher) = matcher {
             // TODO is there no better way than writing this twice???
             self.0
                 .iter()
-                .map(|g| g.format(db, Some(type_var_generics), style))
+                .map(|g| g.format(i_s, Some(matcher), style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -510,7 +511,7 @@ impl GenericsList {
         } else {
             self.0
                 .iter()
-                .map(|g| g.format(db, None, style))
+                .map(|g| g.format(i_s, None, style))
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
                         a + &b
@@ -593,19 +594,20 @@ impl DbType {
         *self = mem::replace(self, Self::Unknown).union(other);
     }
 
-    pub fn format(
+    pub fn format<'db>(
         &self,
-        db: &Database,
-        type_var_generics: Option<&mut dyn FnMut(TypeVarIndex) -> DbType>,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         let class_name = |link| {
             let class =
-                Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
+                Class::from_position(NodeRef::from_link(i_s.db, link), Generics::None, None)
+                    .unwrap();
             match style {
                 FormatStyle::Short | FormatStyle::MypyOverload => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                    class.qualified_name(db).into()
+                    class.qualified_name(i_s.db).into()
                 }
             }
         };
@@ -614,31 +616,27 @@ impl DbType {
             Self::GenericClass(link, generics_lst) => format!(
                 "{}[{}]",
                 &class_name(*link),
-                generics_lst.format(db, type_var_generics, style)
+                generics_lst.format(i_s, matcher, style)
             )
             .into(),
-            Self::Union(list) => {
-                format!("Union[{}]", list.format(db, type_var_generics, style)).into()
-            }
+            Self::Union(list) => format!("Union[{}]", list.format(i_s, matcher, style)).into(),
             Self::TypeVar(t) => {
-                if let Some(type_var_generics) = type_var_generics {
-                    return type_var_generics(t.index).format(db, None, style);
+                if let Some(matcher) = matcher {
+                    return matcher.format(i_s, t, style);
                 }
-                Box::from(t.type_var.name(db))
+                Box::from(t.type_var.name(i_s.db))
             }
-            Self::Type(db_type) => {
-                format!("Type[{}]", db_type.format(db, type_var_generics, style)).into()
-            }
+            Self::Type(db_type) => format!("Type[{}]", db_type.format(i_s, matcher, style)).into(),
             Self::Tuple(content) => format!(
                 "{}{}",
                 match style {
                     FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                     FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
                 },
-                &content.format(db, style)
+                &content.format(i_s, style)
             )
             .into(),
-            Self::Callable(content) => content.format(db, style).into(),
+            Self::Callable(content) => content.format(i_s, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Unknown => Box::from("Unknown"),
@@ -829,9 +827,9 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn format(&self, db: &Database, style: FormatStyle) -> String {
+    pub fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.format(db, None, style);
+            let list = generics.format(i_s, None, style);
             if self.arbitrary_length {
                 format!("[{list}, ...]")
             } else {
@@ -857,15 +855,15 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn format(&self, db: &Database, style: FormatStyle) -> String {
+    pub fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> String {
         let param_string = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.db_type.format(db, None, style))
+                .map(|p| p.db_type.format(i_s, None, style))
                 .collect::<Vec<_>>()
                 .join(", ")
         });
-        let result = self.return_class.format(db, None, style);
+        let result = self.return_class.format(i_s, None, style);
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");

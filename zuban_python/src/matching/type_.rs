@@ -238,7 +238,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_vars);
         debug!(
             "Resolved type vars: {}",
-            db_type.format(i_s.db, None, FormatStyle::Short)
+            db_type.format(i_s, None, FormatStyle::Short)
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -307,9 +307,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 .iter()
                 .fold(String::new(), |a, b| {
                     if a.is_empty() {
-                        a + &b.format(i_s.db, None, style)
+                        a + &b.format(i_s, None, style)
                     } else {
-                        a + " | " + &b.format(i_s.db, None, style)
+                        a + " | " + &b.format(i_s, None, style)
                     }
                 })
                 .into(),

@@ -361,8 +361,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     Box::from(t.type_var.name(i_s.db))
                 }
             }
-            Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s.db, None, style)).into(),
-            Self::Tuple(c) => c.format(i_s.db, style),
+            Self::TypeWithDbType(g) => format!("Type[{}]", g.format(i_s, matcher, style)).into(),
+            Self::Tuple(c) => c.format(i_s, style),
             Self::Callable(c) => c.format(i_s, style),
             Self::FunctionType(f) => f.format(i_s, style),
             Self::TypingClass(c) => todo!(),

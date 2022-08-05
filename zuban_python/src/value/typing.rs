@@ -297,14 +297,14 @@ impl<'db, 'a> TupleClass<'a> {
         true
     }
 
-    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         format!(
             "{}{}",
             match style {
                 FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
             },
-            &self.content.format(db, style)
+            &self.content.format(i_s, style)
         )
         .into()
     }
@@ -340,7 +340,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.format(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.format(i_s, FormatStyle::Short)
     }
 }
 
@@ -462,7 +462,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
     }
 }
 
@@ -540,7 +540,9 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "db_type",
-                &self.db_type.format(self.db, None, FormatStyle::Short),
+                &self
+                    .db_type
+                    .format(&mut InferenceState::new(self.db), None, FormatStyle::Short),
             )
             .finish()
     }
@@ -676,7 +678,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
                             v.class(i_s).format(i_s, None, FormatStyle::Short),
-                            db_type.format(i_s.db, None, FormatStyle::Short),
+                            db_type.format(i_s, None, FormatStyle::Short),
                             self.name(),
                             name,
                         );

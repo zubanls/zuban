@@ -362,7 +362,7 @@ fn calculate_type_vars<'db>(
                         &callable_description
                     }
                 },
-                generics_out.format(i_s.db, None, FormatStyle::Short),
+                generics_out.format(i_s, None, FormatStyle::Short),
             );
         }
     }
@@ -433,7 +433,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                                     Some(f) => f.diagnostic_string(class),
                                                     None => Box::from("Callable"),
                                                 },
-                                                actual: expected.format(i_s.db, None, FormatStyle::Short),
+                                                actual: expected.format(i_s, None, FormatStyle::Short),
                                             },
                                         );
                                     } else {

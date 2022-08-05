@@ -35,7 +35,7 @@ impl<'db, 'a> CallableClass<'a> {
     }
 
     pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
-        self.content.format(i_s.db, style).into()
+        self.content.format(i_s, style).into()
     }
 }
 
@@ -89,7 +89,7 @@ impl<'db, 'a> Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
     }
 
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
@@ -149,6 +149,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s.db, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s, FormatStyle::Short)
     }
 }
