@@ -21,7 +21,7 @@ enum FunctionOrCallable<'db, 'a> {
 struct CalculatedTypeVar {
     type_: Option<DbType>,
     //variance: Variance,
-    defined_by_result_type: bool,
+    defined_by_result_context: bool,
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
@@ -88,7 +88,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 let m = current_type.matches(i_s, None, value_type, variance);
                 if m.bool() {
                     m
-                } else if current.defined_by_result_type {
+                } else if current.defined_by_result_context {
                     Match::new_false()
                 } else if value_type
                     .matches(i_s, None, &current_type, variance)
@@ -164,7 +164,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     ) -> Box<str> {
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
-            if current.defined_by_result_type {
+            if current.defined_by_result_context {
                 current
                     .type_
                     .as_ref()
@@ -314,7 +314,7 @@ fn calculate_type_vars<'db>(
         if let Some(matcher) = &mut matcher {
             for calculated in matcher.calculated_type_vars.iter_mut() {
                 if calculated.type_.is_some() {
-                    calculated.defined_by_result_type = true;
+                    calculated.defined_by_result_context = true;
                 }
             }
         }
