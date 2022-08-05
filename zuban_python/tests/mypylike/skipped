@@ -6,6 +6,7 @@ testBoundOnGenericFunction
 
 testIncompatibleContextInference
 testGenericOverloadVariant
+nested_generic_mismatch_*
 
 unite_type_vars_mypy_issue_5874
 
