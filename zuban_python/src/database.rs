@@ -495,32 +495,12 @@ impl GenericsList {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
-        if let Some(matcher) = matcher {
-            // TODO is there no better way than writing this twice???
-            self.0
-                .iter()
-                .map(|g| g.format(i_s, Some(matcher), style))
-                .fold(String::new(), |a, b| {
-                    if a.is_empty() {
-                        a + &b
-                    } else {
-                        a + ", " + &b
-                    }
-                })
-                .into()
-        } else {
-            self.0
-                .iter()
-                .map(|g| g.format(i_s, None, style))
-                .fold(String::new(), |a, b| {
-                    if a.is_empty() {
-                        a + &b
-                    } else {
-                        a + ", " + &b
-                    }
-                })
-                .into()
-        }
+        self.0
+            .iter()
+            .map(|g| g.format(i_s, matcher, style))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .into()
     }
 
     fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
