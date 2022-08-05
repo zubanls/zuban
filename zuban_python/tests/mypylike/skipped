@@ -1,7 +1,4 @@
 # Next up
-testIgnoringInferenceContext
-testInferenceInGenericFunction
-
 testInferSimpleGenericFunction
 testInferringGenericFunctionTypeForLvar
 testInferenceWithMultipleConstraints
