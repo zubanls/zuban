@@ -217,11 +217,11 @@ fn calculate_type_vars<'db>(
         None => {
             if let FunctionOrCallable::Function(_, function) = func_or_callable {
                 if let Some(func_class) = function.class {
-                    func_class.type_vars(i_s).map(|type_vars| {
+                    func_class.type_vars(i_s).map(|_| {
                         TypeVarMatcher::new(
                             func_or_callable,
                             match_in_definition,
-                            &mut calculated_type_vars, // TODO There rae no type vars in there, should set it to 0
+                            &mut calculated_type_vars, // TODO There are no type vars in there, should set it to 0
                         )
                     })
                 } else {
