@@ -303,15 +303,7 @@ impl<'db, 'a> TupleClass<'a> {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
-        format!(
-            "{}{}",
-            match style {
-                FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
-                FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
-            },
-            &self.content.format(i_s, matcher, style)
-        )
-        .into()
+        self.content.format(i_s, matcher, style)
     }
 }
 

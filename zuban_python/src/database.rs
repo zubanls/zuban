@@ -607,15 +607,7 @@ impl DbType {
                 Box::from(t.type_var.name(i_s.db))
             }
             Self::Type(db_type) => format!("Type[{}]", db_type.format(i_s, matcher, style)).into(),
-            Self::Tuple(content) => format!(
-                "{}{}",
-                match style {
-                    FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
-                    FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
-                },
-                &content.format(i_s, matcher, style)
-            )
-            .into(),
+            Self::Tuple(content) => content.format(i_s, matcher, style),
             Self::Callable(content) => content.format(i_s, matcher, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
@@ -812,16 +804,20 @@ impl TupleContent {
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
-    ) -> String {
+    ) -> Box<str> {
+        let base = match style {
+            FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
+            FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
+        };
         if let Some(generics) = self.generics.as_ref() {
             let list = generics.format(i_s, matcher, style);
             if self.arbitrary_length {
-                format!("[{list}, ...]")
+                format!("{base}[{list}, ...]").into()
             } else {
-                format!("[{list}]")
+                format!("{base}[{list}]").into()
             }
         } else {
-            "[Any, ...]".to_owned()
+            format!("{base}[Any, ...]").into()
         }
     }
 }
