@@ -1168,13 +1168,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         {
                             class.type_check_init_func(
                                 self.i_s,
-                                &SimpleArguments::new(
-                                    f,
-                                    node_index,
-                                    details,
-                                    x.as_ref(),
-                                    Some(class),
-                                ),
+                                &SimpleArguments::new(f, node_index, details, x.as_ref()),
                                 result_context,
                                 &on_type_error,
                             );
@@ -1188,20 +1182,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         debug!("Execute {}", value.name());
                         value.execute(
                             i_s,
-                            &SimpleArguments::new(
-                                f,
-                                node_index,
-                                details,
-                                x.as_ref(),
-                                value.as_class().cloned(),
-                            ),
+                            &SimpleArguments::new(f, node_index, details, x.as_ref()),
                             result_context,
                             &on_type_error,
                         )
                     },
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {
-                        let args = SimpleArguments::new(f, node_index, details, x.as_ref(), None);
+                        let args = SimpleArguments::new(f, node_index, details, x.as_ref());
                         // Still need to calculate diagnostics for all the arguments
                         for arg in args.iter_arguments() {
                             arg.infer(i_s);

@@ -10,7 +10,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function};
+use crate::value::Function;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -36,7 +36,6 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node_index: NodeIndex,
     details: ArgumentsDetails<'a>,
     in_: Option<&'a Execution>,
-    class_of_method: Option<Class<'db, 'a>>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
@@ -75,20 +74,18 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 }
 
-impl<'db, 'a> SimpleArguments<'db, 'a> {
+impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
         in_: Option<&'a Execution>,
-        class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
         Self {
             file,
             primary_node_index,
             details,
             in_,
-            class_of_method,
         }
     }
 
@@ -96,11 +93,10 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
-        class_of_method: Option<Class<'db, 'a>>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node.index(), details, in_, class_of_method)
+                Self::new(file, primary_node.index(), details, in_)
             }
             _ => unreachable!(),
         }
@@ -111,17 +107,6 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
         todo!()
         // details = ...
         //Self::from_primary(f, primary, execution.in_.as_deref(), None)
-    }
-
-    fn with_class_method(&self, class: Class<'db, 'a>) -> Self {
-        debug_assert!(self.class_of_method.is_none());
-        Self::new(
-            self.file,
-            self.primary_node_index,
-            self.details,
-            self.in_,
-            Some(class),
-        )
     }
 }
 

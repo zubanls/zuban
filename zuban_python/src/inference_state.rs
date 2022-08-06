@@ -2,7 +2,7 @@ use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
 use crate::value::{Class, Function};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'db, 'a>),
