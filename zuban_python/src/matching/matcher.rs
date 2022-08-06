@@ -62,50 +62,46 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         variance: Variance,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
-        let mut mismatch_constraints = !type_var.restrictions.is_empty()
-            && !type_var.restrictions.iter().any(|t| {
-                Type::from_db_type(i_s.db, t)
-                    .matches(i_s, None, value_type, Variance::Covariant)
-                    .bool()
-            });
-        if let Some(bound) = &type_var.bound {
-            mismatch_constraints = mismatch_constraints
-                || !Type::from_db_type(i_s.db, bound)
-                    .matches(i_s, None, value_type, Variance::Covariant)
-                    .bool();
-        }
-        if mismatch_constraints {
-            return Match::False(MismatchReason::ConstraintMismatch {
-                expected: value_type.as_db_type(i_s),
-                type_var: type_var_usage.type_var.clone(),
-            });
-        }
-
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
             if let Some(current_type) = &current.type_ {
                 let current_type = Type::from_db_type(i_s.db, current_type);
                 let m = current_type.matches(i_s, None, value_type, variance);
                 if m.bool() {
-                    m
+                    return m;
                 } else if current.defined_by_result_context {
-                    Match::new_false()
-                } else if value_type
+                    return Match::new_false();
+                // In case A(B) and B are given, use B, because it's the super class.
+                } else if !value_type
                     .matches(i_s, None, &current_type, variance)
                     .bool()
                 {
-                    // In case A(B) and B are given, use B, because it's the super class.
-                    current.type_ = Some(value_type.as_db_type(i_s));
-                    Match::True
-                } else {
-                    Match::False(MismatchReason::CannotInferTypeArgument(
+                    return Match::False(MismatchReason::CannotInferTypeArgument(
                         type_var_usage.index,
-                    ))
+                    ));
                 }
-            } else {
-                current.type_ = Some(value_type.as_db_type(i_s));
-                Match::True
             }
+            // Before setting the type var, we need to check if the constraints match.
+            let mut mismatch_constraints = !type_var.restrictions.is_empty()
+                && !type_var.restrictions.iter().any(|t| {
+                    Type::from_db_type(i_s.db, t)
+                        .matches(i_s, None, value_type, Variance::Covariant)
+                        .bool()
+                });
+            if let Some(bound) = &type_var.bound {
+                mismatch_constraints = mismatch_constraints
+                    || !Type::from_db_type(i_s.db, bound)
+                        .matches(i_s, None, value_type, Variance::Covariant)
+                        .bool();
+            }
+            if mismatch_constraints {
+                return Match::False(MismatchReason::ConstraintMismatch {
+                    expected: value_type.as_db_type(i_s),
+                    type_var: type_var_usage.type_var.clone(),
+                });
+            }
+            current.type_ = Some(value_type.as_db_type(i_s));
+            Match::True
         } else {
             if let Some(parent_matcher) = self.parent_matcher.as_mut() {
                 return parent_matcher.match_or_add_type_var(

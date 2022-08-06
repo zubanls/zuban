@@ -105,18 +105,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 variance,
                             );
                             if !matches!(m, Match::False(MismatchReason::None)) {
-                                // The other mismatch reasons mean that the class kind of matched,
-                                // but some generics had issues.
-                                if i != 0
-                                    && matches!(
-                                        m,
-                                        Match::False(MismatchReason::ConstraintMismatch { .. })
-                                    )
-                                {
-                                    // It's only a constraint mismatch, if the first did not match
-                                    // the constraints. Otherwise it's just a regular mismatch.
-                                    return Match::new_false();
-                                }
                                 return m;
                             }
                         }
