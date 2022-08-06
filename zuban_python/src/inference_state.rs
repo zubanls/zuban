@@ -6,6 +6,7 @@ use crate::value::{Class, Function};
 pub enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'db, 'a>),
+    DiagnosticFunction,
     Class(&'a Class<'db, 'a>),
 }
 
@@ -52,7 +53,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                 .class
                 .as_ref()
                 .map(Context::DiagnosticClass)
-                .unwrap_or(Context::None),
+                .unwrap_or(Context::DiagnosticFunction),
         }
     }
 
@@ -88,7 +89,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn is_diagnostic(&self) -> bool {
-        matches!(self.context, Context::DiagnosticClass(_))
+        matches!(
+            self.context,
+            Context::DiagnosticClass(_) | Context::DiagnosticFunction
+        )
     }
 
     pub fn run_with_execution<T>(
