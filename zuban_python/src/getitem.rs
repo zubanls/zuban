@@ -6,7 +6,7 @@ use parsa_python_ast::{
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
 use crate::database::Execution;
 use crate::file::PythonFile;
-use crate::inference_state::InferenceState;
+use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::Function;
@@ -37,8 +37,11 @@ impl<'db: 'a, 'a> SliceType<'db, 'a> {
         NodeRef::new(self.file, self.node_index)
     }
 
-    pub fn as_args<'x>(&'x self) -> SliceArguments<'db, 'x> {
-        SliceArguments(self)
+    pub fn as_args<'x>(&'x self, context: Context<'db, 'x>) -> SliceArguments<'db, 'x> {
+        SliceArguments {
+            slice_type: self,
+            context,
+        }
     }
 
     pub fn unpack(&self) -> SliceTypeContent<'db, 'a> {
@@ -183,11 +186,14 @@ impl<'db, 'a> Iterator for SliceTypeIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct SliceArguments<'db, 'a>(&'a SliceType<'db, 'a>);
+pub struct SliceArguments<'db, 'a> {
+    slice_type: &'a SliceType<'db, 'a>,
+    context: Context<'db, 'a>,
+}
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new_slice(*self.0)
+        ArgumentIterator::new_slice(*self.slice_type, self.context)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -215,6 +221,6 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     }
 
     fn as_node_ref(&self) -> NodeRef<'db> {
-        self.0.as_node_ref()
+        self.slice_type.as_node_ref()
     }
 }

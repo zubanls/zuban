@@ -41,15 +41,18 @@ pub struct SimpleArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(match self.details {
-            ArgumentsDetails::Node(arguments) => {
-                ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
-            }
-            ArgumentsDetails::Comprehension(comprehension) => {
-                ArgumentIteratorBase::Comprehension(self.file, comprehension)
-            }
-            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
-        })
+        ArgumentIterator::new(
+            match self.details {
+                ArgumentsDetails::Node(arguments) => {
+                    ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
+                }
+                ArgumentsDetails::Comprehension(comprehension) => {
+                    ArgumentIteratorBase::Comprehension(self.file, comprehension)
+                }
+                ArgumentsDetails::None => ArgumentIteratorBase::Finished,
+            },
+            self.context,
+        )
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -123,7 +126,10 @@ pub struct KnownArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
+        ArgumentIterator::new(
+            ArgumentIteratorBase::Inferred(self.inferred, self.node_ref),
+            Context::None,
+        )
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -400,21 +406,24 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 #[derive(Debug)]
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
+    context: Context<'db, 'a>,
     next: Option<&'a dyn Arguments<'db>>,
 }
 
 impl<'db, 'a> ArgumentIterator<'db, 'a> {
-    fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
+    fn new(current: ArgumentIteratorBase<'db, 'a>, context: Context<'db, 'a>) -> Self {
         Self {
             current,
             next: None,
+            context,
         }
     }
 
-    pub fn new_slice(slice_type: SliceType<'db, 'a>) -> Self {
+    pub fn new_slice(slice_type: SliceType<'db, 'a>, context: Context<'db, 'a>) -> Self {
         Self {
             current: ArgumentIteratorBase::SliceType(slice_type),
             next: None,
+            context,
         }
     }
 
@@ -458,7 +467,7 @@ impl<'db> NoArguments<'db> {
 
 impl<'db> Arguments<'db> for NoArguments<'db> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Finished)
+        ArgumentIterator::new(ArgumentIteratorBase::Finished, Context::None)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

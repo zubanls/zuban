@@ -100,6 +100,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
     ) -> Inferred<'db> {
+        let args = slice_type.as_args(i_s.context);
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.db,
@@ -111,7 +112,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         .run_on_value(i_s, &mut |i_s, v| {
             v.execute(
                 i_s,
-                &slice_type.as_args(),
+                &args,
                 &ResultContext::Unknown,
                 &|i_s, node_ref, class, function, p, actual, expected| {
                     node_ref.add_typing_issue(
