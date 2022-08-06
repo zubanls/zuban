@@ -1,5 +1,4 @@
 # Next up
-testBoundOnGenericFunction
 testInferTypeVariableFromTwoGenericTypes4
 
 # union type var stuff
