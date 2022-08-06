@@ -20,7 +20,7 @@ use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
 use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
-use crate::inference_state::{Context, InferenceState};
+use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
 use crate::matching::ResultContext;
@@ -1412,7 +1412,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             .map(|(f, _)| f.node_ref.node_index == star_import.scope)
                             .or_else(|| {
                                 self.i_s
-                                    .current_class
+                                    .current_class()
                                     .map(|c| c.node_ref.node_index == star_import.scope)
                             })
                             .unwrap_or(false))
@@ -1507,7 +1507,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         {
                             let func = Function::new(
                                 NodeRef::new(self.file, func.index()),
-                                self.i_s.current_class.copied(),
+                                self.i_s.current_class().copied(),
                             );
                             func.type_vars(self.i_s);
                         }
@@ -1574,17 +1574,14 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     Specific::AnnotationWithTypeVars => {
                         // For variable annotations like a: int
                         // TODO is this really the right place?
-                        match self.i_s.context {
-                            Context::Diagnostics => {
-                                return Inferred::new_saved(self.file, node_index, point)
-                            }
-                            Context::Inference => (),
+                        if self.i_s.is_diagnostic() {
+                            return Inferred::new_saved(self.file, node_index, point);
                         }
                         let d =
                             self.use_db_type_of_annotation(node_index)
                                 .remap_type_vars(&mut |t| match t.type_ {
                                     TypeVarType::Class => {
-                                        if let Some(class) = self.i_s.current_class {
+                                        if let Some(class) = self.i_s.current_class() {
                                             class.generics().nth(self.i_s, t.index)
                                         } else {
                                             todo!()

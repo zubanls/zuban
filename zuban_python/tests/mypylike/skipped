@@ -1,4 +1,7 @@
 # Next up
+testGenericFunctionWithTypeTypeAsCallable
+testUseCovariantGenericOuterContextUserDefined
+
 testBoundOnGenericFunction
 testInferenceInGenericClass
 testInferTypeVariableFromTwoGenericTypes4

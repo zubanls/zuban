@@ -2,17 +2,17 @@ use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{Database, Execution};
 use crate::value::{Class, Function};
 
-#[derive(Debug, PartialEq)]
-pub enum Context {
-    Diagnostics,
-    Inference,
+#[derive(Debug)]
+pub enum Context<'db, 'a> {
+    None,
+    DiagnosticClass(&'a Class<'db, 'a>),
+    Class(&'a Class<'db, 'a>),
 }
 
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     pub current_execution: Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)>,
-    pub current_class: Option<&'a Class<'db, 'a>>,
-    pub context: Context,
+    pub context: Context<'db, 'a>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -20,8 +20,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db,
             current_execution: None,
-            current_class: None,
-            context: Context::Inference,
+            context: Context::None,
         }
     }
 
@@ -33,8 +32,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             current_execution: Some((func, args)),
-            current_class: func.class.as_ref(),
-            context: Context::Inference,
+            context: func
+                .class
+                .as_ref()
+                .map(Context::Class)
+                .unwrap_or(Context::None),
         }
     }
 
@@ -46,8 +48,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             current_execution: Some((func, args)),
-            current_class: func.class.as_ref(),
-            context: Context::Diagnostics,
+            context: func
+                .class
+                .as_ref()
+                .map(Context::DiagnosticClass)
+                .unwrap_or(Context::None),
         }
     }
 
@@ -55,8 +60,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             current_execution: None,
-            current_class: None,
-            context: Context::Inference,
+            context: Context::None,
         }
     }
 
@@ -64,8 +68,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             current_execution: self.current_execution,
-            current_class: Some(current_class),
-            context: Context::Inference,
+            context: Context::Class(current_class),
         }
     }
 
@@ -73,9 +76,19 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             current_execution: self.current_execution,
-            current_class: Some(current_class),
-            context: Context::Diagnostics,
+            context: Context::DiagnosticClass(current_class),
         }
+    }
+
+    pub fn current_class(&self) -> Option<&'a Class<'db, 'a>> {
+        match &self.context {
+            Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            _ => None,
+        }
+    }
+
+    pub fn is_diagnostic(&self) -> bool {
+        matches!(self.context, Context::DiagnosticClass(_))
     }
 
     pub fn run_with_execution<T>(

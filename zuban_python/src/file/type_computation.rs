@@ -219,7 +219,7 @@ pub(super) fn type_computation_for_variable_annotation(
     type_var: Rc<TypeVar>,
     node_ref: NodeRef,
 ) -> Option<TypeVarUsage> {
-    if let Some(class) = i_s.current_class {
+    if let Some(class) = i_s.current_class() {
         if let Some(usage) = class.type_vars(i_s).and_then(|t| {
             t.find(
                 type_var.clone(),

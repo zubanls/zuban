@@ -152,7 +152,7 @@ impl<'db> Inferred<'db> {
             }
             DbType::TypeVar(ref t) => {
                 if t.type_ == TypeVarType::Class {
-                    if let Some(class) = i_s.current_class {
+                    if let Some(class) = i_s.current_class() {
                         let g = class.generics().nth(i_s, t.index);
                         return Inferred::execute_db_type(i_s, g);
                     }
