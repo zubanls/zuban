@@ -180,14 +180,19 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 FunctionOrCallable::Function(class, f) => {
                     if let Some(class) = class {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
-                            let t = class.generics.nth(i_s, type_var_usage.index);
-                            return Type::from_db_type(i_s.db, &t).format(i_s, None, style);
+                            return class
+                                .generics
+                                .nth(i_s, type_var_usage.index)
+                                .format(i_s, None, style);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = type_var_remap.nth(type_var_usage.index).unwrap();
-                            Type::from_db_type(i_s.db, g).format(i_s, Some(self), style)
+                            type_var_remap.nth(type_var_usage.index).unwrap().format(
+                                i_s,
+                                Some(self),
+                                style,
+                            )
                         } else {
                             todo!()
                         }
