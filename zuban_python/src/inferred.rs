@@ -12,7 +12,7 @@ use crate::database::{
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
-use crate::inference_state::InferenceState;
+use crate::inference_state::{Context, InferenceState};
 use crate::matching::{ClassLike, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
@@ -302,8 +302,12 @@ impl<'db> Inferred<'db> {
             Specific::InstanceWithArguments => {
                 let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
                 let class = inf_cls.maybe_class(i_s).unwrap();
-                let args =
-                    SimpleArguments::from_primary(definition.file, definition.as_primary(), None);
+                let args = SimpleArguments::from_primary(
+                    definition.file,
+                    definition.as_primary(),
+                    None,
+                    Context::None,
+                );
                 let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
@@ -593,6 +597,7 @@ impl<'db> Inferred<'db> {
                             definition.file,
                             definition.as_primary(),
                             None,
+                            i_s.context,
                         );
                         let init = class.simple_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(match args.as_execution(&init) {

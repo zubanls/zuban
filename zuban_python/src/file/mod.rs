@@ -1161,6 +1161,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .i_s
                     .current_execution
                     .and_then(|x| x.1.as_execution(x.0));
+                let args =
+                    SimpleArguments::new(f, node_index, details, x.as_ref(), self.i_s.context);
                 if x.is_none() && !is_target {
                     if let Some(class) = base.maybe_class(self.i_s) {
                         if class.type_vars(self.i_s).is_none()
@@ -1168,7 +1170,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         {
                             class.type_check_init_func(
                                 self.i_s,
-                                &SimpleArguments::new(f, node_index, details, x.as_ref()),
+                                &args,
                                 result_context,
                                 &on_type_error,
                             );
@@ -1180,16 +1182,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.i_s,
                     &mut |i_s, value| {
                         debug!("Execute {}", value.name());
-                        value.execute(
-                            i_s,
-                            &SimpleArguments::new(f, node_index, details, x.as_ref()),
-                            result_context,
-                            &on_type_error,
-                        )
+                        value.execute(i_s, &args, result_context, &on_type_error)
                     },
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {
-                        let args = SimpleArguments::new(f, node_index, details, x.as_ref());
                         // Still need to calculate diagnostics for all the arguments
                         for arg in args.iter_arguments() {
                             arg.infer(i_s);

@@ -7,7 +7,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
-use crate::inference_state::InferenceState;
+use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::Function;
@@ -36,6 +36,7 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node_index: NodeIndex,
     details: ArgumentsDetails<'a>,
     in_: Option<&'a Execution>,
+    context: Context<'db, 'a>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
@@ -74,18 +75,20 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 }
 
-impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
+impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         file: &'db PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
         in_: Option<&'a Execution>,
+        context: Context<'db, 'a>,
     ) -> Self {
         Self {
             file,
             primary_node_index,
             details,
             in_,
+            context,
         }
     }
 
@@ -93,10 +96,11 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
+        context: Context<'db, 'a>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node.index(), details, in_)
+                Self::new(file, primary_node.index(), details, in_, context)
             }
             _ => unreachable!(),
         }
