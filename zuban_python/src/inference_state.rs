@@ -6,13 +6,13 @@ use crate::value::{Class, Function};
 pub enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'db, 'a>),
-    DiagnosticFunction,
     Class(&'a Class<'db, 'a>),
+    DiagnosticExecution(&'a Function<'db, 'a>, &'a dyn Arguments<'db>),
+    Execution(&'a Function<'db, 'a>, &'a dyn Arguments<'db>),
 }
 
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
-    pub current_execution: Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)>,
     pub context: Context<'db, 'a>,
 }
 
@@ -20,7 +20,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn new(db: &'db Database) -> Self {
         Self {
             db,
-            current_execution: None,
             context: Context::None,
         }
     }
@@ -28,7 +27,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn with_context(&self, context: Context<'db, 'a>) -> Self {
         Self {
             db: self.db,
-            current_execution: None,
             context,
         }
     }
@@ -40,12 +38,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     ) -> Self {
         Self {
             db: self.db,
-            current_execution: Some((func, args)),
-            context: func
-                .class
-                .as_ref()
-                .map(Context::Class)
-                .unwrap_or(Context::None),
+            context: Context::Execution(func, args),
         }
     }
 
@@ -56,19 +49,13 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     ) -> Self {
         Self {
             db: self.db,
-            current_execution: Some((func, args)),
-            context: func
-                .class
-                .as_ref()
-                .map(Context::DiagnosticClass)
-                .unwrap_or(Context::DiagnosticFunction),
+            context: Context::DiagnosticExecution(func, args),
         }
     }
 
     pub fn with_annotation_instance(&self) -> Self {
         Self {
             db: self.db,
-            current_execution: None,
             context: Context::None,
         }
     }
@@ -76,7 +63,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn with_class_context(&self, current_class: &'a Class<'db, 'a>) -> Self {
         Self {
             db: self.db,
-            current_execution: self.current_execution,
             context: Context::Class(current_class),
         }
     }
@@ -84,14 +70,30 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn with_diagnostic_class_context(&self, current_class: &'a Class<'db, 'a>) -> Self {
         Self {
             db: self.db,
-            current_execution: self.current_execution,
             context: Context::DiagnosticClass(current_class),
+        }
+    }
+
+    pub fn current_function(&self) -> Option<&'a Function<'db, 'a>> {
+        match &self.context {
+            Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => Some(func),
+            _ => None,
+        }
+    }
+
+    pub fn current_execution(&self) -> Option<(&'a Function<'db, 'a>, &'a dyn Arguments<'db>)> {
+        match &self.context {
+            Context::DiagnosticExecution(f, a) | Context::Execution(f, a) => Some((f, *a)),
+            _ => None,
         }
     }
 
     pub fn current_class(&self) -> Option<&'a Class<'db, 'a>> {
         match &self.context {
             Context::DiagnosticClass(c) | Context::Class(c) => Some(c),
+            Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => {
+                func.class.as_ref()
+            }
             _ => None,
         }
     }
@@ -99,7 +101,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn is_diagnostic(&self) -> bool {
         matches!(
             self.context,
-            Context::DiagnosticClass(_) | Context::DiagnosticFunction
+            Context::DiagnosticClass(_) | Context::DiagnosticExecution(..)
         )
     }
 
@@ -115,7 +117,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     }
 
     pub fn args_as_execution(&self) -> Option<Execution> {
-        self.current_execution
+        self.current_execution()
             .and_then(|(func, args)| args.as_execution(func))
     }
 }

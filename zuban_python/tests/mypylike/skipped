@@ -1,13 +1,4 @@
 # Next up
-testNewAnalyzerClassVariableOrdering
-testImportWithStubIncompatibleType
-testClassModuleAlias
-testPermissiveAttribute
-testTwoPassTypeChecking
-testMultipleAssignment
-testMultipleLvalues
-testClassVariableOrderingRefresh
-
 testBoundOnGenericFunction
 testInferTypeVariableFromTwoGenericTypes4
 

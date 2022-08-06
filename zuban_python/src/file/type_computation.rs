@@ -230,7 +230,7 @@ pub(super) fn type_computation_for_variable_annotation(
             return Some(usage);
         }
     }
-    if let Some((func, _)) = i_s.current_execution {
+    if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
             let usage = type_vars.find(
                 type_var.clone(),

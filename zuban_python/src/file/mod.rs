@@ -1157,7 +1157,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 };
                 let x = self
                     .i_s
-                    .current_execution
+                    .current_execution()
                     .and_then(|x| x.1.as_execution(x.0));
                 let args =
                     SimpleArguments::new(f, node_index, details, x.as_ref(), self.i_s.context);
@@ -1390,8 +1390,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     || check_local
                         && self
                             .i_s
-                            .current_execution
-                            .map(|(f, _)| f.node_ref.node_index == star_import.scope)
+                            .current_function()
+                            .map(|f| f.node_ref.node_index == star_import.scope)
                             .or_else(|| {
                                 self.i_s
                                     .current_class()
@@ -1525,7 +1525,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     )
                                 }
                             }
-                        } else if let Some((function, args)) = self.i_s.current_execution {
+                        } else if let Some((function, args)) = self.i_s.current_execution() {
                             function
                                 .infer_param(self.i_s, node_index, args)
                                 .resolve_function_return(self.i_s)
