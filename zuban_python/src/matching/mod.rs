@@ -3,6 +3,7 @@ mod generics;
 mod match_;
 mod matcher;
 pub mod params;
+mod result_context;
 mod type_;
 
 pub use class_like::ClassLike;
@@ -13,10 +14,5 @@ pub use matcher::{
     TypeVarMatcher,
 };
 pub use params::{matches_params, overload_has_overlapping_params};
+pub use result_context::ResultContext;
 pub use type_::Type;
-
-#[derive(Clone, Debug)]
-pub enum ResultContext<'db, 'a> {
-    Known(Type<'db, 'a>),
-    Unknown,
-}
