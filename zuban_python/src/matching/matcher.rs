@@ -397,9 +397,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if let Some(argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
                 let value = argument.infer(i_s);
-                let value_class = value.class_as_type(i_s);
-
-                let on_type_error = on_type_error;
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
                     matcher.as_deref_mut(),
