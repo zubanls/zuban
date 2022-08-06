@@ -5,7 +5,7 @@ use parsa_python_ast::PrimaryContent;
 
 use super::class::MroIterator;
 use super::{Instance, IteratorContent, LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, Arguments};
+use crate::arguments::{ArgumentType, Arguments};
 use crate::base_description;
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, GenericsList, PointLink, Specific, TupleContent,
@@ -715,7 +715,7 @@ pub fn maybe_type_var<'db>(
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
-        let result = if let Argument::Positional(_, name_node) = first_arg {
+        let result = if let ArgumentType::Positional(_, name_node) = first_arg.type_ {
             name_node
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -751,8 +751,8 @@ pub fn maybe_type_var<'db>(
         let mut covariant = false;
         let mut contravariant = false;
         for arg in iterator {
-            match arg {
-                Argument::Positional(_, node) => {
+            match arg.type_ {
+                ArgumentType::Positional(_, node) => {
                     let mut inference = node.file.inference(i_s);
                     if let Some(t) = inference
                         .compute_type_var_constraint(node.as_named_expression().expression())
@@ -762,7 +762,7 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 }
-                Argument::Keyword(name, node) => match name {
+                ArgumentType::Keyword(name, node) => match name {
                     "covariant" => {
                         let code = node.as_expression().as_code();
                         match code {
@@ -820,8 +820,8 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 },
-                Argument::Inferred(v, _) => unreachable!(),
-                Argument::SlicesTuple(slices) => return None,
+                ArgumentType::Inferred(v, _) => unreachable!(),
+                ArgumentType::SlicesTuple(slices) => return None,
             }
         }
         if restrictions.len() == 1 {

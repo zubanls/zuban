@@ -209,7 +209,7 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum Argument<'db, 'a> {
+pub enum ArgumentType<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(&'a str, NodeRef<'db>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
@@ -218,7 +218,13 @@ pub enum Argument<'db, 'a> {
     SlicesTuple(Slices<'db, 'a>),
 }
 
-impl<'db, 'a> Argument<'db, 'a> {
+#[derive(Debug, Copy, Clone)]
+pub struct Argument<'db, 'a> {
+    pub type_: ArgumentType<'db, 'a>,
+    context: Context<'db, 'a>,
+}
+
+impl<'db, 'a> ArgumentType<'db, 'a> {
     fn new_argument(position: usize, file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self::Positional(position, NodeRef { file, node_index })
     }
@@ -226,25 +232,28 @@ impl<'db, 'a> Argument<'db, 'a> {
     fn new_keyword_argument(file: &'db PythonFile, name: &'a str, node_index: NodeIndex) -> Self {
         Self::Keyword(name, NodeRef { file, node_index })
     }
+}
 
+impl<'db, 'a> Argument<'db, 'a> {
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
-        match self {
-            Self::Inferred(inferred, _) => (*inferred).clone(),
-            Self::Positional(_, reference) => {
+        let mut i_s = i_s.with_context(self.context);
+        match self.type_ {
+            ArgumentType::Inferred(inferred, _) => (*inferred).clone(),
+            ArgumentType::Positional(_, reference) => {
                 reference
                     .file
                     // TODO this execution is wrong
-                    .inference(i_s)
+                    .inference(&mut i_s)
                     .infer_named_expression(reference.as_named_expression())
             }
-            Self::Keyword(_, reference) => reference
+            ArgumentType::Keyword(_, reference) => reference
                 .file
-                .inference(i_s)
+                .inference(&mut i_s)
                 .infer_expression(reference.as_expression()),
-            Self::SlicesTuple(slices) => {
+            ArgumentType::SlicesTuple(slices) => {
                 let parts = slices
                     .iter()
-                    .map(|x| x.infer(i_s).class_as_db_type(i_s))
+                    .map(|x| x.infer(&mut i_s).class_as_db_type(&mut i_s))
                     .collect();
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
                     TupleContent {
@@ -257,27 +266,27 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
-        match self {
-            Self::Positional(_, node_ref) => *node_ref,
-            Self::Keyword(_, node_ref) => *node_ref,
-            Self::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
+        match &self.type_ {
+            ArgumentType::Positional(_, node_ref) => *node_ref,
+            ArgumentType::Keyword(_, node_ref) => *node_ref,
+            ArgumentType::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
-            Self::SlicesTuple(slices) => todo!(),
+            ArgumentType::SlicesTuple(slices) => todo!(),
         }
     }
 
     pub fn index(&self) -> String {
-        match self {
-            Self::Positional(index, _) => format!("{index}"),
-            Self::Keyword(kw, _) => format!("{kw:?}"),
-            Self::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
-            Self::SlicesTuple(_) => todo!(),
+        match self.type_ {
+            ArgumentType::Positional(index, _) => format!("{index}"),
+            ArgumentType::Keyword(kw, _) => format!("{kw:?}"),
+            ArgumentType::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
+            ArgumentType::SlicesTuple(_) => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Argument::Keyword(_, _))
+        matches!(self.type_, ArgumentType::Keyword(_, _))
     }
 }
 
@@ -345,13 +354,13 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
-    type Item = Argument<'db, 'a>;
+    type Item = ArgumentType<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
-                    Some(Argument::Inferred(inf, node_ref))
+                    Some(ArgumentType::Inferred(inf, node_ref))
                 } else {
                     unreachable!()
                 }
@@ -380,7 +389,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 None
             }
             Self::Comprehension(file, comprehension) => {
-                Some(Argument::new_argument(1, file, comprehension.index()))
+                Some(ArgumentType::new_argument(1, file, comprehension.index()))
             }
             Self::Finished => None,
             Self::SliceType(slice_type) => match slice_type.unpack() {
@@ -445,14 +454,20 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.current.next().or_else(|| {
-            if let Some(next) = self.next {
-                *self = next.iter_arguments();
-                self.next()
-            } else {
-                None
-            }
-        })
+        self.current
+            .next()
+            .map(|type_| Argument {
+                type_,
+                context: self.context,
+            })
+            .or_else(|| {
+                if let Some(next) = self.next {
+                    *self = next.iter_arguments();
+                    self.next()
+                } else {
+                    None
+                }
+            })
     }
 }
 

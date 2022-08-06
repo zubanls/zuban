@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
-use crate::arguments::{Argument, ArgumentIterator};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
 use crate::database::{CallableParam, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
@@ -252,9 +252,9 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
         }
         self.params.next().and_then(|param| {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-                match unused {
-                    Argument::Keyword(name, reference) => {
-                        if Some(*name) == param.name() {
+                match unused.type_ {
+                    ArgumentType::Keyword(name, reference) => {
+                        if Some(name) == param.name() {
                             return Some(InferrableParam2 {
                                 param,
                                 argument: Some(self.unused_keyword_arguments.remove(i)),
@@ -268,8 +268,8 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
             match param.param_type() {
                 ParamType::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
-                        match arg {
-                            Argument::Keyword(name, reference) => {
+                        match arg.type_ {
+                            ArgumentType::Keyword(name, reference) => {
                                 if Some(name) == param.name() {
                                     argument = Some(arg);
                                     break;
@@ -286,8 +286,8 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 }
                 ParamType::KeywordOnly => {
                     for arg in &mut self.arguments {
-                        match arg {
-                            Argument::Keyword(name, reference) => {
+                        match arg.type_ {
+                            ArgumentType::Keyword(name, reference) => {
                                 if Some(name) == param.name() {
                                     argument = Some(arg);
                                     break;
@@ -302,9 +302,9 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 ParamType::PositionalOnly => {
                     argument = self.arguments.next();
                     if let Some(arg) = argument {
-                        match arg {
-                            Argument::Positional(_, _) => (),
-                            Argument::Keyword(_, _) => {
+                        match arg.type_ {
+                            ArgumentType::Positional(_, _) => (),
+                            ArgumentType::Keyword(_, _) => {
                                 self.unused_keyword_arguments.push(arg);
                                 argument = None;
                             }

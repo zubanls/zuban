@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
 use super::{Match, MismatchReason, ResultContext, SignatureMatch, Type};
-use crate::arguments::{Argument, Arguments};
+use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
 };
@@ -473,8 +473,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
-                match arg {
-                    Argument::Keyword(name, reference) => {
+                match arg.type_ {
+                    ArgumentType::Keyword(name, reference) => {
                         let mut s = format!("Unexpected keyword argument {name:?}");
                         if let Some(function) = function {
                             s += " for ";
@@ -498,8 +498,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     } else if !args_with_params.unused_keyword_arguments.is_empty() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
-            match unused {
-                Argument::Keyword(name, reference) => {
+            match unused.type_ {
+                ArgumentType::Keyword(name, reference) => {
                     let s = if let Some(function) = function {
                         if function
                             .node()

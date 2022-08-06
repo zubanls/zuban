@@ -25,6 +25,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn with_context(&self, context: Context<'db, 'a>) -> Self {
+        Self {
+            db: self.db,
+            current_execution: None,
+            context,
+        }
+    }
+
     pub fn with_func_and_args(
         &self,
         func: &'a Function<'db, 'a>,

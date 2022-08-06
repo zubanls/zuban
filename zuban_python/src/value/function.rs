@@ -6,7 +6,7 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
     GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVarManager, TypeVarType,
@@ -603,8 +603,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
 
     fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-            match unused {
-                Argument::Keyword(name, reference) => {
+            match &unused.type_ {
+                ArgumentType::Keyword(name, reference) => {
                     if *name == param.name().unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
@@ -615,8 +615,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         match param.param_type() {
             ParamType::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
-                    match argument {
-                        Argument::Keyword(name, reference) => {
+                    match argument.type_ {
+                        ArgumentType::Keyword(name, reference) => {
                             if name == param.name().unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
@@ -629,8 +629,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             }
             ParamType::KeywordOnly => {
                 for argument in &mut self.arguments {
-                    match argument {
-                        Argument::Keyword(name, reference) => {
+                    match argument.type_ {
+                        ArgumentType::Keyword(name, reference) => {
                             if name == param.name().unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {

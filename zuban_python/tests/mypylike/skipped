@@ -1,6 +1,14 @@
 # Next up
+testNewAnalyzerClassVariableOrdering
+testImportWithStubIncompatibleType
+testClassModuleAlias
+testPermissiveAttribute
+testTwoPassTypeChecking
+testMultipleAssignment
+testMultipleLvalues
+testClassVariableOrderingRefresh
+
 testBoundOnGenericFunction
-testInferenceInGenericClass
 testInferTypeVariableFromTwoGenericTypes4
 
 # union type var stuff
