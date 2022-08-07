@@ -212,7 +212,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 current
                     .type_
                     .clone()
-                    .unwrap_or_else(|| DbType::TypeVar(type_var_usage.clone()))
+                    // TODO is this Any here correct?
+                    .unwrap_or(DbType::Any)
             } else {
                 match self.func_or_callable {
                     FunctionOrCallable::Function(class, f) => {

@@ -352,6 +352,8 @@ testLocalVariableInferenceFromEmptyList
 testNestedListExpressions
 testContextForAttributeDeclaredInInit
 testListMultiplyInContext
+testEmptyListExpression
+testImportedTypeAliasInRuntimeContext
 
 # bottom up dict
 testDictionaryLiteralInContext
@@ -359,11 +361,6 @@ testDictionaryLiteralInContext
 # Type var self and access
 testInheritanceFromGenericWithImplicitDynamic
 testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
-
-# Type var formatting as nothing
-testInheritedConstructor
-testImportedTypeAliasInRuntimeContext
-testEmptyListExpression
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].
