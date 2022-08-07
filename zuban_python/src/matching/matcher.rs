@@ -82,12 +82,19 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
             // Before setting the type var, we need to check if the constraints match.
-            let mut mismatch_constraints = !type_var.restrictions.is_empty()
-                && !type_var.restrictions.iter().any(|t| {
-                    Type::from_db_type(i_s.db, t)
+            let mut mismatch_constraints = false;
+            if !type_var.restrictions.is_empty() {
+                for restriction in type_var.restrictions.iter() {
+                    if Type::from_db_type(i_s.db, restriction)
                         .matches(i_s, None, value_type, Variance::Covariant)
                         .bool()
-                });
+                    {
+                        current.type_ = Some(restriction.clone());
+                        return Match::True;
+                    }
+                }
+                mismatch_constraints = true;
+            }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints = mismatch_constraints
                     || !Type::from_db_type(i_s.db, bound)
