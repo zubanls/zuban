@@ -146,3 +146,57 @@ class Foo(Generic[T]):
 
 c: Callable[[int], int | list[str]]
 a: int = Foo[int]().add(c) # E: Argument 1 to "add" has incompatible type "Callable[[int], int | list[str]]"; expected "Callable[[int], int | list[int]]"
+
+[case union_context_class_matching]
+from typing import TypeVar, Generic
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def __init__(self, t: T): ...
+
+a: Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+b: Foo[str] = Foo("")
+
+c: Foo[int] | int = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+d: Foo[str] | str = Foo("")
+
+c: int | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+d: str | Foo[str] = Foo("")
+
+[case union_context_class_matching_with_any]
+from typing import TypeVar, Generic, Any
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    def __init__(self, t: T): ...
+
+c: Foo[int] | Any = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+d: Foo[str] | Any = Foo("")
+
+c: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
+d: Any | Foo[str] = Foo("")
+
+[case union_context_class_matching_with_overload]
+from typing import TypeVar, Generic, overload
+T = TypeVar('T')
+
+class Foo(Generic[T]):
+    @overload
+    def __init__(self, t: T): ...
+    @overload
+    def __init__(self, t: list[T]): ...
+    def __init__(self, t): ...
+
+x: Foo[int] | int = Foo("")
+y: Foo[str] | str = Foo("")
+
+# TODO this should generate errors
+lst: list[str]
+x = Foo(lst)
+y = Foo(lst)
+
+[out]
+main:11: error: No overload variant of "Foo" matches argument type "str"
+main:11: note: Possible overload variants:
+main:11: note:     def __init__(self, t: T) -> Any
+main:11: note:     def __init__(self, t: list[T]) -> Any

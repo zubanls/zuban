@@ -22,6 +22,7 @@ type_var_value_restriction_in_callable
 subtyping_only_result_generics
 subtyping_complex_generics
 callable_cannot_infer_type_var
+union_context_class_matching_with_any
 testUseCovariantGenericOuterContext
 
 testFunctionSubtypingWithVoid
