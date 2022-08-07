@@ -295,6 +295,20 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    pub fn any(
+        &self,
+        db: &'db Database,
+        callable: &mut impl FnMut(&ClassLike<'db, '_>) -> bool,
+    ) -> bool {
+        match self {
+            Self::ClassLike(class_like) => callable(class_like),
+            Self::Union(list) => list
+                .iter()
+                .any(|t| Type::from_db_type(db, t).any(db, callable)),
+            Self::Any => true,
+        }
+    }
+
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,

@@ -380,22 +380,40 @@ fn calculate_type_vars<'db>(
         }
     };
     result_context.with_type_if_exists(i_s, |i_s, type_| {
-        let result_type = if let Some(class) = expected_return_class {
-            Type::ClassLike(ClassLike::Class(*class))
+        if let Some(class) = expected_return_class {
+            // This is kind of a special case. Since __init__ has no return annotation, we simply
+            // check if the classes match and then push the generics there.
+            if let Some(matcher) = matcher.as_mut() {
+                type_.any(i_s.db, &mut |t| match t {
+                    ClassLike::Class(result_class) if result_class.node_ref == class.node_ref => {
+                        let mut calculating = matcher.calculated_type_vars.iter_mut();
+                        result_class
+                            .generics()
+                            .iter()
+                            .run_on_all(i_s, &mut |i_s, g| {
+                                let calculated = calculating.next().unwrap();
+                                calculated.type_ = Some(g.as_db_type(i_s));
+                                calculated.defined_by_result_context = true;
+                            });
+                        true
+                    }
+                    _ => false,
+                });
+            }
         } else {
-            match func_or_callable {
+            let result_type = match func_or_callable {
                 FunctionOrCallable::Function(_, f) => f.result_type(i_s),
                 FunctionOrCallable::Callable(c) => c.result_type(i_s),
-            }
-        };
-        result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
-        if let Some(matcher) = &mut matcher {
-            for calculated in matcher.calculated_type_vars.iter_mut() {
-                if calculated.type_.is_some() {
-                    calculated.defined_by_result_context = true;
+            };
+            result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
+            if let Some(matcher) = &mut matcher {
+                for calculated in matcher.calculated_type_vars.iter_mut() {
+                    if calculated.type_.is_some() {
+                        calculated.defined_by_result_context = true;
+                    }
                 }
             }
-        }
+        };
     });
     let result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
