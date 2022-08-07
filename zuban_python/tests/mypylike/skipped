@@ -364,7 +364,6 @@ testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 testInheritedConstructor
 testImportedTypeAliasInRuntimeContext
 testEmptyListExpression
-testUnionTypeContext
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].

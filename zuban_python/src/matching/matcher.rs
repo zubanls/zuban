@@ -169,7 +169,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .unwrap()
                     .format(i_s, Some(self), style)
             } else {
-                type_var_usage.type_var.name(i_s.db).into()
+                ClassLike::Never.format(i_s, None, style)
             }
         } else {
             match self.func_or_callable {
