@@ -200,6 +200,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         }
     }
+
+    pub fn lookup_type_var_for_nested_context(&self, usage: &TypeVarUsage) -> DbType {
+        if usage.in_definition == self.match_in_definition {
+            let current = &self.calculated_type_vars[usage.index.as_usize()];
+            current
+                .type_
+                .clone()
+                .unwrap_or_else(|| DbType::TypeVar(usage.clone()))
+        } else {
+            todo!()
+        }
+    }
 }
 
 pub fn calculate_function_type_vars_and_return<'db>(
@@ -399,8 +411,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                             annotation_type
                                 .as_db_type(i_s)
                                 .remap_type_vars(&mut |usage| {
-                                    dbg!(&matcher.calculated_type_vars);
-                                    todo!()
+                                    matcher.lookup_type_var_for_nested_context(usage)
                                 })
                         }),
                     )
