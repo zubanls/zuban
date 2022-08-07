@@ -152,6 +152,21 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
+    pub fn set_all_contained_type_vars_to_any(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: &ClassLike<'db, '_>,
+    ) {
+        class.as_db_type(i_s).search_type_vars(&mut |t| {
+            if t.in_definition == self.match_in_definition {
+                let current = &mut self.calculated_type_vars[t.index.as_usize()];
+                if current.type_.is_none() {
+                    current.type_ = Some(DbType::Any);
+                }
+            }
+        });
+    }
+
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,

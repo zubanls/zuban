@@ -2,7 +2,6 @@
 testInferTypeVariableFromTwoGenericTypes4
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 
-testConstraintInferenceForAnyAgainstTypeT
 testNewAnalyzerAliasesFixedFew
 testNewAnalyzerAliasesFixedMany
 
@@ -1104,6 +1103,7 @@ testMultipleAssignmentWithListAndIndexing
 testMultipleAssignmentAndGenericSubtyping
 testInferringLvarTypesInNestedListAssignment
 testInferringMultipleLvarDefinitionWithListRvalue
+testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
 
 # List different types weirdness
 testListLiteralWithFunctionsErasesNames

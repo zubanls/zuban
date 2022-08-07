@@ -678,6 +678,27 @@ impl DbType {
         }
     }
 
+    pub fn search_type_vars(&self, found_type_var: &mut impl FnMut(&TypeVarUsage)) {
+        let mut search_in_generics = |generics: &GenericsList| {
+            for t in generics.iter() {
+                t.search_type_vars(found_type_var);
+            }
+        };
+        match self {
+            Self::GenericClass(_, generics) => search_in_generics(generics),
+            Self::Union(list) => search_in_generics(list),
+            Self::TypeVar(t) => found_type_var(t),
+            Self::Type(db_type) => db_type.search_type_vars(found_type_var),
+            Self::Tuple(content) => {
+                if let Some(generics) = &content.generics {
+                    search_in_generics(generics)
+                }
+            }
+            Self::Callable(content) => todo!(),
+            Self::Class(_) | Self::Unknown | Self::Any | Self::None | Self::Never => (),
+        }
+    }
+
     pub fn remap_type_vars(
         &self,
         resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> DbType,

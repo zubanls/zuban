@@ -187,13 +187,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 _ => Match::new_false(),
             },
             Type::Any => {
-                /*
-                // TODO Isn't this needed?
-                if let Self::TypeVar(t1) = self {
-                    if let Some(matcher) = matcher {
-                        matcher.match_or_add_type_var(i_s, t1, &Type::Any, variance);
-                    }
-                }*/
+                if let Some(matcher) = matcher {
+                    matcher.set_all_contained_type_vars_to_any(i_s, self)
+                }
                 Match::TrueWithAny
             }
         }
