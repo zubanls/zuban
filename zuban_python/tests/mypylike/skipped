@@ -1,5 +1,7 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
+testMethodCallWithContextInference
+testGenericTypeWithTypevarValuesAndSubtypePromotion
 
 # union type var stuff
 testUnionGenericWithBoundedVariable
@@ -21,6 +23,7 @@ type_var_value_restriction_in_callable
 subtyping_only_result_generics
 subtyping_complex_generics
 callable_cannot_infer_type_var
+testUseCovariantGenericOuterContext
 
 testFunctionSubtypingWithVoid
 testGenericFunctionSubtypingWithUnions
@@ -314,9 +317,9 @@ testClassMemberTypeVarInFunctionBody
 # Type[T] TypeVars -> Indirect class access
 testTypeVarWithAnyTypeBound
 
-# Type Var Inference bottom up
+# Type Var Inference bottom up on class __init__
 testBoundOnGenericClass
-testGenericTypeWithTypevarValuesAndSubtypePromotion
+testInferredGenericTypeAsReturnValue
 # inference With Overload
 testOverloadAgainstEmptyCollections
 testOverloadAgainstEmptyCovariantCollections
@@ -329,17 +332,13 @@ testCallableWithArbitraryArgsSubtypingWithGenericFunc
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
 testCallableListJoinInference
-# some more
+# Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
+# Nested type var context
 testNestedGenericFunctionCall1
 testNestedGenericFunctionCall2
 testNestedGenericFunctionCall3
-testMethodCallWithContextInference
-testComplexTypeInferenceWithTuple
-testInitializationWithInferredGenericType
-testInferredGenericTypeAsReturnValue
-testUseCovariantGenericOuterContext
 # bottom up across reveal_type
 testRevealTypeContext
 
