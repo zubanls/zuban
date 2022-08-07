@@ -379,11 +379,11 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    result_context.with_type_if_exists(i_s, |i_s, type_| {
-        if let Some(class) = expected_return_class {
-            // This is kind of a special case. Since __init__ has no return annotation, we simply
-            // check if the classes match and then push the generics there.
-            if let Some(matcher) = matcher.as_mut() {
+    if let Some(matcher) = matcher.as_mut() {
+        result_context.with_type_if_exists(i_s, |i_s, type_| {
+            if let Some(class) = expected_return_class {
+                // This is kind of a special case. Since __init__ has no return annotation, we simply
+                // check if the classes match and then push the generics there.
                 type_.any(i_s.db, &mut |t| match t {
                     ClassLike::Class(result_class) if result_class.node_ref == class.node_ref => {
                         let mut calculating = matcher.calculated_type_vars.iter_mut();
@@ -399,22 +399,20 @@ fn calculate_type_vars<'db>(
                     }
                     _ => false,
                 });
-            }
-        } else {
-            let result_type = match func_or_callable {
-                FunctionOrCallable::Function(_, f) => f.result_type(i_s),
-                FunctionOrCallable::Callable(c) => c.result_type(i_s),
-            };
-            result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
-            if let Some(matcher) = &mut matcher {
+            } else {
+                let result_type = match func_or_callable {
+                    FunctionOrCallable::Function(_, f) => f.result_type(i_s),
+                    FunctionOrCallable::Callable(c) => c.result_type(i_s),
+                };
+                result_type.matches(i_s, Some(matcher), type_, Variance::Covariant);
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if calculated.type_.is_some() {
                         calculated.defined_by_result_context = true;
                     }
                 }
             }
-        };
-    });
+        });
+    }
     let result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
