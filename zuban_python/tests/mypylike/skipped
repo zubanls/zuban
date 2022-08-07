@@ -2,6 +2,10 @@
 testInferTypeVariableFromTwoGenericTypes4
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 
+testConstraintInferenceForAnyAgainstTypeT
+testNewAnalyzerAliasesFixedFew
+testNewAnalyzerAliasesFixedMany
+
 # union type var stuff
 testUnionGenericWithBoundedVariable
 testUnionInference
@@ -359,12 +363,8 @@ testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
 # Type var formatting as nothing
 testInheritedConstructor
 testImportedTypeAliasInRuntimeContext
-testUnionContext
-testBasicContextInference
-testBasicContextInferenceForConstructor
 testEmptyListExpression
 testUnionTypeContext
-testRevealTypeContext
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].

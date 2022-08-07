@@ -93,6 +93,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Variance::Contravariant => (matches!(self, Self::None)).into(),
                 _ => Match::True,
             },
+            Type::ClassLike(ClassLike::Never) => {
+                Match::True // TODO is this correct?????
+            }
             Type::ClassLike(c) => {
                 let mut similarity = Match::new_false();
                 match variance {
@@ -183,7 +186,16 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c1) if variance == Variance::Covariant => c1.is_object_class(i_s.db),
                 _ => Match::new_false(),
             },
-            Type::Any => Match::TrueWithAny,
+            Type::Any => {
+                /*
+                // TODO Isn't this needed?
+                if let Self::TypeVar(t1) = self {
+                    if let Some(matcher) = matcher {
+                        matcher.match_or_add_type_var(i_s, t1, &Type::Any, variance);
+                    }
+                }*/
+                Match::TrueWithAny
+            }
         }
     }
 
