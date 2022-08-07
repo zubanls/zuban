@@ -257,10 +257,9 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
     if has_generics {
-        let (match_, _) = calculate_function_type_vars_and_return(
+        let (match_, _) = calculate_type_vars(
             i_s,
-            Some(&class),
-            function,
+            FunctionOrCallable::Function(Some(&class), function),
             args,
             true,
             func_type_vars,
@@ -270,10 +269,9 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         );
         (match_, class.generics.as_generics_list(i_s))
     } else {
-        calculate_function_type_vars_and_return(
+        calculate_type_vars(
             i_s,
-            Some(&class),
-            function,
+            FunctionOrCallable::Function(Some(&class), function),
             args,
             true,
             type_vars,
