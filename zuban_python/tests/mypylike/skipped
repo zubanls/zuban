@@ -1,6 +1,5 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
-testMethodCallWithContextInference
 testGenericTypeWithTypevarValuesAndSubtypePromotion
 
 # union type var stuff
@@ -332,10 +331,6 @@ testCallableListJoinInference
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
-# Nested type var context
-testNestedGenericFunctionCall1
-testNestedGenericFunctionCall2
-testNestedGenericFunctionCall3
 # bottom up across reveal_type
 testRevealTypeContext
 

@@ -201,16 +201,41 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub fn lookup_type_var_for_nested_context(&self, usage: &TypeVarUsage) -> DbType {
-        if usage.in_definition == self.match_in_definition {
-            let current = &self.calculated_type_vars[usage.index.as_usize()];
-            current
-                .type_
-                .clone()
-                .unwrap_or_else(|| DbType::TypeVar(usage.clone()))
-        } else {
-            todo!()
-        }
+    fn remap_type_vars_for_nested_context(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        t: &DbType,
+    ) -> DbType {
+        t.remap_type_vars(&mut |type_var_usage| {
+            if type_var_usage.in_definition == self.match_in_definition {
+                let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
+                current
+                    .type_
+                    .clone()
+                    .unwrap_or_else(|| DbType::TypeVar(type_var_usage.clone()))
+            } else {
+                match self.func_or_callable {
+                    FunctionOrCallable::Function(class, f) => {
+                        if let Some(class) = class {
+                            if class.node_ref.as_link() == type_var_usage.in_definition {
+                                return class.generics.nth(i_s, type_var_usage.index);
+                            }
+                            let func_class = f.class.unwrap();
+                            if type_var_usage.in_definition == func_class.node_ref.as_link() {
+                                let type_var_remap = func_class.type_var_remap.unwrap();
+                                let g = type_var_remap.nth(type_var_usage.index).unwrap();
+                                self.remap_type_vars_for_nested_context(i_s, g)
+                            } else {
+                                todo!()
+                            }
+                        } else {
+                            todo!()
+                        }
+                    }
+                    FunctionOrCallable::Callable(c) => todo!(),
+                }
+            }
+        })
     }
 }
 
@@ -408,11 +433,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     argument.infer(
                         i_s,
                         &ResultContext::LazyKnown(&|i_s| {
-                            annotation_type
-                                .as_db_type(i_s)
-                                .remap_type_vars(&mut |usage| {
-                                    matcher.lookup_type_var_for_nested_context(usage)
-                                })
+                            let t = annotation_type.as_db_type(i_s);
+                            matcher.remap_type_vars_for_nested_context(i_s, &t)
                         }),
                     )
                 } else {
