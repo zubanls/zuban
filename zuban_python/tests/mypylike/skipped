@@ -317,7 +317,6 @@ testClassMemberTypeVarInFunctionBody
 testTypeVarWithAnyTypeBound
 
 # Type Var Inference bottom up on class __init__
-testBoundOnGenericClass
 testInferredGenericTypeAsReturnValue
 testGenericTypeAliasesBasic2
 # inference With Overload

@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{ClassLike, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
@@ -260,6 +260,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         let (match_, _) = calculate_type_vars(
             i_s,
             FunctionOrCallable::Function(Some(&class), function),
+            None,
             args,
             true,
             func_type_vars,
@@ -272,6 +273,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         calculate_type_vars(
             i_s,
             FunctionOrCallable::Function(Some(&class), function),
+            Some(&class),
             args,
             true,
             type_vars,
@@ -301,6 +303,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     calculate_type_vars(
         i_s,
         FunctionOrCallable::Function(class, function),
+        None,
         args,
         skip_first_param,
         type_vars,
@@ -322,6 +325,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     calculate_type_vars(
         i_s,
         FunctionOrCallable::Callable(callable),
+        None,
         args,
         false,
         type_vars,
@@ -335,6 +339,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
 fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
     func_or_callable: FunctionOrCallable<'db, '_>,
+    expected_return_class: Option<&Class<'db, '_>>,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
@@ -375,9 +380,13 @@ fn calculate_type_vars<'db>(
         }
     };
     result_context.with_type_if_exists(i_s, |i_s, type_| {
-        let result_type = match func_or_callable {
-            FunctionOrCallable::Function(_, f) => f.result_type(i_s),
-            FunctionOrCallable::Callable(c) => c.result_type(i_s),
+        let result_type = if let Some(class) = expected_return_class {
+            Type::ClassLike(ClassLike::Class(*class))
+        } else {
+            match func_or_callable {
+                FunctionOrCallable::Function(_, f) => f.result_type(i_s),
+                FunctionOrCallable::Callable(c) => c.result_type(i_s),
+            }
         };
         result_type.matches(i_s, matcher.as_mut(), type_, Variance::Covariant);
         if let Some(matcher) = &mut matcher {
