@@ -190,7 +190,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 style,
                             )
                         } else {
-                            todo!()
+                            type_var_usage.type_var.name(i_s.db).into()
                         }
                     } else {
                         todo!("Probably nested generic functions???")
