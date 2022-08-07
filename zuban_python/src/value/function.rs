@@ -718,11 +718,11 @@ impl<'db> InferrableParam<'db, '_> {
             debug!("Infer param {:?}", self.param.name());
         }
         match &self.argument {
-            ParamInput::Argument(arg) => Some(arg.infer(i_s)),
+            ParamInput::Argument(arg) => Some(arg.infer(i_s, &ResultContext::Unknown)),
             ParamInput::Tuple(args) => {
                 let mut list = vec![];
                 for arg in args.iter() {
-                    list.push(arg.infer(i_s).as_db_type(i_s))
+                    list.push(arg.infer(i_s, &ResultContext::Unknown).as_db_type(i_s))
                 }
                 let t = TupleContent {
                     generics: Some(GenericsList::generics_from_vec(list)),

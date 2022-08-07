@@ -99,7 +99,11 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             todo!()
         } else if let Some(first) = first {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Box::new(first.infer(i_s).class_as_db_type(i_s)),
+                Box::new(
+                    first
+                        .infer(i_s, &ResultContext::Unknown)
+                        .class_as_db_type(i_s),
+                ),
             ))))
         } else {
             todo!()
@@ -575,7 +579,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         args.iter_arguments()
             .next()
             .map(|arg| {
-                let g = arg.infer(i_s).as_db_type(i_s);
+                let g = arg.infer(i_s, &ResultContext::Unknown).as_db_type(i_s);
                 Inferred::execute_db_type(i_s, g)
             })
             .unwrap_or_else(|| todo!())
@@ -608,10 +612,11 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let s = arg
-            .infer(i_s)
-            .class_as_type(i_s)
-            .format(i_s, None, FormatStyle::MypyRevealType);
+        let s = arg.infer(i_s, result_context).class_as_type(i_s).format(
+            i_s,
+            None,
+            FormatStyle::MypyRevealType,
+        );
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::Note(format!("Revealed type is {s:?}").into()),

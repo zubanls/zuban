@@ -934,9 +934,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn infer_named_expression(&mut self, named_expr: NamedExpression) -> Inferred<'db> {
+        self.infer_named_expression_with_context(named_expr, &ResultContext::Unknown)
+    }
+
+    pub fn infer_named_expression_with_context(
+        &mut self,
+        named_expr: NamedExpression,
+        result_context: &ResultContext<'db, '_>,
+    ) -> Inferred<'db> {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
-            | NamedExpressionContent::Definition(_, expr) => self.infer_expression(expr),
+            | NamedExpressionContent::Definition(_, expr) => {
+                self.infer_expression_with_context(expr, result_context)
+            }
         }
     }
 
@@ -945,7 +955,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(
-        infer_expression_with_context,
+        pub infer_expression_with_context,
         Self::_infer_expression,
         Expression,
         result_context
@@ -1188,7 +1198,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     &mut |i_s| {
                         // Still need to calculate diagnostics for all the arguments
                         for arg in args.iter_arguments() {
-                            arg.infer(i_s);
+                            arg.infer(i_s, &ResultContext::Unknown);
                         }
                         Inferred::new_unknown()
                     },
@@ -1261,8 +1271,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
             NamedExpression(named_expression) => {
-                return self
-                    .infer_expression_with_context(named_expression.expression(), result_context)
+                return self.infer_named_expression_with_context(named_expression, result_context)
             }
         };
         let point = Point::new_simple_specific(specific, Locality::Todo);

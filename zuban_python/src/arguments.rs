@@ -9,6 +9,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
+use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
 use crate::value::Function;
 use parsa_python_ast::{
@@ -235,7 +236,11 @@ impl<'db, 'a> ArgumentType<'db, 'a> {
 }
 
 impl<'db, 'a> Argument<'db, 'a> {
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        result_context: &ResultContext<'db, '_>,
+    ) -> Inferred<'db> {
         let mut i_s = i_s.with_context(self.context);
         match self.type_ {
             ArgumentType::Inferred(inferred, _) => (*inferred).clone(),
@@ -244,12 +249,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                     .file
                     // TODO this execution is wrong
                     .inference(&mut i_s)
-                    .infer_named_expression(reference.as_named_expression())
+                    .infer_named_expression_with_context(
+                        reference.as_named_expression(),
+                        result_context,
+                    )
             }
             ArgumentType::Keyword(_, reference) => reference
                 .file
                 .inference(&mut i_s)
-                .infer_expression(reference.as_expression()),
+                .infer_expression_with_context(reference.as_expression(), result_context),
             ArgumentType::SlicesTuple(slices) => {
                 let parts = slices
                     .iter()
