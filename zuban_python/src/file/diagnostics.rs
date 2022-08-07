@@ -32,7 +32,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.cache_assignment_nodes(assignment);
                 }
                 SimpleStmtContent::StarExpressions(star_exprs) => {
-                    self.infer_star_expressions(star_exprs, &ResultContext::Unknown);
+                    self.infer_star_expressions(star_exprs, ResultContext::Unknown);
                 }
                 SimpleStmtContent::ReturnStmt(return_stmt) => {
                     self.calc_return_stmt_diagnostics(func, return_stmt)
@@ -278,7 +278,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
                     let t = self.use_cached_return_annotation_type(annotation);
                     let inf =
-                        self.infer_star_expressions(star_expressions, &ResultContext::Known(&t));
+                        self.infer_star_expressions(star_expressions, ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
                         NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
                             i_s.db,
@@ -299,7 +299,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             return;
         }
         let element = self
-            .infer_star_expressions(star_exprs, &ResultContext::Unknown)
+            .infer_star_expressions(star_exprs, ResultContext::Unknown)
             .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
             .infer_all(self.i_s);
         debug!("For loop input: {}", element.description(self.i_s));
@@ -373,7 +373,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             match content {
                 FStringContent::FStringExpr(e) => {
                     let (expressions, spec) = e.unpack();
-                    self.infer_star_expressions(expressions, &ResultContext::Unknown);
+                    self.infer_star_expressions(expressions, ResultContext::Unknown);
                     if let Some(spec) = spec {
                         self.calc_fstring_content_diagnostics(spec.iter_content());
                     }

@@ -244,7 +244,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     class: Class<'db, '_>,
     function: Function<'db, '_>,
     args: &dyn Arguments<'db>,
-    result_context: &ResultContext<'db, '_>,
+    result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     debug!(
@@ -292,7 +292,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: &ResultContext<'db, '_>,
+    result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     debug!(
@@ -319,7 +319,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     args: &dyn Arguments<'db>,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: &ResultContext<'db, '_>,
+    result_context: ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> Option<GenericsList> {
     calculate_type_vars(
@@ -344,7 +344,7 @@ fn calculate_type_vars<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: &ResultContext<'db, '_>,
+    result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> (SignatureMatch, Option<GenericsList>) {
     // We could allocate on stack as described here:
@@ -497,13 +497,13 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                 let value = if let Some(matcher) = matcher.as_ref() {
                     argument.infer(
                         i_s,
-                        &ResultContext::LazyKnown(&|i_s| {
+                        ResultContext::LazyKnown(&|i_s| {
                             let t = annotation_type.as_db_type(i_s);
                             matcher.remap_type_vars_for_nested_context(i_s, &t)
                         }),
                     )
                 } else {
-                    argument.infer(i_s, &ResultContext::Unknown)
+                    argument.infer(i_s, ResultContext::Unknown)
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,

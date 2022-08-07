@@ -95,7 +95,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.as_node_ref().add_typing_issue(

@@ -1044,7 +1044,7 @@ impl<'db> Inferred<'db> {
             value.execute(
                 i_s,
                 &NoArguments::new(from),
-                &ResultContext::Unknown,
+                ResultContext::Unknown,
                 &|_, _, _, _, _, _, _| todo!("currently only used for __next__"),
             )
         })

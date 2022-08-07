@@ -255,7 +255,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.as_node_ref().add_typing_issue(
@@ -301,7 +301,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                 value.execute(
                     i_s,
                     &NoArguments::new(from),
-                    &ResultContext::Unknown,
+                    ResultContext::Unknown,
                     &|_, _, _, _, _, _, _| todo!(),
                 )
             })

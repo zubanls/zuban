@@ -239,7 +239,7 @@ impl<'db, 'a> Argument<'db, 'a> {
     pub fn infer(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         let mut i_s = i_s.with_context(self.context);
         match self.type_ {

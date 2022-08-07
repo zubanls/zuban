@@ -90,7 +90,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let mut iterator = args.iter_arguments();
@@ -101,7 +101,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
                 Box::new(
                     first
-                        .infer(i_s, &ResultContext::Unknown)
+                        .infer(i_s, ResultContext::Unknown)
                         .class_as_db_type(i_s),
                 ),
             ))))
@@ -332,7 +332,7 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
@@ -573,13 +573,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         args.iter_arguments()
             .next()
             .map(|arg| {
-                let g = arg.infer(i_s, &ResultContext::Unknown).as_db_type(i_s);
+                let g = arg.infer(i_s, ResultContext::Unknown).as_db_type(i_s);
                 Inferred::execute_db_type(i_s, g)
             })
             .unwrap_or_else(|| todo!())
@@ -606,7 +606,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         let mut iterator = args.iter_arguments();
@@ -876,7 +876,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &ResultContext<'db, '_>,
+        result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
         if let Some(t) = maybe_type_var(i_s, args) {

@@ -14,7 +14,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .infer_named_expression(named_expr)
                     .class_as_db_type(self.i_s),
                 StarLikeExpression::StarNamedExpression(e) => self
-                    .infer_expression_part(e.expression_part(), &ResultContext::Unknown)
+                    .infer_expression_part(e.expression_part(), ResultContext::Unknown)
                     .iter(self.i_s, NodeRef::new(self.file, e.index()))
                     .infer_all(self.i_s)
                     .class_as_db_type(self.i_s),
