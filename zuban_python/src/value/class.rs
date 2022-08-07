@@ -85,7 +85,6 @@ impl<'db, 'a> Class<'db, 'a> {
         match init.into_maybe_inferred().unwrap().init_as_function(cls) {
             Some(FunctionOrOverload::Function(func)) => {
                 let has_generics = !matches!(self.generics, Generics::None);
-                // TODO does this work with inheritance and type var remapping
                 let type_vars = self.type_vars(i_s);
                 // Function type vars need to be calculated, so annotations are used.
                 let func_type_vars = func.type_vars(i_s);
