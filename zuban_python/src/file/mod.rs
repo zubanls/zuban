@@ -777,7 +777,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             Target::IndexExpression(primary_target) => {
                 let base = match primary_target.first() {
-                    PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
+                    PrimaryTargetOrAtom::Atom(atom) => {
+                        self.infer_atom(atom, &ResultContext::Unknown)
+                    }
                     PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
                 };
                 if is_definition {
@@ -971,7 +973,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         result_context: &ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         match node {
-            ExpressionPart::Atom(atom) => self.infer_atom(atom),
+            ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
@@ -1205,12 +1207,16 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred<'db> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.infer_primary(primary, &ResultContext::Unknown),
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom),
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &ResultContext::Unknown),
         }
     }
 
-    check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom);
-    fn _infer_atom(&mut self, atom: Atom) -> Inferred<'db> {
+    check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
+    fn _infer_atom(
+        &mut self,
+        atom: Atom,
+        result_context: &ResultContext<'db, '_>,
+    ) -> Inferred<'db> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
@@ -1254,7 +1260,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
-            NamedExpression(named_expression) => todo!(),
+            NamedExpression(named_expression) => {
+                return self
+                    .infer_expression_with_context(named_expression.expression(), result_context)
+            }
         };
         let point = Point::new_simple_specific(specific, Locality::Todo);
         Inferred::new_and_save(self.file, atom.index(), point)
@@ -1304,7 +1313,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
     fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred<'db> {
         let first = match primary_target.first() {
-            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom),
+            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
         };
         self.infer_primary_or_primary_t_content(

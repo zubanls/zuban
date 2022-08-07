@@ -336,7 +336,6 @@ testNestedGenericFunctionCall1
 testNestedGenericFunctionCall2
 testNestedGenericFunctionCall3
 testMethodCallWithContextInference
-testParenthesesAndContext
 testComplexTypeInferenceWithTuple
 testInitializationWithInferredGenericType
 testInferredGenericTypeAsReturnValue
@@ -346,6 +345,7 @@ testRevealTypeContext
 
 # bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
 testPreferExactSignatureMatchInOverload
+testParenthesesAndContext
 testBadOverloadProbableMatch
 testInferConstraintsUnequalLengths
 testSingleItemListExpressions
