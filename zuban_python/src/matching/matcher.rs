@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
@@ -236,6 +236,51 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
             }
         })
+    }
+}
+
+pub fn calculate_class_init_type_vars_and_return<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    class: Class<'db, '_>,
+    function: Function<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &ResultContext<'db, '_>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+) -> (SignatureMatch, Option<GenericsList>) {
+    debug!(
+        "Calculate type vars for class {} ({})",
+        class.name(),
+        function.name(),
+    );
+    let has_generics = !matches!(class.generics, Generics::None);
+    let type_vars = class.type_vars(i_s);
+    // Function type vars need to be calculated, so annotations are used.
+    let func_type_vars = function.type_vars(i_s);
+    if has_generics {
+        let (match_, _) = calculate_function_type_vars_and_return(
+            i_s,
+            Some(&class),
+            function,
+            args,
+            true,
+            func_type_vars,
+            function.node_ref.as_link(),
+            result_context,
+            on_type_error,
+        );
+        (match_, class.generics.as_generics_list(i_s))
+    } else {
+        calculate_function_type_vars_and_return(
+            i_s,
+            Some(&class),
+            function,
+            args,
+            true,
+            type_vars,
+            class.node_ref.as_link(),
+            result_context,
+            on_type_error,
+        )
     }
 }
 

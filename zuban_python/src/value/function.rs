@@ -20,8 +20,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
-    calculate_function_type_vars_and_return, ClassLike, Generics, ResultContext, SignatureMatch,
-    Type, TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, ClassLike,
+    Generics, ResultContext, SignatureMatch, Type, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -771,38 +771,17 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &ResultContext<'db, '_>,
     ) -> Option<(Function<'db, 'a>, Option<GenericsList>)> {
-        let has_already_calculated_class_generics =
-            search_init && !matches!(class.unwrap().generics(), Generics::None);
         let match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
-                if has_already_calculated_class_generics {
-                    calculate_function_type_vars_and_return(
-                        i_s,
-                        class,
-                        function,
-                        args,
-                        true,
-                        func_type_vars,
-                        function.node_ref.as_link(),
-                        result_context,
-                        None,
-                    )
-                } else {
-                    let c = class.unwrap();
-                    let type_vars = c.type_vars(i_s);
-                    calculate_function_type_vars_and_return(
-                        i_s,
-                        class,
-                        function,
-                        args,
-                        true,
-                        type_vars,
-                        c.node_ref.as_link(),
-                        result_context,
-                        None,
-                    )
-                }
+                calculate_class_init_type_vars_and_return(
+                    i_s,
+                    *class.unwrap(),
+                    function,
+                    args,
+                    result_context,
+                    None,
+                )
             } else {
                 calculate_function_type_vars_and_return(
                     i_s,
@@ -817,6 +796,8 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 )
             }
         };
+        let has_already_calculated_class_generics =
+            search_init && !matches!(class.unwrap().generics(), Generics::None);
         let handle_result = |i_s, calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {

@@ -17,7 +17,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_function_type_vars_and_return, ClassLike, Generics, Match, ResultContext,
+    calculate_class_init_type_vars_and_return, ClassLike, Generics, Match, ResultContext,
     TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
@@ -84,37 +84,14 @@ impl<'db, 'a> Class<'db, 'a> {
         let cls = class.unwrap_or_else(|| todo!());
         match init.into_maybe_inferred().unwrap().init_as_function(cls) {
             Some(FunctionOrOverload::Function(func)) => {
-                let has_generics = !matches!(self.generics, Generics::None);
-                let type_vars = self.type_vars(i_s);
-                // Function type vars need to be calculated, so annotations are used.
-                let func_type_vars = func.type_vars(i_s);
-                let list = if has_generics {
-                    calculate_function_type_vars_and_return(
-                        i_s,
-                        Some(self),
-                        func,
-                        args,
-                        true,
-                        func_type_vars,
-                        func.node_ref.as_link(),
-                        result_context,
-                        Some(on_type_error),
-                    );
-                    self.generics.as_generics_list(i_s)
-                } else {
-                    calculate_function_type_vars_and_return(
-                        i_s,
-                        Some(self),
-                        func,
-                        args,
-                        true,
-                        type_vars,
-                        self.node_ref.as_link(),
-                        result_context,
-                        Some(on_type_error),
-                    )
-                    .1
-                };
+                let (_, list) = calculate_class_init_type_vars_and_return(
+                    i_s,
+                    *self,
+                    func,
+                    args,
+                    result_context,
+                    Some(on_type_error),
+                );
                 Some((func, list, false))
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
