@@ -320,13 +320,10 @@ testTypeVarWithAnyTypeBound
 # Type Var Inference bottom up on class __init__
 testBoundOnGenericClass
 testInferredGenericTypeAsReturnValue
+testGenericTypeAliasesBasic2
 # inference With Overload
 testOverloadAgainstEmptyCollections
 testOverloadAgainstEmptyCovariantCollections
-# Inference bottom up?
-testGenericArgumentInOverload
-testGenericFunctionAsOverloadItem
-testGenericTypeAliasesBasic2
 # callable return type to param bottom up
 testCallableWithArbitraryArgsSubtypingWithGenericFunc
 # questionable list/dict type inference
@@ -344,6 +341,7 @@ testRevealTypeContext
 
 # bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
 testPreferExactSignatureMatchInOverload
+testGenericArgumentInOverload
 testParenthesesAndContext
 testBadOverloadProbableMatch
 testInferConstraintsUnequalLengths
