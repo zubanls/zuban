@@ -335,8 +335,6 @@ testCallableListJoinInference
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
-# bottom up across reveal_type
-testRevealTypeContext
 
 # bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
 testPreferExactSignatureMatchInOverload
@@ -366,6 +364,7 @@ testBasicContextInference
 testBasicContextInferenceForConstructor
 testEmptyListExpression
 testUnionTypeContext
+testRevealTypeContext
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].
