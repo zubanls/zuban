@@ -46,19 +46,19 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        value_class: &Type<'db, '_>,
+        value_type: &Type<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         variance: Variance,
     ) -> Match {
         // Note: we need to handle the MRO _in order_, so we need to extract
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
-        match value_class {
+        match value_type {
             Type::ClassLike(ClassLike::TypeVar(t2)) => {
                 match self {
                     Self::TypeVar(t1) => {
                         if let Some(matcher) = matcher {
-                            matcher.match_or_add_type_var(i_s, t1, value_class, variance)
+                            matcher.match_or_add_type_var(i_s, t1, value_type, variance)
                         } else {
                             self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
                         }
@@ -140,31 +140,31 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 similarity
             }
             /*
-                            Self::TypeVar(t) => match value_class {
+                            Self::TypeVar(t) => match value_type {
                                 Type::ClassLike(class) => {
                                     if let Some(matcher) = matcher {
-                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                        matcher.match_or_add_type_var(i_s, t, value_type)
                                     } else {
                                         class.matches_type_var(t)
                                     }
                                 }
                                 Type::TypeVar(t2) => {
                                     if let Some(matcher) = matcher {
-                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                        matcher.match_or_add_type_var(i_s, t, value_type)
                                     } else {
                                         t.index == t2.index && t.type_ == t2.type_
                                     }
                                 }
                                 Type::Union(ref list) => {
                                     if let Some(matcher) = matcher {
-                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                        matcher.match_or_add_type_var(i_s, t, value_type)
                                     } else {
                                         todo!()
                                     }
                                 }
                                 Type::Any => {
                                     if let Some(matcher) = matcher {
-                                        matcher.match_or_add_type_var(i_s, t, value_class)
+                                        matcher.match_or_add_type_var(i_s, t, value_type)
                                     } else {
                                         true
                                     }
@@ -175,7 +175,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 Type::None => {
                                     if let Some(matcher) = matcher {
                                         todo!()
-                                        //matcher.match_or_add_type_var(i_s, t, value_class)
+                                        //matcher.match_or_add_type_var(i_s, t, value_type)
                                     } else {
                                         true // TODO is this correct? Maybe depending on strict options?
                                     }
