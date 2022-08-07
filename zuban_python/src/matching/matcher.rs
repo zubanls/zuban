@@ -302,7 +302,6 @@ pub fn calculate_function_type_vars_and_return<'db>(
     );
     calculate_type_vars(
         i_s,
-        class,
         FunctionOrCallable::Function(class, function),
         args,
         skip_first_param,
@@ -324,7 +323,6 @@ pub fn calculate_callable_type_vars_and_return<'db>(
 ) -> Option<GenericsList> {
     calculate_type_vars(
         i_s,
-        None,
         FunctionOrCallable::Callable(callable),
         args,
         false,
@@ -338,7 +336,6 @@ pub fn calculate_callable_type_vars_and_return<'db>(
 
 fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    class: Option<&Class<'db, '_>>, // TODO it appears this param is unused?
     func_or_callable: FunctionOrCallable<'db, '_>,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
