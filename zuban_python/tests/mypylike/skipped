@@ -23,6 +23,7 @@ subtyping_only_result_generics
 subtyping_complex_generics
 callable_cannot_infer_type_var
 union_context_class_matching_with_any
+union_context_class_matching_with_overload
 testUseCovariantGenericOuterContext
 
 testFunctionSubtypingWithVoid
