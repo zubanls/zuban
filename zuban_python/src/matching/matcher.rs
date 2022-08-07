@@ -297,7 +297,7 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    if let ResultContext::Known(type_) = result_context {
+    result_context.with_type_if_exists(i_s, |i_s, type_| {
         let result_type = match func_or_callable {
             FunctionOrCallable::Function(_, f) => f.result_type(i_s),
             FunctionOrCallable::Callable(c) => c.result_type(i_s),
@@ -310,7 +310,7 @@ fn calculate_type_vars<'db>(
                 }
             }
         }
-    }
+    });
     let result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
@@ -392,7 +392,21 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
         if let Some(argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
-                let value = argument.infer(i_s, &ResultContext::Unknown);
+                let value = if let Some(matcher) = matcher.as_ref() {
+                    argument.infer(
+                        i_s,
+                        &ResultContext::LazyKnown(&|i_s| {
+                            annotation_type
+                                .as_db_type(i_s)
+                                .remap_type_vars(&mut |usage| {
+                                    dbg!(&matcher.calculated_type_vars);
+                                    todo!()
+                                })
+                        }),
+                    )
+                } else {
+                    argument.infer(i_s, &ResultContext::Unknown)
+                };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
                     matcher.as_deref_mut(),
