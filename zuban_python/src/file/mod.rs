@@ -596,10 +596,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
                 let is_definition = type_comment_result.is_some();
                 let right = if let Some((r, type_)) = type_comment_result {
-                    let right = self.infer_assignment_right_side(
-                        right_side,
-                        &ResultContext::Known(type_.clone()),
-                    );
+                    let right =
+                        self.infer_assignment_right_side(right_side, &ResultContext::Known(&type_));
                     type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                         node_ref.add_typing_issue(
                             i_s.db,
@@ -609,8 +607,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     r
                 } else {
                     let original_def = self.original_definition(assignment);
-                    let result_context = match &original_def {
-                        Some(inf) => ResultContext::Known(inf.class_as_type(self.i_s)),
+                    let result_type = original_def.as_ref().map(|inf| inf.class_as_type(self.i_s));
+                    let result_context = match &result_type {
+                        Some(t) => ResultContext::Known(t),
                         None => ResultContext::Unknown,
                     };
                     self.infer_assignment_right_side(right_side, &result_context)
@@ -627,14 +626,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 if let Some(right_side) = right_side {
                     let t = self.use_cached_annotation_type(annotation);
                     let right =
-                        self.infer_assignment_right_side(right_side, &ResultContext::Known(t));
-                    self.use_cached_annotation_type(annotation)
-                        .error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                            node_ref.add_typing_issue(
-                                i_s.db,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                        });
+                        self.infer_assignment_right_side(right_side, &ResultContext::Known(&t));
+                    t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::IncompatibleAssignment { got, expected },
+                        );
+                    });
                 }
                 let inf_annot = self.use_cached_annotation(annotation);
                 self.assign_single_target(target, &inf_annot, true, |index| {

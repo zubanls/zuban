@@ -4,9 +4,9 @@ use super::Type;
 use crate::database::DbType;
 use crate::InferenceState;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum ResultContext<'db, 'a> {
-    Known(Type<'db, 'a>),
+    Known(&'a Type<'db, 'a>),
     LazyKnown(&'a dyn Fn(&mut InferenceState<'db, '_>) -> DbType),
     Unknown,
 }
@@ -18,7 +18,7 @@ impl<'db, 'a> ResultContext<'db, 'a> {
         mut callable: impl FnMut(&mut InferenceState<'db, '_>, &Type<'db, '_>),
     ) {
         match self {
-            Self::Known(t) => callable(i_s, &t),
+            Self::Known(t) => callable(i_s, t),
             Self::LazyKnown(c) => {
                 let t = c(i_s);
                 callable(i_s, &Type::from_db_type(i_s.db, &t))
