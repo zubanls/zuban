@@ -79,19 +79,18 @@ impl TypeVarBound {
         // - Self::Invariant -> match all invariant -> No change
         // - Self::Lower
         //   - Variance::Invariant -> match covariant -> Self::Invariant
-        //   - Variance::Covariant -> match covariant -> Self::Lower
-        //   - Variance::Contravariant -> match covariant -> Self::LowerAndUpper
+        //   - Variance::Covariant -> match covariant -> update upper bound
+        //   - Variance::Contravariant -> match covariant -> update lower bound
         // - Self::Upper
         //   - Variance::Invariant -> match contravariant -> Self::Invariant
-        //   - Variance::Covariant -> match contravariant -> Self::LowerAndUpper
-        //   - Variance::Contravariant -> match contravariant -> Self::Upper
+        //   - Variance::Covariant -> match contravariant -> update upper bound
+        //   - Variance::Contravariant -> match contravariant -> update lower bound
         // - Self::LowerAndUpper
         //   - Variance::Invariant -> match co and contra -> Self::Invariant
-        //   - Variance::Covariant -> match co and contra -> Self::LowerAndUpper
-        //   - Variance::Contravariant -> match co and contra -> Self::LowerAndUpper
-        let check_match = |i_s: &mut InferenceState<'db, '_>, t, v| {
-            let current_type = Type::from_db_type(i_s.db, t);
-            current_type.matches(i_s, None, other, variance)
+        //   - Variance::Covariant -> match co and contra -> update upper bound
+        //   - Variance::Contravariant -> match co and contra -> update lower bound
+        let check_match = |i_s: &mut InferenceState<'db, '_>, t, variance| {
+            Type::from_db_type(i_s.db, t).matches(i_s, None, other, variance)
         };
         let matches = match self {
             Self::Invariant(t) => return check_match(i_s, t, Variance::Invariant),
@@ -106,8 +105,8 @@ impl TypeVarBound {
             let db_other = other.as_db_type(i_s);
             match variance {
                 Variance::Invariant => *self = Self::Invariant(db_other),
-                Variance::Covariant => self.update_lower_bound(db_other),
-                Variance::Contravariant => self.update_upper_bound(db_other),
+                Variance::Covariant => self.update_upper_bound(db_other),
+                Variance::Contravariant => self.update_lower_bound(db_other),
             }
         }
         matches
