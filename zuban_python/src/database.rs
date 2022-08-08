@@ -986,6 +986,14 @@ impl TypeVars {
     }
 }
 
+impl std::ops::Index<usize> for TypeVars {
+    type Output = TypeVar;
+
+    fn index(&self, index: usize) -> &TypeVar {
+        &self.0[index]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: PointLink,

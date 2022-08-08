@@ -17,9 +17,106 @@ enum FunctionOrCallable<'db, 'a> {
     Callable(&'a Callable<'a>),
 }
 
+#[derive(Debug, Clone)]
+enum TypeVarBound {
+    Invariant(DbType),
+    Lower(DbType),
+    LowerAndUpper(DbType, DbType),
+    Upper(DbType),
+}
+
+impl TypeVarBound {
+    fn new(t: DbType, variance: Variance) -> Self {
+        match variance {
+            Variance::Invariant => Self::Invariant(t),
+            Variance::Covariant => Self::Lower(t),
+            Variance::Contravariant => Self::Upper(t),
+        }
+    }
+
+    fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+        match self {
+            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
+                t.format(i_s, None, style)
+            }
+        }
+    }
+
+    fn into_db_type(self) -> DbType {
+        match self {
+            Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => t,
+        }
+    }
+
+    fn update_lower_bound(&mut self, lower: DbType) {
+        match self {
+            Self::Lower(_) => *self = Self::Lower(lower),
+            Self::Upper(upper) | Self::LowerAndUpper(_, upper) => {
+                *self = Self::LowerAndUpper(lower, upper.clone())
+            }
+            Self::Invariant(_) => unreachable!(),
+        }
+    }
+
+    fn update_upper_bound(&mut self, upper: DbType) {
+        match self {
+            Self::Upper(_) => *self = Self::Upper(upper),
+            Self::Lower(lower) | Self::LowerAndUpper(lower, _) => {
+                *self = Self::LowerAndUpper(lower.clone(), upper)
+            }
+            Self::Invariant(_) => unreachable!(),
+        }
+    }
+
+    fn merge_or_mismatch<'db>(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_var_usage: &TypeVarUsage,
+        other: &Type<'db, '_>,
+        variance: Variance,
+    ) -> Match {
+        // The cases are:
+        // - Self::Invariant -> match all invariant -> No change
+        // - Self::Lower
+        //   - Variance::Invariant -> match covariant -> Self::Invariant
+        //   - Variance::Covariant -> match covariant -> Self::Lower
+        //   - Variance::Contravariant -> match covariant -> Self::LowerAndUpper
+        // - Self::Upper
+        //   - Variance::Invariant -> match contravariant -> Self::Invariant
+        //   - Variance::Covariant -> match contravariant -> Self::LowerAndUpper
+        //   - Variance::Contravariant -> match contravariant -> Self::Upper
+        // - Self::LowerAndUpper
+        //   - Variance::Invariant -> match co and contra -> Self::Invariant
+        //   - Variance::Covariant -> match co and contra -> Self::LowerAndUpper
+        //   - Variance::Contravariant -> match co and contra -> Self::LowerAndUpper
+        let check_match = |i_s: &mut InferenceState<'db, '_>, t, v| {
+            let current_type = Type::from_db_type(i_s.db, t);
+            current_type.matches(i_s, None, other, variance)
+        };
+        let matches = match self {
+            Self::Invariant(t) => return check_match(i_s, t, Variance::Invariant),
+            Self::Lower(lower) => check_match(i_s, lower, Variance::Covariant),
+            Self::Upper(upper) => check_match(i_s, upper, Variance::Contravariant),
+            Self::LowerAndUpper(lower, upper) => {
+                check_match(i_s, lower, Variance::Covariant)
+                    & check_match(i_s, upper, Variance::Contravariant)
+            }
+        };
+        if matches.bool() {
+            let db_other = other.as_db_type(i_s);
+            match variance {
+                Variance::Invariant => *self = Self::Invariant(db_other),
+                Variance::Covariant => self.update_lower_bound(db_other),
+                Variance::Contravariant => self.update_upper_bound(db_other),
+            }
+        }
+        matches
+    }
+}
+
 #[derive(Debug, Default)]
 struct CalculatedTypeVar {
-    type_: Option<DbType>,
+    type_: Option<TypeVarBound>,
     //variance: Variance,
     defined_by_result_context: bool,
 }
@@ -64,22 +161,17 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         let type_var = &type_var_usage.type_var;
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let Some(current_type) = &current.type_ {
-                let current_type = Type::from_db_type(i_s.db, current_type);
-                let m = current_type.matches(i_s, None, value_type, variance);
-                if m.bool() {
-                    return m;
-                } else if current.defined_by_result_context {
-                    return Match::new_false();
-                // In case A(B) and B are given, use B, because it's the super class.
-                } else if !value_type
-                    .matches(i_s, None, &current_type, variance)
-                    .bool()
-                {
-                    return Match::False(MismatchReason::CannotInferTypeArgument(
-                        type_var_usage.index,
-                    ));
-                }
+            if let Some(current_type) = &mut current.type_ {
+                let m = current_type.merge_or_mismatch(i_s, type_var_usage, value_type, variance);
+                return match m.bool() {
+                    true => m,
+                    false => match current.defined_by_result_context {
+                        true => Match::new_false(),
+                        false => Match::False(MismatchReason::CannotInferTypeArgument(
+                            type_var_usage.index,
+                        )),
+                    },
+                };
             }
             // Before setting the type var, we need to check if the constraints match.
             let mut mismatch_constraints = false;
@@ -89,7 +181,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         .matches(i_s, None, value_type, Variance::Covariant)
                         .bool()
                     {
-                        current.type_ = Some(restriction.clone());
+                        current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
                         return Match::True;
                     }
                 }
@@ -107,7 +199,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     type_var: type_var_usage.type_var.clone(),
                 });
             }
-            current.type_ = Some(value_type.as_db_type(i_s));
+            current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             Match::True
         } else {
             if let Some(parent_matcher) = self.parent_matcher.as_mut() {
@@ -168,7 +260,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
                 if current.type_.is_none() {
-                    current.type_ = Some(DbType::Any);
+                    current.type_ = Some(TypeVarBound::Invariant(DbType::Any));
                 }
             }
         });
@@ -185,11 +277,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
             if current.defined_by_result_context {
-                current
-                    .type_
-                    .as_ref()
-                    .unwrap()
-                    .format(i_s, Some(self), style)
+                current.type_.as_ref().unwrap().format(i_s, style)
             } else {
                 ClassLike::Never.format(i_s, None, style)
             }
@@ -230,6 +318,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 current
                     .type_
                     .clone()
+                    .map(|t| t.into_db_type())
                     // TODO is this Any here correct?
                     .unwrap_or(DbType::Any)
             } else {
@@ -409,13 +498,18 @@ fn calculate_type_vars<'db>(
                             if result_class.node_ref == class.node_ref =>
                         {
                             let mut calculating = matcher.calculated_type_vars.iter_mut();
+                            let mut i = 0;
                             result_class
                                 .generics()
                                 .iter()
                                 .run_on_all(i_s, &mut |i_s, g| {
                                     let calculated = calculating.next().unwrap();
-                                    calculated.type_ = Some(g.as_db_type(i_s));
+                                    calculated.type_ = Some(TypeVarBound::new(
+                                        g.as_db_type(i_s),
+                                        type_vars[i].variance,
+                                    ));
                                     calculated.defined_by_result_context = true;
+                                    i += 1; // TODO please test that this works for multiple type vars
                                 });
                             true
                         }
@@ -471,7 +565,7 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .map(|c| c.type_.unwrap_or(DbType::Never))
+                .map(|c| c.type_.map(|t| t.into_db_type()).unwrap_or(DbType::Never))
                 .collect(),
         )
     });
