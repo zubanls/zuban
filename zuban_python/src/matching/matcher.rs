@@ -521,7 +521,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                         }),
                     )
                 } else {
-                    argument.infer(i_s, ResultContext::Unknown)
+                    argument.infer(i_s, ResultContext::Known(&annotation_type))
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,

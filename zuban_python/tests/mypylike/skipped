@@ -1,5 +1,10 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
+testTypeVarWithValueInferredFromObjectReturnTypeContext2
+testIgnoringInferenceContext
+testImportedTypeAliasInRuntimeContext
+testEmptyListExpression
+testContextForAttributeDeclaredInInit
 
 # union type var stuff
 testUnionGenericWithBoundedVariable
@@ -336,13 +341,9 @@ testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 
 # bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
-testInferConstraintsUnequalLengths
-testGenericArgumentInOverload
-testPreferExactSignatureMatchInOverload
 testBadOverloadProbableMatch
-testContextForAttributeDeclaredInInit
-testEmptyListExpression
-testImportedTypeAliasInRuntimeContext
+# Overload List item 0 should not be generated on ALL mismatches
+testPreferExactSignatureMatchInOverload
 
 # bottom up inference list multiply
 testListMultiplyInContext
