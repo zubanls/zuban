@@ -336,19 +336,16 @@ testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 
 # bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
-testPreferExactSignatureMatchInOverload
-testGenericArgumentInOverload
-testParenthesesAndContext
-testBadOverloadProbableMatch
 testInferConstraintsUnequalLengths
-testMultiItemListExpressions
-testLocalVariableInferenceFromEmptyList
-testNestedListExpressions
+testGenericArgumentInOverload
+testPreferExactSignatureMatchInOverload
+testBadOverloadProbableMatch
 testContextForAttributeDeclaredInInit
-testListMultiplyInContext
 testEmptyListExpression
 testImportedTypeAliasInRuntimeContext
-nested_generic_mismatch*
+
+# bottom up inference list multiply
+testListMultiplyInContext
 
 # bottom up dict
 testDictionaryLiteralInContext
@@ -1076,6 +1073,7 @@ testNeedAnnotationForCallable
 testPartialDefaultDict*
 testInferenceOfFor*
 testInferLocalVariableTypeWithUnderspecifiedGenericType
+testLocalVariableInferenceFromEmptyList
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames

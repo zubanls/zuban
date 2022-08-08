@@ -100,7 +100,8 @@ T = TypeVar('T')
 
 def add(x: list[T]) -> list[T]: ...
 
-a: list[int] = add([""]) # E: Argument 1 to "add" has incompatible type "list[str]"; expected "list[int]"
+a: list[int] = add([""]) # E: List item 0 has incompatible type "str"; expected "int"
+b: list[int] = add([1])
 
 [case nested_generic_mismatch_class]
 from typing import TypeVar, Generic
@@ -109,7 +110,8 @@ T = TypeVar('T')
 class Foo(Generic[T]):
     def add(self, x: list[T]) -> list[T]: ...
 
-a: list[int] = Foo[int]().add([""]) # E: Argument 1 to "add" of "Foo" has incompatible type "list[str]"; expected "list[int]"
+a: list[int] = Foo[int]().add([""]) # E: List item 0 has incompatible type "str"; expected "int"
+b: list[int] = Foo[int]().add([1])
 
 [case nested_generic_mismatch_function_and_tuple]
 from typing import TypeVar
