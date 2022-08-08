@@ -712,6 +712,11 @@ where
         let mut given_count = 0;
         let mut generics = vec![];
         let mut iterator = slice_type.iter();
+        let backfill = |inference: &mut Self, generics: &mut Vec<_>, count| {
+            for slice_content in slice_type.iter().take(count) {
+                generics.push(inference.compute_slice_db_type(slice_content));
+            }
+        };
         if let Some(type_vars) = type_vars {
             for type_var in type_vars.iter() {
                 let db_type = if let Some(slice_content) = iterator.next() {
@@ -759,9 +764,7 @@ where
                         if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
                             continue;
                         } else {
-                            for slice_content in slice_type.iter().take(given_count - 1) {
-                                generics.push(self.compute_slice_db_type(slice_content));
-                            }
+                            backfill(self, &mut generics, given_count - 1)
                         }
                     }
                     self.as_db_type(t, slice_content.as_node_ref())
@@ -791,10 +794,18 @@ where
         } else {
             TypeContent::DbType(match expected_count {
                 0 => DbType::Class(class.node_ref.as_link()),
-                _ => DbType::GenericClass(
-                    class.node_ref.as_link(),
-                    GenericsList::generics_from_vec(generics),
-                ),
+                _ => {
+                    // Need to fill the generics, because we might have been in a
+                    // ClassWithoutTypeVar case.
+                    if generics.is_empty() {
+                        backfill(self, &mut generics, expected_count);
+                        generics.resize(expected_count, DbType::Any);
+                    }
+                    DbType::GenericClass(
+                        class.node_ref.as_link(),
+                        GenericsList::generics_from_vec(generics),
+                    )
+                }
             })
         };
         if given_count != expected_count && !self.errors_already_calculated {

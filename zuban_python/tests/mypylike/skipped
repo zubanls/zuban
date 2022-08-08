@@ -1,9 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-testPreviousErrorInMethodSemanalPass3
-testUnpackInExpression1-only_when_nocache
-
 # union type var stuff
 testUnionGenericWithBoundedVariable
 testUnionInference
@@ -1103,6 +1100,7 @@ testMultipleAssignmentAndGenericSubtyping
 testInferringLvarTypesInNestedListAssignment
 testInferringMultipleLvarDefinitionWithListRvalue
 testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
+testUnpackInExpression1-only_when_nocache
 
 # List different types weirdness
 testListLiteralWithFunctionsErasesNames
