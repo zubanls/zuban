@@ -549,25 +549,44 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred<'db>> {
+        // TODO shouldn't this be merged/using infer_single_target
+
         // TODO it's weird that we unpack assignments here again.
         if let AssignmentContent::Normal(targets, _) = assignment.unpack() {
             for target in targets {
-                if let Target::Name(name_def) = target {
-                    let point = self.file.points.get(name_def.name_index());
-                    if point.calculated() {
-                        debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{target:?}");
-                        let mut first_definition = point.node_index();
-                        loop {
-                            let point = self.file.points.get(first_definition);
-                            if point.calculated() && point.type_() == PointType::MultiDefinition {
-                                first_definition = point.node_index();
-                            } else {
-                                break;
+                match target {
+                    Target::Name(name_def) => {
+                        let point = self.file.points.get(name_def.name_index());
+                        if point.calculated() {
+                            debug_assert_eq!(
+                                point.type_(),
+                                PointType::MultiDefinition,
+                                "{target:?}"
+                            );
+                            let mut first_definition = point.node_index();
+                            loop {
+                                let point = self.file.points.get(first_definition);
+                                if point.calculated() && point.type_() == PointType::MultiDefinition
+                                {
+                                    first_definition = point.node_index();
+                                } else {
+                                    break;
+                                }
+                            }
+                            let inferred = self.infer_name_by_index(first_definition);
+                            return Some(inferred);
+                        }
+                    }
+                    Target::NameExpression(primary_target, name_def_node) => {
+                        if let PrimaryTargetOrAtom::Atom(atom) = primary_target.first() {
+                            // TODO this is completely wrong!!!
+                            if atom.as_code() == "self" {
+                                continue;
                             }
                         }
-                        let inferred = self.infer_name_by_index(first_definition);
-                        return Some(inferred);
+                        return Some(self.infer_primary_target(primary_target));
                     }
+                    _ => (),
                 }
             }
         }
@@ -1548,7 +1567,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 .infer_param(self.i_s, node_index, args)
                                 .resolve_function_return(self.i_s)
                         } else {
-                            todo!()
+                            todo!("{:?}", self.i_s.context)
                         }
                     }
                     Specific::LazyInferredFunction | Specific::LazyInferredClosure => {
