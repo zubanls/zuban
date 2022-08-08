@@ -1004,7 +1004,7 @@ where
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
-            match self.compute_slice_type(s, Some(TypeVarIndex::new(i))) {
+            match self.compute_slice_type(s, Some(i.into())) {
                 TypeContent::DbType(DbType::TypeVar(_)) => (),
                 _ => s
                     .as_node_ref()

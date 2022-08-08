@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarIndex, TypeVarType,
-    TypeVarUsage, Variance,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarType, TypeVarUsage,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -248,7 +248,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             .map(|(i, t)| {
                                 DbType::TypeVar(TypeVarUsage {
                                     type_var: t.clone(),
-                                    index: TypeVarIndex::new(i),
+                                    index: i.into(),
                                     in_definition: class.node_ref.as_link(),
                                     type_: TypeVarType::Class,
                                 })

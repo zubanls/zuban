@@ -9,7 +9,7 @@ use crate::arguments::{ArgumentType, Arguments};
 use crate::base_description;
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, GenericsList, PointLink, Specific, TupleContent,
-    TypeVar, TypeVarIndex, TypeVarUsage, Variance,
+    TypeVar, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -181,7 +181,7 @@ impl<'db, 'a> TupleClass<'a> {
                 self.content
                     .generics
                     .as_ref()
-                    .map(|g| g.nth(TypeVarIndex::new(0)).unwrap_or(&DbType::Never))
+                    .map(|g| g.nth(0.into()).unwrap_or(&DbType::Never))
                     .unwrap_or(&DbType::Any),
             )),
             class_infos.mro.iter(),
@@ -226,10 +226,7 @@ impl<'db, 'a> TupleClass<'a> {
                     | (true, false, Variance::Contravariant)
                     | (_, _, Variance::Invariant) => false,
                     (true, false, Variance::Covariant) => {
-                        let t1 = Type::from_db_type(
-                            i_s.db,
-                            generics1.nth(TypeVarIndex::new(0)).unwrap(),
-                        );
+                        let t1 = Type::from_db_type(i_s.db, generics1.nth(0.into()).unwrap());
                         generics2.iter().all(|g2| {
                             let t2 = Type::from_db_type(i_s.db, g2);
                             t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
@@ -237,10 +234,7 @@ impl<'db, 'a> TupleClass<'a> {
                         })
                     }
                     (false, true, Variance::Contravariant) => {
-                        let t2 = Type::from_db_type(
-                            i_s.db,
-                            generics2.nth(TypeVarIndex::new(0)).unwrap(),
-                        );
+                        let t2 = Type::from_db_type(i_s.db, generics2.nth(0.into()).unwrap());
                         generics1.iter().all(|g1| {
                             let t1 = Type::from_db_type(i_s.db, g1);
                             t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
@@ -269,10 +263,7 @@ impl<'db, 'a> TupleClass<'a> {
                             )
                     }
                     (false, true) => {
-                        let t2 = Type::from_db_type(
-                            i_s.db,
-                            generics2.nth(TypeVarIndex::new(0)).unwrap(),
-                        );
+                        let t2 = Type::from_db_type(i_s.db, generics2.nth(0.into()).unwrap());
                         for g in generics1.iter() {
                             let t1 = Type::from_db_type(i_s.db, g);
                             if !t1.overlaps(i_s, &t2) {
@@ -283,10 +274,7 @@ impl<'db, 'a> TupleClass<'a> {
                         true
                     }
                     (true, false) => {
-                        let t1 = Type::from_db_type(
-                            i_s.db,
-                            generics1.nth(TypeVarIndex::new(0)).unwrap(),
-                        );
+                        let t1 = Type::from_db_type(i_s.db, generics1.nth(0.into()).unwrap());
                         for g in generics2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g);
                             if !t1.overlaps(i_s, &t2) {
@@ -410,7 +398,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_db_type(
                     i_s,
-                    generics.nth(TypeVarIndex::new(0)).unwrap().clone(),
+                    generics.nth(0.into()).unwrap().clone(),
                 ))
             } else {
                 match &self.content.generics {
@@ -434,13 +422,13 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     ) -> Inferred<'db> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
-                let by_index = |i_s: &mut InferenceState<'db, '_>, index| {
+                let by_index = |i_s: &mut InferenceState<'db, '_>, index: usize| {
                     self.content
                         .generics
                         .as_ref()
                         .and_then(|generics| {
                             generics
-                                .nth(TypeVarIndex::new(index))
+                                .nth(index.into())
                                 .map(|db_type| Inferred::execute_db_type(i_s, db_type.clone()))
                         })
                         .unwrap_or_else(Inferred::new_unknown)

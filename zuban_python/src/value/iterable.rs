@@ -1,7 +1,7 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality, TypeVarIndex};
+use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -35,7 +35,7 @@ impl<'db> ListLiteral<'db> {
     }
 
     pub fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
-        self.generic_list(i_s).nth(TypeVarIndex::new(0)).unwrap()
+        self.generic_list(i_s).nth(0.into()).unwrap()
     }
 
     fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {

@@ -27,10 +27,6 @@ pub struct TypeVarIndex(u32);
 pub struct MroIndex(pub u32);
 
 impl TypeVarIndex {
-    pub fn new(i: usize) -> Self {
-        Self(i as u32)
-    }
-
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
@@ -901,10 +897,10 @@ pub struct TypeVarManager(Vec<Rc<TypeVar>>);
 impl TypeVarManager {
     pub fn add(&mut self, tv: Rc<TypeVar>) -> TypeVarIndex {
         if let Some(index) = self.0.iter().position(|t| t.as_ref() == tv.as_ref()) {
-            TypeVarIndex::new(index)
+            index.into()
         } else {
             self.0.push(tv);
-            TypeVarIndex::new(self.0.len() - 1)
+            (self.0.len() - 1).into()
         }
     }
 
@@ -916,12 +912,12 @@ impl TypeVarManager {
     pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
         TypeVarUsage {
             type_var: tv.type_var.clone(),
-            index: TypeVarIndex::new(
-                self.0
-                    .iter()
-                    .position(|t| Rc::ptr_eq(t, &tv.type_var))
-                    .unwrap(),
-            ),
+            index: self
+                .0
+                .iter()
+                .position(|t| Rc::ptr_eq(t, &tv.type_var))
+                .unwrap()
+                .into(),
             type_: tv.type_,
             in_definition: tv.in_definition,
         }
@@ -971,7 +967,7 @@ impl TypeVars {
             .position(|t| t == &type_var)
             .map(|index| TypeVarUsage {
                 type_var,
-                index: TypeVarIndex::new(index),
+                index: index.into(),
                 type_,
                 in_definition,
             })
