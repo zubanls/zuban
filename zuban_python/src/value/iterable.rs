@@ -35,7 +35,7 @@ impl<'db> ListLiteral<'db> {
     }
 
     pub fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
-        self.generic_list(i_s).nth(0.into()).unwrap()
+        &self.generic_list(i_s)[0.into()]
     }
 
     fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {

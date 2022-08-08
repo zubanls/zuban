@@ -226,7 +226,7 @@ impl<'db, 'a> TupleClass<'a> {
                     | (true, false, Variance::Contravariant)
                     | (_, _, Variance::Invariant) => false,
                     (true, false, Variance::Covariant) => {
-                        let t1 = Type::from_db_type(i_s.db, generics1.nth(0.into()).unwrap());
+                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
                         generics2.iter().all(|g2| {
                             let t2 = Type::from_db_type(i_s.db, g2);
                             t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
@@ -234,7 +234,7 @@ impl<'db, 'a> TupleClass<'a> {
                         })
                     }
                     (false, true, Variance::Contravariant) => {
-                        let t2 = Type::from_db_type(i_s.db, generics2.nth(0.into()).unwrap());
+                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
                         generics1.iter().all(|g1| {
                             let t1 = Type::from_db_type(i_s.db, g1);
                             t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
@@ -263,7 +263,7 @@ impl<'db, 'a> TupleClass<'a> {
                             )
                     }
                     (false, true) => {
-                        let t2 = Type::from_db_type(i_s.db, generics2.nth(0.into()).unwrap());
+                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
                         for g in generics1.iter() {
                             let t1 = Type::from_db_type(i_s.db, g);
                             if !t1.overlaps(i_s, &t2) {
@@ -274,7 +274,7 @@ impl<'db, 'a> TupleClass<'a> {
                         true
                     }
                     (true, false) => {
-                        let t1 = Type::from_db_type(i_s.db, generics1.nth(0.into()).unwrap());
+                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
                         for g in generics2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g);
                             if !t1.overlaps(i_s, &t2) {
@@ -398,7 +398,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_db_type(
                     i_s,
-                    generics.nth(0.into()).unwrap().clone(),
+                    generics[0.into()].clone(),
                 ))
             } else {
                 match &self.content.generics {

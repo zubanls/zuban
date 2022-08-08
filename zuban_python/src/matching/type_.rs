@@ -263,7 +263,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 TypeVarType::Function => {
                     if let Some(fm) = calculated_type_vars {
-                        fm.nth(usage.index).unwrap().clone()
+                        fm[usage.index].clone()
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
                         DbType::TypeVar(usage.clone())

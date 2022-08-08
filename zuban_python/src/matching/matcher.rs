@@ -133,8 +133,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = type_var_remap.nth(type_var_usage.index).unwrap();
-                            let g = Type::from_db_type(i_s.db, g);
+                            let g =
+                                Type::from_db_type(i_s.db, &type_var_remap[type_var_usage.index]);
                             // The remapping of type vars needs to be checked now. In a lot of
                             // cases this is T -> T and S -> S, but it could also be T -> S and S
                             // -> List[T] or something completely arbitrary.
@@ -206,11 +206,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap.nth(type_var_usage.index).unwrap().format(
-                                i_s,
-                                Some(self),
-                                style,
-                            )
+                            type_var_remap[type_var_usage.index].format(i_s, Some(self), style)
                         } else {
                             type_var_usage.type_var.name(i_s.db).into()
                         }
@@ -246,7 +242,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             let func_class = f.class.unwrap();
                             if type_var_usage.in_definition == func_class.node_ref.as_link() {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
-                                let g = type_var_remap.nth(type_var_usage.index).unwrap();
+                                let g = &type_var_remap[type_var_usage.index];
                                 self.remap_type_vars_for_nested_context(i_s, g)
                             } else {
                                 todo!()

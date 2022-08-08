@@ -512,6 +512,14 @@ impl GenericsList {
     }
 }
 
+impl std::ops::Index<TypeVarIndex> for GenericsList {
+    type Output = DbType;
+
+    fn index(&self, index: TypeVarIndex) -> &DbType {
+        &self.0[index.0 as usize]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
     Class(PointLink),
