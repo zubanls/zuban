@@ -2,7 +2,6 @@
 testInferTypeVariableFromTwoGenericTypes4
 testTypeVarWithValueInferredFromObjectReturnTypeContext2
 testIgnoringInferenceContext
-testEmptyListExpression
 testContextForAttributeDeclaredInInit
 
 # alias type var must be given?
