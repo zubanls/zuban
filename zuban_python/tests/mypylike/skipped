@@ -341,7 +341,6 @@ testGenericArgumentInOverload
 testParenthesesAndContext
 testBadOverloadProbableMatch
 testInferConstraintsUnequalLengths
-testSingleItemListExpressions
 testMultiItemListExpressions
 testLocalVariableInferenceFromEmptyList
 testNestedListExpressions
@@ -349,6 +348,7 @@ testContextForAttributeDeclaredInInit
 testListMultiplyInContext
 testEmptyListExpression
 testImportedTypeAliasInRuntimeContext
+nested_generic_mismatch*
 
 # bottom up dict
 testDictionaryLiteralInContext

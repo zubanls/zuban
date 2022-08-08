@@ -36,6 +36,12 @@ impl TypeVarIndex {
     }
 }
 
+impl From<usize> for TypeVarIndex {
+    fn from(item: usize) -> Self {
+        Self(item as u32)
+    }
+}
+
 impl fmt::Display for FileIndex {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)

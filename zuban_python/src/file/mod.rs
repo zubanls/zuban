@@ -1239,7 +1239,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             NoneLiteral => Specific::None,
             Boolean(_) => Specific::Boolean,
             Ellipsis => Specific::Ellipsis,
-            List(_) => Specific::List,
+            List(list) => {
+                if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
+                    return result.save_redirect(self.file, atom.index());
+                } else {
+                    Specific::List
+                }
+            }
             ListComprehension(_) => Specific::List,
             Dict(_) => Specific::Dict,
             DictComprehension(_) => todo!(),

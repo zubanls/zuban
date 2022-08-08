@@ -26,6 +26,7 @@ use database::{Database, FileIndex};
 pub use diagnostics::DiagnosticConfig;
 use file_state::{Leaf, PythonFileLoader};
 use inference_state::InferenceState;
+use inferred::Inferred;
 use name::{Names, ValueName};
 use parsa_python_ast::CodeIndex;
 pub use value::ValueKind;

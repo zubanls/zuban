@@ -12,18 +12,18 @@ pub enum ResultContext<'db, 'a> {
 }
 
 impl<'db, 'a> ResultContext<'db, 'a> {
-    pub fn with_type_if_exists(
+    pub fn with_type_if_exists<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        mut callable: impl FnMut(&mut InferenceState<'db, '_>, &Type<'db, '_>),
-    ) {
+        mut callable: impl FnMut(&mut InferenceState<'db, '_>, &Type<'db, '_>) -> T,
+    ) -> Option<T> {
         match self {
-            Self::Known(t) => callable(i_s, t),
+            Self::Known(t) => Some(callable(i_s, t)),
             Self::LazyKnown(c) => {
                 let t = c(i_s);
-                callable(i_s, &Type::from_db_type(i_s.db, &t))
+                Some(callable(i_s, &Type::from_db_type(i_s.db, &t)))
             }
-            Self::Unknown => (),
+            Self::Unknown => None,
         }
     }
 }

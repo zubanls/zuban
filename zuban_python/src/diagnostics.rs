@@ -16,6 +16,7 @@ pub(crate) enum IssueType {
     InvalidType(Box<str>),
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
+    ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     Redefinition { line: usize },
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
@@ -169,6 +170,9 @@ impl<'db> Diagnostic<'db> {
                     "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
                 )
             }
+            IssueType::ListItemMismatch{item, got, expected} => format!(
+                "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
+            ),
             IssueType::Redefinition{line} => {
                 let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
