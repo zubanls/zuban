@@ -81,10 +81,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         check_item(i_s, inferred, e.index())
                                     }
                                     StarLikeExpression::StarNamedExpression(e) => {
-                                        todo!()
+                                        todo!("{e:?}")
                                     }
                                     StarLikeExpression::StarExpression(e) => {
-                                        todo!()
+                                        todo!("{e:?}")
                                     }
                                 };
                             }
