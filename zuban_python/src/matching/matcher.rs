@@ -403,21 +403,25 @@ fn calculate_type_vars<'db>(
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
-                type_.any(i_s.db, &mut |t| match t {
-                    ClassLike::Class(result_class) if result_class.node_ref == class.node_ref => {
-                        let mut calculating = matcher.calculated_type_vars.iter_mut();
-                        result_class
-                            .generics()
-                            .iter()
-                            .run_on_all(i_s, &mut |i_s, g| {
-                                let calculated = calculating.next().unwrap();
-                                calculated.type_ = Some(g.as_db_type(i_s));
-                                calculated.defined_by_result_context = true;
-                            });
-                        true
-                    }
-                    _ => false,
-                });
+                if let Some(type_vars) = class.type_vars(i_s) {
+                    type_.any(i_s.db, &mut |t| match t {
+                        ClassLike::Class(result_class)
+                            if result_class.node_ref == class.node_ref =>
+                        {
+                            let mut calculating = matcher.calculated_type_vars.iter_mut();
+                            result_class
+                                .generics()
+                                .iter()
+                                .run_on_all(i_s, &mut |i_s, g| {
+                                    let calculated = calculating.next().unwrap();
+                                    calculated.type_ = Some(g.as_db_type(i_s));
+                                    calculated.defined_by_result_context = true;
+                                });
+                            true
+                        }
+                        _ => false,
+                    });
+                }
             } else {
                 let result_type = match func_or_callable {
                     FunctionOrCallable::Function(_, f) => f.result_type(i_s),
