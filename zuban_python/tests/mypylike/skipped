@@ -1,6 +1,10 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
+testInferTypeVariableFromTwoGenericTypes2
+testPreviousErrorInMethodSemanalPass3
+testUnpackInExpression1-only_when_nocache
+
 # union type var stuff
 testUnionGenericWithBoundedVariable
 testUnionInference
