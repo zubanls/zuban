@@ -2,9 +2,11 @@
 testInferTypeVariableFromTwoGenericTypes4
 testTypeVarWithValueInferredFromObjectReturnTypeContext2
 testIgnoringInferenceContext
-testImportedTypeAliasInRuntimeContext
 testEmptyListExpression
 testContextForAttributeDeclaredInInit
+
+# alias type var must be given?
+testImportedTypeAliasInRuntimeContext
 
 # union type var stuff
 testUnionGenericWithBoundedVariable
@@ -77,6 +79,11 @@ testOverloadWithDerivedFromAny
 testCovariantOverlappingOverloadSignaturesWithAnyType
 testContravariantOverlappingOverloadSignaturesWithAnyType
 testAnyIsOKAsFallbackInOverloads
+
+# Overload List item 0 should not be generated on ALL mismatches
+testPreferExactSignatureMatchInOverload
+# Overload inference issue
+testBadOverloadProbableMatch
 
 # - No overload variant of "f" matches argument types "A", "A"
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
@@ -339,11 +346,6 @@ testCallableListJoinInference
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
-
-# bottom up inference List item 0 has incompatible type "List[str]"; expected "int"
-testBadOverloadProbableMatch
-# Overload List item 0 should not be generated on ALL mismatches
-testPreferExactSignatureMatchInOverload
 
 # bottom up inference list multiply
 testListMultiplyInContext
