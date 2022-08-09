@@ -1,6 +1,8 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 testTypeVarWithValueInferredFromObjectReturnTypeContext2
+contravariant_type_var
+testInferTypeVariableFromTwoGenericTypes1
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext

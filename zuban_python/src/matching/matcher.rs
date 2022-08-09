@@ -29,8 +29,17 @@ impl TypeVarBound {
     fn new(t: DbType, variance: Variance) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(t),
-            Variance::Covariant => Self::Lower(t),
-            Variance::Contravariant => Self::Upper(t),
+            Variance::Covariant => Self::Upper(t),
+            Variance::Contravariant => Self::Lower(t),
+        }
+    }
+
+    fn invert_bounds(&mut self) {
+        match std::mem::replace(self, Self::Invariant(DbType::Any)) {
+            Self::Invariant(t) => *self = Self::Invariant(t),
+            Self::Upper(t) => *self = Self::Lower(t),
+            Self::Lower(t) => *self = Self::Upper(t),
+            Self::LowerAndUpper(_, _) => unreachable!(),
         }
     }
 
@@ -503,10 +512,10 @@ fn calculate_type_vars<'db>(
                                 .iter()
                                 .run_on_all(i_s, &mut |i_s, g| {
                                     let calculated = calculating.next().unwrap();
-                                    calculated.type_ = Some(TypeVarBound::new(
-                                        g.as_db_type(i_s),
-                                        type_vars[i].variance,
-                                    ));
+                                    let mut bound =
+                                        TypeVarBound::new(g.as_db_type(i_s), type_vars[i].variance);
+                                    bound.invert_bounds();
+                                    calculated.type_ = Some(bound);
                                     calculated.defined_by_result_context = true;
                                     i += 1; // TODO please test that this works for multiple type vars
                                 });
@@ -522,7 +531,8 @@ fn calculate_type_vars<'db>(
                 };
                 result_type.matches(i_s, Some(matcher), type_, Variance::Covariant);
                 for calculated in matcher.calculated_type_vars.iter_mut() {
-                    if calculated.type_.is_some() {
+                    if let Some(type_) = &mut calculated.type_ {
+                        type_.invert_bounds();
                         calculated.defined_by_result_context = true;
                     }
                 }
