@@ -205,3 +205,32 @@ main:15: error: No overload variant of "Foo" matches argument type "list[str]"
 main:15: note: Possible overload variants:
 main:15: note:     def __init__(self, t: T) -> Any
 main:15: note:     def __init__(self, t: list[T]) -> Any
+
+[case contravariant_type_var]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class A(Generic[T_contra]): pass
+class B(A[T]): pass
+
+class C: ...
+class D(C): ...
+
+def f(x: A[T], y: A[T]) -> B[T]: ...
+def g(x: A[T], y: A[T]) -> A[T]: ...
+
+c: B[C]
+d: B[D]
+reveal_type(f(c, d)) # N: Revealed type is "__main__.B[__main__.D]"
+reveal_type(f(d, c)) # N: Revealed type is "__main__.B[__main__.D]"
+x1: A[C] = f(d, c) # E: Argument 1 to "f" has incompatible type "B[D]"; expected "A[C]"
+x2: A[C] = f(c, d) # E: Argument 2 to "f" has incompatible type "B[D]"; expected "A[C]"
+x3: A[D] = f(d, c)
+x4: A[D] = f(c, d)
+
+y1: A[C] = g(d, c) # E: Argument 1 to "f" has incompatible type "B[D]"; expected "A[C]"
+y2: A[C] = g(c, d) # E: Argument 2 to "f" has incompatible type "B[D]"; expected "A[C]"
+y3: A[D] = g(d, c)
+y4: A[D] = g(c, d)
