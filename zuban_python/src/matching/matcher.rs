@@ -84,23 +84,10 @@ impl TypeVarBound {
         other: &Type<'db, '_>,
         variance: Variance,
     ) -> Match {
-        // The cases are:
-        // - Self::Invariant -> match all invariant -> No change
-        // - Self::Lower
-        //   - Variance::Invariant -> match covariant -> Self::Invariant
-        //   - Variance::Covariant -> match covariant -> update upper bound
-        //   - Variance::Contravariant -> match covariant -> update lower bound
-        // - Self::Upper
-        //   - Variance::Invariant -> match contravariant -> Self::Invariant
-        //   - Variance::Covariant -> match contravariant -> update upper bound
-        //   - Variance::Contravariant -> match contravariant -> update lower bound
-        // - Self::LowerAndUpper
-        //   - Variance::Invariant -> match co and contra -> Self::Invariant
-        //   - Variance::Covariant -> match co and contra -> update upper bound
-        //   - Variance::Contravariant -> match co and contra -> update lower bound
-        let check_match = |i_s: &mut InferenceState<'db, '_>, t, variance| {
+        let check_match = |i_s: &mut InferenceState<'db, '_>, t: &DbType, variance| {
             Type::from_db_type(i_s.db, t).matches(i_s, None, other, variance)
         };
+        // First check if the value is between the bounds.
         let matches = match self {
             Self::Invariant(t) => return check_match(i_s, t, Variance::Invariant),
             Self::Lower(lower) => check_match(i_s, lower, Variance::Covariant),
@@ -111,12 +98,29 @@ impl TypeVarBound {
             }
         };
         if matches.bool() {
+            // If we are between the bounds we might need to update lower/upper bounds
             let db_other = other.as_db_type(i_s);
             match variance {
                 Variance::Invariant => *self = Self::Invariant(db_other),
                 Variance::Covariant => self.update_upper_bound(db_other),
                 Variance::Contravariant => self.update_lower_bound(db_other),
             }
+        } else {
+            // If we are not between the lower and upper bound, but the value is co or
+            // contravariant, it can still be valid.
+            match variance {
+                Variance::Invariant => (),
+                Variance::Covariant => {
+                    if let Self::Upper(t) | Self::LowerAndUpper(_, t) = self {
+                        return check_match(i_s, t, variance);
+                    }
+                }
+                Variance::Contravariant => {
+                    if let Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
+                        return check_match(i_s, t, variance);
+                    }
+                }
+            };
         }
         matches
     }
