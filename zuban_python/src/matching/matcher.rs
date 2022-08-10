@@ -213,7 +213,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     type_var: type_var_usage.type_var.clone(),
                 });
             }
-            dbg!(variance);
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             Match::True
         } else {
@@ -542,7 +541,6 @@ fn calculate_type_vars<'db>(
                         calculated.defined_by_result_context = true;
                     }
                 }
-                dbg!(&matcher.calculated_type_vars);
             }
         });
         matcher.in_result_context = false;

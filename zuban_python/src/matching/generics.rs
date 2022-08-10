@@ -186,7 +186,19 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    t.variance
+                    let mut v = t.variance;
+                    if let Some(matcher) = &matcher {
+                        if matcher.in_result_context {
+                            // Since we are matching result contexts from the wrong side, we need
+                            // to invert variances here.
+                            v = match v {
+                                Variance::Covariant => Variance::Contravariant,
+                                Variance::Contravariant => Variance::Covariant,
+                                Variance::Invariant => Variance::Invariant,
+                            };
+                        }
+                    }
+                    v
                 } else {
                     // TODO should this even be hit?
                     variance

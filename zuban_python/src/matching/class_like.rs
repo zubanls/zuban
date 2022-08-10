@@ -202,17 +202,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         other: &Self,
         variance: Variance,
     ) -> Match {
-        let mut inner_variance = variance;
-        if let Some(matcher) = &matcher {
-            if matcher.in_result_context {
-                inner_variance = match variance {
-                    Variance::Covariant => Variance::Contravariant,
-                    Variance::Contravariant => Variance::Covariant,
-                    Variance::Invariant => Variance::Invariant,
-                };
-                dbg!(variance, self, other);
-            }
-        }
         let matches = match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => {
@@ -220,7 +209,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         let type_vars = c1.type_vars(i_s);
                         return c1
                             .generics()
-                            .matches(i_s, matcher, c2.generics(), inner_variance, type_vars)
+                            .matches(i_s, matcher, c2.generics(), variance, type_vars)
                             .similar_if_false();
                     }
                     false
@@ -246,7 +235,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(t1) => {
                 return match other {
                     Self::Tuple(t2) => {
-                        let m: Match = t1.matches(i_s, t2, matcher, inner_variance).into();
+                        let m: Match = t1.matches(i_s, t2, matcher, variance).into();
                         m.similar_if_false()
                     }
                     _ => Match::False(MismatchReason::None),
@@ -303,7 +292,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         if matches {
             let g1 = self.generics(i_s);
             let g2 = other.generics(i_s);
-            g1.matches(i_s, matcher.as_deref_mut(), g2, inner_variance, None)
+            g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
                 .similar_if_false()
         } else {
             Match::new_false()

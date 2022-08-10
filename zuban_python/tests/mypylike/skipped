@@ -2,6 +2,8 @@
 testInferTypeVariableFromTwoGenericTypes4
 testTypeVarWithValueInferredFromObjectReturnTypeContext2
 
+testOverloadWithPartiallyOverlappingUnionsNested
+
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
@@ -666,6 +668,7 @@ testSubtypingAndABCExtension
 testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testPrecedenceOfFirstBaseAsInferenceResult
+type_var_with_co_and_contra_real_life
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
