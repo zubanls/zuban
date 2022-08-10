@@ -320,10 +320,6 @@ testTypeVarBoundToNewUnionAttributeAccess
 testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
 
-# Type Var overrides
-testTypeInferenceWithCalleeVarArgs
-testTypeInferenceWithCalleeVarArgsAndDefaultArgs
-
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 
