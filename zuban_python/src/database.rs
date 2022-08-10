@@ -3,6 +3,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
+use std::ops::Not;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -946,6 +947,18 @@ pub enum Variance {
     Invariant = 0,
     Covariant,
     Contravariant,
+}
+
+impl Not for Variance {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Variance::Covariant => Variance::Contravariant,
+            Variance::Contravariant => Variance::Covariant,
+            Variance::Invariant => Variance::Invariant,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

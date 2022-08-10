@@ -191,11 +191,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                         if matcher.in_result_context {
                             // Since we are matching result contexts from the wrong side, we need
                             // to invert variances here.
-                            v = match v {
-                                Variance::Covariant => Variance::Contravariant,
-                                Variance::Contravariant => Variance::Covariant,
-                                Variance::Invariant => Variance::Invariant,
-                            };
+                            v = !v;
                         }
                     }
                     v
