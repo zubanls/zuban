@@ -310,7 +310,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if current.defined_by_result_context {
                 current.type_.as_ref().unwrap().format(i_s, style)
             } else {
-                ClassLike::Never.format(i_s, None, style)
+                Type::Never.format(i_s, None, style)
             }
         } else {
             match self.func_or_callable {

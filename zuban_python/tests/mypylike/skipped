@@ -3,6 +3,7 @@ testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
 type_var_with_co_and_contra_matrix_no_context
 
+tuple_methods_empty
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
@@ -342,6 +343,9 @@ testChainedAssignmentInferenceContexts
 # Union nothing should disappear
 testUnionWithGenericTypeItemContext
 testUnionWithGenericTypeItemContextInMethod
+
+# nothing is displayed (probably also used as Any)
+tuple_methods_empty
 
 # Alias Type Var Binding
 testGenericTypeAliasesRuntimeExpressionsInstance
