@@ -452,7 +452,7 @@ b4: list[A] = f(c_co, a_contra)
 b5: list[B] = f(b_contra, c_co)
 b6: list[B] = f(c_co, b_contra)
 b7: list[B] = f(a_co, b_contra) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
-b8: list[B] = f(c_co, a_contra) # E: Argument 2 to "f" has incompatible type "Contra[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+b8: list[B] = f(c_co, a_contra)
 
 [case type_var_with_co_and_contra_matrix_covariant_context_simple]
 from typing import Generic, TypeVar, Iterable
