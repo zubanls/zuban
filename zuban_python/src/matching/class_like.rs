@@ -282,10 +282,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             }
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
-            Self::None => match variance {
-                Variance::Contravariant => matches!(other, Self::None),
-                _ => matches!(other, Self::None),
-            },
+            Self::None => matches!(other, Self::None),
         };
         if matches {
             let g1 = self.generics(i_s);
