@@ -284,7 +284,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::TypingClassType(c) => todo!(),
             Self::None => match variance {
                 Variance::Contravariant => matches!(other, Self::None),
-                _ => true,
+                _ => matches!(other, Self::None),
             },
         };
         if matches {

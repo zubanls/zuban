@@ -983,6 +983,7 @@ testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 testCallingFunctionsWithDefaultArgumentValues
+testPartiallyInitializedVariableDoesNotEscapeScope2
 
 # None late binding, because it's None (x = None; x = 3)
 testAssigningAnyStrToNone
