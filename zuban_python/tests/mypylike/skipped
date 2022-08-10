@@ -2,6 +2,8 @@
 testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
 type_var_with_co_and_contra_matrix_no_context
+# Type Var Inference bottom up on class __init__
+testGenericTypeAliasesBasic2
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
@@ -58,6 +60,7 @@ testFunctionReturningGenericFunctionTwoLevelBinding
 testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
+testGenericFunctionsWithUnalignedIds
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
@@ -274,24 +277,9 @@ testInvalidRvalueTypeInInferredMultipleLvarDefinition
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
-# generics special cases
-testGenericFunctionsWithUnalignedIds
-testTypeVariableWithContainerAndTuple
-testGenericOperatorMethodOverlapping*
-testCallTypeTWithGenericBound
+# Type Var formatting
 testQualifiedTypeVariableName
 testPartiallyQualifiedTypeVariableName
-testGenericClassClsNonGeneric
-testGenericClassUnrelatedVars
-testGenericClassInGenericFunction*
-testGenericClassDirectCall
-testGenericClassAlternativeConstructorPrecise*
-testNoGenericAccessOnImplicitAttributes
-testGenericClassAttrUnboundOn*
-testGenericClassPropertyBound
-testGenericClassInsideOtherGenericClass
-testGenericFunctionMemberExpand
-testGenericJoin*
 
 # Type Var Value in func
 testCheckGenericFunctionBodyWithTypeVarValues
@@ -323,11 +311,10 @@ testInnerFunctionMutualRecursionWithTypevarValues
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 
-# Type[T] TypeVars -> Indirect class access
+# Type[T] TypeVars -> Indirect class access or class init
 testTypeVarWithAnyTypeBound
+testCallTypeTWithGenericBound
 
-# Type Var Inference bottom up on class __init__
-testGenericTypeAliasesBasic2
 # inference With Overload
 testOverloadAgainstEmptyCollections
 testOverloadAgainstEmptyCovariantCollections
@@ -394,8 +381,12 @@ testCallConditionalMethodInClassBody
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 
+# Nested class / class in class
+testGenericClassInsideOtherGenericClass
+
 # Class: generic access from outside
 testAliasRefOnClass
+testGenericClassAttrUnboundOn*
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
 # General Scoping
@@ -439,6 +430,12 @@ testOverloadWithInconsistentClassMethods
 testOverloadAndClassTypes
 testForwardReferenceToDynamicallyTypedClassMethod
 testForwardReferenceToStaticallyTypedClassMethod
+testGenericClassClsNonGeneric
+testGenericClassUnrelatedVars
+testGenericClassDirectCall
+testGenericClassInGenericFunction*
+testGenericClassAlternativeConstructorPrecise*
+testNoGenericAccessOnImplicitAttributes
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -835,6 +832,10 @@ testSubclassingGenericABC1
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
 
+# Signatures of "__ior__" and "__or__" are incompatible
+testGenericOperatorMethodOverlapping
+testGenericOperatorMethodOverlapping2
+
 # class attributes
 testInferAttributeTypeAndAssignInInit
 
@@ -1005,6 +1006,7 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 *Deco*
 testVarArgsCallableSelf
 testOverloadDeferredNode
+testGenericClassPropertyBound
 
 # Function Not checked, missing return annotations (untyped)
 testPositionalAndKeywordForSameArg
@@ -1042,6 +1044,7 @@ testGenericFineCallableInBound
 testReprocessCallableArg
 testGenericTypeAliasesCallable
 testGenericTypeAliasesImportingWithoutTypeVar
+testGenericFunctionMemberExpand
 
 # parser recovery in type comments / types in string literals
 testInvalidStrLiteralSpaces
@@ -1101,6 +1104,7 @@ testUnpackInExpression1-only_when_nocache
 testListLiteralWithFunctionsErasesNames
 testListLiteralWithSimilarFunctionsErasesName
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
+testGenericJoin*
 
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
