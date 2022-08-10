@@ -89,7 +89,13 @@ impl TypeVarBound {
         };
         // First check if the value is between the bounds.
         let matches = match self {
-            Self::Invariant(t) => return check_match(i_s, t, Variance::Invariant),
+            Self::Invariant(t) => {
+                let m = check_match(i_s, t, Variance::Invariant);
+                if m.bool() {
+                    return m; // In the false case we still have to check for the variance cases.
+                }
+                m
+            }
             Self::Lower(lower) => check_match(i_s, lower, Variance::Covariant),
             Self::Upper(upper) => check_match(i_s, upper, Variance::Contravariant),
             Self::LowerAndUpper(lower, upper) => {
