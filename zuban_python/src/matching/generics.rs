@@ -185,7 +185,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         let mut type_var_iterator = type_vars.map(|t| t.iter());
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
+                let v = if let Some(t) = type_var_iterator.as_mut().map(|t| t.next().unwrap()) {
                     let mut v = t.variance;
                     if let Some(matcher) = &matcher {
                         if matcher.in_result_context {
@@ -200,7 +200,8 @@ impl<'db, 'a> Generics<'db, 'a> {
                     }
                     v
                 } else {
-                    // TODO should this even be hit?
+                    // The type var iterator is for example not there when we iterate over tuple
+                    // generics.
                     variance
                 };
                 matches &= type_.matches(i_s, matcher.as_deref_mut(), &g, v);
