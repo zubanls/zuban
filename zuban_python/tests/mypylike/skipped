@@ -1,6 +1,5 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
-testTypeVarWithValueInferredFromObjectReturnTypeContext2
 
 testOverloadWithPartiallyOverlappingUnionsNested
 

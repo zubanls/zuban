@@ -192,7 +192,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if !type_var.restrictions.is_empty() {
                 for restriction in type_var.restrictions.iter() {
                     if Type::from_db_type(i_s.db, restriction)
-                        .matches(i_s, None, value_type, Variance::Covariant)
+                        .matches(
+                            i_s,
+                            None,
+                            value_type,
+                            match self.in_result_context {
+                                false => Variance::Covariant,
+                                // Type var restrictions are special, because they impose the rule
+                                // that the output of a type var is always the specific one of the
+                                // specific types.
+                                true => Variance::Invariant,
+                            },
+                        )
                         .bool()
                     {
                         current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
