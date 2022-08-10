@@ -536,3 +536,15 @@ b5: Iterable[B] = f(b_contra, c_co)
 b6: Iterable[B] = f(c_co, b_contra)
 b7: Iterable[B] = f(a_co, b_contra) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
 b8: Iterable[B] = f(c_co, a_contra)
+
+c1: Iterable[A] = f(b_contra, c_contra)
+c2: Iterable[A] = f(c_contra, b_contra)
+c3: Iterable[A] = f(b_contra, a_co) # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+c4: Iterable[A] = f(a_co, b_contra) # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[A] | Contra[A] | Invariant[A]"
+c5: Iterable[A] = f(b_contra, b_co)
+c6: Iterable[A] = f(b_co, b_contra)
+
+d1: Iterable[A] = f(c_co, b_contra)
+d2: Iterable[A] = f(b_contra, c_co)
+d1: Iterable[A] = f(c_contra, b_co) # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]"
+d2: Iterable[A] = f(b_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
