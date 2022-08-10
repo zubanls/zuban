@@ -2,8 +2,6 @@
 testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
 type_var_with_co_and_contra_matrix_no_context
-# Type Var Inference bottom up on class __init__
-testGenericTypeAliasesBasic2
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
@@ -345,9 +343,10 @@ testChainedAssignmentInferenceContexts
 testUnionWithGenericTypeItemContext
 testUnionWithGenericTypeItemContextInMethod
 
-# Special Type Var Binding
+# Alias Type Var Binding
 testGenericTypeAliasesRuntimeExpressionsInstance
 testGenericTypeAliasesTypeVarBinding
+testGenericTypeAliasesBasic2
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
