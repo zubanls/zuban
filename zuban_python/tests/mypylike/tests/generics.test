@@ -230,7 +230,55 @@ x2: A[C] = f(c, d) # E: Argument 2 to "f" has incompatible type "B[D]"; expected
 x3: A[D] = f(d, c)
 x4: A[D] = f(c, d)
 
-y1: A[C] = g(d, c) # E: Argument 1 to "f" has incompatible type "B[D]"; expected "A[C]"
-y2: A[C] = g(c, d) # E: Argument 2 to "f" has incompatible type "B[D]"; expected "A[C]"
+y1: A[C] = g(d, c) # E: Argument 1 to "g" has incompatible type "B[D]"; expected "A[C]"
+y2: A[C] = g(c, d) # E: Argument 2 to "g" has incompatible type "B[D]"; expected "A[C]"
 y3: A[D] = g(d, c)
 y4: A[D] = g(c, d)
+
+[case type_var_with_co_and_contra_abstract]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): ...
+class Contra(Generic[T_contra]): ...
+
+class A: ...
+class B(A): ...
+
+def f(x: Co[T], y: Contra[T]) -> T: ...
+
+a_co: Co[A]
+b_co: Co[B]
+a_contra: Contra[A]
+b_contra: Contra[B]
+
+f(a_co, a_contra)
+f(b_co, b_contra)
+f(a_co, b_contra) # E: Cannot infer type argument 1 of "f"
+f(b_co, a_contra)
+
+[case type_var_with_co_and_contra_real_life]
+from typing import Generic, TypeVar, Iterable
+from _typeshed import SupportsWrite
+
+T = TypeVar('T')
+
+class A: ...
+class B(A): ...
+
+def f(iterable: Iterable[T], writer: SupportsWrite[T]) -> None:
+    for x in iterable:
+        writer.write(x)
+
+a_iterable: Iterable[A]
+b_iterable: Iterable[B]
+a_writer: SupportsWrite[A]
+b_writer: SupportsWrite[B]
+
+f(a_iterable, a_writer)
+f(b_iterable, b_writer)
+f(a_iterable, b_writer) # E: Cannot infer type argument 1 of "f"
+f(b_iterable, a_writer)
