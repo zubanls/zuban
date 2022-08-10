@@ -137,6 +137,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
+    pub in_result_context: bool,
     parent_matcher: Option<&'a mut Self>,
 }
 
@@ -151,6 +152,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
+            in_result_context: true,
             parent_matcher: None, //parent_matcher,
         }
     }
@@ -211,6 +213,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     type_var: type_var_usage.type_var.clone(),
                 });
             }
+            dbg!(variance);
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             Match::True
         } else {
@@ -533,15 +536,16 @@ fn calculate_type_vars<'db>(
                     FunctionOrCallable::Function(_, f) => f.result_type(i_s),
                     FunctionOrCallable::Callable(c) => c.result_type(i_s),
                 };
-                result_type.matches(i_s, Some(matcher), type_, Variance::Covariant);
+                result_type.matches(i_s, Some(matcher), type_, Variance::Contravariant);
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {
-                        type_.invert_bounds();
                         calculated.defined_by_result_context = true;
                     }
                 }
+                dbg!(&matcher.calculated_type_vars);
             }
         });
+        matcher.in_result_context = false;
     }
     let result = match func_or_callable {
         FunctionOrCallable::Function(class, function) => {

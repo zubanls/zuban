@@ -186,12 +186,9 @@ impl<'db, 'a> Generics<'db, 'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    match variance {
-                        // TODO wtf this shouldn't be this way
-                        Variance::Contravariant => Variance::Contravariant,
-                        _ => t.variance,
-                    }
+                    t.variance
                 } else {
+                    // TODO should this even be hit?
                     variance
                 };
                 matches &= type_.matches(i_s, matcher.as_deref_mut(), &g, v);
