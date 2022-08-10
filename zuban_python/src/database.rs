@@ -949,10 +949,8 @@ pub enum Variance {
     Contravariant,
 }
 
-impl Not for Variance {
-    type Output = Self;
-
-    fn not(self) -> Self::Output {
+impl Variance {
+    pub fn invert(self) -> Self {
         match self {
             Variance::Covariant => Variance::Contravariant,
             Variance::Contravariant => Variance::Covariant,
