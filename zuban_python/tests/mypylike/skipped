@@ -1,7 +1,7 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
-
 testOverloadWithPartiallyOverlappingUnionsNested
+type_var_with_co_and_contra_matrix_no_context
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
@@ -21,6 +21,8 @@ testWideOuterContextOptionalMethods
 testWideOuterContextUnionValuesGenericReturn
 testWideOuterContextOptionalMethod
 testWideOuterContextOptionalTypeVarReturn
+# Union Not matching type vars
+testJoinUnionWithUnionAndAny
 
 overload_not_overlapping_none
 overload_unmatchable_none
@@ -234,9 +236,6 @@ testUnificationEmptySet*
 testUnificationEmptyDict*
 testUnificationDictWithEmptyList*
 testMisguidedSetItem
-
-# Union Not matching type vars
-testJoinUnionWithUnionAndAny
 
 # Duplicate in Union
 testUnionMethodCalls

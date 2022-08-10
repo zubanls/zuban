@@ -282,3 +282,257 @@ f(a_iterable, a_writer)
 f(b_iterable, b_writer)
 f(a_iterable, b_writer) # E: Cannot infer type argument 1 of "f"
 f(b_iterable, a_writer)
+
+[case type_var_with_co_and_contra_matrix_reveal_type]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+reveal_type(f(a_co, a_co)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(a_co, b_co)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(b_co, a_co)) # N: Revealed type is "builtins.list[__main__.A]"
+
+reveal_type(f(a_contra, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(a_contra, b_contra)) # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(f(b_contra, a_contra)) # N: Revealed type is "builtins.list[__main__.B]"
+
+reveal_type(f(a_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
+                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+reveal_type(f(b_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(a_contra, b_co)) # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(f(b_contra, a_co)) # N: Revealed type is "builtins.list[__main__.B]" \
+                               # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
+                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+
+[case type_var_with_co_and_contra_matrix_no_context]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+f(b_co, a_inv) # E: Cannot infer type argument 1 of "f"
+f(a_inv, b_co) # E: Cannot infer type argument 1 of "f"
+f(b_contra, a_inv) # E: Cannot infer type argument 1 of "f"
+f(a_inv, b_contra) # E: Cannot infer type argument 1 of "f"
+f(a_contra, a_inv)
+f(a_co, a_inv)
+f(b_inv, a_inv) # E: Cannot infer type argument 1 of "f"
+f(b_inv, a_inv) # E: Cannot infer type argument 1 of "f"
+
+
+[case type_var_with_co_and_contra_matrix_invariant_context_simple]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+a1: list[A] = f(a_co, a_co)
+a2: list[A] = f(b_co, b_co)
+a3: list[A] = f(c_co, c_co)
+a4: list[B] = f(a_co, a_co) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Union[Co[B], Contra[B], Invariant[B]]" \
+                            # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Union[Co[B], Contra[B], Invariant[B]]"
+a5: list[B] = f(b_co, b_co)
+a6: list[B] = f(c_co, c_co)
+a7: list[C] = f(a_co, a_co) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Union[Co[C], Contra[C], Invariant[C]]" \
+                            # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Union[Co[C], Contra[C], Invariant[C]]"
+a8: list[C] = f(b_co, b_co) # E: Argument 1 to "f" has incompatible type "Co[B]"; expected "Union[Co[C], Contra[C], Invariant[C]]" \
+                            # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Union[Co[C], Contra[C], Invariant[C]]"
+a9: list[C] = f(c_co, c_co)
+
+[case type_var_with_co_and_contra_matrix_invariant_context_complex]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+b1: list[A] = f(a_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
+b2: list[A] = f(c_contra, a_co) # E: Argument 1 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
+b3: list[A] = f(a_contra, c_co)
+b4: list[A] = f(c_co, a_contra)
+
+b5: list[B] = f(b_contra, c_co)
+b6: list[B] = f(c_co, b_contra)
+b7: list[B] = f(a_co, b_contra) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+b8: list[B] = f(c_co, a_contra) # E: Argument 2 to "f" has incompatible type "Contra[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+
+[case type_var_with_co_and_contra_matrix_covariant_context_simple]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+b1: Iterable[A] = f(a_co, a_co)
+b2: Iterable[A] = f(b_co, b_co)
+b2: Iterable[A] = f(c_co, c_co)
+b4: Iterable[B] = f(a_co, a_co) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]" \
+                                # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+b5: Iterable[B] = f(b_co, b_co)
+b6: Iterable[B] = f(c_co, c_co)
+b7: Iterable[C] = f(a_co, a_co) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[C] | Contra[C] | Invariant[C]" \
+                                # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[C] | Contra[C] | Invariant[C]"
+b8: Iterable[C] = f(b_co, b_co) # E: Argument 1 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]" \
+                                # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]"
+b9: Iterable[C] = f(c_co, c_co)
+
+[case type_var_with_co_and_contra_matrix_covariant_context_complex]
+from typing import Generic, TypeVar, Iterable
+
+T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class Co(Generic[T_co]): pass
+class Contra(Generic[T_contra]): pass
+class Invariant(Generic[T]): pass
+
+class A: ...
+class B(A): ...
+class C(B): ...
+
+def f(
+    x: Co[T] | Contra[T] | Invariant[T],
+    y: Co[T] | Contra[T] | Invariant[T]
+) -> list[T]: ...
+
+a_co: Co[A]
+b_co: Co[B]
+c_co: Co[C]
+a_contra: Contra[A]
+b_contra: Contra[B]
+c_contra: Contra[C]
+a_inv: Invariant[A]
+b_inv: Invariant[B]
+c_inv: Invariant[C]
+
+b1: Iterable[A] = f(a_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
+b2: Iterable[A] = f(c_contra, a_co) # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[C] | Contra[C] | Invariant[C]"
+b3: Iterable[A] = f(a_contra, c_co)
+b4: Iterable[A] = f(c_co, a_contra)
+
+b5: Iterable[B] = f(b_contra, c_co)
+b6: Iterable[B] = f(c_co, b_contra)
+b7: Iterable[B] = f(a_co, b_contra) # E: Argument 1 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+b8: Iterable[B] = f(c_co, a_contra)
