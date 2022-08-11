@@ -592,7 +592,6 @@ impl DbType {
                             }
                         }
                     }
-                    Self::Unknown => (),
                     _ => {
                         if !vec.iter().any(|t| t.type_ == other) {
                             vec.push(UnionEntry {
@@ -624,7 +623,6 @@ impl DbType {
                         }
                     }
                 }
-                Self::Unknown => return self, // TODO remove this
                 _ => {
                     if self == other {
                         return self;
