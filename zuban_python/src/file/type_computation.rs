@@ -5,7 +5,7 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
     Locality, Point, PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex,
-    TypeVarManager, TypeVarType, TypeVarUsage, Variance,
+    TypeVarManager, TypeVarType, TypeVarUsage, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -936,14 +936,14 @@ where
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
             self.compute_slice_type(s, None)
         } else {
-            TypeContent::DbType(DbType::Union(GenericsList::new_union(
+            TypeContent::DbType(DbType::Union(UnionType::new(GenericsList::new_union(
                 iterator
                     .map(|slice_or_simple| {
                         let t = self.compute_slice_type(slice_or_simple, None);
                         self.as_db_type(t, slice_or_simple.as_node_ref())
                     })
                     .collect(),
-            )))
+            ))))
         }
     }
 
@@ -956,7 +956,12 @@ where
         if let Some(next) = iterator.next() {
             todo!()
         }
-        TypeContent::DbType(self.compute_slice_db_type(first).union(DbType::None))
+        let mut t = self.compute_slice_db_type(first).union(DbType::None);
+        match &mut t {
+            DbType::Union(union_type) => union_type.format_as_optional = true,
+            _ => unreachable!(),
+        }
+        TypeContent::DbType(t)
     }
 
     fn compute_type_get_item_on_type(

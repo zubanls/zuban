@@ -521,10 +521,38 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct UnionType {
+    pub entries: GenericsList,
+    pub format_as_optional: bool,
+}
+
+impl UnionType {
+    pub fn new(entries: GenericsList) -> Self {
+        Self {
+            entries,
+            format_as_optional: false,
+        }
+    }
+
+    pub fn format<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
+        if self.format_as_optional {
+            todo!()
+        } else {
+            format!("Union[{}]", self.entries.format(i_s, matcher, style)).into()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
     Class(PointLink),
     GenericClass(PointLink, GenericsList),
-    Union(GenericsList),
+    Union(UnionType),
     TypeVar(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
@@ -539,10 +567,10 @@ impl DbType {
     pub fn union(self, other: DbType) -> Self {
         match self {
             Self::Union(list) => {
-                let mut vec = list.0.into_vec();
+                let mut vec = list.entries.0.into_vec();
                 match other {
                     Self::Union(other_list) => {
-                        for o in other_list.0.into_vec().into_iter() {
+                        for o in other_list.entries.0.into_vec().into_iter() {
                             if !vec.contains(&o) {
                                 vec.push(o);
                             }
@@ -555,17 +583,17 @@ impl DbType {
                         }
                     }
                 };
-                Self::Union(GenericsList::union_from_vec(vec))
+                Self::Union(UnionType::new(GenericsList::union_from_vec(vec)))
             }
             Self::Unknown => other,
             _ => match other {
                 Self::Union(list) => {
-                    if list.0.contains(&self) {
+                    if list.entries.0.contains(&self) {
                         Self::Union(list)
                     } else {
-                        let mut vec = list.0.into_vec();
+                        let mut vec = list.entries.0.into_vec();
                         vec.push(self);
-                        Self::Union(GenericsList::union_from_vec(vec))
+                        Self::Union(UnionType::new(GenericsList::union_from_vec(vec)))
                     }
                 }
                 Self::Unknown => self,
@@ -573,7 +601,9 @@ impl DbType {
                     if self == other {
                         self
                     } else {
-                        Self::Union(GenericsList::new_union(Box::new([self, other])))
+                        Self::Union(UnionType::new(GenericsList::new_union(Box::new([
+                            self, other,
+                        ]))))
                     }
                 }
             },
@@ -609,7 +639,7 @@ impl DbType {
                 generics_lst.format(i_s, matcher, style)
             )
             .into(),
-            Self::Union(list) => format!("Union[{}]", list.format(i_s, matcher, style)).into(),
+            Self::Union(union) => union.format(i_s, matcher, style),
             Self::TypeVar(t) => {
                 if let Some(matcher) = matcher {
                     return matcher.format(i_s, t, style);
@@ -643,7 +673,7 @@ impl DbType {
                 Self::GenericClass(link, generics)
             }
             Self::Union(mut list) => {
-                replace_list(&mut list.0, callable);
+                replace_list(&mut list.entries.0, callable);
                 Self::Union(list)
             }
             Self::TypeVar(t) => callable(&t),
@@ -696,7 +726,7 @@ impl DbType {
         };
         match self {
             Self::GenericClass(_, generics) => search_in_generics(generics),
-            Self::Union(list) => search_in_generics(list),
+            Self::Union(list) => search_in_generics(&list.entries),
             Self::TypeVar(t) => found_type_var(t),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => {
@@ -730,7 +760,10 @@ impl DbType {
             Self::GenericClass(link, generics) => {
                 Self::GenericClass(*link, remap_generics(generics))
             }
-            Self::Union(list) => Self::Union(remap_generics(list)),
+            Self::Union(list) => Self::Union(UnionType {
+                entries: remap_generics(&list.entries),
+                format_as_optional: list.format_as_optional,
+            }),
             Self::TypeVar(t) => resolve_type_var(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
@@ -749,7 +782,7 @@ impl DbType {
             Self::GenericClass(link, generics) => {
                 generics.scan_for_late_bound_type_vars(db, result)
             }
-            Self::Union(list) => list.scan_for_late_bound_type_vars(db, result),
+            Self::Union(list) => todo!(), //list.scan_for_late_bound_type_vars(db, result),
             Self::TypeVar(t) => {
                 loop {
                     if t.index.as_usize() == result.len() {

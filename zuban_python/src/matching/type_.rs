@@ -1,6 +1,6 @@
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, Variance,
+    Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -35,7 +35,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     Class::from_position(node_ref, Generics::new_list(generics), None).unwrap(),
                 ))
             }
-            DbType::Union(list) => Self::Union(list.iter().cloned().collect()),
+            DbType::Union(list) => Self::Union(list.entries.iter().cloned().collect()),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
@@ -63,7 +63,9 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list)),
+            Self::Union(list) => {
+                DbType::Union(UnionType::new(GenericsList::generics_from_vec(list)))
+            }
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -72,7 +74,9 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(list) => DbType::Union(GenericsList::generics_from_vec(list.clone())),
+            Self::Union(list) => DbType::Union(UnionType::new(GenericsList::generics_from_vec(
+                list.clone(),
+            ))),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -288,7 +292,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c
                 .as_db_type(i_s)
                 .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
-            Self::Union(list) => DbType::Union(GenericsList::new_union(
+            Self::Union(list) => DbType::Union(UnionType::new(GenericsList::new_union(
                 list.iter()
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |t| {
@@ -296,7 +300,7 @@ impl<'db, 'a> Type<'db, 'a> {
                         })
                     })
                     .collect(),
-            )),
+            ))),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
