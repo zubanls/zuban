@@ -455,20 +455,11 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericsList(pub Box<[DbType]>); // TODO make this private again
+pub struct GenericsList(Box<[DbType]>);
 
 impl GenericsList {
     pub fn new_generics(parts: Box<[DbType]>) -> Self {
         Self(parts)
-    }
-
-    pub fn new_union(parts: Box<[DbType]>) -> Self {
-        debug_assert!(parts.len() > 1);
-        Self(parts)
-    }
-
-    pub fn union_from_vec(parts: Vec<DbType>) -> Self {
-        Self::new_union(parts.into_boxed_slice())
     }
 
     pub fn as_slice_ref(&self) -> &[DbType] {
@@ -521,17 +512,32 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct UnionEntry {
+    pub type_: DbType,
+    pub format_index: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnionType {
-    pub entries: GenericsList,
+    pub entries: Box<[UnionEntry]>,
     pub format_as_optional: bool,
 }
 
 impl UnionType {
-    pub fn new(entries: GenericsList) -> Self {
+    pub fn new(entries: Vec<UnionEntry>) -> Self {
+        debug_assert!(entries.len() > 1);
         Self {
-            entries,
+            entries: entries.into_boxed_slice(),
             format_as_optional: false,
         }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DbType> {
+        self.entries.iter().map(|u| &u.type_)
+    }
+
+    fn sort_for_priority(&mut self) {
+        // TODO implement
     }
 
     pub fn format<'db>(
@@ -541,7 +547,6 @@ impl UnionType {
         style: FormatStyle,
     ) -> Box<str> {
         let result = self
-            .entries
             .iter()
             .filter_map(|t| {
                 (!self.format_as_optional || !matches!(t, DbType::None))
@@ -575,49 +580,71 @@ pub enum DbType {
 
 impl DbType {
     pub fn union(self, other: DbType) -> Self {
-        match self {
-            Self::Union(list) => {
-                let mut vec = list.entries.0.into_vec();
+        let mut union_type = match self {
+            Self::Union(u) => {
+                let mut vec = u.entries.into_vec();
                 match other {
                     Self::Union(other_list) => {
-                        for o in other_list.entries.0.into_vec().into_iter() {
+                        for mut o in other_list.entries.into_vec().into_iter() {
                             if !vec.contains(&o) {
+                                o.format_index = vec.len();
                                 vec.push(o);
                             }
                         }
                     }
                     Self::Unknown => (),
                     _ => {
-                        if !vec.contains(&other) {
-                            vec.push(other)
+                        if !vec.iter().any(|t| t.type_ == other) {
+                            vec.push(UnionEntry {
+                                type_: other,
+                                format_index: vec.len(),
+                            })
                         }
                     }
                 };
-                Self::Union(UnionType::new(GenericsList::union_from_vec(vec)))
+                UnionType {
+                    entries: vec.into_boxed_slice(),
+                    format_as_optional: u.format_as_optional,
+                }
             }
-            Self::Unknown => other,
+            Self::Unknown => return other, // TODO remove this
             _ => match other {
-                Self::Union(list) => {
-                    if list.entries.0.contains(&self) {
-                        Self::Union(list)
+                Self::Union(u) => {
+                    if u.iter().any(|t| t == &self) {
+                        return Self::Union(u);
                     } else {
-                        let mut vec = list.entries.0.into_vec();
-                        vec.push(self);
-                        Self::Union(UnionType::new(GenericsList::union_from_vec(vec)))
+                        let mut vec = u.entries.into_vec();
+                        vec.push(UnionEntry {
+                            type_: self,
+                            format_index: vec.len(),
+                        });
+                        UnionType {
+                            entries: vec.into_boxed_slice(),
+                            format_as_optional: u.format_as_optional,
+                        }
                     }
                 }
-                Self::Unknown => self,
+                Self::Unknown => return self, // TODO remove this
                 _ => {
                     if self == other {
-                        self
+                        return self;
                     } else {
-                        Self::Union(UnionType::new(GenericsList::new_union(Box::new([
-                            self, other,
-                        ]))))
+                        UnionType::new(vec![
+                            UnionEntry {
+                                type_: self,
+                                format_index: 0,
+                            },
+                            UnionEntry {
+                                type_: other,
+                                format_index: 0,
+                            },
+                        ])
                     }
                 }
             },
-        }
+        };
+        union_type.sort_for_priority();
+        Self::Union(union_type)
     }
 
     pub fn union_in_place(&mut self, other: DbType) {
@@ -682,10 +709,17 @@ impl DbType {
                 replace_list(&mut generics.0, callable);
                 Self::GenericClass(link, generics)
             }
-            Self::Union(mut list) => {
-                replace_list(&mut list.entries.0, callable);
-                Self::Union(list)
-            }
+            Self::Union(u) => Self::Union(UnionType {
+                entries: u
+                    .entries
+                    .iter()
+                    .map(|e| UnionEntry {
+                        type_: e.type_.remap_type_vars(callable),
+                        format_index: e.format_index,
+                    })
+                    .collect(),
+                format_as_optional: u.format_as_optional,
+            }),
             Self::TypeVar(t) => callable(&t),
             Self::Type(mut db_type) => {
                 let g = std::mem::replace(&mut *db_type, DbType::Unknown);
@@ -736,7 +770,11 @@ impl DbType {
         };
         match self {
             Self::GenericClass(_, generics) => search_in_generics(generics),
-            Self::Union(list) => search_in_generics(&list.entries),
+            Self::Union(u) => {
+                for t in u.iter() {
+                    t.search_type_vars(found_type_var);
+                }
+            }
             Self::TypeVar(t) => found_type_var(t),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => {
@@ -751,8 +789,9 @@ impl DbType {
 
     pub fn remap_type_vars(
         &self,
-        resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> DbType,
+        resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> Self,
     ) -> Self {
+        // TODO why does this exist AND replace_type_vars
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -770,9 +809,16 @@ impl DbType {
             Self::GenericClass(link, generics) => {
                 Self::GenericClass(*link, remap_generics(generics))
             }
-            Self::Union(list) => Self::Union(UnionType {
-                entries: remap_generics(&list.entries),
-                format_as_optional: list.format_as_optional,
+            Self::Union(u) => Self::Union(UnionType {
+                entries: u
+                    .entries
+                    .iter()
+                    .map(|e| UnionEntry {
+                        type_: e.type_.remap_type_vars(resolve_type_var),
+                        format_index: e.format_index,
+                    })
+                    .collect(),
+                format_as_optional: u.format_as_optional,
             }),
             Self::TypeVar(t) => resolve_type_var(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),

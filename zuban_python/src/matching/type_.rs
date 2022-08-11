@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, UnionType, Variance,
+    Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, UnionEntry, UnionType,
+    Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -48,25 +49,37 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
+        // TODO use DbType::union instead
         if let Self::Union(union_type1) = self {
             let mut format_as_optional = union_type1.format_as_optional;
-            let mut united = union_type1.into_owned().entries.0.into_vec();
+            let mut united = union_type1.into_owned().entries.into_vec();
             if let Self::Union(union_type2) = other {
                 format_as_optional |= union_type2.format_as_optional;
-                united.extend(union_type2.into_owned().entries.0.into_vec().into_iter());
+                // TODO this has wrong format_index entries
+                united.extend(union_type2.into_owned().entries.into_vec().into_iter());
             } else {
-                united.push(other.into_db_type(i_s));
+                united.push(UnionEntry {
+                    type_: other.into_db_type(i_s),
+                    format_index: united.len(),
+                });
             }
             Self::Union(Cow::Owned(UnionType {
-                entries: GenericsList::new_union(united.into_boxed_slice()),
+                entries: united.into_boxed_slice(),
                 format_as_optional,
             }))
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
-            Type::Union(Cow::Owned(UnionType::new(GenericsList::new_union(
-                Box::new([self.into_db_type(i_s), other.into_db_type(i_s)]),
-            ))))
+            Type::Union(Cow::Owned(UnionType::new(vec![
+                UnionEntry {
+                    type_: self.into_db_type(i_s),
+                    format_index: 0,
+                },
+                UnionEntry {
+                    type_: other.into_db_type(i_s),
+                    format_index: 1,
+                },
+            ])))
         }
     }
 
@@ -93,14 +106,12 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
                 Self::Union(list2) => list2
-                    .entries
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
                 Self::Any => false,
                 Self::Never => todo!(),
             },
             Self::Union(list1) => list1
-                .entries
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
             Self::Any => true,
@@ -123,9 +134,9 @@ impl<'db, 'a> Type<'db, 'a> {
                     Variance::Covariant | Variance::Invariant => {
                         let mut type_var_usage = None;
                         let mut matches = true;
-                        for g2 in list2.entries.iter() {
+                        for g2 in list2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g2);
-                            matches &= list1.entries.iter().any(|g1| {
+                            matches &= list1.iter().any(|g1| {
                                 if let Some(t) = g1.maybe_type_var_index() {
                                     type_var_usage = Some(t);
                                 }
@@ -163,11 +174,10 @@ impl<'db, 'a> Type<'db, 'a> {
                         }
                     }
                     Variance::Contravariant => list1
-                        .entries
                         .iter()
                         .all(|g1| {
                             let t1 = Type::from_db_type(i_s.db, g1);
-                            list2.entries.iter().any(|g2| {
+                            list2.iter().any(|g2| {
                                 t1.matches(
                                     i_s,
                                     matcher.as_deref_mut(),
@@ -182,7 +192,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 _ => match variance {
                     Variance::Contravariant => Match::new_false(),
                     Variance::Covariant | Variance::Invariant => list1
-                        .entries
                         .iter()
                         .any(|g| {
                             Type::from_db_type(i_s.db, g)
@@ -302,16 +311,17 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c
                 .as_db_type(i_s)
                 .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
-            Self::Union(list) => DbType::Union(UnionType::new(GenericsList::new_union(
+            Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
-                    .map(|g| {
-                        g.clone().replace_type_vars(&mut |t| {
+                    .map(|e| UnionEntry {
+                        type_: e.type_.clone().replace_type_vars(&mut |t| {
                             resolve_type_var(i_s, calculated_type_vars, t)
-                        })
+                        }),
+                        format_index: e.format_index,
                     })
                     .collect(),
-            ))),
+            )),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -324,8 +334,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         match self {
             Self::ClassLike(class_like) => callable(class_like),
-            Self::Union(list) => list
-                .entries
+            Self::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::from_db_type(db, t).any(db, callable)),
             Self::Any => true,

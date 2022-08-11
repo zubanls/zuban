@@ -115,7 +115,7 @@ impl<'db> Inferred<'db> {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(l, Some(g)))
             }
             DbType::Union(union_type) => {
-                let mut multiple = union_type.entries.iter();
+                let mut multiple = union_type.iter();
                 let mut inferred = Self::execute_db_type(i_s, multiple.next().unwrap().clone());
                 for m in multiple {
                     inferred = inferred.union(Self::execute_db_type(i_s, m.clone()));
@@ -1107,7 +1107,6 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             callable(i_s, &inst)
         }
         DbType::Union(lst) => lst
-            .entries
             .iter()
             .fold(None, |input, t| match input {
                 None => Some(run_on_db_type(i_s, t, callable, reducer, on_missing)),
@@ -1154,7 +1153,6 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
             callable(i_s, &class)
         }
         DbType::Union(lst) => lst
-            .entries
             .iter()
             .fold(None, |input, t| match input {
                 None => Some(run_on_db_type_type(
