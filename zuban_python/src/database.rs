@@ -580,12 +580,14 @@ pub enum DbType {
 
 impl DbType {
     pub fn union(self, other: DbType) -> Self {
-        let mut union_type = match self {
-            Self::Union(u) => {
-                let mut vec = u.entries.into_vec();
+        let mut format_as_optional = false;
+        let entries = match self {
+            Self::Union(u1) => {
+                let mut vec = u1.entries.into_vec();
                 match other {
-                    Self::Union(other_list) => {
-                        for mut o in other_list.entries.into_vec().into_iter() {
+                    Self::Union(u2) => {
+                        format_as_optional |= u2.format_as_optional;
+                        for mut o in u2.entries.into_vec().into_iter() {
                             if !vec.contains(&o) {
                                 o.format_index = vec.len();
                                 vec.push(o);
@@ -601,10 +603,8 @@ impl DbType {
                         }
                     }
                 };
-                UnionType {
-                    entries: vec.into_boxed_slice(),
-                    format_as_optional: u.format_as_optional,
-                }
+                format_as_optional |= u1.format_as_optional;
+                vec
             }
             Self::Unknown => return other, // TODO remove this
             _ => match other {
@@ -617,17 +617,14 @@ impl DbType {
                             type_: self,
                             format_index: vec.len(),
                         });
-                        UnionType {
-                            entries: vec.into_boxed_slice(),
-                            format_as_optional: u.format_as_optional,
-                        }
+                        vec
                     }
                 }
                 _ => {
                     if self == other {
                         return self;
                     } else {
-                        UnionType::new(vec![
+                        vec![
                             UnionEntry {
                                 type_: self,
                                 format_index: 0,
@@ -636,13 +633,17 @@ impl DbType {
                                 type_: other,
                                 format_index: 0,
                             },
-                        ])
+                        ]
                     }
                 }
             },
         };
-        union_type.sort_for_priority();
-        Self::Union(union_type)
+        let mut t = UnionType {
+            entries: entries.into_boxed_slice(),
+            format_as_optional,
+        };
+        t.sort_for_priority();
+        Self::Union(t)
     }
 
     pub fn union_in_place(&mut self, other: DbType) {
