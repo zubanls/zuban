@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
     Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, UnionType, Variance,
@@ -12,7 +14,7 @@ use crate::value::{CallableClass, Class, TupleClass};
 #[allow(clippy::enum_variant_names)]
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    Union(Vec<DbType>),
+    Union(Cow<'a, UnionType>),
     Any,
     Never,
 }
@@ -35,7 +37,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     Class::from_position(node_ref, Generics::new_list(generics), None).unwrap(),
                 ))
             }
-            DbType::Union(list) => Self::Union(list.entries.iter().cloned().collect()),
+            DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
@@ -46,26 +48,32 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        if let Self::Union(mut list1) = self {
-            if let Self::Union(list2) = other {
-                list1.extend(list2);
+        if let Self::Union(union_type1) = self {
+            let mut format_as_optional = union_type1.format_as_optional;
+            let mut united = union_type1.into_owned().entries.0.into_vec();
+            if let Self::Union(union_type2) = other {
+                format_as_optional |= union_type2.format_as_optional;
+                united.extend(union_type2.into_owned().entries.0.into_vec().into_iter());
             } else {
-                list1.push(other.into_db_type(i_s));
+                united.push(other.into_db_type(i_s));
             }
-            Self::Union(list1)
+            Self::Union(Cow::Owned(UnionType {
+                entries: GenericsList::new_union(united.into_boxed_slice()),
+                format_as_optional,
+            }))
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
-            Type::Union(vec![self.into_db_type(i_s), other.into_db_type(i_s)])
+            Type::Union(Cow::Owned(UnionType::new(GenericsList::new_union(
+                Box::new([self.into_db_type(i_s), other.into_db_type(i_s)]),
+            ))))
         }
     }
 
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(list) => {
-                DbType::Union(UnionType::new(GenericsList::generics_from_vec(list)))
-            }
+            Self::Union(cow) => DbType::Union(cow.into_owned()),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -74,9 +82,7 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(list) => DbType::Union(UnionType::new(GenericsList::generics_from_vec(
-                list.clone(),
-            ))),
+            Self::Union(cow) => DbType::Union(cow.clone().into_owned()),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -87,12 +93,14 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
                 Self::Union(list2) => list2
+                    .entries
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
                 Self::Any => false,
                 Self::Never => todo!(),
             },
             Self::Union(list1) => list1
+                .entries
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
             Self::Any => true,
@@ -115,9 +123,9 @@ impl<'db, 'a> Type<'db, 'a> {
                     Variance::Covariant | Variance::Invariant => {
                         let mut type_var_usage = None;
                         let mut matches = true;
-                        for g2 in list2 {
+                        for g2 in list2.entries.iter() {
                             let t2 = Type::from_db_type(i_s.db, g2);
-                            matches &= list1.iter().any(|g1| {
+                            matches &= list1.entries.iter().any(|g1| {
                                 if let Some(t) = g1.maybe_type_var_index() {
                                     type_var_usage = Some(t);
                                 }
@@ -155,10 +163,11 @@ impl<'db, 'a> Type<'db, 'a> {
                         }
                     }
                     Variance::Contravariant => list1
+                        .entries
                         .iter()
                         .all(|g1| {
                             let t1 = Type::from_db_type(i_s.db, g1);
-                            list2.iter().any(|g2| {
+                            list2.entries.iter().any(|g2| {
                                 t1.matches(
                                     i_s,
                                     matcher.as_deref_mut(),
@@ -173,6 +182,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 _ => match variance {
                     Variance::Contravariant => Match::new_false(),
                     Variance::Covariant | Variance::Invariant => list1
+                        .entries
                         .iter()
                         .any(|g| {
                             Type::from_db_type(i_s.db, g)
@@ -293,7 +303,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 .as_db_type(i_s)
                 .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
             Self::Union(list) => DbType::Union(UnionType::new(GenericsList::new_union(
-                list.iter()
+                list.entries
+                    .iter()
                     .map(|g| {
                         g.clone().replace_type_vars(&mut |t| {
                             resolve_type_var(i_s, calculated_type_vars, t)
@@ -314,6 +325,7 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class_like) => callable(class_like),
             Self::Union(list) => list
+                .entries
                 .iter()
                 .any(|t| Type::from_db_type(db, t).any(db, callable)),
             Self::Any => true,
@@ -329,12 +341,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::ClassLike(c) => c.format(i_s, matcher, style),
-            Self::Union(list) => list
-                .iter()
-                .map(|t| t.format(i_s, matcher, style))
-                .collect::<Vec<_>>()
-                .join(" | ")
-                .into(),
+            Self::Union(list) => list.format(i_s, matcher, style),
             Self::Any => Box::from("Any"),
             Self::Never => Box::from("<nothing>"),
         }

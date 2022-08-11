@@ -455,7 +455,7 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericsList(Box<[DbType]>);
+pub struct GenericsList(pub Box<[DbType]>); // TODO make this private again
 
 impl GenericsList {
     pub fn new_generics(parts: Box<[DbType]>) -> Self {
@@ -543,7 +543,12 @@ impl UnionType {
         if self.format_as_optional {
             todo!()
         } else {
-            format!("Union[{}]", self.entries.format(i_s, matcher, style)).into()
+            self.entries
+                .iter()
+                .map(|t| t.format(i_s, matcher, style))
+                .collect::<Vec<_>>()
+                .join(" | ")
+                .into()
         }
     }
 }
