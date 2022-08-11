@@ -117,8 +117,17 @@ impl TypeVarBound {
             match variance {
                 Variance::Invariant => (),
                 Variance::Covariant => {
-                    if let Self::Invariant(t) | Self::Upper(t) | Self::LowerAndUpper(_, t) = self {
-                        return check_match(i_s, t, Variance::Covariant);
+                    if let Self::Invariant(ref t)
+                    | Self::Upper(ref t)
+                    | Self::LowerAndUpper(_, ref t) = self
+                    {
+                        let m = check_match(i_s, t, Variance::Covariant);
+                        if !m.bool() && matches!(self, Self::Upper(_)) {
+                            let t = Type::from_db_type(i_s.db, t);
+                            *self = Self::Upper(t.common_base_class(i_s, other));
+                            return Match::True;
+                        }
+                        return m;
                     }
                 }
                 Variance::Contravariant => {

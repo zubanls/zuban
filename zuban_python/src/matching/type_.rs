@@ -325,6 +325,11 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    pub fn common_base_class(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> DbType {
+        // TODO this should actually check the mro of classes
+        i_s.db.python_state.object_db_type()
+    }
+
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
