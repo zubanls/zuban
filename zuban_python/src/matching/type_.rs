@@ -49,24 +49,12 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        // TODO use DbType::union instead
-        if let Self::Union(union_type1) = self {
-            let mut format_as_optional = union_type1.format_as_optional;
-            let mut united = union_type1.into_owned().entries.into_vec();
-            if let Self::Union(union_type2) = other {
-                format_as_optional |= union_type2.format_as_optional;
-                // TODO this has wrong format_index entries
-                united.extend(union_type2.into_owned().entries.into_vec().into_iter());
-            } else {
-                united.push(UnionEntry {
-                    type_: other.into_db_type(i_s),
-                    format_index: united.len(),
-                });
+        if let Self::Union(_) = self {
+            let t = self.into_db_type(i_s).union(other.into_db_type(i_s));
+            match t {
+                DbType::Union(t) => Type::Union(Cow::Owned(t)),
+                _ => unreachable!(),
             }
-            Self::Union(Cow::Owned(UnionType {
-                entries: united.into_boxed_slice(),
-                format_as_optional,
-            }))
         } else if let Self::Union(_) = other {
             other.union(i_s, self)
         } else {
