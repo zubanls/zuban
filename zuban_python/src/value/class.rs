@@ -264,7 +264,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                             );
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {
-                                            mro.push(base.remap_type_vars(&mut |t| {
+                                            mro.push(base.replace_type_vars(&mut |t| {
                                                 mro[mro_index].expect_generics()[t.index].clone()
                                             }));
                                         }
@@ -311,7 +311,7 @@ impl<'db, 'a> Class<'db, 'a> {
         if type_vars_were_changed {
             for db_type in mro.iter_mut() {
                 *db_type = db_type
-                    .remap_type_vars(&mut |t| DbType::TypeVar(type_vars.lookup_for_remap(t)));
+                    .replace_type_vars(&mut |t| DbType::TypeVar(type_vars.lookup_for_remap(t)));
             }
         }
         Box::new(ClassInfos {

@@ -338,12 +338,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn remap_type_vars_for_nested_context(
+    fn replace_type_vars_for_nested_context(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         t: &DbType,
     ) -> DbType {
-        t.remap_type_vars(&mut |type_var_usage| {
+        t.replace_type_vars(&mut |type_var_usage| {
             if type_var_usage.in_definition == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
                 current
@@ -363,7 +363,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             if type_var_usage.in_definition == func_class.node_ref.as_link() {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
                                 let g = &type_var_remap[type_var_usage.index];
-                                self.remap_type_vars_for_nested_context(i_s, g)
+                                self.replace_type_vars_for_nested_context(i_s, g)
                             } else {
                                 todo!()
                             }
@@ -647,7 +647,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                         i_s,
                         ResultContext::LazyKnown(&|i_s| {
                             let t = annotation_type.as_db_type(i_s);
-                            matcher.remap_type_vars_for_nested_context(i_s, &t)
+                            matcher.replace_type_vars_for_nested_context(i_s, &t)
                         }),
                     )
                 } else {

@@ -1002,7 +1002,7 @@ where
                 },
             );
         }
-        TypeContent::DbType(alias.db_type.remap_type_vars(&mut |usage| {
+        TypeContent::DbType(alias.db_type.replace_type_vars(&mut |usage| {
             if mismatch {
                 DbType::Any
             } else {

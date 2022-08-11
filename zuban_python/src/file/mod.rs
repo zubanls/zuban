@@ -1596,19 +1596,19 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if self.i_s.is_diagnostic() {
                             return Inferred::new_saved(self.file, node_index, point);
                         }
-                        let d =
-                            self.use_db_type_of_annotation(node_index)
-                                .remap_type_vars(&mut |t| match t.type_ {
-                                    TypeVarType::Class => {
-                                        if let Some(class) = self.i_s.current_class() {
-                                            class.generics().nth(self.i_s, t.index)
-                                        } else {
-                                            todo!()
-                                        }
+                        let d = self
+                            .use_db_type_of_annotation(node_index)
+                            .replace_type_vars(&mut |t| match t.type_ {
+                                TypeVarType::Class => {
+                                    if let Some(class) = self.i_s.current_class() {
+                                        class.generics().nth(self.i_s, t.index)
+                                    } else {
+                                        todo!()
                                     }
-                                    TypeVarType::Function => DbType::TypeVar(t.clone()),
-                                    _ => todo!("{t:?}"),
-                                });
+                                }
+                                TypeVarType::Function => DbType::TypeVar(t.clone()),
+                                _ => todo!("{t:?}"),
+                            });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }
                     _ => Inferred::new_saved(self.file, node_index, point),

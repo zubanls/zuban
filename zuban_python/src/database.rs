@@ -732,12 +732,12 @@ impl DbType {
         }
     }
 
-    pub fn remap_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
+    pub fn replace_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| g.remap_type_vars(callable))
+                    .map(|g| g.replace_type_vars(callable))
                     .collect(),
             )
         };
@@ -755,14 +755,14 @@ impl DbType {
                     .entries
                     .iter()
                     .map(|e| UnionEntry {
-                        type_: e.type_.remap_type_vars(callable),
+                        type_: e.type_.replace_type_vars(callable),
                         format_index: e.format_index,
                     })
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
             Self::TypeVar(t) => callable(t),
-            Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(callable))),
+            Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content
                     .generics
@@ -777,11 +777,11 @@ impl DbType {
                         .iter()
                         .map(|p| CallableParam {
                             param_type: p.param_type,
-                            db_type: p.db_type.remap_type_vars(callable),
+                            db_type: p.db_type.replace_type_vars(callable),
                         })
                         .collect()
                 }),
-                return_class: Box::new(content.return_class.remap_type_vars(callable)),
+                return_class: Box::new(content.return_class.replace_type_vars(callable)),
             }),
         }
     }
@@ -1106,7 +1106,7 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
         } else {
-            self.db_type.remap_type_vars(&mut |t| match t.type_ {
+            self.db_type.replace_type_vars(&mut |t| match t.type_ {
                 TypeVarType::Alias => DbType::Any,
                 _ => DbType::TypeVar(t.clone()),
             })
