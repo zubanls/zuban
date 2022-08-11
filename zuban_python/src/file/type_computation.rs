@@ -936,7 +936,7 @@ where
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
             self.compute_slice_type(s, None)
         } else {
-            TypeContent::DbType(DbType::Union(UnionType::new(
+            let mut t = UnionType::new(
                 iterator
                     .enumerate()
                     .map(|(format_index, slice_or_simple)| {
@@ -947,7 +947,9 @@ where
                         }
                     })
                     .collect(),
-            )))
+            );
+            t.sort_for_priority();
+            TypeContent::DbType(DbType::Union(t))
         }
     }
 

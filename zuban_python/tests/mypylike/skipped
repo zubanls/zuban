@@ -9,7 +9,6 @@ testImportedTypeAliasInRuntimeContext
 
 # union type var stuff
 testUnionGenericWithBoundedVariable
-testUnionInference
 testUnionInferenceWithTypeVarValues
 testGenericMethodCalledInGenericContext2
 testOptionalTypeVarAgainstOptional

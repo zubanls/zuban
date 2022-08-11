@@ -536,8 +536,12 @@ impl UnionType {
         self.entries.iter().map(|u| &u.type_)
     }
 
-    fn sort_for_priority(&mut self) {
-        // TODO implement
+    pub fn sort_for_priority(&mut self) {
+        self.entries.sort_by_key(|t| match t.type_ {
+            DbType::TypeVar(_) => 2,
+            DbType::Any => 3,
+            _ => t.type_.has_type_vars().into(),
+        });
     }
 
     pub fn format<'db>(
@@ -609,6 +613,7 @@ impl DbType {
             Self::Unknown => return other, // TODO remove this
             _ => match other {
                 Self::Union(u) => {
+                    format_as_optional |= u.format_as_optional;
                     if u.iter().any(|t| t == &self) {
                         return Self::Union(u);
                     } else {
@@ -731,6 +736,12 @@ impl DbType {
             Self::Callable(content) => todo!(),
             Self::Class(_) | Self::Unknown | Self::Any | Self::None | Self::Never => (),
         }
+    }
+
+    fn has_type_vars(&self) -> bool {
+        let mut result = false;
+        self.search_type_vars(&mut |_| result = true);
+        result
     }
 
     pub fn replace_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
