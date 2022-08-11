@@ -997,9 +997,6 @@ testGlobalInitializedToNoneSetFromMethod
 testNoCrashOnPartialVariable
 testNoCrashOnPartialVariable3
 
-# Option[X] <-> Union[X, None] mixups
-testOptional
-
 # Cannot call function of unknown type
 testUnknownFunctionNotCallable
 

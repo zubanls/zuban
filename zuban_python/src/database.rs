@@ -540,15 +540,20 @@ impl UnionType {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
+        let result = self
+            .entries
+            .iter()
+            .filter_map(|t| {
+                (!self.format_as_optional || !matches!(t, DbType::None))
+                    .then(|| t.format(i_s, matcher, style))
+            })
+            .collect::<Vec<_>>()
+            .join(" | ")
+            .into();
         if self.format_as_optional {
-            todo!()
+            format!("Optional[{result}]").into()
         } else {
-            self.entries
-                .iter()
-                .map(|t| t.format(i_s, matcher, style))
-                .collect::<Vec<_>>()
-                .join(" | ")
-                .into()
+            result
         }
     }
 }
