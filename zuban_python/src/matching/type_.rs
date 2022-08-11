@@ -49,25 +49,20 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        if let Self::Union(_) = self {
+        if matches!(self, Self::Union(_)) || matches!(other, Self::Union(_)) {
             let t = self.into_db_type(i_s).union(other.into_db_type(i_s));
             match t {
                 DbType::Union(t) => Type::Union(Cow::Owned(t)),
                 _ => unreachable!(),
             }
-        } else if let Self::Union(_) = other {
-            other.union(i_s, self)
         } else {
-            Type::Union(Cow::Owned(UnionType::new(vec![
-                UnionEntry {
-                    type_: self.into_db_type(i_s),
-                    format_index: 0,
-                },
-                UnionEntry {
-                    type_: other.into_db_type(i_s),
-                    format_index: 1,
-                },
-            ])))
+            // If we have no union, the type might be exactly the same. In that case just return
+            // self again.
+            let t = self.as_db_type(i_s).union(other.into_db_type(i_s));
+            match t {
+                DbType::Union(t) => Type::Union(Cow::Owned(t)),
+                _ => self,
+            }
         }
     }
 
