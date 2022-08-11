@@ -310,12 +310,12 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => c
                 .as_db_type(i_s)
-                .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
+                .remap_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
             Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
                     .map(|e| UnionEntry {
-                        type_: e.type_.clone().replace_type_vars(&mut |t| {
+                        type_: e.type_.remap_type_vars(&mut |t| {
                             resolve_type_var(i_s, calculated_type_vars, t)
                         }),
                         format_index: e.format_index,

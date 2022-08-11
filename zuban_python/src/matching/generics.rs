@@ -13,7 +13,7 @@ macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None) => $g.clone(),
-            Some(type_var_generics) => $g.clone().replace_type_vars(&mut |t| {
+            Some(type_var_generics) => $g.remap_type_vars(&mut |t| {
                 if t.type_ == TypeVarType::Class {
                     type_var_generics.nth($i_s, t.index)
                 } else {

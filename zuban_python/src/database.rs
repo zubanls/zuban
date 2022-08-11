@@ -691,59 +691,6 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_vars<C>(self, callable: &mut C) -> Self
-    where
-        C: FnMut(&TypeVarUsage) -> Self,
-    {
-        let replace_list = |list: &mut Box<[DbType]>, callable: &mut C| {
-            for item in list.iter_mut() {
-                let g = std::mem::replace(&mut *item, DbType::Unknown);
-                *item = g.replace_type_vars(callable);
-            }
-        };
-        match self {
-            Self::Class(_) | Self::Unknown | Self::None | Self::Any | Self::Never => self,
-            Self::GenericClass(link, mut generics) => {
-                replace_list(&mut generics.0, callable);
-                Self::GenericClass(link, generics)
-            }
-            Self::Union(u) => Self::Union(UnionType {
-                entries: u
-                    .entries
-                    .iter()
-                    .map(|e| UnionEntry {
-                        type_: e.type_.remap_type_vars(callable),
-                        format_index: e.format_index,
-                    })
-                    .collect(),
-                format_as_optional: u.format_as_optional,
-            }),
-            Self::TypeVar(t) => callable(&t),
-            Self::Type(mut db_type) => {
-                let g = std::mem::replace(&mut *db_type, DbType::Unknown);
-                *db_type = g.replace_type_vars(callable);
-                Self::Type(db_type)
-            }
-            Self::Tuple(mut content) => {
-                if let Some(generics) = content.generics.as_mut() {
-                    replace_list(&mut generics.0, callable)
-                }
-                Self::Tuple(content)
-            }
-            Self::Callable(mut content) => {
-                if let Some(params) = content.params.as_mut() {
-                    for item in params.iter_mut() {
-                        let g = std::mem::replace(&mut item.db_type, DbType::Unknown);
-                        item.db_type = g.replace_type_vars(callable);
-                    }
-                }
-                let g = std::mem::replace(&mut *content.return_class, DbType::Unknown);
-                *content.return_class = g.replace_type_vars(callable);
-                Self::Callable(content)
-            }
-        }
-    }
-
     pub fn expect_generics(&self) -> &GenericsList {
         match self {
             Self::GenericClass(link, generics) => generics,
@@ -785,16 +732,12 @@ impl DbType {
         }
     }
 
-    pub fn remap_type_vars(
-        &self,
-        resolve_type_var: &mut impl FnMut(&TypeVarUsage) -> Self,
-    ) -> Self {
-        // TODO why does this exist AND replace_type_vars
+    pub fn remap_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| g.remap_type_vars(resolve_type_var))
+                    .map(|g| g.remap_type_vars(callable))
                     .collect(),
             )
         };
@@ -812,14 +755,14 @@ impl DbType {
                     .entries
                     .iter()
                     .map(|e| UnionEntry {
-                        type_: e.type_.remap_type_vars(resolve_type_var),
+                        type_: e.type_.remap_type_vars(callable),
                         format_index: e.format_index,
                     })
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVar(t) => resolve_type_var(t),
-            Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(resolve_type_var))),
+            Self::TypeVar(t) => callable(t),
+            Self::Type(db_type) => Self::Type(Box::new(db_type.remap_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content
                     .generics
@@ -827,7 +770,19 @@ impl DbType {
                     .map(|generics| remap_generics(generics)),
                 arbitrary_length: content.arbitrary_length,
             }),
-            Self::Callable(content) => todo!(),
+            Self::Callable(content) => Self::Callable(CallableContent {
+                defined_at: content.defined_at,
+                params: content.params.as_ref().map(|params| {
+                    params
+                        .iter()
+                        .map(|p| CallableParam {
+                            param_type: p.param_type,
+                            db_type: p.db_type.remap_type_vars(callable),
+                        })
+                        .collect()
+                }),
+                return_class: Box::new(content.return_class.remap_type_vars(callable)),
+            }),
         }
     }
 
