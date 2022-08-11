@@ -118,12 +118,12 @@ impl TypeVarBound {
                 Variance::Invariant => (),
                 Variance::Covariant => {
                     if let Self::Invariant(t) | Self::Upper(t) | Self::LowerAndUpper(_, t) = self {
-                        return check_match(i_s, t, variance);
+                        return check_match(i_s, t, Variance::Covariant);
                     }
                 }
                 Variance::Contravariant => {
                     if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
-                        return check_match(i_s, t, variance);
+                        return check_match(i_s, t, Variance::Contravariant);
                     }
                 }
             };
