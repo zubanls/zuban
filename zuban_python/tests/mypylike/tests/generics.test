@@ -323,13 +323,13 @@ reveal_type(f(b_contra, a_contra)) # N: Revealed type is "builtins.list[__main__
 
 reveal_type(f(a_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
 reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
-                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[A] | Contra[A] | Invariant[A]"
 reveal_type(f(b_co, a_contra)) # N: Revealed type is "builtins.list[__main__.A]"
 reveal_type(f(a_contra, b_co)) # N: Revealed type is "builtins.list[__main__.A]"
 reveal_type(f(b_contra, a_co)) # N: Revealed type is "builtins.list[__main__.B]" \
-                               # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+                               # E: Argument 2 to "f" has incompatible type "Co[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
 reveal_type(f(a_co, b_contra)) # N: Revealed type is "builtins.list[__main__.A]" \
-                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[<nothing>] | Contra[<nothing>] | Invariant[<nothing>]"
+                               # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[A] | Contra[A] | Invariant[A]"
 
 [case type_var_with_co_and_contra_matrix_no_context]
 from typing import Generic, TypeVar, Iterable
@@ -361,14 +361,14 @@ a_inv: Invariant[A]
 b_inv: Invariant[B]
 c_inv: Invariant[C]
 
-f(b_co, a_inv) # E: Cannot infer type argument 1 of "f"
-f(a_inv, b_co) # E: Cannot infer type argument 1 of "f"
-f(b_contra, a_inv) # E: Cannot infer type argument 1 of "f"
-f(a_inv, b_contra) # E: Cannot infer type argument 1 of "f"
+f(b_co, a_inv)
+f(a_inv, b_co)
+f(b_contra, a_inv) # E: Argument 2 to "f" has incompatible type "Invariant[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+f(a_inv, b_contra) # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Co[A] | Contra[A] | Invariant[A]"
 f(a_contra, a_inv)
 f(a_co, a_inv)
-f(b_inv, a_inv) # E: Cannot infer type argument 1 of "f"
-f(b_inv, a_inv) # E: Cannot infer type argument 1 of "f"
+f(b_inv, a_inv) # E: Argument 2 to "f" has incompatible type "Invariant[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
+f(b_inv, a_inv) # E: Argument 2 to "f" has incompatible type "Invariant[A]"; expected "Co[B] | Contra[B] | Invariant[B]"
 
 
 [case type_var_with_co_and_contra_matrix_invariant_context_simple]

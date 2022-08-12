@@ -316,8 +316,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         // on mismatches this can be run.
         if self.match_in_definition == type_var_usage.in_definition {
             let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
-            if current.defined_by_result_context {
-                current.type_.as_ref().unwrap().format(i_s, style)
+            if let Some(bound) = current.type_.as_ref() {
+                bound.format(i_s, style)
             } else {
                 Type::Never.format(i_s, None, style)
             }
