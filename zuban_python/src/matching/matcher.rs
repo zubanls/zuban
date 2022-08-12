@@ -13,7 +13,7 @@ use crate::value::{Callable, Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
 enum FunctionOrCallable<'db, 'a> {
-    Function(Option<&'a Class<'db, 'a>>, Function<'db, 'a>),
+    Function(Function<'db, 'a>),
     Callable(&'a Callable<'a>),
 }
 
@@ -148,6 +148,7 @@ struct CalculatedTypeVar {
 }
 
 pub struct TypeVarMatcher<'db, 'a> {
+    class: Option<&'a Class<'db, 'a>>,
     func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
@@ -157,12 +158,14 @@ pub struct TypeVarMatcher<'db, 'a> {
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     fn new(
+        class: Option<&'a Class<'db, 'a>>,
         func_or_callable: FunctionOrCallable<'db, 'a>,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
         //parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {
+            class,
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
@@ -174,7 +177,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub(super) fn class(&self) -> Option<Class<'db, '_>> {
         // Currently this is used for formatting, but it probably shouldn't be.
         match self.func_or_callable {
-            FunctionOrCallable::Function(_, func) => func.class,
+            FunctionOrCallable::Function(func) => func.class,
             FunctionOrCallable::Callable(_) => None,
         }
     }
@@ -249,17 +252,18 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     variance,
                 );
             }
+            if let Some(class) = self.class {
+                if class.node_ref.as_link() == type_var_usage.in_definition {
+                    let g = class.generics.nth(i_s, type_var_usage.index);
+                    // TODO nth should return a type instead of DbType
+                    let g = Type::from_db_type(i_s.db, &g);
+                    return g.matches(i_s, None, value_type, type_var.variance);
+                }
+            }
             match self.func_or_callable {
-                FunctionOrCallable::Function(class, f) => {
-                    if let Some(class) = class {
-                        if class.node_ref.as_link() == type_var_usage.in_definition {
-                            let g = class.generics.nth(i_s, type_var_usage.index);
-                            // TODO nth should return a type instead of DbType
-                            let g = Type::from_db_type(i_s.db, &g);
-                            return g.matches(i_s, None, value_type, type_var.variance);
-                        }
-                        // If we're in a class context, we must also be in a method.
-                        let func_class = f.class.unwrap();
+                FunctionOrCallable::Function(f) => {
+                    // If we're in a class context, we must also be in a method.
+                    if let Some(func_class) = f.class {
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
@@ -322,8 +326,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
         } else {
             match self.func_or_callable {
-                FunctionOrCallable::Function(class, f) => {
-                    if let Some(class) = class {
+                FunctionOrCallable::Function(f) => {
+                    if let Some(class) = self.class {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             return class
                                 .generics
@@ -362,8 +366,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .unwrap_or(DbType::Any)
             } else {
                 match self.func_or_callable {
-                    FunctionOrCallable::Function(class, f) => {
-                        if let Some(class) = class {
+                    FunctionOrCallable::Function(f) => {
+                        if let Some(class) = self.class {
                             if class.node_ref.as_link() == type_var_usage.in_definition {
                                 return class.generics.nth(i_s, type_var_usage.index);
                             }
@@ -406,7 +410,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     if has_generics {
         let (match_, _) = calculate_type_vars(
             i_s,
-            FunctionOrCallable::Function(Some(&class), function),
+            Some(&class),
+            FunctionOrCallable::Function(function),
             None,
             args,
             true,
@@ -419,7 +424,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     } else {
         calculate_type_vars(
             i_s,
-            FunctionOrCallable::Function(Some(&class), function),
+            Some(&class),
+            FunctionOrCallable::Function(function),
             Some(&class),
             args,
             true,
@@ -449,7 +455,8 @@ pub fn calculate_function_type_vars_and_return<'db>(
     );
     calculate_type_vars(
         i_s,
-        FunctionOrCallable::Function(class, function),
+        class,
+        FunctionOrCallable::Function(function),
         None,
         args,
         skip_first_param,
@@ -471,6 +478,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
 ) -> Option<GenericsList> {
     calculate_type_vars(
         i_s,
+        None,
         FunctionOrCallable::Callable(callable),
         None,
         args,
@@ -483,8 +491,9 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     .1
 }
 
-fn calculate_type_vars<'db>(
+fn calculate_type_vars<'db, 'a>(
     i_s: &mut InferenceState<'db, '_>,
+    class: Option<&'a Class<'db, 'a>>,
     func_or_callable: FunctionOrCallable<'db, '_>,
     expected_return_class: Option<&Class<'db, '_>>,
     args: &dyn Arguments<'db>,
@@ -504,15 +513,17 @@ fn calculate_type_vars<'db>(
     calculated_type_vars.resize_with(type_vars_len, Default::default);
     let mut matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
+            class,
             func_or_callable,
             match_in_definition,
             &mut calculated_type_vars,
         )),
         None => {
-            if let FunctionOrCallable::Function(_, function) = func_or_callable {
+            if let FunctionOrCallable::Function(function) = func_or_callable {
                 if let Some(func_class) = function.class {
                     func_class.type_vars(i_s).map(|_| {
                         TypeVarMatcher::new(
+                            class,
                             func_or_callable,
                             match_in_definition,
                             &mut calculated_type_vars, // TODO There are no type vars in there, should set it to 0
@@ -557,7 +568,7 @@ fn calculate_type_vars<'db>(
                 }
             } else {
                 let result_type = match func_or_callable {
-                    FunctionOrCallable::Function(_, f) => f.result_type(i_s),
+                    FunctionOrCallable::Function(f) => f.result_type(i_s),
                     FunctionOrCallable::Callable(c) => c.result_type(i_s),
                 };
                 result_type.matches(i_s, Some(matcher), type_, Variance::Contravariant);
@@ -571,7 +582,7 @@ fn calculate_type_vars<'db>(
         matcher.in_result_context = false;
     }
     let result = match func_or_callable {
-        FunctionOrCallable::Function(class, function) => {
+        FunctionOrCallable::Function(function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
             // vars from in use_cached_annotation_type.
             function.type_vars(i_s);
@@ -615,7 +626,7 @@ fn calculate_type_vars<'db>(
             debug!(
                 "Calculated type vars: {}[{}]",
                 match &func_or_callable {
-                    FunctionOrCallable::Function(_, function) => function.name(),
+                    FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
                         callable_description = callable.description(i_s);
                         &callable_description
