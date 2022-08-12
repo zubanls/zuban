@@ -7,7 +7,7 @@ use crate::arguments::{
 };
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVar, TypeVarType,
+    PointLink, PointType, Specific, TypeVar,
 };
 use crate::debug;
 use crate::file::PythonFile;
