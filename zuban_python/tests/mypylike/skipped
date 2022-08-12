@@ -8,6 +8,7 @@ tuple_methods_empty
 testImportedTypeAliasInRuntimeContext
 
 # union type var stuff
+testUnionInference
 testUnionGenericWithBoundedVariable
 testUnionInferenceWithTypeVarValues
 testGenericMethodCalledInGenericContext2

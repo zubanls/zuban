@@ -733,7 +733,14 @@ impl DbType {
                     search_in_generics(generics)
                 }
             }
-            Self::Callable(content) => todo!(),
+            Self::Callable(content) => {
+                if let Some(params) = &content.params {
+                    for param in params.iter() {
+                        param.db_type.search_type_vars(found_type_var)
+                    }
+                }
+                content.return_class.search_type_vars(found_type_var)
+            }
             Self::Class(_) | Self::Unknown | Self::Any | Self::None | Self::Never => (),
         }
     }
