@@ -114,52 +114,17 @@ impl<'db> Inferred<'db> {
             DbType::GenericClass(l, g) => {
                 InferredState::UnsavedComplex(ComplexPoint::Instance(l, Some(g)))
             }
-            DbType::Union(union_type) => {
-                let mut multiple = union_type.iter();
-                let mut inferred = Self::execute_db_type(i_s, multiple.next().unwrap().clone());
-                for m in multiple {
-                    inferred = inferred.union(Self::execute_db_type(i_s, m.clone()));
-                }
-                return inferred;
-            }
-            DbType::Tuple(_) | DbType::Callable(_) => {
-                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
-            }
-            DbType::Type(c) => match *c {
+            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_)) => match c.as_ref() {
                 DbType::Class(link) => {
-                    let node_ref = NodeRef::from_link(i_s.db, link);
+                    let node_ref = NodeRef::from_link(i_s.db, *link);
                     InferredState::Saved(node_ref, node_ref.point())
                 }
-                DbType::GenericClass(l, g) => {
-                    InferredState::UnsavedComplex(ComplexPoint::GenericClass(l, g))
-                }
-                DbType::Union(multiple) => {
-                    todo!()
-                }
-                DbType::Tuple(content) => {
-                    todo!()
-                }
-                DbType::Any => return Self::new_any(),
-                DbType::Type(_) => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(
-                    Box::new(DbType::Type(c)),
-                )),
-                _ => todo!("{c:?}"),
+                _ => unreachable!(),
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            DbType::Never => {
-                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
-            }
-            DbType::TypeVar(ref t) => {
-                if t.type_ == TypeVarType::Class {
-                    if let Some(class) = i_s.current_class() {
-                        let g = class.generics().nth(i_s, t.index);
-                        return Inferred::execute_db_type(i_s, g);
-                    }
-                }
-                InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic)))
-            }
             DbType::Unknown => InferredState::Unknown,
+            _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic))),
         };
         Self { state }
     }
