@@ -584,7 +584,6 @@ pub enum DbType {
     Callable(CallableContent),
     None,
     Any,
-    Unknown,
     Never,
 }
 
@@ -618,7 +617,6 @@ impl DbType {
                 vec
             }
             Self::Never => return other,
-            Self::Unknown => return other, // TODO remove this
             _ => match other {
                 Self::Union(u) => {
                     format_as_optional |= u.format_as_optional;
@@ -660,7 +658,7 @@ impl DbType {
     }
 
     pub fn union_in_place(&mut self, other: DbType) {
-        *self = mem::replace(self, Self::Unknown).union(other);
+        *self = mem::replace(self, Self::Never).union(other);
     }
 
     pub fn format<'db>(
@@ -700,7 +698,6 @@ impl DbType {
             Self::Callable(content) => content.format(i_s, matcher, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
-            Self::Unknown => Box::from("Unknown"),
             Self::Never => Box::from("<nothing>"),
         }
     }
@@ -711,7 +708,6 @@ impl DbType {
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
             Self::Class(_)
-            | Self::Unknown
             | Self::Any
             | Self::None
             | Self::Never
@@ -749,7 +745,7 @@ impl DbType {
                 }
                 content.return_class.search_type_vars(found_type_var)
             }
-            Self::Class(_) | Self::Unknown | Self::Any | Self::None | Self::Never => (),
+            Self::Class(_) | Self::Any | Self::None | Self::Never => (),
         }
     }
 
@@ -770,7 +766,6 @@ impl DbType {
         };
         match self {
             Self::Class(c) => Self::Class(*c),
-            Self::Unknown => Self::Unknown,
             Self::Any => Self::Any,
             Self::None => Self::None,
             Self::Never => Self::Never,

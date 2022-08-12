@@ -123,7 +123,6 @@ impl<'db> Inferred<'db> {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            DbType::Unknown => InferredState::Unknown,
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic))),
         };
         Self { state }
@@ -1086,7 +1085,6 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
-        DbType::Unknown => todo!(),
         DbType::Never => on_missing(i_s),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
     }
@@ -1142,7 +1140,6 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
         }
         // TODO it is wrong that this uses TypingType like Type(Type(Any))
         DbType::Any => callable(i_s, &TypingType::new(i_s.db, db_type)),
-        DbType::Unknown => todo!(),
         DbType::Never => todo!(),
     }
 }

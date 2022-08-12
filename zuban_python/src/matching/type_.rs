@@ -30,7 +30,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 ))
             }
             DbType::None => Self::ClassLike(ClassLike::None),
-            DbType::Any | DbType::Unknown => Type::Any,
+            DbType::Any => Type::Any,
             DbType::Never => Self::Never,
             DbType::GenericClass(link, generics) => {
                 let node_ref = NodeRef::from_link(db, *link);
