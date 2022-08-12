@@ -1,14 +1,15 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
+testUseCovariantGenericOuterContext
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
-# union type var stuff
-testUnionInference
-testUnionGenericWithBoundedVariable
+# union type var values
 testUnionInferenceWithTypeVarValues
+# Union type var matching weird cases
+testUnionInference
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny
 
@@ -22,8 +23,6 @@ subtyping_complex_generics
 callable_cannot_infer_type_var
 union_context_class_matching_with_any
 union_context_class_matching_with_overload
-
-testUseCovariantGenericOuterContext
 
 testFunctionSubtypingWithVoid
 testGenericFunctionSubtypingWithUnions
@@ -600,6 +599,7 @@ testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 
 # isinstance flow analysis
+testUnionGenericWithBoundedVariable
 testIsinstanceAndTypeVarValues*
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues*
