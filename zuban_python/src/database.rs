@@ -550,19 +550,25 @@ impl UnionType {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
-        let result = self
+        let mut unsorted = self
+            .entries
             .iter()
-            .filter_map(|t| {
-                (!self.format_as_optional || !matches!(t, DbType::None))
-                    .then(|| t.format(i_s, matcher, style))
+            .filter_map(|e| {
+                (!self.format_as_optional || !matches!(e.type_, DbType::None))
+                    .then(|| (e.format_index, e.type_.format(i_s, matcher, style)))
             })
+            .collect::<Vec<_>>();
+        unsorted.sort_by_key(|(format_index, _)| *format_index);
+        let sorted = unsorted
+            .into_iter()
+            .map(|(_, t)| t)
             .collect::<Vec<_>>()
             .join(" | ")
             .into();
         if self.format_as_optional {
-            format!("Optional[{result}]").into()
+            format!("Optional[{sorted}]").into()
         } else {
-            result
+            sorted
         }
     }
 }
