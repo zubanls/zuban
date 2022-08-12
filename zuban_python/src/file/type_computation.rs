@@ -506,6 +506,7 @@ where
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(CallableContent {
                     defined_at: node_ref.as_link(),
+                    type_vars: None,
                     params: None,
                     return_class: Box::new(DbType::Any),
                 }),
@@ -912,6 +913,7 @@ where
                 .unwrap_or(DbType::Any);
             CallableContent {
                 defined_at,
+                type_vars: None,
                 params: params.map(|p| p.into_boxed_slice()),
                 return_class: Box::new(return_class),
             }
@@ -921,6 +923,7 @@ where
                 .add_typing_issue(db, IssueType::InvalidCallableArgCount);
             CallableContent {
                 defined_at,
+                type_vars: None,
                 params: None,
                 return_class: Box::new(DbType::Any),
             }

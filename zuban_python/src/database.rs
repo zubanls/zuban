@@ -794,6 +794,7 @@ impl DbType {
             }),
             Self::Callable(content) => Self::Callable(CallableContent {
                 defined_at: content.defined_at,
+                type_vars: content.type_vars.clone(), // TODO should this change as well?
                 params: content.params.as_ref().map(|params| {
                     params
                         .iter()
@@ -926,6 +927,7 @@ pub struct CallableParam {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
     pub defined_at: PointLink,
+    pub type_vars: Option<TypeVars>,
     pub params: Option<Box<[CallableParam]>>,
     pub return_class: Box<DbType>,
 }
