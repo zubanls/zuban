@@ -57,7 +57,7 @@ impl<'db> ListLiteral<'db> {
                     .file
                     .inference(i_s)
                     .create_list_or_set_generics(elements),
-                None => DbType::Any,
+                None => DbType::Any, // TODO shouldn't this be Never?
             };
             reference.insert_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::GenericClass(
@@ -217,18 +217,23 @@ impl<'db> DictLiteral<'db> {
                 _ => unreachable!(),
             }
         } else {
-            let mut keys = DbType::Unknown;
-            let mut values = DbType::Unknown;
+            let mut keys: Option<DbType> = None;
+            let mut values: Option<DbType> = None;
             for child in self.dict_node().iter_elements() {
                 match child {
                     DictElement::KeyValue(key_value) => {
-                        keys.union_in_place(
-                            self.infer_expr(i_s, key_value.key()).class_as_db_type(i_s),
-                        );
-                        values.union_in_place(
-                            self.infer_expr(i_s, key_value.value())
-                                .class_as_db_type(i_s),
-                        );
+                        let key_t = self.infer_expr(i_s, key_value.key()).class_as_db_type(i_s);
+                        match keys.as_mut() {
+                            Some(keys) => keys.union_in_place(key_t),
+                            None => keys = Some(key_t),
+                        };
+                        let key_t = self
+                            .infer_expr(i_s, key_value.value())
+                            .class_as_db_type(i_s);
+                        match values.as_mut() {
+                            Some(values) => values.union_in_place(key_t),
+                            None => values = Some(key_t),
+                        };
                     }
                     DictElement::DictStarred(_) => {
                         todo!()
@@ -238,7 +243,10 @@ impl<'db> DictLiteral<'db> {
             reference.insert_complex(
                 ComplexPoint::GenericClass(
                     i_s.db.python_state.builtins_point_link("list"),
-                    GenericsList::new_generics(Box::new([keys, values])),
+                    GenericsList::new_generics(Box::new([
+                        keys.unwrap_or(DbType::Any),
+                        values.unwrap_or(DbType::Any),
+                    ])),
                 ),
                 Locality::Todo,
             );

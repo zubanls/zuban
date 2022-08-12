@@ -604,6 +604,7 @@ impl DbType {
                             }
                         }
                     }
+                    DbType::Never => (), // `X | Never is always X`
                     _ => {
                         if !vec.iter().any(|t| t.type_ == other) {
                             vec.push(UnionEntry {
@@ -616,6 +617,7 @@ impl DbType {
                 format_as_optional |= u1.format_as_optional;
                 vec
             }
+            Self::Never => return other,
             Self::Unknown => return other, // TODO remove this
             _ => match other {
                 Self::Union(u) => {
@@ -632,7 +634,7 @@ impl DbType {
                     }
                 }
                 _ => {
-                    if self == other {
+                    if self == other || matches!(other, DbType::Never) {
                         return self;
                     } else {
                         vec![

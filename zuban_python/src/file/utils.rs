@@ -9,7 +9,7 @@ use crate::Inferred;
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
-        let mut result = DbType::Unknown;
+        let mut result = DbType::Never;
         for child in elements {
             result.union_in_place(match child {
                 StarLikeExpression::NamedExpression(named_expr) => self
