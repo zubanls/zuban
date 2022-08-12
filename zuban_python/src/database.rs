@@ -642,7 +642,7 @@ impl DbType {
                             },
                             UnionEntry {
                                 type_: other,
-                                format_index: 0,
+                                format_index: 1,
                             },
                         ]
                     }

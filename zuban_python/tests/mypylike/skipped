@@ -11,8 +11,6 @@ testImportedTypeAliasInRuntimeContext
 testUnionInference
 testUnionGenericWithBoundedVariable
 testUnionInferenceWithTypeVarValues
-nested_generic_mismatch_function_and_callable
-nested_generic_mismatch_class_and_callable
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny
 

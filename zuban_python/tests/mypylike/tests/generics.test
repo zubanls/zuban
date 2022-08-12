@@ -147,7 +147,7 @@ class Foo(Generic[T]):
     def add(self, x: Callable[[T], T | list[T]]) -> T: ...
 
 c: Callable[[int], int | list[str]]
-a: int = Foo[int]().add(c) # E: Argument 1 to "add" has incompatible type "Callable[[int], int | list[str]]"; expected "Callable[[int], int | list[int]]"
+a: int = Foo[int]().add(c) # E: Argument 1 to "add" of "Foo" has incompatible type "Callable[[int], int | list[str]]"; expected "Callable[[int], int | list[int]]"
 
 [case union_context_class_matching]
 from typing import TypeVar, Generic
