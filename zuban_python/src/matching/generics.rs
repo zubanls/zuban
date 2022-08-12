@@ -17,7 +17,7 @@ macro_rules! replace_class_vars {
                 if t.type_ == TypeVarType::Class {
                     type_var_generics.nth($i_s, t.index)
                 } else {
-                    DbType::Unknown
+                    todo!()
                 }
             }),
         }
