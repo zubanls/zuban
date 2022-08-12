@@ -128,33 +128,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                     .bool()
                             })
                         }
-                        /*
-                        if type_var_usage.is_some() {
-                                Type::from_db_type(i_s.db, g1).matches(
-                                    i_s,
-                                    matcher,
-                                    Type::from_db_type(i_s.db, g2),
-                                );
-                        }*/
-                        if let Some(type_var_usage) = type_var_usage {
-                            /*
-                            // TODO WHY IS matches NOT USED IN THIS BRANCH
-                            if let Some(matcher) = matcher {
-                                let g = match list2.len() {
-                                    0 => unreachable!(),
-                                    1 => Type::from_db_type(i_s.db, &list2[0]),
-                                    // TODO should not clone!!
-                                    _ => Type::Union(list2.clone()),
-                                };
-                                matcher.match_or_add_type_var(i_s, type_var_usage, &g)
-                            } else {
-                                Match::True
-                            };
-                            */
-                            todo!();
-                        } else {
-                            matches.into()
-                        }
+                        matches.into()
                     }
                     Variance::Contravariant => list1
                         .iter()
