@@ -122,7 +122,7 @@ impl<'db> IteratorContent<'db, '_> {
             }
             Self::TupleGenerics(generics) => Inferred::execute_db_type(
                 i_s,
-                generics.fold(DbType::Unknown, |a, b| a.union(b.clone())),
+                generics.fold(DbType::Never, |a, b| a.union(b.clone())),
             ),
             Self::Empty => todo!(),
             Self::Any => Inferred::new_any(),
