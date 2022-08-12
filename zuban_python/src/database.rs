@@ -997,7 +997,7 @@ impl TypeVarManager {
         }
     }
 
-    pub fn into_boxed_slice(self) -> TypeVars {
+    pub fn into_type_vars(self) -> TypeVars {
         TypeVars(self.0.into_boxed_slice())
     }
 

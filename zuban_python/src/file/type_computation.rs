@@ -158,9 +158,9 @@ pub enum BaseClass<'db, 'a> {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
-        let mut type_vars = TypeVarManager::default();
+        let mut type_var_manager = TypeVarManager::default();
         let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
-            let index = type_vars.add(type_var.clone());
+            let index = type_var_manager.add(type_var.clone());
             Some(TypeVarUsage {
                 type_var,
                 index,
@@ -174,7 +174,7 @@ macro_rules! compute_type_application {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
             TypeContent::DbType(db_type) => if tcomp.has_type_vars {
                 ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                    type_vars: type_vars.into_boxed_slice(),
+                    type_vars: type_var_manager.into_type_vars(),
                     db_type: Rc::new(db_type),
                 }))
             } else {
@@ -1303,7 +1303,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
-                let mut type_vars = TypeVarManager::default();
+                let mut type_var_manager = TypeVarManager::default();
                 let p = self.file.points.get(expr.index());
                 let file = self.file;
                 let mut comp =
@@ -1312,7 +1312,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         errors_already_calculated: p.calculated(),
                         type_var_callback:
                             &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
-                                let index = type_vars.add(type_var.clone());
+                                let index = type_var_manager.add(type_var.clone());
                                 Some(TypeVarUsage {
                                     type_var,
                                     index,
@@ -1334,7 +1334,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         let node_ref = NodeRef::new(comp.inference.file, expr.index());
                         let db_type = Rc::new(comp.as_db_type(t, node_ref));
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                            type_vars: type_vars.into_boxed_slice(),
+                            type_vars: type_var_manager.into_type_vars(),
                             db_type,
                         }))
                     }

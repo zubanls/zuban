@@ -183,7 +183,7 @@ impl<'db, 'a> Class<'db, 'a> {
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         let mut mro = vec![];
-        let mut type_vars = TypeVarManager::default();
+        let mut type_var_manager = TypeVarManager::default();
         let mut i_s = i_s.with_annotation_instance();
         let mut incomplete_mro = false;
         let mut protocol_args = None;
@@ -205,13 +205,13 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if parent_type_var.is_some() {
                                         return None;
                                     }
-                                    let old_index = type_vars.add(type_var.clone());
+                                    let old_index = type_var_manager.add(type_var.clone());
                                     if old_index < force_index {
                                         had_generic_or_protocol_issue = true;
                                         NodeRef::new(self.node_ref.file, n.index())
                                             .add_typing_issue(db, IssueType::DuplicateTypeVar)
                                     } else if old_index != force_index {
-                                        type_vars.move_index(old_index, force_index);
+                                        type_var_manager.move_index(old_index, force_index);
                                         type_vars_were_changed = true;
                                     }
                                     force_index
@@ -219,7 +219,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if parent_type_var.is_some() {
                                         return parent_type_var;
                                     }
-                                    type_vars.add(type_var.clone())
+                                    type_var_manager.add(type_var.clone())
                                 };
                                 Some(TypeVarUsage {
                                     type_var,
@@ -305,17 +305,18 @@ impl<'db, 'a> Class<'db, 'a> {
         }
         if let Some(slice_type) = generic_args {
             if !had_generic_or_protocol_issue {
-                Self::check_generic_or_protocol_length(i_s.db, &mut type_vars, slice_type)
+                Self::check_generic_or_protocol_length(i_s.db, &mut type_var_manager, slice_type)
             }
         }
         if type_vars_were_changed {
             for db_type in mro.iter_mut() {
-                *db_type = db_type
-                    .replace_type_vars(&mut |t| DbType::TypeVar(type_vars.lookup_for_remap(t)));
+                *db_type = db_type.replace_type_vars(&mut |t| {
+                    DbType::TypeVar(type_var_manager.lookup_for_remap(t))
+                });
             }
         }
         Box::new(ClassInfos {
-            type_vars: type_vars.into_boxed_slice(),
+            type_vars: type_var_manager.into_type_vars(),
             mro: mro.into_boxed_slice(),
             incomplete_mro,
             is_protocol: protocol_args.is_some(),

@@ -203,7 +203,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             return None;
         }
-        let mut type_vars = TypeVarManager::default();
+        let mut type_var_manager = TypeVarManager::default();
         let func_node = self.node();
         let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
@@ -218,7 +218,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     return Some(usage);
                 }
             }
-            let index = type_vars.add(type_var.clone());
+            let index = type_var_manager.add(type_var.clone());
             Some(TypeVarUsage {
                 type_var,
                 index,
@@ -236,7 +236,7 @@ impl<'db, 'a> Function<'db, 'a> {
             TypeComputation::new(&mut inference, &mut on_type_var)
                 .compute_return_annotation(return_annot);
         }
-        let type_vars = type_vars.into_boxed_slice();
+        let type_vars = type_var_manager.into_type_vars();
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => type_var_reference
