@@ -201,7 +201,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         other: &Self,
         variance: Variance,
     ) -> Match {
-        let matches = match self {
+        match self {
             Self::Class(c1) => match other {
                 Self::Class(c2) => {
                     if c1.node_ref == c2.node_ref {
@@ -211,44 +211,45 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                             .matches(i_s, matcher, c2.generics(), variance, type_vars)
                             .similar_if_false();
                     }
-                    false
+                    Match::new_false()
                 }
-                _ => false,
+                _ => Match::new_false(),
             },
             Self::Type(_) | Self::TypeWithDbType(_) => {
-                matches!(other, Self::Type(_) | Self::TypeWithDbType(_))
-            }
-            Self::TypeVar(t1) => {
-                return match matcher {
-                    Some(matcher) => {
-                        matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other), variance)
-                    }
-                    None => match other {
-                        Self::TypeVar(t2) => {
-                            (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-                        }
-                        _ => Match::False(MismatchReason::None),
-                    },
+                if matches!(other, Self::Type(_) | Self::TypeWithDbType(_)) {
+                    let g1 = self.generics(i_s);
+                    let g2 = other.generics(i_s);
+                    g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
+                        .similar_if_false()
+                } else {
+                    Match::new_false()
                 }
             }
-            Self::Tuple(t1) => {
-                return match other {
-                    Self::Tuple(t2) => {
-                        let m: Match = t1.matches(i_s, t2, matcher, variance).into();
-                        m.similar_if_false()
+            Self::TypeVar(t1) => match matcher {
+                Some(matcher) => {
+                    matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other), variance)
+                }
+                None => match other {
+                    Self::TypeVar(t2) => {
+                        (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
                     }
                     _ => Match::False(MismatchReason::None),
+                },
+            },
+            Self::Tuple(t1) => match other {
+                Self::Tuple(t2) => {
+                    let m: Match = t1.matches(i_s, t2, matcher, variance).into();
+                    m.similar_if_false()
                 }
-            }
-            Self::FunctionType(f1) => {
-                return match other {
-                    Self::Callable(c2) => matches_callable!(i_s, matcher, f1, c2),
-                    Self::FunctionType(f2) => matches_callable!(i_s, matcher, f1, f2),
-                    _ => Match::new_false(),
-                };
-            }
+                _ => Match::False(MismatchReason::None),
+            },
+            Self::FunctionType(f1) => match other {
+                Self::Callable(c2) => matches_callable!(i_s, matcher, f1, c2),
+                Self::FunctionType(f2) => matches_callable!(i_s, matcher, f1, f2),
+                _ => Match::new_false(),
+            },
             Self::Callable(c1) => {
-                return match other {
+                match other {
                     Self::Type(cls) => {
                         // TODO the __init__ should actually be looked up on the original class, not
                         // the subclass
@@ -273,24 +274,16 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 );
                             }
                         }
-                        return Match::new_false();
+                        Match::new_false()
                     }
                     Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
                     _ => Match::new_false(),
-                };
+                }
             }
             Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
-            Self::None => matches!(other, Self::None),
-        };
-        if matches {
-            let g1 = self.generics(i_s);
-            let g2 = other.generics(i_s);
-            g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
-                .similar_if_false()
-        } else {
-            Match::new_false()
+            Self::None => matches!(other, Self::None).into(),
         }
     }
 
