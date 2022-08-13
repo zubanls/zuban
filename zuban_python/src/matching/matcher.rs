@@ -451,30 +451,20 @@ impl<'db> CalculatedTypeArguments {
         class: Option<&Class<'db, '_>>,
         usage: &TypeVarUsage,
     ) -> DbType {
-        match usage.type_ {
-            TypeVarType::Class => {
-                if let Some(c) = class {
-                    c.generics().nth(i_s, usage.index)
-                } else {
-                    // TODO we are just passing the type vars again. Does this make sense?
-                    DbType::TypeVar(usage.clone())
-                }
-            }
-            TypeVarType::Function => {
-                if let Some(fm) = &self.type_arguments {
-                    fm[usage.index].clone()
-                } else {
-                    // TODO we are just passing the type vars again. Does this make sense?
-                    DbType::TypeVar(usage.clone())
-                }
-            }
-            TypeVarType::LateBound => {
-                // Just pass the type var again, because it might be resolved by a future
-                // callable, that is late bound, like Callable[..., Callable[[T], T]]
+        if self.in_definition == usage.in_definition {
+            return if let Some(fm) = &self.type_arguments {
+                fm[usage.index].clone()
+            } else {
+                // TODO we are just passing the type vars again. Does this make sense?
                 DbType::TypeVar(usage.clone())
-            }
-            _ => unreachable!(),
+            };
         }
+        if let Some(c) = class {
+            if usage.in_definition == c.node_ref.as_link() {
+                return c.generics().nth(i_s, usage.index);
+            }
+        }
+        todo!()
     }
 }
 
