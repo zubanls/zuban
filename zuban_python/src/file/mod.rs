@@ -13,7 +13,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
-    Point, PointLink, PointType, Points, Specific, TupleContent, TypeVarType,
+    Point, PointLink, PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};

@@ -4,7 +4,7 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{ClassLike, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, PointLink, TypeVarType, TypeVarUsage, TypeVars, Variance,
+    DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;

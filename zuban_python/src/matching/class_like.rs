@@ -1,5 +1,5 @@
 use super::params::{has_overlapping_params, matches_params};
-use super::{Generics, Match, MismatchReason, Type, TypeVarMatcher};
+use super::{Match, MismatchReason, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
 use crate::value::{
@@ -215,14 +215,33 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => Match::new_false(),
             },
-            Self::Type(_) | Self::TypeWithDbType(_) => {
-                if matches!(other, Self::Type(_) | Self::TypeWithDbType(_)) {
-                    let g1 = self.generics(i_s);
-                    let g2 = other.generics(i_s);
-                    g1.matches(i_s, matcher.as_deref_mut(), g2, variance, None)
-                        .similar_if_false()
-                } else {
-                    Match::new_false()
+            Self::Type(c1) => match other {
+                Self::Type(c2) => ClassLike::Class(*c1)
+                    .matches(
+                        i_s,
+                        &Type::ClassLike(ClassLike::Class(*c2)),
+                        matcher,
+                        variance,
+                    )
+                    .similar_if_false(),
+                Self::TypeWithDbType(_) => todo!(),
+                _ => Match::new_false(),
+            },
+            Self::TypeWithDbType(t1) => {
+                let t1 = Type::from_db_type(i_s.db, t1);
+                match other {
+                    Self::Type(c2) => t1
+                        .matches(
+                            i_s,
+                            matcher,
+                            &Type::ClassLike(ClassLike::Class(*c2)),
+                            variance,
+                        )
+                        .similar_if_false(),
+                    Self::TypeWithDbType(t2) => {
+                        t1.matches(i_s, matcher, &Type::from_db_type(i_s.db, t2), variance)
+                    }
+                    _ => Match::new_false(),
                 }
             }
             Self::TypeVar(t1) => match matcher {
@@ -320,20 +339,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.is_object_class(db),
             _ => Match::new_false(),
-        }
-    }
-
-    fn generics(&self, i_s: &mut InferenceState<'db, '_>) -> Generics<'db, '_> {
-        match self {
-            Self::Class(c) => c.generics(),
-            Self::Type(c) => Generics::Class(c),
-            Self::TypeWithDbType(g) => Generics::DbType(g),
-            Self::Tuple(c) => c.generics(),
-            Self::Callable(c) => unreachable!(),
-            Self::FunctionType(f) => unreachable!(),
-            Self::TypingClass(_) | Self::TypeVar(_) | Self::TypingClassType(_) | Self::None => {
-                Generics::None
-            }
         }
     }
 
