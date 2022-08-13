@@ -279,9 +279,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             // class C:  # Forgot to add type params here
                             //     def __init__(self, t: T) -> None: pass
                             todo!(
-                                "TODO free type param annotations; searched ({:?}), found {:?} ({:?})",
+                                "TODO free type param annotations; searched ({:?}), found {:?}",
                                 self.match_in_definition,
-                                type_var_usage.type_,
                                 type_var_usage.in_definition,
                             )
                         }

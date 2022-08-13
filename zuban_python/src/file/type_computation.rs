@@ -5,7 +5,7 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
     Locality, Point, PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex,
-    TypeVarManager, TypeVarType, TypeVarUsage, UnionEntry, UnionType, Variance,
+    TypeVarManager, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -164,7 +164,6 @@ macro_rules! compute_type_application {
             Some(TypeVarUsage {
                 type_var,
                 index,
-                type_: TypeVarType::Alias,
                 in_definition: $slice_type.as_node_ref().as_link(),
             })
         };
@@ -221,23 +220,16 @@ pub(super) fn type_computation_for_variable_annotation(
     node_ref: NodeRef,
 ) -> Option<TypeVarUsage> {
     if let Some(class) = i_s.current_class() {
-        if let Some(usage) = class.type_vars(i_s).and_then(|t| {
-            t.find(
-                type_var.clone(),
-                TypeVarType::Class,
-                class.node_ref.as_link(),
-            )
-        }) {
+        if let Some(usage) = class
+            .type_vars(i_s)
+            .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+        {
             return Some(usage);
         }
     }
     if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(
-                type_var.clone(),
-                TypeVarType::Function,
-                func.node_ref.as_link(),
-            );
+            let usage = type_vars.find(type_var.clone(), func.node_ref.as_link());
             if usage.is_some() {
                 return usage;
             }
@@ -1319,7 +1311,6 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                                     type_var,
                                     index,
                                     in_definition,
-                                    type_: TypeVarType::Alias,
                                 })
                             },
                         has_type_vars: false,

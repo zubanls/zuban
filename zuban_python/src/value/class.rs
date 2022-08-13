@@ -7,8 +7,7 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, TypeVar, TypeVarManager, TypeVarType, TypeVarUsage,
-    TypeVars,
+    MroIndex, ParentScope, Point, PointLink, TypeVar, TypeVarManager, TypeVarUsage, TypeVars,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
@@ -140,13 +139,9 @@ impl<'db, 'a> Class<'db, 'a> {
                 parent_class
                     .maybe_type_var_in_parent(i_s, type_var)
                     .or_else(|| {
-                        parent_class.type_vars(i_s).and_then(|t| {
-                            t.find(
-                                type_var.clone(),
-                                TypeVarType::Class,
-                                parent_class.node_ref.as_link(),
-                            )
-                        })
+                        parent_class
+                            .type_vars(i_s)
+                            .and_then(|t| t.find(type_var.clone(), parent_class.node_ref.as_link()))
                     })
             }
             ParentScope::Function(node_index) => todo!(),
@@ -224,7 +219,6 @@ impl<'db, 'a> Class<'db, 'a> {
                                 Some(TypeVarUsage {
                                     type_var,
                                     index,
-                                    type_: TypeVarType::Class,
                                     in_definition: self.node_ref.as_link(),
                                 })
                             },

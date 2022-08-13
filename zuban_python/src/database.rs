@@ -992,7 +992,6 @@ impl TypeVarManager {
                 .position(|t| Rc::ptr_eq(t, &tv.type_var))
                 .unwrap()
                 .into(),
-            type_: tv.type_,
             in_definition: tv.in_definition,
         }
     }
@@ -1040,19 +1039,13 @@ impl TypeVars {
         self.0.is_empty()
     }
 
-    pub fn find(
-        &self,
-        type_var: Rc<TypeVar>,
-        type_: TypeVarType,
-        in_definition: PointLink,
-    ) -> Option<TypeVarUsage> {
+    pub fn find(&self, type_var: Rc<TypeVar>, in_definition: PointLink) -> Option<TypeVarUsage> {
         self.0
             .iter()
             .position(|t| t == &type_var)
             .map(|index| TypeVarUsage {
                 type_var,
                 index: index.into(),
-                type_,
                 in_definition,
             })
     }
@@ -1103,19 +1096,10 @@ impl TypeVar {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TypeVarType {
-    Class,
-    Function,
-    Alias,
-    LateBound, // Used in Aliases and Callables
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
     pub type_var: Rc<TypeVar>,
     pub index: TypeVarIndex,
-    pub type_: TypeVarType,
     pub in_definition: PointLink,
 }
 

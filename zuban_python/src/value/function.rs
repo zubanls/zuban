@@ -9,8 +9,8 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVarManager, TypeVarType,
-    TypeVarUsage, TypeVars,
+    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVarManager, TypeVarUsage,
+    TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -208,13 +208,10 @@ impl<'db, 'a> Function<'db, 'a> {
         let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
             if let Some(class) = self.class {
-                if let Some(usage) = class.type_vars(i_s).and_then(|t| {
-                    t.find(
-                        type_var.clone(),
-                        TypeVarType::Class,
-                        class.node_ref.as_link(),
-                    )
-                }) {
+                if let Some(usage) = class
+                    .type_vars(i_s)
+                    .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+                {
                     return Some(usage);
                 }
             }
@@ -223,7 +220,6 @@ impl<'db, 'a> Function<'db, 'a> {
                 type_var,
                 index,
                 in_definition: self.node_ref.as_link(),
-                type_: TypeVarType::Function,
             })
         };
         for param in func_node.params().iter() {
