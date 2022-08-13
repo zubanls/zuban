@@ -449,11 +449,12 @@ impl<'db> CalculatedTypeArguments<'db, '_> {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class<'db, '_>>,
         usage: &TypeVarUsage,
     ) -> DbType {
         match usage.type_ {
             TypeVarType::Class => {
-                if let Some(c) = self.class {
+                if let Some(c) = class {
                     c.generics().nth(i_s, usage.index)
                 } else {
                     // TODO we are just passing the type vars again. Does this make sense?

@@ -1,9 +1,7 @@
 use std::borrow::Cow;
 
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
-use crate::database::{
-    Database, DbType, FormatStyle, TypeVarUsage, UnionEntry, UnionType, Variance,
-};
+use crate::database::{Database, DbType, FormatStyle, UnionEntry, UnionType, Variance};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -236,15 +234,15 @@ impl<'db, 'a> Type<'db, 'a> {
         calculated_type_args: &CalculatedTypeArguments<'db, '_>,
     ) -> DbType {
         match self {
-            Self::ClassLike(c) => c
-                .as_db_type(i_s)
-                .replace_type_vars(&mut |t| calculated_type_args.lookup_type_var_usage(i_s, t)),
+            Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
+                calculated_type_args.lookup_type_var_usage(i_s, class, t)
+            }),
             Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
                     .map(|e| UnionEntry {
                         type_: e.type_.replace_type_vars(&mut |t| {
-                            calculated_type_args.lookup_type_var_usage(i_s, t)
+                            calculated_type_args.lookup_type_var_usage(i_s, class, t)
                         }),
                         format_index: e.format_index,
                     })
