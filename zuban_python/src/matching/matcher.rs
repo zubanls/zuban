@@ -390,14 +390,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 }
 
-pub fn calculate_class_init_type_vars_and_return<'db>(
+pub fn calculate_class_init_type_vars_and_return<'db, 'a>(
     i_s: &mut InferenceState<'db, '_>,
-    class: Class<'db, '_>,
+    class: &'a Class<'db, 'a>,
     function: Function<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> (SignatureMatch, Option<GenericsList>) {
+) -> CalculatedTypeArguments<'db, 'a> {
     debug!(
         "Calculate type vars for class {} ({})",
         class.name(),
@@ -408,9 +408,9 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
     if has_generics {
-        let (match_, _) = calculate_type_vars(
+        let mut type_arguments = calculate_type_vars(
             i_s,
-            Some(&class),
+            Some(class),
             FunctionOrCallable::Function(function),
             None,
             args,
@@ -420,7 +420,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             result_context,
             on_type_error,
         );
-        (match_, class.generics.as_generics_list(i_s))
+        type_arguments.type_arguments = class.generics.as_generics_list(i_s);
+        type_arguments
     } else {
         calculate_type_vars(
             i_s,
@@ -437,9 +438,15 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     }
 }
 
-pub fn calculate_function_type_vars_and_return<'db>(
+pub struct CalculatedTypeArguments<'db, 'a> {
+    pub matches: SignatureMatch,
+    pub type_arguments: Option<GenericsList>,
+    pub class: Option<&'a Class<'db, 'a>>,
+}
+
+pub fn calculate_function_type_vars_and_return<'db, 'a>(
     i_s: &mut InferenceState<'db, '_>,
-    class: Option<&Class<'db, '_>>,
+    class: Option<&'a Class<'db, 'a>>,
     function: Function<'db, '_>,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
@@ -447,7 +454,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> (SignatureMatch, Option<GenericsList>) {
+) -> CalculatedTypeArguments<'db, 'a> {
     debug!(
         "Calculate type vars for {} in {}",
         function.name(),
@@ -475,7 +482,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
-) -> Option<GenericsList> {
+) -> CalculatedTypeArguments<'db, 'db> {
     calculate_type_vars(
         i_s,
         None,
@@ -488,7 +495,6 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         result_context,
         Some(on_type_error),
     )
-    .1
 }
 
 fn calculate_type_vars<'db, 'a>(
@@ -502,7 +508,7 @@ fn calculate_type_vars<'db, 'a>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> (SignatureMatch, Option<GenericsList>) {
+) -> CalculatedTypeArguments<'db, 'a> {
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
     let type_vars_len = match type_vars {
@@ -581,7 +587,7 @@ fn calculate_type_vars<'db, 'a>(
         });
         matcher.in_result_context = false;
     }
-    let result = match func_or_callable {
+    let matches = match func_or_callable {
         FunctionOrCallable::Function(function) => {
             // Make sure the type vars are properly pre-calculated, because we are using type
             // vars from in use_cached_annotation_type.
@@ -612,7 +618,7 @@ fn calculate_type_vars<'db, 'a>(
             }
         }
     };
-    let generics_out = matcher.is_some().then(|| {
+    let type_arguments = matcher.is_some().then(|| {
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
@@ -621,7 +627,7 @@ fn calculate_type_vars<'db, 'a>(
         )
     });
     if cfg!(feature = "zuban_debug") {
-        if let Some(generics_out) = &generics_out {
+        if let Some(type_arguments) = &type_arguments {
             let callable_description: String;
             debug!(
                 "Calculated type vars: {}[{}]",
@@ -632,11 +638,15 @@ fn calculate_type_vars<'db, 'a>(
                         &callable_description
                     }
                 },
-                generics_out.format(i_s, None, FormatStyle::Short),
+                type_arguments.format(i_s, None, FormatStyle::Short),
             );
         }
     }
-    (result, generics_out)
+    CalculatedTypeArguments {
+        matches,
+        type_arguments,
+        class,
+    }
 }
 
 fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(

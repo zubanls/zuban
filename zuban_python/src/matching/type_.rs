@@ -2,12 +2,12 @@ use std::borrow::Cow;
 
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
-    Database, DbType, FormatStyle, GenericsList, TypeVarType, TypeVarUsage, UnionEntry, UnionType,
-    Variance,
+    Database, DbType, FormatStyle, TypeVarType, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::CalculatedTypeArguments;
 use crate::node_ref::NodeRef;
 use crate::value::{CallableClass, Class, TupleClass};
 
@@ -219,9 +219,9 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_vars: Option<&GenericsList>,
+        calculated_type_args: &CalculatedTypeArguments,
     ) -> Inferred<'db> {
-        let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_vars);
+        let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
             db_type.format(i_s, None, FormatStyle::Short)
@@ -233,10 +233,10 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_vars: Option<&GenericsList>,
+        calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                calculated_type_vars: Option<&GenericsList>,
+                                calculated_type_args: &CalculatedTypeArguments,
                                 usage: &TypeVarUsage| {
             match usage.type_ {
                 TypeVarType::Class => {
@@ -248,7 +248,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
                 TypeVarType::Function => {
-                    if let Some(fm) = calculated_type_vars {
+                    if let Some(fm) = &calculated_type_args.type_arguments {
                         fm[usage.index].clone()
                     } else {
                         // TODO we are just passing the type vars again. Does this make sense?
@@ -267,13 +267,13 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => c
                 .as_db_type(i_s)
-                .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_vars, t)),
+                .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_args, t)),
             Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
                     .map(|e| UnionEntry {
                         type_: e.type_.replace_type_vars(&mut |t| {
-                            resolve_type_var(i_s, calculated_type_vars, t)
+                            resolve_type_var(i_s, calculated_type_args, t)
                         }),
                         format_index: e.format_index,
                     })

@@ -84,15 +84,15 @@ impl<'db, 'a> Class<'db, 'a> {
         let cls = class.unwrap_or_else(|| todo!());
         match init.into_maybe_inferred().unwrap().init_as_function(cls) {
             Some(FunctionOrOverload::Function(func)) => {
-                let (_, list) = calculate_class_init_type_vars_and_return(
+                let calculated_type_args = calculate_class_init_type_vars_and_return(
                     i_s,
-                    *self,
+                    self,
                     func,
                     args,
                     result_context,
                     Some(on_type_error),
                 );
-                Some((func, list, false))
+                Some((func, calculated_type_args.type_arguments, false))
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
                 .find_matching_function(i_s, args, class.as_ref(), true, result_context)

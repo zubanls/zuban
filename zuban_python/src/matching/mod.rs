@@ -11,7 +11,7 @@ pub use generics::Generics;
 pub use match_::{Match, MismatchReason, SignatureMatch};
 pub use matcher::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
-    calculate_function_type_vars_and_return, TypeVarMatcher,
+    calculate_function_type_vars_and_return, CalculatedTypeArguments, TypeVarMatcher,
 };
 pub use params::{matches_params, overload_has_overlapping_params};
 pub use result_context::ResultContext;

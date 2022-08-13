@@ -297,8 +297,7 @@ impl<'db, 'a> Function<'db, 'a> {
             self.node_ref.as_link(),
             result_context,
             Some(on_type_error),
-        )
-        .1;
+        );
         if let Some(return_annotation) = return_annotation {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
@@ -321,11 +320,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(
-                        i_s,
-                        self.class.as_ref(),
-                        calculated_type_vars.as_ref(),
-                    )
+                    .execute_and_resolve_type_vars(i_s, self.class.as_ref(), &calculated_type_vars)
             } else {
                 self.node_ref
                     .file
@@ -777,7 +772,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             if search_init {
                 calculate_class_init_type_vars_and_return(
                     i_s,
-                    *class.unwrap(),
+                    class.unwrap(),
                     function,
                     args,
                     result_context,
@@ -815,17 +810,17 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         let mut multi_any_match = None;
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let (matched, calculated_type_vars) = match_signature(i_s, function);
-            match matched {
+            let calculated_type_args = match_signature(i_s, function);
+            match calculated_type_args.matches {
                 SignatureMatch::True => {
                     debug!(
                         "Decided overload for {}: {:?}",
                         self.name(),
                         function.node().short_debug()
                     );
-                    return handle_result(i_s, calculated_type_vars, function);
+                    return handle_result(i_s, calculated_type_args.type_arguments, function);
                 }
-                SignatureMatch::TrueWithAny(param_indices) => {
+                SignatureMatch::TrueWithAny(ref param_indices) => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
                     if multi_any_match.is_some() {
@@ -834,7 +829,9 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         // also not be an error.
                         return None;
                     }
-                    multi_any_match = Some((calculated_type_vars, function, param_indices))
+                    // TODO why this clone?
+                    let param_indices = param_indices.clone();
+                    multi_any_match = Some((calculated_type_args, function, param_indices))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
@@ -844,15 +841,15 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 SignatureMatch::False => (),
             }
         }
-        if let Some((calculated_type_vars, function, _)) = multi_any_match {
-            return handle_result(i_s, calculated_type_vars, function);
+        if let Some((calculated_type_args, function, _)) = multi_any_match {
+            return handle_result(i_s, calculated_type_args.type_arguments, function);
         }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let (_, calculated_type_vars) = match_signature(i_s, function);
-            return handle_result(i_s, calculated_type_vars, function);
+            let calculated_type_args = match_signature(i_s, function);
+            return handle_result(i_s, calculated_type_args.type_arguments, function);
         } else {
             let function = Function::new(
                 NodeRef::from_link(i_s.db, self.overload.functions[0]),

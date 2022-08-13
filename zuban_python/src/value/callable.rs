@@ -152,7 +152,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             on_type_error,
         );
         let g_o = Type::from_db_type(i_s.db, &self.content.return_class);
-        g_o.execute_and_resolve_type_vars(i_s, None, calculated_type_vars.as_ref())
+        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
