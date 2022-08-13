@@ -235,22 +235,16 @@ impl<'db, 'a> Type<'db, 'a> {
         class: Option<&Class<'db, '_>>,
         calculated_type_args: &CalculatedTypeArguments<'db, '_>,
     ) -> DbType {
-        let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                calculated_type_args: &CalculatedTypeArguments<'db, '_>,
-                                usage: &TypeVarUsage| {
-            calculated_type_args.lookup_type_var_usage(i_s, usage)
-        };
-
         match self {
             Self::ClassLike(c) => c
                 .as_db_type(i_s)
-                .replace_type_vars(&mut |t| resolve_type_var(i_s, calculated_type_args, t)),
+                .replace_type_vars(&mut |t| calculated_type_args.lookup_type_var_usage(i_s, t)),
             Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
                     .map(|e| UnionEntry {
                         type_: e.type_.replace_type_vars(&mut |t| {
-                            resolve_type_var(i_s, calculated_type_args, t)
+                            calculated_type_args.lookup_type_var_usage(i_s, t)
                         }),
                         format_index: e.format_index,
                     })
