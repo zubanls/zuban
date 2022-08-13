@@ -1,9 +1,7 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{Match, Type, TypeVarMatcher};
-use crate::database::{
-    DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVarType, TypeVars, Variance,
-};
+use crate::database::{DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVars, Variance};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -12,13 +10,9 @@ macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None) => $g.clone(),
-            Some(type_var_generics) => $g.replace_type_vars(&mut |t| {
-                if t.type_ == TypeVarType::Class {
-                    type_var_generics.nth($i_s, t.index)
-                } else {
-                    todo!()
-                }
-            }),
+            Some(type_var_generics) => {
+                $g.replace_type_vars(&mut |t| type_var_generics.nth($i_s, t.index))
+            }
         }
     };
 }
