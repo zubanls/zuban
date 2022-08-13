@@ -198,7 +198,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                 let parent_type_var = self.maybe_type_var_in_parent(i_s, &type_var);
                                 let index = if let Some(force_index) = is_generic_or_protocol {
                                     if parent_type_var.is_some() {
-                                        return None;
+                                        return DbType::Any;
                                     }
                                     let old_index = type_var_manager.add(type_var.clone());
                                     if old_index < force_index {
@@ -211,12 +211,12 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                     force_index
                                 } else {
-                                    if parent_type_var.is_some() {
-                                        return parent_type_var;
+                                    if let Some(usage) = parent_type_var {
+                                        return DbType::TypeVar(usage);
                                     }
                                     type_var_manager.add(type_var.clone())
                                 };
-                                Some(TypeVarUsage {
+                                DbType::TypeVar(TypeVarUsage {
                                     type_var,
                                     index,
                                     in_definition: self.node_ref.as_link(),

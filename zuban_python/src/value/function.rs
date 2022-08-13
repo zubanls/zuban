@@ -212,11 +212,11 @@ impl<'db, 'a> Function<'db, 'a> {
                     .type_vars(i_s)
                     .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
                 {
-                    return Some(usage);
+                    return DbType::TypeVar(usage);
                 }
             }
             let index = type_var_manager.add(type_var.clone());
-            Some(TypeVarUsage {
+            DbType::TypeVar(TypeVarUsage {
                 type_var,
                 index,
                 in_definition: self.node_ref.as_link(),
