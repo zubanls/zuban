@@ -390,14 +390,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 }
 
-pub fn calculate_class_init_type_vars_and_return<'db, 'a>(
+pub fn calculate_class_init_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    class: &'a Class<'db, 'a>,
+    class: &Class<'db, '_>,
     function: Function<'db, '_>,
     args: &dyn Arguments<'db>,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments<'db, 'a> {
+) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for class {} ({})",
         class.name(),
@@ -425,9 +425,9 @@ pub fn calculate_class_init_type_vars_and_return<'db, 'a>(
     } else {
         calculate_type_vars(
             i_s,
-            Some(&class),
+            Some(class),
             FunctionOrCallable::Function(function),
-            Some(&class),
+            Some(class),
             args,
             true,
             type_vars,
@@ -438,14 +438,13 @@ pub fn calculate_class_init_type_vars_and_return<'db, 'a>(
     }
 }
 
-pub struct CalculatedTypeArguments<'db, 'a> {
+pub struct CalculatedTypeArguments {
     pub in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
-    pub class: Option<&'a Class<'db, 'a>>,
 }
 
-impl<'db> CalculatedTypeArguments<'db, '_> {
+impl<'db> CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -479,9 +478,9 @@ impl<'db> CalculatedTypeArguments<'db, '_> {
     }
 }
 
-pub fn calculate_function_type_vars_and_return<'db, 'a>(
+pub fn calculate_function_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    class: Option<&'a Class<'db, 'a>>,
+    class: Option<&Class<'db, '_>>,
     function: Function<'db, '_>,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
@@ -489,7 +488,7 @@ pub fn calculate_function_type_vars_and_return<'db, 'a>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments<'db, 'a> {
+) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for {} in {}",
         function.name(),
@@ -517,7 +516,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
-) -> CalculatedTypeArguments<'db, 'db> {
+) -> CalculatedTypeArguments {
     calculate_type_vars(
         i_s,
         None,
@@ -532,9 +531,9 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     )
 }
 
-fn calculate_type_vars<'db, 'a>(
+fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    class: Option<&'a Class<'db, 'a>>,
+    class: Option<&Class<'db, '_>>,
     func_or_callable: FunctionOrCallable<'db, '_>,
     expected_return_class: Option<&Class<'db, '_>>,
     args: &dyn Arguments<'db>,
@@ -543,7 +542,7 @@ fn calculate_type_vars<'db, 'a>(
     match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-) -> CalculatedTypeArguments<'db, 'a> {
+) -> CalculatedTypeArguments {
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
     let type_vars_len = match type_vars {
@@ -681,7 +680,6 @@ fn calculate_type_vars<'db, 'a>(
         in_definition: match_in_definition,
         matches,
         type_arguments,
-        class,
     }
 }
 

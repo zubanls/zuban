@@ -217,7 +217,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_args: &CalculatedTypeArguments<'db, '_>,
+        calculated_type_args: &CalculatedTypeArguments,
     ) -> Inferred<'db> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
@@ -231,7 +231,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_args: &CalculatedTypeArguments<'db, '_>,
+        calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
             Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
