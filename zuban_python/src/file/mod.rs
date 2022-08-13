@@ -1598,16 +1598,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         }
                         let d = self
                             .use_db_type_of_annotation(node_index)
-                            .replace_type_vars(&mut |t| match t.type_ {
-                                TypeVarType::Class => {
-                                    if let Some(class) = self.i_s.current_class() {
-                                        class.generics().nth(self.i_s, t.index)
-                                    } else {
-                                        todo!()
+                            .replace_type_vars(&mut |t| {
+                                if let Some(class) = self.i_s.current_class() {
+                                    if class.node_ref.as_link() == t.in_definition {
+                                        return class.generics().nth(self.i_s, t.index);
                                     }
                                 }
-                                TypeVarType::Function => DbType::TypeVar(t.clone()),
-                                _ => todo!("{t:?}"),
+                                DbType::TypeVar(t.clone())
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }
