@@ -175,6 +175,7 @@ macro_rules! compute_type_application {
             TypeContent::DbType(db_type) => if tcomp.has_type_vars {
                 ComplexPoint::TypeAlias(Box::new(TypeAlias {
                     type_vars: type_var_manager.into_type_vars(),
+                    location: $slice_type.as_node_ref().as_link(),
                     db_type: Rc::new(db_type),
                 }))
             } else {
@@ -1286,26 +1287,27 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
 
     fn compute_type_assignment(&mut self, assignment: Assignment<'x>) -> TypeNameLookup<'db, 'x> {
         // Use the node star_targets or single_target, because they are not used otherwise.
-        let cached_type_node_ref = NodeRef::new(self.file, assignment.index() + 1);
+        let file = self.file;
+        let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
         if cached_type_node_ref.point().calculated() {
             return load_cached_type(cached_type_node_ref);
         }
         self.cache_assignment_nodes(assignment);
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
-            let node_ref = NodeRef::new(self.file, name.index());
+            let node_ref = NodeRef::new(file, name.index());
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
         }
         if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
-            debug_assert!(self.file.points.get(name_def.index()).calculated());
+            debug_assert!(file.points.get(name_def.index()).calculated());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
+            let in_definition = NodeRef::new(file, assignment.index()).as_link();
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
                 let mut type_var_manager = TypeVarManager::default();
-                let p = self.file.points.get(expr.index());
-                let file = self.file;
+                let p = file.points.get(expr.index());
                 let mut comp =
                     TypeComputation {
                         inference: self,
@@ -1316,7 +1318,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                                 Some(TypeVarUsage {
                                     type_var,
                                     index,
-                                    in_definition: NodeRef::new(file, assignment.index()).as_link(),
+                                    in_definition,
                                     type_: TypeVarType::Alias,
                                 })
                             },
@@ -1327,14 +1329,15 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
                     TypeContent::InvalidVariable(t) => {
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                            NodeRef::new(self.file, name_def.index()),
+                            NodeRef::new(file, name_def.index()),
                         ))
                     }
                     _ => {
-                        let node_ref = NodeRef::new(comp.inference.file, expr.index());
+                        let node_ref = NodeRef::new(file, expr.index());
                         let db_type = Rc::new(comp.as_db_type(t, node_ref));
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
                             type_vars: type_var_manager.into_type_vars(),
+                            location: in_definition,
                             db_type,
                         }))
                     }

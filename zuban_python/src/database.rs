@@ -1122,6 +1122,7 @@ pub struct TypeVarUsage {
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: TypeVars,
+    pub location: PointLink,
     pub db_type: Rc<DbType>,
 }
 
@@ -1130,10 +1131,11 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
         } else {
-            self.db_type.replace_type_vars(&mut |t| match t.type_ {
-                TypeVarType::Alias => DbType::Any,
-                _ => DbType::TypeVar(t.clone()),
-            })
+            self.db_type
+                .replace_type_vars(&mut |t| match t.in_definition == self.location {
+                    true => DbType::Any,
+                    false => DbType::TypeVar(t.clone()),
+                })
         }
     }
 }
