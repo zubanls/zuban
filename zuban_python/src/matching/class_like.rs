@@ -369,7 +369,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         }
     }
 
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
             Self::Tuple(t) => t.mro(i_s),
