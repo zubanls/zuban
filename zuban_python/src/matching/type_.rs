@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
 use crate::database::{
-    Database, DbType, FormatStyle, TypeVarType, TypeVarUsage, UnionEntry, UnionType, Variance,
+    Database, DbType, FormatStyle, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -219,7 +219,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_args: &CalculatedTypeArguments,
+        calculated_type_args: &CalculatedTypeArguments<'db, '_>,
     ) -> Inferred<'db> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
@@ -233,35 +233,12 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
-        calculated_type_args: &CalculatedTypeArguments,
+        calculated_type_args: &CalculatedTypeArguments<'db, '_>,
     ) -> DbType {
         let resolve_type_var = |i_s: &mut InferenceState<'db, '_>,
-                                calculated_type_args: &CalculatedTypeArguments,
+                                calculated_type_args: &CalculatedTypeArguments<'db, '_>,
                                 usage: &TypeVarUsage| {
-            match usage.type_ {
-                TypeVarType::Class => {
-                    if let Some(c) = class {
-                        c.generics().nth(i_s, usage.index)
-                    } else {
-                        // TODO we are just passing the type vars again. Does this make sense?
-                        DbType::TypeVar(usage.clone())
-                    }
-                }
-                TypeVarType::Function => {
-                    if let Some(fm) = &calculated_type_args.type_arguments {
-                        fm[usage.index].clone()
-                    } else {
-                        // TODO we are just passing the type vars again. Does this make sense?
-                        DbType::TypeVar(usage.clone())
-                    }
-                }
-                TypeVarType::LateBound => {
-                    // Just pass the type var again, because it might be resolved by a future
-                    // callable, that is late bound, like Callable[..., Callable[[T], T]]
-                    DbType::TypeVar(usage.clone())
-                }
-                _ => unreachable!(),
-            }
+            calculated_type_args.lookup_type_var_usage(i_s, usage)
         };
 
         match self {

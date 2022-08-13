@@ -4,7 +4,7 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{ClassLike, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
+    DbType, FormatStyle, GenericsList, PointLink, TypeVarType, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -439,9 +439,43 @@ pub fn calculate_class_init_type_vars_and_return<'db, 'a>(
 }
 
 pub struct CalculatedTypeArguments<'db, 'a> {
+    pub in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
     pub class: Option<&'a Class<'db, 'a>>,
+}
+
+impl<'db> CalculatedTypeArguments<'db, '_> {
+    pub fn lookup_type_var_usage(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        usage: &TypeVarUsage,
+    ) -> DbType {
+        match usage.type_ {
+            TypeVarType::Class => {
+                if let Some(c) = self.class {
+                    c.generics().nth(i_s, usage.index)
+                } else {
+                    // TODO we are just passing the type vars again. Does this make sense?
+                    DbType::TypeVar(usage.clone())
+                }
+            }
+            TypeVarType::Function => {
+                if let Some(fm) = &self.type_arguments {
+                    fm[usage.index].clone()
+                } else {
+                    // TODO we are just passing the type vars again. Does this make sense?
+                    DbType::TypeVar(usage.clone())
+                }
+            }
+            TypeVarType::LateBound => {
+                // Just pass the type var again, because it might be resolved by a future
+                // callable, that is late bound, like Callable[..., Callable[[T], T]]
+                DbType::TypeVar(usage.clone())
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 pub fn calculate_function_type_vars_and_return<'db, 'a>(
@@ -643,6 +677,7 @@ fn calculate_type_vars<'db, 'a>(
         }
     }
     CalculatedTypeArguments {
+        in_definition: match_in_definition,
         matches,
         type_arguments,
         class,
