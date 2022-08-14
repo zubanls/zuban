@@ -966,7 +966,7 @@ impl CallableContent {
 }
 
 struct UnresolvedTypeVar {
-    type_var: TypeVar,
+    type_var: Rc<TypeVar>,
     most_outer_callable: Option<PointLink>,
 }
 
@@ -975,22 +975,56 @@ pub struct CallableWithParent {
     pub parent_callable: Option<PointLink>,
 }
 
+struct CallableAncestors<'a> {
+    callables: &'a [CallableWithParent],
+    next: Option<PointLink>,
+}
+
+impl Iterator for CallableAncestors<'_> {
+    type Item = PointLink;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // This algorithm seems a bit weird in terms of Big O, but it shouldn't matter at all,
+        // because this will have at most 3-5 callables (more typical is 0-1).
+        if let Some(next) = self.next {
+            let result = next;
+            for callable_with_parent in self.callables {
+                if callable_with_parent.defined_at == next {
+                    self.next = callable_with_parent.parent_callable;
+                    return Some(result);
+                }
+            }
+            self.next = None;
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct TypeVarManager {
-    type_vars: Vec<Rc<TypeVar>>,
+    type_vars: Vec<UnresolvedTypeVar>,
     callables: Vec<CallableWithParent>,
 }
 
 impl TypeVarManager {
-    pub fn add(&mut self, tv: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
+    pub fn add(&mut self, type_var: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
         if let Some(index) = self
             .type_vars
             .iter()
-            .position(|t| t.as_ref() == tv.as_ref())
+            .position(|t| t.type_var.as_ref() == type_var.as_ref())
         {
+            self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
+                self.type_vars[index].most_outer_callable,
+                in_callable,
+            );
             index.into()
         } else {
-            self.type_vars.push(tv);
+            self.type_vars.push(UnresolvedTypeVar {
+                type_var,
+                most_outer_callable: in_callable,
+            });
             (self.type_vars.len() - 1).into()
         }
     }
@@ -1010,7 +1044,7 @@ impl TypeVarManager {
             index: self
                 .type_vars
                 .iter()
-                .position(|t| Rc::ptr_eq(t, &tv.type_var))
+                .position(|t| t.type_var == tv.type_var)
                 .unwrap()
                 .into(),
             in_definition: tv.in_definition,
@@ -1018,11 +1052,37 @@ impl TypeVarManager {
     }
 
     pub fn into_type_vars(self) -> TypeVars {
-        TypeVars(self.type_vars.into_boxed_slice())
+        TypeVars(
+            self.type_vars
+                .into_iter()
+                .map(|unresolved| unresolved.type_var)
+                .collect(),
+        )
     }
 
     pub fn len(&self) -> usize {
         self.type_vars.len()
+    }
+
+    fn calculate_most_outer_callable(
+        &self,
+        first: Option<PointLink>,
+        second: Option<PointLink>,
+    ) -> Option<PointLink> {
+        for ancestor1 in (CallableAncestors {
+            callables: &self.callables,
+            next: first,
+        }) {
+            for ancestor2 in (CallableAncestors {
+                callables: &self.callables,
+                next: second,
+            }) {
+                if ancestor1 == ancestor2 {
+                    return Some(ancestor1);
+                }
+            }
+        }
+        None
     }
 }
 
