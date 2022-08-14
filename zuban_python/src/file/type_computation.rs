@@ -242,6 +242,7 @@ pub(super) fn type_computation_for_variable_annotation(
 pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     for_definition: PointLink,
+    type_var_manager: TypeVarManager,
     type_var_callback: &'c mut C,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
@@ -267,6 +268,7 @@ where
         Self {
             inference,
             for_definition,
+            type_var_manager: TypeVarManager::default(),
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
@@ -382,14 +384,17 @@ where
                 .file
                 .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
+            let old_manager = std::mem::take(&mut self.type_var_manager);
             let mut comp = TypeComputation {
                 inference: &mut f.inference(self.inference.i_s),
+                type_var_manager: old_manager,
                 for_definition: self.for_definition,
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
             };
             let type_ = callback(&mut comp, star_exprs);
+            self.type_var_manager = comp.type_var_manager;
             self.has_type_vars |= comp.has_type_vars;
             type_
         } else {
@@ -1302,6 +1307,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 let mut comp =
                     TypeComputation {
                         inference: self,
+                        type_var_manager: TypeVarManager::default(),
                         for_definition: in_definition,
                         errors_already_calculated: p.calculated(),
                         type_var_callback:
