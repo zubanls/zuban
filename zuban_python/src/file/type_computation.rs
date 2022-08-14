@@ -3,9 +3,10 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
-    Locality, Point, PointLink, PointType, Specific, TupleContent, TypeAlias, TypeVar,
-    TypeVarIndex, TypeVarManager, TypeVarUsage, UnionEntry, UnionType, Variance,
+    CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
+    FormatStyle, GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent,
+    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -239,6 +240,7 @@ pub(super) fn type_computation_for_variable_annotation(
 pub struct TypeComputation<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     for_definition: PointLink,
+    current_callable: Option<PointLink>,
     pub type_var_manager: TypeVarManager,
     type_var_callback: Option<TypeVarCallback<'db, 'c>>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
@@ -257,6 +259,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         Self {
             inference,
             for_definition,
+            current_callable: None,
             type_var_manager: TypeVarManager::default(),
             type_var_callback,
             errors_already_calculated: false,
@@ -379,6 +382,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let mut comp = TypeComputation {
                     inference: &mut f.inference(self.inference.i_s),
                     type_var_manager: old_manager,
+                    current_callable: self.current_callable,
                     for_definition: self.for_definition,
                     type_var_callback: Some(type_var_callback),
                     errors_already_calculated: self.errors_already_calculated,
@@ -392,6 +396,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let mut comp = TypeComputation {
                     inference: &mut f.inference(self.inference.i_s),
                     type_var_manager: old_manager,
+                    current_callable: self.current_callable,
                     for_definition: self.for_definition,
                     type_var_callback: None,
                     errors_already_calculated: self.errors_already_calculated,
@@ -872,6 +877,13 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         &mut self,
         slice_type: SliceType<'db, 'x>,
     ) -> TypeContent<'db, 'x> {
+        let defined_at = slice_type.as_node_ref().as_link();
+        self.type_var_manager.register_callable(CallableWithParent {
+            defined_at,
+            parent_callable: self.current_callable,
+        });
+        let old = std::mem::replace(&mut self.current_callable, Some(defined_at));
+
         let mut params = Some(vec![]);
         let db = self.inference.i_s.db;
         let mut add_param = |params: &mut Option<Vec<CallableParam>>,
@@ -887,7 +899,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             }
         };
 
-        let defined_at = slice_type.as_node_ref().as_link();
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             let param_node = iterator.next().map(|slice_content| match slice_content {
@@ -935,6 +946,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 return_class: Box::new(DbType::Any),
             }
         };
+        self.current_callable = old;
         TypeContent::DbType(DbType::Callable(content))
     }
 
@@ -1099,7 +1111,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             )
                         })
                         .unwrap_or_else(|| {
-                            let index = self.type_var_manager.add(type_var.clone());
+                            let index = self
+                                .type_var_manager
+                                .add(type_var.clone(), self.current_callable);
                             DbType::TypeVar(TypeVarUsage {
                                 type_var,
                                 index,

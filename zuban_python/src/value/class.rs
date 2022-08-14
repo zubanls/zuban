@@ -201,7 +201,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if parent_type_var.is_some() {
                                         return Some(DbType::Any);
                                     }
-                                    let old_index = type_var_manager.add(type_var.clone());
+                                    let old_index = type_var_manager.add(type_var.clone(), None);
                                     if old_index < force_index {
                                         had_generic_or_protocol_issue = true;
                                         NodeRef::new(self.node_ref.file, n.index())
@@ -215,7 +215,7 @@ impl<'db, 'a> Class<'db, 'a> {
                                     if let Some(usage) = parent_type_var {
                                         return Some(DbType::TypeVar(usage));
                                     }
-                                    type_var_manager.add(type_var.clone())
+                                    type_var_manager.add(type_var.clone(), None)
                                 };
                                 Some(DbType::TypeVar(TypeVarUsage {
                                     type_var,

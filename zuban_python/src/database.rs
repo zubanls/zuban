@@ -965,29 +965,50 @@ impl CallableContent {
     }
 }
 
+struct UnresolvedTypeVar {
+    type_var: TypeVar,
+    most_outer_callable: Option<PointLink>,
+}
+
+pub struct CallableWithParent {
+    pub defined_at: PointLink,
+    pub parent_callable: Option<PointLink>,
+}
+
 #[derive(Default)]
-pub struct TypeVarManager(Vec<Rc<TypeVar>>);
+pub struct TypeVarManager {
+    type_vars: Vec<Rc<TypeVar>>,
+    callables: Vec<CallableWithParent>,
+}
 
 impl TypeVarManager {
-    pub fn add(&mut self, tv: Rc<TypeVar>) -> TypeVarIndex {
-        if let Some(index) = self.0.iter().position(|t| t.as_ref() == tv.as_ref()) {
+    pub fn add(&mut self, tv: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
+        if let Some(index) = self
+            .type_vars
+            .iter()
+            .position(|t| t.as_ref() == tv.as_ref())
+        {
             index.into()
         } else {
-            self.0.push(tv);
-            (self.0.len() - 1).into()
+            self.type_vars.push(tv);
+            (self.type_vars.len() - 1).into()
         }
     }
 
+    pub fn register_callable(&mut self, c: CallableWithParent) {
+        self.callables.push(c)
+    }
+
     pub fn move_index(&mut self, old_index: TypeVarIndex, force_index: TypeVarIndex) {
-        let removed = self.0.remove(old_index.as_usize());
-        self.0.insert(force_index.as_usize(), removed);
+        let removed = self.type_vars.remove(old_index.as_usize());
+        self.type_vars.insert(force_index.as_usize(), removed);
     }
 
     pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
         TypeVarUsage {
             type_var: tv.type_var.clone(),
             index: self
-                .0
+                .type_vars
                 .iter()
                 .position(|t| Rc::ptr_eq(t, &tv.type_var))
                 .unwrap()
@@ -997,11 +1018,11 @@ impl TypeVarManager {
     }
 
     pub fn into_type_vars(self) -> TypeVars {
-        TypeVars(self.0.into_boxed_slice())
+        TypeVars(self.type_vars.into_boxed_slice())
     }
 
     pub fn len(&self) -> usize {
-        self.0.len()
+        self.type_vars.len()
     }
 }
 
