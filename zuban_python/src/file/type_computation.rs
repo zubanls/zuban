@@ -4,8 +4,8 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
-    Locality, Point, PointType, Specific, TupleContent, TypeAlias, TypeVar, TypeVarIndex,
-    TypeVarManager, TypeVarUsage, UnionEntry, UnionType, Variance,
+    Locality, Point, PointLink, PointType, Specific, TupleContent, TypeAlias, TypeVar,
+    TypeVarIndex, TypeVarManager, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -167,7 +167,7 @@ macro_rules! compute_type_application {
                 in_definition: $slice_type.as_node_ref().as_link(),
             })
         };
-        let mut tcomp = TypeComputation::new($self, &mut on_type_var);
+        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), &mut on_type_var);
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
@@ -241,6 +241,7 @@ pub(super) fn type_computation_for_variable_annotation(
 
 pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
+    for_definition: PointLink,
     type_var_callback: &'c mut C,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
@@ -260,10 +261,12 @@ where
 {
     pub fn new(
         inference: &'c mut PythonInference<'db, 'a, 'b>,
+        for_definition: PointLink,
         type_var_callback: &'c mut C,
     ) -> Self {
         Self {
             inference,
+            for_definition,
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
@@ -381,6 +384,7 @@ where
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let mut comp = TypeComputation {
                 inference: &mut f.inference(self.inference.i_s),
+                for_definition: self.for_definition,
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
                 has_type_vars: false,
@@ -1298,6 +1302,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 let mut comp =
                     TypeComputation {
                         inference: self,
+                        for_definition: in_definition,
                         errors_already_calculated: p.calculated(),
                         type_var_callback:
                             &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
@@ -1359,18 +1364,19 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         &mut self,
         start: CodeIndex,
         s: &str,
+        assignment_node_ref: NodeRef,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
         let mut on_type_var = |i_s: &mut InferenceState, type_var, _, node_ref| {
             type_computation_for_variable_annotation(i_s, type_var, node_ref)
         };
-        let mut comp = TypeComputation::new(self, &mut on_type_var);
+        let mut comp = TypeComputation::new(self, assignment_node_ref.as_link(), &mut on_type_var);
         comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
-        let mut comp = TypeComputation::new(self, &mut on_type_var);
+        let mut comp = TypeComputation::new(self, node_ref.as_link(), &mut on_type_var);
         let t = comp.compute_type(expr, None);
         if matches!(t, TypeContent::InvalidVariable(_)) {
             // TODO this is a bit weird and should probably generate other errors

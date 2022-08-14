@@ -608,9 +608,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let s = &suffix[start..];
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
-                        type_comment_result = Some(
-                            self.compute_type_comment(assignment.end() + start as CodeIndex, s),
-                        );
+                        type_comment_result = Some(self.compute_type_comment(
+                            assignment.end() + start as CodeIndex,
+                            s,
+                            node_ref,
+                        ));
                     }
                 }
                 let is_definition = type_comment_result.is_some();
@@ -638,9 +640,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                TypeComputation::new(self, &mut |i_s, type_var, _, node_ref| {
-                    type_computation_for_variable_annotation(i_s, type_var, node_ref)
-                })
+                TypeComputation::new(
+                    self,
+                    node_ref.as_link(),
+                    &mut |i_s, type_var, _, node_ref| {
+                        type_computation_for_variable_annotation(i_s, type_var, node_ref)
+                    },
+                )
                 .compute_annotation(annotation);
                 if let Some(right_side) = right_side {
                     let t = self.use_cached_annotation_type(annotation);

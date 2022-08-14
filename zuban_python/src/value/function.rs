@@ -222,15 +222,15 @@ impl<'db, 'a> Function<'db, 'a> {
                 in_definition: self.node_ref.as_link(),
             })
         };
+        let mut type_computation =
+            TypeComputation::new(&mut inference, self.node_ref.as_link(), &mut on_type_var);
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                TypeComputation::new(&mut inference, &mut on_type_var)
-                    .compute_annotation(annotation)
+                type_computation.compute_annotation(annotation)
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
-            TypeComputation::new(&mut inference, &mut on_type_var)
-                .compute_return_annotation(return_annot);
+            type_computation.compute_return_annotation(return_annot);
         }
         let type_vars = type_var_manager.into_type_vars();
         match type_vars.len() {

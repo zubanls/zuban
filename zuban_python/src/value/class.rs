@@ -194,6 +194,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let mut inference = self.node_ref.file.inference(&mut i_s);
                         let base = TypeComputation::new(
                             &mut inference,
+                            self.node_ref.as_link(),
                             &mut |i_s, type_var, is_generic_or_protocol, _| {
                                 let parent_type_var = self.maybe_type_var_in_parent(i_s, &type_var);
                                 let index = if let Some(force_index) = is_generic_or_protocol {
