@@ -9,8 +9,7 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVarManager, TypeVarUsage,
-    TypeVars,
+    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -203,27 +202,21 @@ impl<'db, 'a> Function<'db, 'a> {
             }
             return None;
         }
-        let mut type_var_manager = TypeVarManager::default();
         let func_node = self.node();
         let mut inference = self.node_ref.file.inference(i_s);
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
-            if let Some(class) = self.class {
-                if let Some(usage) = class
+            self.class.and_then(|class| {
+                class
                     .type_vars(i_s)
                     .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                {
-                    return DbType::TypeVar(usage);
-                }
-            }
-            let index = type_var_manager.add(type_var.clone());
-            DbType::TypeVar(TypeVarUsage {
-                type_var,
-                index,
-                in_definition: self.node_ref.as_link(),
+                    .map(DbType::TypeVar)
             })
         };
-        let mut type_computation =
-            TypeComputation::new(&mut inference, self.node_ref.as_link(), &mut on_type_var);
+        let mut type_computation = TypeComputation::new(
+            &mut inference,
+            self.node_ref.as_link(),
+            Some(&mut on_type_var),
+        );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 type_computation.compute_annotation(annotation)
@@ -232,7 +225,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if let Some(return_annot) = func_node.return_annotation() {
             type_computation.compute_return_annotation(return_annot);
         }
-        let type_vars = type_var_manager.into_type_vars();
+        let type_vars = type_computation.type_var_manager.into_type_vars();
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => type_var_reference

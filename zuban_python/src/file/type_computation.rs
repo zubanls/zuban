@@ -18,6 +18,12 @@ use crate::matching::{ClassLike, Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
+type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
+    &mut InferenceState<'db, '_>,
+    Rc<TypeVar>,
+    Option<TypeVarIndex>,
+    NodeRef<'db>,
+) -> Option<DbType>;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
@@ -158,22 +164,13 @@ pub enum BaseClass<'db, 'a> {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
-        let mut type_var_manager = TypeVarManager::default();
-        let mut on_type_var = |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
-            let index = type_var_manager.add(type_var.clone());
-            DbType::TypeVar(TypeVarUsage {
-                type_var,
-                index,
-                in_definition: $slice_type.as_node_ref().as_link(),
-            })
-        };
-        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), &mut on_type_var);
+        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), None);
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
             TypeContent::DbType(db_type) => if tcomp.has_type_vars {
                 ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                    type_vars: type_var_manager.into_type_vars(),
+                    type_vars: tcomp.type_var_manager.into_type_vars(),
                     location: $slice_type.as_node_ref().as_link(),
                     db_type: Rc::new(db_type),
                 }))
@@ -218,32 +215,32 @@ pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     type_var: Rc<TypeVar>,
     node_ref: NodeRef,
-) -> DbType {
+) -> Option<DbType> {
     if let Some(class) = i_s.current_class() {
         if let Some(usage) = class
             .type_vars(i_s)
             .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
         {
-            return DbType::TypeVar(usage);
+            return Some(DbType::TypeVar(usage));
         }
     }
     if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
             let usage = type_vars.find(type_var.clone(), func.node_ref.as_link());
             if let Some(usage) = usage {
-                return DbType::TypeVar(usage);
+                return Some(DbType::TypeVar(usage));
             }
         }
     }
     node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar { type_var });
-    DbType::Any
+    Some(DbType::Any)
 }
 
-pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
+pub struct TypeComputation<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     for_definition: PointLink,
-    type_var_manager: TypeVarManager,
-    type_var_callback: &'c mut C,
+    pub type_var_manager: TypeVarManager,
+    type_var_callback: Option<TypeVarCallback<'db, 'c>>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
     // a type alias we check in the database if the error was already calculated and set the flag.
@@ -251,19 +248,11 @@ pub struct TypeComputation<'db, 'a, 'b, 'c, C> {
     pub has_type_vars: bool,
 }
 
-impl<'db: 'x, 'a, 'b, 'c, 'x, C> TypeComputation<'db, 'a, 'b, 'c, C>
-where
-    C: FnMut(
-        &mut InferenceState<'db, 'a>,
-        Rc<TypeVar>,
-        Option<TypeVarIndex>,
-        NodeRef<'db>,
-    ) -> DbType,
-{
+impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     pub fn new(
         inference: &'c mut PythonInference<'db, 'a, 'b>,
         for_definition: PointLink,
-        type_var_callback: &'c mut C,
+        type_var_callback: Option<TypeVarCallback<'db, 'c>>,
     ) -> Self {
         Self {
             inference,
@@ -377,7 +366,7 @@ where
         &mut self,
         start: CodeIndex,
         string: String,
-        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_, C>, StarExpressions<'db>) -> T,
+        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_>, StarExpressions<'db>) -> T,
     ) -> T {
         let f: &'db PythonFile =
             self.inference
@@ -385,18 +374,34 @@ where
                 .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let old_manager = std::mem::take(&mut self.type_var_manager);
-            let mut comp = TypeComputation {
-                inference: &mut f.inference(self.inference.i_s),
-                type_var_manager: old_manager,
-                for_definition: self.for_definition,
-                type_var_callback: self.type_var_callback,
-                errors_already_calculated: self.errors_already_calculated,
-                has_type_vars: false,
-            };
-            let type_ = callback(&mut comp, star_exprs);
-            self.type_var_manager = comp.type_var_manager;
-            self.has_type_vars |= comp.has_type_vars;
-            type_
+            // TODO why do we duplicate this code??? (answer because option<mut> sucks?)
+            if let Some(type_var_callback) = self.type_var_callback.as_mut() {
+                let mut comp = TypeComputation {
+                    inference: &mut f.inference(self.inference.i_s),
+                    type_var_manager: old_manager,
+                    for_definition: self.for_definition,
+                    type_var_callback: Some(type_var_callback),
+                    errors_already_calculated: self.errors_already_calculated,
+                    has_type_vars: false,
+                };
+                let type_ = callback(&mut comp, star_exprs);
+                self.type_var_manager = comp.type_var_manager;
+                self.has_type_vars |= comp.has_type_vars;
+                type_
+            } else {
+                let mut comp = TypeComputation {
+                    inference: &mut f.inference(self.inference.i_s),
+                    type_var_manager: old_manager,
+                    for_definition: self.for_definition,
+                    type_var_callback: None,
+                    errors_already_calculated: self.errors_already_calculated,
+                    has_type_vars: false,
+                };
+                let type_ = callback(&mut comp, star_exprs);
+                self.type_var_manager = comp.type_var_manager;
+                self.has_type_vars |= comp.has_type_vars;
+                type_
+            }
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
@@ -1080,14 +1085,28 @@ where
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
-            TypeNameLookup::TypeVar(t) => {
+            TypeNameLookup::TypeVar(type_var) => {
                 self.has_type_vars = true;
-                TypeContent::DbType((self.type_var_callback)(
-                    self.inference.i_s,
-                    t,
-                    generic_or_protocol_index,
-                    NodeRef::new(self.inference.file, name.index()),
-                ))
+                TypeContent::DbType({
+                    self.type_var_callback
+                        .as_mut()
+                        .and_then(|callback| {
+                            callback(
+                                self.inference.i_s,
+                                type_var.clone(),
+                                generic_or_protocol_index,
+                                NodeRef::new(self.inference.file, name.index()),
+                            )
+                        })
+                        .unwrap_or_else(|| {
+                            let index = self.type_var_manager.add(type_var.clone());
+                            DbType::TypeVar(TypeVarUsage {
+                                type_var,
+                                index,
+                                in_definition: self.for_definition,
+                            })
+                        })
+                })
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
@@ -1302,25 +1321,15 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
-                let mut type_var_manager = TypeVarManager::default();
                 let p = file.points.get(expr.index());
-                let mut comp =
-                    TypeComputation {
-                        inference: self,
-                        type_var_manager: TypeVarManager::default(),
-                        for_definition: in_definition,
-                        errors_already_calculated: p.calculated(),
-                        type_var_callback:
-                            &mut |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
-                                let index = type_var_manager.add(type_var.clone());
-                                DbType::TypeVar(TypeVarUsage {
-                                    type_var,
-                                    index,
-                                    in_definition,
-                                })
-                            },
-                        has_type_vars: false,
-                    };
+                let mut comp = TypeComputation {
+                    inference: self,
+                    type_var_manager: TypeVarManager::default(),
+                    for_definition: in_definition,
+                    errors_already_calculated: p.calculated(),
+                    type_var_callback: None,
+                    has_type_vars: false,
+                };
                 let t = comp.compute_type(expr, None);
                 let complex = match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
@@ -1333,7 +1342,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         let node_ref = NodeRef::new(file, expr.index());
                         let db_type = Rc::new(comp.as_db_type(t, node_ref));
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                            type_vars: type_var_manager.into_type_vars(),
+                            type_vars: comp.type_var_manager.into_type_vars(),
                             location: in_definition,
                             db_type,
                         }))
@@ -1375,14 +1384,15 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         let mut on_type_var = |i_s: &mut InferenceState, type_var, _, node_ref| {
             type_computation_for_variable_annotation(i_s, type_var, node_ref)
         };
-        let mut comp = TypeComputation::new(self, assignment_node_ref.as_link(), &mut on_type_var);
+        let mut comp =
+            TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut on_type_var));
         comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
-        let mut comp = TypeComputation::new(self, node_ref.as_link(), &mut on_type_var);
+        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
         let t = comp.compute_type(expr, None);
         if matches!(t, TypeContent::InvalidVariable(_)) {
             // TODO this is a bit weird and should probably generate other errors

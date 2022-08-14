@@ -643,9 +643,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 TypeComputation::new(
                     self,
                     node_ref.as_link(),
-                    &mut |i_s, type_var, _, node_ref| {
+                    Some(&mut |i_s, type_var, _, node_ref| {
                         type_computation_for_variable_annotation(i_s, type_var, node_ref)
-                    },
+                    }),
                 )
                 .compute_annotation(annotation);
                 if let Some(right_side) = right_side {
