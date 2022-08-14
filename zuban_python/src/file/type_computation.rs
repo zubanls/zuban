@@ -1322,14 +1322,8 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 TypeNameLookup::TypeVar(tv)
             } else {
                 let p = file.points.get(expr.index());
-                let mut comp = TypeComputation {
-                    inference: self,
-                    type_var_manager: TypeVarManager::default(),
-                    for_definition: in_definition,
-                    errors_already_calculated: p.calculated(),
-                    type_var_callback: None,
-                    has_type_vars: false,
-                };
+                let mut comp = TypeComputation::new(self, in_definition, None);
+                comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr, None);
                 let complex = match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
