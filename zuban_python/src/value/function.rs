@@ -225,7 +225,16 @@ impl<'db, 'a> Function<'db, 'a> {
         if let Some(return_annot) = func_node.return_annotation() {
             type_computation.compute_return_annotation(return_annot);
         }
-        let type_vars = type_computation.type_var_manager.into_type_vars();
+        let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
+            for param in func_node.params().iter() {
+                if let Some(annotation) = param.annotation() {
+                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
+                }
+            }
+            if let Some(return_annot) = func_node.return_annotation() {
+                inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
+            }
+        });
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => type_var_reference

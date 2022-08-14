@@ -5,8 +5,8 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     FormatStyle, GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
-    Variance,
+    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry,
+    UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1128,6 +1128,16 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
         }
     }
+
+    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVars
+    where
+        C: Fn(&PythonInference<'db, '_, '_>, &dyn Fn(&DbType) -> DbType),
+    {
+        if self.type_var_manager.has_late_bound_type_vars() {
+            on_type_var_recalculation(self.inference, &|t| t.clone())
+        }
+        self.type_var_manager.into_type_vars()
+    }
 }
 
 impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
@@ -1311,6 +1321,22 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             db_type
         } else {
             unreachable!()
+        }
+    }
+
+    pub fn recalculate_annotation_type_vars(
+        &self,
+        node_index: NodeIndex,
+        recalculate: impl Fn(&DbType) -> DbType,
+    ) {
+        if self.file.points.get(node_index).specific() == Specific::AnnotationWithTypeVars {
+            let new_t = recalculate(self.use_db_type_of_annotation(node_index));
+            self.file.complex_points.insert(
+                &self.file.points,
+                node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
+                ComplexPoint::TypeInstance(Box::new(new_t)),
+                Locality::Todo,
+            )
         }
     }
 

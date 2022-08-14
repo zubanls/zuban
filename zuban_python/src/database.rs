@@ -1051,11 +1051,17 @@ impl TypeVarManager {
         }
     }
 
+    pub fn has_late_bound_type_vars(&self) -> bool {
+        self.type_vars
+            .iter()
+            .any(|t| t.most_outer_callable.is_some())
+    }
+
     pub fn into_type_vars(self) -> TypeVars {
         TypeVars(
             self.type_vars
                 .into_iter()
-                .map(|unresolved| unresolved.type_var)
+                .filter_map(|t| t.most_outer_callable.is_none().then(|| t.type_var))
                 .collect(),
         )
     }
