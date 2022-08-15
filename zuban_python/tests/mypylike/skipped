@@ -3,11 +3,6 @@ testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
 testUseCovariantGenericOuterContext
 
-testGenericFunctionWithTypeTypeAsCallable
-testUseCovariantGenericOuterContextUserDefined
-
-testOverloadOnOverloadWithType
-
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
