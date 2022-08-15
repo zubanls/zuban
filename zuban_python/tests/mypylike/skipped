@@ -33,6 +33,7 @@ testFunctionSubtypingWithVoid
 testGenericFunctionSubtypingWithUnions
 testSubtypingWithGenericFunctionUsingTypevarWithValues
 testOverloadOverlapWithTypeVars
+testGenericFunctionTypeDecl
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
@@ -42,7 +43,6 @@ testInheritedConstructor2
 testOverloadWithOverlappingItemsAndAnyArgument5
 
 # Type Var Binding
-testFunctionReturningGenericFunction
 testFunctionReturningGenericFunctionPartialBinding
 testFunctionReturningGenericFunctionTwoLevelBinding
 

@@ -971,10 +971,20 @@ impl CallableContent {
         match style {
             FormatStyle::MypyRevealType => {
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
+                let type_vars = self.type_vars.as_ref().map(|t| {
+                    format!(
+                        " [{}]",
+                        t.iter()
+                            .map(|t| t.name(i_s.db))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                });
+                let type_vars = type_vars.as_deref().unwrap_or("");
                 if result.as_ref() == "None" {
-                    format!("def ({param_str})")
+                    format!("def{type_vars} ({param_str})")
                 } else {
-                    format!("def ({param_str}) -> {result}")
+                    format!("def{type_vars} ({param_str}) -> {result}")
                 }
             }
             _ => {
