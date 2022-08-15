@@ -129,6 +129,7 @@ testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
+testOverloadRefresh
 
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
@@ -261,10 +262,6 @@ testInvalidRvalueTypeInInferredMultipleLvarDefinition
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
 
-# Type Var formatting
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
-
 # Type Var Value in func
 testCheckGenericFunctionBodyWithTypeVarValues
 testCheckGenericFunctionBodyWithTypeVarValues2
@@ -376,9 +373,6 @@ testProhibitBoundTypeVariableReuseForAliases
 testGenericInnerClass
 testGenericClassInnerFunctionTypeVariable
 testListComprehensionSpecialScoping
-
-# Unknown != Any (shouldn't produce issues)
-testOverloadRefresh
 
 # Property
 testNonMethodProperty
@@ -1267,8 +1261,12 @@ testAnonymousArgumentError
 testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
 
-# Won't support for now:
+# Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
+
+# Probably won't support Type Var formatting
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
 
 # Won't support: Signature Comments
 testIncompatibleSignatureInComment
