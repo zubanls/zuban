@@ -133,21 +133,12 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        let mut type_vars = vec![]; // todo!()
-        if let Some(params) = &self.content.params {
-            for param in params.iter() {
-                param
-                    .db_type
-                    .scan_for_late_bound_type_vars(i_s.db, &mut type_vars)
-            }
-        }
-        let type_vars = TypeVars::from_vec(type_vars);
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             self,
             args,
-            None,
-            PointLink::new(FileIndex(0), 0), // TODO this is completely wrong
+            self.content.type_vars.as_ref(),
+            self.content.defined_at,
             result_context,
             on_type_error,
         );

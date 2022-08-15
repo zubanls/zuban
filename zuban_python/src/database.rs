@@ -495,12 +495,6 @@ impl GenericsList {
             .join(", ")
             .into()
     }
-
-    fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
-        for g in self.0.iter() {
-            g.scan_for_late_bound_type_vars(db, result)
-        }
-    }
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
@@ -874,47 +868,6 @@ impl DbType {
                     ),
                 })
             }
-        }
-    }
-
-    pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
-        match self {
-            Self::GenericClass(link, generics) => {
-                generics.scan_for_late_bound_type_vars(db, result)
-            }
-            Self::Union(list) => todo!(), //list.scan_for_late_bound_type_vars(db, result),
-            Self::TypeVar(t) => {
-                loop {
-                    if t.index.as_usize() == result.len() {
-                        result.push(t.type_var.clone());
-                        break;
-                    } else {
-                        // This a bit special, because these are late-bound parameters that are not
-                        // part of the DbType anymore. This won't ever be accessed, but it's a
-                        // placeholder in the array so that type var indexes still work normally.
-                        // e.g. Tuple[Callable[[T], T], Callable[[U], U]] needs this.
-                        todo!()
-                        //result.push(PointLink::new(FileIndex(0), u32::MAX));
-                    }
-                }
-            }
-            Self::Type(db_type) => db_type.scan_for_late_bound_type_vars(db, result),
-            Self::Tuple(content) => {
-                if let Some(generics) = &content.generics {
-                    generics.scan_for_late_bound_type_vars(db, result)
-                }
-            }
-            Self::Callable(content) => {
-                if let Some(params) = &content.params {
-                    for param in params.iter() {
-                        param.db_type.scan_for_late_bound_type_vars(db, result)
-                    }
-                }
-                content
-                    .return_class
-                    .scan_for_late_bound_type_vars(db, result)
-            }
-            _ => (),
         }
     }
 
