@@ -37,6 +37,7 @@ pub(crate) enum IssueType {
     TooFewValuesToUnpack { actual: usize, expected: usize },
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    DuplicateBaseClass { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
 
@@ -259,6 +260,10 @@ impl<'db> Diagnostic<'db> {
             IssueType::InvalidBaseClass => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
+            }
+            IssueType::DuplicateBaseClass{name} => {
+                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
+                format!("Duplicate base class \"{name}\"")
             }
             IssueType::CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
