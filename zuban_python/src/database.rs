@@ -809,6 +809,74 @@ impl DbType {
         }
     }
 
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+        let rewrite_generics = |generics: &GenericsList| {
+            GenericsList::new_generics(
+                generics
+                    .iter()
+                    .map(|g| g.rewrite_late_bound_callables(manager))
+                    .collect(),
+            )
+        };
+        match self {
+            Self::Class(c) => Self::Class(*c),
+            Self::Any => Self::Any,
+            Self::None => Self::None,
+            Self::Never => Self::Never,
+            Self::GenericClass(link, generics) => {
+                Self::GenericClass(*link, rewrite_generics(generics))
+            }
+            Self::Union(u) => Self::Union(UnionType {
+                entries: u
+                    .entries
+                    .iter()
+                    .map(|e| UnionEntry {
+                        type_: e.type_.rewrite_late_bound_callables(manager),
+                        format_index: e.format_index,
+                    })
+                    .collect(),
+                format_as_optional: u.format_as_optional,
+            }),
+            Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
+            Self::Type(db_type) => {
+                Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
+            }
+            Self::Tuple(content) => Self::Tuple(TupleContent {
+                generics: content
+                    .generics
+                    .as_ref()
+                    .map(|generics| rewrite_generics(generics)),
+                arbitrary_length: content.arbitrary_length,
+            }),
+            Self::Callable(content) => {
+                let type_vars = manager
+                    .type_vars
+                    .iter()
+                    .filter_map(|t| {
+                        (t.most_outer_callable == Some(content.defined_at))
+                            .then(|| t.type_var.clone())
+                    })
+                    .collect::<Box<_>>();
+                Self::Callable(CallableContent {
+                    defined_at: content.defined_at,
+                    type_vars: (!type_vars.is_empty()).then(|| TypeVars(type_vars)),
+                    params: content.params.as_ref().map(|params| {
+                        params
+                            .iter()
+                            .map(|p| CallableParam {
+                                param_type: p.param_type,
+                                db_type: p.db_type.rewrite_late_bound_callables(manager),
+                            })
+                            .collect()
+                    }),
+                    return_class: Box::new(
+                        content.return_class.rewrite_late_bound_callables(manager),
+                    ),
+                })
+            }
+        }
+    }
+
     pub fn scan_for_late_bound_type_vars(&self, db: &Database, result: &mut Vec<Rc<TypeVar>>) {
         match self {
             Self::GenericClass(link, generics) => {
@@ -1089,6 +1157,33 @@ impl TypeVarManager {
             }
         }
         None
+    }
+
+    fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
+        let mut index = 0;
+        let mut in_definition = None;
+        for t in self.type_vars.iter().rev() {
+            if t.type_var == usage.type_var {
+                if t.most_outer_callable.is_some() {
+                    in_definition = t.most_outer_callable;
+                } else {
+                    return usage.clone();
+                }
+            } else if let Some(in_definition) = in_definition {
+                if in_definition == usage.in_definition {
+                    index += 1;
+                }
+            }
+        }
+        if let Some(in_definition) = in_definition {
+            TypeVarUsage {
+                type_var: usage.type_var.clone(),
+                in_definition,
+                index: index.into(),
+            }
+        } else {
+            usage.clone()
+        }
     }
 }
 
