@@ -42,10 +42,6 @@ testInheritedConstructor2
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
-# Type Var Binding
-testFunctionReturningGenericFunctionPartialBinding
-testFunctionReturningGenericFunctionTwoLevelBinding
-
 # Function Subtyping inverse type var binding
 testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions

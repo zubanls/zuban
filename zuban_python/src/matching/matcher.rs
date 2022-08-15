@@ -463,7 +463,7 @@ impl<'db> CalculatedTypeArguments {
                 return c.generics().nth(i_s, usage.index);
             }
         }
-        todo!()
+        DbType::TypeVar(usage.clone())
     }
 }
 
