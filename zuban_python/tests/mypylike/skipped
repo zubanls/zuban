@@ -42,7 +42,6 @@ testInheritedConstructor2
 testOverloadWithOverlappingItemsAndAnyArgument5
 
 # Type Var Binding
-testGenericFunctionTypeDecl
 testFunctionReturningGenericFunction
 testFunctionReturningGenericFunctionPartialBinding
 testFunctionReturningGenericFunctionTwoLevelBinding

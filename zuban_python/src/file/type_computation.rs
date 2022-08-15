@@ -24,6 +24,7 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     Rc<TypeVar>,
     Option<TypeVarIndex>,
     NodeRef<'db>,
+    Option<PointLink>, // current_callable
 ) -> Option<DbType>;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
@@ -219,6 +220,7 @@ pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     type_var: Rc<TypeVar>,
     node_ref: NodeRef,
+    current_callable: Option<PointLink>,
 ) -> Option<DbType> {
     if let Some(class) = i_s.current_class() {
         if let Some(usage) = class
@@ -236,8 +238,10 @@ pub(super) fn type_computation_for_variable_annotation(
             }
         }
     }
-    node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar { type_var });
-    Some(DbType::Any)
+    current_callable.is_none().then(|| {
+        node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar { type_var });
+        DbType::Any
+    })
 }
 
 pub struct TypeComputation<'db, 'a, 'b, 'c> {
@@ -1111,6 +1115,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                                 type_var.clone(),
                                 generic_or_protocol_index,
                                 NodeRef::new(self.inference.file, name.index()),
+                                self.current_callable,
                             )
                         })
                         .unwrap_or_else(|| {
@@ -1423,16 +1428,17 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         s: &str,
         assignment_node_ref: NodeRef,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
-        let mut on_type_var = |i_s: &mut InferenceState, type_var, _, node_ref| {
-            type_computation_for_variable_annotation(i_s, type_var, node_ref)
-        };
+        let mut on_type_var =
+            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
+                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
+            };
         let mut comp =
             TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut on_type_var));
         comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
-        let mut on_type_var = |_: &mut InferenceState, type_var, _, _| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var, _, _, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
         let t = comp.compute_type(expr, None);

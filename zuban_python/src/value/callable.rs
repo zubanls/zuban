@@ -1,9 +1,7 @@
 use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{
-    CallableContent, CallableParam, DbType, FileIndex, FormatStyle, PointLink, TypeVars,
-};
+use crate::database::{CallableContent, CallableParam, DbType, FormatStyle};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;

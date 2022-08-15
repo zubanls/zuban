@@ -204,14 +204,15 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         let func_node = self.node();
         let mut inference = self.node_ref.file.inference(i_s);
-        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
-            self.class.and_then(|class| {
-                class
-                    .type_vars(i_s)
-                    .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                    .map(DbType::TypeVar)
-            })
-        };
+        let mut on_type_var =
+            |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _, _| {
+                self.class.and_then(|class| {
+                    class
+                        .type_vars(i_s)
+                        .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+                        .map(DbType::TypeVar)
+                })
+            };
         let mut type_computation = TypeComputation::new(
             &mut inference,
             self.node_ref.as_link(),
