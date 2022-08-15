@@ -715,6 +715,8 @@ impl<'db> InferrableParam<'db, '_> {
         match &self.argument {
             ParamInput::Argument(arg) => Some(arg.infer(i_s, ResultContext::Unknown)),
             ParamInput::Tuple(args) => {
+                todo!();
+                /*
                 let mut list = vec![];
                 for arg in args.iter() {
                     list.push(arg.infer(i_s, ResultContext::Unknown).as_db_type(i_s))
@@ -726,6 +728,7 @@ impl<'db> InferrableParam<'db, '_> {
                 Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                     Box::new(DbType::Tuple(t)),
                 )))
+                */
             }
             ParamInput::None => None,
         }
