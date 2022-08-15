@@ -640,19 +640,21 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                TypeComputation::new(
-                    self,
-                    node_ref.as_link(),
-                    Some(&mut |i_s, type_var, _, node_ref, current_callable| {
+                let mut on_type_var =
+                    |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
                         type_computation_for_variable_annotation(
                             i_s,
                             type_var,
                             node_ref,
                             current_callable,
                         )
-                    }),
-                )
-                .compute_annotation(annotation);
+                    };
+                let mut comp =
+                    TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
+                comp.compute_annotation(annotation);
+                comp.into_type_vars(|inf, recalculate_type_vars| {
+                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
+                });
                 if let Some(right_side) = right_side {
                     let t = self.use_cached_annotation_type(annotation);
                     let right =

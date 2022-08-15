@@ -704,7 +704,8 @@ impl<'db> Inferred<'db> {
             },
             InferredState::UnsavedComplex(complex) => {
                 if let ComplexPoint::TypeInstance(g) = complex {
-                    todo!() // This was originally a return None for tuple class
+                    //todo!() // This was originally a return None for tuple class
+                    return None;
                 }
                 todo!("{complex:?}")
             }
