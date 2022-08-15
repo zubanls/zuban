@@ -10,7 +10,6 @@ testOverloadOnOverloadWithType
 
 # callable
 testGenericTypeAliasesCallable
-testGenericTypeAliasesImportingWithoutTypeVar
 
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext

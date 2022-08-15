@@ -1088,6 +1088,10 @@ impl TypeVarManager {
             .any(|t| t.most_outer_callable.is_some())
     }
 
+    pub fn has_type_vars(&self) -> bool {
+        !self.type_vars.is_empty()
+    }
+
     pub fn into_type_vars(self) -> TypeVars {
         TypeVars(
             self.type_vars

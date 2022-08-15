@@ -1371,8 +1371,24 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
+                let mut type_var_manager = TypeVarManager::default();
+                let mut type_var_callback =
+                    |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _, _| {
+                        // Here we avoid all late bound type var calculation for callable, which is how
+                        // mypy works. The default behavior without a type_var_callback would be to
+                        // just calculate all late bound type vars, but that would mean that something
+                        // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
+                        // generally how type aliases work.
+                        let index = type_var_manager.add(type_var.clone(), None);
+                        Some(DbType::TypeVar(TypeVarUsage {
+                            type_var,
+                            index,
+                            in_definition,
+                        }))
+                    };
                 let p = file.points.get(expr.index());
-                let mut comp = TypeComputation::new(self, in_definition, None);
+                let mut comp =
+                    TypeComputation::new(self, in_definition, Some(&mut type_var_callback));
                 comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr, None);
                 let complex = match t {
@@ -1384,12 +1400,10 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     }
                     _ => {
                         let node_ref = NodeRef::new(file, expr.index());
-                        let mut db_type = comp.as_db_type(t, node_ref);
-                        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
-                            db_type = recalculate_type_vars(&db_type);
-                        });
+                        let db_type = comp.as_db_type(t, node_ref);
+                        debug_assert!(!comp.type_var_manager.has_type_vars());
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                            type_vars,
+                            type_vars: type_var_manager.into_type_vars(),
                             location: in_definition,
                             db_type: Rc::new(db_type),
                         }))
