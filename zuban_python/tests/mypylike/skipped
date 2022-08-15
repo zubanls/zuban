@@ -8,9 +8,6 @@ testUseCovariantGenericOuterContextUserDefined
 
 testOverloadOnOverloadWithType
 
-# callable
-testGenericTypeAliasesCallable
-
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
@@ -560,6 +557,7 @@ testNewAnalyzerDictionaryComprehension
 testNewAnalyzerVersionCheck*
 
 # lambda
+testGenericTypeAliasesCallable
 testNewAnalyzerVarTypeVarNoCrash
 testOverloadLambdaUnpackingInference
 testOverloadedToGeneric
