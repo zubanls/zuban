@@ -1,10 +1,17 @@
 use super::params::{has_overlapping_params, matches_params};
 use super::{Match, MismatchReason, Type, TypeVarMatcher};
-use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
+use crate::database::{
+    Database, DbType, FormatStyle, Specific, TupleContent, TypeVarUsage, Variance,
+};
 use crate::inference_state::InferenceState;
 use crate::value::{
     CallableClass, Class, Function, LookupResult, MroIterator, TupleClass, TypingClass, Value,
 };
+
+const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
+    generics: None,
+    arbitrary_length: true,
+}));
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
@@ -295,6 +302,21 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         }
                         Match::new_false()
                     }
+                    Self::TypeWithDbType(t2) => {
+                        if c1.content.params.is_some() {
+                            todo!()
+                        }
+                        c1.result_type(i_s).matches(
+                            i_s,
+                            matcher.as_deref_mut(),
+                            &Type::from_db_type(i_s.db, t2),
+                            Variance::Covariant,
+                        )
+                        //todo!("{t2:?}")
+                    }
+                    Self::TypingClassType(TypingClass {
+                        specific: Specific::TypingTuple,
+                    }) => self.check_match(i_s, matcher, &ARBITRARY_TUPLE, variance),
                     Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
                     _ => Match::new_false(),

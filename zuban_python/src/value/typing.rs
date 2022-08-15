@@ -170,7 +170,7 @@ impl<'db, 'a> TupleClass<'a> {
     }
 
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = i_s.db.python_state.tuple(Generics::None).class_infos(i_s);
+        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
         if !self.content.arbitrary_length {
             debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
         }
@@ -358,7 +358,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        let tuple_cls = i_s.db.python_state.tuple(Generics::None);
+        let tuple_cls = i_s.db.python_state.tuple();
         for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
                 inf.bind(
