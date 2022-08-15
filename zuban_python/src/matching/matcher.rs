@@ -741,7 +741,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                                 type_var: Box::from(type_var.name(i_s.db)),
                                                 func: match function {
                                                     Some(f) => f.diagnostic_string(class),
-                                                    None => Box::from("Callable"),
+                                                    None => Box::from("function"),
                                                 },
                                                 actual: expected.format(i_s, None, FormatStyle::Short),
                                             },

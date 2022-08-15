@@ -8,6 +8,10 @@ testUseCovariantGenericOuterContextUserDefined
 
 testOverloadOnOverloadWithType
 
+# callable
+testGenericTypeAliasesCallable
+testGenericTypeAliasesImportingWithoutTypeVar
+
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
@@ -209,6 +213,9 @@ testCallableWithKeywordOnlyOptionalArg
 testCallableWithKwargs
 testCallableWithVarArg
 testCallableArgKindSubtyping
+testParamSpec
+testOverloadingWithParamSpec
+testReprocessCallableArg
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
@@ -454,8 +461,6 @@ testCallableParsingInInheritence
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
-testParamSpec
-testOverloadingWithParamSpec
 testBaseClassAnnotatedWithoutArgs
 *Pep613
 *Abstract*
@@ -1026,14 +1031,6 @@ testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
 # Duck typing
 testOverloadingAndDucktypeCompatibility
-
-# callable
-testIdentityHigherOrderFunction*
-testGenericFineCallableInBound
-testReprocessCallableArg
-testGenericTypeAliasesCallable
-testGenericTypeAliasesImportingWithoutTypeVar
-testGenericFunctionMemberExpand
 
 # parser recovery in type comments / types in string literals
 testInvalidStrLiteralSpaces
