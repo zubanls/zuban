@@ -269,8 +269,22 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn common_base_class(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> DbType {
-        // TODO this should actually check the mro of classes
-        i_s.db.python_state.object_db_type()
+        match (self, other) {
+            (Self::ClassLike(ClassLike::Class(c1)), Self::ClassLike(ClassLike::Class(c2))) => {
+                for (_, c1) in c1.mro(i_s) {
+                    for (_, c2) in c2.mro(i_s) {
+                        if c1
+                            .matches(i_s, &Type::ClassLike(c2), None, Variance::Invariant)
+                            .bool()
+                        {
+                            return c1.as_db_type(i_s);
+                        }
+                    }
+                }
+            }
+            _ => return i_s.db.python_state.object_db_type(),
+        }
+        unreachable!("object is always a common base class")
     }
 
     pub fn format(

@@ -340,11 +340,6 @@ testGenericTypeAliasesBasic2
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
-# use base classes for T
-testTypeInferenceWithCalleeDefaultArgs
-testGenericFunctionInferenceWithMultipleInheritance
-testGenericFunctionInferenceWithMultipleInheritance2
-testGenericFunctionInferenceWithMultipleInheritance3
 
 # Cannot declare the type of a TypeVar or similar construct (semanal)
 testTypevarWithType
