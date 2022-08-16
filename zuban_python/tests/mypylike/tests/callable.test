@@ -122,3 +122,13 @@ reveal_type(c("")) # N: Revealed type is "tuple[def [W] (W) -> tuple[int, str, f
 reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, bytes]"
 reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, bytes]"
 
+[case callable_on_annotation_nested]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+x: Callable[[T], Callable[[U], Tuple[T, U]]]
+
+reveal_type(x(1)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
+reveal_type(x(1)("")) # N: Revealed type is "tuple[int, str]"
