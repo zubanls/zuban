@@ -327,139 +327,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn cache_type_comment(
-        &mut self,
-        start: CodeIndex,
-        string: String,
-    ) -> (Inferred<'db>, Type<'db, 'db>) {
-        self.cache_code_string(start, string, |comp, star_exprs| {
-            match star_exprs.unpack() {
-                StarExpressionContent::Expression(expr) => {
-                    // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
-                    // allows us to reuse the code for annotations completely and the nodes before the expr
-                    // should really never be used by anything productive.
-                    let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
-                    if let Some(tuple) = expr.maybe_tuple() {
-                        let db_type = comp.calc_type_comment_tuple(tuple.iter());
-                        if comp.has_type_vars {
-                            todo!()
-                        } else {
-                            let unsaved = Inferred::new_unsaved_complex(
-                                ComplexPoint::TypeInstance(Box::new(db_type)),
-                            );
-                            unsaved.save_redirect(comp.inference.file, index);
-                        }
-                    } else {
-                        comp.cache_annotation_internal(index, expr)
-                    }
-                    (
-                        Inferred::new_saved2(comp.inference.file, index),
-                        comp.inference
-                            .use_cached_annotation_type_internal(index, expr),
-                    )
-                }
-                StarExpressionContent::Tuple(t) => {
-                    let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
-                    let db_type = comp.calc_type_comment_tuple(t.iter());
-                    let complex_index = if comp.has_type_vars {
-                        todo!()
-                    } else {
-                        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                            Box::new(db_type),
-                        ));
-                        unsaved.save_redirect(comp.inference.file, index);
-                        comp.inference.file.points.get(index).complex_index()
-                    };
-                    (
-                        Inferred::new_saved2(comp.inference.file, index),
-                        if let ComplexPoint::TypeInstance(db_type) =
-                            comp.inference.file.complex_points.get(complex_index)
-                        {
-                            Type::from_db_type(comp.inference.i_s.db, db_type)
-                        } else {
-                            unreachable!()
-                        },
-                    )
-                }
-                StarExpressionContent::StarExpression(s) => todo!(),
-            }
-        })
-    }
-
-    fn calc_type_comment_tuple<'s>(
-        &mut self,
-        iterator: impl Iterator<Item = StarLikeExpression<'s>>,
-    ) -> DbType {
-        let generics = iterator
-            .map(|star_like| {
-                let expr = match star_like {
-                    StarLikeExpression::NamedExpression(named_expr) => named_expr.expression(),
-                    StarLikeExpression::Expression(expr) => expr,
-                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
-                    StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
-                };
-                if let Some(tuple) = expr.maybe_tuple() {
-                    self.calc_type_comment_tuple(tuple.iter())
-                } else {
-                    let t = self.compute_type(expr, None);
-                    self.as_db_type(t, NodeRef::new(self.inference.file, expr.index()))
-                }
-            })
-            .collect();
-        DbType::Tuple(TupleContent {
-            generics: Some(GenericsList::new_generics(generics)),
-            arbitrary_length: false,
-        })
-    }
-
-    fn cache_code_string<T>(
-        &mut self,
-        start: CodeIndex,
-        string: String,
-        mut callback: impl FnMut(&mut TypeComputation<'db, 'a, '_, '_>, StarExpressions<'db>) -> T,
-    ) -> T {
-        let f: &'db PythonFile =
-            self.inference
-                .file
-                .new_annotation_file(self.inference.i_s.db, start, string);
-        if let Some(star_exprs) = f.tree.maybe_star_expressions() {
-            let old_manager = std::mem::take(&mut self.type_var_manager);
-            // TODO why do we duplicate this code??? (answer because option<mut> sucks?)
-            if let Some(type_var_callback) = self.type_var_callback.as_mut() {
-                let mut comp = TypeComputation {
-                    inference: &mut f.inference(self.inference.i_s),
-                    type_var_manager: old_manager,
-                    current_callable: self.current_callable,
-                    for_definition: self.for_definition,
-                    type_var_callback: Some(type_var_callback),
-                    errors_already_calculated: self.errors_already_calculated,
-                    has_type_vars: false,
-                };
-                let type_ = callback(&mut comp, star_exprs);
-                self.type_var_manager = comp.type_var_manager;
-                self.has_type_vars |= comp.has_type_vars;
-                type_
-            } else {
-                let mut comp = TypeComputation {
-                    inference: &mut f.inference(self.inference.i_s),
-                    type_var_manager: old_manager,
-                    current_callable: self.current_callable,
-                    for_definition: self.for_definition,
-                    type_var_callback: None,
-                    errors_already_calculated: self.errors_already_calculated,
-                    has_type_vars: false,
-                };
-                let type_ = callback(&mut comp, star_exprs);
-                self.type_var_manager = comp.type_var_manager;
-                self.has_type_vars |= comp.has_type_vars;
-                type_
-            }
-        } else {
-            debug!("Found non-expression in annotation: {}", f.tree.code());
-            todo!()
-        }
-    }
-
     pub fn compute_base_class(&mut self, expr: Expression<'x>) -> BaseClass<'db, 'x> {
         let calculated = self.compute_type(expr, None);
         match calculated {
@@ -1486,9 +1353,100 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
                 type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
             };
-        let mut comp =
-            TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut on_type_var));
-        comp.cache_type_comment(start, s.trim_end_matches('\\').to_owned())
+
+        let f: &'db PythonFile =
+            self.file
+                .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());
+        let mut inference = f.inference(self.i_s);
+        if let Some(star_exprs) = f.tree.maybe_star_expressions() {
+            match star_exprs.unpack() {
+                StarExpressionContent::Expression(expr) => {
+                    // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
+                    // allows us to reuse the code for annotations completely and the nodes before the expr
+                    // should really never be used by anything productive.
+                    let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    if let Some(tuple) = expr.maybe_tuple() {
+                        let db_type =
+                            inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
+                        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                            Box::new(db_type),
+                        ));
+                        unsaved.save_redirect(f, index);
+                    } else {
+                        let mut comp = TypeComputation::new(
+                            &mut inference,
+                            assignment_node_ref.as_link(),
+                            Some(&mut on_type_var),
+                        );
+                        comp.cache_annotation_internal(index, expr);
+                        /*
+                        comp.into_type_vars(|inf, recalculate_type_vars| {
+                            inf.recalculate_annotation_type_vars(index, recalculate_type_vars);
+                        });
+                        */
+                    }
+                    (
+                        Inferred::new_saved2(f, index),
+                        inference.use_cached_annotation_type_internal(index, expr),
+                    )
+                }
+                StarExpressionContent::Tuple(t) => {
+                    let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    let db_type = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
+                    let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                        Box::new(db_type),
+                    ));
+                    unsaved.save_redirect(f, index);
+                    let complex_index = f.points.get(index).complex_index();
+                    (
+                        Inferred::new_saved2(f, index),
+                        if let ComplexPoint::TypeInstance(db_type) =
+                            f.complex_points.get(complex_index)
+                        {
+                            Type::from_db_type(inference.i_s.db, db_type)
+                        } else {
+                            unreachable!()
+                        },
+                    )
+                }
+                StarExpressionContent::StarExpression(s) => todo!(),
+            }
+        } else {
+            debug!("Found non-expression in annotation: {}", f.tree.code());
+            todo!()
+        }
+    }
+
+    fn calc_type_comment_tuple<'s>(
+        &mut self,
+        assignment_node_ref: NodeRef,
+        iterator: impl Iterator<Item = StarLikeExpression<'s>>,
+    ) -> DbType {
+        let generics = iterator
+            .map(|star_like| {
+                let expr = match star_like {
+                    StarLikeExpression::NamedExpression(named_expr) => named_expr.expression(),
+                    StarLikeExpression::Expression(expr) => expr,
+                    StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
+                    StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
+                };
+                if let Some(tuple) = expr.maybe_tuple() {
+                    self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
+                } else {
+                    let expr_node_ref = NodeRef::new(self.file, expr.index());
+                    let mut comp = TypeComputation::new(self, assignment_node_ref.as_link(), None);
+                    let t = comp.compute_type(expr, None);
+                    if comp.has_type_vars {
+                        todo!()
+                    }
+                    comp.as_db_type(t, expr_node_ref)
+                }
+            })
+            .collect();
+        DbType::Tuple(TupleContent {
+            generics: Some(GenericsList::new_generics(generics)),
+            arbitrary_length: false,
+        })
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
