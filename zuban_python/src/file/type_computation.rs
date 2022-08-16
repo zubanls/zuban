@@ -284,6 +284,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 .file
                 .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
+            let compute_type =
+                |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
+                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
+                    StarExpressionContent::Tuple(t) => todo!(),
+                    StarExpressionContent::StarExpression(s) => todo!(),
+                };
             let old_manager = std::mem::take(&mut self.type_var_manager);
             // TODO why do we duplicate this code??? (answer because option<mut> sucks?)
             if let Some(type_var_callback) = self.type_var_callback.as_mut() {
@@ -296,11 +302,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
                 };
-                let type_ = match star_exprs.unpack() {
-                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
-                    StarExpressionContent::Tuple(t) => todo!(),
-                    StarExpressionContent::StarExpression(s) => todo!(),
-                };
+                let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
                 self.has_type_vars |= comp.has_type_vars;
                 type_
@@ -314,11 +316,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
                 };
-                let type_ = match star_exprs.unpack() {
-                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
-                    StarExpressionContent::Tuple(t) => todo!(),
-                    StarExpressionContent::StarExpression(s) => todo!(),
-                };
+                let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
                 self.has_type_vars |= comp.has_type_vars;
                 type_
