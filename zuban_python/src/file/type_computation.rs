@@ -1435,10 +1435,12 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
                     let mut comp = TypeComputation::new(self, assignment_node_ref.as_link(), None);
                     let t = comp.compute_type(expr, None);
-                    if comp.has_type_vars {
-                        todo!()
-                    }
-                    comp.as_db_type(t, expr_node_ref)
+                    let mut db_type = comp.as_db_type(t, expr_node_ref);
+                    let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+                        db_type = recalculate_type_vars(&db_type);
+                    });
+                    debug_assert!(type_vars.is_empty());
+                    db_type
                 }
             })
             .collect();
