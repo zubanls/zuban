@@ -1379,11 +1379,9 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                             Some(&mut on_type_var),
                         );
                         comp.cache_annotation_internal(index, expr);
-                        /*
                         comp.into_type_vars(|inf, recalculate_type_vars| {
                             inf.recalculate_annotation_type_vars(index, recalculate_type_vars);
                         });
-                        */
                     }
                     (
                         Inferred::new_saved2(f, index),
