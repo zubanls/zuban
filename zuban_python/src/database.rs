@@ -996,6 +996,7 @@ impl CallableContent {
     }
 }
 
+#[derive(Debug)]
 struct UnresolvedTypeVar {
     type_var: Rc<TypeVar>,
     most_outer_callable: Option<PointLink>,
@@ -1136,10 +1137,8 @@ impl TypeVarManager {
                 } else {
                     return usage.clone();
                 }
-            } else if let Some(in_definition) = in_definition {
-                if in_definition == usage.in_definition {
-                    index += 1;
-                }
+            } else if in_definition == t.most_outer_callable {
+                index += 1;
             }
         }
         if let Some(in_definition) = in_definition {

@@ -4,3 +4,19 @@ T = TypeVar("T")
 x: Callable[[T, T], T]
 --zuban-diff x(1, "") # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[U, U], U]")
 x(1, "") # E: Cannot infer type argument 1 of -> Callable[[T, T] T]
+
+[case callable_return_from_function_simple]
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def return_callable1(x: T) -> Callable[[U], Tuple[T, U]]: ...
+
+reveal_type(return_callable1(7)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
+reveal_type(return_callable1(7)("")) # N: Revealed type is "tuple[int, str]"
+
+def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
+
+reveal_type(return_callable2())  # N: Revealed type is "def [U, T] (U) -> tuple[T, U]"
+reveal_type(return_callable2()(1))  # N: Revealed type is "tuple[<nothing>, int]"
