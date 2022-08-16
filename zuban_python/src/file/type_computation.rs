@@ -1421,6 +1421,11 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         assignment_node_ref: NodeRef,
         iterator: impl Iterator<Item = StarLikeExpression<'s>>,
     ) -> DbType {
+        let mut on_type_var =
+            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
+                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
+            };
+
         let generics = iterator
             .map(|star_like| {
                 let expr = match star_like {
@@ -1433,7 +1438,11 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
-                    let mut comp = TypeComputation::new(self, assignment_node_ref.as_link(), None);
+                    let mut comp = TypeComputation::new(
+                        self,
+                        assignment_node_ref.as_link(),
+                        Some(&mut on_type_var),
+                    );
                     let t = comp.compute_type(expr, None);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
