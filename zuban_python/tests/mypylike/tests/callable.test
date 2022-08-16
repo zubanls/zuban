@@ -37,3 +37,88 @@ a: Tuple[bytes, bytes] = return_callable1(7)("") # E: Argument 1 has incompatibl
 
 def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
 
+[case callable_return_from_method_simple]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+class Foo(Generic[V]):
+    def __init__(self, foo: V): ...
+    def return_callable3(self, x: T) -> Callable[[U], Tuple[T, U, V]]: ...
+
+reveal_type(Foo(1.0).return_callable3(7)) # N: Revealed type is "def [U] (U) -> tuple[int, U, float]"
+reveal_type(Foo(1.0).return_callable3(7)("")) # N: Revealed type is "tuple[int, str, float]"
+
+[case callable_return_from_method_no_params]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+
+class Foo(Generic[V]):
+    def __init__(self, foo: V): ...
+    def return_callable4(self) -> Callable[[U], Tuple[T, U, V]]: ...
+
+reveal_type(Foo(1.0).return_callable4()) # N: Revealed type is "def [U, T] (U) -> tuple[T, U, float]"
+reveal_type(Foo(1.0).return_callable4()("")) # N: Revealed type is "tuple[<nothing>, str, float]"
+
+[case callable_return_from_method_nested_simple]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+W = TypeVar('W')
+
+class Foo(Generic[V]):
+    def __init__(self, foo: V): ...
+    def return_callable5(self, x: T) -> Callable[[U], Callable[[W], Tuple[T, U, V, W]]]: ...
+
+c = Foo(1.0).return_callable5(1)
+reveal_type(c) # N: Revealed type is "def [U] (U) -> def [W] (W) -> tuple[int, U, float, W]"
+reveal_type(c("")) # N: Revealed type is "def [W] (W) -> tuple[int, str, float, W]"
+reveal_type(c("")(b"")) # N: Revealed type is "tuple[int, str, float, bytes]"
+
+[case callable_return_from_method_nested_multiple1]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+W = TypeVar('W')
+
+class Foo(Generic[V]):
+    def __init__(self, foo: V): ...
+    def return_callable6(self, x: T) -> Callable[[U], Tuple[Callable[[W], Tuple[T, U, V, W]],
+                                                            Callable[[W], Tuple[T, U, V, W]]
+                                                            ]]: ...
+
+c = Foo(1.0).return_callable6(1)
+reveal_type(c) # N: Revealed type is "def [U, W] (U) -> tuple[def (W) -> tuple[int, U, float, W], def (W) -> tuple[int, U, float, W]]"
+reveal_type(c("")) # N: Revealed type is "tuple[def (<nothing>) -> tuple[int, str, float, <nothing>], def (<nothing>) -> tuple[int, str, float, <nothing>]]"
+reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]"
+reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]"
+
+[case callable_return_from_method_nested_multiple2]
+from typing import Callable, TypeVar, Tuple, Generic
+
+T = TypeVar('T')
+U = TypeVar('U')
+V = TypeVar('V')
+W = TypeVar('W')
+X = TypeVar('X')
+
+class Foo(Generic[V]):
+    def __init__(self, foo: V): ...
+    def return_callable7(self, x: T) -> Callable[[U], Tuple[Callable[[W], Tuple[T, U, V, W]],
+                                                            Callable[[X], Tuple[T, U, V, X]]
+                                                            ]]: ...
+c = Foo(1.0).return_callable7(1)
+reveal_type(c) # N: Revealed type is "def [U] (U) -> tuple[def [W] (W) -> tuple[int, U, float, W], def [X] (X) -> tuple[int, U, float, X]]"
+reveal_type(c("")) # N: Revealed type is "tuple[def [W] (W) -> tuple[int, str, float, W], def [X] (X) -> tuple[int, str, float, X]]"
+reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, bytes]"
+reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, bytes]"
+
