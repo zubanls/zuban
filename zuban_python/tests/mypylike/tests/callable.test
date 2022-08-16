@@ -20,3 +20,20 @@ def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
 
 reveal_type(return_callable2())  # N: Revealed type is "def [U, T] (U) -> tuple[T, U]"
 reveal_type(return_callable2()(1))  # N: Revealed type is "tuple[<nothing>, int]"
+
+[case callable_return_from_function_simple_with_context]
+from typing import Callable, TypeVar, Tuple
+
+T = TypeVar('T')
+U = TypeVar('U')
+
+def return_callable1(x: T) -> Callable[[U], Tuple[T, U]]: ...
+
+x: Tuple[int, str] = return_callable1(7)("")
+y: Tuple[int, bytes] = return_callable1(7)("") # E: Argument 1 has incompatible type "str"; expected "bytes"
+z: Tuple[bytes, str] = return_callable1(7)("") # E: Incompatible types in assignment (expression has type "tuple[int, str]", variable has type "tuple[bytes, str]")
+a: Tuple[bytes, bytes] = return_callable1(7)("") # E: Argument 1 has incompatible type "str"; expected "bytes" \
+                                                 # E: Incompatible types in assignment (expression has type "tuple[int, bytes]", variable has type "tuple[bytes, bytes]")
+
+def return_callable2() -> Callable[[U], Tuple[T, U]]: ...
+
