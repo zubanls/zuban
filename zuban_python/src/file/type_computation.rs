@@ -279,11 +279,54 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         start: CodeIndex,
         string: String,
     ) -> TypeContent<'db, 'db> {
-        self.cache_code_string(start, string, |comp, s| match s.unpack() {
-            StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
-            StarExpressionContent::Tuple(t) => todo!(),
-            StarExpressionContent::StarExpression(s) => todo!(),
-        })
+        let f: &'db PythonFile =
+            self.inference
+                .file
+                .new_annotation_file(self.inference.i_s.db, start, string);
+        if let Some(star_exprs) = f.tree.maybe_star_expressions() {
+            let old_manager = std::mem::take(&mut self.type_var_manager);
+            // TODO why do we duplicate this code??? (answer because option<mut> sucks?)
+            if let Some(type_var_callback) = self.type_var_callback.as_mut() {
+                let mut comp = TypeComputation {
+                    inference: &mut f.inference(self.inference.i_s),
+                    type_var_manager: old_manager,
+                    current_callable: self.current_callable,
+                    for_definition: self.for_definition,
+                    type_var_callback: Some(type_var_callback),
+                    errors_already_calculated: self.errors_already_calculated,
+                    has_type_vars: false,
+                };
+                let type_ = match star_exprs.unpack() {
+                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
+                    StarExpressionContent::Tuple(t) => todo!(),
+                    StarExpressionContent::StarExpression(s) => todo!(),
+                };
+                self.type_var_manager = comp.type_var_manager;
+                self.has_type_vars |= comp.has_type_vars;
+                type_
+            } else {
+                let mut comp = TypeComputation {
+                    inference: &mut f.inference(self.inference.i_s),
+                    type_var_manager: old_manager,
+                    current_callable: self.current_callable,
+                    for_definition: self.for_definition,
+                    type_var_callback: None,
+                    errors_already_calculated: self.errors_already_calculated,
+                    has_type_vars: false,
+                };
+                let type_ = match star_exprs.unpack() {
+                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
+                    StarExpressionContent::Tuple(t) => todo!(),
+                    StarExpressionContent::StarExpression(s) => todo!(),
+                };
+                self.type_var_manager = comp.type_var_manager;
+                self.has_type_vars |= comp.has_type_vars;
+                type_
+            }
+        } else {
+            debug!("Found non-expression in annotation: {}", f.tree.code());
+            todo!()
+        }
     }
 
     fn cache_type_comment(
@@ -371,7 +414,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         })
     }
 
-    // TODO this should not be a string, but probably cow
     fn cache_code_string<T>(
         &mut self,
         start: CodeIndex,

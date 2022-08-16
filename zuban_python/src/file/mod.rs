@@ -268,7 +268,7 @@ impl<'db> PythonFile {
         &'db self,
         db: &'db Database,
         start: CodeIndex,
-        code: String,
+        code: String, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
