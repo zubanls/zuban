@@ -5,7 +5,7 @@ use crate::database::{
 };
 use crate::inference_state::InferenceState;
 use crate::value::{
-    CallableClass, Class, Function, LookupResult, MroIterator, TupleClass, TypingClass, Value,
+    Callable, Class, Function, LookupResult, MroIterator, TupleClass, TypingClass, Value,
 };
 
 const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
@@ -17,7 +17,7 @@ const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(Tupl
 pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
     Tuple(TupleClass<'a>),
-    Callable(CallableClass<'a>),
+    Callable(Callable<'a>),
     FunctionType(Function<'db, 'a>),
     Type(Class<'db, 'a>),
     TypeWithDbType(&'a DbType),

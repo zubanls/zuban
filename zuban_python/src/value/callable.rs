@@ -3,78 +3,13 @@ use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{CallableContent, CallableParam, DbType, FormatStyle};
 use crate::debug;
-use crate::diagnostics::IssueType;
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
     calculate_callable_type_vars_and_return, ResultContext, Type, TypeVarMatcher,
 };
 
-#[derive(Debug, Clone, Copy)]
-pub struct CallableClass<'a> {
-    pub content: &'a CallableContent,
-    db_type: &'a DbType,
-}
-
-impl<'db, 'a> CallableClass<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
-        Self { db_type, content }
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Callable(self.content.clone())
-    }
-
-    pub fn param_iterator(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
-        self.content.params.as_ref().map(|params| params.iter())
-    }
-
-    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::from_db_type(i_s.db, &self.content.return_class)
-    }
-
-    pub fn format(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
-        self.content.format(i_s, matcher, style).into()
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &'db str {
-        "Callable"
-    }
-
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        debug!("TODO this should at least have the object results");
-        LookupResult::None
-    }
-
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeWithDbType(self.db_type)
-    }
-
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
-        Inferred::new_any()
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
     db_type: &'a DbType,
     pub content: &'a CallableContent,
@@ -93,12 +28,25 @@ impl<'db, 'a> Callable<'a> {
         base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
     }
 
+    pub fn param_iterator(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
+        self.content.params.as_ref().map(|params| params.iter())
+    }
+
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
         self.content.params.as_ref().map(|params| params.iter())
     }
 
     pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         Type::from_db_type(i_s.db, &self.content.return_class)
+    }
+
+    pub fn format(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
+        self.content.format(i_s, matcher, style).into()
     }
 }
 
@@ -117,7 +65,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Callable(CallableClass::new(self.db_type, self.content))
+        ClassLike::Callable(*self)
     }
 
     fn execute(

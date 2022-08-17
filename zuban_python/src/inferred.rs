@@ -17,9 +17,9 @@ use crate::matching::{ClassLike, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, Callable, CallableClass, Class, DictLiteral, Function, Instance, IteratorContent,
-    ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TupleClass,
-    TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType,
+    BoundMethod, Callable, Class, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
+    Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TupleClass, TypeAlias,
+    TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType,
     TypingWithGenerics, Value,
 };
 
@@ -1108,11 +1108,11 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::TypeVar(t) => todo!(),
-        DbType::Type(g) => callable(i_s, &TypingType::new(i_s.db, g)),
+        DbType::Type(g) => callable(i_s, &TypingType::new(i_s.db, g)), // TODO shouldn't this be db_type
         DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
         DbType::Callable(content) => {
             debug!("TODO the db_type can be wrong if it was part of a union");
-            callable(i_s, &CallableClass::new(db_type, content))
+            callable(i_s, &TypingType::new(i_s.db, db_type))
         }
         DbType::None => {
             debug!("TODO this should be NoneType instead of None");

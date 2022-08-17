@@ -20,7 +20,7 @@ use crate::inferred::Inferred;
 use crate::matching::{ClassLike, ResultContext};
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
-pub use callable::{Callable, CallableClass};
+pub use callable::Callable;
 pub use class::{Class, MroIterator};
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
 pub use instance::Instance;
