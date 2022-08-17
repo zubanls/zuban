@@ -22,7 +22,6 @@ pub enum ClassLike<'db, 'a> {
     Type(Class<'db, 'a>),
     TypeWithDbType(&'a DbType),
     TypeVar(&'a TypeVarUsage),
-    TypingClass(TypingClass),
     TypingClassType(TypingClass),
     None,
 }
@@ -322,7 +321,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => Match::new_false(),
                 }
             }
-            Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
             Self::None => matches!(other, Self::None).into(),
         }
@@ -384,7 +382,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => c.format(i_s, matcher, style),
             Self::Callable(c) => c.format(i_s, matcher, style),
             Self::FunctionType(f) => f.format(i_s, matcher, style),
-            Self::TypingClass(c) => todo!(),
             Self::TypingClassType(c) => todo!(),
             Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
@@ -420,7 +417,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => f.as_db_type(i_s),
-            Self::TypingClass(c) => c.as_db_type(),
             Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
             Self::None => DbType::None,
         }
@@ -465,7 +461,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => todo!(),
                 },
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
-                ClassLike::TypingClass(c) => todo!("{c2:?}"),
                 ClassLike::TypingClassType(c) => todo!("{c2:?}"),
                 ClassLike::None => matches!(other, Self::None),
             }
