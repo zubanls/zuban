@@ -112,7 +112,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Union(list1) => match value_class {
                 // TODO this should use the variance argument
                 Self::Union(list2) => match variance {
-                    Variance::Covariant | Variance::Invariant => {
+                    Variance::Covariant => {
                         let mut matches = true;
                         for g2 in list2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g2);
@@ -123,6 +123,10 @@ impl<'db, 'a> Type<'db, 'a> {
                             })
                         }
                         matches.into()
+                    }
+                    Variance::Invariant => {
+                        self.matches(i_s, matcher, value_class, Variance::Covariant)
+                            & self.matches(i_s, None, value_class, Variance::Contravariant)
                     }
                     Variance::Contravariant => list1
                         .iter()
