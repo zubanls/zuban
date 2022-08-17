@@ -113,14 +113,10 @@ impl<'db, 'a> Type<'db, 'a> {
                 // TODO this should use the variance argument
                 Self::Union(list2) => match variance {
                     Variance::Covariant | Variance::Invariant => {
-                        let mut type_var_usage = None;
                         let mut matches = true;
                         for g2 in list2.iter() {
                             let t2 = Type::from_db_type(i_s.db, g2);
                             matches &= list1.iter().any(|g1| {
-                                if let Some(t) = g1.maybe_type_var_index() {
-                                    type_var_usage = Some(t);
-                                }
                                 Type::from_db_type(i_s.db, g1)
                                     .matches(i_s, matcher.as_deref_mut(), &t2, variance)
                                     .bool()
