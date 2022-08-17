@@ -9,7 +9,7 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, TupleContent, TypeVar, TypeVars,
+    GenericsList, Locality, Overload, Point, TypeVar, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;

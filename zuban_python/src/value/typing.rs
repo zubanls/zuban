@@ -566,9 +566,14 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
     ) -> Inferred<'db> {
         args.iter_arguments()
             .next()
-            .map(|arg| {
-                let g = arg.infer(i_s, ResultContext::Unknown).as_db_type(i_s);
-                Inferred::execute_db_type(i_s, g)
+            .map(|arg| match arg.type_ {
+                ArgumentType::Positional(_, n) => {
+                    arg.as_node_ref().file.inference(i_s).compute_cast_target(n)
+                }
+                ArgumentType::Keyword(_, _) => {
+                    todo!()
+                }
+                _ => unreachable!(),
             })
             .unwrap_or_else(|| todo!())
     }

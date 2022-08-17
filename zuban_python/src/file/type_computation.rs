@@ -1459,6 +1459,26 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         })
     }
 
+    pub fn compute_cast_target(&mut self, node_ref: NodeRef<'db>) -> Inferred<'db> {
+        let mut on_type_var =
+            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
+                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
+            };
+
+        let named_expr = node_ref.as_named_expression();
+        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
+
+        let t = comp.compute_type(named_expr.expression(), None);
+        let mut db_type = comp.as_db_type(t, node_ref);
+        let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
+            db_type = recalculate_type_vars(&db_type);
+        });
+        debug_assert!(type_vars.is_empty());
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
+            Box::new(db_type),
+        ))))
+    }
+
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());

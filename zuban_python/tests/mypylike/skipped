@@ -458,7 +458,12 @@ testAttrs*
 *TypedDict*
 
 # Cast
-testInvalidCast*
+testCyclicInheritance2
+testInvalidCastTargetSyntax
+testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs
+testConstructGenericTypeWithTypevarValuesAndTypeInference
+testCastsToAndFromFunctionTypes
+testCastWithCallableAndArbitraryArgs
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
 testNewAnalyzerCastForward*
