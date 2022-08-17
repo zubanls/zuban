@@ -7,7 +7,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::CalculatedTypeArguments;
 use crate::node_ref::NodeRef;
-use crate::value::{Callable, Class, TupleClass};
+use crate::value::{Callable, Class, Tuple};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -39,7 +39,7 @@ impl<'db, 'a> Type<'db, 'a> {
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
             DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
-            DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(TupleClass::new(content))),
+            DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(Tuple::new(content))),
             DbType::Callable(content) => {
                 Self::ClassLike(ClassLike::Callable(Callable::new(db_type, content)))
             }

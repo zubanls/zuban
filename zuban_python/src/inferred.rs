@@ -18,9 +18,9 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, Callable, Class, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
-    Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TupleClass, TypeAlias,
-    TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType,
-    TypingWithGenerics, Value,
+    Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
+    TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
+    Value,
 };
 
 #[derive(Debug)]
@@ -1107,7 +1107,6 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
                 }
             })
             .unwrap(),
-        DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
         DbType::None => {
             debug!("TODO this should be NoneType instead of None");
             callable(i_s, &NoneInstance())

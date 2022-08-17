@@ -29,7 +29,7 @@ pub use module::Module;
 pub use none::NoneInstance;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    RevealTypeFunction, Tuple, TupleClass, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
+    RevealTypeFunction, Tuple, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
     TypingClassVar, TypingType, TypingWithGenerics,
 };
 

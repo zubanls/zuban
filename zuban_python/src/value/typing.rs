@@ -151,18 +151,30 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
     }
 }
 
+/*
+impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred<'db> {
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
+            self.content.clone(),
+        ))))
+    }
+}
+*/
+
 #[derive(Debug, Clone, Copy)]
-pub struct TupleClass<'a> {
-    pub content: &'a TupleContent,
+pub struct Tuple<'a> {
+    content: &'a TupleContent,
 }
 
-impl<'db, 'a> TupleClass<'a> {
+impl<'db, 'a> Tuple<'a> {
     pub fn new(content: &'a TupleContent) -> Self {
         Self { content }
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Tuple(self.content.clone())
     }
 
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
@@ -184,18 +196,10 @@ impl<'db, 'a> TupleClass<'a> {
         )
     }
 
-    pub fn generics(&self) -> Generics<'static, 'a> {
-        self.content
-            .generics
-            .as_ref()
-            .map(Generics::new_list)
-            .unwrap_or(Generics::None)
-    }
-
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        other: &TupleClass,
+        other: &Tuple,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         variance: Variance,
     ) -> bool {
@@ -285,6 +289,10 @@ impl<'db, 'a> TupleClass<'a> {
         true
     }
 
+    pub fn as_db_type(&self) -> DbType {
+        DbType::Tuple(self.content.clone())
+    }
+
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -292,51 +300,6 @@ impl<'db, 'a> TupleClass<'a> {
         style: FormatStyle,
     ) -> Box<str> {
         self.content.format(i_s, matcher, style)
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &'db str {
-        "tuple"
-    }
-
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
-    }
-
-    fn execute(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-            self.content.clone(),
-        ))))
-    }
-
-    fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.format(i_s, None, FormatStyle::Short)
-    }
-}
-
-#[derive(Debug)]
-pub struct Tuple<'a> {
-    content: &'a TupleContent,
-}
-
-impl<'a> Tuple<'a> {
-    pub fn new(content: &'a TupleContent) -> Self {
-        Self { content }
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Tuple(self.content.clone())
     }
 }
 
@@ -404,7 +367,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Tuple(TupleClass::new(self.content))
+        ClassLike::Tuple(*self)
     }
 
     fn get_item(
