@@ -417,7 +417,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => f.as_db_type(i_s),
-            Self::TypingClassType(c) => DbType::Type(Box::new(c.as_db_type())),
+            Self::TypingClassType(c) => c.as_db_type(),
             Self::None => DbType::None,
         }
     }
