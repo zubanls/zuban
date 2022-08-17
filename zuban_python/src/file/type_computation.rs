@@ -1493,9 +1493,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             db_type = recalculate_type_vars(&db_type);
         });
         debug_assert!(type_vars.is_empty());
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-            Box::new(db_type),
-        ))))
+        Inferred::execute_db_type(self.i_s, db_type)
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {

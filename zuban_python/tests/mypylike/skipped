@@ -433,6 +433,7 @@ testDistinctTypes
 testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testRegression11705_NoStrict
+testNewAnalyzerCastForward3
 # namedtuple
 testCallableParsingInInheritence
 
@@ -464,7 +465,6 @@ testCastsToAndFromFunctionTypes
 testCastWithCallableAndArbitraryArgs
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
-testNewAnalyzerCastForward*
 testCastConfusion
 testMultipleAssignmentWithPartialDefinition3
 
