@@ -204,7 +204,7 @@ macro_rules! compute_type_application {
 impl<'db> TypeContent<'db, '_> {
     fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         let other_t = match other {
-            Self::ClassWithoutTypeVar(i) => i.as_db_type(i_s),
+            Self::ClassWithoutTypeVar(i) => i.maybe_class(i_s).unwrap().as_db_type(i_s),
             Self::DbType(t) => t,
             Self::Module(m) => todo!(),
             Self::TypeAlias(m) => todo!(),
@@ -213,7 +213,9 @@ impl<'db> TypeContent<'db, '_> {
             Self::InvalidVariable(t) => return Self::InvalidVariable(t),
         };
         Self::DbType(match self {
-            Self::ClassWithoutTypeVar(inf) => inf.as_db_type(i_s).union(other_t),
+            Self::ClassWithoutTypeVar(inf) => {
+                inf.maybe_class(i_s).unwrap().as_db_type(i_s).union(other_t)
+            }
             Self::DbType(t) => t.union(other_t),
             Self::Module(m) => todo!(),
             Self::TypeAlias(m) => todo!(),
@@ -429,7 +431,10 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn as_db_type(&mut self, type_: TypeContent<'db, '_>, node_ref: NodeRef<'db>) -> DbType {
         match type_ {
-            TypeContent::ClassWithoutTypeVar(i) => i.as_db_type(self.inference.i_s),
+            TypeContent::ClassWithoutTypeVar(i) => i
+                .maybe_class(self.inference.i_s)
+                .unwrap()
+                .as_db_type(self.inference.i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 if !self.errors_already_calculated {

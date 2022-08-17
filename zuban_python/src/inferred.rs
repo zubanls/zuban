@@ -135,25 +135,6 @@ impl<'db> Inferred<'db> {
         ))
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| {
-                v.as_class_like()
-                    .map(|c| c.as_db_type(i_s))
-                    .unwrap_or_else(|| {
-                        debug!("Type not resolvable: {}", v.description(i_s));
-                        DbType::Any
-                    })
-            },
-            &|_, g1, g2| g1.union(g2),
-            &mut |i_s| {
-                debug!("Type not found: {}", self.description(i_s));
-                DbType::Any
-            },
-        )
-    }
-
     pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         self.internal_run(
             i_s,
