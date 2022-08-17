@@ -233,6 +233,7 @@ impl<'db> TypeContent<'db, '_> {
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     type_var: Rc<TypeVar>,
+    _: Option<TypeVarIndex>,
     node_ref: NodeRef,
     current_callable: Option<PointLink>,
 ) -> Option<DbType> {
@@ -1367,11 +1368,6 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         s: &str,
         assignment_node_ref: NodeRef,
     ) -> (Inferred<'db>, Type<'db, 'db>) {
-        let mut on_type_var =
-            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
-                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
-            };
-
         let f: &'db PythonFile =
             self.file
                 .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());
@@ -1391,10 +1387,11 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         ));
                         unsaved.save_redirect(f, index);
                     } else {
+                        let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
                             &mut inference,
                             assignment_node_ref.as_link(),
-                            Some(&mut on_type_var),
+                            Some(&mut x),
                         );
                         comp.cache_annotation_internal(index, expr);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -1439,11 +1436,6 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         assignment_node_ref: NodeRef,
         iterator: impl Iterator<Item = StarLikeExpression<'s>>,
     ) -> DbType {
-        let mut on_type_var =
-            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
-                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
-            };
-
         let generics = iterator
             .map(|star_like| {
                 let expr = match star_like {
@@ -1456,11 +1448,9 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
-                    let mut comp = TypeComputation::new(
-                        self,
-                        assignment_node_ref.as_link(),
-                        Some(&mut on_type_var),
-                    );
+                    let mut x = type_computation_for_variable_annotation;
+                    let mut comp =
+                        TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut x));
                     let t = comp.compute_type(expr, None);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -1478,13 +1468,9 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn compute_cast_target(&mut self, node_ref: NodeRef<'db>) -> Inferred<'db> {
-        let mut on_type_var =
-            |i_s: &mut InferenceState, type_var, _, node_ref, current_callable| {
-                type_computation_for_variable_annotation(i_s, type_var, node_ref, current_callable)
-            };
-
         let named_expr = node_ref.as_named_expression();
-        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
+        let mut x = type_computation_for_variable_annotation;
+        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));
         comp.origin = TypeComputationOrigin::CastTarget;
 
         let t = comp.compute_type(named_expr.expression(), None);
