@@ -890,6 +890,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypingClass(TypingClass::new(Specific::TypingType))
+        ClassLike::Type(i_s.db.python_state.object_class())
     }
 }
