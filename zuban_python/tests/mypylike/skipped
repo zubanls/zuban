@@ -24,11 +24,8 @@ union_context_class_matching_with_any
 union_context_class_matching_with_overload
 callable_return_from_method_nested_multiple1
 
-testFunctionSubtypingWithVoid
 testGenericFunctionSubtypingWithUnions
-testSubtypingWithGenericFunctionUsingTypevarWithValues
 testOverloadOverlapWithTypeVars
-testGenericFunctionTypeDecl
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
@@ -38,10 +35,13 @@ testInheritedConstructor2
 testOverloadWithOverlappingItemsAndAnyArgument5
 
 # Function Subtyping inverse type var binding
+testSubtypingWithGenericFunctionUsingTypevarWithValues
 testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
 testGenericFunctionsWithUnalignedIds
+# callable return type to param bottom up
+testCallableWithArbitraryArgsSubtypingWithGenericFunc
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
@@ -296,21 +296,15 @@ testClassMemberTypeVarInFunctionBody
 testTypeVarWithAnyTypeBound
 testCallTypeTWithGenericBound
 
-# inference With Overload
-testOverloadAgainstEmptyCollections
-testOverloadAgainstEmptyCovariantCollections
-# callable return type to param bottom up
-testCallableWithArbitraryArgsSubtypingWithGenericFunc
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
 testCallableListJoinInference
+
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
-
 # bottom up inference list multiply
 testListMultiplyInContext
-
 # bottom up dict
 testDictionaryLiteralInContext
 
@@ -1253,6 +1247,7 @@ testPositionalOnlyArg
 testMagicMethodPositionalOnlyArg
 testMagicMethodPositionalOnlyArgFastparse
 testAnonymousArgumentError
+testGenericFunctionTypeDecl
 
 # for type comment
 testRefreshForWithTypeComment1
