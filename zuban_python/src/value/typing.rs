@@ -17,6 +17,11 @@ use crate::inferred::{run_on_db_type, Inferred};
 use crate::matching::{ClassLike, ResultContext};
 use crate::node_ref::NodeRef;
 
+const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
+    generics: None,
+    arbitrary_length: true,
+}));
+
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
     pub specific: Specific,
@@ -77,7 +82,16 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypingClassType(*self)
+        match self.specific {
+            Specific::TypingGeneric
+            | Specific::TypingProtocol
+            | Specific::TypingUnion
+            | Specific::TypingOptional => todo!(),
+            Specific::TypingTuple => ARBITRARY_TUPLE,
+            Specific::TypingCallable => todo!(),
+            Specific::TypingType => ClassLike::TypeWithDbType(&DbType::Any),
+            _ => unreachable!("{:?}", self.specific),
+        }
     }
 
     fn execute(

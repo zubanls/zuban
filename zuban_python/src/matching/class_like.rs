@@ -1,17 +1,8 @@
 use super::params::{has_overlapping_params, matches_params};
 use super::{Match, MismatchReason, Type, TypeVarMatcher};
-use crate::database::{
-    Database, DbType, FormatStyle, Specific, TupleContent, TypeVarUsage, Variance,
-};
+use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
-use crate::value::{
-    Callable, Class, Function, LookupResult, MroIterator, Tuple, TypingClass, Value,
-};
-
-const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
-    generics: None,
-    arbitrary_length: true,
-}));
+use crate::value::{Callable, Class, Function, LookupResult, MroIterator, Tuple, Value};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
@@ -22,7 +13,6 @@ pub enum ClassLike<'db, 'a> {
     Type(Class<'db, 'a>),
     TypeWithDbType(&'a DbType),
     TypeVar(&'a TypeVarUsage),
-    TypingClassType(TypingClass),
     None,
 }
 
@@ -313,15 +303,11 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         )
                         //todo!("{t2:?}")
                     }
-                    Self::TypingClassType(TypingClass {
-                        specific: Specific::TypingTuple,
-                    }) => self.check_match(i_s, matcher, &ARBITRARY_TUPLE, variance),
                     Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
                     Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
                     _ => Match::new_false(),
                 }
             }
-            Self::TypingClassType(c) => todo!(),
             Self::None => matches!(other, Self::None).into(),
         }
     }
@@ -382,7 +368,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(c) => c.format(i_s, matcher, style),
             Self::Callable(c) => c.format(i_s, matcher, style),
             Self::FunctionType(f) => f.format(i_s, matcher, style),
-            Self::TypingClassType(c) => todo!(),
             Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
         }
@@ -417,7 +402,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
             Self::FunctionType(f) => f.as_db_type(i_s),
-            Self::TypingClassType(c) => c.as_db_type(),
             Self::None => DbType::None,
         }
     }
@@ -461,7 +445,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => todo!(),
                 },
                 ClassLike::FunctionType(f) => todo!("{c2:?}"),
-                ClassLike::TypingClassType(c) => todo!("{c2:?}"),
                 ClassLike::None => matches!(other, Self::None),
             }
         };
