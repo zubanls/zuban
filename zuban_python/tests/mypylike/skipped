@@ -2,7 +2,6 @@
 testInferTypeVariableFromTwoGenericTypes4
 testOverloadWithPartiallyOverlappingUnionsNested
 
-testTypeAliasWithBuiltinTuple
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 

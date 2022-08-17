@@ -9,22 +9,6 @@ use crate::inferred::Inferred;
 use crate::matching::{ClassLike, Generics, Type, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 
-/*
-impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
-    fn execute(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-            self.content.clone(),
-        ))))
-    }
-}
-*/
-
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
     content: &'a TupleContent,

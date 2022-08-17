@@ -212,6 +212,24 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(self.db_type)
     }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: ResultContext<'db, '_>,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred<'db> {
+        match self.db_type {
+            DbType::Tuple(_) => {
+                debug!("TODO this does not check the arguments");
+                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                    self.db_type.clone(),
+                )))
+            }
+            _ => todo!(),
+        }
+    }
 }
 
 impl<'db> fmt::Debug for TypingType<'db, '_> {
