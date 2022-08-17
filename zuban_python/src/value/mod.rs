@@ -6,6 +6,7 @@ mod instance;
 mod iterable;
 mod module;
 mod none;
+mod tuple;
 mod type_alias;
 mod typing;
 
@@ -27,10 +28,11 @@ pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
 pub use none::NoneInstance;
+pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    RevealTypeFunction, Tuple, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
-    TypingClassVar, TypingType, TypingWithGenerics,
+    RevealTypeFunction, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
+    TypingType, TypingWithGenerics,
 };
 
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
