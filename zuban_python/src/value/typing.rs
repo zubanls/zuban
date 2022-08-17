@@ -564,18 +564,40 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        args.iter_arguments()
-            .next()
-            .map(|arg| match arg.type_ {
-                ArgumentType::Positional(_, n) => {
-                    arg.as_node_ref().file.inference(i_s).compute_cast_target(n)
+        let mut result = None;
+        let mut count = 0;
+        let mut had_non_positional = false;
+        for arg in args.iter_arguments() {
+            match arg.type_ {
+                ArgumentType::Positional(i, n) => {
+                    if i == 1 {
+                        result = Some(arg.as_node_ref().file.inference(i_s).compute_cast_target(n))
+                    } else {
+                        arg.infer(i_s, ResultContext::Unknown);
+                    }
                 }
-                ArgumentType::Keyword(_, _) => {
-                    todo!()
+                _ => {
+                    arg.infer(i_s, ResultContext::Unknown);
+                    had_non_positional = true;
                 }
-                _ => unreachable!(),
-            })
-            .unwrap_or_else(|| todo!())
+            }
+            count += 1;
+        }
+        if count != 2 {
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
+            );
+            return Inferred::new_any();
+        } else if had_non_positional {
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::ArgumentIssue(Box::from(
+                    "\"cast\" must be called with 2 positional arguments",
+                )),
+            );
+        }
+        result.unwrap_or_else(Inferred::new_any)
     }
 }
 

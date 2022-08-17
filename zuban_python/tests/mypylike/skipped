@@ -458,10 +458,6 @@ testAttrs*
 *Enum*
 *TypedDict*
 
-# Cast
-testInvalidNumberOfArgsToCast
-testInvalidKindsOfArgsToCast
-
 # NoReturn
 testNoReturnTypeAlias
 testUnionWithNoReturn
@@ -914,6 +910,7 @@ testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsSelectionWithTuples
+testInvalidKindsOfArgsToCast
 
 # **kwargs input
 testKwargsAfterBareArgs
