@@ -1107,12 +1107,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
                 }
             })
             .unwrap(),
-        DbType::TypeVar(t) => todo!(),
         DbType::Tuple(content) => callable(i_s, &TupleClass::new(content)),
-        DbType::Callable(content) => {
-            debug!("TODO the db_type can be wrong if it was part of a union");
-            callable(i_s, &TypingType::new(i_s.db, db_type))
-        }
         DbType::None => {
             debug!("TODO this should be NoneType instead of None");
             callable(i_s, &NoneInstance())
