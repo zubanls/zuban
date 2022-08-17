@@ -316,9 +316,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'db, 'a>> {
         None
     }
-    fn as_class(&self) -> Option<&Class<'db, 'a>> {
-        None
-    }
     fn as_typing_with_generics(
         &self,
         i_s: &mut InferenceState<'db, '_>,

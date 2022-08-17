@@ -537,10 +537,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             .compute_type_application_on_class(*self, *slice_type)
     }
 
-    fn as_class(&self) -> Option<&Self> {
-        Some(self)
-    }
-
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         format!(
             "{} {}",
