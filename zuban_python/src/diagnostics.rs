@@ -14,6 +14,7 @@ pub(crate) enum IssueType {
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
     InvalidType(Box<str>),
+    InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
@@ -289,6 +290,7 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::InvalidTypeVarValue{type_var, func, actual} =>
                 format!("Value of type variable {type_var:?} of {func} cannot be {actual:?}"),
+            IssueType::InvalidCastTarget => "Cast target is not a type".to_owned(),
             IssueType::CannotInferTypeArgument{index, callable} =>
                 format!("Cannot infer type argument {} of {callable}", index.as_usize() + 1),
             IssueType::TypeVarCoAndContravariant =>

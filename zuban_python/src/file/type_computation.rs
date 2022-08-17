@@ -50,10 +50,17 @@ enum InvalidVariableType<'db, 'a> {
     Function(Function<'db, 'db>),
     Literal(&'a str),
     Variable(NodeRef<'db>),
+    Other,
+}
+
+#[derive(Clone, Copy)]
+enum TypeComputationOrigin {
+    TypeCommentOrAnnotation,
+    CastTarget,
 }
 
 impl InvalidVariableType<'_, '_> {
-    fn add_issue(&self, db: &Database, node_ref: NodeRef) {
+    fn add_issue(&self, db: &Database, node_ref: NodeRef, origin: TypeComputationOrigin) {
         match self {
             Self::Variable(var_ref) => {
                 node_ref.add_typing_issue(
@@ -131,6 +138,13 @@ impl InvalidVariableType<'_, '_> {
                     ),
                 );
             }
+            Self::Other => node_ref.add_typing_issue(
+                db,
+                match origin {
+                    TypeComputationOrigin::TypeCommentOrAnnotation => todo!(),
+                    TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
+                },
+            ),
         }
     }
 }
@@ -255,6 +269,7 @@ pub struct TypeComputation<'db, 'a, 'b, 'c> {
     // a type alias we check in the database if the error was already calculated and set the flag.
     errors_already_calculated: bool,
     pub has_type_vars: bool,
+    origin: TypeComputationOrigin,
 }
 
 impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
@@ -271,6 +286,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
+            origin: TypeComputationOrigin::TypeCommentOrAnnotation,
         }
     }
 
@@ -301,6 +317,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     type_var_callback: Some(type_var_callback),
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
+                    origin: self.origin,
                 };
                 let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
@@ -315,6 +332,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     type_var_callback: None,
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
+                    origin: self.origin,
                 };
                 let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
@@ -449,7 +467,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
                 if !self.errors_already_calculated {
-                    t.add_issue(self.inference.i_s.db, node_ref);
+                    t.add_issue(self.inference.i_s.db, node_ref, self.origin);
                 }
                 DbType::Any
             }
@@ -513,7 +531,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 self.compute_type_expression_part(a, None)
                     .union(self.inference.i_s, other)
             }
-            _ => todo!("Not handled yet {node:?}"),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
@@ -632,7 +650,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'x> {
         if !matches!(class.generics(), Generics::None) {
-            todo!("{:?}", class)
+            return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let type_vars = class.type_vars(self.inference.i_s);
         let expected_count = type_vars.map(|t| t.len()).unwrap_or(0);
@@ -1467,6 +1485,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
 
         let named_expr = node_ref.as_named_expression();
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
+        comp.origin = TypeComputationOrigin::CastTarget;
 
         let t = comp.compute_type(named_expr.expression(), None);
         let mut db_type = comp.as_db_type(t, node_ref);
