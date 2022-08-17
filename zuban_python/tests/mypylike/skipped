@@ -459,14 +459,8 @@ testAttrs*
 *TypedDict*
 
 # Cast
-testCallGenericFunctionWithTypeVarValueRestrictionAndAnyArgs
-testConstructGenericTypeWithTypevarValuesAndTypeInference
-testCastsToAndFromFunctionTypes
-testCastWithCallableAndArbitraryArgs
 testInvalidNumberOfArgsToCast
 testInvalidKindsOfArgsToCast
-testCastConfusion
-testMultipleAssignmentWithPartialDefinition3
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1188,6 +1182,8 @@ testUnionWithNoneItem
 testBoundHigherOrderWithVoid
 testRegression11705_Strict
 testGenericMethodCalledInGenericContext
+# non strict call on Optional[T]
+testCastConfusion
 
 # type: ignore leads to Any type?
 testDunderCallAddition
