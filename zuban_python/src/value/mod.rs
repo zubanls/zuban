@@ -317,10 +317,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         None
     }
     fn as_class(&self) -> Option<&Class<'db, 'a>> {
-        // TODO is this really needed anymore next to as_class_like?
-        None
-    }
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
         None
     }
     fn as_typing_with_generics(

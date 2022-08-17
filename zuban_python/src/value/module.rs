@@ -108,6 +108,6 @@ impl<'db> Value<'db, '_> for Module<'db> {
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'db> {
-        i_s.db.python_state.module_type().as_class_like()
+        ClassLike::Class(i_s.db.python_state.module_type())
     }
 }

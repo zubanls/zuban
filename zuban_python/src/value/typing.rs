@@ -78,10 +78,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             .compute_type_application_on_typing_class(self.specific, *slice_type)
     }
 
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::TypingClass(*self))
-    }
-
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypingClassType(*self)
     }
@@ -312,10 +308,6 @@ impl<'db, 'a> Value<'db, 'a> for TupleClass<'a> {
         todo!()
     }
 
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Tuple(TupleClass::new(self.content)))
-    }
-
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -517,10 +509,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(self.db_type)
-    }
-
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::TypeWithDbType(self.db_type))
     }
 }
 

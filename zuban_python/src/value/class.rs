@@ -58,10 +58,6 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn as_class_like(self) -> ClassLike<'db, 'a> {
-        ClassLike::Class(self)
-    }
-
     pub fn has_non_overloaded_init_func(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let cls = class.unwrap_or_else(|| todo!());
@@ -543,10 +539,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
 
     fn as_class(&self) -> Option<&Self> {
         Some(self)
-    }
-
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Class(*self))
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {

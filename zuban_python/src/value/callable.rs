@@ -58,10 +58,6 @@ impl<'db, 'a> Value<'db, 'a> for CallableClass<'a> {
         LookupResult::None
     }
 
-    fn as_class_like(&self) -> Option<ClassLike<'db, 'a>> {
-        Some(ClassLike::Callable(*self))
-    }
-
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
         ClassLike::TypeWithDbType(self.db_type)
     }
