@@ -247,7 +247,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
-        DbType::Callable(CallableContent {
+        DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: Some(
                 self.iter_params()
@@ -261,8 +261,8 @@ impl<'db, 'a> Function<'db, 'a> {
                     .collect(),
             ),
             type_vars: type_vars.cloned(),
-            return_class: Box::new(self.result_type(i_s).as_db_type(i_s)),
-        })
+            return_class: self.result_type(i_s).as_db_type(i_s),
+        }))
     }
 
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'db, 'a>> {

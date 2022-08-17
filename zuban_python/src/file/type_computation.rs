@@ -454,12 +454,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             }
             TypeContent::TypeAlias(a) => a.as_db_type(),
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => DbType::Callable(CallableContent {
+                SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
                     defined_at: node_ref.as_link(),
                     type_vars: None,
                     params: None,
-                    return_class: Box::new(DbType::Any),
-                }),
+                    return_class: DbType::Any,
+                })),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => DbType::Type(Box::new(DbType::Class(
                     self.inference.i_s.db.python_state.object().as_link(),
@@ -871,7 +871,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 defined_at,
                 type_vars: None,
                 params: params.map(|p| p.into_boxed_slice()),
-                return_class: Box::new(return_class),
+                return_class,
             }
         } else {
             slice_type
@@ -881,11 +881,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 defined_at,
                 type_vars: None,
                 params: None,
-                return_class: Box::new(DbType::Any),
+                return_class: DbType::Any,
             }
         };
         self.current_callable = old;
-        TypeContent::DbType(DbType::Callable(content))
+        TypeContent::DbType(DbType::Callable(Box::new(content)))
     }
 
     fn compute_type_get_item_on_union(

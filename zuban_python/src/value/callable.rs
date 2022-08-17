@@ -21,7 +21,7 @@ impl<'db, 'a> Callable<'a> {
     }
 
     pub fn as_db_type(&self) -> DbType {
-        DbType::Callable(self.content.clone())
+        DbType::Callable(Box::new(self.content.clone()))
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

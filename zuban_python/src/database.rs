@@ -575,7 +575,7 @@ pub enum DbType {
     TypeVar(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
-    Callable(CallableContent),
+    Callable(Box<CallableContent>),
     None,
     Any,
     Never,
@@ -786,7 +786,7 @@ impl DbType {
                     .map(|generics| remap_generics(generics)),
                 arbitrary_length: content.arbitrary_length,
             }),
-            Self::Callable(content) => Self::Callable(CallableContent {
+            Self::Callable(content) => Self::Callable(Box::new(CallableContent {
                 defined_at: content.defined_at,
                 type_vars: content.type_vars.clone(), // TODO should this change as well?
                 params: content.params.as_ref().map(|params| {
@@ -798,8 +798,8 @@ impl DbType {
                         })
                         .collect()
                 }),
-                return_class: Box::new(content.return_class.replace_type_vars(callable)),
-            }),
+                return_class: content.return_class.replace_type_vars(callable),
+            })),
         }
     }
 
@@ -851,7 +851,7 @@ impl DbType {
                             .then(|| t.type_var.clone())
                     })
                     .collect::<Box<_>>();
-                Self::Callable(CallableContent {
+                Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
                     type_vars: (!type_vars.is_empty()).then(|| TypeVars(type_vars)),
                     params: content.params.as_ref().map(|params| {
@@ -863,10 +863,8 @@ impl DbType {
                             })
                             .collect()
                     }),
-                    return_class: Box::new(
-                        content.return_class.rewrite_late_bound_callables(manager),
-                    ),
-                })
+                    return_class: content.return_class.rewrite_late_bound_callables(manager),
+                }))
             }
         }
     }
@@ -950,7 +948,7 @@ pub struct CallableContent {
     pub defined_at: PointLink,
     pub type_vars: Option<TypeVars>,
     pub params: Option<Box<[CallableParam]>>,
-    pub return_class: Box<DbType>,
+    pub return_class: DbType,
 }
 
 impl CallableContent {
@@ -1524,7 +1522,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<ClassStorage>(), 96);
+        assert_eq!(size_of::<ClassStorage>(), 104);
         assert_eq!(size_of::<ClassInfos>(), 40);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);
