@@ -467,6 +467,7 @@ testDontNeedAnnotationForCallable
 
 # Type application vs. type declaration
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
+testTypeAliasesResultingInPlainInstance
 
 # typing.no_type_check
 *NoTypeCheck*

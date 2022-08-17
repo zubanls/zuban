@@ -9,7 +9,6 @@ use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
     PointLink, PointType, Specific, TypeVar,
 };
-use crate::debug;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::{Context, InferenceState};
@@ -1107,10 +1106,6 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
                 }
             })
             .unwrap(),
-        DbType::None => {
-            debug!("TODO this should be NoneType instead of None");
-            callable(i_s, &NoneInstance())
-        }
         DbType::Never => todo!(),
         _ => callable(i_s, &TypingType::new(i_s.db, type_)),
     }
