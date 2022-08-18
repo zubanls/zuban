@@ -363,10 +363,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
-                if matches!(
-                    db_type,
-                    DbType::Class(_) | DbType::GenericClass(_, _) | DbType::Tuple(_)
-                ) {
+                if matches!(db_type, DbType::Class(_, _) | DbType::Tuple(_)) {
                     BaseClass::DbType(db_type)
                 } else {
                     NodeRef::new(self.inference.file, expr.index())
@@ -463,6 +460,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => DbType::Type(Box::new(DbType::Class(
                     self.inference.i_s.db.python_state.object().as_link(),
+                    None,
                 ))),
                 SpecialType::Tuple => DbType::Tuple(TupleContent {
                     generics: None,
@@ -597,8 +595,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         }
                     }
                     TypeContent::DbType(t) => match t {
-                        DbType::Class(c) => todo!(),
-                        DbType::GenericClass(c, g) => todo!(),
+                        DbType::Class(c, g) => todo!(),
                         DbType::Any => TypeContent::DbType(DbType::Any),
                         _ => todo!("{primary:?} {t:?}"),
                     },
@@ -744,7 +741,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             }
         } else {
             TypeContent::DbType(match expected_count {
-                0 => DbType::Class(class.node_ref.as_link()),
+                0 => DbType::Class(class.node_ref.as_link(), None),
                 _ => {
                     // Need to fill the generics, because we might have been in a
                     // ClassWithoutTypeVar case.
@@ -752,9 +749,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         backfill(self, &mut generics, expected_count);
                         generics.resize(expected_count, DbType::Any);
                     }
-                    DbType::GenericClass(
+                    DbType::Class(
                         class.node_ref.as_link(),
-                        GenericsList::generics_from_vec(generics),
+                        Some(GenericsList::generics_from_vec(generics)),
                     )
                 }
             })
@@ -1099,10 +1096,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         alias: &TypeAlias,
         slice_type: SliceType<'db, '_>,
     ) -> Inferred<'db> {
-        if !matches!(
-            alias.db_type.as_ref(),
-            DbType::Class(_) | DbType::GenericClass(_, _)
-        ) {
+        if !matches!(alias.db_type.as_ref(), DbType::Class(_, _)) {
             slice_type
                 .as_node_ref()
                 .add_typing_issue(self.i_s.db, IssueType::OnlyClassTypeApplication);

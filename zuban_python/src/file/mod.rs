@@ -1560,6 +1560,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         Some(&[
                                             DbType::Class(
                                                 self.i_s.db.python_state.builtins_point_link("str"),
+                                                None,
                                             ),
                                             p,
                                         ]),

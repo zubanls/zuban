@@ -569,8 +569,7 @@ impl UnionType {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
-    Class(PointLink),
-    GenericClass(PointLink, GenericsList),
+    Class(PointLink, Option<GenericsList>),
     Union(UnionType),
     TypeVar(TypeVarUsage),
     Type(Box<DbType>),
@@ -673,8 +672,8 @@ impl DbType {
             }
         };
         match self {
-            Self::Class(link) => class_name(*link),
-            Self::GenericClass(link, generics_lst) => format!(
+            Self::Class(link, None) => class_name(*link),
+            Self::Class(link, Some(generics_lst)) => format!(
                 "{}[{}]",
                 &class_name(*link),
                 generics_lst.format(i_s, matcher, style)
@@ -698,10 +697,10 @@ impl DbType {
 
     pub fn expect_generics(&self) -> &GenericsList {
         match self {
-            Self::GenericClass(link, generics) => generics,
+            Self::Class(link, Some(generics)) => generics,
             Self::Tuple(content) => todo!(),
             Self::Callable(content) => todo!(),
-            Self::Class(_)
+            Self::Class(_, None)
             | Self::Any
             | Self::None
             | Self::Never
@@ -718,7 +717,7 @@ impl DbType {
             }
         };
         match self {
-            Self::GenericClass(_, generics) => search_in_generics(generics),
+            Self::Class(_, Some(generics)) => search_in_generics(generics),
             Self::Union(u) => {
                 for t in u.iter() {
                     t.search_type_vars(found_type_var);
@@ -739,7 +738,7 @@ impl DbType {
                 }
                 content.return_class.search_type_vars(found_type_var)
             }
-            Self::Class(_) | Self::Any | Self::None | Self::Never => (),
+            Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
         }
     }
 
@@ -759,12 +758,11 @@ impl DbType {
             )
         };
         match self {
-            Self::Class(c) => Self::Class(*c),
             Self::Any => Self::Any,
             Self::None => Self::None,
             Self::Never => Self::Never,
-            Self::GenericClass(link, generics) => {
-                Self::GenericClass(*link, remap_generics(generics))
+            Self::Class(link, generics) => {
+                Self::Class(*link, generics.as_ref().map(remap_generics))
             }
             Self::Union(u) => Self::Union(UnionType {
                 entries: u
@@ -813,12 +811,11 @@ impl DbType {
             )
         };
         match self {
-            Self::Class(c) => Self::Class(*c),
             Self::Any => Self::Any,
             Self::None => Self::None,
             Self::Never => Self::Never,
-            Self::GenericClass(link, generics) => {
-                Self::GenericClass(*link, rewrite_generics(generics))
+            Self::Class(link, generics) => {
+                Self::Class(*link, generics.as_ref().map(rewrite_generics))
             }
             Self::Union(u) => Self::Union(UnionType {
                 entries: u

@@ -41,6 +41,12 @@ impl<'db, 'a> Generics<'db, 'a> {
         Self::List(list, None)
     }
 
+    pub fn new_maybe_list(list: &'a Option<GenericsList>) -> Self {
+        list.as_ref()
+            .map(|l| Self::List(l, None))
+            .unwrap_or(Generics::None)
+    }
+
     pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> DbType {
         match self {
             Self::SimpleGenericExpression(file, expr) => {

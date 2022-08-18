@@ -61,10 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        if matches!(
-            self.alias.db_type.as_ref(),
-            DbType::Class(_) | DbType::GenericClass(_, _)
-        ) {
+        if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {
             return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                 self.alias.db_type.as_ref().clone(),
             )));

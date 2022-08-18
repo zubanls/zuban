@@ -41,7 +41,7 @@ impl<'db> ListLiteral<'db> {
     fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
         match self.type_instance_ref(i_s).complex().unwrap() {
             ComplexPoint::TypeInstance(t) => match t.as_ref() {
-                DbType::GenericClass(_, generics) => generics,
+                DbType::Class(_, Some(generics)) => generics,
                 _ => unreachable!(),
             },
             _ => unreachable!(),
@@ -60,9 +60,9 @@ impl<'db> ListLiteral<'db> {
                 None => DbType::Any, // TODO shouldn't this be Never?
             };
             reference.insert_complex(
-                ComplexPoint::TypeInstance(Box::new(DbType::GenericClass(
+                ComplexPoint::TypeInstance(Box::new(DbType::Class(
                     i_s.db.python_state.builtins_point_link("list"),
-                    GenericsList::new_generics(Box::new([result])),
+                    Some(GenericsList::new_generics(Box::new([result]))),
                 ))),
                 Locality::Todo,
             );

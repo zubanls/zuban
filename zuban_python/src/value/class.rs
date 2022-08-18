@@ -226,14 +226,13 @@ impl<'db, 'a> Class<'db, 'a> {
                                 let mro_index = mro.len();
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
-                                    DbType::Class(link) => {
-                                        let r = NodeRef::from_link(i_s.db, *link);
-                                        Some(Self::from_position(r, Generics::None, None).unwrap())
-                                    }
-                                    DbType::GenericClass(link, generics) => Some(
+                                    DbType::Class(link, generics) => Some(
                                         Class::from_position(
                                             NodeRef::from_link(i_s.db, *link),
-                                            Generics::new_list(generics),
+                                            generics
+                                                .as_ref()
+                                                .map(Generics::new_list)
+                                                .unwrap_or(Generics::None),
                                             None,
                                         )
                                         .unwrap(),
@@ -400,7 +399,7 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
-        if let DbType::Class(link) = t {
+        if let DbType::Class(link, _) = t {
             if self.node_ref.as_link() == *link {
                 return true;
             }
@@ -435,8 +434,7 @@ impl<'db, 'a> Class<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         let lst = self.generics().as_generics_list(i_s);
         let link = self.node_ref.as_link();
-        lst.map(|lst| DbType::GenericClass(link, lst))
-            .unwrap_or_else(|| DbType::Class(link))
+        DbType::Class(link, lst)
     }
 }
 
@@ -620,19 +618,11 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    DbType::Class(c) => ClassLike::Class(
+                    DbType::Class(c, generics) => ClassLike::Class(
                         Class::from_position(
                             NodeRef::from_link(self.db, *c),
                             self.generics.unwrap(),
-                            None,
-                        )
-                        .unwrap(),
-                    ),
-                    DbType::GenericClass(c, generics) => ClassLike::Class(
-                        Class::from_position(
-                            NodeRef::from_link(self.db, *c),
-                            self.generics.unwrap(),
-                            Some(generics),
+                            generics.as_ref(),
                         )
                         .unwrap(),
                     ),

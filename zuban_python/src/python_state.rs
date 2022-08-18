@@ -113,7 +113,7 @@ impl PythonState {
 
     #[inline]
     pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object().as_link())
+        DbType::Class(self.object().as_link(), None)
     }
 
     #[inline]
@@ -150,10 +150,13 @@ impl PythonState {
     #[inline]
     pub fn base_exception(&self) -> DbType {
         debug_assert!(self.builtins_base_exception_index != 0);
-        DbType::Class(PointLink::new(
-            self.builtins().file_index(),
-            self.builtins_base_exception_index,
-        ))
+        DbType::Class(
+            PointLink::new(
+                self.builtins().file_index(),
+                self.builtins_base_exception_index,
+            ),
+            None,
+        )
     }
 
     #[inline]

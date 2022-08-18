@@ -107,14 +107,9 @@ impl<'db> Inferred<'db> {
 
     pub fn execute_db_type(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            DbType::Class(link) => {
-                InferredState::UnsavedComplex(ComplexPoint::Instance(link, None))
-            }
-            DbType::GenericClass(l, g) => {
-                InferredState::UnsavedComplex(ComplexPoint::Instance(l, Some(g)))
-            }
-            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_)) => match c.as_ref() {
-                DbType::Class(link) => {
+            DbType::Class(l, g) => InferredState::UnsavedComplex(ComplexPoint::Instance(l, g)),
+            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, _)) => match c.as_ref() {
+                DbType::Class(link, None) => {
                     let node_ref = NodeRef::from_link(i_s.db, *link);
                     InferredState::Saved(node_ref, node_ref.point())
                 }
@@ -1040,12 +1035,8 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match db_type {
-        DbType::Class(link) => {
-            let inst = use_instance(NodeRef::from_link(i_s.db, *link), Generics::None, None);
-            callable(i_s, &inst)
-        }
-        DbType::GenericClass(link, generics) => {
-            let g = Generics::new_list(generics);
+        DbType::Class(link, generics) => {
+            let g = Generics::new_maybe_list(generics);
             let inst = use_instance(NodeRef::from_link(i_s.db, *link), g, None);
             callable(i_s, &inst)
         }
@@ -1078,17 +1069,10 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match type_ {
-        DbType::Class(link) => {
-            let node_ref = NodeRef::from_link(i_s.db, *link);
-            callable(
-                i_s,
-                &Class::from_position(node_ref, Generics::None, None).unwrap(),
-            )
-        }
-        DbType::GenericClass(link, generics) => {
+        DbType::Class(link, generics) => {
             let class = Class::from_position(
                 NodeRef::from_link(i_s.db, *link),
-                Generics::new_list(generics),
+                Generics::new_maybe_list(generics),
                 None,
             )
             .unwrap();

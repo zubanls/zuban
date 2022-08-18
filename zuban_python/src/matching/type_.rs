@@ -21,19 +21,14 @@ pub enum Type<'db, 'a> {
 impl<'db, 'a> Type<'db, 'a> {
     pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
         match db_type {
-            DbType::Class(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::ClassLike(ClassLike::Class(
-                    Class::from_position(node_ref, Generics::None, None).unwrap(),
-                ))
-            }
             DbType::None => Self::ClassLike(ClassLike::None),
             DbType::Any => Type::Any,
             DbType::Never => Self::Never,
-            DbType::GenericClass(link, generics) => {
+            DbType::Class(link, generics) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ClassLike(ClassLike::Class(
-                    Class::from_position(node_ref, Generics::new_list(generics), None).unwrap(),
+                    Class::from_position(node_ref, Generics::new_maybe_list(generics), None)
+                        .unwrap(),
                 ))
             }
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
