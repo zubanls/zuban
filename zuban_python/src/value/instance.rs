@@ -1,6 +1,6 @@
 use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, FormatStyle, PointLink};
+use crate::database::{FormatStyle, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -27,10 +27,8 @@ impl<'db, 'a> Instance<'db, 'a> {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
-            Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                self.class.node_ref.as_link(),
-                self.class.generics.as_generics_list(i_s),
-            ))
+            let t = self.class.as_db_type(i_s);
+            Inferred::execute_db_type(i_s, t)
         }
     }
 }
