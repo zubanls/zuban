@@ -7,7 +7,8 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, TypeVar, TypeVarManager, TypeVarUsage, TypeVars,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarManager, TypeVarUsage,
+    TypeVars,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, PythonFile, TypeComputation};
@@ -114,8 +115,15 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
-        let type_vars = &self.class_infos(i_s).type_vars;
-        (!type_vars.is_empty()).then(|| type_vars)
+        // Calculate all class infos
+        self.class_infos(i_s);
+        let node_ref = self.type_vars_node_ref();
+        (node_ref.point().type_() != PointType::NodeAnalysis).then(|| {
+            match node_ref.complex().unwrap() {
+                ComplexPoint::TypeVars(type_vars) => type_vars,
+                _ => unreachable!(),
+            }
+        })
     }
 
     pub fn maybe_type_var_in_parent(
@@ -148,8 +156,12 @@ impl<'db, 'a> Class<'db, 'a> {
         self.class_info_node_ref().point().calculating()
     }
 
-    fn class_info_node_ref(&self) -> NodeRef<'db> {
+    fn type_vars_node_ref(&self) -> NodeRef<'db> {
         self.node_ref.add_to_node_index(1)
+    }
+
+    fn class_info_node_ref(&self) -> NodeRef<'db> {
+        self.node_ref.add_to_node_index(4)
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
@@ -306,8 +318,15 @@ impl<'db, 'a> Class<'db, 'a> {
                 });
             }
         }
+        let type_vars = type_var_manager.into_type_vars();
+        if type_vars.is_empty() {
+            self.type_vars_node_ref()
+                .set_point(Point::new_node_analysis(Locality::Todo));
+        } else {
+            self.type_vars_node_ref()
+                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
+        }
         Box::new(ClassInfos {
-            type_vars: type_var_manager.into_type_vars(),
             mro: mro.into_boxed_slice(),
             incomplete_mro,
             is_protocol: protocol_args.is_some(),
@@ -423,11 +442,11 @@ impl<'db, 'a> Class<'db, 'a> {
             FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
         };
-        let type_var_count = self.class_infos(i_s).type_vars.len();
-        if type_var_count > 0 {
+        let type_vars = self.type_vars(i_s);
+        if let Some(type_vars) = type_vars {
             result += &self
                 .generics()
-                .format(i_s, matcher, style, Some(type_var_count));
+                .format(i_s, matcher, style, Some(type_vars.len()));
         }
         result.into()
     }

@@ -428,7 +428,7 @@ pub enum ComplexPoint {
     GenericClass(PointLink, GenericsList),
     Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
-    FunctionTypeVars(TypeVars),
+    TypeVars(TypeVars),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
 
@@ -1479,7 +1479,6 @@ pub struct ClassStorage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub type_vars: TypeVars,
     pub mro: Box<[DbType]>, // Does never include `object`
     pub is_protocol: bool,
     pub incomplete_mro: bool,
@@ -1512,7 +1511,7 @@ mod tests {
         use super::*;
         use std::mem::size_of;
         assert_eq!(size_of::<ClassStorage>(), 104);
-        assert_eq!(size_of::<ClassInfos>(), 40);
+        assert_eq!(size_of::<ClassInfos>(), 24);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);
         assert_eq!(size_of::<Execution>(), 24);

@@ -196,7 +196,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
                 match complex {
-                    ComplexPoint::FunctionTypeVars(vars) => return Some(vars),
+                    ComplexPoint::TypeVars(vars) => return Some(vars),
                     _ => unreachable!(),
                 }
             }
@@ -238,8 +238,9 @@ impl<'db, 'a> Function<'db, 'a> {
         });
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
-            _ => type_var_reference
-                .insert_complex(ComplexPoint::FunctionTypeVars(type_vars), Locality::Todo),
+            _ => {
+                type_var_reference.insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo)
+            }
         }
         debug_assert!(type_var_reference.point().calculated());
         self.type_vars(i_s)
@@ -304,7 +305,7 @@ impl<'db, 'a> Function<'db, 'a> {
             if func_type_vars.is_some()
                 || self
                     .class
-                    .map(|c| !c.class_infos(i_s).type_vars.is_empty())
+                    .map(|c| c.type_vars(i_s).is_some())
                     .unwrap_or(false)
             {
                 // TODO this could also be a tuple...
