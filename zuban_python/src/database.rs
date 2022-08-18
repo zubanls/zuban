@@ -695,18 +695,10 @@ impl DbType {
         }
     }
 
-    pub fn expect_generics(&self) -> &GenericsList {
+    pub fn expect_class_generics(&self) -> &GenericsList {
         match self {
             Self::Class(link, Some(generics)) => generics,
-            Self::Tuple(content) => todo!(),
-            Self::Callable(content) => todo!(),
-            Self::Class(_, None)
-            | Self::Any
-            | Self::None
-            | Self::Never
-            | Self::Union(_)
-            | Self::TypeVar(_)
-            | Self::Type(_) => unreachable!(),
+            _ => unreachable!(),
         }
     }
 

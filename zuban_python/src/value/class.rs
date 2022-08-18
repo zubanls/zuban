@@ -255,7 +255,8 @@ impl<'db, 'a> Class<'db, 'a> {
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {
                                             mro.push(base.replace_type_vars(&mut |t| {
-                                                mro[mro_index].expect_generics()[t.index].clone()
+                                                mro[mro_index].expect_class_generics()[t.index]
+                                                    .clone()
                                             }));
                                         }
                                     }
