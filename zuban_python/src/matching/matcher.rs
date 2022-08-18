@@ -419,7 +419,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             result_context,
             on_type_error,
         );
-        type_arguments.type_arguments = class.generics.as_generics_list(i_s);
+        type_arguments.type_arguments = class.generics().as_generics_list(i_s);
         type_arguments
     } else {
         calculate_type_vars(
