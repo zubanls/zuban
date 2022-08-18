@@ -11,7 +11,7 @@ use crate::database::{
     TypeVars,
 };
 use crate::diagnostics::IssueType;
-use crate::file::{BaseClass, PythonFile, TypeComputation};
+use crate::file::{BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -185,15 +185,26 @@ impl<'db, 'a> Class<'db, 'a> {
 
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
+        let mut i_s = i_s.with_annotation_instance();
+        let node = self.node();
+        let type_vars =
+            ClassTypeVarFinder::new(&mut self.node_ref.file.inference(&mut i_s)).find(node);
+        if type_vars.is_empty() {
+            self.type_vars_node_ref()
+                .set_point(Point::new_node_analysis(Locality::Todo));
+        } else {
+            self.type_vars_node_ref()
+                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
+        }
+
         let mut mro = vec![];
         let mut type_var_manager = TypeVarManager::default();
-        let mut i_s = i_s.with_annotation_instance();
         let mut incomplete_mro = false;
         let mut protocol_args = None;
         let mut generic_args = None;
         let mut type_vars_were_changed = false;
         let mut had_generic_or_protocol_issue = false;
-        if let Some(arguments) = self.node().arguments() {
+        if let Some(arguments) = node.arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
@@ -317,14 +328,6 @@ impl<'db, 'a> Class<'db, 'a> {
                     DbType::TypeVar(type_var_manager.lookup_for_remap(t))
                 });
             }
-        }
-        let type_vars = type_var_manager.into_type_vars();
-        if type_vars.is_empty() {
-            self.type_vars_node_ref()
-                .set_point(Point::new_node_analysis(Locality::Todo));
-        } else {
-            self.type_vars_node_ref()
-                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
         }
         Box::new(ClassInfos {
             mro: mro.into_boxed_slice(),

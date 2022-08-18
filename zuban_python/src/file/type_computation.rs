@@ -29,7 +29,7 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
-enum SpecialType<'db, 'a> {
+pub(super) enum SpecialType<'db, 'a> {
     Union,
     Optional,
     Any,
@@ -43,7 +43,7 @@ enum SpecialType<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-enum InvalidVariableType<'db, 'a> {
+pub(super) enum InvalidVariableType<'db, 'a> {
     List,
     Tuple { tuple_length: usize },
     Execution,
@@ -160,7 +160,7 @@ enum TypeContent<'db, 'a> {
     Unknown,
 }
 
-enum TypeNameLookup<'db, 'a> {
+pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred<'db>),
     TypeVar(Rc<TypeVar>),
@@ -1343,7 +1343,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
+    pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
         let point = self.file.points.get(name.index());
         debug_assert!(self.file.points.get(name.index()).calculated());
         match point.type_() {
