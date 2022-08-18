@@ -115,15 +115,27 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
-        // Calculate all class infos
-        self.class_infos(i_s);
         let node_ref = self.type_vars_node_ref();
-        (node_ref.point().type_() != PointType::NodeAnalysis).then(|| {
-            match node_ref.complex().unwrap() {
-                ComplexPoint::TypeVars(type_vars) => type_vars,
-                _ => unreachable!(),
-            }
-        })
+        let point = node_ref.point();
+        if point.calculated() {
+            return (point.type_() != PointType::NodeAnalysis).then(|| {
+                match node_ref.complex().unwrap() {
+                    ComplexPoint::TypeVars(type_vars) => type_vars,
+                    _ => unreachable!(),
+                }
+            });
+        }
+
+        let type_vars =
+            ClassTypeVarFinder::new(&mut self.node_ref.file.inference(i_s)).find(self.node());
+        if type_vars.is_empty() {
+            self.type_vars_node_ref()
+                .set_point(Point::new_node_analysis(Locality::Todo));
+        } else {
+            self.type_vars_node_ref()
+                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
+        }
+        self.type_vars(i_s)
     }
 
     pub fn maybe_type_var_in_parent(
@@ -185,17 +197,8 @@ impl<'db, 'a> Class<'db, 'a> {
 
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
-        let mut i_s = i_s.with_annotation_instance();
-        let node = self.node();
-        let type_vars =
-            ClassTypeVarFinder::new(&mut self.node_ref.file.inference(&mut i_s)).find(node);
-        if type_vars.is_empty() {
-            self.type_vars_node_ref()
-                .set_point(Point::new_node_analysis(Locality::Todo));
-        } else {
-            self.type_vars_node_ref()
-                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
-        }
+        // Calculate all type vars beforehand
+        let type_vars = self.type_vars(i_s);
 
         let mut mro = vec![];
         let mut type_var_manager = TypeVarManager::default();
@@ -204,7 +207,8 @@ impl<'db, 'a> Class<'db, 'a> {
         let mut generic_args = None;
         let mut type_vars_were_changed = false;
         let mut had_generic_or_protocol_issue = false;
-        if let Some(arguments) = node.arguments() {
+        if let Some(arguments) = self.node().arguments() {
+            let mut i_s = i_s.with_annotation_instance();
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
