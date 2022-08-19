@@ -125,8 +125,7 @@ impl<'db, 'a> Class<'db, 'a> {
             });
         }
 
-        let type_vars =
-            ClassTypeVarFinder::new(&mut self.node_ref.file.inference(i_s)).find(self.node());
+        let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
         if type_vars.is_empty() {
             self.type_vars_node_ref()
                 .set_point(Point::new_node_analysis(Locality::Todo));
@@ -214,22 +213,21 @@ impl<'db, 'a> Class<'db, 'a> {
                             &mut inference,
                             self.node_ref.as_link(),
                             Some(&mut |i_s, type_var, _, _| {
+                                if let Some(type_vars) = type_vars {
+                                    if let Some(index) =
+                                        type_vars.iter().position(|t| *t == type_var)
+                                    {
+                                        return Some(DbType::TypeVar(TypeVarUsage {
+                                            type_var,
+                                            index: index.into(),
+                                            in_definition: self.node_ref.as_link(),
+                                        }));
+                                    }
+                                }
                                 if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
                                     return Some(DbType::TypeVar(usage));
                                 }
-                                if let Some(type_vars) = type_vars {
-                                    let index = type_vars
-                                        .iter()
-                                        .position(|t| *t == type_var)
-                                        .unwrap_or_else(|| todo!("Maybe class in func?"));
-                                    Some(DbType::TypeVar(TypeVarUsage {
-                                        type_var,
-                                        index: index.into(),
-                                        in_definition: self.node_ref.as_link(),
-                                    }))
-                                } else {
-                                    todo!("Maybe class in func");
-                                }
+                                todo!("Maybe class in func");
                             }),
                         )
                         .compute_base_class(n.expression());

@@ -5,8 +5,7 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     FormatStyle, GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarIndex, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry,
-    UnionType, Variance,
+    TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -939,7 +938,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             match self.compute_slice_type(s) {
-                TypeContent::DbType(DbType::TypeVar(_)) => (),
+                TypeContent::DbType(DbType::TypeVar(usage))
+                    if usage.in_definition == self.for_definition =>
+                {
+                    ()
+                }
                 _ => s
                     .as_node_ref()
                     .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected { class }),

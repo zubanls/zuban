@@ -8,6 +8,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
+use crate::value::Class;
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'db> {
@@ -21,6 +22,7 @@ enum BaseLookup<'db> {
 
 pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
+    class: &'c Class<'db, 'c>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'db, 'a>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
@@ -28,34 +30,36 @@ pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
 }
 
 impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
-    pub fn new(inference: &'c mut PythonInference<'db, 'a, 'b>) -> Self {
-        Self {
+    pub fn find(
+        inference: &'c mut PythonInference<'db, 'a, 'b>,
+        class: &'c Class<'db, 'c>,
+    ) -> TypeVars {
+        let mut finder = Self {
             inference,
+            class,
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
             current_generic_or_protocol_index: None,
             had_generic_or_protocol_issue: false,
-        }
-    }
+        };
 
-    pub fn find(mut self, node: ClassDef<'db>) -> TypeVars {
-        if let Some(arguments) = node.arguments() {
+        if let Some(arguments) = class.node().arguments() {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        self.find_in_expr(n.expression());
+                        finder.find_in_expr(n.expression());
                     }
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
                 }
             }
         }
-        if let Some(slice_type) = self.generic_or_protocol_slice {
-            if !self.had_generic_or_protocol_issue {
-                self.check_generic_or_protocol_length(slice_type)
+        if let Some(slice_type) = finder.generic_or_protocol_slice {
+            if !finder.had_generic_or_protocol_issue {
+                finder.check_generic_or_protocol_length(slice_type)
             }
         }
-        self.type_var_manager.into_type_vars()
+        finder.type_var_manager.into_type_vars()
     }
 
     fn find_in_expr(&mut self, expr: Expression<'db>) {
@@ -174,13 +178,21 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class(i) => BaseLookup::Class(i),
             TypeNameLookup::TypeVar(type_var) => {
-                let old_index = self.type_var_manager.add(type_var, None);
-                if let Some(force_index) = self.current_generic_or_protocol_index {
-                    if old_index < force_index {
-                        NodeRef::new(self.inference.file, name.index())
-                            .add_typing_issue(self.inference.i_s.db, IssueType::DuplicateTypeVar)
-                    } else if old_index != force_index {
-                        self.type_var_manager.move_index(old_index, force_index);
+                if self
+                    .class
+                    .maybe_type_var_in_parent(self.inference.i_s, &type_var)
+                    .is_none()
+                {
+                    let old_index = self.type_var_manager.add(type_var, None);
+                    if let Some(force_index) = self.current_generic_or_protocol_index {
+                        if old_index < force_index {
+                            NodeRef::new(self.inference.file, name.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::DuplicateTypeVar,
+                            )
+                        } else if old_index != force_index {
+                            self.type_var_manager.move_index(old_index, force_index);
+                        }
                     }
                 }
                 BaseLookup::Other
