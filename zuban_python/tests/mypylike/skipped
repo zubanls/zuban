@@ -1,9 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-# Alias Type Var Binding
-testGenericTypeAliasesBasic2
-
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting

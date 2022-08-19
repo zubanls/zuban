@@ -361,7 +361,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     .type_
                     .clone()
                     .map(|t| t.into_db_type())
-                    // TODO is this Any here correct?
+                    // Any is just ignored by the context later.
                     .unwrap_or(DbType::Any)
             } else {
                 match self.func_or_callable {
@@ -583,12 +583,16 @@ fn calculate_type_vars<'db>(
                                 .iter()
                                 .run_on_all(i_s, &mut |i_s, g| {
                                     let calculated = calculating.next().unwrap();
-                                    let mut bound =
-                                        TypeVarBound::new(g.as_db_type(i_s), type_vars[i].variance);
-                                    bound.invert_bounds();
-                                    calculated.type_ = Some(bound);
-                                    calculated.defined_by_result_context = true;
-                                    i += 1; // TODO please test that this works for multiple type vars
+                                    if !matches!(&g, Type::Any) {
+                                        let mut bound = TypeVarBound::new(
+                                            g.as_db_type(i_s),
+                                            type_vars[i].variance,
+                                        );
+                                        bound.invert_bounds();
+                                        calculated.type_ = Some(bound);
+                                        calculated.defined_by_result_context = true;
+                                        i += 1; // TODO please test that this works for multiple type vars
+                                    }
                                 });
                             true
                         }
