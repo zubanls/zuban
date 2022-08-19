@@ -2,10 +2,12 @@ use parsa_python_ast::*;
 
 use super::type_computation::{cache_name_on_class, SpecialType, TypeNameLookup};
 use crate::database::{Locality, Point, PointType, TypeVarIndex, TypeVarManager, TypeVars};
+use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'db> {
@@ -104,23 +106,30 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
-                    /*
                     BaseLookup::Protocol | BaseLookup::Generic => {
-                        todo!()
-                    }*/
-                    BaseLookup::Callable => {
-                        self.find_in_callable(s);
-                        BaseLookup::Other
+                        if self.had_protocol_or_generic {
+                            NodeRef::new(self.inference.file, primary.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::EnsureSingleGenericOrProtocol,
+                            );
+                        }
+                        self.had_protocol_or_generic = true;
+                        for slice_or_simple in s.iter() {
+                            if let SliceOrSimple::Simple(s) = slice_or_simple {
+                                self.find_in_expr(s.named_expr.expression())
+                            }
+                        }
                     }
+                    BaseLookup::Callable => self.find_in_callable(s),
                     _ => {
                         for slice_or_simple in s.iter() {
                             if let SliceOrSimple::Simple(s) = slice_or_simple {
                                 self.find_in_expr(s.named_expr.expression())
                             }
                         }
-                        BaseLookup::Other
                     }
                 }
+                BaseLookup::Other
             }
         }
     }
@@ -149,7 +158,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class(i) => BaseLookup::Class(i),
             TypeNameLookup::TypeVar(type_var) => {
-                self.type_var_manager.add(type_var.clone(), None);
+                self.type_var_manager.add(type_var, None);
                 BaseLookup::Other
             }
             TypeNameLookup::SpecialType(SpecialType::Generic) => BaseLookup::Generic,

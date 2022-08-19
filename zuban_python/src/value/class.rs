@@ -292,10 +292,6 @@ impl<'db, 'a> Class<'db, 'a> {
                             BaseClass::Protocol(s) => {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        db,
-                                        IssueType::EnsureSingleGenericOrProtocol,
-                                    );
                                 } else {
                                     protocol_args = Some(s);
                                 }
@@ -303,10 +299,6 @@ impl<'db, 'a> Class<'db, 'a> {
                             BaseClass::Generic(s) => {
                                 if generic_args.is_some() || protocol_args.is_some() {
                                     had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        db,
-                                        IssueType::EnsureSingleGenericOrProtocol,
-                                    );
                                 } else {
                                     generic_args = Some(s);
                                 }
