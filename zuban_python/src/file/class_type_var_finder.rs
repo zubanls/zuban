@@ -13,6 +13,7 @@ enum BaseLookup<'db> {
     Module(&'db PythonFile),
     Class(Inferred<'db>),
     Protocol,
+    Callable,
     Generic,
     Other,
 }
@@ -121,6 +122,10 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                     BaseLookup::Protocol | BaseLookup::Generic => {
                         todo!()
                     }*/
+                    BaseLookup::Callable => {
+                        self.find_in_callable(s);
+                        BaseLookup::Other
+                    }
                     _ => {
                         for slice_or_simple in s.iter() {
                             if let SliceOrSimple::Simple(s) = slice_or_simple {
@@ -163,6 +168,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             }
             TypeNameLookup::SpecialType(SpecialType::Generic) => BaseLookup::Generic,
             TypeNameLookup::SpecialType(SpecialType::Protocol) => BaseLookup::Protocol,
+            TypeNameLookup::SpecialType(SpecialType::Callable) => BaseLookup::Callable,
             _ => BaseLookup::Other,
         }
     }
@@ -171,6 +177,31 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
+        }
+    }
+
+    fn find_in_callable(&mut self, slice_type: SliceType<'db, '_>) {
+        if slice_type.iter().count() == 2 {
+            let mut iterator = slice_type.iter();
+            if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {
+                if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                    n.named_expr.expression().unpack()
+                {
+                    if let AtomContent::List(list) = atom.unpack() {
+                        if let Some(iterator) = list.unpack() {
+                            for i in iterator {
+                                if let StarLikeExpression::NamedExpression(n) = i {
+                                    self.find_in_expr(n.expression());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            let slice_or_simple = iterator.next().unwrap();
+            if let SliceOrSimple::Simple(s) = slice_or_simple {
+                self.find_in_expr(s.named_expr.expression())
+            }
         }
     }
 }
