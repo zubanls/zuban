@@ -92,24 +92,21 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                     BaseLookup::Class(i) => {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
                         let node_ref = NodeRef::new(self.inference.file, primary.index());
-                        if let Some(index) = cls
-                            .class_storage
-                            .class_symbol_table
-                            .lookup_symbol(name.as_str())
-                        {
-                            todo!();
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_redirect(
+                        let name_node_ref = NodeRef::new(self.inference.file, name.index());
+                        if !name_node_ref.point().calculated() {
+                            if let Some(index) = cls
+                                .class_storage
+                                .class_symbol_table
+                                .lookup_symbol(name.as_str())
+                            {
+                                name_node_ref.set_point(Point::new_redirect(
                                     cls.node_ref.file.file_index(),
                                     index,
                                     Locality::Todo,
-                                ),
-                            );
-                            self.find_in_name(name)
-                        } else {
-                            BaseLookup::Other
+                                ));
+                            }
                         }
+                        self.find_in_name(name)
                     }
                     _ => BaseLookup::Other,
                 }
