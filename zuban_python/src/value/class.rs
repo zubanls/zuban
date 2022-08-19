@@ -213,7 +213,7 @@ impl<'db, 'a> Class<'db, 'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, type_var, is_generic_or_protocol, _, _| {
+                            Some(&mut |i_s, type_var, _, _| {
                                 if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
                                     return Some(DbType::TypeVar(usage));
                                 }

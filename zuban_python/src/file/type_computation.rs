@@ -22,7 +22,6 @@ use crate::value::{Class, Function, Module, Value};
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     Rc<TypeVar>,
-    Option<TypeVarIndex>,
     NodeRef<'db>,
     Option<PointLink>, // current_callable
 ) -> Option<DbType>;
@@ -235,7 +234,6 @@ impl<'db> TypeContent<'db, '_> {
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     type_var: Rc<TypeVar>,
-    _: Option<TypeVarIndex>,
     node_ref: NodeRef,
     current_callable: Option<PointLink>,
 ) -> Option<DbType> {
@@ -995,7 +993,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             callback(
                                 self.inference.i_s,
                                 type_var.clone(),
-                                None,
                                 NodeRef::new(self.inference.file, name.index()),
                                 self.current_callable,
                             )
@@ -1252,7 +1249,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             } else {
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
-                    |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _, _| {
+                    |_: &mut InferenceState, type_var: Rc<TypeVar>, _, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how
                         // mypy works. The default behavior without a type_var_callback would be to
                         // just calculate all late bound type vars, but that would mean that something
@@ -1436,7 +1433,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
-        let mut on_type_var = |_: &mut InferenceState, type_var, _, _, current_callable| todo!();
+        let mut on_type_var = |_: &mut InferenceState, type_var, _, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
         let t = comp.compute_type(expr);
