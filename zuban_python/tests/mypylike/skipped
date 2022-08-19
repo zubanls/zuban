@@ -2,8 +2,6 @@
 testInferTypeVariableFromTwoGenericTypes4
 
 # Alias Type Var Binding
-testGenericTypeAliasesRuntimeExpressionsInstance
-testGenericTypeAliasesTypeVarBinding
 testGenericTypeAliasesBasic2
 
 # Type var: Cannot infer type argument
@@ -357,6 +355,7 @@ testGenericClassInsideOtherGenericClass
 # Class: generic access from outside
 testAliasRefOnClass
 testGenericClassAttrUnboundOn*
+testGenericTypeAliasesTypeVarBinding
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
 # General Scoping
