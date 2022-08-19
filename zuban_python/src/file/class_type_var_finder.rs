@@ -22,7 +22,8 @@ enum BaseLookup<'db> {
 pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_manager: TypeVarManager,
-    had_protocol_or_generic: bool,
+    generic_or_protocol_slice: Option<SliceType<'db, 'a>>,
+    had_generic_or_protocol_issue: bool,
 }
 
 impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
@@ -30,11 +31,12 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         Self {
             inference,
             type_var_manager: TypeVarManager::default(),
-            had_protocol_or_generic: false,
+            generic_or_protocol_slice: None,
+            had_generic_or_protocol_issue: false,
         }
     }
 
-    pub fn find(mut self, node: ClassDef) -> TypeVars {
+    pub fn find(mut self, node: ClassDef<'db>) -> TypeVars {
         if let Some(arguments) = node.arguments() {
             for argument in arguments.iter() {
                 match argument {
@@ -46,10 +48,15 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                 }
             }
         }
+        if let Some(slice_type) = self.generic_or_protocol_slice {
+            if !self.had_generic_or_protocol_issue {
+                self.check_generic_or_protocol_length(slice_type)
+            }
+        }
         self.type_var_manager.into_type_vars()
     }
 
-    fn find_in_expr(&mut self, expr: Expression) {
+    fn find_in_expr(&mut self, expr: Expression<'db>) {
         let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
@@ -59,7 +66,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         };
     }
 
-    fn find_in_expression_part(&mut self, node: ExpressionPart) -> BaseLookup<'db> {
+    fn find_in_expression_part(&mut self, node: ExpressionPart<'db>) -> BaseLookup<'db> {
         match node {
             ExpressionPart::Atom(atom) => self.find_in_atom(atom),
             ExpressionPart::Primary(primary) => self.find_in_primary(primary),
@@ -73,7 +80,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary(&mut self, primary: Primary) -> BaseLookup<'db> {
+    fn find_in_primary(&mut self, primary: Primary<'db>) -> BaseLookup<'db> {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
@@ -107,13 +114,18 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
                     BaseLookup::Protocol | BaseLookup::Generic => {
-                        if self.had_protocol_or_generic {
+                        if self.generic_or_protocol_slice.is_some() {
+                            self.had_generic_or_protocol_issue = true;
                             NodeRef::new(self.inference.file, primary.index()).add_typing_issue(
                                 self.inference.i_s.db,
                                 IssueType::EnsureSingleGenericOrProtocol,
                             );
                         }
-                        self.had_protocol_or_generic = true;
+                        self.generic_or_protocol_slice = Some(SliceType::new(
+                            self.inference.file,
+                            primary.index(),
+                            slice_type,
+                        ));
                         for slice_or_simple in s.iter() {
                             if let SliceOrSimple::Simple(s) = slice_or_simple {
                                 self.find_in_expr(s.named_expr.expression())
@@ -168,14 +180,14 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom) -> BaseLookup<'db> {
+    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> BaseLookup<'db> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
         }
     }
 
-    fn find_in_callable(&mut self, slice_type: SliceType<'db, '_>) {
+    fn find_in_callable(&mut self, slice_type: SliceType<'db, 'db>) {
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {
@@ -197,6 +209,16 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 self.find_in_expr(s.named_expr.expression())
             }
+        }
+    }
+
+    fn check_generic_or_protocol_length(&self, slice_type: SliceType) {
+        // Reorder slices
+        if slice_type.iter().count() < self.type_var_manager.len() {
+            slice_type.as_node_ref().add_typing_issue(
+                self.inference.i_s.db,
+                IssueType::IncompleteGenericOrProtocolTypeVars,
+            )
         }
     }
 }
