@@ -7,11 +7,10 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarManager, TypeVarUsage,
-    TypeVars,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarUsage, TypeVars,
 };
 use crate::diagnostics::IssueType;
-use crate::file::{BaseClass, PythonFile, TypeComputation};
+use crate::file::{BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -115,15 +114,26 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
-        // Calculate all class infos
-        self.class_infos(i_s);
         let node_ref = self.type_vars_node_ref();
-        (node_ref.point().type_() != PointType::NodeAnalysis).then(|| {
-            match node_ref.complex().unwrap() {
-                ComplexPoint::TypeVars(type_vars) => type_vars,
-                _ => unreachable!(),
-            }
-        })
+        let point = node_ref.point();
+        if point.calculated() {
+            return (point.type_() != PointType::NodeAnalysis).then(|| {
+                match node_ref.complex().unwrap() {
+                    ComplexPoint::TypeVars(type_vars) => type_vars,
+                    _ => unreachable!(),
+                }
+            });
+        }
+
+        let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
+        if type_vars.is_empty() {
+            self.type_vars_node_ref()
+                .set_point(Point::new_node_analysis(Locality::Todo));
+        } else {
+            self.type_vars_node_ref()
+                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
+        }
+        self.type_vars(i_s)
     }
 
     pub fn maybe_type_var_in_parent(
@@ -185,15 +195,14 @@ impl<'db, 'a> Class<'db, 'a> {
 
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
+        // Calculate all type vars beforehand
+        let type_vars = self.type_vars(i_s);
+
         let mut mro = vec![];
-        let mut type_var_manager = TypeVarManager::default();
-        let mut i_s = i_s.with_annotation_instance();
         let mut incomplete_mro = false;
-        let mut protocol_args = None;
-        let mut generic_args = None;
-        let mut type_vars_were_changed = false;
-        let mut had_generic_or_protocol_issue = false;
+        let mut is_protocol = false;
         if let Some(arguments) = self.node().arguments() {
+            let mut i_s = i_s.with_annotation_instance();
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
@@ -203,33 +212,22 @@ impl<'db, 'a> Class<'db, 'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, type_var, is_generic_or_protocol, _, _| {
-                                let parent_type_var = self.maybe_type_var_in_parent(i_s, &type_var);
-                                let index = if let Some(force_index) = is_generic_or_protocol {
-                                    if parent_type_var.is_some() {
-                                        return Some(DbType::Any);
+                            Some(&mut |i_s, type_var, _, _| {
+                                if let Some(type_vars) = type_vars {
+                                    if let Some(index) =
+                                        type_vars.iter().position(|t| *t == type_var)
+                                    {
+                                        return Some(DbType::TypeVar(TypeVarUsage {
+                                            type_var,
+                                            index: index.into(),
+                                            in_definition: self.node_ref.as_link(),
+                                        }));
                                     }
-                                    let old_index = type_var_manager.add(type_var.clone(), None);
-                                    if old_index < force_index {
-                                        had_generic_or_protocol_issue = true;
-                                        NodeRef::new(self.node_ref.file, n.index())
-                                            .add_typing_issue(db, IssueType::DuplicateTypeVar)
-                                    } else if old_index != force_index {
-                                        type_var_manager.move_index(old_index, force_index);
-                                        type_vars_were_changed = true;
-                                    }
-                                    force_index
-                                } else {
-                                    if let Some(usage) = parent_type_var {
-                                        return Some(DbType::TypeVar(usage));
-                                    }
-                                    type_var_manager.add(type_var.clone(), None)
-                                };
-                                Some(DbType::TypeVar(TypeVarUsage {
-                                    type_var,
-                                    index,
-                                    in_definition: self.node_ref.as_link(),
-                                }))
+                                }
+                                if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
+                                    return Some(DbType::TypeVar(usage));
+                                }
+                                todo!("Maybe class in func");
                             }),
                         )
                         .compute_base_class(n.expression());
@@ -274,28 +272,8 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                 }
                             }
-                            BaseClass::Protocol(s) => {
-                                if generic_args.is_some() || protocol_args.is_some() {
-                                    had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        db,
-                                        IssueType::EnsureSingleGenericOrProtocol,
-                                    );
-                                } else {
-                                    protocol_args = Some(s);
-                                }
-                            }
-                            BaseClass::Generic(s) => {
-                                if generic_args.is_some() || protocol_args.is_some() {
-                                    had_generic_or_protocol_issue = true;
-                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        db,
-                                        IssueType::EnsureSingleGenericOrProtocol,
-                                    );
-                                } else {
-                                    generic_args = Some(s);
-                                }
-                            }
+                            BaseClass::Protocol => is_protocol = true,
+                            BaseClass::Generic => {}
                             BaseClass::Invalid => {
                                 incomplete_mro = true;
                             }
@@ -306,44 +284,11 @@ impl<'db, 'a> Class<'db, 'a> {
                 }
             }
         }
-        if let Some(slice_type) = generic_args {
-            if !had_generic_or_protocol_issue {
-                Self::check_generic_or_protocol_length(i_s.db, &mut type_var_manager, slice_type)
-            }
-        }
-        if type_vars_were_changed {
-            for db_type in mro.iter_mut() {
-                *db_type = db_type.replace_type_vars(&mut |t| {
-                    DbType::TypeVar(type_var_manager.lookup_for_remap(t))
-                });
-            }
-        }
-        let type_vars = type_var_manager.into_type_vars();
-        if type_vars.is_empty() {
-            self.type_vars_node_ref()
-                .set_point(Point::new_node_analysis(Locality::Todo));
-        } else {
-            self.type_vars_node_ref()
-                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
-        }
         Box::new(ClassInfos {
             mro: mro.into_boxed_slice(),
             incomplete_mro,
-            is_protocol: protocol_args.is_some(),
+            is_protocol,
         })
-    }
-
-    fn check_generic_or_protocol_length(
-        db: &Database,
-        type_vars: &mut TypeVarManager,
-        slice_type: SliceType,
-    ) {
-        // Reorder slices
-        if slice_type.iter().count() < type_vars.len() {
-            slice_type
-                .as_node_ref()
-                .add_typing_issue(db, IssueType::IncompleteGenericOrProtocolTypeVars)
-        }
     }
 
     pub fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {

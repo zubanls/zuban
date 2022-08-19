@@ -548,3 +548,13 @@ d1: Iterable[A] = f(c_co, b_contra)
 d2: Iterable[A] = f(b_contra, c_co)
 d1: Iterable[A] = f(c_contra, b_co) # E: Argument 2 to "f" has incompatible type "Co[B]"; expected "Co[C] | Contra[C] | Invariant[C]"
 d2: Iterable[A] = f(b_co, c_contra) # E: Argument 2 to "f" has incompatible type "Contra[C]"; expected "Co[A] | Contra[A] | Invariant[A]"
+
+[case class_generics_recursion]
+from typing import TypeVar
+T = TypeVar("T")
+
+class X(list[X[T] | T]): ...
+
+foo: X[int] = X([X([1])])
+reveal_type(foo) # N: Revealed type is "__main__.X[int]"
+reveal_type(foo[0]) # N: Revealed type is "__main__.X[int] | int"

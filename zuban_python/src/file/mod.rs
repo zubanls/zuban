@@ -1,3 +1,4 @@
+mod class_type_var_finder;
 mod diagnostics;
 mod name_binder;
 mod type_computation;
@@ -29,6 +30,7 @@ use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Class, Function, LookupResult, Module, ParamWithArgument, Value};
 use crate::workspaces::DirContent;
+pub use class_type_var_finder::ClassTypeVarFinder;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
 pub use type_computation::{BaseClass, TypeComputation};
