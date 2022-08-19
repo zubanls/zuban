@@ -1,12 +1,11 @@
 use parsa_python_ast::*;
 
-use super::type_computation::{SpecialType, TypeNameLookup};
-use crate::database::{Locality, Point, TypeVarIndex, TypeVarManager, TypeVars};
+use super::type_computation::{cache_name_on_class, SpecialType, TypeNameLookup};
+use crate::database::{Locality, Point, PointType, TypeVarIndex, TypeVarManager, TypeVars};
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
-use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'db> {
@@ -91,22 +90,12 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                     }
                     BaseLookup::Class(i) => {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
-                        let node_ref = NodeRef::new(self.inference.file, primary.index());
-                        let name_node_ref = NodeRef::new(self.inference.file, name.index());
-                        if !name_node_ref.point().calculated() {
-                            if let Some(index) = cls
-                                .class_storage
-                                .class_symbol_table
-                                .lookup_symbol(name.as_str())
-                            {
-                                name_node_ref.set_point(Point::new_redirect(
-                                    cls.node_ref.file.file_index(),
-                                    index,
-                                    Locality::Todo,
-                                ));
-                            }
+                        let point_type = cache_name_on_class(cls, self.inference.file, name);
+                        if point_type == PointType::Redirect {
+                            self.find_in_name(name)
+                        } else {
+                            BaseLookup::Other
                         }
-                        self.find_in_name(name)
                     }
                     _ => BaseLookup::Other,
                 }

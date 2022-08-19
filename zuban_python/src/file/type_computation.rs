@@ -573,22 +573,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     }
                     TypeContent::ClassWithoutTypeVar(i) => {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
-                        let node_ref = NodeRef::new(self.inference.file, primary.index());
-                        if let Some(index) = cls
-                            .class_storage
-                            .class_symbol_table
-                            .lookup_symbol(name.as_str())
-                        {
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_redirect(
-                                    cls.node_ref.file.file_index(),
-                                    index,
-                                    Locality::Todo,
-                                ),
-                            );
+                        let point_type = cache_name_on_class(cls, self.inference.file, name);
+                        if point_type == PointType::Redirect {
                             self.compute_type_name(name, None)
                         } else {
+                            debug_assert_eq!(point_type, PointType::Unknown);
+                            let node_ref = NodeRef::new(self.inference.file, primary.index());
                             node_ref
                                 .add_typing_issue(self.inference.i_s.db, IssueType::TypeNotFound);
                             TypeContent::Unknown
@@ -1614,4 +1604,24 @@ fn check_type_name<'db>(
             todo!()
         }
     }
+}
+
+pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointType {
+    let name_node_ref = NodeRef::new(file, name.index());
+    let point = name_node_ref.point();
+    if point.calculated() {
+        return point.type_();
+    }
+    name_node_ref.set_point(
+        if let Some(index) = cls
+            .class_storage
+            .class_symbol_table
+            .lookup_symbol(name.as_str())
+        {
+            Point::new_redirect(cls.node_ref.file.file_index(), index, Locality::Todo)
+        } else {
+            Point::new_unknown(cls.node_ref.file.file_index(), Locality::Todo)
+        },
+    );
+    cache_name_on_class(cls, file, name)
 }
