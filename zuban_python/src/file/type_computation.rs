@@ -305,7 +305,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
-                    StarExpressionContent::Expression(expr) => comp.compute_type(expr, None),
+                    StarExpressionContent::Expression(expr) => comp.compute_type(expr),
                     StarExpressionContent::Tuple(t) => todo!(),
                     StarExpressionContent::StarExpression(s) => todo!(),
                 };
@@ -349,7 +349,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     }
 
     pub fn compute_base_class(&mut self, expr: Expression<'x>) -> BaseClass<'db, 'x> {
-        let calculated = self.compute_type(expr, None);
+        let calculated = self.compute_type(expr);
         match calculated {
             TypeContent::SpecialType(SpecialType::GenericWithGenerics(s)) => BaseClass::Generic(s),
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol(None),
@@ -393,7 +393,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             expr.as_code()
         );
 
-        let type_ = self.compute_type(expr, None);
+        let type_ = self.compute_type(expr);
 
         let db_type = match type_ {
             TypeContent::ClassWithoutTypeVar(i) => {
@@ -478,28 +478,16 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn compute_slice_type(
-        &mut self,
-        slice: SliceOrSimple<'x, 'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_slice_type(&mut self, slice: SliceOrSimple<'x, 'x>) -> TypeContent<'db, 'x> {
         match slice {
-            SliceOrSimple::Simple(s) => {
-                self.compute_type(s.named_expr.expression(), generic_or_protocol_index)
-            }
+            SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
             SliceOrSimple::Slice(n) => todo!(),
         }
     }
 
-    fn compute_type(
-        &mut self,
-        expr: Expression<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type(&mut self, expr: Expression<'x>) -> TypeContent<'db, 'x> {
         let type_content = match expr.unpack() {
-            ExpressionContent::ExpressionPart(n) => {
-                self.compute_type_expression_part(n, generic_or_protocol_index)
-            }
+            ExpressionContent::ExpressionPart(n) => self.compute_type_expression_part(n),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => todo!(),
         };
@@ -514,37 +502,27 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     }
 
     fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'db, '_>) -> DbType {
-        let t = self.compute_slice_type(slice, None);
+        let t = self.compute_slice_type(slice);
         self.as_db_type(t, slice.as_node_ref())
     }
 
-    fn compute_type_expression_part(
-        &mut self,
-        node: ExpressionPart<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_expression_part(&mut self, node: ExpressionPart<'x>) -> TypeContent<'db, 'x> {
         match node {
-            ExpressionPart::Atom(atom) => self.compute_type_atom(atom, generic_or_protocol_index),
-            ExpressionPart::Primary(primary) => {
-                self.compute_type_primary(primary, generic_or_protocol_index)
-            }
+            ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
+            ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
-                let other = self.compute_type_expression_part(b, None);
-                self.compute_type_expression_part(a, None)
+                let other = self.compute_type_expression_part(b);
+                self.compute_type_expression_part(a)
                     .union(self.inference.i_s, other)
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
-    fn compute_type_primary(
-        &mut self,
-        primary: Primary<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
-        let base = self.compute_type_primary_or_atom(primary.first(), generic_or_protocol_index);
+    fn compute_type_primary(&mut self, primary: Primary<'x>) -> TypeContent<'db, 'x> {
+        let base = self.compute_type_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
                 match base {
@@ -555,7 +533,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                                 name.index(),
                                 Point::new_redirect(f.file_index(), index, Locality::Todo),
                             );
-                            self.compute_type_name(name, None)
+                            self.compute_type_name(name)
                         } else {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
                             if !self.errors_already_calculated {
@@ -575,7 +553,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         let cls = i.maybe_class(self.inference.i_s).unwrap();
                         let point_type = cache_name_on_class(cls, self.inference.file, name);
                         if point_type == PointType::Redirect {
-                            self.compute_type_name(name, None)
+                            self.compute_type_name(name)
                         } else {
                             debug_assert_eq!(point_type, PointType::Unknown);
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
@@ -658,7 +636,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         if let Some(type_vars) = type_vars {
             for type_var in type_vars.iter() {
                 let db_type = if let Some(slice_content) = iterator.next() {
-                    let t = self.compute_slice_type(slice_content, None);
+                    let t = self.compute_slice_type(slice_content);
                     if let Some(bound) = &type_var.bound {
                         // Performance: This could be optimized to not create new objects all the time.
                         let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
@@ -783,7 +761,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
                 .collect()
         } else {
-            let t = self.compute_slice_type(first, None);
+            let t = self.compute_slice_type(first);
             // Handle Tuple[()]
             match t {
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
@@ -814,7 +792,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         let mut add_param = |params: &mut Option<Vec<CallableParam>>,
                              element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
-                let t = self.compute_type(n.expression(), None);
+                let t = self.compute_type(n.expression());
                 params.as_mut().unwrap().push(CallableParam {
                     param_type: ParamType::PositionalOnly,
                     db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
@@ -881,13 +859,13 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     ) -> TypeContent<'db, 'x> {
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-            self.compute_slice_type(s, None)
+            self.compute_slice_type(s)
         } else {
             let mut t = UnionType::new(
                 iterator
                     .enumerate()
                     .map(|(format_index, slice_or_simple)| {
-                        let t = self.compute_slice_type(slice_or_simple, None);
+                        let t = self.compute_slice_type(slice_or_simple);
                         UnionEntry {
                             type_: self.as_db_type(t, slice_or_simple.as_node_ref()),
                             format_index,
@@ -962,7 +940,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
-            match self.compute_slice_type(s, Some(i.into())) {
+            match self.compute_slice_type(s) {
                 TypeContent::DbType(DbType::TypeVar(_)) => (),
                 _ => s
                     .as_node_ref()
@@ -971,28 +949,18 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn compute_type_primary_or_atom(
-        &mut self,
-        p: PrimaryOrAtom<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_primary_or_atom(&mut self, p: PrimaryOrAtom<'x>) -> TypeContent<'db, 'x> {
         match p {
-            PrimaryOrAtom::Primary(primary) => {
-                self.compute_type_primary(primary, generic_or_protocol_index)
-            }
-            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom, generic_or_protocol_index),
+            PrimaryOrAtom::Primary(primary) => self.compute_type_primary(primary),
+            PrimaryOrAtom::Atom(atom) => self.compute_type_atom(atom),
         }
     }
 
-    fn compute_type_atom(
-        &mut self,
-        atom: Atom<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_atom(&mut self, atom: Atom<'x>) -> TypeContent<'db, 'x> {
         match atom.unpack() {
             AtomContent::Name(n) => {
                 self.inference.infer_name_reference(n);
-                self.compute_type_name(n, generic_or_protocol_index)
+                self.compute_type_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 Some(PythonString::Ref(start, s)) => {
@@ -1014,11 +982,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn compute_type_name(
-        &mut self,
-        name: Name<'x>,
-        generic_or_protocol_index: Option<TypeVarIndex>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
@@ -1031,7 +995,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             callback(
                                 self.inference.i_s,
                                 type_var.clone(),
-                                generic_or_protocol_index,
+                                None,
                                 NodeRef::new(self.inference.file, name.index()),
                                 self.current_callable,
                             )
@@ -1305,7 +1269,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                 let mut comp =
                     TypeComputation::new(self, in_definition, Some(&mut type_var_callback));
                 comp.errors_already_calculated = p.calculated();
-                let t = comp.compute_type(expr, None);
+                let t = comp.compute_type(expr);
                 let complex = match t {
                     TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
                     TypeContent::InvalidVariable(t) => {
@@ -1440,7 +1404,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                     let mut x = type_computation_for_variable_annotation;
                     let mut comp =
                         TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut x));
-                    let t = comp.compute_type(expr, None);
+                    let t = comp.compute_type(expr);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
                         db_type = recalculate_type_vars(&db_type);
@@ -1462,7 +1426,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));
         comp.origin = TypeComputationOrigin::CastTarget;
 
-        let t = comp.compute_type(named_expr.expression(), None);
+        let t = comp.compute_type(named_expr.expression());
         let mut db_type = comp.as_db_type(t, node_ref);
         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
             db_type = recalculate_type_vars(&db_type);
@@ -1475,7 +1439,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         let mut on_type_var = |_: &mut InferenceState, type_var, _, _, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
-        let t = comp.compute_type(expr, None);
+        let t = comp.compute_type(expr);
         if matches!(t, TypeContent::InvalidVariable(_)) {
             // TODO this is a bit weird and should probably generate other errors
             node_ref.add_typing_issue(comp.inference.i_s.db, IssueType::TypeVarTypeExpected);

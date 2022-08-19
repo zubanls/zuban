@@ -7,8 +7,7 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarManager, TypeVarUsage,
-    TypeVars,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarUsage, TypeVars,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation};
