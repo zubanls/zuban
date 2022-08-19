@@ -1,6 +1,19 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
+# Alias Type Var Binding
+testGenericTypeAliasesRuntimeExpressionsInstance
+testGenericTypeAliasesTypeVarBinding
+testGenericTypeAliasesBasic2
+
+# Type var: Cannot infer type argument
+testGenericTypeAliasesPEPBasedExample
+testGenericTypeAliasesImporting
+
+# Type[T] TypeVars -> Indirect class access or class init
+testTypeVarWithAnyTypeBound
+testCallTypeTWithGenericBound
+
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 
@@ -285,17 +298,6 @@ testTypeVarValuesMethod2
 testTypeVarBoundToOldUnionAttributeAccess
 testTypeVarBoundToNewUnionAttributeAccess
 
-# Nested type vars
-testInnerFunctionWithTypevarValues
-testInnerFunctionMutualRecursionWithTypevarValues
-
-# Type variable "C.T" cannot be used as an expression
-testClassMemberTypeVarInFunctionBody
-
-# Type[T] TypeVars -> Indirect class access or class init
-testTypeVarWithAnyTypeBound
-testCallTypeTWithGenericBound
-
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
 testCallableListJoinInference
@@ -308,10 +310,6 @@ testListMultiplyInContext
 # bottom up dict
 testDictionaryLiteralInContext
 
-# Chained assignments are not legal like a = b = [] if a and b are list[int]
-# and list[str].
-testChainedAssignmentInferenceContexts
-
 # Union nothing should disappear
 testUnionWithGenericTypeItemContext
 testUnionWithGenericTypeItemContextInMethod
@@ -319,17 +317,15 @@ testUnionWithGenericTypeItemContextInMethod
 # nothing is displayed (probably also used as Any)
 tuple_methods_empty
 
-# Alias Type Var Binding
-testGenericTypeAliasesRuntimeExpressionsInstance
-testGenericTypeAliasesTypeVarBinding
-testGenericTypeAliasesBasic2
+# Type variable "C.T" cannot be used as an expression
+testClassMemberTypeVarInFunctionBody
 
-# Type var: Cannot infer type argument
-testGenericTypeAliasesPEPBasedExample
-testGenericTypeAliasesImporting
-
-# Cannot declare the type of a TypeVar or similar construct (semanal)
+# "Cannot declare the type of a TypeVar or similar construct" (semanal)
 testTypevarWithType
+
+# Chained assignments are not legal like a = b = [] if a and b are list[int]
+# and list[str].
+testChainedAssignmentInferenceContexts
 
 # Literal
 testNewAnalyzerBool
@@ -343,6 +339,10 @@ testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSimplifyingUnionAndTypePromotions
 testFlattenTypeAliasWhenAliasedAsUnion
 testOverloadingAndIntFloatSubtyping
+
+# Nested type vars
+testInnerFunctionWithTypevarValues
+testInnerFunctionMutualRecursionWithTypevarValues
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
