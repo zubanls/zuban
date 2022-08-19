@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::PrimaryContent;
 
-use super::{Instance, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
@@ -220,7 +220,19 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        todo!()
+        match self.db_type {
+            DbType::TypeVar(t) => {
+                if let Some(bound) = &t.type_var.bound {
+                    TypingType::new(self.db, bound).lookup_internal(i_s, name)
+                } else {
+                    todo!("{t:?}")
+                }
+            }
+            DbType::Class(link, generics_list) => {
+                Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
+            }
+            _ => todo!("{:?}", self.db_type),
+        }
     }
 
     fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
@@ -241,7 +253,21 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
                     self.db_type.clone(),
                 )))
             }
-            _ => todo!(),
+            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
+                .execute(i_s, args, result_context, on_type_error),
+            DbType::TypeVar(t) => {
+                if let Some(bound) = &t.type_var.bound {
+                    TypingType::new(self.db, bound).execute(
+                        i_s,
+                        args,
+                        result_context,
+                        on_type_error,
+                    )
+                } else {
+                    todo!("{t:?}")
+                }
+            }
+            _ => todo!("{:?}", self.db_type),
         }
     }
 }

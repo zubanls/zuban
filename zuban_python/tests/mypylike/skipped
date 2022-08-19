@@ -5,10 +5,6 @@ testInferTypeVariableFromTwoGenericTypes4
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 
-# Type[T] TypeVars -> Indirect class access or class init
-testTypeVarWithAnyTypeBound
-testCallTypeTWithGenericBound
-
 # union type var values
 testUnionInferenceWithTypeVarValues
 # Union type var matching weird cases

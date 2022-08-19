@@ -45,6 +45,15 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
+    pub fn from_db_type(
+        db: &'db Database,
+        link: PointLink,
+        list: &'a Option<GenericsList>,
+    ) -> Self {
+        let generics = Generics::new_maybe_list(list);
+        Self::from_position(NodeRef::from_link(db, link), generics, None).unwrap()
+    }
+
     #[inline]
     pub fn from_position(
         node_ref: NodeRef<'db>,
