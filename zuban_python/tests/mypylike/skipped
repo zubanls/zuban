@@ -1,6 +1,7 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
+testInvalidTypeWithinNestedGenericClass
 # alias type var must be given?
 testImportedTypeAliasInRuntimeContext
 

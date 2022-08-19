@@ -265,7 +265,7 @@ pub struct TypeComputation<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
-    pub type_var_manager: TypeVarManager,
+    type_var_manager: TypeVarManager,
     type_var_callback: Option<TypeVarCallback<'db, 'c>>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter

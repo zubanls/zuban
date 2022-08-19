@@ -201,10 +201,8 @@ impl<'db, 'a> Class<'db, 'a> {
         let type_vars = self.type_vars(i_s);
 
         let mut mro = vec![];
-        let mut type_var_manager = TypeVarManager::default();
         let mut incomplete_mro = false;
         let mut is_protocol = false;
-        let mut type_vars_were_changed = false;
         if let Some(arguments) = self.node().arguments() {
             let mut i_s = i_s.with_annotation_instance();
             // Calculate the type var remapping
@@ -217,31 +215,22 @@ impl<'db, 'a> Class<'db, 'a> {
                             &mut inference,
                             self.node_ref.as_link(),
                             Some(&mut |i_s, type_var, is_generic_or_protocol, _, _| {
-                                let parent_type_var = self.maybe_type_var_in_parent(i_s, &type_var);
-                                let index = if let Some(force_index) = is_generic_or_protocol {
-                                    if parent_type_var.is_some() {
-                                        return Some(DbType::Any);
-                                    }
-                                    let old_index = type_var_manager.add(type_var.clone(), None);
-                                    if old_index < force_index {
-                                        NodeRef::new(self.node_ref.file, n.index())
-                                            .add_typing_issue(db, IssueType::DuplicateTypeVar)
-                                    } else if old_index != force_index {
-                                        type_var_manager.move_index(old_index, force_index);
-                                        type_vars_were_changed = true;
-                                    }
-                                    force_index
+                                if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
+                                    return Some(DbType::TypeVar(usage));
+                                }
+                                if let Some(type_vars) = type_vars {
+                                    let index = type_vars
+                                        .iter()
+                                        .position(|t| *t == type_var)
+                                        .unwrap_or_else(|| todo!("Maybe class in func?"));
+                                    Some(DbType::TypeVar(TypeVarUsage {
+                                        type_var,
+                                        index: index.into(),
+                                        in_definition: self.node_ref.as_link(),
+                                    }))
                                 } else {
-                                    if let Some(usage) = parent_type_var {
-                                        return Some(DbType::TypeVar(usage));
-                                    }
-                                    type_var_manager.add(type_var.clone(), None)
-                                };
-                                Some(DbType::TypeVar(TypeVarUsage {
-                                    type_var,
-                                    index,
-                                    in_definition: self.node_ref.as_link(),
-                                }))
+                                    todo!("Maybe class in func");
+                                }
                             }),
                         )
                         .compute_base_class(n.expression());
@@ -296,13 +285,6 @@ impl<'db, 'a> Class<'db, 'a> {
                     Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
                 }
-            }
-        }
-        if type_vars_were_changed {
-            for db_type in mro.iter_mut() {
-                *db_type = db_type.replace_type_vars(&mut |t| {
-                    DbType::TypeVar(type_var_manager.lookup_for_remap(t))
-                });
             }
         }
         Box::new(ClassInfos {

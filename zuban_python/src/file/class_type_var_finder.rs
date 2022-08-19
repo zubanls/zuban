@@ -23,6 +23,7 @@ pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'db, 'a>>,
+    current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
 }
 
@@ -32,6 +33,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             inference,
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
+            current_generic_or_protocol_index: None,
             had_generic_or_protocol_issue: false,
         }
     }
@@ -126,11 +128,13 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
                             primary.index(),
                             slice_type,
                         ));
-                        for slice_or_simple in s.iter() {
+                        for (i, slice_or_simple) in s.iter().enumerate() {
+                            self.current_generic_or_protocol_index = Some(i.into());
                             if let SliceOrSimple::Simple(s) = slice_or_simple {
                                 self.find_in_expr(s.named_expr.expression())
                             }
                         }
+                        self.current_generic_or_protocol_index = None;
                     }
                     BaseLookup::Callable => self.find_in_callable(s),
                     _ => {
@@ -170,7 +174,15 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class(i) => BaseLookup::Class(i),
             TypeNameLookup::TypeVar(type_var) => {
-                self.type_var_manager.add(type_var, None);
+                let old_index = self.type_var_manager.add(type_var, None);
+                if let Some(force_index) = self.current_generic_or_protocol_index {
+                    if old_index < force_index {
+                        NodeRef::new(self.inference.file, name.index())
+                            .add_typing_issue(self.inference.i_s.db, IssueType::DuplicateTypeVar)
+                    } else if old_index != force_index {
+                        self.type_var_manager.move_index(old_index, force_index);
+                    }
+                }
                 BaseLookup::Other
             }
             TypeNameLookup::SpecialType(SpecialType::Generic) => BaseLookup::Generic,
