@@ -272,8 +272,8 @@ impl<'db, 'a> Class<'db, 'a> {
                                     }
                                 }
                             }
-                            BaseClass::Protocol(s) => is_protocol = true,
-                            BaseClass::Generic(s) => {}
+                            BaseClass::Protocol => is_protocol = true,
+                            BaseClass::Generic => {}
                             BaseClass::Invalid => {
                                 incomplete_mro = true;
                             }

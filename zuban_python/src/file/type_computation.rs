@@ -27,14 +27,14 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
-pub(super) enum SpecialType<'db, 'a> {
+pub(super) enum SpecialType {
     Union,
     Optional,
     Any,
     Protocol,
-    ProtocolWithGenerics(SliceType<'db, 'a>),
+    ProtocolWithGenerics,
     Generic,
-    GenericWithGenerics(SliceType<'db, 'a>),
+    GenericWithGenerics,
     Callable,
     Type,
     Tuple,
@@ -153,7 +153,7 @@ enum TypeContent<'db, 'a> {
     ClassWithoutTypeVar(Inferred<'db>),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
-    SpecialType(SpecialType<'db, 'a>),
+    SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'db, 'a>),
     Unknown,
 }
@@ -163,16 +163,16 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Class(Inferred<'db>),
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
-    SpecialType(SpecialType<'db, 'a>),
+    SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'db, 'a>),
     Unknown,
 }
 
 #[derive(Debug)]
-pub enum BaseClass<'db, 'a> {
+pub enum BaseClass {
     DbType(DbType),
-    Protocol(Option<SliceType<'db, 'a>>),
-    Generic(SliceType<'db, 'a>),
+    Protocol,
+    Generic,
     Invalid,
 }
 
@@ -345,14 +345,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    pub fn compute_base_class(&mut self, expr: Expression<'x>) -> BaseClass<'db, 'x> {
+    pub fn compute_base_class(&mut self, expr: Expression) -> BaseClass {
         let calculated = self.compute_type(expr);
         match calculated {
-            TypeContent::SpecialType(SpecialType::GenericWithGenerics(s)) => BaseClass::Generic(s),
-            TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol(None),
-            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s)) => {
-                BaseClass::Protocol(Some(s))
-            }
+            TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
+            TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
+            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::Type) => {
                 BaseClass::DbType(DbType::Type(Box::new(DbType::Any)))
             }
@@ -594,14 +592,14 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
                             self.expect_type_var_args(s, "Protocol");
-                            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics(s))
+                            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
                         }
-                        SpecialType::ProtocolWithGenerics(_) => todo!(),
+                        SpecialType::ProtocolWithGenerics => todo!(),
                         SpecialType::Generic => {
                             self.expect_type_var_args(s, "Generic");
-                            TypeContent::SpecialType(SpecialType::GenericWithGenerics(s))
+                            TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
-                        SpecialType::GenericWithGenerics(_) => todo!(),
+                        SpecialType::GenericWithGenerics => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                     },
                     TypeContent::InvalidVariable(t) => todo!(),
@@ -1448,7 +1446,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
 }
 
 #[inline]
-fn check_special_type(point: Point) -> Option<SpecialType<'static, 'static>> {
+fn check_special_type(point: Point) -> Option<SpecialType> {
     if point.type_() == PointType::Specific {
         Some(match point.specific() {
             Specific::TypingUnion => SpecialType::Union,
