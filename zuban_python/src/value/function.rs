@@ -796,10 +796,11 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         };
         let has_already_calculated_class_generics =
             search_init && !matches!(class.unwrap().generics(), Generics::None);
-        let handle_result = |i_s, calculated_type_vars, function| {
+        let handle_result = |i_s: &mut _, calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {
-                    class.generics.as_generics_list(i_s)
+                    let type_vars = class.type_vars(i_s);
+                    class.generics.as_generics_list(i_s, type_vars) // TODO why not use generics_as_list
                 } else {
                     unreachable!();
                 }

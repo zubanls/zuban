@@ -308,10 +308,6 @@ testListMultiplyInContext
 # bottom up dict
 testDictionaryLiteralInContext
 
-# Type var self and access
-testInheritanceFromGenericWithImplicitDynamic
-testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
-
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].
 testChainedAssignmentInferenceContexts
@@ -785,6 +781,9 @@ testSuperOutsideClass
 testSuperField
 testSuperBasics
 testRefreshGenericSubclass
+
+# class types defined in super class
+testInheritanceFromGenericWithImplicitDynamic
 
 # Liskov
 *Liskov*

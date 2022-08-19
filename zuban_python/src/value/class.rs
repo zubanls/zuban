@@ -396,8 +396,13 @@ impl<'db, 'a> Class<'db, 'a> {
         result.into()
     }
 
+    pub fn generics_as_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
+        let type_vars = self.type_vars(i_s);
+        self.generics().as_generics_list(i_s, type_vars)
+    }
+
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        let lst = self.generics().as_generics_list(i_s);
+        let lst = self.generics_as_list(i_s);
         let link = self.node_ref.as_link();
         DbType::Class(link, lst)
     }

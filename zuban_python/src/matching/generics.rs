@@ -111,15 +111,19 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn as_generics_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
-        match self {
+    pub fn as_generics_list(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_vars: Option<&TypeVars>,
+    ) -> Option<GenericsList> {
+        type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
-                Some(GenericsList::new_generics(Box::new([file
+                GenericsList::new_generics(Box::new([file
                     .inference(i_s)
                     .use_cached_simple_generic_type(*expr)
-                    .into_db_type(i_s)])))
+                    .into_db_type(i_s)]))
             }
-            Self::SimpleGenericSlices(file, slices) => Some(GenericsList::new_generics(
+            Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
                 slices
                     .iter()
                     .map(|slice| {
@@ -132,15 +136,19 @@ impl<'db, 'a> Generics<'db, 'a> {
                         }
                     })
                     .collect(),
-            )),
+            ),
             Self::DbType(g) => todo!(),
-            Self::List(l, type_var_generics) => Some(GenericsList::new_generics(
+            Self::List(l, type_var_generics) => GenericsList::new_generics(
                 l.iter()
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
-            )),
-            Self::None => None,
-        }
+            ),
+            Self::None => GenericsList::new_generics(
+                std::iter::repeat(DbType::Any)
+                    .take(type_vars.len())
+                    .collect(),
+            ),
+        })
     }
 
     pub fn format(
