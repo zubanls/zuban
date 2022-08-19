@@ -9,9 +9,6 @@ testGenericTypeAliasesImporting
 testTypeVarWithAnyTypeBound
 testCallTypeTWithGenericBound
 
-# alias type var must be given?
-testImportedTypeAliasInRuntimeContext
-
 # union type var values
 testUnionInferenceWithTypeVarValues
 # Union type var matching weird cases
