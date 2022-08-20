@@ -341,7 +341,6 @@ testInfiniteLoop
 testGenericClassInsideOtherGenericClass
 
 # Class: generic access from outside
-testGenericClassAttrUnboundOn*
 testGenericTypeAliasesTypeVarBinding
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
@@ -759,6 +758,10 @@ testOverrideGenericMethodInNonGenericClassGeneralize
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedInitSupertype
+
+# "Access to generic instance variables via class is ambiguous"
+testGenericClassAttrUnboundOnClass
+testGenericClassAttrUnboundOnSubClass
 
 # super
 testSuperExpressionsWhenInheritingFromGenericType
