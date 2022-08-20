@@ -3,7 +3,7 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::ResultContext;
+use crate::matching::{ResultContext, Type};
 
 #[derive(Debug)]
 pub struct BoundMethod<'db, 'a> {
@@ -70,5 +70,9 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
                 None => todo!(), //self.function.execute(i_s, &args, on_type_error),
             },
         }
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'b> {
+        todo!("{self:?}")
     }
 }
