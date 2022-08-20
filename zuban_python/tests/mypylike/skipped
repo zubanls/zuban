@@ -341,7 +341,6 @@ testInfiniteLoop
 testGenericClassInsideOtherGenericClass
 
 # Class: generic access from outside
-testAliasRefOnClass
 testGenericClassAttrUnboundOn*
 testGenericTypeAliasesTypeVarBinding
 # Class alias with class type var prohibited
