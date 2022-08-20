@@ -221,16 +221,12 @@ impl<'db, 'a> Class<'db, 'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, type_var, _, _| {
+                            Some(&mut |i_s, type_var: Rc<TypeVar>, _, _| {
                                 if let Some(type_vars) = type_vars {
-                                    if let Some(index) =
-                                        type_vars.iter().position(|t| *t == type_var)
+                                    if let Some(usage) =
+                                        type_vars.find(type_var.clone(), self.node_ref.as_link())
                                     {
-                                        return Some(DbType::TypeVar(TypeVarUsage {
-                                            type_var,
-                                            index: index.into(),
-                                            in_definition: self.node_ref.as_link(),
-                                        }));
+                                        return Some(DbType::TypeVar(usage));
                                     }
                                 }
                                 if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
