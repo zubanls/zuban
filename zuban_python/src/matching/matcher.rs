@@ -194,7 +194,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
             if let Some(current_type) = &mut current.type_ {
                 let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-                return match m.bool() {
+                return match m.bool() || !type_var_usage.type_var.restrictions.is_empty() {
                     true => m,
                     false => match current.defined_by_result_context {
                         true => Match::new_false(),

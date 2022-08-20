@@ -5,8 +5,6 @@ testInferTypeVariableFromTwoGenericTypes4
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 
-# union type var values
-testUnionInferenceWithTypeVarValues
 # Union type var matching weird cases
 testUnionInference
 unite_type_vars_mypy_issue_5874
