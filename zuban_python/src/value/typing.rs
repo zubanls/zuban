@@ -14,7 +14,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{ClassLike, ResultContext};
+use crate::matching::{ClassLike, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
@@ -81,8 +81,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             .compute_type_application_on_typing_class(self.specific, *slice_type)
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        match self.specific {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(match self.specific {
             Specific::TypingGeneric
             | Specific::TypingProtocol
             | Specific::TypingUnion
@@ -91,7 +91,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingCallable => todo!(),
             Specific::TypingType => ClassLike::TypeWithDbType(&DbType::Any),
             _ => unreachable!("{:?}", self.specific),
-        }
+        })
     }
 
     fn execute(
@@ -235,8 +235,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeWithDbType(self.db_type)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::TypeWithDbType(self.db_type))
     }
 
     fn execute(
@@ -301,7 +301,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         todo!()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         todo!()
     }
 
@@ -442,7 +442,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.class(i_s).format(i_s, None, FormatStyle::Short),
+                            v.as_type(i_s).format(i_s, None, FormatStyle::Short),
                             db_type.format(i_s, None, FormatStyle::Short),
                             self.name(),
                             name,
@@ -461,8 +461,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::TypeVar(self.type_var_usage)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::TypeVar(self.type_var_usage))
     }
 }
 
@@ -649,7 +649,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Type(i_s.db.python_state.object_class())
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::Type(i_s.db.python_state.object_class()))
     }
 }

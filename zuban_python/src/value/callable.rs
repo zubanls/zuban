@@ -1,4 +1,4 @@
-use super::{ClassLike, LookupResult, OnTypeError, Value, ValueKind};
+use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{CallableContent, CallableParam, DbType, FormatStyle};
@@ -6,7 +6,7 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
-    calculate_callable_type_vars_and_return, ResultContext, Type, TypeVarMatcher,
+    calculate_callable_type_vars_and_return, ClassLike, ResultContext, Type, TypeVarMatcher,
 };
 
 #[derive(Debug, Copy, Clone)]
@@ -64,8 +64,8 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         LookupResult::None
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Callable(*self)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::Callable(*self))
     }
 
     fn execute(

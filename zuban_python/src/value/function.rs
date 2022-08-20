@@ -515,8 +515,8 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         Inferred::new_unknown()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::FunctionType(*self)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::FunctionType(*self))
     }
 
     fn as_function(&self) -> Option<&Function<'db, 'a>> {

@@ -208,8 +208,8 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Tuple(*self)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::Tuple(*self))
     }
 
     fn get_item(

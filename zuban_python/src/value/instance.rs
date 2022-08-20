@@ -6,7 +6,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, ResultContext};
+use crate::matching::{ClassLike, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -130,8 +130,8 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         Some(self)
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Class(self.class)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::Class(self.class))
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {

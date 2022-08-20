@@ -16,7 +16,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, ClassLike, Generics, Match, ResultContext,
+    calculate_class_init_type_vars_and_return, ClassLike, Generics, Match, ResultContext, Type,
     TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
@@ -518,8 +518,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         )
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
-        ClassLike::Type(*self)
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        Type::ClassLike(ClassLike::Type(*self))
     }
 }
 

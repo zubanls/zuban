@@ -1055,7 +1055,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: value.class(i_s).format(i_s, None, FormatStyle::Short),
+                        left: value.as_type(i_s).format(i_s, None, FormatStyle::Short),
                         note: None, // TODO check for unions and stuff
                     },
                 )

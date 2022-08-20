@@ -6,7 +6,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Generics};
+use crate::matching::{ClassLike, Generics, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -69,7 +69,7 @@ impl<'db> ListLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.class(i_s).format(i_s, None, FormatStyle::Short),
+                &self.as_type(i_s).format(i_s, None, FormatStyle::Short),
             );
         }
         reference
@@ -178,12 +178,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         }
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
-        ClassLike::Class(
+        Type::ClassLike(ClassLike::Class(
             Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
                 .unwrap(),
-        )
+        ))
     }
 }
 
@@ -253,7 +253,7 @@ impl<'db> DictLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.class(i_s).format(i_s, None, FormatStyle::Short),
+                &self.as_type(i_s).format(i_s, None, FormatStyle::Short),
             );
             self.db_type(i_s)
         }
@@ -327,10 +327,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         todo!()
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
-        ClassLike::Class(
+        Type::ClassLike(ClassLike::Class(
             Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),
-        )
+        ))
     }
 }

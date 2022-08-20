@@ -18,7 +18,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, ResultContext};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 pub use bound_method::BoundMethod;
 pub use callable::Callable;
@@ -263,7 +263,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             IssueType::NotCallable {
                 type_: format!(
                     "{:?}",
-                    self.class(i_s).format(i_s, None, FormatStyle::Short)
+                    self.as_type(i_s).format(i_s, None, FormatStyle::Short)
                 )
                 .into(),
             },
@@ -291,7 +291,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                     IssueType::NotIterable {
                         type_: format!(
                             "{:?}",
-                            self.class(i_s).format(i_s, None, FormatStyle::Short)
+                            self.as_type(i_s).format(i_s, None, FormatStyle::Short)
                         )
                         .into(),
                     },
@@ -337,7 +337,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         None
     }
 
-    fn class(&self, i_s: &mut InferenceState<'db, '_>) -> ClassLike<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         todo!("{self:?}")
     }
 }
