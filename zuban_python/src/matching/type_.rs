@@ -24,6 +24,10 @@ impl<'db, 'a> Type<'db, 'a> {
         Self::Type(Cow::Borrowed(t))
     }
 
+    pub fn owned(t: DbType) -> Self {
+        Self::Type(Cow::Owned(t))
+    }
+
     pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
         match db_type {
             DbType::None => Self::ClassLike(ClassLike::None),

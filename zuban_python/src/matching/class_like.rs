@@ -10,7 +10,6 @@ pub enum ClassLike<'db, 'a> {
     Tuple(Tuple<'a>),
     Callable(Callable<'a>),
     FunctionType(Function<'db, 'a>),
-    Type(Class<'db, 'a>),
     TypeVar(&'a TypeVarUsage),
     None,
 }
@@ -213,17 +212,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => Match::new_false(),
             },
-            Self::Type(c1) => match other {
-                Self::Type(c2) => ClassLike::Class(*c1)
-                    .matches(
-                        i_s,
-                        &Type::ClassLike(ClassLike::Class(*c2)),
-                        matcher,
-                        variance,
-                    )
-                    .similar_if_false(),
-                _ => Match::new_false(),
-            },
             Self::TypeVar(t1) => match matcher {
                 Some(matcher) => {
                     matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other), variance)
@@ -249,6 +237,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             },
             Self::Callable(c1) => {
                 match other {
+                    /*
                     Self::Type(cls) => {
                         // TODO the __init__ should actually be looked up on the original class, not
                         // the subclass
@@ -275,7 +264,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         }
                         Match::new_false()
                     }
-                    /*
                      * TODO!()
                     Self::TypeWithDbType(t2) => {
                         if c1.content.params.is_some() {
@@ -343,7 +331,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::Class(c) => c.format(i_s, matcher, style),
-            Self::Type(c) => format!("Type[{}]", c.format(i_s, matcher, style)).into(),
             Self::TypeVar(t) => {
                 if let Some(matcher) = matcher {
                     matcher.format(i_s, t, style)
@@ -374,7 +361,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     ) -> LookupResult<'db> {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
-            Self::Type(c) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }
     }
@@ -382,7 +368,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::Class(c) => c.as_db_type(i_s),
-            Self::Type(c) => DbType::Type(Box::new(c.as_db_type(i_s))),
             Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
             Self::Tuple(t) => t.as_db_type(),
             Self::Callable(c) => c.as_db_type(),
@@ -402,7 +387,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                     _ => false,
                 },
-                ClassLike::Type(c) => todo!("{c2:?}"),
                 ClassLike::TypeVar(t) => {
                     if let Some(db_t) = &t.type_var.bound {
                         Type::from_db_type(i_s.db, db_t).overlaps(i_s, &Type::ClassLike(*c2))

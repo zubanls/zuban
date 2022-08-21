@@ -519,7 +519,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::Type(*self))
+        Type::owned(self.as_db_type(i_s))
     }
 }
 
