@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
@@ -16,11 +17,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
 use crate::matching::{ClassLike, ResultContext, Type};
 use crate::node_ref::NodeRef;
-
-const ARBITRARY_TUPLE: ClassLike = ClassLike::TypeWithDbType(&DbType::Tuple(TupleContent {
-    generics: None,
-    arbitrary_length: true,
-}));
 
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
@@ -82,16 +78,16 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(match self.specific {
+        match self.specific {
             Specific::TypingGeneric
             | Specific::TypingProtocol
             | Specific::TypingUnion
             | Specific::TypingOptional => todo!(),
-            Specific::TypingTuple => ARBITRARY_TUPLE,
+            Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
             Specific::TypingCallable => todo!(),
-            Specific::TypingType => ClassLike::TypeWithDbType(&DbType::Any),
+            Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
             _ => unreachable!("{:?}", self.specific),
-        })
+        }
     }
 
     fn execute(
@@ -201,12 +197,17 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
 pub struct TypingType<'db, 'a> {
     db: &'db Database,
+    full_db_type: Cow<'a, DbType>,
     pub db_type: &'a DbType,
 }
 
 impl<'db, 'a> TypingType<'db, 'a> {
-    pub fn new(db: &'db Database, db_type: &'a DbType) -> Self {
-        Self { db, db_type }
+    pub fn new(db: &'db Database, full_db_type: Cow<'a, DbType>, db_type: &'a DbType) -> Self {
+        Self {
+            db,
+            full_db_type,
+            db_type,
+        }
     }
 }
 
@@ -223,7 +224,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup_internal(i_s, name)
+                    TypingType::new(
+                        self.db,
+                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        bound,
+                    )
+                    .lookup_internal(i_s, name)
                 } else {
                     todo!("{t:?}")
                 }
@@ -236,7 +242,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::TypeWithDbType(self.db_type))
+        Type::Type(Cow::Borrowed(self.db_type))
     }
 
     fn execute(
@@ -257,12 +263,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
                 .execute(i_s, args, result_context, on_type_error),
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).execute(
-                        i_s,
-                        args,
-                        result_context,
-                        on_type_error,
+                    TypingType::new(
+                        self.db,
+                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        bound,
                     )
+                    .execute(i_s, args, result_context, on_type_error)
                 } else {
                     todo!("{t:?}")
                 }
@@ -650,6 +656,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::Type(i_s.db.python_state.object_class()))
+        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }

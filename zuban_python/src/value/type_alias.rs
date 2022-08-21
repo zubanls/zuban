@@ -6,7 +6,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use parsa_python_ast::SliceType as ASTSliceType;
 
 #[derive(Debug)]
@@ -51,7 +51,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::TypeWithDbType(&self.alias.db_type))
+        Type::new(&self.alias.db_type)
     }
 
     fn execute(

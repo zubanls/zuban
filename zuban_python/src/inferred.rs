@@ -1,4 +1,5 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
+use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
@@ -1091,7 +1092,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::Never => todo!(),
-        _ => callable(i_s, &TypingType::new(i_s.db, type_)),
+        _ => callable(i_s, &TypingType::new(i_s.db, Cow::Borrowed(db_type), type_)),
     }
 }
 

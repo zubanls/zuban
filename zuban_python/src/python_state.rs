@@ -1,7 +1,9 @@
 use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
 use std::ptr::null;
 
-use crate::database::{Database, DbType, Locality, Point, PointLink, PointType, Specific};
+use crate::database::{
+    Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
+};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::matching::Generics;
@@ -18,6 +20,9 @@ pub struct PythonState {
     builtins_tuple_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     types_module_type_index: NodeIndex,
+    pub type_of_object: DbType,
+    pub type_of_any: DbType,
+    pub type_of_arbitrary_tuple: DbType,
 }
 
 impl PythonState {
@@ -32,6 +37,12 @@ impl PythonState {
             builtins_tuple_index: 0,
             builtins_base_exception_index: 0,
             types_module_type_index: 0,
+            type_of_object: DbType::Type(Box::new(DbType::Any)),
+            type_of_any: DbType::Type(Box::new(DbType::Any)),
+            type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(TupleContent {
+                generics: None,
+                arbitrary_length: true,
+            }))),
         }
     }
 
@@ -77,6 +88,12 @@ impl PythonState {
         // class of Sequence[_T_co], which uses _T_co again.
         // TODO do we really not need this anymore?
         //precalculate_type_var_instance(s.typing(), "_T_co");
+        //
+        let object_db_type = s.object_db_type();
+        match &mut s.type_of_object {
+            DbType::Type(t) => *t.as_mut() = object_db_type,
+            _ => unreachable!(),
+        }
 
         typing_changes(s.typing(), s.builtins(), s.collections());
     }

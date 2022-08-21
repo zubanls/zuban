@@ -14,11 +14,16 @@ use crate::value::{Callable, Class, Tuple};
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     Union(Cow<'a, UnionType>),
+    Type(Cow<'a, DbType>),
     Any,
     Never,
 }
 
 impl<'db, 'a> Type<'db, 'a> {
+    pub fn new(t: &'a DbType) -> Self {
+        Self::Type(Cow::Borrowed(t))
+    }
+
     pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
         match db_type {
             DbType::None => Self::ClassLike(ClassLike::None),
@@ -33,7 +38,7 @@ impl<'db, 'a> Type<'db, 'a> {
             }
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
-            DbType::Type(db_type) => Self::ClassLike(ClassLike::TypeWithDbType(db_type)),
+            DbType::Type(db_type) => Self::new(db_type),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(Tuple::new(content))),
             DbType::Callable(content) => {
                 Self::ClassLike(ClassLike::Callable(Callable::new(db_type, content)))
@@ -87,6 +92,19 @@ impl<'db, 'a> Type<'db, 'a> {
                 Self::Any => false,
                 Self::Never => todo!(),
             },
+            Self::Type(t1) => match t1.as_ref() {
+                DbType::Class(link, generics) => match other {
+                    Self::Type(t2) => todo!(),
+                    _ => todo!(),
+                },
+                DbType::Type(t1) => match other {
+                    Self::Type(ref t2) => match t2.as_ref() {
+                        DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
+                        _ => false,
+                    },
+                    _ => false,
+                },
+            },
             Self::Union(list1) => list1
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
@@ -99,12 +117,27 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        value_class: &Self,
+        value_type: &Self,
         variance: Variance,
     ) -> Match {
         match self {
-            Self::ClassLike(class) => class.matches(i_s, value_class, matcher, variance),
-            Self::Union(list1) => match value_class {
+            Self::ClassLike(class) => class.matches(i_s, value_type, matcher, variance),
+            Self::Type(t1) => match t1.as_ref() {
+                DbType::Class(link, generics) => match value_type {
+                    Self::Type(t2) => todo!(),
+                    _ => todo!(),
+                },
+                DbType::Type(t1) => match value_type {
+                    Self::Type(ref t2) => match t2.as_ref() {
+                        DbType::Type(t2) => {
+                            Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
+                        }
+                        _ => Match::new_false(),
+                    },
+                    _ => Match::new_false(),
+                },
+            },
+            Self::Union(list1) => match value_type {
                 // TODO this should use the variance argument
                 Self::Union(list2) => match variance {
                     Variance::Covariant => {
@@ -120,8 +153,8 @@ impl<'db, 'a> Type<'db, 'a> {
                         matches.into()
                     }
                     Variance::Invariant => {
-                        self.matches(i_s, matcher, value_class, Variance::Covariant)
-                            & self.matches(i_s, None, value_class, Variance::Contravariant)
+                        self.matches(i_s, matcher, value_type, Variance::Covariant)
+                            & self.matches(i_s, None, value_type, Variance::Contravariant)
                     }
                     Variance::Contravariant => list1
                         .iter()
@@ -145,13 +178,13 @@ impl<'db, 'a> Type<'db, 'a> {
                         .iter()
                         .any(|g| {
                             Type::from_db_type(i_s.db, g)
-                                .matches(i_s, matcher.as_deref_mut(), value_class, variance)
+                                .matches(i_s, matcher.as_deref_mut(), value_type, variance)
                                 .bool()
                         })
                         .into(),
                 },
             },
-            Self::Any => match value_class {
+            Self::Any => match value_type {
                 Self::Any => Match::TrueWithAny,
                 _ => Match::True,
             },
@@ -290,6 +323,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::ClassLike(c) => c.format(i_s, matcher, style),
+            Self::Type(t) => t.format(i_s, matcher, style),
             Self::Union(list) => list.format(i_s, matcher, style),
             Self::Any => Box::from("Any"),
             Self::Never => Box::from("<nothing>"),
