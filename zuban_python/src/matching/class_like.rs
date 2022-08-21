@@ -8,7 +8,6 @@ pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
     Tuple(Tuple<'a>),
     TypeVar(&'a TypeVarUsage),
-    None,
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -58,10 +57,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                 }
             }
-            Type::ClassLike(ClassLike::None) => match variance {
-                Variance::Contravariant => (matches!(self, Self::None)).into(),
-                _ => Match::True,
-            },
             Type::ClassLike(c) => {
                 let mut similarity = Match::new_false();
                 match variance {
@@ -200,7 +195,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => Match::False(MismatchReason::None),
             },
-            Self::None => matches!(other, Self::None).into(),
         }
     }
 
@@ -256,7 +250,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
             }
             Self::Tuple(c) => c.format(i_s, matcher, style),
-            Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
         }
     }
@@ -285,7 +278,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Class(c) => c.as_db_type(i_s),
             Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
             Self::Tuple(t) => t.as_db_type(),
-            Self::None => DbType::None,
         }
     }
 
@@ -313,7 +305,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     ClassLike::Tuple(t2) => t1.overlaps(i_s, t2),
                     _ => false,
                 },
-                ClassLike::None => matches!(other, Self::None),
             }
         };
 

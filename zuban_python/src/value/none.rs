@@ -1,9 +1,10 @@
 use super::{LookupResult, Value, ValueKind};
+use crate::database::DbType;
 use crate::debug;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Type};
+use crate::matching::Type;
 
 #[derive(Debug)]
 pub struct NoneInstance();
@@ -23,7 +24,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::None)
+        Type::new(&DbType::None)
     }
 
     fn is_none(&self) -> bool {

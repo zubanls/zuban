@@ -33,7 +33,6 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
         match db_type {
-            DbType::None => Self::ClassLike(ClassLike::None),
             DbType::Class(link, generics) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -116,6 +115,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
+                DbType::None => {
+                    matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
+                }
                 _ => todo!(),
             },
             Self::Union(list1) => list1
@@ -131,19 +133,25 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        match value_type {
-            Type::Type(t2) if matches!(t2.as_ref(), DbType::Any) => {
-                if let Some(matcher) = matcher {
-                    let t1 = match self {
-                        Self::ClassLike(c) => Cow::Owned(c.as_db_type(i_s)),
-                        Self::Type(t) => Cow::Borrowed(t.as_ref()),
-                        Self::Union(_) => todo!(),
-                    };
-                    matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
+        if let Type::Type(t2) = value_type {
+            match t2.as_ref() {
+                DbType::Any => {
+                    if let Some(matcher) = matcher {
+                        let t1 = match self {
+                            Self::ClassLike(c) => Cow::Owned(c.as_db_type(i_s)),
+                            Self::Type(t) => Cow::Borrowed(t.as_ref()),
+                            Self::Union(_) => todo!(),
+                        };
+                        matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
+                    }
+                    return Match::TrueWithAny;
                 }
-                return Match::TrueWithAny;
+                DbType::None => match variance {
+                    Variance::Contravariant => (), // TODO ? (matches!(self, Self::None)).into(),
+                    _ => return Match::True,
+                },
+                _ => (),
             }
-            _ => (),
         };
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_type, matcher, variance),
@@ -208,6 +216,10 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => Match::new_false(),
                 },
+                DbType::None => {
+                    matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
+                        .into()
+                }
                 DbType::Any => match value_type {
                     Self::Type(ref t2) if matches!(t2.as_ref(), DbType::Any) => Match::TrueWithAny,
                     _ => Match::True,
