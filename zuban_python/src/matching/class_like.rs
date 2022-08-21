@@ -106,7 +106,10 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 similarity
             }
             Type::Type(t2) => {
-                todo!()
+                match t2.as_ref() {
+                    DbType::Never => Match::True, // TODO is this correct?????
+                    _ => todo!(),
+                }
             }
             /*
                             Self::TypeVar(t) => match value_type {
@@ -160,9 +163,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     matcher.set_all_contained_type_vars_to_any(i_s, self)
                 }
                 Match::TrueWithAny
-            }
-            Type::Never => {
-                Match::True // TODO is this correct?????
             }
         }
     }

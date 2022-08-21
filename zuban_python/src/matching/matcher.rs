@@ -321,7 +321,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(bound) = current.type_.as_ref() {
                 bound.format(i_s, style)
             } else {
-                Type::Never.format(i_s, None, style)
+                DbType::Never.format(i_s, None, style)
             }
         } else {
             match self.func_or_callable {

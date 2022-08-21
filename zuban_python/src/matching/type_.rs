@@ -21,7 +21,6 @@ pub enum Type<'db, 'a> {
     Union(Cow<'a, UnionType>),
     Type(Cow<'a, DbType>),
     Any,
-    Never,
 }
 
 impl<'db, 'a> Type<'db, 'a> {
@@ -37,7 +36,6 @@ impl<'db, 'a> Type<'db, 'a> {
         match db_type {
             DbType::None => Self::ClassLike(ClassLike::None),
             DbType::Any => Type::Any,
-            DbType::Never => Self::Never,
             DbType::Class(link, generics) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -76,7 +74,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Union(cow) => DbType::Union(cow.into_owned()),
             Self::Type(t) => t.into_owned(),
             Self::Any => DbType::Any,
-            Self::Never => DbType::Never,
         }
     }
 
@@ -85,7 +82,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::Union(cow) => DbType::Union(cow.clone().into_owned()),
             Self::Any => DbType::Any,
-            Self::Never => DbType::Never,
             Self::Type(t) => t.clone().into_owned(),
         }
     }
@@ -98,7 +94,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
                 Self::Any => false,
-                Self::Never => todo!(),
                 Self::Type(_) => todo!(),
             },
             Self::Type(t1) => match t1.as_ref() {
@@ -124,13 +119,13 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
+                DbType::Never => todo!(),
                 _ => todo!(),
             },
             Self::Union(list1) => list1
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
             Self::Any => true,
-            Self::Never => todo!(),
         }
     }
 
@@ -204,6 +199,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => Match::new_false(),
                 },
+                DbType::Never => todo!(),
                 _ => todo!(),
             },
             Self::Union(list1) => match value_type {
@@ -257,7 +253,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 Self::Any => Match::TrueWithAny,
                 _ => Match::True,
             },
-            Self::Never => todo!(),
         }
     }
 
@@ -366,7 +361,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     .collect(),
             )),
             Self::Any => DbType::Any,
-            Self::Never => DbType::Never,
         }
     }
 
@@ -382,7 +376,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 .iter()
                 .any(|t| Type::from_db_type(db, t).any(db, callable)),
             Self::Any => true,
-            Self::Never => todo!(),
         }
     }
 
@@ -416,7 +409,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Type(t) => t.format(i_s, matcher, style),
             Self::Union(list) => list.format(i_s, matcher, style),
             Self::Any => Box::from("Any"),
-            Self::Never => Box::from("<nothing>"),
         }
     }
 }
