@@ -158,12 +158,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 Self::Class(c1) if variance == Variance::Covariant => c1.is_object_class(i_s.db),
                 _ => Match::new_false(),
             },
-            Type::Any => {
-                if let Some(matcher) = matcher {
-                    matcher.set_all_contained_type_vars_to_any(i_s, self)
-                }
-                Match::TrueWithAny
-            }
         }
     }
 

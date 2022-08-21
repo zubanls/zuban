@@ -20,7 +20,6 @@ pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
     Union(Cow<'a, UnionType>),
     Type(Cow<'a, DbType>),
-    Any,
 }
 
 impl<'db, 'a> Type<'db, 'a> {
@@ -35,7 +34,6 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
         match db_type {
             DbType::None => Self::ClassLike(ClassLike::None),
-            DbType::Any => Type::Any,
             DbType::Class(link, generics) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ClassLike(ClassLike::Class(
@@ -73,7 +71,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::Union(cow) => DbType::Union(cow.into_owned()),
             Self::Type(t) => t.into_owned(),
-            Self::Any => DbType::Any,
         }
     }
 
@@ -81,7 +78,6 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::Union(cow) => DbType::Union(cow.clone().into_owned()),
-            Self::Any => DbType::Any,
             Self::Type(t) => t.clone().into_owned(),
         }
     }
@@ -93,7 +89,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 Self::Union(list2) => list2
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
-                Self::Any => false,
                 Self::Type(_) => todo!(),
             },
             Self::Type(t1) => match t1.as_ref() {
@@ -119,13 +114,13 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
+                DbType::Any => true,
                 DbType::Never => todo!(),
                 _ => todo!(),
             },
             Self::Union(list1) => list1
                 .iter()
                 .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
-            Self::Any => true,
         }
     }
 
@@ -136,6 +131,20 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        match value_type {
+            Type::Type(t2) if matches!(t2.as_ref(), DbType::Any) => {
+                if let Some(matcher) = matcher {
+                    let t1 = match self {
+                        Self::ClassLike(c) => Cow::Owned(c.as_db_type(i_s)),
+                        Self::Type(t) => Cow::Borrowed(t.as_ref()),
+                        Self::Union(_) => todo!(),
+                    };
+                    matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
+                }
+                return Match::TrueWithAny;
+            }
+            _ => (),
+        };
         match self {
             Self::ClassLike(class) => class.matches(i_s, value_type, matcher, variance),
             Self::Type(t1) => match t1.as_ref() {
@@ -199,6 +208,10 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => Match::new_false(),
                 },
+                DbType::Any => match value_type {
+                    Self::Type(ref t2) if matches!(t2.as_ref(), DbType::Any) => Match::TrueWithAny,
+                    _ => Match::True,
+                },
                 DbType::Never => todo!(),
                 _ => todo!(),
             },
@@ -248,10 +261,6 @@ impl<'db, 'a> Type<'db, 'a> {
                         })
                         .into(),
                 },
-            },
-            Self::Any => match value_type {
-                Self::Any => Match::TrueWithAny,
-                _ => Match::True,
             },
         }
     }
@@ -360,7 +369,6 @@ impl<'db, 'a> Type<'db, 'a> {
                     })
                     .collect(),
             )),
-            Self::Any => DbType::Any,
         }
     }
 
@@ -371,11 +379,13 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         match self {
             Self::ClassLike(class_like) => callable(class_like),
-            Self::Type(t) => todo!(),
+            Self::Type(t) => match t.as_ref() {
+                DbType::Any => true,
+                _ => todo!(),
+            },
             Self::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::from_db_type(db, t).any(db, callable)),
-            Self::Any => true,
         }
     }
 
@@ -398,6 +408,10 @@ impl<'db, 'a> Type<'db, 'a> {
         unreachable!("object is always a common base class")
     }
 
+    pub fn is_any(&self) -> bool {
+        matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
+    }
+
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -408,7 +422,6 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c.format(i_s, matcher, style),
             Self::Type(t) => t.format(i_s, matcher, style),
             Self::Union(list) => list.format(i_s, matcher, style),
-            Self::Any => Box::from("Any"),
         }
     }
 }

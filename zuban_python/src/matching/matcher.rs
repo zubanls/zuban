@@ -296,9 +296,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn set_all_contained_type_vars_to_any(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        class: &ClassLike<'db, '_>,
+        type_: &DbType,
     ) {
-        class.as_db_type(i_s).search_type_vars(&mut |t| {
+        type_.search_type_vars(&mut |t| {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
                 if current.type_.is_none() {
@@ -583,7 +583,7 @@ fn calculate_type_vars<'db>(
                                 .iter()
                                 .run_on_all(i_s, &mut |i_s, g| {
                                     let calculated = calculating.next().unwrap();
-                                    if !matches!(&g, Type::Any) {
+                                    if !g.is_any() {
                                         let mut bound = TypeVarBound::new(
                                             g.as_db_type(i_s),
                                             type_vars[i].variance,

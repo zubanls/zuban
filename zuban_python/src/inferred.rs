@@ -135,7 +135,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.as_type(i_s),
             &|i_s, g1, g2| g1.union(i_s, g2),
-            &mut |i_s| Type::Any,
+            &mut |i_s| Type::new(&DbType::Any),
         )
     }
 

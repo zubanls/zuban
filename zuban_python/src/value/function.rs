@@ -352,7 +352,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .inference(i_s)
                     .use_cached_return_annotation_type(a)
             })
-            .unwrap_or(Type::Any)
+            .unwrap_or(Type::new(&DbType::Any))
     }
 
     pub fn format(
@@ -446,7 +446,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .map(|param| {
                         let t = param
                             .annotation_type(i_s)
-                            .unwrap_or(Type::Any)
+                            .unwrap_or(Type::new(&DbType::Any))
                             .format(i_s, matcher, style);
                         match param.param_type() {
                             ParamType::PositionalOnly => t.to_string(),
