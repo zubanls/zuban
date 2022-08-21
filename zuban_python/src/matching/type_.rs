@@ -6,13 +6,13 @@ use super::{
     TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, UnionEntry, UnionType, Variance,
+    CallableContent, Database, DbType, FormatStyle, TupleContent, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Tuple};
+use crate::value::Class;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -42,7 +42,6 @@ impl<'db, 'a> Type<'db, 'a> {
             }
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
-            DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(Tuple::new(content))),
             _ => Self::new(db_type),
         }
     }
@@ -118,6 +117,13 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
+                DbType::Tuple(t1) => match other {
+                    Self::Type(t2) => match t2.as_ref() {
+                        DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
+                        _ => false,
+                    },
+                    _ => false,
+                },
                 _ => todo!(),
             },
             Self::Union(list1) => list1
@@ -225,6 +231,16 @@ impl<'db, 'a> Type<'db, 'a> {
                     _ => Match::True,
                 },
                 DbType::Never => todo!(),
+                DbType::Tuple(t1) => match value_type {
+                    Self::Type(t2) => match t2.as_ref() {
+                        DbType::Tuple(t2) => {
+                            let m: Match = Self::matches_tuple(i_s, matcher, t1, t2, variance);
+                            m.similar_if_false()
+                        }
+                        _ => Match::new_false(),
+                    },
+                    _ => Match::False(MismatchReason::None),
+                },
                 _ => todo!(),
             },
             Self::Union(list1) => match value_type {
@@ -294,6 +310,103 @@ impl<'db, 'a> Type<'db, 'a> {
             c1.params.as_ref().map(|params| params.iter()),
             c2.params.as_ref().map(|params| params.iter()),
         )
+    }
+
+    fn matches_tuple(
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        t1: &TupleContent,
+        t2: &TupleContent,
+        variance: Variance,
+    ) -> Match {
+        if let Some(generics1) = &t1.generics {
+            if let Some(generics2) = &t2.generics {
+                return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
+                    (false, false, _) | (true, true, _) => {
+                        if generics1.len() != generics2.len() {
+                            Match::new_false()
+                        } else {
+                            Generics::new_list(generics1).matches(
+                                i_s,
+                                matcher,
+                                Generics::new_list(generics2),
+                                variance,
+                                None,
+                            )
+                        }
+                    }
+                    (false, true, Variance::Covariant)
+                    | (true, false, Variance::Contravariant)
+                    | (_, _, Variance::Invariant) => Match::new_false(),
+                    (true, false, Variance::Covariant) => {
+                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
+                        generics2
+                            .iter()
+                            .all(|g2| {
+                                let t2 = Type::from_db_type(i_s.db, g2);
+                                t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
+                                    .bool()
+                            })
+                            .into()
+                    }
+                    (false, true, Variance::Contravariant) => {
+                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
+                        generics1
+                            .iter()
+                            .all(|g1| {
+                                let t1 = Type::from_db_type(i_s.db, g1);
+                                t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
+                                    .bool()
+                            })
+                            .into()
+                    }
+                };
+            }
+        }
+        Match::True
+    }
+
+    fn overlaps_tuple(
+        i_s: &mut InferenceState<'db, '_>,
+        t1: &TupleContent,
+        t2: &TupleContent,
+    ) -> bool {
+        if let Some(generics1) = &t1.generics {
+            if let Some(generics2) = &t2.generics {
+                return match (t1.arbitrary_length, t2.arbitrary_length) {
+                    (false, false) | (true, true) => {
+                        generics1.len() == generics2.len()
+                            && Generics::new_list(generics1).overlaps(
+                                i_s,
+                                Generics::new_list(generics2),
+                                None,
+                            )
+                    }
+                    (false, true) => {
+                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
+                        for g in generics1.iter() {
+                            let t1 = Type::from_db_type(i_s.db, g);
+                            if !t1.overlaps(i_s, &t2) {
+                                dbg!();
+                                return false;
+                            }
+                        }
+                        true
+                    }
+                    (true, false) => {
+                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
+                        for g in generics2.iter() {
+                            let t2 = Type::from_db_type(i_s.db, g);
+                            if !t1.overlaps(i_s, &t2) {
+                                return false;
+                            }
+                        }
+                        true
+                    }
+                };
+            }
+        }
+        true
     }
 
     pub fn error_if_not_matches<'x>(

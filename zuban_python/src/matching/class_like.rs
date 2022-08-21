@@ -1,12 +1,11 @@
 use super::{Match, MismatchReason, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
-use crate::value::{Class, LookupResult, MroIterator, Tuple};
+use crate::value::{Class, LookupResult, MroIterator};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
-    Tuple(Tuple<'a>),
     TypeVar(&'a TypeVarUsage),
 }
 
@@ -188,13 +187,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     _ => Match::False(MismatchReason::None),
                 },
             },
-            Self::Tuple(t1) => match other {
-                Self::Tuple(t2) => {
-                    let m: Match = t1.matches(i_s, t2, matcher, variance).into();
-                    m.similar_if_false()
-                }
-                _ => Match::False(MismatchReason::None),
-            },
         }
     }
 
@@ -249,15 +241,12 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     Box::from(t.type_var.name(i_s.db))
                 }
             }
-            Self::Tuple(c) => c.format(i_s, matcher, style),
-            // TODO this does not respect formatstyle
         }
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
         match self {
             Self::Class(c) => c.mro(i_s),
-            Self::Tuple(t) => t.mro(i_s),
             _ => MroIterator::new(i_s.db, *self, None, [].iter()),
         }
     }
@@ -277,7 +266,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         match self {
             Self::Class(c) => c.as_db_type(i_s),
             Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
-            Self::Tuple(t) => t.as_db_type(),
         }
     }
 
@@ -301,10 +289,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                         true
                     }
                 }
-                ClassLike::Tuple(t1) => match c2 {
-                    ClassLike::Tuple(t2) => t1.overlaps(i_s, t2),
-                    _ => false,
-                },
             }
         };
 
