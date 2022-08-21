@@ -68,6 +68,7 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
             Self::Union(cow) => DbType::Union(cow.into_owned()),
+            Self::Type(t) => t.into_owned(),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
         }
@@ -79,6 +80,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::Union(cow) => DbType::Union(cow.clone().into_owned()),
             Self::Any => DbType::Any,
             Self::Never => DbType::Never,
+            Self::Type(t) => t.clone().into_owned(),
         }
     }
 
@@ -91,6 +93,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
                 Self::Any => false,
                 Self::Never => todo!(),
+                Self::Type(_) => todo!(),
             },
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => match other {
@@ -104,6 +107,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
+                _ => todo!(),
             },
             Self::Union(list1) => list1
                 .iter()
@@ -136,6 +140,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => Match::new_false(),
                 },
+                _ => todo!(),
             },
             Self::Union(list1) => match value_type {
                 // TODO this should use the variance argument
@@ -265,6 +270,7 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
+            Self::Type(t) => todo!(),
             Self::Union(list) => DbType::Union(UnionType::new(
                 list.entries
                     .iter()
@@ -288,6 +294,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         match self {
             Self::ClassLike(class_like) => callable(class_like),
+            Self::Type(t) => todo!(),
             Self::Union(union_type) => union_type
                 .iter()
                 .any(|t| Type::from_db_type(db, t).any(db, callable)),

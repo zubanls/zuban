@@ -130,6 +130,9 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 similarity
             }
+            Type::Type(t2) => {
+                todo!()
+            }
             /*
                             Self::TypeVar(t) => match value_type {
                                 Type::ClassLike(class) => {
