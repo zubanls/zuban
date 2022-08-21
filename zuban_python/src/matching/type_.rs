@@ -6,7 +6,8 @@ use super::{
     TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, TupleContent, UnionEntry, UnionType, Variance,
+    CallableContent, Database, DbType, FormatStyle, TupleContent, TypeVarUsage, UnionEntry,
+    UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -41,7 +42,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 ))
             }
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
-            DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
             _ => Self::new(db_type),
         }
     }
@@ -80,7 +80,28 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    fn maybe_db_type(&self) -> Option<&DbType> {
+        match self {
+            Self::ClassLike(_) => None,
+            Self::Type(t) => Some(t.as_ref()),
+            Self::Union(_) => todo!(),
+        }
+    }
+
     pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
+        match other.maybe_db_type() {
+            Some(DbType::TypeVar(t2)) => {
+                return if let Some(bound) = &t2.type_var.bound {
+                    self.overlaps(i_s, &Type::new(bound))
+                } else if !t2.type_var.restrictions.is_empty() {
+                    todo!("{self:?}")
+                } else {
+                    true
+                };
+            }
+            _ => (),
+        }
+
         match self {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
@@ -116,6 +137,15 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Never => todo!(),
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
+                }
+                DbType::TypeVar(t1) => {
+                    if let Some(db_t) = &t1.type_var.bound {
+                        Type::new(db_t).overlaps(i_s, other)
+                    } else if !t1.type_var.restrictions.is_empty() {
+                        todo!("{other:?}")
+                    } else {
+                        true
+                    }
                 }
                 DbType::Tuple(t1) => match other {
                     Self::Type(t2) => match t2.as_ref() {
@@ -156,6 +186,35 @@ impl<'db, 'a> Type<'db, 'a> {
                     Variance::Contravariant => (), // TODO ? (matches!(self, Self::None)).into(),
                     _ => return Match::True,
                 },
+                DbType::TypeVar(t2) => {
+                    return match self.maybe_db_type() {
+                        Some(DbType::TypeVar(t1)) => {
+                            if let Some(matcher) = matcher {
+                                matcher.match_or_add_type_var(i_s, t1, value_type, variance)
+                            } else {
+                                self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
+                            }
+                        }
+                        _ => {
+                            if self.matches_type_var(i_s, t2) {
+                                // TODO does this check make sense?
+                                Match::True
+                            } else if let Some(bound) = &t2.type_var.bound {
+                                self.matches(i_s, None, &Type::new(bound), variance)
+                            } else if !t2.type_var.restrictions.is_empty() {
+                                t2.type_var
+                                    .restrictions
+                                    .iter()
+                                    .any(|r| {
+                                        self.matches(i_s, None, &Type::new(r), variance).bool()
+                                    })
+                                    .into()
+                            } else {
+                                todo!() // self.is_object_class(i_s.db)
+                            }
+                        }
+                    };
+                }
                 _ => (),
             }
         };
@@ -174,6 +233,18 @@ impl<'db, 'a> Type<'db, 'a> {
                         _ => Match::new_false(),
                     },
                     _ => Match::new_false(),
+                },
+                DbType::TypeVar(t1) => match matcher {
+                    Some(matcher) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
+                    None => match value_type {
+                        Self::Type(t2) => match t2.as_ref() {
+                            DbType::TypeVar(t2) => (t1.index == t2.index
+                                && t1.in_definition == t2.in_definition)
+                                .into(),
+                            _ => Match::new_false(),
+                        },
+                        _ => Match::new_false(),
+                    },
                 },
                 DbType::Callable(c1) => match value_type {
                     Self::Type(ref t2) => match t2.as_ref() {
@@ -407,6 +478,25 @@ impl<'db, 'a> Type<'db, 'a> {
             }
         }
         true
+    }
+
+    fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
+        if let Some(DbType::TypeVar(t1)) = self.maybe_db_type() {
+            if t1.index == t2.index && t1.in_definition == t2.in_definition {
+                return true;
+            }
+        }
+        if let Some(bound) = &t2.type_var.bound {
+            self.matches(i_s, None, &Type::new(bound), Variance::Covariant)
+                .bool()
+        } else if !t2.type_var.restrictions.is_empty() {
+            t2.type_var.restrictions.iter().any(|r| {
+                self.matches(i_s, None, &Type::new(r), Variance::Covariant)
+                    .bool()
+            })
+        } else {
+            false
+        }
     }
 
     pub fn error_if_not_matches<'x>(

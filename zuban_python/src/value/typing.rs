@@ -15,7 +15,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{ClassLike, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -468,7 +468,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::TypeVar(self.type_var_usage))
+        Type::new(self.db_type)
     }
 }
 

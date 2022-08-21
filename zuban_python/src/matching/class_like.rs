@@ -6,7 +6,6 @@ use crate::value::{Class, LookupResult, MroIterator};
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
-    TypeVar(&'a TypeVarUsage),
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -21,41 +20,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
         // the elements from the set first, then handle them, even if we put
         // them back in a set afterwards.
         match value_type {
-            Type::ClassLike(ClassLike::TypeVar(t2)) => {
-                match self {
-                    Self::TypeVar(t1) => {
-                        if let Some(matcher) = matcher {
-                            matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                        } else {
-                            self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
-                        }
-                    }
-                    _ => {
-                        if self.matches_type_var(i_s, t2) {
-                            // TODO does this check make sense?
-                            Match::True
-                        } else if let Some(bound) = &t2.type_var.bound {
-                            self.matches(i_s, &Type::from_db_type(i_s.db, bound), None, variance)
-                        } else if !t2.type_var.restrictions.is_empty() {
-                            t2.type_var
-                                .restrictions
-                                .iter()
-                                .any(|r| {
-                                    self.matches(
-                                        i_s,
-                                        &Type::from_db_type(i_s.db, r),
-                                        None,
-                                        variance,
-                                    )
-                                    .bool()
-                                })
-                                .into()
-                        } else {
-                            self.is_object_class(i_s.db)
-                        }
-                    }
-                }
-            }
             Type::ClassLike(c) => {
                 let mut similarity = Match::new_false();
                 match variance {
@@ -176,46 +140,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => Match::new_false(),
             },
-            Self::TypeVar(t1) => match matcher {
-                Some(matcher) => {
-                    matcher.match_or_add_type_var(i_s, t1, &Type::ClassLike(*other), variance)
-                }
-                None => match other {
-                    Self::TypeVar(t2) => {
-                        (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-                    }
-                    _ => Match::False(MismatchReason::None),
-                },
-            },
-        }
-    }
-
-    fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
-        if let Self::TypeVar(t1) = self {
-            if t1.index == t2.index && t1.in_definition == t2.in_definition {
-                return true;
-            }
-        }
-        if let Some(bound) = &t2.type_var.bound {
-            self.matches(
-                i_s,
-                &Type::from_db_type(i_s.db, bound),
-                None,
-                Variance::Covariant,
-            )
-            .bool()
-        } else if !t2.type_var.restrictions.is_empty() {
-            t2.type_var.restrictions.iter().any(|r| {
-                self.matches(
-                    i_s,
-                    &Type::from_db_type(i_s.db, r),
-                    None,
-                    Variance::Covariant,
-                )
-                .bool()
-            })
-        } else {
-            false
         }
     }
 
@@ -234,13 +158,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::Class(c) => c.format(i_s, matcher, style),
-            Self::TypeVar(t) => {
-                if let Some(matcher) = matcher {
-                    matcher.format(i_s, t, style)
-                } else {
-                    Box::from(t.type_var.name(i_s.db))
-                }
-            }
         }
     }
 
@@ -265,7 +182,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::Class(c) => c.as_db_type(i_s),
-            Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
         }
     }
 
@@ -280,27 +196,8 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     }
                     _ => false,
                 },
-                ClassLike::TypeVar(t) => {
-                    if let Some(db_t) = &t.type_var.bound {
-                        Type::from_db_type(i_s.db, db_t).overlaps(i_s, &Type::ClassLike(*c2))
-                    } else if !t.type_var.restrictions.is_empty() {
-                        todo!("{c2:?}")
-                    } else {
-                        true
-                    }
-                }
             }
         };
-
-        if let ClassLike::TypeVar(t) = other {
-            return if let Some(bound) = &t.type_var.bound {
-                Type::ClassLike(*self).overlaps(i_s, &Type::from_db_type(i_s.db, bound))
-            } else if !t.type_var.restrictions.is_empty() {
-                todo!("{self:?}")
-            } else {
-                true
-            };
-        }
 
         match self {
             Self::Class(c1) => match other {
