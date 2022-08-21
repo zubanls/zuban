@@ -1,13 +1,18 @@
 use std::borrow::Cow;
 
-use super::{ClassLike, Generics, Match, MismatchReason, TypeVarMatcher};
-use crate::database::{Database, DbType, FormatStyle, UnionEntry, UnionType, Variance};
+use super::params::has_overlapping_params;
+use super::{
+    matches_params, CalculatedTypeArguments, ClassLike, Generics, Match, MismatchReason,
+    TypeVarMatcher,
+};
+use crate::database::{
+    CallableContent, Database, DbType, FormatStyle, UnionEntry, UnionType, Variance,
+};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::CalculatedTypeArguments;
 use crate::node_ref::NodeRef;
-use crate::value::{Callable, Class, Tuple};
+use crate::value::{Class, Tuple};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -42,11 +47,8 @@ impl<'db, 'a> Type<'db, 'a> {
             }
             DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             DbType::TypeVar(t) => Self::ClassLike(ClassLike::TypeVar(t)),
-            DbType::Type(db_type) => Self::new(db_type),
             DbType::Tuple(content) => Self::ClassLike(ClassLike::Tuple(Tuple::new(content))),
-            DbType::Callable(content) => {
-                Self::ClassLike(ClassLike::Callable(Callable::new(db_type, content)))
-            }
+            _ => Self::new(db_type),
         }
     }
 
@@ -111,6 +113,17 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
+                DbType::Callable(c1) => match other {
+                    Self::Type(ref t2) => match t2.as_ref() {
+                        DbType::Callable(c2) => {
+                            Type::new(&c1.return_class).overlaps(i_s, &Type::new(&c2.return_class))
+                                && has_overlapping_params(i_s, &c1.params, &c2.params)
+                        }
+                        DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
+                        _ => false,
+                    },
+                    _ => false,
+                },
                 _ => todo!(),
             },
             Self::Union(list1) => list1
@@ -140,6 +153,53 @@ impl<'db, 'a> Type<'db, 'a> {
                         DbType::Type(t2) => {
                             Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
                         }
+                        _ => Match::new_false(),
+                    },
+                    _ => Match::new_false(),
+                },
+                DbType::Callable(c1) => match value_type {
+                    Self::Type(ref t2) => match t2.as_ref() {
+                        /*
+                        DbType::Type(t2) => {
+                            // TODO the __init__ should actually be looked up on the original class, not
+                            // the subclass
+                            if let LookupResult::GotoName(_, init) =
+                                cls.lookup_internal(i_s, "__init__")
+                            {
+                                if let Type::ClassLike(ClassLike::FunctionType(f)) =
+                                    init.class_as_type(i_s)
+                                {
+                                    // Since __init__ does not have a return, We need to check the params
+                                    // of the __init__ functions and the class as a return type separately.
+                                    return c1.result_type(i_s).matches(
+                                        i_s,
+                                        matcher.as_deref_mut(),
+                                        &Type::ClassLike(ClassLike::Class(*cls)),
+                                        Variance::Covariant,
+                                    ) & matches_params(
+                                        i_s,
+                                        matcher,
+                                        c1.param_iterator(),
+                                        f.param_iterator().map(|i| i.skip(1)),
+                                    );
+                                }
+                            }
+                            Match::new_false()
+                        }
+                        Self::TypeWithDbType(t2) => {
+                            if c1.content.params.is_some() {
+                                todo!()
+                            }
+                            c1.result_type(i_s).matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                &Type::from_db_type(i_s.db, t2),
+                                Variance::Covariant,
+                            )
+                            //todo!("{t2:?}")
+                        }
+                        */
+                        DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
                         _ => Match::new_false(),
                     },
                     _ => Match::new_false(),
@@ -199,6 +259,25 @@ impl<'db, 'a> Type<'db, 'a> {
             },
             Self::Never => todo!(),
         }
+    }
+
+    fn matches_callable(
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        c1: &CallableContent,
+        c2: &CallableContent,
+    ) -> Match {
+        Type::new(&c1.return_class).matches(
+            i_s,
+            matcher.as_deref_mut(),
+            &Type::new(&c2.return_class),
+            Variance::Covariant,
+        ) & matches_params(
+            i_s,
+            matcher,
+            c1.params.as_ref().map(|params| params.iter()),
+            c2.params.as_ref().map(|params| params.iter()),
+        )
     }
 
     pub fn error_if_not_matches<'x>(

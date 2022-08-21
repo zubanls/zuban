@@ -19,6 +19,8 @@ use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
 
+pub type CallableParams = Option<Box<[CallableParam]>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -936,7 +938,7 @@ pub struct CallableParam {
 pub struct CallableContent {
     pub defined_at: PointLink,
     pub type_vars: Option<TypeVars>,
-    pub params: Option<Box<[CallableParam]>>,
+    pub params: CallableParams,
     pub return_class: DbType,
 }
 

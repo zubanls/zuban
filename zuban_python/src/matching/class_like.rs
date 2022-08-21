@@ -1,38 +1,14 @@
-use super::params::{has_overlapping_params, matches_params};
 use super::{Match, MismatchReason, Type, TypeVarMatcher};
 use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
 use crate::inference_state::InferenceState;
-use crate::value::{Callable, Class, Function, LookupResult, MroIterator, Tuple, Value};
+use crate::value::{Class, LookupResult, MroIterator, Tuple};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ClassLike<'db, 'a> {
     Class(Class<'db, 'a>),
     Tuple(Tuple<'a>),
-    Callable(Callable<'a>),
-    FunctionType(Function<'db, 'a>),
     TypeVar(&'a TypeVarUsage),
     None,
-}
-
-macro_rules! matches_callable {
-    ($i_s:ident, $matcher:ident, $c1:ident, $c2:ident) => {{
-        let other_result = $c2.result_type($i_s);
-        ($c1.result_type($i_s).matches(
-            $i_s,
-            $matcher.as_deref_mut(),
-            &other_result,
-            Variance::Covariant,
-        ) & matches_params($i_s, $matcher, $c1.param_iterator(), $c2.param_iterator()))
-        .similar_if_false()
-    }};
-}
-
-macro_rules! overlaps_callable {
-    ($i_s:ident, $c1:ident, $c2:ident) => {{
-        let other_result = $c2.result_type($i_s);
-        $c1.result_type($i_s).overlaps($i_s, &other_result)
-            && has_overlapping_params($i_s, $c1.param_iterator(), $c2.param_iterator())
-    }};
 }
 
 impl<'db, 'a> ClassLike<'db, 'a> {
@@ -194,7 +170,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
     fn check_match(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         other: &Self,
         variance: Variance,
     ) -> Match {
@@ -230,59 +206,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
                 _ => Match::False(MismatchReason::None),
             },
-            Self::FunctionType(f1) => match other {
-                Self::Callable(c2) => matches_callable!(i_s, matcher, f1, c2),
-                Self::FunctionType(f2) => matches_callable!(i_s, matcher, f1, f2),
-                _ => Match::new_false(),
-            },
-            Self::Callable(c1) => {
-                match other {
-                    /*
-                    Self::Type(cls) => {
-                        // TODO the __init__ should actually be looked up on the original class, not
-                        // the subclass
-                        if let LookupResult::GotoName(_, init) =
-                            cls.lookup_internal(i_s, "__init__")
-                        {
-                            if let Type::ClassLike(ClassLike::FunctionType(f)) =
-                                init.class_as_type(i_s)
-                            {
-                                // Since __init__ does not have a return, We need to check the params
-                                // of the __init__ functions and the class as a return type separately.
-                                return c1.result_type(i_s).matches(
-                                    i_s,
-                                    matcher.as_deref_mut(),
-                                    &Type::ClassLike(ClassLike::Class(*cls)),
-                                    Variance::Covariant,
-                                ) & matches_params(
-                                    i_s,
-                                    matcher,
-                                    c1.param_iterator(),
-                                    f.param_iterator().map(|i| i.skip(1)),
-                                );
-                            }
-                        }
-                        Match::new_false()
-                    }
-                     * TODO!()
-                    Self::TypeWithDbType(t2) => {
-                        if c1.content.params.is_some() {
-                            todo!()
-                        }
-                        c1.result_type(i_s).matches(
-                            i_s,
-                            matcher.as_deref_mut(),
-                            &Type::from_db_type(i_s.db, t2),
-                            Variance::Covariant,
-                        )
-                        //todo!("{t2:?}")
-                    }
-                    */
-                    Self::Callable(c2) => matches_callable!(i_s, matcher, c1, c2),
-                    Self::FunctionType(f2) => matches_callable!(i_s, matcher, c1, f2),
-                    _ => Match::new_false(),
-                }
-            }
             Self::None => matches!(other, Self::None).into(),
         }
     }
@@ -339,8 +262,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                 }
             }
             Self::Tuple(c) => c.format(i_s, matcher, style),
-            Self::Callable(c) => c.format(i_s, matcher, style),
-            Self::FunctionType(f) => f.format(i_s, matcher, style),
             Self::None => Box::from("None"),
             // TODO this does not respect formatstyle
         }
@@ -370,8 +291,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
             Self::Class(c) => c.as_db_type(i_s),
             Self::TypeVar(t) => DbType::TypeVar((*t).clone()),
             Self::Tuple(t) => t.as_db_type(),
-            Self::Callable(c) => c.as_db_type(),
-            Self::FunctionType(f) => f.as_db_type(i_s),
             Self::None => DbType::None,
         }
     }
@@ -400,12 +319,6 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                     ClassLike::Tuple(t2) => t1.overlaps(i_s, t2),
                     _ => false,
                 },
-                ClassLike::Callable(c1) => match c2 {
-                    ClassLike::Callable(c2) => overlaps_callable!(i_s, c1, c2),
-                    ClassLike::FunctionType(f2) => todo!(),
-                    _ => todo!(),
-                },
-                ClassLike::FunctionType(f) => todo!("{c2:?}"),
                 ClassLike::None => matches!(other, Self::None),
             }
         };

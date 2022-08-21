@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, Variance};
+use crate::database::{CallableParam, CallableParams, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;
@@ -71,12 +71,12 @@ pub fn matches_params<'db: 'x, 'x>(
 
 pub fn has_overlapping_params<'db: 'x, 'x>(
     i_s: &mut InferenceState<'db, '_>,
-    params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
-    params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+    params1: &CallableParams,
+    params2: &CallableParams,
 ) -> bool {
     if let Some(params1) = params1 {
         if let Some(params2) = params2 {
-            return overload_has_overlapping_params(i_s, params1, params2);
+            return overload_has_overlapping_params(i_s, params1.iter(), params2.iter());
         }
     }
     todo!()

@@ -19,8 +19,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, ClassLike,
-    Generics, ResultContext, SignatureMatch, Type, TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, Generics,
+    ResultContext, SignatureMatch, Type, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -516,7 +516,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::FunctionType(*self))
+        Type::owned(self.as_db_type(i_s))
     }
 
     fn as_function(&self) -> Option<&Function<'db, 'a>> {
