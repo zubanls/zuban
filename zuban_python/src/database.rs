@@ -943,6 +943,18 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
+    pub fn skip_first_param(&self) -> Self {
+        Self {
+            defined_at: self.defined_at,
+            type_vars: self.type_vars.clone(),
+            params: self
+                .params
+                .as_ref()
+                .map(|params| params.iter().skip(1).cloned().collect()),
+            return_class: self.return_class.clone(),
+        }
+    }
+
     pub fn format<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,

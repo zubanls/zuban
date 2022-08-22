@@ -10,7 +10,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Class, LookupResult, MroIterator};
+use crate::value::{Class, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -161,69 +161,44 @@ impl<'db, 'a> Type<'db, 'a> {
                     value_type,
                     variance,
                 ),
-                DbType::Type(t1) => match value_type {
-                    Self::Type(ref t2) => match t2.as_ref() {
-                        DbType::Type(t2) => {
-                            Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
-                        }
-                        _ => Match::new_false(),
-                    },
+                DbType::Type(t1) => match value_type.maybe_db_type() {
+                    Some(DbType::Type(t2)) => {
+                        Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
+                    }
                     _ => Match::new_false(),
                 },
                 DbType::TypeVar(t1) => match matcher {
                     Some(matcher) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
-                    None => match value_type {
-                        Self::Type(t2) => match t2.as_ref() {
-                            DbType::TypeVar(t2) => (t1.index == t2.index
-                                && t1.in_definition == t2.in_definition)
-                                .into(),
-                            _ => Match::new_false(),
-                        },
+                    None => match value_type.maybe_db_type() {
+                        Some(DbType::TypeVar(t2)) => {
+                            (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
+                        }
                         _ => Match::new_false(),
                     },
                 },
                 DbType::Callable(c1) => match value_type {
                     Self::Type(ref t2) => match t2.as_ref() {
-                        /*
-                        DbType::Type(t2) => {
-                            // TODO the __init__ should actually be looked up on the original class, not
-                            // the subclass
-                            if let LookupResult::GotoName(_, init) =
-                                cls.lookup_internal(i_s, "__init__")
-                            {
-                                if let Type::ClassLike(ClassLike::FunctionType(f)) =
-                                    init.class_as_type(i_s)
-                                {
-                                    // Since __init__ does not have a return, We need to check the params
-                                    // of the __init__ functions and the class as a return type separately.
-                                    return c1.result_type(i_s).matches(
-                                        i_s,
-                                        matcher.as_deref_mut(),
-                                        &Type::ClassLike(ClassLike::Class(*cls)),
-                                        Variance::Covariant,
-                                    ) & matches_params(
-                                        i_s,
-                                        matcher,
-                                        c1.param_iterator(),
-                                        f.param_iterator().map(|i| i.skip(1)),
-                                    );
+                        DbType::Type(t2) => match t2.as_ref() {
+                            DbType::Class(link, generics) => {
+                                let cls = Class::from_db_type(i_s.db, *link, generics);
+                                // TODO the __init__ should actually be looked up on the original class, not
+                                // the subclass
+                                let lookup = cls.lookup_internal(i_s, "__init__");
+                                if let LookupResult::GotoName(_, init) = lookup {
+                                    let t2 = init.class_as_type(i_s);
+                                    if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
+                                        return Self::matches_callable(
+                                            i_s,
+                                            matcher,
+                                            c1,
+                                            &c2.skip_first_param(),
+                                        );
+                                    }
                                 }
+                                Match::new_false()
                             }
-                            Match::new_false()
-                        }
-                        Self::TypeWithDbType(t2) => {
-                            if c1.content.params.is_some() {
-                                todo!()
-                            }
-                            c1.result_type(i_s).matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                &Type::from_db_type(i_s.db, t2),
-                                Variance::Covariant,
-                            )
-                            //todo!("{t2:?}")
-                        }
-                        */
+                            _ => Match::new_false(),
+                        },
                         DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
                         _ => Match::new_false(),
                     },
