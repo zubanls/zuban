@@ -357,7 +357,7 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, '_> {
+    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
         let class_infos = self.class_infos(i_s);
         MroIterator::new(
             i_s.db,

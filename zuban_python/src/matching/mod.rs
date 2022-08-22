@@ -1,4 +1,3 @@
-mod class_like;
 mod generics;
 mod match_;
 mod matcher;

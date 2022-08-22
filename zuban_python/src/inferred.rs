@@ -369,14 +369,8 @@ impl<'db> Inferred<'db> {
                 let inf = Inferred::from_any_link(i_s.db, instance_link);
                 let instance = inf.expect_instance(i_s);
 
-                let class = instance
-                    .class
-                    .mro(i_s)
-                    .nth(mro_index.0 as usize)
-                    .unwrap()
-                    .1
-                    .maybe_class(i_s.db)
-                    .unwrap();
+                let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
+                let class = class_t.maybe_class(i_s.db).unwrap();
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
                     callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))

@@ -10,7 +10,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Class, LookupResult};
+use crate::value::{Class, LookupResult, MroIterator, Tuple};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -48,6 +48,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    #[inline]
     pub fn maybe_class(&self, db: &'db Database) -> Option<Class<'db, '_>> {
         match self {
             Self::Class(c) => Some(*c),
@@ -140,61 +141,13 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn matches(
+    fn is_same_type_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        if let Type::Type(t2) = value_type {
-            match t2.as_ref() {
-                DbType::Any => {
-                    if let Some(matcher) = matcher {
-                        let t1 = match self {
-                            Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
-                            Self::Type(t) => Cow::Borrowed(t.as_ref()),
-                        };
-                        matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
-                    }
-                    return Match::TrueWithAny;
-                }
-                DbType::None => match variance {
-                    Variance::Contravariant => (), // TODO ? (matches!(self, Self::None)).into(),
-                    _ => return Match::True,
-                },
-                DbType::TypeVar(t2) => {
-                    return match self.maybe_db_type() {
-                        Some(DbType::TypeVar(t1)) => {
-                            if let Some(matcher) = matcher {
-                                matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                            } else {
-                                self.matches_type_var(i_s, t2).into() // TODO does this check make sense?
-                            }
-                        }
-                        _ => {
-                            if self.matches_type_var(i_s, t2) {
-                                // TODO does this check make sense?
-                                Match::True
-                            } else if let Some(bound) = &t2.type_var.bound {
-                                self.matches(i_s, None, &Type::new(bound), variance)
-                            } else if !t2.type_var.restrictions.is_empty() {
-                                t2.type_var
-                                    .restrictions
-                                    .iter()
-                                    .any(|r| {
-                                        self.matches(i_s, None, &Type::new(r), variance).bool()
-                                    })
-                                    .into()
-                            } else {
-                                todo!() // self.is_object_class(i_s.db)
-                            }
-                        }
-                    };
-                }
-                _ => (),
-            }
-        };
         match self {
             Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
             Self::Type(t1) => match t1.as_ref() {
@@ -299,6 +252,142 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    #[inline]
+    fn matches_mro(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        match variance {
+            Variance::Invariant => self.is_same_type_internal(i_s, matcher, value_type, variance),
+            Variance::Covariant => match value_type.mro(i_s) {
+                Some(mro) => {
+                    for (_, t2) in mro {
+                        let m =
+                            self.is_same_type_internal(i_s, matcher.as_deref_mut(), &t2, variance);
+                        if !matches!(m, Match::False(MismatchReason::None)) {
+                            return m;
+                        }
+                    }
+                    Match::new_false()
+                }
+                None => {
+                    let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
+                    if m.bool() {
+                        m
+                    } else {
+                        self.is_object_class(i_s.db)
+                    }
+                }
+            },
+            Variance::Contravariant => match self.mro(i_s) {
+                Some(mro) => {
+                    for (_, t1) in mro {
+                        let m = t1.is_same_type_internal(
+                            i_s,
+                            matcher.as_deref_mut(),
+                            value_type,
+                            variance,
+                        );
+                        if !matches!(m, Match::False(MismatchReason::None)) {
+                            return m;
+                        }
+                    }
+                    Match::new_false()
+                }
+                None => {
+                    let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
+                    if m.bool() {
+                        m
+                    } else {
+                        Match::new_false()
+                        // TODO value_type.is_object_class(i_s.db)
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn matches(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        // 1. Check if the type is part of the mro.
+        let m = self.matches_mro(i_s, matcher.as_deref_mut(), value_type, variance);
+        if m.bool() {
+            return m;
+        }
+        // 2. Check if it is a class with a protocol
+        if let Some(class1) = self.maybe_class(i_s.db) {
+            // TODO this should probably be checked before normal mro checking?!
+            if class1.class_infos(i_s).is_protocol {
+                if let Some(class2) = value_type.maybe_class(i_s.db) {
+                    return class1.check_protocol_match(i_s, class2).into();
+                }
+            }
+        }
+        // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
+        //    again.
+        if let Type::Type(t2) = value_type {
+            match t2.as_ref() {
+                DbType::Any => {
+                    if let Some(matcher) = matcher.as_deref_mut() {
+                        let t1 = match self {
+                            Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
+                            Self::Type(t) => Cow::Borrowed(t.as_ref()),
+                        };
+                        matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
+                    }
+                    return Match::TrueWithAny;
+                }
+                DbType::None => match variance {
+                    Variance::Contravariant => (), // TODO ? (matches!(self, Self::None)).into(),
+                    _ => return Match::True,
+                },
+                DbType::TypeVar(t2) => {
+                    if let Some(bound) = &t2.type_var.bound {
+                        return self.matches(i_s, None, &Type::new(bound), variance);
+                    } else if !t2.type_var.restrictions.is_empty() {
+                        return t2
+                            .type_var
+                            .restrictions
+                            .iter()
+                            .any(|r| self.matches(i_s, None, &Type::new(r), variance).bool())
+                            .into();
+                    } else {
+                        todo!() // self.is_object_class(i_s.db)
+                    }
+                }
+                _ => (),
+            }
+        };
+        Match::new_false()
+    }
+
+    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
+        match self {
+            Self::Class(c) => Some(c.mro(i_s)),
+            Self::Type(t) => match t.as_ref() {
+                DbType::Class(link, generics) => {
+                    Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
+                }
+                DbType::Tuple(tup) => Some(Tuple::new(t.as_ref(), tup).mro(i_s)),
+                _ => None,
+            },
+        }
+    }
+
+    fn is_object_class(&self, db: &Database) -> Match {
+        self.maybe_class(db)
+            .map(|c| c.is_object_class(db))
+            .unwrap_or_else(|| Match::new_false())
+    }
+
     fn matches_union(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -353,70 +442,21 @@ impl<'db, 'a> Type<'db, 'a> {
 
     fn matches_class(
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         class1: &Class<'db, '_>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let check_match = |i_s: &mut InferenceState<'db, '_>,
-                           matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-                           c1: &Class<'db, '_>,
-                           c2: &Class<'db, '_>| {
-            if c1.node_ref == c2.node_ref {
-                let type_vars = c1.type_vars(i_s);
-                return c1
+        if let Type::Class(class2) = value_type {
+            if class1.node_ref == class2.node_ref {
+                let type_vars = class1.type_vars(i_s);
+                return class1
                     .generics()
-                    .matches(i_s, matcher, c2.generics(), variance, type_vars)
+                    .matches(i_s, matcher, class2.generics(), variance, type_vars)
                     .similar_if_false();
-            } else {
-                Match::new_false()
             }
-        };
-
-        match value_type {
-            Type::Class(class2) => {
-                let mut similarity = Match::new_false();
-                match variance {
-                    Variance::Covariant => {
-                        for (i, (_, c2)) in class2.mro(i_s).enumerate() {
-                            let m = check_match(i_s, matcher.as_deref_mut(), class1, &c2);
-                            if !matches!(m, Match::False(MismatchReason::None)) {
-                                return m;
-                            }
-                        }
-                    }
-                    Variance::Invariant => {
-                        similarity = check_match(i_s, matcher, class1, class2);
-                        if similarity.bool() {
-                            return similarity;
-                        }
-                    }
-                    Variance::Contravariant => {
-                        for (_, c1) in class1.mro(i_s) {
-                            let m = check_match(i_s, matcher.as_deref_mut(), c1, class2);
-                            if !matches!(m, Match::False(MismatchReason::None)) {
-                                return m;
-                            }
-                        }
-                    }
-                }
-                // TODO this should probably be checked before normal mro checking?!
-                if class1.class_infos(i_s).is_protocol {
-                    return class1.check_protocol_match(i_s, *class2).into();
-                }
-                similarity
-            }
-            Type::Type(t2) => {
-                match t2.as_ref() {
-                    DbType::Never => Match::True, // TODO is this correct?????
-                    _ => todo!(),
-                }
-            }
-            _ => match variance {
-                Variance::Covariant => class1.is_object_class(i_s.db),
-                Variance::Contravariant | Variance::Invariant => Match::new_false(),
-            },
         }
+        Match::new_false()
     }
 
     fn matches_callable(
@@ -542,16 +582,17 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> bool {
         let check = {
             #[inline]
-            |i_s: &mut InferenceState<'db, '_>, c1: &Type<'db, '_>, c2: &Type<'db, '_>| match c1
-                .maybe_class(i_s.db)
-            {
-                Some(c1) => match c2.maybe_class(i_s.db) {
-                    Some(c2) if c1.node_ref == c2.node_ref => {
-                        let type_vars = c1.type_vars(i_s);
-                        c1.generics().overlaps(i_s, c2.generics(), type_vars)
-                    }
-                    _ => false,
-                },
+            |i_s: &mut InferenceState<'db, '_>, t1: &Type<'db, '_>, t2: &Type<'db, '_>| {
+                t1.maybe_class(i_s.db)
+                    .and_then(|c1| {
+                        t2.maybe_class(i_s.db).map(|c2| {
+                            c1.node_ref == c2.node_ref && {
+                                let type_vars = c1.type_vars(i_s);
+                                c1.generics().overlaps(i_s, c2.generics(), type_vars)
+                            }
+                        })
+                    })
+                    .unwrap_or(false)
             }
         };
 
