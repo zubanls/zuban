@@ -6,7 +6,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Generics, Type};
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -180,10 +180,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
-        Type::ClassLike(ClassLike::Class(
+        Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
                 .unwrap(),
-        ))
+        )
     }
 }
 
@@ -329,8 +329,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
-        Type::ClassLike(ClassLike::Class(
+        Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),
-        ))
+        )
     }
 }

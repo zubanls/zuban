@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{ClassLike, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
@@ -570,10 +570,8 @@ fn calculate_type_vars<'db>(
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
                 if let Some(type_vars) = class.type_vars(i_s) {
-                    type_.any(i_s.db, &mut |t| match t {
-                        ClassLike::Class(result_class)
-                            if result_class.node_ref == class.node_ref =>
-                        {
+                    type_.any(i_s.db, &mut |t| match t.maybe_class(i_s.db) {
+                        Some(result_class) if result_class.node_ref == class.node_ref => {
                             let mut calculating = matcher.calculated_type_vars.iter_mut();
                             let mut i = 0;
                             result_class

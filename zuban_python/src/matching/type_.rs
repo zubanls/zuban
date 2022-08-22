@@ -2,8 +2,7 @@ use std::borrow::Cow;
 
 use super::params::has_overlapping_params;
 use super::{
-    matches_params, CalculatedTypeArguments, ClassLike, Generics, Match, MismatchReason,
-    TypeVarMatcher,
+    matches_params, CalculatedTypeArguments, Generics, Match, MismatchReason, TypeVarMatcher,
 };
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, TupleContent, TypeVarUsage, UnionType, Variance,
@@ -11,13 +10,14 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::value::{Class, LookupResult};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum Type<'db, 'a> {
-    ClassLike(ClassLike<'db, 'a>),
+    // The reason why we do not use Class as a DbType as well is that this is an optimization to
+    // avoid generating DbType for all possible cases (avoiding allocations).
+    Class(Class<'db, 'a>),
     Type(Cow<'a, DbType>),
 }
 
@@ -36,21 +36,31 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
-            Self::ClassLike(class_like) => class_like.as_db_type(i_s),
+            Self::Class(class) => class.as_db_type(i_s),
             Self::Type(t) => t.into_owned(),
         }
     }
 
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
-            Self::ClassLike(class_like) => class_like.as_db_type(i_s),
+            Self::Class(class) => class.as_db_type(i_s),
             Self::Type(t) => t.clone().into_owned(),
+        }
+    }
+
+    pub fn maybe_class(&self, db: &'db Database) -> Option<Class<'db, '_>> {
+        match self {
+            Self::Class(c) => Some(*c),
+            Self::Type(t) => match t.as_ref() {
+                DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
+                _ => None,
+            },
         }
     }
 
     fn maybe_db_type(&self) -> Option<&DbType> {
         match self {
-            Self::ClassLike(_) => None,
+            Self::Class(_) => None,
             Self::Type(t) => Some(t.as_ref()),
         }
     }
@@ -70,8 +80,8 @@ impl<'db, 'a> Type<'db, 'a> {
         }
 
         match self {
-            Self::ClassLike(class1) => match other {
-                Self::ClassLike(class2) => class1.overlaps(i_s, class2),
+            Self::Class(class1) => match other {
+                Self::Class(class2) => Self::overlaps_class(i_s, *class1, *class2),
                 Self::Type(t1) => match t1.as_ref() {
                     DbType::Union(union_type) => {
                         union_type.iter().any(|t| self.overlaps(i_s, &Type::new(t)))
@@ -142,7 +152,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Any => {
                     if let Some(matcher) = matcher {
                         let t1 = match self {
-                            Self::ClassLike(c) => Cow::Owned(c.as_db_type(i_s)),
+                            Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
                             Self::Type(t) => Cow::Borrowed(t.as_ref()),
                         };
                         matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
@@ -186,12 +196,15 @@ impl<'db, 'a> Type<'db, 'a> {
             }
         };
         match self {
-            Self::ClassLike(class) => class.matches(i_s, value_type, matcher, variance),
+            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
             Self::Type(t1) => match t1.as_ref() {
-                DbType::Class(link, generics) => match value_type {
-                    Self::Type(t2) => todo!(),
-                    _ => todo!(),
-                },
+                DbType::Class(link, generics) => Self::matches_class(
+                    i_s,
+                    matcher,
+                    &Class::from_db_type(i_s.db, *link, generics),
+                    value_type,
+                    variance,
+                ),
                 DbType::Type(t1) => match value_type {
                     Self::Type(ref t2) => match t2.as_ref() {
                         DbType::Type(t2) => {
@@ -338,6 +351,74 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    fn matches_class(
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        class1: &Class<'db, '_>,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        let check_match = |i_s: &mut InferenceState<'db, '_>,
+                           matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+                           c1: &Class<'db, '_>,
+                           c2: &Class<'db, '_>| {
+            if c1.node_ref == c2.node_ref {
+                let type_vars = c1.type_vars(i_s);
+                return c1
+                    .generics()
+                    .matches(i_s, matcher, c2.generics(), variance, type_vars)
+                    .similar_if_false();
+            } else {
+                Match::new_false()
+            }
+        };
+
+        match value_type {
+            Type::Class(class2) => {
+                let mut similarity = Match::new_false();
+                match variance {
+                    Variance::Covariant => {
+                        for (i, (_, c2)) in class2.mro(i_s).enumerate() {
+                            let m = check_match(i_s, matcher.as_deref_mut(), class1, &c2);
+                            if !matches!(m, Match::False(MismatchReason::None)) {
+                                return m;
+                            }
+                        }
+                    }
+                    Variance::Invariant => {
+                        similarity = check_match(i_s, matcher, class1, class2);
+                        if similarity.bool() {
+                            return similarity;
+                        }
+                    }
+                    Variance::Contravariant => {
+                        for (_, c1) in class1.mro(i_s) {
+                            let m = check_match(i_s, matcher.as_deref_mut(), c1, class2);
+                            if !matches!(m, Match::False(MismatchReason::None)) {
+                                return m;
+                            }
+                        }
+                    }
+                }
+                // TODO this should probably be checked before normal mro checking?!
+                if class1.class_infos(i_s).is_protocol {
+                    return class1.check_protocol_match(i_s, *class2).into();
+                }
+                similarity
+            }
+            Type::Type(t2) => {
+                match t2.as_ref() {
+                    DbType::Never => Match::True, // TODO is this correct?????
+                    _ => todo!(),
+                }
+            }
+            _ => match variance {
+                Variance::Covariant => class1.is_object_class(i_s.db),
+                Variance::Contravariant | Variance::Invariant => Match::new_false(),
+            },
+        }
+    }
+
     fn matches_callable(
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -454,6 +535,38 @@ impl<'db, 'a> Type<'db, 'a> {
         true
     }
 
+    pub fn overlaps_class(
+        i_s: &mut InferenceState<'db, '_>,
+        class1: Class<'db, '_>,
+        class2: Class<'db, '_>,
+    ) -> bool {
+        let check = {
+            #[inline]
+            |i_s: &mut InferenceState<'db, '_>, c1: &Type<'db, '_>, c2: &Type<'db, '_>| match c1
+                .maybe_class(i_s.db)
+            {
+                Some(c1) => match c2.maybe_class(i_s.db) {
+                    Some(c2) if c1.node_ref == c2.node_ref => {
+                        let type_vars = c1.type_vars(i_s);
+                        c1.generics().overlaps(i_s, c2.generics(), type_vars)
+                    }
+                    _ => false,
+                },
+            }
+        };
+
+        for (_, c1) in class1.mro(i_s) {
+            if check(i_s, &c1, &Type::Class(class2)) {
+                return true;
+            }
+        }
+        for (_, c2) in class2.mro(i_s) {
+            if check(i_s, &Type::Class(class1), &c2) {
+                return true;
+            }
+        }
+        false
+    }
     fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
         if let Some(DbType::TypeVar(t1)) = self.maybe_db_type() {
             if t1.index == t2.index && t1.in_definition == t2.in_definition {
@@ -543,7 +656,7 @@ impl<'db, 'a> Type<'db, 'a> {
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
-            Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
+            Self::Class(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
             Self::Type(t) => t.replace_type_vars(&mut |t| {
@@ -555,10 +668,10 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn any(
         &self,
         db: &'db Database,
-        callable: &mut impl FnMut(&ClassLike<'db, '_>) -> bool,
+        callable: &mut impl FnMut(&Type<'db, '_>) -> bool,
     ) -> bool {
         match self {
-            Self::ClassLike(class_like) => callable(class_like),
+            Self::Class(class) => todo!(), //callable(class),
             Self::Type(t) => match t.as_ref() {
                 DbType::Any => true,
                 DbType::Union(union_type) => {
@@ -571,13 +684,10 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn common_base_class(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> DbType {
         match (self, other) {
-            (Self::ClassLike(ClassLike::Class(c1)), Self::ClassLike(ClassLike::Class(c2))) => {
+            (Self::Class(c1), Self::Class(c2)) => {
                 for (_, c1) in c1.mro(i_s) {
                     for (_, c2) in c2.mro(i_s) {
-                        if c1
-                            .matches(i_s, &Type::ClassLike(c2), None, Variance::Invariant)
-                            .bool()
-                        {
+                        if c1.matches(i_s, None, &c2, Variance::Invariant).bool() {
                             return c1.as_db_type(i_s);
                         }
                     }
@@ -592,6 +702,16 @@ impl<'db, 'a> Type<'db, 'a> {
         matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
     }
 
+    pub fn lookup_symbol(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name: &str,
+    ) -> LookupResult<'db> {
+        match self {
+            Self::Class(c) => c.lookup_symbol(i_s, name),
+            _ => todo!("{name:?} {self:?}"),
+        }
+    }
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -599,7 +719,7 @@ impl<'db, 'a> Type<'db, 'a> {
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::ClassLike(c) => c.format(i_s, matcher, style),
+            Self::Class(c) => c.format(i_s, matcher, style),
             Self::Type(t) => t.format(i_s, matcher, style),
         }
     }

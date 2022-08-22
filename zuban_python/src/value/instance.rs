@@ -6,7 +6,7 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -44,7 +44,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
         for (mro_index, class) in self.class.mro(i_s) {
-            if let ClassLike::Class(c) = class {
+            if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     return LookupResult::GotoName(
                         PointLink::new(c.node_ref.file.file_index(), self_symbol),
@@ -131,7 +131,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::Class(self.class))
+        Type::Class(self.class)
     }
 
     fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {

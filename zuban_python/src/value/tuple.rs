@@ -29,7 +29,7 @@ impl<'db, 'a> Tuple<'a> {
         /*
         MroIterator::new(
             i_s.db,
-            ClassLike::Tuple(*self),
+            Type::Tuple(*self),
             Some(Generics::DbType(
                 self.content
                     .generics

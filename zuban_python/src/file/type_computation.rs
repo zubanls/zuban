@@ -14,7 +14,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Generics, Type};
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -720,9 +720,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             })
         };
         if given_count != expected_count && !self.errors_already_calculated {
-            // TODO both the type argument issues and are not implemented for other classlikes
-            // like tuple/callable/type, which can also have late bound type vars and too
-            // many/few given type vars!
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.db,
                 IssueType::TypeArgumentIssue {
@@ -1160,9 +1157,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationClassInstance {
-                return Type::ClassLike(ClassLike::Class(
-                    self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
-                ));
+                return Type::Class(self.infer_expression(expr).maybe_class(self.i_s).unwrap());
             } else {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
                 self.file.points.get(expr.index()).complex_index()
@@ -1188,7 +1183,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             PointType::Redirect
         );
         let inferred = self.check_point_cache(expression.index()).unwrap();
-        Type::ClassLike(ClassLike::Class(inferred.maybe_class(self.i_s).unwrap()))
+        Type::Class(inferred.maybe_class(self.i_s).unwrap())
     }
 
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {

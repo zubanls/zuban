@@ -3,7 +3,7 @@ use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 use crate::database::{ComplexPoint, DbType};
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::matching::{ClassLike, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
@@ -37,10 +37,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         result_context
             .with_type_if_exists(self.i_s, |i_s, type_| {
                 let mut found = None;
-                let maybe = type_.any(i_s.db, &mut |t| match t {
-                    ClassLike::Class(list_cls)
-                        if list_cls.node_ref == i_s.db.python_state.list() =>
-                    {
+                let maybe = type_.any(i_s.db, &mut |t| match t.maybe_class(i_s.db) {
+                    Some(list_cls) if list_cls.node_ref == i_s.db.python_state.list() => {
                         let generic_t = list_cls.generics().nth(i_s, 0.into());
                         let generic_t = Type::new(&generic_t);
                         let new_result_context = ResultContext::Known(&generic_t);

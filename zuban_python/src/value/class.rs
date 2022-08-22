@@ -16,8 +16,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, ClassLike, Generics, Match, ResultContext, Type,
-    TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, Generics, Match, ResultContext, Type, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -339,7 +338,7 @@ impl<'db, 'a> Class<'db, 'a> {
         for (mro_index, c) in self.mro(i_s) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
-                if let ClassLike::Class(c) = c {
+                if let Type::Class(c) = c {
                     return (result, Some(c));
                 } else {
                     todo!()
@@ -362,7 +361,7 @@ impl<'db, 'a> Class<'db, 'a> {
         let class_infos = self.class_infos(i_s);
         MroIterator::new(
             i_s.db,
-            ClassLike::Class(*self),
+            Type::Class(*self),
             Some(self.generics),
             class_infos.mro.iter(),
         )
@@ -558,7 +557,7 @@ impl<'db> BasesIterator<'db> {
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Option<Generics<'db, 'a>>,
-    class: Option<ClassLike<'db, 'a>>,
+    class: Option<Type<'db, 'a>>,
     iterator: std::slice::Iter<'db, DbType>,
     mro_index: u32,
     returned_object: bool,
@@ -567,7 +566,7 @@ pub struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
-        class: ClassLike<'db, 'a>,
+        class: Type<'db, 'a>,
         generics: Option<Generics<'db, 'a>>,
         iterator: std::slice::Iter<'db, DbType>,
     ) -> Self {
@@ -583,7 +582,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = (MroIndex, ClassLike<'db, 'a>);
+    type Item = (MroIndex, Type<'db, 'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
@@ -593,7 +592,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    DbType::Class(c, generics) => ClassLike::Class(
+                    DbType::Class(c, generics) => Type::Class(
                         Class::from_position(
                             NodeRef::from_link(self.db, *c),
                             self.generics.unwrap(),
@@ -609,7 +608,7 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
         } else if !self.returned_object {
             self.returned_object = true;
             Class::from_position(self.db.python_state.object(), Generics::None, None)
-                .map(|c| (MroIndex(self.mro_index), ClassLike::Class(c)))
+                .map(|c| (MroIndex(self.mro_index), Type::Class(c)))
         } else {
             None
         }

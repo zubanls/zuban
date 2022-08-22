@@ -13,7 +13,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::{Context, InferenceState};
-use crate::matching::{ClassLike, Generics, ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -369,11 +369,14 @@ impl<'db> Inferred<'db> {
                 let inf = Inferred::from_any_link(i_s.db, instance_link);
                 let instance = inf.expect_instance(i_s);
 
-                let class = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
-                let class = match class {
-                    ClassLike::Class(c) => c,
-                    _ => unreachable!(),
-                };
+                let class = instance
+                    .class
+                    .mro(i_s)
+                    .nth(mro_index.0 as usize)
+                    .unwrap()
+                    .1
+                    .maybe_class(i_s.db)
+                    .unwrap();
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
                     callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
