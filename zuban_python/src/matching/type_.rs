@@ -10,7 +10,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Class, LookupResult, MroIterator, Tuple};
+use crate::value::{Class, LookupResult, MroIterator};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -376,7 +376,23 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Class(link, generics) => {
                     Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
                 }
-                DbType::Tuple(tup) => Some(Tuple::new(t.as_ref(), tup).mro(i_s)),
+                DbType::Tuple(tup) => Some({
+                    let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+                    if !tup.arbitrary_length {
+                        debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
+                    }
+                    MroIterator::new(
+                        i_s.db,
+                        Type::new(t),
+                        Some(Generics::DbType(
+                            tup.generics
+                                .as_ref()
+                                .map(|g| g.nth(0.into()).unwrap_or(&DbType::Never))
+                                .unwrap_or(&DbType::Any),
+                        )),
+                        class_infos.mro.iter(),
+                    )
+                }),
                 _ => None,
             },
         }
@@ -385,7 +401,7 @@ impl<'db, 'a> Type<'db, 'a> {
     fn is_object_class(&self, db: &Database) -> Match {
         self.maybe_class(db)
             .map(|c| c.is_object_class(db))
-            .unwrap_or_else(|| Match::new_false())
+            .unwrap_or_else(Match::new_false)
     }
 
     fn matches_union(

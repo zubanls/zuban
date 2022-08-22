@@ -1,4 +1,3 @@
-use super::class::MroIterator;
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::base_description;
 use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, TupleContent};
@@ -18,28 +17,6 @@ pub struct Tuple<'a> {
 impl<'db, 'a> Tuple<'a> {
     pub fn new(db_type: &'a DbType, content: &'a TupleContent) -> Self {
         Self { db_type, content }
-    }
-
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
-        if !self.content.arbitrary_length {
-            debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
-        }
-        todo!("what about this...");
-        /*
-        MroIterator::new(
-            i_s.db,
-            Type::Tuple(*self),
-            Some(Generics::DbType(
-                self.content
-                    .generics
-                    .as_ref()
-                    .map(|g| g.nth(0.into()).unwrap_or(&DbType::Never))
-                    .unwrap_or(&DbType::Any),
-            )),
-            class_infos.mro.iter(),
-        )
-        */
     }
 
     pub fn as_db_type(&self) -> DbType {
