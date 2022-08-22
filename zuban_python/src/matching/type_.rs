@@ -6,8 +6,7 @@ use super::{
     TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, TupleContent, TypeVarUsage, UnionEntry,
-    UnionType, Variance,
+    CallableContent, Database, DbType, FormatStyle, TupleContent, TypeVarUsage, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -19,7 +18,6 @@ use crate::value::Class;
 #[allow(clippy::enum_variant_names)]
 pub enum Type<'db, 'a> {
     ClassLike(ClassLike<'db, 'a>),
-    Union(Cow<'a, UnionType>),
     Type(Cow<'a, DbType>),
 }
 
@@ -41,33 +39,17 @@ impl<'db, 'a> Type<'db, 'a> {
                         .unwrap(),
                 ))
             }
-            DbType::Union(union_type) => Self::Union(Cow::Borrowed(union_type)),
             _ => Self::new(db_type),
         }
     }
 
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        if matches!(self, Self::Union(_)) || matches!(other, Self::Union(_)) {
-            let t = self.into_db_type(i_s).union(other.into_db_type(i_s));
-            match t {
-                DbType::Union(t) => Type::Union(Cow::Owned(t)),
-                _ => unreachable!(),
-            }
-        } else {
-            // If we have no union, the type might be exactly the same. In that case just return
-            // self again.
-            let t = self.as_db_type(i_s).union(other.into_db_type(i_s));
-            match t {
-                DbType::Union(t) => Type::Union(Cow::Owned(t)),
-                _ => self,
-            }
-        }
+        Self::owned(self.into_db_type(i_s).union(other.into_db_type(i_s)))
     }
 
     pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(cow) => DbType::Union(cow.into_owned()),
             Self::Type(t) => t.into_owned(),
         }
     }
@@ -75,7 +57,6 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         match self {
             Self::ClassLike(class_like) => class_like.as_db_type(i_s),
-            Self::Union(cow) => DbType::Union(cow.clone().into_owned()),
             Self::Type(t) => t.clone().into_owned(),
         }
     }
@@ -84,7 +65,6 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(_) => None,
             Self::Type(t) => Some(t.as_ref()),
-            Self::Union(_) => todo!(),
         }
     }
 
@@ -105,10 +85,12 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
-                Self::Union(list2) => list2
-                    .iter()
-                    .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
-                Self::Type(_) => todo!(),
+                Self::Type(t1) => match t1.as_ref() {
+                    DbType::Union(union_type) => union_type
+                        .iter()
+                        .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
+                    _ => todo!(),
+                },
             },
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => match other {
@@ -154,18 +136,17 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
-                _ => todo!(),
+                DbType::Union(union_type) => union_type
+                    .iter()
+                    .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
             },
-            Self::Union(list1) => list1
-                .iter()
-                .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
         }
     }
 
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -176,7 +157,6 @@ impl<'db, 'a> Type<'db, 'a> {
                         let t1 = match self {
                             Self::ClassLike(c) => Cow::Owned(c.as_db_type(i_s)),
                             Self::Type(t) => Cow::Borrowed(t.as_ref()),
-                            Self::Union(_) => todo!(),
                         };
                         matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
                     }
@@ -312,54 +292,66 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => Match::False(MismatchReason::None),
                 },
-                _ => todo!(),
+                DbType::Union(union_type1) => {
+                    self.matches_union(i_s, matcher, union_type1, value_type, variance)
+                }
             },
-            Self::Union(list1) => match value_type {
-                // TODO this should use the variance argument
-                Self::Union(list2) => match variance {
-                    Variance::Covariant => {
-                        let mut matches = true;
-                        for g2 in list2.iter() {
-                            let t2 = Type::from_db_type(i_s.db, g2);
-                            matches &= list1.iter().any(|g1| {
-                                Type::from_db_type(i_s.db, g1)
-                                    .matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                    .bool()
-                            })
-                        }
-                        matches.into()
-                    }
-                    Variance::Invariant => {
-                        self.matches(i_s, matcher, value_type, Variance::Covariant)
-                            & self.matches(i_s, None, value_type, Variance::Contravariant)
-                    }
-                    Variance::Contravariant => list1
-                        .iter()
-                        .all(|g1| {
-                            let t1 = Type::from_db_type(i_s.db, g1);
-                            list2.iter().any(|g2| {
-                                t1.matches(
-                                    i_s,
-                                    matcher.as_deref_mut(),
-                                    &Type::from_db_type(i_s.db, g2),
-                                    variance,
-                                )
-                                .bool()
-                            })
-                        })
-                        .into(),
-                },
-                _ => match variance {
-                    Variance::Contravariant => Match::new_false(),
-                    Variance::Covariant | Variance::Invariant => list1
-                        .iter()
-                        .any(|g| {
-                            Type::from_db_type(i_s.db, g)
-                                .matches(i_s, matcher.as_deref_mut(), value_type, variance)
+        }
+    }
+
+    fn matches_union(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        u1: &UnionType,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        match value_type.maybe_db_type() {
+            // TODO this should use the variance argument
+            Some(DbType::Union(u2)) => match variance {
+                Variance::Covariant => {
+                    let mut matches = true;
+                    for g2 in u2.iter() {
+                        let t2 = Type::from_db_type(i_s.db, g2);
+                        matches &= u1.iter().any(|g1| {
+                            Type::from_db_type(i_s.db, g1)
+                                .matches(i_s, matcher.as_deref_mut(), &t2, variance)
                                 .bool()
                         })
-                        .into(),
-                },
+                    }
+                    matches.into()
+                }
+                Variance::Invariant => {
+                    self.matches(i_s, matcher, value_type, Variance::Covariant)
+                        & self.matches(i_s, None, value_type, Variance::Contravariant)
+                }
+                Variance::Contravariant => u1
+                    .iter()
+                    .all(|g1| {
+                        let t1 = Type::from_db_type(i_s.db, g1);
+                        u2.iter().any(|g2| {
+                            t1.matches(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                &Type::from_db_type(i_s.db, g2),
+                                variance,
+                            )
+                            .bool()
+                        })
+                    })
+                    .into(),
+            },
+            _ => match variance {
+                Variance::Contravariant => Match::new_false(),
+                Variance::Covariant | Variance::Invariant => u1
+                    .iter()
+                    .any(|g| {
+                        Type::from_db_type(i_s.db, g)
+                            .matches(i_s, matcher.as_deref_mut(), value_type, variance)
+                            .bool()
+                    })
+                    .into(),
             },
         }
     }
@@ -572,18 +564,9 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
-            Self::Type(t) => todo!(),
-            Self::Union(list) => DbType::Union(UnionType::new(
-                list.entries
-                    .iter()
-                    .map(|e| UnionEntry {
-                        type_: e.type_.replace_type_vars(&mut |t| {
-                            calculated_type_args.lookup_type_var_usage(i_s, class, t)
-                        }),
-                        format_index: e.format_index,
-                    })
-                    .collect(),
-            )),
+            Self::Type(t) => t.replace_type_vars(&mut |t| {
+                calculated_type_args.lookup_type_var_usage(i_s, class, t)
+            }),
         }
     }
 
@@ -596,11 +579,11 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class_like) => callable(class_like),
             Self::Type(t) => match t.as_ref() {
                 DbType::Any => true,
+                DbType::Union(union_type) => union_type
+                    .iter()
+                    .any(|t| Type::from_db_type(db, t).any(db, callable)),
                 _ => todo!(),
             },
-            Self::Union(union_type) => union_type
-                .iter()
-                .any(|t| Type::from_db_type(db, t).any(db, callable)),
         }
     }
 
@@ -636,7 +619,6 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::ClassLike(c) => c.format(i_s, matcher, style),
             Self::Type(t) => t.format(i_s, matcher, style),
-            Self::Union(list) => list.format(i_s, matcher, style),
         }
     }
 }

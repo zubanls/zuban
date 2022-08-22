@@ -1,5 +1,5 @@
 use super::{Match, MismatchReason, Type, TypeVarMatcher};
-use crate::database::{Database, DbType, FormatStyle, TypeVarUsage, Variance};
+use crate::database::{Database, DbType, FormatStyle, Variance};
 use crate::inference_state::InferenceState;
 use crate::value::{Class, LookupResult, MroIterator};
 
@@ -112,7 +112,7 @@ impl<'db, 'a> ClassLike<'db, 'a> {
                                 }
                             },
             */
-            Type::Union(list) => match self {
+            Type::Type(t2) if matches!(t2.as_ref(), DbType::Union(_)) => match self {
                 Self::Class(c1) if variance == Variance::Covariant => c1.is_object_class(i_s.db),
                 _ => Match::new_false(),
             },
