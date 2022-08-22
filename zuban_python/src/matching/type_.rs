@@ -147,7 +147,7 @@ impl<'db, 'a> Type<'db, 'a> {
     fn is_same_type_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -187,11 +187,18 @@ impl<'db, 'a> Type<'db, 'a> {
                                 if let LookupResult::GotoName(_, init) = lookup {
                                     let t2 = init.class_as_type(i_s);
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
-                                        return Self::matches_callable(
+                                        // Since __init__ does not have a return, We need to check the params
+                                        // of the __init__ functions and the class as a return type separately.
+                                        return Type::new(&c1.return_class).matches(
+                                            i_s,
+                                            matcher.as_deref_mut(),
+                                            &Type::Class(cls),
+                                            Variance::Covariant,
+                                        ) & matches_params(
                                             i_s,
                                             matcher,
-                                            c1,
-                                            &c2.skip_first_param(),
+                                            c1.params.as_ref().map(|p| p.iter()),
+                                            c2.params.as_ref().map(|p| p.iter().skip(1)),
                                         );
                                     }
                                 }
