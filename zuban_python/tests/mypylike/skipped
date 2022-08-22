@@ -1,7 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-type_type_application
 nested_generic_mismatch_*
 union_context_class_matching
 contravariant_type_var

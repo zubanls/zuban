@@ -518,7 +518,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::owned(self.as_db_type(i_s))
+        Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
     }
 }
 

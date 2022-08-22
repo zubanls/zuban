@@ -242,7 +242,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::Type(Cow::Borrowed(self.db_type))
+        Type::Type(Cow::Owned(DbType::Type(Box::new(self.db_type.clone()))))
     }
 
     fn execute(
