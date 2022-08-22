@@ -83,11 +83,14 @@ impl<'db, 'a> Type<'db, 'a> {
         match self {
             Self::Class(class1) => match other {
                 Self::Class(class2) => Self::overlaps_class(i_s, *class1, *class2),
-                Self::Type(t1) => match t1.as_ref() {
+                Self::Type(t2) => match t2.as_ref() {
+                    DbType::Class(l, g) => {
+                        Self::overlaps_class(i_s, *class1, Class::from_db_type(i_s.db, *l, g))
+                    }
                     DbType::Union(union_type) => {
                         union_type.iter().any(|t| self.overlaps(i_s, &Type::new(t)))
                     }
-                    _ => todo!(),
+                    _ => false,
                 },
             },
             Self::Type(t1) => match t1.as_ref() {
