@@ -359,14 +359,12 @@ impl<'db, 'a> Type<'db, 'a> {
                             .iter()
                             .any(|r| self.matches(i_s, None, &Type::new(r), variance).bool())
                             .into();
-                    } else {
-                        todo!() // self.is_object_class(i_s.db)
                     }
                 }
                 _ => (),
             }
         };
-        Match::new_false()
+        m
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
@@ -463,7 +461,7 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        if let Type::Class(class2) = value_type {
+        if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
                 let type_vars = class1.type_vars(i_s);
                 return class1

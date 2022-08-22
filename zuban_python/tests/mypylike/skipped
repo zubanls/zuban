@@ -2,7 +2,12 @@
 testInferTypeVariableFromTwoGenericTypes4
 
 type_type_application
-nested_generic_mismatch_function
+nested_generic_mismatch_*
+union_context_class_matching
+contravariant_type_var
+type_var_*
+testGenericTypeAliasesBasic2
+testGenericTypeAliasesRuntimeExpressionsOther
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
