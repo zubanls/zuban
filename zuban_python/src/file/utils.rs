@@ -42,7 +42,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         if list_cls.node_ref == i_s.db.python_state.list() =>
                     {
                         let generic_t = list_cls.generics().nth(i_s, 0.into());
-                        let generic_t = Type::from_db_type(i_s.db, &generic_t);
+                        let generic_t = Type::new(&generic_t);
                         let new_result_context = ResultContext::Known(&generic_t);
 
                         // Since it's a list, now check all the entries if they match the given result

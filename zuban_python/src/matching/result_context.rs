@@ -21,7 +21,7 @@ impl<'db, 'a> ResultContext<'db, 'a> {
             Self::Known(t) => Some(callable(i_s, t)),
             Self::LazyKnown(c) => {
                 let t = c(i_s);
-                Some(callable(i_s, &Type::from_db_type(i_s.db, &t)))
+                Some(callable(i_s, &Type::new(&t)))
             }
             Self::Unknown => None,
         }

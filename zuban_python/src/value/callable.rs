@@ -23,7 +23,7 @@ impl<'db, 'a> Callable<'a> {
     }
 
     pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::from_db_type(i_s.db, &self.content.return_class)
+        Type::new(&self.content.return_class)
     }
 }
 
@@ -61,7 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             result_context,
             on_type_error,
         );
-        let g_o = Type::from_db_type(i_s.db, &self.content.return_class);
+        let g_o = Type::new(&self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
     }
 

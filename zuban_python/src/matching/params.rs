@@ -190,7 +190,7 @@ impl<'db, 'x> Param<'db, 'x> for &'x CallableParam {
     }
 
     fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
-        Some(Type::from_db_type(i_s.db, &self.db_type))
+        Some(Type::new(&self.db_type))
     }
 
     fn param_type(&self) -> ParamType {

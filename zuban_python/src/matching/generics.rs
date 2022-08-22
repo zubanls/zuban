@@ -271,10 +271,10 @@ impl<'db> GenericsIterator<'db, '_> {
             }
             Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
                 let g = replace_class_vars!(i_s, g, type_var_generics);
-                callable(i_s, Type::from_db_type(i_s.db, &g))
+                callable(i_s, Type::new(&g))
             }),
             Self::DbType(g) => {
-                let result = Some(callable(i_s, Type::from_db_type(i_s.db, g)));
+                let result = Some(callable(i_s, Type::new(g)));
                 *self = Self::None;
                 result
             }

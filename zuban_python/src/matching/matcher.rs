@@ -84,7 +84,7 @@ impl TypeVarBound {
         variance: Variance,
     ) -> Match {
         let check_match = |i_s: &mut InferenceState<'db, '_>, t: &DbType, variance| {
-            Type::from_db_type(i_s.db, t).matches(i_s, None, other, variance)
+            Type::new(t).matches(i_s, None, other, variance)
         };
         // First check if the value is between the bounds.
         let matches = match self {
@@ -122,8 +122,7 @@ impl TypeVarBound {
                     {
                         let m = check_match(i_s, t, Variance::Covariant);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
-                            let t = Type::from_db_type(i_s.db, t);
-                            *self = Self::Upper(t.common_base_class(i_s, other));
+                            *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
                             return Match::True;
                         }
                         return m;
@@ -208,7 +207,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             let mut mismatch_constraints = false;
             if !type_var.restrictions.is_empty() {
                 for restriction in type_var.restrictions.iter() {
-                    if Type::from_db_type(i_s.db, restriction)
+                    if Type::new(restriction)
                         .matches(
                             i_s,
                             None,
@@ -231,7 +230,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints = mismatch_constraints
-                    || !Type::from_db_type(i_s.db, bound)
+                    || !Type::new(bound)
                         .matches(i_s, None, value_type, Variance::Covariant)
                         .bool();
             }
@@ -256,7 +255,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class.generics.nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
-                    let g = Type::from_db_type(i_s.db, &g);
+                    let g = Type::new(&g);
                     return g.matches(i_s, None, value_type, type_var.variance);
                 }
             }
@@ -268,8 +267,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g =
-                                Type::from_db_type(i_s.db, &type_var_remap[type_var_usage.index]);
+                            let g = Type::new(&type_var_remap[type_var_usage.index]);
                             // The remapping of type vars needs to be checked now. In a lot of
                             // cases this is T -> T and S -> S, but it could also be T -> S and S
                             // -> List[T] or something completely arbitrary.

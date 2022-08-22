@@ -636,8 +636,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         // Performance: This could be optimized to not create new objects all the time.
                         let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
-                        let actual = Type::from_db_type(i_s.db, &t);
-                        let expected = Type::from_db_type(i_s.db, bound);
+                        let actual = Type::new(&t);
+                        let expected = Type::new(bound);
                         if !expected
                             .matches(i_s, None, &actual, Variance::Covariant)
                             .bool()
@@ -654,9 +654,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     } else if !type_var.restrictions.is_empty() {
                         let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
-                        let t2 = Type::from_db_type(i_s.db, &t2);
+                        let t2 = Type::new(&t2);
                         if !type_var.restrictions.iter().any(|t| {
-                            Type::from_db_type(i_s.db, t)
+                            Type::new(t)
                                 .matches(i_s, None, &t2, Variance::Covariant)
                                 .bool()
                         }) {
@@ -1176,7 +1176,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             point.complex_index()
         };
         if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
-            Type::from_db_type(self.i_s.db, db_type)
+            Type::new(db_type)
         } else {
             unreachable!()
         }
@@ -1366,7 +1366,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         if let ComplexPoint::TypeInstance(db_type) =
                             f.complex_points.get(complex_index)
                         {
-                            Type::from_db_type(inference.i_s.db, db_type)
+                            Type::new(db_type)
                         } else {
                             unreachable!()
                         },

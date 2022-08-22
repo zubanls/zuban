@@ -30,19 +30,6 @@ impl<'db, 'a> Type<'db, 'a> {
         Self::Type(Cow::Owned(t))
     }
 
-    pub fn from_db_type(db: &'db Database, db_type: &'a DbType) -> Self {
-        match db_type {
-            DbType::Class(link, generics) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                Self::ClassLike(ClassLike::Class(
-                    Class::from_position(node_ref, Generics::new_maybe_list(generics), None)
-                        .unwrap(),
-                ))
-            }
-            _ => Self::new(db_type),
-        }
-    }
-
     pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
         Self::owned(self.into_db_type(i_s).union(other.into_db_type(i_s)))
     }
@@ -86,9 +73,9 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class1) => match other {
                 Self::ClassLike(class2) => class1.overlaps(i_s, class2),
                 Self::Type(t1) => match t1.as_ref() {
-                    DbType::Union(union_type) => union_type
-                        .iter()
-                        .any(|t| self.overlaps(i_s, &Type::from_db_type(i_s.db, t))),
+                    DbType::Union(union_type) => {
+                        union_type.iter().any(|t| self.overlaps(i_s, &Type::new(t)))
+                    }
                     _ => todo!(),
                 },
             },
@@ -136,9 +123,9 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
-                DbType::Union(union_type) => union_type
-                    .iter()
-                    .any(|t| Type::from_db_type(i_s.db, t).overlaps(i_s, other)),
+                DbType::Union(union_type) => {
+                    union_type.iter().any(|t| Type::new(t).overlaps(i_s, other))
+                }
             },
         }
     }
@@ -313,9 +300,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 Variance::Covariant => {
                     let mut matches = true;
                     for g2 in u2.iter() {
-                        let t2 = Type::from_db_type(i_s.db, g2);
+                        let t2 = Type::new(g2);
                         matches &= u1.iter().any(|g1| {
-                            Type::from_db_type(i_s.db, g1)
+                            Type::new(g1)
                                 .matches(i_s, matcher.as_deref_mut(), &t2, variance)
                                 .bool()
                         })
@@ -329,15 +316,10 @@ impl<'db, 'a> Type<'db, 'a> {
                 Variance::Contravariant => u1
                     .iter()
                     .all(|g1| {
-                        let t1 = Type::from_db_type(i_s.db, g1);
+                        let t1 = Type::new(g1);
                         u2.iter().any(|g2| {
-                            t1.matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                &Type::from_db_type(i_s.db, g2),
-                                variance,
-                            )
-                            .bool()
+                            t1.matches(i_s, matcher.as_deref_mut(), &Type::new(g2), variance)
+                                .bool()
                         })
                     })
                     .into(),
@@ -347,7 +329,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 Variance::Covariant | Variance::Invariant => u1
                     .iter()
                     .any(|g| {
-                        Type::from_db_type(i_s.db, g)
+                        Type::new(g)
                             .matches(i_s, matcher.as_deref_mut(), value_type, variance)
                             .bool()
                     })
@@ -402,22 +384,22 @@ impl<'db, 'a> Type<'db, 'a> {
                     | (true, false, Variance::Contravariant)
                     | (_, _, Variance::Invariant) => Match::new_false(),
                     (true, false, Variance::Covariant) => {
-                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
+                        let t1 = Type::new(&generics1[0.into()]);
                         generics2
                             .iter()
                             .all(|g2| {
-                                let t2 = Type::from_db_type(i_s.db, g2);
+                                let t2 = Type::new(g2);
                                 t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
                                     .bool()
                             })
                             .into()
                     }
                     (false, true, Variance::Contravariant) => {
-                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
+                        let t2 = Type::new(&generics2[0.into()]);
                         generics1
                             .iter()
                             .all(|g1| {
-                                let t1 = Type::from_db_type(i_s.db, g1);
+                                let t1 = Type::new(g1);
                                 t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
                                     .bool()
                             })
@@ -446,9 +428,9 @@ impl<'db, 'a> Type<'db, 'a> {
                             )
                     }
                     (false, true) => {
-                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
+                        let t2 = Type::new(&generics2[0.into()]);
                         for g in generics1.iter() {
-                            let t1 = Type::from_db_type(i_s.db, g);
+                            let t1 = Type::new(g);
                             if !t1.overlaps(i_s, &t2) {
                                 dbg!();
                                 return false;
@@ -457,9 +439,9 @@ impl<'db, 'a> Type<'db, 'a> {
                         true
                     }
                     (true, false) => {
-                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
+                        let t1 = Type::new(&generics1[0.into()]);
                         for g in generics2.iter() {
-                            let t2 = Type::from_db_type(i_s.db, g);
+                            let t2 = Type::new(g);
                             if !t1.overlaps(i_s, &t2) {
                                 return false;
                             }
@@ -579,9 +561,9 @@ impl<'db, 'a> Type<'db, 'a> {
             Self::ClassLike(class_like) => callable(class_like),
             Self::Type(t) => match t.as_ref() {
                 DbType::Any => true,
-                DbType::Union(union_type) => union_type
-                    .iter()
-                    .any(|t| Type::from_db_type(db, t).any(db, callable)),
+                DbType::Union(union_type) => {
+                    union_type.iter().any(|t| Type::new(t).any(db, callable))
+                }
                 _ => todo!(),
             },
         }
