@@ -94,10 +94,9 @@ impl<'db, 'a> Type<'db, 'a> {
                 },
             },
             Self::Type(t1) => match t1.as_ref() {
-                DbType::Class(link, generics) => match other {
-                    Self::Type(t2) => todo!(),
-                    _ => todo!(),
-                },
+                DbType::Class(link, generics) => {
+                    Type::Class(Class::from_db_type(i_s.db, *link, generics)).overlaps(i_s, other)
+                }
                 DbType::Type(t1) => match other {
                     Self::Type(ref t2) => match t2.as_ref() {
                         DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
