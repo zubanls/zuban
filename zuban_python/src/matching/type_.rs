@@ -721,8 +721,8 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     pub fn common_base_class(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> DbType {
-        match (self, other) {
-            (Self::Class(c1), Self::Class(c2)) => {
+        match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
+            (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s) {
                     for (_, c2) in c2.mro(i_s) {
                         if c1.matches(i_s, None, &c2, Variance::Invariant).bool() {
