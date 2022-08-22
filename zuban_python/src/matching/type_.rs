@@ -722,20 +722,19 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn any(
+    pub fn on_any_class(
         &self,
         db: &'db Database,
-        callable: &mut impl FnMut(&Type<'db, '_>) -> bool,
+        callable: &mut impl FnMut(&Class<'db, '_>) -> bool,
     ) -> bool {
-        match self {
-            Self::Class(class) => todo!(), //callable(class),
-            Self::Type(t) => match t.as_ref() {
-                DbType::Any => true,
-                DbType::Union(union_type) => {
-                    union_type.iter().any(|t| Type::new(t).any(db, callable))
-                }
-                _ => todo!(),
-            },
+        if let Some(class) = self.maybe_class(db) {
+            callable(&class)
+        } else if let Some(DbType::Union(union_type)) = self.maybe_db_type() {
+            union_type
+                .iter()
+                .any(|t| Type::new(t).on_any_class(db, callable))
+        } else {
+            false
         }
     }
 

@@ -1,6 +1,8 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
+type_type_application
+nested_generic_mismatch_function
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
