@@ -535,7 +535,8 @@ impl UnionType {
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
             DbType::TypeVar(_) => 2,
-            DbType::Any => 3,
+            DbType::None => 3,
+            DbType::Any => 4,
             _ => t.type_.has_type_vars().into(),
         });
     }

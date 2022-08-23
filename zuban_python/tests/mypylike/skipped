@@ -26,8 +26,6 @@ testOverloadInferringArgumentsUsingContext1
 testBoundOnGenericFunction
 testBoundGenericFunctions
 
-testWideOuterContextOptional
-testWideOuterContextOptionalGenericReturn
 testUseCovariantGenericOuterContext
 
 testComplexTypeInferenceWithTuple
