@@ -5,7 +5,7 @@ use super::{
     matches_params, CalculatedTypeArguments, Generics, Match, MismatchReason, TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, TupleContent, TypeVarUsage, UnionType, Variance,
+    CallableContent, Database, DbType, FormatStyle, TupleContent, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -371,6 +371,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             .into();
                     }
                 }
+                DbType::Never => return Match::True, // TODO is this correct?
                 _ => (),
             }
         };

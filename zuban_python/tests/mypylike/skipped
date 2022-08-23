@@ -28,8 +28,6 @@ testBoundGenericFunctions
 
 testUseCovariantGenericOuterContext
 
-testComplexTypeInferenceWithTuple
-
 testOverloadWithOverlappingItemsAndAnyArgument1
 
 testOverloadAnyIsConsideredValidReturnSubtype
