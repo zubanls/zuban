@@ -270,10 +270,10 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 None => {
                     let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
-                    if m.bool() {
-                        m
+                    if !m.bool() && self.is_object_class(i_s.db).bool() {
+                        Match::True
                     } else {
-                        self.is_object_class(i_s.db)
+                        m
                     }
                 }
             },
