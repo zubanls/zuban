@@ -203,7 +203,18 @@ impl<'db, 'a> Type<'db, 'a> {
                                 }
                                 Match::new_false()
                             }
-                            _ => Match::new_false(),
+                            _ => {
+                                if c1.params.is_none() {
+                                    Type::new(&c1.return_class).matches(
+                                        i_s,
+                                        matcher.as_deref_mut(),
+                                        &Type::new(t2.as_ref()),
+                                        Variance::Covariant,
+                                    )
+                                } else {
+                                    Match::new_false()
+                                }
+                            }
                         },
                         DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
                         _ => Match::new_false(),
