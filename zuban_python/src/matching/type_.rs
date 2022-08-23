@@ -631,24 +631,6 @@ impl<'db, 'a> Type<'db, 'a> {
         }
         false
     }
-    fn matches_type_var(&self, i_s: &mut InferenceState<'db, '_>, t2: &TypeVarUsage) -> bool {
-        if let Some(DbType::TypeVar(t1)) = self.maybe_db_type() {
-            if t1.index == t2.index && t1.in_definition == t2.in_definition {
-                return true;
-            }
-        }
-        if let Some(bound) = &t2.type_var.bound {
-            self.matches(i_s, None, &Type::new(bound), Variance::Covariant)
-                .bool()
-        } else if !t2.type_var.restrictions.is_empty() {
-            t2.type_var.restrictions.iter().any(|r| {
-                self.matches(i_s, None, &Type::new(r), Variance::Covariant)
-                    .bool()
-            })
-        } else {
-            false
-        }
-    }
 
     pub fn error_if_not_matches<'x>(
         &self,
