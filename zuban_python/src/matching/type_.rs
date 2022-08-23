@@ -266,31 +266,57 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                 }
             },
-            Variance::Contravariant => match self.mro(i_s) {
-                Some(mro) => {
-                    for (_, t1) in mro {
-                        let m = t1.is_same_type_internal(
-                            i_s,
-                            matcher.as_deref_mut(),
-                            value_type,
-                            variance,
-                        );
-                        if !matches!(m, Match::False(MismatchReason::None)) {
-                            return m;
-                        }
-                    }
-                    Match::new_false()
+            Variance::Contravariant => match value_type.maybe_db_type() {
+                Some(DbType::Union(u2))
+                    if !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
+                {
+                    u2.iter()
+                        .any(|g| {
+                            self.matches_contravariant_single(
+                                i_s,
+                                matcher.as_deref_mut(),
+                                &Type::new(g),
+                            )
+                            .bool()
+                        })
+                        .into()
                 }
-                None => {
-                    let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
-                    if m.bool() {
-                        m
-                    } else {
-                        Match::new_false()
-                        // TODO value_type.is_object_class(i_s.db)
-                    }
-                }
+                _ => self.matches_contravariant_single(i_s, matcher, value_type),
             },
+        }
+    }
+
+    fn matches_contravariant_single(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+    ) -> Match {
+        match self.mro(i_s) {
+            Some(mro) => {
+                for (_, t1) in mro {
+                    let m = t1.is_same_type_internal(
+                        i_s,
+                        matcher.as_deref_mut(),
+                        value_type,
+                        Variance::Contravariant,
+                    );
+                    if !matches!(m, Match::False(MismatchReason::None)) {
+                        return m;
+                    }
+                }
+                Match::new_false()
+            }
+            None => {
+                let m =
+                    self.is_same_type_internal(i_s, matcher, value_type, Variance::Contravariant);
+                if m.bool() {
+                    m
+                } else {
+                    Match::new_false()
+                    // TODO value_type.is_object_class(i_s.db)
+                }
+            }
         }
     }
 
@@ -551,7 +577,6 @@ impl<'db, 'a> Type<'db, 'a> {
                         for g in generics1.iter() {
                             let t1 = Type::new(g);
                             if !t1.overlaps(i_s, &t2) {
-                                dbg!();
                                 return false;
                             }
                         }
