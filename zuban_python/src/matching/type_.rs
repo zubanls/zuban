@@ -372,14 +372,19 @@ impl<'db, 'a> Type<'db, 'a> {
                 },
                 DbType::TypeVar(t2) => {
                     if let Some(bound) = &t2.type_var.bound {
-                        return self.matches(i_s, None, &Type::new(bound), variance);
+                        let m = self.matches(i_s, None, &Type::new(bound), variance);
+                        if m.bool() {
+                            return m;
+                        }
                     } else if !t2.type_var.restrictions.is_empty() {
-                        return t2
+                        let m = t2
                             .type_var
                             .restrictions
                             .iter()
-                            .any(|r| self.matches(i_s, None, &Type::new(r), variance).bool())
-                            .into();
+                            .any(|r| self.matches(i_s, None, &Type::new(r), variance).bool());
+                        if m {
+                            return Match::True;
+                        }
                     }
                 }
                 DbType::Never => return Match::True, // TODO is this correct?

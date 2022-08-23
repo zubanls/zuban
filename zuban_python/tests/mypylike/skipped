@@ -23,8 +23,6 @@ testSubtypingFunctionsDefaultsNames
 testRedefineFunction
 testOverloadInferringArgumentsUsingContext1
 
-testBoundGenericFunctions
-
 testOverloadWithOverlappingItemsAndAnyArgument1
 
 testOverloadAnyIsConsideredValidReturnSubtype
