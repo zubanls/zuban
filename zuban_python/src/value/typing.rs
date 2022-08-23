@@ -237,8 +237,20 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
             DbType::Class(link, generics_list) => {
                 Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
             }
+            DbType::Callable(_) => LookupResult::None,
             _ => todo!("{:?}", self.db_type),
         }
+    }
+
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        slice_type: &SliceType<'db, '_>,
+    ) -> Inferred<'db> {
+        slice_type
+            .as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
+        Inferred::new_any()
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {

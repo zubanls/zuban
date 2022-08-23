@@ -3,7 +3,6 @@ testInferTypeVariableFromTwoGenericTypes4
 
 type_var_with_co_and_contra_abstract
 testGenericTypeAliasesBasic2
-testGenericTypeAliasesRuntimeExpressionsOther
 
 testNewAnalyzerAliasToNotReadyTwoDeferralsFunction
 testForwardTypeAlias

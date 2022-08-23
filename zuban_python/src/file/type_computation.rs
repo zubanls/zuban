@@ -182,17 +182,19 @@ macro_rules! compute_type_application {
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
-            TypeContent::DbType(mut db_type) => if tcomp.has_type_vars {
+            TypeContent::DbType(mut db_type) => {
                 let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     db_type = recalculate_type_vars(&db_type);
                 });
-                ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                    type_vars,
-                    location: $slice_type.as_node_ref().as_link(),
-                    db_type: Rc::new(db_type),
-                }))
-            } else {
-                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+                if type_vars.len() > 0 {
+                    ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                        type_vars,
+                        location: $slice_type.as_node_ref().as_link(),
+                        db_type: Rc::new(db_type),
+                    }))
+                } else {
+                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+                }
             },
             _ => todo!("{t:?}"),
         })
