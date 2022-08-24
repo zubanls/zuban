@@ -983,6 +983,9 @@ impl CallableParam {
                             ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
                         };
                         string += &self.db_type.format(i_s, matcher, style);
+                        if self.has_default {
+                            string += " =";
+                        }
                         return string.into();
                     }
                     _ => {
