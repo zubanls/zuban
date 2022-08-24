@@ -963,6 +963,58 @@ pub struct CallableParam {
     pub db_type: DbType,
 }
 
+impl CallableParam {
+    pub fn format<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
+        if self.param_type != ParamType::PositionalOnly {
+            if let Some(name) = self.name {
+                match style {
+                    FormatStyle::MypyRevealType => {
+                        let mut string = match self.param_type {
+                            ParamType::PositionalOnly => unreachable!(),
+                            ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
+                                format!("{}: ", name.as_str(i_s.db))
+                            }
+                            ParamType::Starred => format!("*{}: ", name.as_str(i_s.db)),
+                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
+                        };
+                        string += &self.db_type.format(i_s, matcher, style);
+                        return string.into();
+                    }
+                    _ => {
+                        let t = self.db_type.format(i_s, matcher, style);
+                        return match self.param_type {
+                            ParamType::PositionalOnly => unreachable!(),
+                            ParamType::PositionalOrKeyword => {
+                                if self.has_default {
+                                    format!("DefaultArg({t}, '{}')", name.as_str(i_s.db))
+                                } else {
+                                    format!("Arg({t}, '{}')", name.as_str(i_s.db))
+                                }
+                            }
+                            ParamType::KeywordOnly => {
+                                if self.has_default {
+                                    todo!()
+                                } else {
+                                    format!("NamedArg({t}, '{}')", name.as_str(i_s.db))
+                                }
+                            }
+                            ParamType::Starred => format!("VarArg({t})"),
+                            ParamType::DoubleStarred => format!("KwArg({t})"),
+                        }
+                        .into();
+                    }
+                }
+            }
+        }
+        self.db_type.format(i_s, matcher, style)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
     pub defined_at: PointLink,
@@ -981,24 +1033,7 @@ impl CallableContent {
         let param_string = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| {
-                    if let Some(name) = p.name {
-                        let mut string = match p.param_type {
-                            ParamType::PositionalOnly => {
-                                return p.db_type.format(i_s, matcher, style)
-                            }
-                            ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
-                                format!("{}: ", name.as_str(i_s.db))
-                            }
-                            ParamType::Starred => format!("*{}: ", name.as_str(i_s.db)),
-                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
-                        };
-                        string += &p.db_type.format(i_s, matcher, style);
-                        string.into()
-                    } else {
-                        p.db_type.format(i_s, matcher, style)
-                    }
-                })
+                .map(|p| p.format(i_s, matcher, style))
                 .collect::<Vec<_>>()
                 .join(", ")
         });

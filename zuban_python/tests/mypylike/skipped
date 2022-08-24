@@ -1,14 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-testSubtypingFunctionsDoubleCorrespondence
-testSubtypingFunctionsRequiredLeftArgNotPresent
-testCallableWithArbitraryArgsSubtyping
-testFunctionReturningGenericFunctionPartialBinding
-testVarArgsFunctionSubtyping
-testAliasFineGenericToNonGeneric
-testGenericTypeAliasesBasic2
-
 testSubtypingFunctionsDefaultsNames
 testRedefineFunction
 
