@@ -77,6 +77,11 @@ impl<'db, 'a> Type<'db, 'a> {
                     true
                 };
             }
+            Some(DbType::Union(union_type2)) => {
+                return union_type2
+                    .iter()
+                    .any(|t| self.overlaps(i_s, &Type::new(t)))
+            }
             _ => (),
         }
 
@@ -86,9 +91,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 Self::Type(t2) => match t2.as_ref() {
                     DbType::Class(l, g) => {
                         Self::overlaps_class(i_s, *class1, Class::from_db_type(i_s.db, *l, g))
-                    }
-                    DbType::Union(union_type) => {
-                        union_type.iter().any(|t| self.overlaps(i_s, &Type::new(t)))
                     }
                     _ => false,
                 },

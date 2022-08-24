@@ -16,8 +16,6 @@ testGenericTypeAliasesBasic2
 testSubtypingFunctionsDefaultsNames
 testRedefineFunction
 
-testOverloadAnyIsConsideredValidReturnSubtype
-testOverloadsTypesAndUnions
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
