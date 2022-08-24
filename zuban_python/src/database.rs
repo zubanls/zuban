@@ -1033,16 +1033,28 @@ impl CallableContent {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> String {
-        let param_string = self.params.as_ref().map(|params| {
+        let mut params = self.params.as_ref().map(|params| {
             params
                 .iter()
                 .map(|p| p.format(i_s, matcher, style))
                 .collect::<Vec<_>>()
-                .join(", ")
         });
         let result = self.return_class.format(i_s, matcher, style);
         match style {
             FormatStyle::MypyRevealType => {
+                if let Some(params) = params.as_mut() {
+                    for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
+                        match p.param_type {
+                            ParamType::KeywordOnly => {
+                                params.insert(i, Box::from("*"));
+                                break;
+                            }
+                            ParamType::Starred => break,
+                            _ => (),
+                        }
+                    }
+                }
+                let param_string = params.map(|p| p.join(", "));
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
                 let type_vars = self.type_vars.as_ref().map(|t| {
                     format!(
@@ -1061,7 +1073,7 @@ impl CallableContent {
                 }
             }
             _ => {
-                let param_string = param_string.map(|p| format!("[{p}]"));
+                let param_string = params.map(|p| format!("[{}]", p.join(", ")));
                 let param_str = param_string.as_deref().unwrap_or("...");
                 format!("Callable[{param_str}, {result}]")
             }

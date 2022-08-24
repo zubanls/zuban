@@ -489,9 +489,6 @@ testNestedInstanceTypeAliasUnsimplifiedUnion
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
 
-# BoundMethod class
-testKwargsAllowedInDunderCallKwOnly
-
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
