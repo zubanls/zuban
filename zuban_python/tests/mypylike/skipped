@@ -1,9 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-type_var_with_co_and_contra_abstract
-testGenericTypeAliasesBasic2
-
 testNewAnalyzerAliasToNotReadyTwoDeferralsFunction
 testForwardTypeAlias
 testForwardTypeAliasGeneric
@@ -14,6 +11,7 @@ testCallableWithArbitraryArgsSubtyping
 testFunctionReturningGenericFunctionPartialBinding
 testVarArgsFunctionSubtyping
 testAliasFineGenericToNonGeneric
+testGenericTypeAliasesBasic2
 
 testSubtypingFunctionsDefaultsNames
 testRedefineFunction

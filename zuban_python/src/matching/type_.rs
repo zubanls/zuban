@@ -319,14 +319,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 Match::new_false()
             }
             None => {
-                let m =
-                    self.is_same_type_internal(i_s, matcher, value_type, Variance::Contravariant);
-                if m.bool() {
-                    m
-                } else {
-                    Match::new_false()
-                    // TODO value_type.is_object_class(i_s.db)
-                }
+                self.is_same_type_internal(i_s, matcher, value_type, Variance::Contravariant)
+                // TODO value_type.is_object_class(i_s.db)
             }
         }
     }
@@ -352,6 +346,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
             }
         }
+        dbg!(&m, self, value_type);
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         if let Type::Type(t2) = value_type {
