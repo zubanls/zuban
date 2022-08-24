@@ -17,10 +17,10 @@ use crate::matching::{Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, Callable, Class, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
-    Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
-    TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
-    Value,
+    BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
+    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
+    Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
+    TypingType, TypingWithGenerics, Value,
 };
 
 #[derive(Debug)]
@@ -373,10 +373,24 @@ impl<'db> Inferred<'db> {
                 let class = class_t.maybe_class(i_s.db).unwrap();
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
-                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Overload(func),
+                        ),
+                    )
                 } else {
                     let func = Function::new(reference, Some(class));
-                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Function(func),
+                        ),
+                    )
                 }
             }
             ComplexPoint::Closure(function, execution) => {

@@ -1,4 +1,4 @@
-use super::{Instance, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
@@ -6,17 +6,32 @@ use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 
 #[derive(Debug)]
-pub struct BoundMethod<'db, 'a> {
-    instance: &'a Instance<'db, 'a>,
-    function: &'a dyn Value<'db, 'a>,
+pub enum BoundMethodFunction<'db, 'a> {
+    Function(Function<'db, 'a>),
+    Overload(OverloadedFunction<'db, 'a>),
+}
+
+impl<'db, 'a> BoundMethodFunction<'db, 'a> {
+    fn as_value(&self) -> &dyn Value<'db, 'a> {
+        match self {
+            Self::Function(f) => f,
+            Self::Overload(f) => f,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct BoundMethod<'db, 'a, 'b> {
+    instance: &'b Instance<'db, 'b>,
+    function: BoundMethodFunction<'db, 'a>,
     mro_index: MroIndex,
 }
 
-impl<'db, 'a> BoundMethod<'db, 'a> {
+impl<'db, 'a, 'b> BoundMethod<'db, 'a, 'b> {
     pub fn new(
-        instance: &'a Instance<'db, 'a>,
+        instance: &'b Instance<'db, 'b>,
         mro_index: MroIndex,
-        function: &'a dyn Value<'db, 'a>,
+        function: BoundMethodFunction<'db, 'a>,
     ) -> Self {
         Self {
             instance,
@@ -26,17 +41,17 @@ impl<'db, 'a> BoundMethod<'db, 'a> {
     }
 }
 
-impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
+impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
     fn kind(&self) -> ValueKind {
-        self.function.kind()
+        self.function.as_value().kind()
     }
 
     fn name(&self) -> &'db str {
-        self.function.name()
+        self.function.as_value().name()
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
-        self.function.lookup_internal(i_s, name)
+        self.function.as_value().lookup_internal(i_s, name)
     }
 
     fn execute(
@@ -50,29 +65,25 @@ impl<'db, 'a, 'b> Value<'db, 'b> for BoundMethod<'db, 'a> {
         let instance_arg = KnownArguments::with_mro_index(&instance_inf, self.mro_index, None);
         let args = CombinedArguments::new(&instance_arg, args);
         let class = &self.instance.class;
-        match self.function.as_function() {
-            Some(f) => f.execute_internal(
+        match &self.function {
+            BoundMethodFunction::Function(f) => f.execute_internal(
                 &mut i_s.with_class_context(class),
                 &args,
                 on_type_error,
                 Some(class),
                 result_context,
             ),
-            // TODO this kind of loses access the class
-            None => match self.function.as_overloaded_function() {
-                Some(f) => f.execute_internal(
-                    &mut i_s.with_class_context(class),
-                    &args,
-                    on_type_error,
-                    Some(class),
-                    result_context,
-                ),
-                None => todo!(), //self.function.execute(i_s, &args, on_type_error),
-            },
+            BoundMethodFunction::Overload(f) => f.execute_internal(
+                &mut i_s.with_class_context(class),
+                &args,
+                on_type_error,
+                Some(class),
+                result_context,
+            ),
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'b> {
-        todo!("{self:?}")
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'static> {
+        todo!() //Type::owned(self.function.as_type(i_s).into_db_type(i_s))
     }
 }
