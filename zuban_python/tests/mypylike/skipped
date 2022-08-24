@@ -1,9 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-testSubtypingFunctionsDefaultsNames
-testRedefineFunction
-
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting

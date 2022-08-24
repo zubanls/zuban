@@ -73,6 +73,7 @@ impl<'db, 'a> Function<'db, 'a> {
 
     pub fn iter_inferrable_params<'b>(
         &self,
+        db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
     ) -> InferrableParamIterator<'db, 'b> {
@@ -80,11 +81,12 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator::new(self.node_ref.file, params, args.iter_arguments())
+        InferrableParamIterator::new(db, self.node_ref.file, params, args.iter_arguments())
     }
 
     pub fn iter_args_with_params<'b>(
         &self,
+        db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
     ) -> InferrableParamIterator2<
@@ -100,7 +102,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(params, args.iter_arguments().peekable())
+        InferrableParamIterator2::new(db, params, args.iter_arguments().peekable())
     }
 
     pub fn infer_param(
@@ -132,7 +134,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 }
             }
         };
-        for param in func.iter_inferrable_params(check_args, false) {
+        for param in func.iter_inferrable_params(i_s.db, check_args, false) {
             if param.is_at(param_name_def_index) {
                 return param.infer(i_s).unwrap_or_else(Inferred::new_unknown);
             }
@@ -394,11 +396,11 @@ impl<'db, 'a> Function<'db, 'a> {
                         _ => "",
                     };
                     if let Some(annotation_str) = annotation_str {
-                        format!("{stars}{}: {annotation_str}", p.name().unwrap())
+                        format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
                     } else if i == 0 && self.class.is_some() && stars.is_empty() {
-                        p.name().unwrap().to_owned()
+                        p.name(i_s.db).unwrap().to_owned()
                     } else {
-                        format!("{stars}{}: Any", p.name().unwrap())
+                        format!("{stars}{}: Any", p.name(i_s.db).unwrap())
                     }
                 })
                 .collect::<Vec<_>>()
@@ -456,11 +458,13 @@ impl<'db, 'a> Function<'db, 'a> {
                         match param.param_type() {
                             ParamType::PositionalOnly => t.to_string(),
                             ParamType::PositionalOrKeyword => match param.has_default() {
-                                true => format!("DefaultArg({t}, '{}')", param.name().unwrap()),
-                                false => format!("Arg({t}, '{}')", param.name().unwrap()),
+                                true => {
+                                    format!("DefaultArg({t}, '{}')", param.name(i_s.db).unwrap())
+                                }
+                                false => format!("Arg({t}, '{}')", param.name(i_s.db).unwrap()),
                             },
                             ParamType::KeywordOnly => {
-                                format!("NamedArg({t}, '{}')", param.name().unwrap())
+                                format!("NamedArg({t}, '{}')", param.name(i_s.db).unwrap())
                             }
                             ParamType::Starred => format!("VarArg({t})"),
                             ParamType::DoubleStarred => format!("KwArg({t})"),
@@ -563,7 +567,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
         self.param.default().is_some()
     }
 
-    fn name(&self) -> Option<&str> {
+    fn name(&self, db: &'db Database) -> Option<&str> {
         Some(self.param.name_definition().as_code())
     }
 
@@ -581,6 +585,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
 }
 
 pub struct InferrableParamIterator<'db, 'a> {
+    db: &'db Database,
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
     file: &'db PythonFile,
@@ -589,11 +594,13 @@ pub struct InferrableParamIterator<'db, 'a> {
 
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(
+        db: &'db Database,
         file: &'db PythonFile,
         params: ParamIterator<'db>,
         arguments: ArgumentIterator<'db, 'a>,
     ) -> Self {
         Self {
+            db,
             arguments,
             file,
             params,
@@ -605,7 +612,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match &unused.type_ {
                 ArgumentType::Keyword(name, reference) => {
-                    if *name == param.name().unwrap() {
+                    if *name == param.name(self.db).unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
                 }
@@ -617,7 +624,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 for argument in &mut self.arguments {
                     match argument.type_ {
                         ArgumentType::Keyword(name, reference) => {
-                            if name == param.name().unwrap() {
+                            if name == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
@@ -631,7 +638,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 for argument in &mut self.arguments {
                     match argument.type_ {
                         ArgumentType::Keyword(name, reference) => {
-                            if name == param.name().unwrap() {
+                            if name == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
@@ -715,7 +722,7 @@ impl<'db> InferrableParam<'db, '_> {
 
     pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
         if !matches!(&self.argument, ParamInput::None) {
-            debug!("Infer param {:?}", self.param.name());
+            debug!("Infer param {:?}", self.param.name(i_s.db));
         }
         match &self.argument {
             ParamInput::Argument(arg) => Some(arg.infer(i_s, ResultContext::Unknown)),

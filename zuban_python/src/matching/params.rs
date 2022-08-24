@@ -2,14 +2,14 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, CallableParams, Variance};
+use crate::database::{CallableParam, CallableParams, Database, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;
 
 pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
-    fn name(&self) -> Option<&str>;
+    fn name(&self, db: &'db Database) -> Option<&str>;
     fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
     fn param_type(&self) -> ParamType;
 }
@@ -41,7 +41,7 @@ pub fn matches_params<'db: 'x, 'x>(
                     if matches!(
                         param1.param_type(),
                         ParamType::PositionalOrKeyword | ParamType::KeywordOnly
-                    ) && param1.name() != param2.name()
+                    ) && param1.name(i_s.db) != param2.name(i_s.db)
                     {
                         return Match::new_false();
                     }
@@ -180,13 +180,13 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     true
 }
 
-impl<'db, 'x> Param<'db, 'x> for &'x CallableParam {
+impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
     fn has_default(&self) -> bool {
         self.has_default
     }
 
-    fn name(&self) -> Option<&str> {
-        None
+    fn name(&self, db: &'db Database) -> Option<&str> {
+        self.name.map(|n| n.as_str(db))
     }
 
     fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
@@ -199,6 +199,7 @@ impl<'db, 'x> Param<'db, 'x> for &'x CallableParam {
 }
 
 pub struct InferrableParamIterator2<'db, 'a, I, P> {
+    db: &'db Database,
     pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
@@ -208,8 +209,13 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
-    pub fn new(params: I, arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>) -> Self {
+    pub fn new(
+        db: &'db Database,
+        params: I,
+        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    ) -> Self {
         Self {
+            db,
             arguments,
             params,
             unused_keyword_arguments: vec![],
@@ -254,7 +260,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused.type_ {
                     ArgumentType::Keyword(name, reference) => {
-                        if Some(name) == param.name() {
+                        if Some(name) == param.name(self.db) {
                             return Some(InferrableParam2 {
                                 param,
                                 argument: Some(self.unused_keyword_arguments.remove(i)),
@@ -270,7 +276,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     for arg in &mut self.arguments {
                         match arg.type_ {
                             ArgumentType::Keyword(name, reference) => {
-                                if Some(name) == param.name() {
+                                if Some(name) == param.name(self.db) {
                                     argument = Some(arg);
                                     break;
                                 } else {
@@ -288,7 +294,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     for arg in &mut self.arguments {
                         match arg.type_ {
                             ArgumentType::Keyword(name, reference) => {
-                                if Some(name) == param.name() {
+                                if Some(name) == param.name(self.db) {
                                     argument = Some(arg);
                                     break;
                                 } else {

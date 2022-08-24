@@ -623,7 +623,7 @@ fn calculate_type_vars<'db>(
                 Some(&function),
                 args,
                 on_type_error,
-                function.iter_args_with_params(args, skip_first_param),
+                function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
         FunctionOrCallable::Callable(callable) => {
@@ -635,7 +635,7 @@ fn calculate_type_vars<'db>(
                     None,
                     args,
                     on_type_error,
-                    InferrableParamIterator2::new(params, args.iter_arguments().peekable()),
+                    InferrableParamIterator2::new(i_s.db, params, args.iter_arguments().peekable()),
                 )
             } else {
                 SignatureMatch::True
@@ -838,7 +838,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     } else if should_generate_errors {
         let mut missing_positional = vec![];
         for param in &missing_params {
-            if let Some(param_name) = param.name() {
+            if let Some(param_name) = param.name(i_s.db) {
                 if param.param_type() == ParamType::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     if let Some(function) = function {

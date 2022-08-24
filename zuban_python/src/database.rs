@@ -44,7 +44,7 @@ impl StringSlice {
         }
     }
 
-    fn as_str(self, db: &Database) -> &str {
+    pub fn as_str(self, db: &Database) -> &str {
         let file = db.loaded_python_file(self.file_index);
         &file.tree.code()[self.start as usize..self.end as usize]
     }
