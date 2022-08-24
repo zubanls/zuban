@@ -16,8 +16,6 @@ testGenericTypeAliasesBasic2
 testSubtypingFunctionsDefaultsNames
 testRedefineFunction
 
-testOverloadWithOverlappingItemsAndAnyArgument1
-
 testOverloadAnyIsConsideredValidReturnSubtype
 testOverloadsTypesAndUnions
 # Type var: Cannot infer type argument

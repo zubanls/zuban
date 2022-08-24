@@ -44,6 +44,19 @@ impl Match {
             _ => self,
         }
     }
+
+    pub fn or(self, callable: impl Fn() -> Self) -> Self {
+        if self.bool() {
+            self
+        } else {
+            let result = callable();
+            if result.bool() || matches!(self, Match::False(MismatchReason::None)) {
+                result
+            } else {
+                self
+            }
+        }
+    }
 }
 
 impl BitAnd for Match {

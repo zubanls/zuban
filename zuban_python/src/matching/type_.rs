@@ -270,11 +270,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 None => {
                     let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
-                    if !m.bool() && self.is_object_class(i_s.db).bool() {
-                        Match::True
-                    } else {
-                        m
-                    }
+                    m.or(|| self.matches_object_class(i_s.db, value_type))
                 }
             },
             Variance::Contravariant => match value_type.maybe_db_type() {
@@ -320,7 +316,7 @@ impl<'db, 'a> Type<'db, 'a> {
             }
             None => {
                 self.is_same_type_internal(i_s, matcher, value_type, Variance::Contravariant)
-                // TODO value_type.is_object_class(i_s.db)
+                // TODO value_type.matches_object_class(i_s.db)
             }
         }
     }
@@ -346,7 +342,6 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
             }
         }
-        dbg!(&m, self, value_type);
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
         if let Type::Type(t2) = value_type {
@@ -418,9 +413,21 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn is_object_class(&self, db: &Database) -> Match {
+    fn matches_object_class(&self, db: &Database, value_type: &Type) -> Match {
         self.maybe_class(db)
-            .map(|c| c.is_object_class(db))
+            .map(|c| {
+                let m = c.is_object_class(db);
+                if m.bool()
+                    && value_type
+                        .maybe_db_type()
+                        .map(|t| matches!(t, DbType::Any))
+                        .unwrap_or(false)
+                {
+                    Match::TrueWithAny
+                } else {
+                    m
+                }
+            })
             .unwrap_or_else(Match::new_false)
     }
 
