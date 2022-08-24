@@ -490,7 +490,6 @@ testNestedInstanceTypeAliasUnsimplifiedUnion
 testStringDisallowedUnpacking
 
 # BoundMethod class
-testKwargsAllowedInDunderCall
 testKwargsAllowedInDunderCallKwOnly
 
 # Dynamic functions are not type checked?!

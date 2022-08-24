@@ -84,6 +84,9 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'static> {
-        todo!() //Type::owned(self.function.as_type(i_s).into_db_type(i_s))
+        Type::owned(match &self.function {
+            BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
+            BoundMethodFunction::Overload(f) => todo!(),
+        })
     }
 }

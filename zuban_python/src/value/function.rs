@@ -247,12 +247,16 @@ impl<'db, 'a> Function<'db, 'a> {
         self.type_vars(i_s)
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>, skip_first_param: bool) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
+        let mut params = self.iter_params();
+        if skip_first_param {
+            params.next();
+        }
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: Some(
-                self.iter_params()
+                params
                     .map(|p| CallableParam {
                         db_type: p
                             .annotation_type(i_s)
@@ -525,7 +529,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::owned(self.as_db_type(i_s))
+        Type::owned(self.as_db_type(i_s, false))
     }
 
     fn as_function(&self) -> Option<&Function<'db, 'a>> {
