@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{ClassLike, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
@@ -84,7 +84,7 @@ impl TypeVarBound {
         variance: Variance,
     ) -> Match {
         let check_match = |i_s: &mut InferenceState<'db, '_>, t: &DbType, variance| {
-            Type::from_db_type(i_s.db, t).matches(i_s, None, other, variance)
+            Type::new(t).matches(i_s, None, other, variance)
         };
         // First check if the value is between the bounds.
         let matches = match self {
@@ -122,8 +122,7 @@ impl TypeVarBound {
                     {
                         let m = check_match(i_s, t, Variance::Covariant);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
-                            let t = Type::from_db_type(i_s.db, t);
-                            *self = Self::Upper(t.common_base_class(i_s, other));
+                            *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
                             return Match::True;
                         }
                         return m;
@@ -208,7 +207,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             let mut mismatch_constraints = false;
             if !type_var.restrictions.is_empty() {
                 for restriction in type_var.restrictions.iter() {
-                    if Type::from_db_type(i_s.db, restriction)
+                    if Type::new(restriction)
                         .matches(
                             i_s,
                             None,
@@ -231,7 +230,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints = mismatch_constraints
-                    || !Type::from_db_type(i_s.db, bound)
+                    || !Type::new(bound)
                         .matches(i_s, None, value_type, Variance::Covariant)
                         .bool();
             }
@@ -256,7 +255,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class.generics.nth(i_s, type_var_usage.index);
                     // TODO nth should return a type instead of DbType
-                    let g = Type::from_db_type(i_s.db, &g);
+                    let g = Type::new(&g);
                     return g.matches(i_s, None, value_type, type_var.variance);
                 }
             }
@@ -268,8 +267,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g =
-                                Type::from_db_type(i_s.db, &type_var_remap[type_var_usage.index]);
+                            let g = Type::new(&type_var_remap[type_var_usage.index]);
                             // The remapping of type vars needs to be checked now. In a lot of
                             // cases this is T -> T and S -> S, but it could also be T -> S and S
                             // -> List[T] or something completely arbitrary.
@@ -296,9 +294,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     pub fn set_all_contained_type_vars_to_any(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        class: &ClassLike<'db, '_>,
+        type_: &DbType,
     ) {
-        class.as_db_type(i_s).search_type_vars(&mut |t| {
+        type_.search_type_vars(&mut |t| {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
                 if current.type_.is_none() {
@@ -321,7 +319,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(bound) = current.type_.as_ref() {
                 bound.format(i_s, style)
             } else {
-                Type::Never.format(i_s, None, style)
+                DbType::Never.format(i_s, None, style)
             }
         } else {
             match self.func_or_callable {
@@ -572,10 +570,8 @@ fn calculate_type_vars<'db>(
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
                 if let Some(type_vars) = class.type_vars(i_s) {
-                    type_.any(i_s.db, &mut |t| match t {
-                        ClassLike::Class(result_class)
-                            if result_class.node_ref == class.node_ref =>
-                        {
+                    type_.on_any_class(i_s.db, &mut |result_class| {
+                        if result_class.node_ref == class.node_ref {
                             let mut calculating = matcher.calculated_type_vars.iter_mut();
                             let mut i = 0;
                             result_class
@@ -583,7 +579,7 @@ fn calculate_type_vars<'db>(
                                 .iter()
                                 .run_on_all(i_s, &mut |i_s, g| {
                                     let calculated = calculating.next().unwrap();
-                                    if !matches!(&g, Type::Any) {
+                                    if !g.is_any() {
                                         let mut bound = TypeVarBound::new(
                                             g.as_db_type(i_s),
                                             type_vars[i].variance,
@@ -595,8 +591,9 @@ fn calculate_type_vars<'db>(
                                     }
                                 });
                             true
+                        } else {
+                            false
                         }
-                        _ => false,
                     });
                 }
             } else {
@@ -626,7 +623,7 @@ fn calculate_type_vars<'db>(
                 Some(&function),
                 args,
                 on_type_error,
-                function.iter_args_with_params(args, skip_first_param),
+                function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
         FunctionOrCallable::Callable(callable) => {
@@ -638,7 +635,7 @@ fn calculate_type_vars<'db>(
                     None,
                     args,
                     on_type_error,
-                    InferrableParamIterator2::new(params, args.iter_arguments().peekable()),
+                    InferrableParamIterator2::new(i_s.db, params, args.iter_arguments().peekable()),
                 )
             } else {
                 SignatureMatch::True
@@ -841,7 +838,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     } else if should_generate_errors {
         let mut missing_positional = vec![];
         for param in &missing_params {
-            if let Some(param_name) = param.name() {
+            if let Some(param_name) = param.name(i_s.db) {
                 if param.param_type() == ParamType::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     if let Some(function) = function {

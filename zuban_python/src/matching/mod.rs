@@ -1,4 +1,3 @@
-mod class_like;
 mod generics;
 mod match_;
 mod matcher;
@@ -6,7 +5,6 @@ pub mod params;
 mod result_context;
 mod type_;
 
-pub use class_like::ClassLike;
 pub use generics::Generics;
 pub use match_::{Match, MismatchReason, SignatureMatch};
 pub use matcher::{

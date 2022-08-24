@@ -1,147 +1,26 @@
-use super::class::MroIterator;
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::base_description;
-use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, TupleContent, Variance};
+use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, TupleContent};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Generics, Type, TypeVarMatcher};
+use crate::matching::Type;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
+    db_type: &'a DbType,
     content: &'a TupleContent,
 }
 
 impl<'db, 'a> Tuple<'a> {
-    pub fn new(content: &'a TupleContent) -> Self {
-        Self { content }
-    }
-
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
-        if !self.content.arbitrary_length {
-            debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
-        }
-        MroIterator::new(
-            i_s.db,
-            ClassLike::Tuple(*self),
-            Some(Generics::DbType(
-                self.content
-                    .generics
-                    .as_ref()
-                    .map(|g| g.nth(0.into()).unwrap_or(&DbType::Never))
-                    .unwrap_or(&DbType::Any),
-            )),
-            class_infos.mro.iter(),
-        )
-    }
-
-    pub fn matches(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        other: &Tuple,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        variance: Variance,
-    ) -> bool {
-        if let Some(generics1) = &self.content.generics {
-            if let Some(generics2) = &other.content.generics {
-                return match (
-                    self.content.arbitrary_length,
-                    other.content.arbitrary_length,
-                    variance,
-                ) {
-                    (false, false, _) | (true, true, _) => {
-                        generics1.len() == generics2.len()
-                            && Generics::new_list(generics1)
-                                .matches(
-                                    i_s,
-                                    matcher,
-                                    Generics::new_list(generics2),
-                                    variance,
-                                    None,
-                                )
-                                .bool()
-                    }
-                    (false, true, Variance::Covariant)
-                    | (true, false, Variance::Contravariant)
-                    | (_, _, Variance::Invariant) => false,
-                    (true, false, Variance::Covariant) => {
-                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
-                        generics2.iter().all(|g2| {
-                            let t2 = Type::from_db_type(i_s.db, g2);
-                            t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                .bool()
-                        })
-                    }
-                    (false, true, Variance::Contravariant) => {
-                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
-                        generics1.iter().all(|g1| {
-                            let t1 = Type::from_db_type(i_s.db, g1);
-                            t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                .bool()
-                        })
-                    }
-                };
-            }
-        }
-        true
-    }
-
-    pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
-        if let Some(generics1) = &self.content.generics {
-            if let Some(generics2) = &other.content.generics {
-                return match (
-                    self.content.arbitrary_length,
-                    other.content.arbitrary_length,
-                ) {
-                    (false, false) | (true, true) => {
-                        generics1.len() == generics2.len()
-                            && Generics::new_list(generics1).overlaps(
-                                i_s,
-                                Generics::new_list(generics2),
-                                None,
-                            )
-                    }
-                    (false, true) => {
-                        let t2 = Type::from_db_type(i_s.db, &generics2[0.into()]);
-                        for g in generics1.iter() {
-                            let t1 = Type::from_db_type(i_s.db, g);
-                            if !t1.overlaps(i_s, &t2) {
-                                dbg!();
-                                return false;
-                            }
-                        }
-                        true
-                    }
-                    (true, false) => {
-                        let t1 = Type::from_db_type(i_s.db, &generics1[0.into()]);
-                        for g in generics2.iter() {
-                            let t2 = Type::from_db_type(i_s.db, g);
-                            if !t1.overlaps(i_s, &t2) {
-                                return false;
-                            }
-                        }
-                        true
-                    }
-                };
-            }
-        }
-        true
+    pub fn new(db_type: &'a DbType, content: &'a TupleContent) -> Self {
+        Self { db_type, content }
     }
 
     pub fn as_db_type(&self) -> DbType {
         DbType::Tuple(self.content.clone())
-    }
-
-    pub fn format(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
-        self.content.format(i_s, matcher, style)
     }
 }
 
@@ -209,7 +88,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::Tuple(*self))
+        Type::new(self.db_type)
     }
 
     fn get_item(

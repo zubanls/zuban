@@ -14,7 +14,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ClassLike, Generics, Type};
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -182,17 +182,19 @@ macro_rules! compute_type_application {
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
-            TypeContent::DbType(mut db_type) => if tcomp.has_type_vars {
+            TypeContent::DbType(mut db_type) => {
                 let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     db_type = recalculate_type_vars(&db_type);
                 });
-                ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                    type_vars,
-                    location: $slice_type.as_node_ref().as_link(),
-                    db_type: Rc::new(db_type),
-                }))
-            } else {
-                ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+                if type_vars.len() > 0 {
+                    ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                        type_vars,
+                        location: $slice_type.as_node_ref().as_link(),
+                        db_type: Rc::new(db_type),
+                    }))
+                } else {
+                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+                }
             },
             _ => todo!("{t:?}"),
         })
@@ -636,8 +638,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         // Performance: This could be optimized to not create new objects all the time.
                         let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
-                        let actual = Type::from_db_type(i_s.db, &t);
-                        let expected = Type::from_db_type(i_s.db, bound);
+                        let actual = Type::new(&t);
+                        let expected = Type::new(bound);
                         if !expected
                             .matches(i_s, None, &actual, Variance::Covariant)
                             .bool()
@@ -654,9 +656,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     } else if !type_var.restrictions.is_empty() {
                         let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
-                        let t2 = Type::from_db_type(i_s.db, &t2);
+                        let t2 = Type::new(&t2);
                         if !type_var.restrictions.iter().any(|t| {
-                            Type::from_db_type(i_s.db, t)
+                            Type::new(t)
                                 .matches(i_s, None, &t2, Variance::Covariant)
                                 .bool()
                         }) {
@@ -720,9 +722,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             })
         };
         if given_count != expected_count && !self.errors_already_calculated {
-            // TODO both the type argument issues and are not implemented for other classlikes
-            // like tuple/callable/type, which can also have late bound type vars and too
-            // many/few given type vars!
             slice_type.as_node_ref().add_typing_issue(
                 self.inference.i_s.db,
                 IssueType::TypeArgumentIssue {
@@ -790,6 +789,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let t = self.compute_type(n.expression());
                 params.as_mut().unwrap().push(CallableParam {
                     param_type: ParamType::PositionalOnly,
+                    has_default: false,
+                    name: None,
                     db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
                 })
             } else {
@@ -1160,9 +1161,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationClassInstance {
-                return Type::ClassLike(ClassLike::Class(
-                    self.infer_expression(expr).maybe_class(self.i_s).unwrap(),
-                ));
+                return Type::Class(self.infer_expression(expr).maybe_class(self.i_s).unwrap());
             } else {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
                 self.file.points.get(expr.index()).complex_index()
@@ -1176,7 +1175,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             point.complex_index()
         };
         if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
-            Type::from_db_type(self.i_s.db, db_type)
+            Type::new(db_type)
         } else {
             unreachable!()
         }
@@ -1188,7 +1187,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             PointType::Redirect
         );
         let inferred = self.check_point_cache(expression.index()).unwrap();
-        Type::ClassLike(ClassLike::Class(inferred.maybe_class(self.i_s).unwrap()))
+        Type::Class(inferred.maybe_class(self.i_s).unwrap())
     }
 
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {
@@ -1366,7 +1365,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
                         if let ComplexPoint::TypeInstance(db_type) =
                             f.complex_points.get(complex_index)
                         {
-                            Type::from_db_type(inference.i_s.db, db_type)
+                            Type::new(db_type)
                         } else {
                             unreachable!()
                         },

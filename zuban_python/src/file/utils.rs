@@ -3,7 +3,7 @@ use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 use crate::database::{ComplexPoint, DbType};
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::matching::{ClassLike, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
@@ -37,12 +37,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         result_context
             .with_type_if_exists(self.i_s, |i_s, type_| {
                 let mut found = None;
-                let maybe = type_.any(i_s.db, &mut |t| match t {
-                    ClassLike::Class(list_cls)
-                        if list_cls.node_ref == i_s.db.python_state.list() =>
-                    {
+                let maybe = type_.on_any_class(i_s.db, &mut |list_cls| {
+                    if list_cls.node_ref == i_s.db.python_state.list() {
                         let generic_t = list_cls.generics().nth(i_s, 0.into());
-                        let generic_t = Type::from_db_type(i_s.db, &generic_t);
+                        let generic_t = Type::new(&generic_t);
                         let new_result_context = ResultContext::Known(&generic_t);
 
                         // Since it's a list, now check all the entries if they match the given result
@@ -90,10 +88,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             }
                         }
 
-                        found = Some(t.as_db_type(i_s));
+                        found = Some(list_cls.as_db_type(i_s));
                         true
+                    } else {
+                        false
                     }
-                    _ => false,
                 });
                 // `found` might still be empty, because we matched Any.
                 found.filter(|_| maybe).map(|found| {

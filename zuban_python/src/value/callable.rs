@@ -5,9 +5,7 @@ use crate::database::{CallableContent, CallableParam, DbType, FormatStyle};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{
-    calculate_callable_type_vars_and_return, ClassLike, ResultContext, Type, TypeVarMatcher,
-};
+use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -20,33 +18,12 @@ impl<'db, 'a> Callable<'a> {
         Self { db_type, content }
     }
 
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Callable(Box::new(self.content.clone()))
-    }
-
-    fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
-    }
-
-    pub fn param_iterator(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
-        self.content.params.as_ref().map(|params| params.iter())
-    }
-
     pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
         self.content.params.as_ref().map(|params| params.iter())
     }
 
     pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::from_db_type(i_s.db, &self.content.return_class)
-    }
-
-    pub fn format(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
-        self.content.format(i_s, matcher, style).into()
+        Type::new(&self.content.return_class)
     }
 }
 
@@ -65,7 +42,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::ClassLike(ClassLike::Callable(*self))
+        Type::new(self.db_type)
     }
 
     fn execute(
@@ -84,7 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             result_context,
             on_type_error,
         );
-        let g_o = Type::from_db_type(i_s.db, &self.content.return_class);
+        let g_o = Type::new(&self.content.return_class);
         g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
     }
 

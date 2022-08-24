@@ -1,4 +1,4 @@
-use parsa_python_ast::{NodeIndex, ParamType};
+use parsa_python_ast::{CodeIndex, NodeIndex, ParamType};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -19,12 +19,36 @@ use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
 
+pub type CallableParams = Option<Box<[CallableParam]>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct TypeVarIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MroIndex(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StringSlice {
+    file_index: FileIndex,
+    start: CodeIndex,
+    end: u32,
+}
+
+impl StringSlice {
+    pub fn new(file_index: FileIndex, start: CodeIndex, end: u32) -> Self {
+        Self {
+            file_index,
+            start,
+            end,
+        }
+    }
+
+    pub fn as_str(self, db: &Database) -> &str {
+        let file = db.loaded_python_file(self.file_index);
+        &file.tree.code()[self.start as usize..self.end as usize]
+    }
+}
 
 impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
@@ -533,7 +557,8 @@ impl UnionType {
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
             DbType::TypeVar(_) => 2,
-            DbType::Any => 3,
+            DbType::None => 3,
+            DbType::Any => 4,
             _ => t.type_.has_type_vars().into(),
         });
     }
@@ -784,6 +809,8 @@ impl DbType {
                         .iter()
                         .map(|p| CallableParam {
                             param_type: p.param_type,
+                            has_default: p.has_default,
+                            name: p.name,
                             db_type: p.db_type.replace_type_vars(callable),
                         })
                         .collect()
@@ -848,6 +875,8 @@ impl DbType {
                             .iter()
                             .map(|p| CallableParam {
                                 param_type: p.param_type,
+                                has_default: p.has_default,
+                                name: p.name,
                                 db_type: p.db_type.rewrite_late_bound_callables(manager),
                             })
                             .collect()
@@ -929,14 +958,71 @@ impl TupleContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
     pub param_type: ParamType,
+    pub name: Option<StringSlice>,
+    pub has_default: bool,
     pub db_type: DbType,
+}
+
+impl CallableParam {
+    pub fn format<'db>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&TypeVarMatcher<'db, '_>>,
+        style: FormatStyle,
+    ) -> Box<str> {
+        if self.param_type != ParamType::PositionalOnly {
+            if let Some(name) = self.name {
+                match style {
+                    FormatStyle::MypyRevealType => {
+                        let mut string = match self.param_type {
+                            ParamType::PositionalOnly => unreachable!(),
+                            ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
+                                format!("{}: ", name.as_str(i_s.db))
+                            }
+                            ParamType::Starred => format!("*{}: ", name.as_str(i_s.db)),
+                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
+                        };
+                        string += &self.db_type.format(i_s, matcher, style);
+                        if self.has_default {
+                            string += " =";
+                        }
+                        return string.into();
+                    }
+                    _ => {
+                        let t = self.db_type.format(i_s, matcher, style);
+                        return match self.param_type {
+                            ParamType::PositionalOnly => unreachable!(),
+                            ParamType::PositionalOrKeyword => {
+                                if self.has_default {
+                                    format!("DefaultArg({t}, '{}')", name.as_str(i_s.db))
+                                } else {
+                                    format!("Arg({t}, '{}')", name.as_str(i_s.db))
+                                }
+                            }
+                            ParamType::KeywordOnly => {
+                                if self.has_default {
+                                    todo!()
+                                } else {
+                                    format!("NamedArg({t}, '{}')", name.as_str(i_s.db))
+                                }
+                            }
+                            ParamType::Starred => format!("VarArg({t})"),
+                            ParamType::DoubleStarred => format!("KwArg({t})"),
+                        }
+                        .into();
+                    }
+                }
+            }
+        }
+        self.db_type.format(i_s, matcher, style)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
     pub defined_at: PointLink,
     pub type_vars: Option<TypeVars>,
-    pub params: Option<Box<[CallableParam]>>,
+    pub params: CallableParams,
     pub return_class: DbType,
 }
 
@@ -947,16 +1033,28 @@ impl CallableContent {
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> String {
-        let param_string = self.params.as_ref().map(|params| {
+        let mut params = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.db_type.format(i_s, matcher, style))
+                .map(|p| p.format(i_s, matcher, style))
                 .collect::<Vec<_>>()
-                .join(", ")
         });
         let result = self.return_class.format(i_s, matcher, style);
         match style {
             FormatStyle::MypyRevealType => {
+                if let Some(params) = params.as_mut() {
+                    for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
+                        match p.param_type {
+                            ParamType::KeywordOnly => {
+                                params.insert(i, Box::from("*"));
+                                break;
+                            }
+                            ParamType::Starred => break,
+                            _ => (),
+                        }
+                    }
+                }
+                let param_string = params.map(|p| p.join(", "));
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
                 let type_vars = self.type_vars.as_ref().map(|t| {
                     format!(
@@ -975,7 +1073,7 @@ impl CallableContent {
                 }
             }
             _ => {
-                let param_string = param_string.map(|p| format!("[{p}]"));
+                let param_string = params.map(|p| format!("[{}]", p.join(", ")));
                 let param_str = param_string.as_deref().unwrap_or("...");
                 format!("Callable[{param_str}, {result}]")
             }

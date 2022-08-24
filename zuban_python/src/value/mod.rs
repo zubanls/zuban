@@ -20,7 +20,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
-pub use bound_method::BoundMethod;
+pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{Class, MroIterator};
 pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};

@@ -1,4 +1,5 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
+use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
@@ -12,14 +13,14 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::{Context, InferenceState};
-use crate::matching::{ClassLike, Generics, ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, Callable, Class, DictLiteral, Function, Instance, IteratorContent, ListLiteral,
-    Module, NoneInstance, OverloadedFunction, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
-    TypeVarInstance, TypingCast, TypingClass, TypingClassVar, TypingType, TypingWithGenerics,
-    Value,
+    BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
+    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
+    Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
+    TypingType, TypingWithGenerics, Value,
 };
 
 #[derive(Debug)]
@@ -134,7 +135,7 @@ impl<'db> Inferred<'db> {
             i_s,
             &mut |i_s, v| v.as_type(i_s),
             &|i_s, g1, g2| g1.union(i_s, g2),
-            &mut |i_s| Type::Any,
+            &mut |i_s| Type::new(&DbType::Any),
         )
     }
 
@@ -368,17 +369,28 @@ impl<'db> Inferred<'db> {
                 let inf = Inferred::from_any_link(i_s.db, instance_link);
                 let instance = inf.expect_instance(i_s);
 
-                let class = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
-                let class = match class {
-                    ClassLike::Class(c) => c,
-                    _ => unreachable!(),
-                };
+                let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
+                let class = class_t.maybe_class(i_s.db).unwrap();
                 if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
-                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Overload(func),
+                        ),
+                    )
                 } else {
                     let func = Function::new(reference, Some(class));
-                    callable(i_s, &BoundMethod::new(&instance, *mro_index, &func))
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Function(func),
+                        ),
+                    )
                 }
             }
             ComplexPoint::Closure(function, execution) => {
@@ -1051,7 +1063,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
-        DbType::Tuple(content) => callable(i_s, &Tuple::new(content)),
+        DbType::Tuple(content) => callable(i_s, &Tuple::new(db_type, content)),
         DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
@@ -1091,7 +1103,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::Never => todo!(),
-        _ => callable(i_s, &TypingType::new(i_s.db, type_)),
+        _ => callable(i_s, &TypingType::new(i_s.db, Cow::Borrowed(db_type), type_)),
     }
 }
 
