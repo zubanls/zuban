@@ -182,7 +182,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
 
 impl<'db, 'x> Param<'db, 'x> for &'x CallableParam {
     fn has_default(&self) -> bool {
-        false
+        self.has_default
     }
 
     fn name(&self) -> Option<&str> {

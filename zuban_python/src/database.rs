@@ -787,6 +787,7 @@ impl DbType {
                         .iter()
                         .map(|p| CallableParam {
                             param_type: p.param_type,
+                            has_default: p.has_default,
                             db_type: p.db_type.replace_type_vars(callable),
                         })
                         .collect()
@@ -851,6 +852,7 @@ impl DbType {
                             .iter()
                             .map(|p| CallableParam {
                                 param_type: p.param_type,
+                                has_default: p.has_default,
                                 db_type: p.db_type.rewrite_late_bound_callables(manager),
                             })
                             .collect()
@@ -932,6 +934,7 @@ impl TupleContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
     pub param_type: ParamType,
+    pub has_default: bool,
     pub db_type: DbType,
 }
 

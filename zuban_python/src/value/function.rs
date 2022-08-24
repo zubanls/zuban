@@ -256,6 +256,7 @@ impl<'db, 'a> Function<'db, 'a> {
                             .annotation_type(i_s)
                             .map(|t| t.as_db_type(i_s))
                             .unwrap_or(DbType::Any),
+                        has_default: p.has_default(),
                         param_type: p.param_type(),
                     })
                     .collect(),
