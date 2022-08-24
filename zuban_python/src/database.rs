@@ -1,4 +1,4 @@
-use parsa_python_ast::{NodeIndex, ParamType};
+use parsa_python_ast::{CodeIndex, NodeIndex, ParamType};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -27,6 +27,28 @@ pub struct FileIndex(pub u32);
 pub struct TypeVarIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MroIndex(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StringSlice {
+    file_index: FileIndex,
+    start: CodeIndex,
+    end: u32,
+}
+
+impl StringSlice {
+    pub fn new(file_index: FileIndex, start: CodeIndex, end: u32) -> Self {
+        Self {
+            file_index,
+            start,
+            end,
+        }
+    }
+
+    fn as_str(self, db: &Database) -> &str {
+        let file = db.loaded_python_file(self.file_index);
+        &file.tree.code()[self.start as usize..self.end as usize]
+    }
+}
 
 impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
@@ -788,6 +810,7 @@ impl DbType {
                         .map(|p| CallableParam {
                             param_type: p.param_type,
                             has_default: p.has_default,
+                            name: p.name,
                             db_type: p.db_type.replace_type_vars(callable),
                         })
                         .collect()
@@ -853,6 +876,7 @@ impl DbType {
                             .map(|p| CallableParam {
                                 param_type: p.param_type,
                                 has_default: p.has_default,
+                                name: p.name,
                                 db_type: p.db_type.rewrite_late_bound_callables(manager),
                             })
                             .collect()
@@ -934,6 +958,7 @@ impl TupleContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
     pub param_type: ParamType,
+    pub name: Option<StringSlice>,
     pub has_default: bool,
     pub db_type: DbType,
 }
@@ -956,7 +981,24 @@ impl CallableContent {
         let param_string = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.db_type.format(i_s, matcher, style))
+                .map(|p| {
+                    if let Some(name) = p.name {
+                        let mut string = match p.param_type {
+                            ParamType::PositionalOnly => {
+                                return p.db_type.format(i_s, matcher, style)
+                            }
+                            ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
+                                format!("{}: ", name.as_str(i_s.db))
+                            }
+                            ParamType::Starred => format!("*{}: ", name.as_str(i_s.db)),
+                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
+                        };
+                        string += &p.db_type.format(i_s, matcher, style);
+                        string.into()
+                    } else {
+                        p.db_type.format(i_s, matcher, style)
+                    }
+                })
                 .collect::<Vec<_>>()
                 .join(", ")
         });

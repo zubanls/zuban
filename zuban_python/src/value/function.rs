@@ -9,7 +9,7 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, TypeVar, TypeVars,
+    GenericsList, Locality, Overload, Point, StringSlice, TypeVar, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -257,6 +257,10 @@ impl<'db, 'a> Function<'db, 'a> {
                             .map(|t| t.as_db_type(i_s))
                             .unwrap_or(DbType::Any),
                         has_default: p.has_default(),
+                        name: Some({
+                            let n = p.param.name_definition();
+                            StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
+                        }),
                         param_type: p.param_type(),
                     })
                     .collect(),

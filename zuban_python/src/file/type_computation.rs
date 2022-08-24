@@ -790,6 +790,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 params.as_mut().unwrap().push(CallableParam {
                     param_type: ParamType::PositionalOnly,
                     has_default: false,
+                    name: None,
                     db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
                 })
             } else {

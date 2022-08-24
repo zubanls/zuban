@@ -1,10 +1,6 @@
 # Next up
 testInferTypeVariableFromTwoGenericTypes4
 
-testNewAnalyzerAliasToNotReadyTwoDeferralsFunction
-testForwardTypeAlias
-testForwardTypeAliasGeneric
-testTypeCheckPrio
 testSubtypingFunctionsDoubleCorrespondence
 testSubtypingFunctionsRequiredLeftArgNotPresent
 testCallableWithArbitraryArgsSubtyping
