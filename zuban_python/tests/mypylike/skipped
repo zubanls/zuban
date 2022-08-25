@@ -345,7 +345,6 @@ testGenericTypeAliasesTypeVarBinding
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
 # General Scoping
-testGenericInnerClass
 testGenericClassInnerFunctionTypeVariable
 testListComprehensionSpecialScoping
 

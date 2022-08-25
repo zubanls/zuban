@@ -253,6 +253,17 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
+        let as_db_type = |i_s: &mut _, t: Type<'db, '_>| {
+            t.as_db_type(i_s).replace_type_vars(&mut |usage| {
+                if let Some(class) = self.class {
+                    if usage.in_definition == class.node_ref.as_link() {
+                        return class.generics().nth(i_s, usage.index);
+                    }
+                }
+                DbType::TypeVar(usage.clone())
+            })
+        };
+        let result_type = self.result_type(i_s);
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: Some(
@@ -260,7 +271,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .map(|p| CallableParam {
                         db_type: p
                             .annotation_type(i_s)
-                            .map(|t| t.as_db_type(i_s))
+                            .map(|t| as_db_type(i_s, t))
                             .unwrap_or(DbType::Any),
                         has_default: p.has_default(),
                         name: Some({
@@ -272,7 +283,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .collect(),
             ),
             type_vars: type_vars.cloned(),
-            return_class: self.result_type(i_s).as_db_type(i_s),
+            return_class: as_db_type(i_s, result_type),
         }))
     }
 
