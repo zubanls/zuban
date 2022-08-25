@@ -388,7 +388,7 @@ impl<'db, 'a> Class<'db, 'a> {
         style: FormatStyle,
     ) -> Box<str> {
         let mut result = match style {
-            FormatStyle::Short | FormatStyle::MypyOverload => self.name().to_owned(),
+            FormatStyle::Short => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
         };
         let type_vars = self.type_vars(i_s);

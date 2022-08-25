@@ -690,7 +690,7 @@ impl DbType {
                 Class::from_position(NodeRef::from_link(i_s.db, link), Generics::None, None)
                     .unwrap();
             match style {
-                FormatStyle::Short | FormatStyle::MypyOverload => Box::from(class.name()),
+                FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
                     class.qualified_name(i_s.db).into()
                 }
@@ -939,7 +939,7 @@ impl TupleContent {
         style: FormatStyle,
     ) -> Box<str> {
         let base = match style {
-            FormatStyle::Short | FormatStyle::MypyOverload => "tuple",
+            FormatStyle::Short => "tuple",
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
         if let Some(generics) = self.generics.as_ref() {
@@ -1599,7 +1599,6 @@ pub enum FormatStyle {
     Short,
     Qualified,
     MypyRevealType,
-    MypyOverload,
 }
 
 #[cfg(test)]

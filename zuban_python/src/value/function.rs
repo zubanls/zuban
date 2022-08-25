@@ -377,12 +377,11 @@ impl<'db, 'a> Function<'db, 'a> {
             .unwrap_or_else(|| Type::new(&DbType::Any))
     }
 
-    pub fn format(
+    fn format_overload_variant(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         is_init: bool,
-        style: FormatStyle,
     ) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
@@ -392,105 +391,64 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(i_s, matcher, style)
+                .format(i_s, matcher, FormatStyle::Short)
         };
         let node = self.node();
-        if matches!(
-            style,
-            FormatStyle::MypyRevealType | FormatStyle::MypyOverload
-        ) {
-            let args = self
-                .iter_params()
-                .enumerate()
-                .map(|(i, p)| {
-                    let annotation_str = p
-                        .annotation_type(i_s)
-                        .map(|t| t.format(i_s, matcher, style));
-                    let stars = match p.param_type() {
-                        ParamType::Starred => "*",
-                        ParamType::DoubleStarred => "**",
-                        _ => "",
-                    };
-                    if let Some(annotation_str) = annotation_str {
-                        format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
-                    } else if i == 0 && self.class.is_some() && stars.is_empty() {
-                        p.name(i_s.db).unwrap().to_owned()
-                    } else {
-                        format!("{stars}{}: Any", p.name(i_s.db).unwrap())
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-            let ret = node.return_annotation().map(|a| return_type(i_s, a));
-            let name = match style {
-                FormatStyle::MypyRevealType => "",
-                _ => self.name(),
-            };
-            let type_var_string = self.type_vars(i_s).map(|type_vars| {
-                format!(
-                    "[{}] ",
-                    type_vars
-                        .iter()
-                        .map(|t| {
-                            let mut s = t.name(i_s.db).to_owned();
-                            if let Some(bound) = &t.bound {
-                                s += &format!(
-                                    " <: {}",
-                                    bound.format(i_s, matcher, FormatStyle::Short)
-                                );
-                            } else if !t.restrictions.is_empty() {
-                                s += &format!(
-                                    " in ({})",
-                                    t.restrictions
-                                        .iter()
-                                        .map(|t| t.format(i_s, matcher, FormatStyle::Short))
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                );
-                            }
-                            s
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                )
-            });
-            let type_var_str = type_var_string.as_deref().unwrap_or("");
-            let result = ret.as_deref().unwrap_or("Any");
-            if is_init {
-                format!("def {type_var_str}{name}({args})").into()
-            } else {
-                format!("def {type_var_str}{name}({args}) -> {result}").into()
-            }
-        } else {
-            let ret = node.return_annotation().map(|a| return_type(i_s, a));
-            let result = format!(
-                "Callable[[{}], {}]",
-                self.iter_params()
-                    .map(|param| {
-                        let t = param
-                            .annotation_type(i_s)
-                            .unwrap_or(Type::new(&DbType::Any))
-                            .format(i_s, matcher, style);
-                        match param.param_type() {
-                            ParamType::PositionalOnly => t.to_string(),
-                            ParamType::PositionalOrKeyword => match param.has_default() {
-                                true => {
-                                    format!("DefaultArg({t}, '{}')", param.name(i_s.db).unwrap())
-                                }
-                                false => format!("Arg({t}, '{}')", param.name(i_s.db).unwrap()),
-                            },
-                            ParamType::KeywordOnly => {
-                                format!("NamedArg({t}, '{}')", param.name(i_s.db).unwrap())
-                            }
-                            ParamType::Starred => format!("VarArg({t})"),
-                            ParamType::DoubleStarred => format!("KwArg({t})"),
+        let args = self
+            .iter_params()
+            .enumerate()
+            .map(|(i, p)| {
+                let annotation_str = p
+                    .annotation_type(i_s)
+                    .map(|t| t.format(i_s, matcher, FormatStyle::Short));
+                let stars = match p.param_type() {
+                    ParamType::Starred => "*",
+                    ParamType::DoubleStarred => "**",
+                    _ => "",
+                };
+                if let Some(annotation_str) = annotation_str {
+                    format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
+                } else if i == 0 && self.class.is_some() && stars.is_empty() {
+                    p.name(i_s.db).unwrap().to_owned()
+                } else {
+                    format!("{stars}{}: Any", p.name(i_s.db).unwrap())
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        let ret = node.return_annotation().map(|a| return_type(i_s, a));
+        let name = self.name();
+        let type_var_string = self.type_vars(i_s).map(|type_vars| {
+            format!(
+                "[{}] ",
+                type_vars
+                    .iter()
+                    .map(|t| {
+                        let mut s = t.name(i_s.db).to_owned();
+                        if let Some(bound) = &t.bound {
+                            s += &format!(" <: {}", bound.format(i_s, matcher, FormatStyle::Short));
+                        } else if !t.restrictions.is_empty() {
+                            s += &format!(
+                                " in ({})",
+                                t.restrictions
+                                    .iter()
+                                    .map(|t| t.format(i_s, matcher, FormatStyle::Short))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
                         }
+                        s
                     })
                     .collect::<Vec<_>>()
                     .join(", "),
-                ret.as_deref().unwrap_or("Any"),
-            );
-            result.into()
+            )
+        });
+        let type_var_str = type_var_string.as_deref().unwrap_or("");
+        let result = ret.as_deref().unwrap_or("Any");
+        if is_init {
+            format!("def {type_var_str}{name}({args})").into()
+        } else {
+            format!("def {type_var_str}{name}({args}) -> {result}").into()
         }
     }
 }
@@ -904,7 +862,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.format(i_s, None, is_init, FormatStyle::MypyOverload)
+                func.format_overload_variant(i_s, None, is_init)
             })
             .collect()
     }
