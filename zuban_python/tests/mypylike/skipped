@@ -329,6 +329,8 @@ testOverloadingAndIntFloatSubtyping
 # Nested type vars
 testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
+testGenericClassInnerFunctionTypeVariable
+testFunctionInGenericInnerClassTypeVariable-skip
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
@@ -344,9 +346,6 @@ testGenericClassInsideOtherGenericClass
 testGenericTypeAliasesTypeVarBinding
 # Class alias with class type var prohibited
 testProhibitBoundTypeVariableReuseForAliases
-# General Scoping
-testGenericClassInnerFunctionTypeVariable
-testListComprehensionSpecialScoping
 
 # Property
 testNonMethodProperty
@@ -500,6 +499,8 @@ testInferringTypesFromIterable
 # Comprehensions
 testNewAnalyzerListComprehension
 testNewAnalyzerDictionaryComprehension
+# comprehensions Scoping
+testListComprehensionSpecialScoping
 
 # if sys.version
 testNewAnalyzerVersionCheck*
@@ -1286,6 +1287,5 @@ testNoSubscriptionOfBuiltinAliases
 # Skips
 testTrailingCommaParsing-skip
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
-testFunctionInGenericInnerClassTypeVariable-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
