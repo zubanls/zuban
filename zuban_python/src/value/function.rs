@@ -374,13 +374,14 @@ impl<'db, 'a> Function<'db, 'a> {
                     .inference(i_s)
                     .use_cached_return_annotation_type(a)
             })
-            .unwrap_or(Type::new(&DbType::Any))
+            .unwrap_or_else(|| Type::new(&DbType::Any))
     }
 
     pub fn format(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
+        is_init: bool,
         style: FormatStyle,
     ) -> Box<str> {
         // Make sure annotations/type vars are calculated
@@ -455,7 +456,7 @@ impl<'db, 'a> Function<'db, 'a> {
             });
             let type_var_str = type_var_string.as_deref().unwrap_or("");
             let result = ret.as_deref().unwrap_or("Any");
-            if result == "None" {
+            if is_init {
                 format!("def {type_var_str}{name}({args})").into()
             } else {
                 format!("def {type_var_str}{name}({args}) -> {result}").into()
@@ -890,20 +891,20 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 IssueType::OverloadMismatch {
                     name: function.diagnostic_string(self.class.as_ref()),
                     args: args.iter_arguments().into_argument_types(i_s),
-                    variants: self.variants(i_s),
+                    variants: self.variants(i_s, search_init),
                 },
             );
         }
         None
     }
 
-    fn variants(&self, i_s: &mut InferenceState<'db, '_>) -> Box<[Box<str>]> {
+    fn variants(&self, i_s: &mut InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
         self.overload
             .functions
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.format(i_s, None, FormatStyle::MypyOverload)
+                func.format(i_s, None, is_init, FormatStyle::MypyOverload)
             })
             .collect()
     }

@@ -117,7 +117,6 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadPartiallyOverlappingTypeVarsIdentical
 testNestedOverloadsTypeVarOverlap
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testOverloadOverlapWithTypeVarsWithValuesOrdering
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
@@ -158,13 +157,6 @@ testOverloadByAnyOtherName
 testOptionalIsNotAUnionIfNoStrictOverload
 testOptionalIsNotAUnionIfNoStrictOverloadStr
 
-# Overload -> None formatting
-testCallToOverloadedFunction
-testCallToOverloadedMethod
-testOverloadsRemovedOverload
-testOverloadsGenericToNonGeneric
-testCallableSpecificOverload
-testOverloadErrorMessageManyMatches
 # overloading for loop
 testOverloadedInIter
 
