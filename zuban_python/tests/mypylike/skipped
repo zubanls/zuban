@@ -66,7 +66,6 @@ testBadOverloadProbableMatch
 #     -> f(*(1,))() # E: No overload variant of "f" matches argument type "Tuple[int]"
 # - No overload variant of "__add__" of "A" matches argument type "str"
 # - wtf Value of type variable "AnyStr" of "g" cannot be "Sequence[object]
-testOverloadsGenericTypevarUpdated
 # - wtf Argument 2 to "f" has incompatible type "Tuple[int, str]"; expected "Tuple[str, ...]"
 # - wtf Argument 1 to "single_plausible" has incompatible type "Type[Other]"; expected "Type[int]"
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"

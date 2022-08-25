@@ -72,7 +72,10 @@ impl<'db, 'a> Type<'db, 'a> {
                 return if let Some(bound) = &t2.type_var.bound {
                     self.overlaps(i_s, &Type::new(bound))
                 } else if !t2.type_var.restrictions.is_empty() {
-                    todo!("{self:?}")
+                    t2.type_var
+                        .restrictions
+                        .iter()
+                        .any(|r2| self.overlaps(i_s, &Type::new(r2)))
                 } else {
                     true
                 };
