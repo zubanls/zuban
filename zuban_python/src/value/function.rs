@@ -9,7 +9,7 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, StringSlice, TypeVar, TypeVars,
+    GenericsList, Locality, Overload, Point, StringSlice, TypeVar, TypeVars, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -919,5 +919,17 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
 
     fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'db, 'a>> {
         Some(self)
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+        let mut entries = vec![];
+        for (format_index, link) in self.overload.functions.iter().enumerate() {
+            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            entries.push(UnionEntry {
+                type_: function.as_db_type(i_s, false),
+                format_index,
+            })
+        }
+        Type::owned(DbType::Union(UnionType::new(entries)))
     }
 }

@@ -142,7 +142,6 @@ testTypevarValuesWithOverloadedFunctionSpecialCase
 testIntersectionTypeCompatibility
 testVeryBrokenOverload
 testVeryBrokenOverload2
-testFunctionTypesWithOverloads
 testOverloadWithThreeItems
 testMapWithOverloadedFunc
 # overload self type
