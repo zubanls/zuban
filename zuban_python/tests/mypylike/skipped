@@ -5,12 +5,6 @@ testInferTypeVariableFromTwoGenericTypes4
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 
-# Union type var matching weird cases
-testUnionInference
-unite_type_vars_mypy_issue_5874
-# Union Not matching type vars
-testJoinUnionWithUnionAndAny
-
 overload_not_overlapping_none
 overload_unmatchable_none
 overload_not_overlapping_optional
@@ -175,10 +169,6 @@ testOverloadErrorMessageManyMatches
 # overloading for loop
 testOverloadedInIter
 
-# Overloading generated messages that were not necessary
-testSubtypingIterableUnpacking1
-testSubtypingIterableUnpacking2
-
 # Non consecutive overloads
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
@@ -227,6 +217,9 @@ testMisguidedSetItem
 # Duplicate in Union
 testUnionMethodCalls
 testUnificationRedundantUnion
+
+# Union Not matching type vars
+testJoinUnionWithUnionAndAny
 
 # Duplicate base class
 testIncludingBaseClassTwice
@@ -308,6 +301,10 @@ testClassMemberTypeVarInFunctionBody
 
 # "Cannot declare the type of a TypeVar or similar construct" (semanal)
 testTypevarWithType
+
+# type var backtracking
+testUnionInference
+unite_type_vars_mypy_issue_5874
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].
