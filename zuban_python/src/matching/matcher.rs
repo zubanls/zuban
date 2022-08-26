@@ -153,6 +153,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     match_in_definition: PointLink,
     pub in_result_context: bool,
     parent_matcher: Option<&'a mut Self>,
+    pub match_reverse: bool, // For contravariance subtypes
 }
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
@@ -169,6 +170,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             calculated_type_vars,
             match_in_definition,
             in_result_context: true,
+            match_reverse: false,
             parent_matcher: None, //parent_matcher,
         }
     }

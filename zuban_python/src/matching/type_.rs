@@ -172,7 +172,13 @@ impl<'db, 'a> Type<'db, 'a> {
                     _ => Match::new_false(),
                 },
                 DbType::TypeVar(t1) => match matcher {
-                    Some(matcher) => matcher.match_or_add_type_var(i_s, t1, value_type, variance),
+                    Some(matcher) => {
+                        if matcher.match_reverse {
+                            Match::new_false()
+                        } else {
+                            matcher.match_or_add_type_var(i_s, t1, value_type, variance)
+                        }
+                    }
                     None => match value_type.maybe_db_type() {
                         Some(DbType::TypeVar(t2)) => {
                             (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
@@ -252,7 +258,6 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    #[inline]
     fn matches_mro(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -333,8 +338,16 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        if matcher.is_none() && variance == Variance::Contravariant {
-            return value_type.matches(i_s, matcher, self, Variance::Covariant);
+        if variance == Variance::Contravariant {
+            return if let Some(matcher) = matcher {
+                let old = matcher.match_reverse;
+                matcher.match_reverse = !old;
+                let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
+                matcher.match_reverse = old;
+                result
+            } else {
+                value_type.matches(i_s, None, self, Variance::Covariant)
+            };
         }
 
         // 1. Check if the type is part of the mro.
@@ -370,6 +383,11 @@ impl<'db, 'a> Type<'db, 'a> {
                     _ => return Match::True,
                 },
                 DbType::TypeVar(t2) => {
+                    if let Some(matcher) = matcher {
+                        if matcher.match_reverse {
+                            return matcher.match_or_add_type_var(i_s, t2, self, variance);
+                        }
+                    }
                     if let Some(bound) = &t2.type_var.bound {
                         let m = self.matches(i_s, None, &Type::new(bound), variance);
                         if m.bool() {

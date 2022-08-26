@@ -4,6 +4,14 @@ testInferTypeVariableFromTwoGenericTypes4
 testFunctionTypesWithOverloads
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 
+*_*
+testBoundOnGenericFunction
+testBoundGenericFunctions
+testTypeInferenceWithCalleeVarArgs
+testTypeInferenceWithCalleeVarArgsAndDefaultArgs
+testInferSimpleGenericFunction
+testInferringGenericFunctionTypeForLvar
+
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
