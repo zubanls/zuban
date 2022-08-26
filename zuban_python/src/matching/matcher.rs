@@ -603,7 +603,9 @@ fn calculate_type_vars<'db>(
                     FunctionOrCallable::Function(f) => f.result_type(i_s),
                     FunctionOrCallable::Callable(c) => c.result_type(i_s),
                 };
-                result_type.matches(i_s, Some(matcher), type_, Variance::Contravariant);
+                matcher.match_reverse = true;
+                type_.matches(i_s, Some(matcher), &result_type, Variance::Covariant);
+                matcher.match_reverse = false;
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {
                         calculated.defined_by_result_context = true;

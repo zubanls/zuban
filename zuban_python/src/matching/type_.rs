@@ -385,7 +385,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::TypeVar(t2) => {
                     if let Some(matcher) = matcher {
                         if matcher.match_reverse {
-                            return matcher.match_or_add_type_var(i_s, t2, self, variance);
+                            return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                         }
                     }
                     if let Some(bound) = &t2.type_var.bound {
