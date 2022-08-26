@@ -199,11 +199,10 @@ impl<'db, 'a> Type<'db, 'a> {
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
                                         // Since __init__ does not have a return, We need to check the params
                                         // of the __init__ functions and the class as a return type separately.
-                                        return Type::new(&c1.return_class).matches(
+                                        return Type::new(&c1.return_class).is_sub_type(
                                             i_s,
                                             matcher.as_deref_mut(),
                                             &Type::Class(cls),
-                                            Variance::Covariant,
                                         ) & matches_params(
                                             i_s,
                                             matcher,
@@ -216,11 +215,10 @@ impl<'db, 'a> Type<'db, 'a> {
                             }
                             _ => {
                                 if c1.params.is_none() {
-                                    Type::new(&c1.return_class).matches(
+                                    Type::new(&c1.return_class).is_sub_type(
                                         i_s,
                                         matcher.as_deref_mut(),
                                         &Type::new(t2.as_ref()),
-                                        Variance::Covariant,
                                     )
                                 } else {
                                     Match::new_false()
@@ -267,11 +265,11 @@ impl<'db, 'a> Type<'db, 'a> {
         if let Some(matcher) = matcher {
             let old = matcher.match_reverse;
             matcher.match_reverse = !old;
-            let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
+            let result = value_type.is_sub_type(i_s, Some(matcher), self);
             matcher.match_reverse = old;
             result
         } else {
-            value_type.matches(i_s, None, self, Variance::Covariant)
+            value_type.is_sub_type(i_s, None, self)
         }
     }
 
@@ -486,7 +484,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     matches.into()
                 }
                 Variance::Invariant => {
-                    self.matches(i_s, matcher, value_type, Variance::Covariant)
+                    self.is_sub_type(i_s, matcher, value_type)
                         & self.is_super_type(i_s, None, value_type)
                 }
                 Variance::Contravariant => unreachable!(),
@@ -527,11 +525,10 @@ impl<'db, 'a> Type<'db, 'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        Type::new(&c1.return_class).matches(
+        Type::new(&c1.return_class).is_sub_type(
             i_s,
             matcher.as_deref_mut(),
             &Type::new(&c2.return_class),
-            Variance::Covariant,
         ) & matches_params(
             i_s,
             matcher,
@@ -572,8 +569,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             .iter()
                             .all(|g2| {
                                 let t2 = Type::new(g2);
-                                t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                    .bool()
+                                t1.is_sub_type(i_s, matcher.as_deref_mut(), &t2).bool()
                             })
                             .into()
                     }
@@ -688,12 +684,7 @@ impl<'db, 'a> Type<'db, 'a> {
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
-        let matches = self.matches(
-            i_s,
-            matcher.as_deref_mut(),
-            &value_type,
-            Variance::Covariant,
-        );
+        let matches = self.is_sub_type(i_s, matcher.as_deref_mut(), &value_type);
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
             let value_type = value.class_as_type(i_s);
             debug!(
@@ -760,7 +751,7 @@ impl<'db, 'a> Type<'db, 'a> {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s) {
                     for (_, c2) in c2.mro(i_s) {
-                        if c1.matches(i_s, None, &c2, Variance::Invariant).bool() {
+                        if c1.is_same_type(i_s, None, &c2).bool() {
                             return c1.as_db_type(i_s);
                         }
                     }
