@@ -151,7 +151,6 @@ pub struct TypeVarMatcher<'db, 'a> {
     func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
-    in_result_context: bool,
     parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
 }
@@ -169,7 +168,6 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
-            in_result_context: true,
             match_reverse: false,
             parent_matcher: None, //parent_matcher,
         }
@@ -210,18 +208,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if !type_var.restrictions.is_empty() {
                 for restriction in type_var.restrictions.iter() {
                     if Type::new(restriction)
-                        .matches(
-                            i_s,
-                            None,
-                            value_type,
-                            match self.in_result_context {
-                                false => variance,
-                                // Type var restrictions are special, because they impose the rule
-                                // that the output of a type var is always the specific one of the
-                                // specific types.
-                                true => Variance::Invariant,
-                            },
-                        )
+                        .matches(i_s, None, value_type, variance)
                         .bool()
                     {
                         current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
@@ -613,7 +600,6 @@ fn calculate_type_vars<'db>(
                 }
             }
         });
-        matcher.in_result_context = false;
     }
     let matches = match func_or_callable {
         FunctionOrCallable::Function(function) => {
