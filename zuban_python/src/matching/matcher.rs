@@ -4,7 +4,7 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
-    DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
+    CallableContent, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -14,7 +14,7 @@ use crate::value::{Callable, Class, Function, OnTypeError, Value};
 #[derive(Debug, Clone, Copy)]
 enum FunctionOrCallable<'db, 'a> {
     Function(Function<'db, 'a>),
-    Callable(&'a Callable<'a>),
+    Callable(&'a CallableContent),
 }
 
 #[derive(Debug, Clone)]
@@ -491,7 +491,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     calculate_type_vars(
         i_s,
         None,
-        FunctionOrCallable::Callable(callable),
+        FunctionOrCallable::Callable(callable.content),
         None,
         args,
         false,
@@ -583,7 +583,7 @@ fn calculate_type_vars<'db>(
             } else {
                 let result_type = match func_or_callable {
                     FunctionOrCallable::Function(f) => f.result_type(i_s),
-                    FunctionOrCallable::Callable(c) => c.result_type(i_s),
+                    FunctionOrCallable::Callable(c) => Type::new(&c.return_class),
                 };
                 matcher.match_reverse = true;
                 // Fill the type var arguments from context
@@ -613,7 +613,7 @@ fn calculate_type_vars<'db>(
             )
         }
         FunctionOrCallable::Callable(callable) => {
-            if let Some(params) = callable.iter_params() {
+            if let Some(params) = &callable.params {
                 calculate_type_vars_for_params(
                     i_s,
                     matcher.as_mut(),
@@ -621,7 +621,11 @@ fn calculate_type_vars<'db>(
                     None,
                     args,
                     on_type_error,
-                    InferrableParamIterator2::new(i_s.db, params, args.iter_arguments().peekable()),
+                    InferrableParamIterator2::new(
+                        i_s.db,
+                        params.iter(),
+                        args.iter_arguments().peekable(),
+                    ),
                 )
             } else {
                 SignatureMatch::True
@@ -644,7 +648,7 @@ fn calculate_type_vars<'db>(
                 match &func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.description(i_s);
+                        callable_description = callable.format(i_s, None, FormatStyle::Short);
                         &callable_description
                     }
                 },
