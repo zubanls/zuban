@@ -258,34 +258,6 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn is_sub_type_internal(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        value_type: &Self,
-    ) -> Match {
-        match value_type.mro(i_s) {
-            Some(mro) => {
-                for (_, t2) in mro {
-                    let m = self.is_same_type_internal(
-                        i_s,
-                        matcher.as_deref_mut(),
-                        &t2,
-                        Variance::Covariant,
-                    );
-                    if !matches!(m, Match::False(MismatchReason::None)) {
-                        return m;
-                    }
-                }
-                Match::new_false()
-            }
-            None => {
-                let m = self.is_same_type_internal(i_s, matcher, value_type, Variance::Covariant);
-                m.or(|| self.matches_object_class(i_s.db, value_type))
-            }
-        }
-    }
-
     pub fn is_super_type(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -310,7 +282,31 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let m = self.is_sub_type_internal(i_s, matcher.as_deref_mut(), value_type);
+        let m = match value_type.mro(i_s) {
+            Some(mro) => {
+                for (_, t2) in mro {
+                    let m = self.is_same_type_internal(
+                        i_s,
+                        matcher.as_deref_mut(),
+                        &t2,
+                        Variance::Covariant,
+                    );
+                    if !matches!(m, Match::False(MismatchReason::None)) {
+                        return m;
+                    }
+                }
+                Match::new_false()
+            }
+            None => {
+                let m = self.is_same_type_internal(
+                    i_s,
+                    matcher.as_deref_mut(),
+                    value_type,
+                    Variance::Covariant,
+                );
+                m.or(|| self.matches_object_class(i_s.db, value_type))
+            }
+        };
         m.or(|| {
             self.check_protocol_and_other_side(
                 i_s,
