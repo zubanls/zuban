@@ -1,6 +1,4 @@
 # Next up
-testInferTypeVariableFromTwoGenericTypes4
-
 testFunctionTypesWithOverloads
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 
