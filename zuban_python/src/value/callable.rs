@@ -53,7 +53,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
             result_context,
             on_type_error,
         );
-        let g_o = Type::new(&self.content.return_class);
+        let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
     }
 

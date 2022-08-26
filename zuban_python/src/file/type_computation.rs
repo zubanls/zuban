@@ -452,7 +452,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     defined_at: node_ref.as_link(),
                     type_vars: None,
                     params: None,
-                    return_class: DbType::Any,
+                    result_type: DbType::Any,
                 })),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => DbType::Type(Box::new(DbType::Class(
@@ -821,7 +821,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 }
                 SliceOrSimple::Slice(s) => todo!(),
             });
-            let return_class = iterator
+            let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
                 .unwrap_or(DbType::Any);
@@ -829,7 +829,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 defined_at,
                 type_vars: None,
                 params: params.map(|p| p.into_boxed_slice()),
-                return_class,
+                result_type,
             }
         } else {
             slice_type
@@ -839,7 +839,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 defined_at,
                 type_vars: None,
                 params: None,
-                return_class: DbType::Any,
+                result_type: DbType::Any,
             }
         };
         self.current_callable = old;

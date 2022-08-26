@@ -112,7 +112,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Callable(c1) => match other {
                     Self::Type(ref t2) => match t2.as_ref() {
                         DbType::Callable(c2) => {
-                            Type::new(&c1.return_class).overlaps(i_s, &Type::new(&c2.return_class))
+                            Type::new(&c1.result_type).overlaps(i_s, &Type::new(&c2.result_type))
                                 && has_overlapping_params(i_s, &c1.params, &c2.params)
                         }
                         DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
@@ -199,7 +199,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
                                         // Since __init__ does not have a return, We need to check the params
                                         // of the __init__ functions and the class as a return type separately.
-                                        return Type::new(&c1.return_class).is_sub_type(
+                                        return Type::new(&c1.result_type).is_sub_type(
                                             i_s,
                                             matcher.as_deref_mut(),
                                             &Type::Class(cls),
@@ -215,7 +215,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             }
                             _ => {
                                 if c1.params.is_none() {
-                                    Type::new(&c1.return_class).is_sub_type(
+                                    Type::new(&c1.result_type).is_sub_type(
                                         i_s,
                                         matcher.as_deref_mut(),
                                         &Type::new(t2.as_ref()),
@@ -525,10 +525,10 @@ impl<'db, 'a> Type<'db, 'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        Type::new(&c1.return_class).is_sub_type(
+        Type::new(&c1.result_type).is_sub_type(
             i_s,
             matcher.as_deref_mut(),
-            &Type::new(&c2.return_class),
+            &Type::new(&c2.result_type),
         ) & matches_params(
             i_s,
             matcher,

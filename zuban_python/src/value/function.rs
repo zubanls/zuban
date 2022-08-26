@@ -283,7 +283,7 @@ impl<'db, 'a> Function<'db, 'a> {
                     .collect(),
             ),
             type_vars: type_vars.cloned(),
-            return_class: as_db_type(i_s, result_type),
+            result_type: as_db_type(i_s, result_type),
         }))
     }
 

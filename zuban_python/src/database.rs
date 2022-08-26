@@ -753,7 +753,7 @@ impl DbType {
                         param.db_type.search_type_vars(found_type_var)
                     }
                 }
-                content.return_class.search_type_vars(found_type_var)
+                content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
         }
@@ -815,7 +815,7 @@ impl DbType {
                         })
                         .collect()
                 }),
-                return_class: content.return_class.replace_type_vars(callable),
+                result_type: content.result_type.replace_type_vars(callable),
             })),
         }
     }
@@ -881,7 +881,7 @@ impl DbType {
                             })
                             .collect()
                     }),
-                    return_class: content.return_class.rewrite_late_bound_callables(manager),
+                    result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
             }
         }
@@ -1023,7 +1023,7 @@ pub struct CallableContent {
     pub defined_at: PointLink,
     pub type_vars: Option<TypeVars>,
     pub params: CallableParams,
-    pub return_class: DbType,
+    pub result_type: DbType,
 }
 
 impl CallableContent {
@@ -1039,7 +1039,7 @@ impl CallableContent {
                 .map(|p| p.format(i_s, matcher, style))
                 .collect::<Vec<_>>()
         });
-        let result = self.return_class.format(i_s, matcher, style);
+        let result = self.result_type.format(i_s, matcher, style);
         match style {
             FormatStyle::MypyRevealType => {
                 if let Some(params) = params.as_mut() {

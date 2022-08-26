@@ -583,7 +583,7 @@ fn calculate_type_vars<'db>(
             } else {
                 let result_type = match func_or_callable {
                     FunctionOrCallable::Function(f) => f.result_type(i_s),
-                    FunctionOrCallable::Callable(c) => Type::new(&c.return_class),
+                    FunctionOrCallable::Callable(c) => Type::new(&c.result_type),
                 };
                 matcher.match_reverse = true;
                 // Fill the type var arguments from context
