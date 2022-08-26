@@ -5,7 +5,7 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     FormatStyle, GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType, Variance,
+    TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -640,10 +640,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         let i_s = &mut self.inference.i_s;
                         let actual = Type::new(&t);
                         let expected = Type::new(bound);
-                        if !expected
-                            .matches(i_s, None, &actual, Variance::Covariant)
-                            .bool()
-                        {
+                        if !expected.is_sub_type(i_s, None, &actual).bool() {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {
@@ -657,11 +654,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
                         let i_s = &mut self.inference.i_s;
                         let t2 = Type::new(&t2);
-                        if !type_var.restrictions.iter().any(|t| {
-                            Type::new(t)
-                                .matches(i_s, None, &t2, Variance::Covariant)
-                                .bool()
-                        }) {
+                        if !type_var
+                            .restrictions
+                            .iter()
+                            .any(|t| Type::new(t).is_sub_type(i_s, None, &t2).bool())
+                        {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::InvalidTypeVarValue {

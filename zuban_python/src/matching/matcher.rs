@@ -83,22 +83,19 @@ impl TypeVarBound {
         other: &Type<'db, '_>,
         variance: Variance,
     ) -> Match {
-        let check_match = |i_s: &mut InferenceState<'db, '_>, t: &DbType, variance| {
-            Type::new(t).matches(i_s, None, other, variance)
-        };
         // First check if the value is between the bounds.
         let matches = match self {
             Self::Invariant(t) => {
-                let m = check_match(i_s, t, Variance::Invariant);
+                let m = Type::new(t).is_same_type(i_s, None, other);
                 if m.bool() {
                     return m; // In the false case we still have to check for the variance cases.
                 }
                 m
             }
-            Self::Lower(lower) => check_match(i_s, lower, Variance::Covariant),
+            Self::Lower(lower) => Type::new(lower).is_sub_type(i_s, None, other),
             Self::Upper(upper) => Type::new(upper).is_super_type(i_s, None, other),
             Self::LowerAndUpper(lower, upper) => {
-                check_match(i_s, lower, Variance::Covariant)
+                Type::new(lower).is_sub_type(i_s, None, other)
                     & Type::new(upper).is_super_type(i_s, None, other)
             }
         };
@@ -120,7 +117,7 @@ impl TypeVarBound {
                     | Self::Upper(ref t)
                     | Self::LowerAndUpper(_, ref t) = self
                     {
-                        let m = check_match(i_s, t, Variance::Covariant);
+                        let m = Type::new(t).is_sub_type(i_s, None, other);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
                             return Match::True;
@@ -130,7 +127,7 @@ impl TypeVarBound {
                 }
                 Variance::Contravariant => {
                     if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
-                        return check_match(i_s, t, Variance::Contravariant);
+                        return Type::new(t).is_super_type(i_s, None, other);
                     }
                 }
             };
@@ -219,9 +216,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints = mismatch_constraints
-                    || !Type::new(bound)
-                        .matches(i_s, None, value_type, Variance::Covariant)
-                        .bool();
+                    || !Type::new(bound).is_sub_type(i_s, None, value_type).bool();
             }
             if mismatch_constraints {
                 return Match::False(MismatchReason::ConstraintMismatch {
@@ -591,7 +586,8 @@ fn calculate_type_vars<'db>(
                     FunctionOrCallable::Callable(c) => c.result_type(i_s),
                 };
                 matcher.match_reverse = true;
-                type_.matches(i_s, Some(matcher), &result_type, Variance::Covariant);
+                // Fill the type var arguments from context
+                type_.is_sub_type(i_s, Some(matcher), &result_type);
                 matcher.match_reverse = false;
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {

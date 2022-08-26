@@ -317,7 +317,7 @@ impl<'db, 'a> Type<'db, 'a> {
         })
     }
 
-    fn is_same_type(
+    pub fn is_same_type(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
