@@ -2,7 +2,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarUsage, Variance,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -209,7 +209,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
                         if !f1_result_type
-                            .matches(self.i_s, None, &f2_result_type, Variance::Contravariant)
+                            .is_super_type(self.i_s, None, &f2_result_type)
                             .bool()
                             && overload_has_overlapping_params(
                                 self.i_s,

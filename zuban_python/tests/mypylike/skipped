@@ -1,5 +1,6 @@
 # Next up
-testInferTypeVariableFromTwoGenericTypes4
+testFunctionTypesWithOverloads
+testOverloadOverlapWithTypeVarsWithValuesOrdering
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
