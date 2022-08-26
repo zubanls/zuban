@@ -258,65 +258,20 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn matches_mro(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        value_type: &Self,
-        variance: Variance,
-    ) -> Match {
-        match variance {
-            Variance::Invariant => self.is_same_type_internal(i_s, matcher, value_type, variance),
-            Variance::Covariant => match value_type.mro(i_s) {
-                Some(mro) => {
-                    for (_, t2) in mro {
-                        let m =
-                            self.is_same_type_internal(i_s, matcher.as_deref_mut(), &t2, variance);
-                        if !matches!(m, Match::False(MismatchReason::None)) {
-                            return m;
-                        }
-                    }
-                    Match::new_false()
-                }
-                None => {
-                    let m = self.is_same_type_internal(i_s, matcher, value_type, variance);
-                    m.or(|| self.matches_object_class(i_s.db, value_type))
-                }
-            },
-            Variance::Contravariant => match value_type.maybe_db_type() {
-                Some(DbType::Union(u2))
-                    if !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
-                {
-                    u2.iter()
-                        .any(|g| {
-                            self.matches_contravariant_single(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                &Type::new(g),
-                            )
-                            .bool()
-                        })
-                        .into()
-                }
-                _ => self.matches_contravariant_single(i_s, matcher, value_type),
-            },
-        }
-    }
-
-    fn matches_contravariant_single(
+    fn is_subtype_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
     ) -> Match {
-        match self.mro(i_s) {
+        match value_type.mro(i_s) {
             Some(mro) => {
-                for (_, t1) in mro {
-                    let m = t1.is_same_type_internal(
+                for (_, t2) in mro {
+                    let m = self.is_same_type_internal(
                         i_s,
                         matcher.as_deref_mut(),
-                        value_type,
-                        Variance::Contravariant,
+                        &t2,
+                        Variance::Covariant,
                     );
                     if !matches!(m, Match::False(MismatchReason::None)) {
                         return m;
@@ -325,8 +280,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 Match::new_false()
             }
             None => {
-                self.is_same_type_internal(i_s, matcher, value_type, Variance::Contravariant)
-                // TODO value_type.matches_object_class(i_s.db)
+                let m = self.is_same_type_internal(i_s, matcher, value_type, Variance::Covariant);
+                m.or(|| self.matches_object_class(i_s.db, value_type))
             }
         }
     }
@@ -338,23 +293,30 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        if variance == Variance::Contravariant {
-            return if let Some(matcher) = matcher {
-                let old = matcher.match_reverse;
-                matcher.match_reverse = !old;
-                let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
-                matcher.match_reverse = old;
-                result
-            } else {
-                value_type.matches(i_s, None, self, Variance::Covariant)
-            };
-        }
-
         // 1. Check if the type is part of the mro.
-        let m = self.matches_mro(i_s, matcher.as_deref_mut(), value_type, variance);
+        let m = match variance {
+            Variance::Covariant => {
+                self.is_subtype_internal(i_s, matcher.as_deref_mut(), value_type)
+            }
+            Variance::Invariant => {
+                self.is_same_type_internal(i_s, matcher.as_deref_mut(), value_type, variance)
+            }
+            Variance::Contravariant => {
+                return if let Some(matcher) = matcher {
+                    let old = matcher.match_reverse;
+                    matcher.match_reverse = !old;
+                    let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
+                    matcher.match_reverse = old;
+                    result
+                } else {
+                    value_type.matches(i_s, None, self, Variance::Covariant)
+                };
+            }
+        };
         if m.bool() {
             return m;
         }
+
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
@@ -485,28 +447,16 @@ impl<'db, 'a> Type<'db, 'a> {
                     self.matches(i_s, matcher, value_type, Variance::Covariant)
                         & self.matches(i_s, None, value_type, Variance::Contravariant)
                 }
-                Variance::Contravariant => u1
-                    .iter()
-                    .all(|g1| {
-                        let t1 = Type::new(g1);
-                        u2.iter().any(|g2| {
-                            t1.matches(i_s, matcher.as_deref_mut(), &Type::new(g2), variance)
-                                .bool()
-                        })
-                    })
-                    .into(),
+                Variance::Contravariant => unreachable!(),
             },
-            _ => match variance {
-                Variance::Contravariant => Match::new_false(),
-                Variance::Covariant | Variance::Invariant => u1
-                    .iter()
-                    .any(|g| {
-                        Type::new(g)
-                            .matches(i_s, matcher.as_deref_mut(), value_type, variance)
-                            .bool()
-                    })
-                    .into(),
-            },
+            _ => u1
+                .iter()
+                .any(|g| {
+                    Type::new(g)
+                        .matches(i_s, matcher.as_deref_mut(), value_type, variance)
+                        .bool()
+                })
+                .into(),
         }
     }
 
