@@ -47,12 +47,7 @@ pub fn matches_params<'db: 'x, 'x>(
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
-                            matches &= t1.matches(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                &t2,
-                                Variance::Contravariant,
-                            )
+                            matches &= t1.is_super_type(i_s, matcher.as_deref_mut(), &t2)
                         }
                     }
                 } else {

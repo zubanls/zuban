@@ -286,6 +286,23 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    pub fn is_super_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+    ) -> Match {
+        if let Some(matcher) = matcher {
+            let old = matcher.match_reverse;
+            matcher.match_reverse = !old;
+            let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
+            matcher.match_reverse = old;
+            result
+        } else {
+            value_type.matches(i_s, None, self, Variance::Covariant)
+        }
+    }
+
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -302,15 +319,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 self.is_same_type_internal(i_s, matcher.as_deref_mut(), value_type, variance)
             }
             Variance::Contravariant => {
-                return if let Some(matcher) = matcher {
-                    let old = matcher.match_reverse;
-                    matcher.match_reverse = !old;
-                    let result = value_type.matches(i_s, Some(matcher), self, Variance::Covariant);
-                    matcher.match_reverse = old;
-                    result
-                } else {
-                    value_type.matches(i_s, None, self, Variance::Covariant)
-                };
+                return self.is_super_type(i_s, matcher.as_deref_mut(), value_type);
             }
         };
         if m.bool() {
@@ -340,10 +349,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     }
                     return Match::TrueWithAny;
                 }
-                DbType::None => match variance {
-                    Variance::Contravariant => (), // TODO ? (matches!(self, Self::None)).into(),
-                    _ => return Match::True,
-                },
+                DbType::None => return Match::True,
                 DbType::TypeVar(t2) => {
                     if let Some(matcher) = matcher {
                         if matcher.match_reverse {
@@ -521,9 +527,9 @@ impl<'db, 'a> Type<'db, 'a> {
                             )
                         }
                     }
-                    (false, true, Variance::Covariant)
-                    | (true, false, Variance::Contravariant)
-                    | (_, _, Variance::Invariant) => Match::new_false(),
+                    (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
+                        Match::new_false()
+                    }
                     (true, false, Variance::Covariant) => {
                         let t1 = Type::new(&generics1[0.into()]);
                         generics2
@@ -535,17 +541,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             })
                             .into()
                     }
-                    (false, true, Variance::Contravariant) => {
-                        let t2 = Type::new(&generics2[0.into()]);
-                        generics1
-                            .iter()
-                            .all(|g1| {
-                                let t1 = Type::new(g1);
-                                t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                    .bool()
-                            })
-                            .into()
-                    }
+                    _ => unreachable!(),
                 };
             }
         }
