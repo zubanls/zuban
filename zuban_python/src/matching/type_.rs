@@ -333,6 +333,10 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        if matcher.is_none() && variance == Variance::Contravariant {
+            return value_type.matches(i_s, matcher, self, Variance::Covariant);
+        }
+
         // 1. Check if the type is part of the mro.
         let m = self.matches_mro(i_s, matcher.as_deref_mut(), value_type, variance);
         if m.bool() {
