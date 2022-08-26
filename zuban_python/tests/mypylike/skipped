@@ -4,10 +4,6 @@ testInferTypeVariableFromTwoGenericTypes4
 testFunctionTypesWithOverloads
 testOverloadOverlapWithTypeVarsWithValuesOrdering
 
-contravariant_type_var
-type_var_with_co_and_contra_matrix_covariant_context_simple
-type_var_with_co_and_contra_matrix_covariant_context_complex
-
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting

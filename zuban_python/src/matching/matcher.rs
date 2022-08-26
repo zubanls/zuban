@@ -151,7 +151,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     func_or_callable: FunctionOrCallable<'db, 'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
-    pub in_result_context: bool,
+    in_result_context: bool,
     parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
 }
