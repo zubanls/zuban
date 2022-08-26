@@ -96,10 +96,10 @@ impl TypeVarBound {
                 m
             }
             Self::Lower(lower) => check_match(i_s, lower, Variance::Covariant),
-            Self::Upper(upper) => check_match(i_s, upper, Variance::Contravariant),
+            Self::Upper(upper) => Type::new(upper).is_super_type(i_s, None, other),
             Self::LowerAndUpper(lower, upper) => {
                 check_match(i_s, lower, Variance::Covariant)
-                    & check_match(i_s, upper, Variance::Contravariant)
+                    & Type::new(upper).is_super_type(i_s, None, other)
             }
         };
         if matches.bool() {

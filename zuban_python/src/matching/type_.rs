@@ -451,7 +451,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 }
                 Variance::Invariant => {
                     self.matches(i_s, matcher, value_type, Variance::Covariant)
-                        & self.matches(i_s, None, value_type, Variance::Contravariant)
+                        & self.is_super_type(i_s, None, value_type)
                 }
                 Variance::Contravariant => unreachable!(),
             },
