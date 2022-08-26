@@ -1,7 +1,7 @@
 use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{CallableContent, CallableParam, DbType, FormatStyle};
+use crate::database::{CallableContent, DbType, FormatStyle};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -16,14 +16,6 @@ pub struct Callable<'a> {
 impl<'db, 'a> Callable<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
-    }
-
-    pub fn iter_params(&self) -> Option<impl Iterator<Item = &'a CallableParam>> {
-        self.content.params.as_ref().map(|params| params.iter())
-    }
-
-    pub fn result_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
-        Type::new(&self.content.return_class)
     }
 }
 
