@@ -258,7 +258,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn is_subtype_internal(
+    fn is_sub_type_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -303,14 +303,14 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn is_sub_type(
+    pub fn is_sub_type(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let m = self.is_subtype_internal(i_s, matcher.as_deref_mut(), value_type);
+        let m = self.is_sub_type_internal(i_s, matcher.as_deref_mut(), value_type);
         m.or(|| {
             self.check_protocol_and_other_side(
                 i_s,
