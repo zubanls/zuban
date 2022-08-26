@@ -215,7 +215,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             None,
                             value_type,
                             match self.in_result_context {
-                                false => Variance::Covariant,
+                                false => variance,
                                 // Type var restrictions are special, because they impose the rule
                                 // that the output of a type var is always the specific one of the
                                 // specific types.
