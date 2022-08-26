@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, CallableParams, Database, Variance};
+use crate::database::{CallableParam, CallableParams, Database};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;

@@ -45,7 +45,7 @@ impl Match {
         }
     }
 
-    pub fn or(self, callable: impl Fn() -> Self) -> Self {
+    pub fn or(self, mut callable: impl FnMut() -> Self) -> Self {
         if self.bool() {
             self
         } else {

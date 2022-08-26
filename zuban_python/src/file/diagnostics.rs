@@ -2,7 +2,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarUsage, Variance,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;

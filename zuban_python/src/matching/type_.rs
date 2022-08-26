@@ -303,6 +303,46 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
+    fn is_sub_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+    ) -> Match {
+        // 1. Check if the type is part of the mro.
+        let m = self.is_subtype_internal(i_s, matcher.as_deref_mut(), value_type);
+        m.or(|| {
+            self.check_protocol_and_other_side(
+                i_s,
+                matcher.as_deref_mut(),
+                value_type,
+                Variance::Covariant,
+            )
+        })
+    }
+
+    fn is_same_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+    ) -> Match {
+        let m = self.is_same_type_internal(
+            i_s,
+            matcher.as_deref_mut(),
+            value_type,
+            Variance::Invariant,
+        );
+        m.or(|| {
+            self.check_protocol_and_other_side(
+                i_s,
+                matcher.as_deref_mut(),
+                value_type,
+                Variance::Invariant,
+            )
+        })
+    }
+
     pub fn matches(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -310,22 +350,22 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        // 1. Check if the type is part of the mro.
-        let m = match variance {
-            Variance::Covariant => {
-                self.is_subtype_internal(i_s, matcher.as_deref_mut(), value_type)
-            }
-            Variance::Invariant => {
-                self.is_same_type_internal(i_s, matcher.as_deref_mut(), value_type, variance)
-            }
+        match variance {
+            Variance::Covariant => self.is_sub_type(i_s, matcher, value_type),
+            Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
             Variance::Contravariant => {
                 return self.is_super_type(i_s, matcher.as_deref_mut(), value_type);
             }
-        };
-        if m.bool() {
-            return m;
         }
+    }
 
+    fn check_protocol_and_other_side(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
@@ -375,8 +415,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Never => return Match::True, // TODO is this correct?
                 _ => (),
             }
-        };
-        m
+        }
+        Match::new_false()
     }
 
     fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
