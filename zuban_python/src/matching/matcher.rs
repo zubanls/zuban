@@ -9,7 +9,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
-use crate::value::{Callable, Class, Function, OnTypeError, Value};
+use crate::value::{Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
 enum FunctionOrCallable<'db, 'a> {
@@ -481,22 +481,20 @@ pub fn calculate_function_type_vars_and_return<'db>(
 
 pub fn calculate_callable_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    callable: &Callable,
+    callable: &CallableContent,
     args: &dyn Arguments<'db>,
-    type_vars: Option<&TypeVars>,
-    match_in_definition: PointLink,
     result_context: ResultContext<'db, '_>,
     on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
     calculate_type_vars(
         i_s,
         None,
-        FunctionOrCallable::Callable(callable.content),
+        FunctionOrCallable::Callable(callable),
         None,
         args,
         false,
-        type_vars,
-        match_in_definition,
+        callable.type_vars.as_ref(),
+        callable.defined_at,
         result_context,
         Some(on_type_error),
     )

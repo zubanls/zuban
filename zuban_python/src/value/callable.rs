@@ -46,10 +46,8 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> Inferred<'db> {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
-            self,
+            self.content,
             args,
-            self.content.type_vars.as_ref(),
-            self.content.defined_at,
             result_context,
             on_type_error,
         );
