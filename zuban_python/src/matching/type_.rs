@@ -401,9 +401,10 @@ impl<'db, 'a> Type<'db, 'a> {
                             .type_var
                             .restrictions
                             .iter()
-                            .any(|r| self.matches(i_s, None, &Type::new(r), variance).bool());
+                            .all(|r| self.matches(i_s, None, &Type::new(r), variance).bool());
                         if m {
-                            return Match::True;
+                            todo!();
+                            //return Match::True;
                         }
                     }
                 }
