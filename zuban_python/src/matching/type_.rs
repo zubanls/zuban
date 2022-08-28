@@ -75,7 +75,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     t2.type_var
                         .restrictions
                         .iter()
-                        .any(|r2| self.overlaps(i_s, &Type::new(r2)))
+                        .all(|r2| self.overlaps(i_s, &Type::new(r2)))
                 } else {
                     true
                 };
