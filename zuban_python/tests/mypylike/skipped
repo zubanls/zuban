@@ -28,13 +28,9 @@ testInheritedConstructor2
 testOverloadWithOverlappingItemsAndAnyArgument5
 
 # Function Subtyping inverse type var binding
-testSubtypingWithGenericFunctionUsingTypevarWithValues
 testGenericFunctionSubtypingWithTypevarValues
 testSubtypingWithGenericFunctions
 testSubtypingWithGenericInnerFunctions
-testGenericFunctionsWithUnalignedIds
-# callable return type to param bottom up
-testCallableWithArbitraryArgsSubtypingWithGenericFunc
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
