@@ -1037,7 +1037,14 @@ impl CallableContent {
                     format!(
                         " [{}]",
                         t.iter()
-                            .map(|t| t.name(format_data.db))
+                            .map(|t| {
+                                let mut name = t.name(format_data.db).to_owned();
+                                if let Some(bound) = &t.bound {
+                                    name += " <: ";
+                                    name += &bound.format(format_data);
+                                }
+                                name
+                            })
                             .collect::<Vec<_>>()
                             .join(", ")
                     )

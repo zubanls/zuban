@@ -202,7 +202,6 @@ testCyclicUndefinedImportWithStar2
 testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerVarTypeVarNoCrashImportCycle
-testNewAnalyzerFuncTypeVarNoCrashImportCycle
 testRecursiveForwardReferenceInUnion
 # Class generics cycles / + type alias cycles
 testNewAnalyzerAliasToNotReadyDirectBase
