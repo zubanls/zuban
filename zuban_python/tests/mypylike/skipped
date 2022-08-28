@@ -5,8 +5,6 @@ testFunctionTypesWithOverloads
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
 
-overload_not_overlapping_none
-overload_unmatchable_none
 overload_not_overlapping_optional
 overload_overlapping_any
 type_var_value_restriction_in_callable
@@ -98,19 +96,13 @@ testInconsistentOverload2
 
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
 testOverloadConstrainedTypevarNotShadowingAny
-testOverloadBoundedTypevarNotShadowingAny
 testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
-testOverloadPartialOverlapWithUnrestrictedTypeVarInClass
-testOverloadPartialOverlapWithUnrestrictedTypeVarInClassNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
-testOverloadPartiallyOverlappingTypeVarsIdentical
-testNestedOverloadsTypeVarOverlap
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
 testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadFlagsPossibleMatches
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
-testOverloadRefresh
 
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
@@ -195,7 +187,6 @@ testUnificationDictWithEmptyList*
 testMisguidedSetItem
 
 # Duplicate in Union
-testUnionMethodCalls
 testUnificationRedundantUnion
 
 # Union Not matching type vars
