@@ -9,7 +9,7 @@ use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_params, overload_has_overlapping_params, Generics, Match, ResultContext,
+    matches_params, overload_has_overlapping_params, Generics, Match, ResultContext, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
@@ -190,15 +190,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
-                f1.type_vars(self.i_s);
+                let f1_type_vars = f1.type_vars(self.i_s);
                 let f1_result_type = f1.result_type(self.i_s);
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
-                    f2.type_vars(self.i_s);
+                    let f2_type_vars = f2.type_vars(self.i_s);
+                    let mut calculated_type_vars = vec![];
+                    let mut matcher = f1_type_vars.map(|type_vars| {
+                        calculated_type_vars.resize_with(type_vars.len(), Default::default);
+                        TypeVarMatcher::new_function(f1, &mut calculated_type_vars)
+                    });
                     if matches!(
                         matches_params(
                             self.i_s,
-                            None,
+                            matcher.as_mut(),
                             f1.param_iterator(),
                             f2.param_iterator(),
                             Variance::Covariant

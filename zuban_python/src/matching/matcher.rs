@@ -137,12 +137,13 @@ impl TypeVarBound {
 }
 
 #[derive(Debug, Default)]
-struct CalculatedTypeVar {
+pub struct CalculatedTypeVar {
     type_: Option<TypeVarBound>,
     //variance: Variance,
     defined_by_result_context: bool,
 }
 
+#[derive(Debug)]
 pub struct TypeVarMatcher<'db, 'a> {
     class: Option<&'a Class<'db, 'a>>,
     func_or_callable: FunctionOrCallable<'db, 'a>,
@@ -165,6 +166,34 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
+            match_reverse: false,
+            parent_matcher: None, //parent_matcher,
+        }
+    }
+
+    fn new_callable(
+        callable: &'a CallableContent,
+        calculated_type_vars: &'a mut [CalculatedTypeVar],
+    ) -> Self {
+        Self {
+            class: None,
+            func_or_callable: FunctionOrCallable::Callable(callable),
+            calculated_type_vars,
+            match_in_definition: callable.defined_at,
+            match_reverse: false,
+            parent_matcher: None, //parent_matcher,
+        }
+    }
+
+    pub fn new_function(
+        function: Function<'db, 'a>,
+        calculated_type_vars: &'a mut [CalculatedTypeVar],
+    ) -> Self {
+        Self {
+            class: None,
+            func_or_callable: FunctionOrCallable::Function(function),
+            calculated_type_vars,
+            match_in_definition: function.node_ref.as_link(),
             match_reverse: false,
             parent_matcher: None, //parent_matcher,
         }
@@ -267,7 +296,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             )
                         }
                     } else {
-                        todo!("Probably nested generic functions???")
+                        todo!(
+                            "Probably nested generic functions??? {:?} {:?}",
+                            type_var_usage.in_definition,
+                            self.match_in_definition
+                        )
                     }
                 }
                 FunctionOrCallable::Callable(c) => todo!(),
@@ -478,6 +511,25 @@ pub fn calculate_function_type_vars_and_return<'db>(
         on_type_error,
     )
 }
+
+/*
+fn compare_callables() {
+    if matcher.is_none() {
+        if let Some(type_vars) = &c1.type_vars {
+            let mut calculated_type_vars = vec![];
+            calculated_type_vars.resize_with(type_vars.len(), Default::default);
+            let mut matcher = TypeVarMatcher::new_callable(
+                c1,
+                c1.defined_at,
+                &mut calculated_type_vars,
+            );
+            let x = Type::matches_callable(i_s, Some(&mut matcher), c1, c2);
+            dbg!(matcher.calculated_type_vars);
+            return x
+        }
+    }
+}
+*/
 
 pub fn calculate_callable_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
