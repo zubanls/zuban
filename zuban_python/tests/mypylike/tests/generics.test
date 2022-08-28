@@ -52,7 +52,7 @@ b = g
 if int():
     b = g
 if int():
-    b = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+    b = f # E: Incompatible types in assignment (expression has type "Callable[[int], T]", variable has type "Callable[[int], U]")
 
 [case subtyping_complex_generics]
 from typing import TypeVar
@@ -69,7 +69,7 @@ if int():
     f = h # E: Incompatible types in assignment (expression has type "Callable[[U, U], U]", variable has type "Callable[[T, int], T]")
 
 if int():
-    g = f # E: Incompatible types in assignment (expression has type "Callable[[T], T]", variable has type "Callable[[U], U]")
+    g = f # E: Incompatible types in assignment (expression has type "Callable[[T, int], T]", variable has type "Callable[[T, U], U]")
 if int():
     g = g
 if int():
