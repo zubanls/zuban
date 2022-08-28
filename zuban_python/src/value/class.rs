@@ -16,7 +16,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, Generics, Match, ResultContext, Type, TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, FormatData, Generics, Match, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -381,21 +381,16 @@ impl<'db, 'a> Class<'db, 'a> {
         (self.node_ref == db.python_state.object()).into()
     }
 
-    pub fn format(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
-        let mut result = match style {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        let mut result = match format_data.style {
             FormatStyle::Short => self.name().to_owned(),
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(db),
+            FormatStyle::Qualified | FormatStyle::MypyRevealType => {
+                self.qualified_name(format_data.db)
+            }
         };
-        let type_vars = self.type_vars(&mut InferenceState::new(db));
+        let type_vars = self.type_vars(&mut InferenceState::new(format_data.db));
         if let Some(type_vars) = type_vars {
-            result += &self
-                .generics()
-                .format(db, matcher, style, Some(type_vars.len()));
+            result += &self.generics().format(format_data, Some(type_vars.len()));
         }
         result.into()
     }
@@ -473,12 +468,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list).format(
-                        i_s.db,
-                        None,
-                        FormatStyle::Short,
-                        None
-                    ),
+                    Some(generics_list) => Generics::new_list(generics_list)
+                        .format(&FormatData::new_short(i_s.db), None),
                     None => "".to_owned(),
                 }
             );
@@ -513,7 +504,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.format(i_s.db, None, FormatStyle::Short),
+            self.format(&FormatData::new_short(i_s.db)),
         )
     }
 

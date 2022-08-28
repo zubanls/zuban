@@ -391,11 +391,10 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let s = arg.infer(i_s, result_context).class_as_type(i_s).format(
-            i_s.db,
-            None,
-            FormatStyle::MypyRevealType,
-        );
+        let s = arg
+            .infer(i_s, result_context)
+            .class_as_type(i_s)
+            .format(&FormatData::with_style(i_s.db, FormatStyle::MypyRevealType));
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::Note(format!("Revealed type is {s:?}").into()),
@@ -458,7 +457,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
+                            v.as_type(i_s).format(&FormatData::new_short(i_s.db)),
                             db_type.format(&FormatData::new_short(i_s.db)),
                             self.name(),
                             name,

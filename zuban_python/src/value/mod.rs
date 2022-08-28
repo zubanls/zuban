@@ -13,12 +13,12 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{Database, DbType, FileIndex, FormatStyle, PointLink};
+use crate::database::{Database, DbType, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
@@ -263,7 +263,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             IssueType::NotCallable {
                 type_: format!(
                     "{:?}",
-                    self.as_type(i_s).format(i_s.db, None, FormatStyle::Short)
+                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
                 )
                 .into(),
             },
@@ -291,7 +291,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                     IssueType::NotIterable {
                         type_: format!(
                             "{:?}",
-                            self.as_type(i_s).format(i_s.db, None, FormatStyle::Short)
+                            self.as_type(i_s).format(&FormatData::new_short(i_s.db))
                         )
                         .into(),
                     },

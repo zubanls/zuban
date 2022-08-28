@@ -1,12 +1,12 @@
 use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, Locality};
+use crate::database::{ComplexPoint, DbType, GenericsList, Locality};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, Type};
+use crate::matching::{FormatData, Generics, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -69,7 +69,7 @@ impl<'db> ListLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
+                &self.as_type(i_s).format(&FormatData::new_short(i_s.db)),
             );
         }
         reference
@@ -253,7 +253,7 @@ impl<'db> DictLiteral<'db> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
+                &self.as_type(i_s).format(&FormatData::new_short(i_s.db)),
             );
             self.db_type(i_s)
         }

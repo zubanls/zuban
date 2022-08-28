@@ -13,8 +13,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericsList, Locality, LocalityLink,
-    Point, PointLink, PointType, Points, Specific, TupleContent,
+    ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, LocalityLink, Point,
+    PointLink, PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -688,11 +688,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         i_s.db,
                                         IssueType::UnsupportedOperand {
                                             operand: Box::from(aug_assign.operand()),
-                                            left: class.unwrap().format(
-                                                i_s.db,
-                                                None,
-                                                FormatStyle::Short,
-                                            ),
+                                            left: class
+                                                .unwrap()
+                                                .format(&FormatData::new_short(i_s.db)),
                                             right,
                                         },
                                     )
@@ -828,11 +826,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         i_s.db,
                                         IssueType::InvalidGetItem {
                                             actual,
-                                            type_: class.unwrap().format(
-                                                i_s.db,
-                                                None,
-                                                FormatStyle::Short,
-                                            ),
+                                            type_: class
+                                                .unwrap()
+                                                .format(&FormatData::new_short(i_s.db)),
                                             expected,
                                         },
                                     )
@@ -1055,7 +1051,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: value.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
+                        left: value.as_type(i_s).format(&FormatData::new_short(i_s.db)),
                         note: None, // TODO check for unions and stuff
                     },
                 )
@@ -1071,7 +1067,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         i_s.db,
                         IssueType::UnsupportedOperand {
                             operand: Box::from(op.operand),
-                            left: class.unwrap().format(i_s.db, None, FormatStyle::Short),
+                            left: class.unwrap().format(&FormatData::new_short(i_s.db)),
                             right,
                         },
                     );
@@ -1082,11 +1078,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             IssueType::Note(
                                 format!(
                                     "Left operand is of type {:?}",
-                                    left.class_as_type(i_s).format(
-                                        i_s.db,
-                                        None,
-                                        FormatStyle::Short
-                                    ),
+                                    left.class_as_type(i_s)
+                                        .format(&FormatData::new_short(i_s.db)),
                                 )
                                 .into(),
                             ),

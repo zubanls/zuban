@@ -1,15 +1,14 @@
 use std::mem;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, FormatStyle, GenericsList, MroIndex, PointLink,
-    TupleContent,
+    ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
-use crate::matching::ResultContext;
+use crate::matching::{FormatData, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::value::Function;
 use parsa_python_ast::{
@@ -340,7 +339,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                     format!(
                         "{prefix}{}",
                         inf.class_as_type(i_s)
-                            .format(i_s.db, None, FormatStyle::Short)
+                            .format(&FormatData::new_short(i_s.db))
                     )
                     .into()
                 })

@@ -5,9 +5,7 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, MismatchReason,
     TypeVarMatcher,
 };
-use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, TupleContent, UnionType, Variance,
-};
+use crate::database::{CallableContent, Database, DbType, TupleContent, UnionType, Variance};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -705,8 +703,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 "Mismatch between {value_type:?} and {self:?} -> {:?}",
                 matches.clone()
             );
-            let input = value_type.format(i_s.db, None, FormatStyle::Short);
-            let wanted = self.format(i_s.db, matcher.as_deref(), FormatStyle::Short);
+            let input = value_type.format(&FormatData::new_short(i_s.db));
+            let wanted = self.format(&FormatData::with_matcher(i_s.db, matcher.as_deref()));
             if let Some(mut callback) = callback {
                 callback(i_s, input, wanted, reason)
             }
@@ -790,15 +788,10 @@ impl<'db, 'a> Type<'db, 'a> {
             _ => todo!("{name:?} {self:?}"),
         }
     }
-    pub fn format(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::Class(c) => c.format(db, matcher, style),
-            Self::Type(t) => t.format(&FormatData { db, matcher, style }),
+            Self::Class(c) => c.format(format_data),
+            Self::Type(t) => t.format(format_data),
         }
     }
 }

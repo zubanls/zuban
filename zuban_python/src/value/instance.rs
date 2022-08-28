@@ -1,12 +1,12 @@
 use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{FormatStyle, PointLink};
+use crate::database::PointLink;
 use crate::diagnostics::IssueType;
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -103,7 +103,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.db,
                 IssueType::NotIndexable {
-                    type_: self.class.format(i_s.db, None, FormatStyle::Short),
+                    type_: self.class.format(&FormatData::new_short(i_s.db)),
                 },
             )
         })
@@ -117,7 +117,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                         i_s.db,
                         IssueType::InvalidGetItem {
                             actual,
-                            type_: class.unwrap().format(i_s.db, None, FormatStyle::Short),
+                            type_: class.unwrap().format(&FormatData::new_short(i_s.db)),
                             expected,
                         },
                     )
@@ -138,7 +138,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format(i_s.db, None, FormatStyle::Short),
+            self.class.format(&FormatData::new_short(i_s.db)),
         )
     }
 }

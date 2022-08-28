@@ -8,8 +8,8 @@ use std::rc::Rc;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, FormatStyle,
-    GenericsList, Locality, Overload, Point, StringSlice, TypeVar, TypeVars, UnionEntry, UnionType,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
+    Locality, Overload, Point, StringSlice, TypeVar, TypeVars, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -333,7 +333,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.format(i_s.db, None, FormatStyle::Short)))
+                        .map(|c| format!("{}.", c.format(&FormatData::new_short(i_s.db))))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -391,7 +391,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(i_s.db, matcher, FormatStyle::Short)
+                .format(&FormatData::with_matcher(i_s.db, matcher))
         };
         let node = self.node();
         let args = self
@@ -400,7 +400,7 @@ impl<'db, 'a> Function<'db, 'a> {
             .map(|(i, p)| {
                 let annotation_str = p
                     .annotation_type(i_s)
-                    .map(|t| t.format(i_s.db, matcher, FormatStyle::Short));
+                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
                 let stars = match p.param_type() {
                     ParamType::Starred => "*",
                     ParamType::DoubleStarred => "**",

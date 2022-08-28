@@ -4,8 +4,8 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    FormatStyle, GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType,
+    GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent, TypeAlias,
+    TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -14,7 +14,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, Type};
+use crate::matching::{FormatData, Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -644,9 +644,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {
-                                    actual: actual.format(i_s.db, None, FormatStyle::Short),
+                                    actual: actual.format(&FormatData::new_short(i_s.db)),
                                     executable: Box::from(class.name()),
-                                    expected: expected.format(i_s.db, None, FormatStyle::Short),
+                                    expected: expected.format(&FormatData::new_short(i_s.db)),
                                 },
                             );
                         }
@@ -664,7 +664,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                                 IssueType::InvalidTypeVarValue {
                                     type_var: Box::from(type_var.name(i_s.db)),
                                     func: format!("{:?}", class.name()).into(),
-                                    actual: t2.format(i_s.db, None, FormatStyle::Short),
+                                    actual: t2.format(&FormatData::new_short(i_s.db)),
                                 },
                             );
                         }
