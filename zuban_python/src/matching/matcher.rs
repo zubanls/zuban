@@ -374,6 +374,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                                 db,
                                 matcher: Some(self),
                                 style,
+                                verbose: false,
                             })
                         } else {
                             type_var_usage.type_var.name(db).into()

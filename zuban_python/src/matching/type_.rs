@@ -703,8 +703,16 @@ impl<'db, 'a> Type<'db, 'a> {
                 "Mismatch between {value_type:?} and {self:?} -> {:?}",
                 matches.clone()
             );
-            let input = value_type.format(&FormatData::new_short(i_s.db));
-            let wanted = self.format(&FormatData::with_matcher(i_s.db, matcher.as_deref()));
+            let mut fmt1 = FormatData::new_short(i_s.db);
+            let mut fmt2 = FormatData::with_matcher(i_s.db, matcher.as_deref());
+            let mut input = value_type.format(&fmt1);
+            let mut wanted = self.format(&fmt2);
+            if input == wanted {
+                fmt1.enable_verbose();
+                fmt2.enable_verbose();
+                input = value_type.format(&fmt1);
+                wanted = self.format(&fmt2);
+            }
             if let Some(mut callback) = callback {
                 callback(i_s, input, wanted, reason)
             }

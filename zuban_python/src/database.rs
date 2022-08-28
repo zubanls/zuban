@@ -972,6 +972,9 @@ impl CallableParam {
                         return match self.param_type {
                             ParamType::PositionalOnly => unreachable!(),
                             ParamType::PositionalOrKeyword => {
+                                if !format_data.verbose {
+                                    return t;
+                                }
                                 if self.has_default {
                                     format!("DefaultArg({t}, '{}')", name.as_str(format_data.db))
                                 } else {

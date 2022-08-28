@@ -5,6 +5,7 @@ pub struct FormatData<'db, 'a, 'b> {
     pub db: &'db Database,
     pub matcher: Option<&'b TypeVarMatcher<'db, 'a>>,
     pub style: FormatStyle,
+    pub verbose: bool,
 }
 
 impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
@@ -13,6 +14,7 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             db,
             matcher: None,
             style: FormatStyle::Short,
+            verbose: false,
         }
     }
 
@@ -21,6 +23,7 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             db,
             matcher: None,
             style,
+            verbose: false,
         }
     }
 
@@ -29,6 +32,11 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             db,
             matcher,
             style: FormatStyle::Short,
+            verbose: false,
         }
+    }
+
+    pub fn enable_verbose(&mut self) {
+        self.verbose = true;
     }
 }
