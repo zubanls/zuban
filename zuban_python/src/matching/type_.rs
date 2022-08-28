@@ -59,7 +59,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn maybe_db_type(&self) -> Option<&DbType> {
+    pub fn maybe_db_type(&self) -> Option<&DbType> {
         match self {
             Self::Class(_) => None,
             Self::Type(t) => Some(t.as_ref()),
