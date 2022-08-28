@@ -208,6 +208,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                             matcher,
                                             c1.params.as_ref().map(|p| p.iter()),
                                             c2.params.as_ref().map(|p| p.iter().skip(1)),
+                                            Variance::Contravariant,
                                         );
                                     }
                                 }
@@ -534,6 +535,7 @@ impl<'db, 'a> Type<'db, 'a> {
             matcher,
             c1.params.as_ref().map(|params| params.iter()),
             c2.params.as_ref().map(|params| params.iter()),
+            Variance::Contravariant,
         )
     }
 

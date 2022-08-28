@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, CallableParams, Database};
+use crate::database::{CallableParam, CallableParams, Database, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;
@@ -19,6 +19,7 @@ pub fn matches_params<'db: 'x, 'x>(
     mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
     params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
     params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+    variance: Variance,
 ) -> Match {
     if let Some(params1) = params1 {
         if let Some(mut params2) = params2 {
@@ -47,7 +48,7 @@ pub fn matches_params<'db: 'x, 'x>(
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
-                            matches &= t1.is_super_type(i_s, matcher.as_deref_mut(), &t2)
+                            matches &= t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
                         }
                     }
                 } else {
