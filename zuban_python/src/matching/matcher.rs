@@ -237,8 +237,8 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     Some(DbType::TypeVar(t2)) if !t2.type_var.restrictions.is_empty() => {
                         if let Some(type_) = &current.type_ {
                             todo!()
-                        } else if type_var.restrictions.iter().all(|r1| {
-                            t2.type_var.restrictions.iter().any(|r2| {
+                        } else if t2.type_var.restrictions.iter().all(|r2| {
+                            type_var.restrictions.iter().any(|r1| {
                                 Type::new(r1).is_sub_type(i_s, None, &Type::new(r2)).bool()
                             })
                         }) {

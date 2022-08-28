@@ -26,10 +26,6 @@ testInheritedConstructor2
 # weird returns
 testOverloadWithOverlappingItemsAndAnyArgument5
 
-# Function Subtyping inverse type var binding
-testGenericFunctionSubtypingWithTypevarValues
-testSubtypingWithGenericInnerFunctions
-
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
@@ -313,6 +309,7 @@ testInnerFunctionWithTypevarValues
 testInnerFunctionMutualRecursionWithTypevarValues
 testGenericClassInnerFunctionTypeVariable
 testFunctionInGenericInnerClassTypeVariable-skip
+testSubtypingWithGenericInnerFunctions
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
