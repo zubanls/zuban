@@ -295,9 +295,7 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "db_type",
-                &self
-                    .db_type
-                    .format(&mut InferenceState::new(self.db), None, FormatStyle::Short),
+                &self.db_type.format(self.db, None, FormatStyle::Short),
             )
             .finish()
     }
@@ -461,7 +459,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
                             v.as_type(i_s).format(i_s, None, FormatStyle::Short),
-                            db_type.format(i_s, None, FormatStyle::Short),
+                            db_type.format(i_s.db, None, FormatStyle::Short),
                             self.name(),
                             name,
                         );

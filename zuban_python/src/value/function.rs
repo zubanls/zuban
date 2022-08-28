@@ -426,13 +426,16 @@ impl<'db, 'a> Function<'db, 'a> {
                     .map(|t| {
                         let mut s = t.name(i_s.db).to_owned();
                         if let Some(bound) = &t.bound {
-                            s += &format!(" <: {}", bound.format(i_s, matcher, FormatStyle::Short));
+                            s += &format!(
+                                " <: {}",
+                                bound.format(i_s.db, matcher, FormatStyle::Short)
+                            );
                         } else if !t.restrictions.is_empty() {
                             s += &format!(
                                 " in ({})",
                                 t.restrictions
                                     .iter()
-                                    .map(|t| t.format(i_s, matcher, FormatStyle::Short))
+                                    .map(|t| t.format(i_s.db, matcher, FormatStyle::Short))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             );

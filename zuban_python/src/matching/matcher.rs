@@ -4,7 +4,8 @@ use super::params::{InferrableParamIterator2, Param};
 use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
-    CallableContent, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
+    CallableContent, Database, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage,
+    TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -46,7 +47,7 @@ impl TypeVarBound {
     fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
-                t.format(i_s, None, style)
+                t.format(i_s.db, None, style)
             }
         }
     }
@@ -342,10 +343,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn format(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         type_var_usage: &TypeVarUsage,
         style: FormatStyle,
     ) -> Box<str> {
+        let i_s = &mut InferenceState::new(db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if self.match_in_definition == type_var_usage.in_definition {
@@ -353,7 +355,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(bound) = current.type_.as_ref() {
                 bound.format(i_s, style)
             } else {
-                DbType::Never.format(i_s, None, style)
+                DbType::Never.format(i_s.db, None, style)
             }
         } else {
             match self.func_or_callable {
@@ -363,12 +365,12 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             return class
                                 .generics
                                 .nth(i_s, type_var_usage.index)
-                                .format(i_s, None, style);
+                                .format(i_s.db, None, style);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index].format(i_s, Some(self), style)
+                            type_var_remap[type_var_usage.index].format(i_s.db, Some(self), style)
                         } else {
                             type_var_usage.type_var.name(i_s.db).into()
                         }
@@ -696,11 +698,11 @@ fn calculate_type_vars<'db>(
                 match &func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.format(i_s, None, FormatStyle::Short);
+                        callable_description = callable.format(i_s.db, None, FormatStyle::Short);
                         &callable_description
                     }
                 },
-                type_arguments.format(i_s, None, FormatStyle::Short),
+                type_arguments.format(i_s.db, None, FormatStyle::Short),
             );
         }
     }
@@ -782,7 +784,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                                     Some(f) => f.diagnostic_string(class),
                                                     None => Box::from("function"),
                                                 },
-                                                actual: expected.format(i_s, None, FormatStyle::Short),
+                                                actual: expected.format(i_s.db, None, FormatStyle::Short),
                                             },
                                         );
                                     } else {

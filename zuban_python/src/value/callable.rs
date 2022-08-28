@@ -56,6 +56,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s, None, FormatStyle::Short)
+        base_description!(self) + &self.content.format(i_s.db, None, FormatStyle::Short)
     }
 }

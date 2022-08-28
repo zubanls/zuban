@@ -11,7 +11,6 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::inference_state::InferenceState;
 use crate::matching::{Generics, TypeVarMatcher};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -508,13 +507,13 @@ impl GenericsList {
 
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         self.0
             .iter()
-            .map(|g| g.format(i_s, matcher, style))
+            .map(|g| g.format(db, matcher, style))
             .collect::<Vec<_>>()
             .join(", ")
             .into()
@@ -565,7 +564,7 @@ impl UnionType {
 
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
@@ -574,7 +573,7 @@ impl UnionType {
             .iter()
             .filter_map(|e| {
                 (!self.format_as_optional || !matches!(e.type_, DbType::None))
-                    .then(|| (e.format_index, e.type_.format(i_s, matcher, style)))
+                    .then(|| (e.format_index, e.type_.format(db, matcher, style)))
             })
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
@@ -681,18 +680,17 @@ impl DbType {
 
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         let class_name = |link| {
             let class =
-                Class::from_position(NodeRef::from_link(i_s.db, link), Generics::None, None)
-                    .unwrap();
+                Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
             match style {
                 FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                    class.qualified_name(i_s.db).into()
+                    class.qualified_name(db).into()
                 }
             }
         };
@@ -701,19 +699,19 @@ impl DbType {
             Self::Class(link, Some(generics_lst)) => format!(
                 "{}[{}]",
                 &class_name(*link),
-                generics_lst.format(i_s, matcher, style)
+                generics_lst.format(db, matcher, style)
             )
             .into(),
-            Self::Union(union) => union.format(i_s, matcher, style),
+            Self::Union(union) => union.format(db, matcher, style),
             Self::TypeVar(t) => {
                 if let Some(matcher) = matcher {
-                    return matcher.format(i_s, t, style);
+                    return matcher.format(db, t, style);
                 }
-                Box::from(t.type_var.name(i_s.db))
+                Box::from(t.type_var.name(db))
             }
-            Self::Type(db_type) => format!("Type[{}]", db_type.format(i_s, matcher, style)).into(),
-            Self::Tuple(content) => content.format(i_s, matcher, style),
-            Self::Callable(content) => content.format(i_s, matcher, style).into(),
+            Self::Type(db_type) => format!("Type[{}]", db_type.format(db, matcher, style)).into(),
+            Self::Tuple(content) => content.format(db, matcher, style),
+            Self::Callable(content) => content.format(db, matcher, style).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
@@ -934,7 +932,7 @@ pub struct TupleContent {
 impl TupleContent {
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
@@ -943,7 +941,7 @@ impl TupleContent {
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.format(i_s, matcher, style);
+            let list = generics.format(db, matcher, style);
             if self.arbitrary_length {
                 format!("{base}[{list}, ...]").into()
             } else {
@@ -966,7 +964,7 @@ pub struct CallableParam {
 impl CallableParam {
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
@@ -977,33 +975,33 @@ impl CallableParam {
                         let mut string = match self.param_type {
                             ParamType::PositionalOnly => unreachable!(),
                             ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
-                                format!("{}: ", name.as_str(i_s.db))
+                                format!("{}: ", name.as_str(db))
                             }
-                            ParamType::Starred => format!("*{}: ", name.as_str(i_s.db)),
-                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(i_s.db)),
+                            ParamType::Starred => format!("*{}: ", name.as_str(db)),
+                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(db)),
                         };
-                        string += &self.db_type.format(i_s, matcher, style);
+                        string += &self.db_type.format(db, matcher, style);
                         if self.has_default {
                             string += " =";
                         }
                         return string.into();
                     }
                     _ => {
-                        let t = self.db_type.format(i_s, matcher, style);
+                        let t = self.db_type.format(db, matcher, style);
                         return match self.param_type {
                             ParamType::PositionalOnly => unreachable!(),
                             ParamType::PositionalOrKeyword => {
                                 if self.has_default {
-                                    format!("DefaultArg({t}, '{}')", name.as_str(i_s.db))
+                                    format!("DefaultArg({t}, '{}')", name.as_str(db))
                                 } else {
-                                    format!("Arg({t}, '{}')", name.as_str(i_s.db))
+                                    format!("Arg({t}, '{}')", name.as_str(db))
                                 }
                             }
                             ParamType::KeywordOnly => {
                                 if self.has_default {
                                     todo!()
                                 } else {
-                                    format!("NamedArg({t}, '{}')", name.as_str(i_s.db))
+                                    format!("NamedArg({t}, '{}')", name.as_str(db))
                                 }
                             }
                             ParamType::Starred => format!("VarArg({t})"),
@@ -1014,7 +1012,7 @@ impl CallableParam {
                 }
             }
         }
-        self.db_type.format(i_s, matcher, style)
+        self.db_type.format(db, matcher, style)
     }
 }
 
@@ -1029,17 +1027,17 @@ pub struct CallableContent {
 impl CallableContent {
     pub fn format<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> String {
         let mut params = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.format(i_s, matcher, style))
+                .map(|p| p.format(db, matcher, style))
                 .collect::<Vec<_>>()
         });
-        let result = self.result_type.format(i_s, matcher, style);
+        let result = self.result_type.format(db, matcher, style);
         match style {
             FormatStyle::MypyRevealType => {
                 if let Some(params) = params.as_mut() {
@@ -1059,10 +1057,7 @@ impl CallableContent {
                 let type_vars = self.type_vars.as_ref().map(|t| {
                     format!(
                         " [{}]",
-                        t.iter()
-                            .map(|t| t.name(i_s.db))
-                            .collect::<Vec<_>>()
-                            .join(", ")
+                        t.iter().map(|t| t.name(db)).collect::<Vec<_>>().join(", ")
                     )
                 });
                 let type_vars = type_vars.as_deref().unwrap_or("");

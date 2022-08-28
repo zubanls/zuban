@@ -722,7 +722,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
-            db_type.format(i_s, None, FormatStyle::Short)
+            db_type.format(i_s.db, None, FormatStyle::Short)
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -797,7 +797,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::Class(c) => c.format(i_s, matcher, style),
-            Self::Type(t) => t.format(i_s, matcher, style),
+            Self::Type(t) => t.format(i_s.db, matcher, style),
         }
     }
 }
