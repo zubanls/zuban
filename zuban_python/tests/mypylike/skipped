@@ -18,7 +18,6 @@ union_context_class_matching_with_overload
 callable_return_from_method_nested_multiple1
 
 testGenericFunctionSubtypingWithUnions
-testOverloadOverlapWithTypeVars
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs

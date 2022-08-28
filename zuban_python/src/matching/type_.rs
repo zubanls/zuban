@@ -391,20 +391,21 @@ impl<'db, 'a> Type<'db, 'a> {
                             return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                         }
                     }
-                    if let Some(bound) = &t2.type_var.bound {
-                        let m = self.matches(i_s, None, &Type::new(bound), variance);
-                        if m.bool() {
-                            return m;
-                        }
-                    } else if !t2.type_var.restrictions.is_empty() {
-                        let m = t2
-                            .type_var
-                            .restrictions
-                            .iter()
-                            .all(|r| self.matches(i_s, None, &Type::new(r), variance).bool());
-                        if m {
-                            todo!();
-                            //return Match::True;
+                    if variance == Variance::Covariant {
+                        if let Some(bound) = &t2.type_var.bound {
+                            let m = self.matches(i_s, None, &Type::new(bound), variance);
+                            if m.bool() {
+                                return m;
+                            }
+                        } else if !t2.type_var.restrictions.is_empty() {
+                            let m =
+                                t2.type_var.restrictions.iter().all(|r| {
+                                    self.matches(i_s, None, &Type::new(r), variance).bool()
+                                });
+                            if m {
+                                todo!();
+                                //return Match::True;
+                            }
                         }
                     }
                 }
