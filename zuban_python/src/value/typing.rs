@@ -15,7 +15,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{ResultContext, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -295,7 +295,7 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
         f.debug_struct("TypingType")
             .field(
                 "db_type",
-                &self.db_type.format(self.db, None, FormatStyle::Short),
+                &self.db_type.format(&FormatData::new_short(self.db)),
             )
             .finish()
     }
@@ -459,7 +459,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
                             v.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
-                            db_type.format(i_s.db, None, FormatStyle::Short),
+                            db_type.format(&FormatData::new_short(i_s.db)),
                             self.name(),
                             name,
                         );

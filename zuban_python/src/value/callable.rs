@@ -1,11 +1,11 @@
 use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
-use crate::database::{CallableContent, DbType, FormatStyle};
+use crate::database::{CallableContent, DbType};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
+use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -56,6 +56,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s.db, None, FormatStyle::Short)
+        base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }
 }

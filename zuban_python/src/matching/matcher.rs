@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{FormatData, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage,
@@ -47,7 +47,7 @@ impl TypeVarBound {
     fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
-                t.format(i_s.db, None, style)
+                t.format(&FormatData::with_style(i_s.db, style))
             }
         }
     }
@@ -355,7 +355,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(bound) = current.type_.as_ref() {
                 bound.format(i_s, style)
             } else {
-                DbType::Never.format(db, None, style)
+                DbType::Never.format(&FormatData::with_style(db, style))
             }
         } else {
             match self.func_or_callable {
@@ -365,12 +365,16 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             return class
                                 .generics
                                 .nth(i_s, type_var_usage.index)
-                                .format(db, None, style);
+                                .format(&FormatData::with_style(db, style));
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index].format(db, Some(self), style)
+                            type_var_remap[type_var_usage.index].format(&FormatData {
+                                db,
+                                matcher: Some(self),
+                                style,
+                            })
                         } else {
                             type_var_usage.type_var.name(db).into()
                         }
@@ -698,11 +702,11 @@ fn calculate_type_vars<'db>(
                 match &func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.format(i_s.db, None, FormatStyle::Short);
+                        callable_description = callable.format(&FormatData::new_short(i_s.db));
                         &callable_description
                     }
                 },
-                type_arguments.format(i_s.db, None, FormatStyle::Short),
+                type_arguments.format(&FormatData::new_short(i_s.db)),
             );
         }
     }
@@ -784,7 +788,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                                     Some(f) => f.diagnostic_string(class),
                                                     None => Box::from("function"),
                                                 },
-                                                actual: expected.format(i_s.db, None, FormatStyle::Short),
+                                                actual: expected.format(&FormatData::new_short(i_s.db)),
                                             },
                                         );
                                     } else {

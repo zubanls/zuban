@@ -1,11 +1,11 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::base_description;
-use crate::database::{ComplexPoint, DbType, FormatStyle, GenericsList, TupleContent};
+use crate::database::{ComplexPoint, DbType, GenericsList, TupleContent};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::Type;
+use crate::matching::{FormatData, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -127,6 +127,6 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(i_s.db, None, FormatStyle::Short)
+        base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }
 }

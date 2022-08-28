@@ -2,7 +2,8 @@ use std::borrow::Cow;
 
 use super::params::has_overlapping_params;
 use super::{
-    matches_params, CalculatedTypeArguments, Generics, Match, MismatchReason, TypeVarMatcher,
+    matches_params, CalculatedTypeArguments, FormatData, Generics, Match, MismatchReason,
+    TypeVarMatcher,
 };
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, TupleContent, UnionType, Variance,
@@ -722,7 +723,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
-            db_type.format(i_s.db, None, FormatStyle::Short)
+            db_type.format(&FormatData::new_short(i_s.db))
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -797,7 +798,7 @@ impl<'db, 'a> Type<'db, 'a> {
     ) -> Box<str> {
         match self {
             Self::Class(c) => c.format(db, matcher, style),
-            Self::Type(t) => t.format(db, matcher, style),
+            Self::Type(t) => t.format(&FormatData { db, matcher, style }),
         }
     }
 }

@@ -11,7 +11,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::matching::{Generics, TypeVarMatcher};
+use crate::matching::{FormatData, Generics};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
@@ -505,15 +505,10 @@ impl GenericsList {
         self.0.len()
     }
 
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.0
             .iter()
-            .map(|g| g.format(db, matcher, style))
+            .map(|g| g.format(format_data))
             .collect::<Vec<_>>()
             .join(", ")
             .into()
@@ -562,18 +557,13 @@ impl UnionType {
         });
     }
 
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let mut unsorted = self
             .entries
             .iter()
             .filter_map(|e| {
                 (!self.format_as_optional || !matches!(e.type_, DbType::None))
-                    .then(|| (e.format_index, e.type_.format(db, matcher, style)))
+                    .then(|| (e.format_index, e.type_.format(format_data)))
             })
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
@@ -678,19 +668,18 @@ impl DbType {
         *self = mem::replace(self, Self::Never).union(other);
     }
 
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let class_name = |link| {
-            let class =
-                Class::from_position(NodeRef::from_link(db, link), Generics::None, None).unwrap();
-            match style {
+            let class = Class::from_position(
+                NodeRef::from_link(format_data.db, link),
+                Generics::None,
+                None,
+            )
+            .unwrap();
+            match format_data.style {
                 FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                    class.qualified_name(db).into()
+                    class.qualified_name(format_data.db).into()
                 }
             }
         };
@@ -699,19 +688,19 @@ impl DbType {
             Self::Class(link, Some(generics_lst)) => format!(
                 "{}[{}]",
                 &class_name(*link),
-                generics_lst.format(db, matcher, style)
+                generics_lst.format(format_data)
             )
             .into(),
-            Self::Union(union) => union.format(db, matcher, style),
+            Self::Union(union) => union.format(format_data),
             Self::TypeVar(t) => {
-                if let Some(matcher) = matcher {
-                    return matcher.format(db, t, style);
+                if let Some(matcher) = format_data.matcher {
+                    return matcher.format(format_data.db, t, format_data.style);
                 }
-                Box::from(t.type_var.name(db))
+                Box::from(t.type_var.name(format_data.db))
             }
-            Self::Type(db_type) => format!("Type[{}]", db_type.format(db, matcher, style)).into(),
-            Self::Tuple(content) => content.format(db, matcher, style),
-            Self::Callable(content) => content.format(db, matcher, style).into(),
+            Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
+            Self::Tuple(content) => content.format(format_data),
+            Self::Callable(content) => content.format(format_data).into(),
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
@@ -930,18 +919,13 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
-        let base = match style {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        let base = match format_data.style {
             FormatStyle::Short => "tuple",
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
         if let Some(generics) = self.generics.as_ref() {
-            let list = generics.format(db, matcher, style);
+            let list = generics.format(format_data);
             if self.arbitrary_length {
                 format!("{base}[{list}, ...]").into()
             } else {
@@ -962,46 +946,43 @@ pub struct CallableParam {
 }
 
 impl CallableParam {
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if self.param_type != ParamType::PositionalOnly {
             if let Some(name) = self.name {
-                match style {
+                match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match self.param_type {
                             ParamType::PositionalOnly => unreachable!(),
                             ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
-                                format!("{}: ", name.as_str(db))
+                                format!("{}: ", name.as_str(format_data.db))
                             }
-                            ParamType::Starred => format!("*{}: ", name.as_str(db)),
-                            ParamType::DoubleStarred => format!("*{}: ", name.as_str(db)),
+                            ParamType::Starred => format!("*{}: ", name.as_str(format_data.db)),
+                            ParamType::DoubleStarred => {
+                                format!("*{}: ", name.as_str(format_data.db))
+                            }
                         };
-                        string += &self.db_type.format(db, matcher, style);
+                        string += &self.db_type.format(format_data);
                         if self.has_default {
                             string += " =";
                         }
                         return string.into();
                     }
                     _ => {
-                        let t = self.db_type.format(db, matcher, style);
+                        let t = self.db_type.format(format_data);
                         return match self.param_type {
                             ParamType::PositionalOnly => unreachable!(),
                             ParamType::PositionalOrKeyword => {
                                 if self.has_default {
-                                    format!("DefaultArg({t}, '{}')", name.as_str(db))
+                                    format!("DefaultArg({t}, '{}')", name.as_str(format_data.db))
                                 } else {
-                                    format!("Arg({t}, '{}')", name.as_str(db))
+                                    format!("Arg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
                             ParamType::KeywordOnly => {
                                 if self.has_default {
                                     todo!()
                                 } else {
-                                    format!("NamedArg({t}, '{}')", name.as_str(db))
+                                    format!("NamedArg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
                             ParamType::Starred => format!("VarArg({t})"),
@@ -1012,7 +993,7 @@ impl CallableParam {
                 }
             }
         }
-        self.db_type.format(db, matcher, style)
+        self.db_type.format(format_data)
     }
 }
 
@@ -1025,20 +1006,15 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
-    pub fn format<'db>(
-        &self,
-        db: &'db Database,
-        matcher: Option<&TypeVarMatcher<'db, '_>>,
-        style: FormatStyle,
-    ) -> String {
+    pub fn format(&self, format_data: &FormatData) -> String {
         let mut params = self.params.as_ref().map(|params| {
             params
                 .iter()
-                .map(|p| p.format(db, matcher, style))
+                .map(|p| p.format(format_data))
                 .collect::<Vec<_>>()
         });
-        let result = self.result_type.format(db, matcher, style);
-        match style {
+        let result = self.result_type.format(format_data);
+        match format_data.style {
             FormatStyle::MypyRevealType => {
                 if let Some(params) = params.as_mut() {
                     for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
@@ -1057,7 +1033,10 @@ impl CallableContent {
                 let type_vars = self.type_vars.as_ref().map(|t| {
                     format!(
                         " [{}]",
-                        t.iter().map(|t| t.name(db)).collect::<Vec<_>>().join(", ")
+                        t.iter()
+                            .map(|t| t.name(format_data.db))
+                            .collect::<Vec<_>>()
+                            .join(", ")
                     )
                 });
                 let type_vars = type_vars.as_deref().unwrap_or("");

@@ -24,7 +24,7 @@ use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
-use crate::matching::ResultContext;
+use crate::matching::{FormatData, ResultContext};
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
@@ -1342,7 +1342,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         };
         debug!(
             "Inferred literal: Tuple{}",
-            content.format(self.i_s.db, None, FormatStyle::Short)
+            content.format(&FormatData::new_short(self.i_s.db))
         );
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
     }

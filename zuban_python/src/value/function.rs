@@ -19,8 +19,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, Generics,
-    ResultContext, SignatureMatch, Type, TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, FormatData,
+    Generics, ResultContext, SignatureMatch, Type, TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -426,16 +426,13 @@ impl<'db, 'a> Function<'db, 'a> {
                     .map(|t| {
                         let mut s = t.name(i_s.db).to_owned();
                         if let Some(bound) = &t.bound {
-                            s += &format!(
-                                " <: {}",
-                                bound.format(i_s.db, matcher, FormatStyle::Short)
-                            );
+                            s += &format!(" <: {}", bound.format(&FormatData::new_short(i_s.db)));
                         } else if !t.restrictions.is_empty() {
                             s += &format!(
                                 " in ({})",
                                 t.restrictions
                                     .iter()
-                                    .map(|t| t.format(i_s.db, matcher, FormatStyle::Short))
+                                    .map(|t| t.format(&FormatData::new_short(i_s.db)))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             );
