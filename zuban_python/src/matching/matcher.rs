@@ -171,7 +171,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn new_callable(
+    pub fn new_callable(
         callable: &'a CallableContent,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
     ) -> Self {

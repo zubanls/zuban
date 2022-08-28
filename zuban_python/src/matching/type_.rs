@@ -527,6 +527,15 @@ impl<'db, 'a> Type<'db, 'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
+        if matcher.is_none() {
+            if let Some(c2_type_vars) = c2.type_vars.as_ref() {
+                let mut calculated_type_vars = vec![];
+                calculated_type_vars.resize_with(c2_type_vars.len(), Default::default);
+                let mut matcher = TypeVarMatcher::new_callable(c2, &mut calculated_type_vars);
+                matcher.match_reverse = true;
+                return Type::matches_callable(i_s, Some(&mut matcher), c1, c2);
+            }
+        }
         Type::new(&c1.result_type).is_sub_type(
             i_s,
             matcher.as_deref_mut(),
