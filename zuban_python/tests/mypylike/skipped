@@ -12,8 +12,6 @@ union_context_class_matching_with_any
 union_context_class_matching_with_overload
 callable_return_from_method_nested_multiple1
 
-testGenericFunctionSubtypingWithUnions
-
 # func type var in __init__
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
@@ -1118,6 +1116,10 @@ testUnionWithNoneItem
 testBoundHigherOrderWithVoid
 testRegression11705_Strict
 testGenericMethodCalledInGenericContext
+# Maybe strict-optional?
+testWideOuterContextOptional
+testWideOuterContextOptionalGenericReturn
+testWideOuterContextOptionalTypeVarReturn
 # non strict call on Optional[T]
 testCastConfusion
 

@@ -470,27 +470,39 @@ impl<'db, 'a> Type<'db, 'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        let match_reverse = matcher.as_ref().map(|m| m.match_reverse).unwrap_or(false);
         match value_type.maybe_db_type() {
             // TODO this should use the variance argument
             Some(DbType::Union(u2)) => match variance {
                 Variance::Covariant => {
                     let mut matches = true;
-                    for g2 in u2.iter() {
-                        let t2 = Type::new(g2);
-                        matches &= u1.iter().any(|g1| {
-                            Type::new(g1)
-                                .matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                .bool()
-                        })
+                    if match_reverse {
+                        for g1 in u1.iter() {
+                            let t1 = Type::new(g1);
+                            matches &= u2.iter().any(|g2| {
+                                t1.matches(i_s, matcher.as_deref_mut(), &Type::new(g2), variance)
+                                    .bool()
+                            })
+                        }
+                    } else {
+                        for g2 in u2.iter() {
+                            let t2 = Type::new(g2);
+                            matches &= u1.iter().any(|g1| {
+                                Type::new(g1)
+                                    .matches(i_s, matcher.as_deref_mut(), &t2, variance)
+                                    .bool()
+                            })
+                        }
                     }
                     matches.into()
                 }
                 Variance::Invariant => {
-                    self.is_sub_type(i_s, matcher, value_type)
-                        & self.is_super_type(i_s, None, value_type)
+                    self.is_sub_type(i_s, matcher.as_deref_mut(), value_type)
+                        & self.is_super_type(i_s, matcher.as_deref_mut(), value_type)
                 }
                 Variance::Contravariant => unreachable!(),
             },
+            // TODO doesn't match_reverse also matter here?
             _ => u1
                 .iter()
                 .any(|g| {
