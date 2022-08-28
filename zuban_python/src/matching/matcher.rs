@@ -512,25 +512,6 @@ pub fn calculate_function_type_vars_and_return<'db>(
     )
 }
 
-/*
-fn compare_callables() {
-    if matcher.is_none() {
-        if let Some(type_vars) = &c1.type_vars {
-            let mut calculated_type_vars = vec![];
-            calculated_type_vars.resize_with(type_vars.len(), Default::default);
-            let mut matcher = TypeVarMatcher::new_callable(
-                c1,
-                c1.defined_at,
-                &mut calculated_type_vars,
-            );
-            let x = Type::matches_callable(i_s, Some(&mut matcher), c1, c2);
-            dbg!(matcher.calculated_type_vars);
-            return x
-        }
-    }
-}
-*/
-
 pub fn calculate_callable_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
     callable: &CallableContent,
