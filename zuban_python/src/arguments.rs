@@ -339,7 +339,8 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                     };
                     format!(
                         "{prefix}{}",
-                        inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)
+                        inf.class_as_type(i_s)
+                            .format(i_s.db, None, FormatStyle::Short)
                     )
                     .into()
                 })

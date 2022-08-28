@@ -392,7 +392,7 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
         let s = arg.infer(i_s, result_context).class_as_type(i_s).format(
-            i_s,
+            i_s.db,
             None,
             FormatStyle::MypyRevealType,
         );
@@ -458,7 +458,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format(i_s, None, FormatStyle::Short),
+                            v.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
                             db_type.format(i_s.db, None, FormatStyle::Short),
                             self.name(),
                             name,

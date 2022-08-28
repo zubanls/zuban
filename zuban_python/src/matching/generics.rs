@@ -1,7 +1,9 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{Match, Type, TypeVarMatcher};
-use crate::database::{DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVars, Variance};
+use crate::database::{
+    Database, DbType, FormatStyle, GenericsList, TypeVarIndex, TypeVars, Variance,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -79,7 +81,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {n:?} was requested",
-                        self.format(i_s, None, FormatStyle::Short, None),
+                        self.format(i_s.db, None, FormatStyle::Short, None),
                     );
                     todo!()
                 }
@@ -153,7 +155,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn format(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
         expected: Option<usize>,
@@ -161,12 +163,13 @@ impl<'db, 'a> Generics<'db, 'a> {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings = vec![];
         let mut i = 0;
-        self.iter().run_on_all(i_s, &mut |i_s, g| {
-            if expected.map(|e| i < e).unwrap_or(false) {
-                strings.push(g.format(i_s, matcher, style));
-                i += 1;
-            }
-        });
+        self.iter()
+            .run_on_all(&mut InferenceState::new(db), &mut |i_s, g| {
+                if expected.map(|e| i < e).unwrap_or(false) {
+                    strings.push(g.format(db, matcher, style));
+                    i += 1;
+                }
+            });
         if let Some(expected) = expected {
             for _ in i..expected {
                 strings.push(Box::from("Any"));

@@ -333,7 +333,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.format(i_s, None, FormatStyle::Short)))
+                        .map(|c| format!("{}.", c.format(i_s.db, None, FormatStyle::Short)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -391,7 +391,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(i_s, matcher, FormatStyle::Short)
+                .format(i_s.db, matcher, FormatStyle::Short)
         };
         let node = self.node();
         let args = self
@@ -400,7 +400,7 @@ impl<'db, 'a> Function<'db, 'a> {
             .map(|(i, p)| {
                 let annotation_str = p
                     .annotation_type(i_s)
-                    .map(|t| t.format(i_s, matcher, FormatStyle::Short));
+                    .map(|t| t.format(i_s.db, matcher, FormatStyle::Short));
                 let stars = match p.param_type() {
                     ParamType::Starred => "*",
                     ParamType::DoubleStarred => "**",

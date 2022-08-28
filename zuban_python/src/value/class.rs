@@ -383,19 +383,19 @@ impl<'db, 'a> Class<'db, 'a> {
 
     pub fn format(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         let mut result = match style {
             FormatStyle::Short => self.name().to_owned(),
-            FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(i_s.db),
+            FormatStyle::Qualified | FormatStyle::MypyRevealType => self.qualified_name(db),
         };
-        let type_vars = self.type_vars(i_s);
+        let type_vars = self.type_vars(&mut InferenceState::new(db));
         if let Some(type_vars) = type_vars {
             result += &self
                 .generics()
-                .format(i_s, matcher, style, Some(type_vars.len()));
+                .format(db, matcher, style, Some(type_vars.len()));
         }
         result.into()
     }
@@ -474,7 +474,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
                 self.name(),
                 match generics_list.as_ref() {
                     Some(generics_list) => Generics::new_list(generics_list).format(
-                        i_s,
+                        i_s.db,
                         None,
                         FormatStyle::Short,
                         None
@@ -513,7 +513,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.format(i_s, None, FormatStyle::Short),
+            self.format(i_s.db, None, FormatStyle::Short),
         )
     }
 

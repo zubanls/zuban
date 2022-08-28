@@ -355,7 +355,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             if let Some(bound) = current.type_.as_ref() {
                 bound.format(i_s, style)
             } else {
-                DbType::Never.format(i_s.db, None, style)
+                DbType::Never.format(db, None, style)
             }
         } else {
             match self.func_or_callable {
@@ -365,14 +365,14 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             return class
                                 .generics
                                 .nth(i_s, type_var_usage.index)
-                                .format(i_s.db, None, style);
+                                .format(db, None, style);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index].format(i_s.db, Some(self), style)
+                            type_var_remap[type_var_usage.index].format(db, Some(self), style)
                         } else {
-                            type_var_usage.type_var.name(i_s.db).into()
+                            type_var_usage.type_var.name(db).into()
                         }
                     } else {
                         todo!("Probably nested generic functions???")

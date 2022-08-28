@@ -644,9 +644,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {
-                                    actual: actual.format(i_s, None, FormatStyle::Short),
+                                    actual: actual.format(i_s.db, None, FormatStyle::Short),
                                     executable: Box::from(class.name()),
-                                    expected: expected.format(i_s, None, FormatStyle::Short),
+                                    expected: expected.format(i_s.db, None, FormatStyle::Short),
                                 },
                             );
                         }
@@ -664,7 +664,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                                 IssueType::InvalidTypeVarValue {
                                     type_var: Box::from(type_var.name(i_s.db)),
                                     func: format!("{:?}", class.name()).into(),
-                                    actual: t2.format(i_s, None, FormatStyle::Short),
+                                    actual: t2.format(i_s.db, None, FormatStyle::Short),
                                 },
                             );
                         }

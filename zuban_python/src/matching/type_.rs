@@ -704,8 +704,8 @@ impl<'db, 'a> Type<'db, 'a> {
                 "Mismatch between {value_type:?} and {self:?} -> {:?}",
                 matches.clone()
             );
-            let input = value_type.format(i_s, None, FormatStyle::Short);
-            let wanted = self.format(i_s, matcher.as_deref(), FormatStyle::Short);
+            let input = value_type.format(i_s.db, None, FormatStyle::Short);
+            let wanted = self.format(i_s.db, matcher.as_deref(), FormatStyle::Short);
             if let Some(mut callback) = callback {
                 callback(i_s, input, wanted, reason)
             }
@@ -791,13 +791,13 @@ impl<'db, 'a> Type<'db, 'a> {
     }
     pub fn format(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         matcher: Option<&TypeVarMatcher<'db, '_>>,
         style: FormatStyle,
     ) -> Box<str> {
         match self {
-            Self::Class(c) => c.format(i_s, matcher, style),
-            Self::Type(t) => t.format(i_s.db, matcher, style),
+            Self::Class(c) => c.format(db, matcher, style),
+            Self::Type(t) => t.format(db, matcher, style),
         }
     }
 }

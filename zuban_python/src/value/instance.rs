@@ -103,7 +103,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
             slice_type.as_node_ref().add_typing_issue(
                 i_s.db,
                 IssueType::NotIndexable {
-                    type_: self.class.format(i_s, None, FormatStyle::Short),
+                    type_: self.class.format(i_s.db, None, FormatStyle::Short),
                 },
             )
         })
@@ -117,7 +117,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
                         i_s.db,
                         IssueType::InvalidGetItem {
                             actual,
-                            type_: class.unwrap().format(i_s, None, FormatStyle::Short),
+                            type_: class.unwrap().format(i_s.db, None, FormatStyle::Short),
                             expected,
                         },
                     )
@@ -138,7 +138,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format(i_s, None, FormatStyle::Short),
+            self.class.format(i_s.db, None, FormatStyle::Short),
         )
     }
 }

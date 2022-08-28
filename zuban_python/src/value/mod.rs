@@ -263,7 +263,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             IssueType::NotCallable {
                 type_: format!(
                     "{:?}",
-                    self.as_type(i_s).format(i_s, None, FormatStyle::Short)
+                    self.as_type(i_s).format(i_s.db, None, FormatStyle::Short)
                 )
                 .into(),
             },
@@ -291,7 +291,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                     IssueType::NotIterable {
                         type_: format!(
                             "{:?}",
-                            self.as_type(i_s).format(i_s, None, FormatStyle::Short)
+                            self.as_type(i_s).format(i_s.db, None, FormatStyle::Short)
                         )
                         .into(),
                     },

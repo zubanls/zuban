@@ -689,7 +689,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         IssueType::UnsupportedOperand {
                                             operand: Box::from(aug_assign.operand()),
                                             left: class.unwrap().format(
-                                                i_s,
+                                                i_s.db,
                                                 None,
                                                 FormatStyle::Short,
                                             ),
@@ -829,7 +829,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         IssueType::InvalidGetItem {
                                             actual,
                                             type_: class.unwrap().format(
-                                                i_s,
+                                                i_s.db,
                                                 None,
                                                 FormatStyle::Short,
                                             ),
@@ -1055,7 +1055,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: value.as_type(i_s).format(i_s, None, FormatStyle::Short),
+                        left: value.as_type(i_s).format(i_s.db, None, FormatStyle::Short),
                         note: None, // TODO check for unions and stuff
                     },
                 )
@@ -1071,7 +1071,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                         i_s.db,
                         IssueType::UnsupportedOperand {
                             operand: Box::from(op.operand),
-                            left: class.unwrap().format(i_s, None, FormatStyle::Short),
+                            left: class.unwrap().format(i_s.db, None, FormatStyle::Short),
                             right,
                         },
                     );
@@ -1082,8 +1082,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             IssueType::Note(
                                 format!(
                                     "Left operand is of type {:?}",
-                                    left.class_as_type(i_s)
-                                        .format(i_s, None, FormatStyle::Short),
+                                    left.class_as_type(i_s).format(
+                                        i_s.db,
+                                        None,
+                                        FormatStyle::Short
+                                    ),
                                 )
                                 .into(),
                             ),
