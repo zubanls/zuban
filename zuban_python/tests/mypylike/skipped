@@ -1,5 +1,28 @@
 # Next up
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
+testSubtypingFunctionsArgsKwargs
+
+# BoundMethod type
+testForwardReferenceToListAlias
+# Incompatible default for argument
+testEllipsisDefaultArgValueInNonStubsOverload
+testDefaultArgumentsWithSubtypes
+testMultipleDefaultArgumentExpressions
+testMultipleDefaultArgumentExpressions2
+testDefaultArgumentsAndSignatureAsComment
+testMethodDefaultArgumentsAndSignatureAsComment
+# Incompatible default for argument "x"  (default has type "B", argument has type "A")
+testDefaultArgumentExpressions2
+testDefaultArgumentExpressionsGeneric
+
+# data attributes Callable as a bound method
+testMethodAsDataAttribute*
+testMethodWithInvalidMethodAsDataAttribute
+testMethodWithDynamicallyTypedMethodAsDataAttribute
+testOverloadedMethodAsDataAttribute
+testInvalidMethodAsDataAttributeInGenericClass
+testPartiallyTypedSelfInMethodDataAttribute
+testCallableDataAttribute
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
@@ -698,9 +721,6 @@ testRedefineFunctionDefinedAsVariableWithInvalidSignature
 # Incompatible redefinition
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 
-# BoundMethod type
-testForwardReferenceToListAlias
-
 # Metaclass
 *Metaclass*
 testNewAnalyzerClassKeywordsError
@@ -762,30 +782,6 @@ testSkippedClass*
 
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
-
-# Function subtyping different names
-testSubtypingFunctionsArgsKwargs
-
-# Incompatible default for argument
-testEllipsisDefaultArgValueInNonStubsOverload
-testDefaultArgumentsWithSubtypes
-testMultipleDefaultArgumentExpressions
-testMultipleDefaultArgumentExpressions2
-testDefaultArgumentsAndSignatureAsComment
-testMethodDefaultArgumentsAndSignatureAsComment
-# Incompatible default for argument "x"  (default has type "B", argument has type "A")
-testDefaultArgumentExpressions2
-testDefaultArgumentExpressionsGeneric
-
-
-# data attributes Callable as a bound method
-testMethodAsDataAttribute*
-testMethodWithInvalidMethodAsDataAttribute
-testMethodWithDynamicallyTypedMethodAsDataAttribute
-testOverloadedMethodAsDataAttribute
-testInvalidMethodAsDataAttributeInGenericClass
-testPartiallyTypedSelfInMethodDataAttribute
-testCallableDataAttribute
 
 # flow graph
 testAssignAndConditional*
