@@ -1,4 +1,5 @@
 # Next up
+testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
@@ -96,7 +97,6 @@ testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
