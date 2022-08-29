@@ -2,8 +2,6 @@
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 testSubtypingFunctionsArgsKwargs
 
-# BoundMethod type
-testForwardReferenceToListAlias
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
 testDefaultArgumentsWithSubtypes
