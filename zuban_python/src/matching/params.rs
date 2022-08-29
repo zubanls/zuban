@@ -36,7 +36,11 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                 Match::new_false()
             };
             for param1 in params1 {
-                if let Some(mut param2) = params2.peek().copied() {
+                if let Some(mut param2) = params2
+                    .peek()
+                    .or_else(|| unused_keyword_params.get(0))
+                    .copied()
+                {
                     let pt1 = param1.param_type();
                     let pt2 = param2.param_type();
                     let matches_param_type = match pt1 {
@@ -57,10 +61,9 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                         ParamType::KeywordOnly => match pt2 {
                             ParamType::KeywordOnly => {
                                 let mut found = false;
-                                for p2 in unused_keyword_params.iter() {
+                                for (i, p2) in unused_keyword_params.iter().enumerate() {
                                     if param1.name(i_s.db) == p2.name(i_s.db) {
-                                        // TODO the unused param should be removed from the list
-                                        param2 = *p2;
+                                        param2 = unused_keyword_params.remove(i);
                                         found = true;
                                         break;
                                     }
