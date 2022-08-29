@@ -198,15 +198,18 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     let mut calculated_type_vars = vec![];
                     let mut matcher = f1_type_vars.map(|type_vars| {
                         calculated_type_vars.resize_with(type_vars.len(), Default::default);
-                        TypeVarMatcher::new_function(f1, &mut calculated_type_vars)
+                        let mut matcher =
+                            TypeVarMatcher::new_function(f1, &mut calculated_type_vars);
+                        matcher.match_reverse = true;
+                        matcher
                     });
                     if matches!(
                         matches_params(
                             self.i_s,
                             matcher.as_mut(),
-                            f1.param_iterator(),
                             f2.param_iterator(),
-                            Variance::Covariant
+                            f1.param_iterator(),
+                            Variance::Contravariant
                         ),
                         Match::True
                     ) {

@@ -25,7 +25,6 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
         if let Some(params2) = params2 {
             let mut params2 = params2.peekable();
             let mut matches = Match::True;
-            // TODO if some are unused, we should fail
             let mut unused_keyword_params: Vec<P2> = vec![];
 
             let mut check_annotation = |i_s: &mut _, param1: P1, param2: P2| {
@@ -60,6 +59,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 let mut found = false;
                                 for p2 in unused_keyword_params.iter() {
                                     if param1.name(i_s.db) == p2.name(i_s.db) {
+                                        // TODO the unused param should be removed from the list
                                         param2 = *p2;
                                         found = true;
                                         break;
@@ -103,15 +103,20 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                         return Match::new_false();
                     }
                     matches &= check_annotation(i_s, param1, param2)
-                } else if !param1.has_default() {
+                } else {
                     return Match::new_false();
                 }
             }
+            if !unused_keyword_params.is_empty() {
+                return Match::new_false();
+            }
             for param2 in params2 {
-                if !matches!(
-                    param2.param_type(),
-                    ParamType::Starred | ParamType::DoubleStarred
-                ) {
+                if !param2.has_default()
+                    && !matches!(
+                        param2.param_type(),
+                        ParamType::Starred | ParamType::DoubleStarred
+                    )
+                {
                     return Match::new_false();
                 }
             }
