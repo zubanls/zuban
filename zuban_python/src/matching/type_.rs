@@ -408,6 +408,17 @@ impl<'db, 'a> Type<'db, 'a> {
                         }
                     }
                 }
+                DbType::Intersection(i2) if variance == Variance::Covariant => {
+                    if let Some(matcher) = matcher {
+                        if matcher.match_reverse {
+                            todo!()
+                        }
+                    }
+                    return i2
+                        .iter()
+                        .any(|t2| self.matches(i_s, None, &Type::new(t2), variance).bool())
+                        .into();
+                }
                 DbType::Never => return Match::True, // TODO is this correct?
                 _ => (),
             }
