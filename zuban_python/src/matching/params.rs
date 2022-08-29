@@ -70,10 +70,9 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 }
                                 if !found {
                                     while match params2.peek() {
-                                        Some(p2) => matches!(
-                                            p2.param_type(),
-                                            ParamType::KeywordOnly // TODO | ParamType::DoubleStarred
-                                        ),
+                                        Some(p2) => {
+                                            matches!(p2.param_type(), ParamType::KeywordOnly)
+                                        }
                                         None => false,
                                     } {
                                         param2 = params2.next().unwrap();
@@ -148,7 +147,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
-    let mut check_type = |param1: P1, param2: P2| {
+    let check_type = |i_s: &mut _, param1: P1, param2: P2| {
         if let Some(t1) = param1.annotation_type(i_s) {
             if let Some(t2) = param2.annotation_type(i_s) {
                 return t1.overlaps(i_s, &t2);
@@ -163,7 +162,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
         match param1.param_type() {
             ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
                 if let Some(param2) = params2.peek() {
-                    if !check_type(param1, *param2) {
+                    if !check_type(i_s, param1, *param2) {
                         return false;
                     }
                     match param2.param_type() {
@@ -186,28 +185,47 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                         params2.next();
                     }
                 }
-                if let Some(param2) = params2.peek() {
-                    if !check_type(param1, *param2) {
-                        return false;
-                    }
+                if let Some(mut param2) = params2
+                    .peek()
+                    .or_else(|| unused_keyword_params.get(0))
+                    .copied()
+                {
                     match param2.param_type() {
                         ParamType::PositionalOrKeyword => {
                             todo!()
                         }
-                        ParamType::PositionalOnly => todo!(),
-                        ParamType::Starred => {
-                            todo!()
-                        }
                         ParamType::KeywordOnly => {
-                            /*
-                            if param1.name(i_s.db) == param2.name(i_s.db) {
-                            } else {
-                                unused_keyword_params
+                            let mut found = false;
+                            for (i, p2) in unused_keyword_params.iter().enumerate() {
+                                if param1.name(i_s.db) == p2.name(i_s.db) {
+                                    param2 = unused_keyword_params.remove(i);
+                                    found = true;
+                                    break;
+                                }
                             }
-                            */
-                            todo!()
+                            if !found {
+                                while match params2.peek() {
+                                    Some(p2) => matches!(p2.param_type(), ParamType::KeywordOnly),
+                                    None => false,
+                                } {
+                                    param2 = params2.next().unwrap();
+                                    if param1.name(i_s.db) == param2.name(i_s.db) {
+                                        found = true;
+                                        break;
+                                    } else {
+                                        unused_keyword_params.push(param2);
+                                    }
+                                }
+                                if !found {
+                                    return false;
+                                }
+                            }
                         }
                         ParamType::DoubleStarred => (),
+                        _ => return false,
+                    }
+                    if !check_type(i_s, param1, param2) {
+                        return false;
                     }
                 } else {
                     return false;
@@ -222,7 +240,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                     None => false,
                 } {
                     if let Some(param2) = params2.next() {
-                        if !check_type(param1, param2) {
+                        if !check_type(i_s, param1, param2) {
                             return false;
                         }
                     }
@@ -230,7 +248,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             }
             ParamType::DoubleStarred => {
                 for param2 in params2 {
-                    if !check_type(param1, param2) {
+                    if !check_type(i_s, param1, param2) {
                         return false;
                     }
                 }

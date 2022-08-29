@@ -110,7 +110,6 @@ testInconsistentOverload
 testInconsistentOverload2
 
 # - Overloaded function signatures 2 and 3 overlap with incompatible return types
-testOverloadWithNonPositionalArgsIgnoresOrder
 testOverloadConstrainedTypevarNotShadowingAny
 testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
