@@ -126,6 +126,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     };
     // Get rid of defaults first, because they always overlap.
     let mut params2 = params2.filter(|p| !p.has_default()).peekable();
+    let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
         match param1.param_type() {
             ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
@@ -166,6 +167,12 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                             todo!()
                         }
                         ParamType::KeywordOnly => {
+                            /*
+                            if param1.name(i_s.db) == param2.name(i_s.db) {
+                            } else {
+                                unused_keyword_params
+                            }
+                            */
                             todo!()
                         }
                         ParamType::DoubleStarred => (),
