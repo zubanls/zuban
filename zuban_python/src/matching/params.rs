@@ -92,7 +92,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 if !m.bool() {
                                     return m;
                                 }
-                                true
+                                continue;
                             }
                             _ => false,
                         },
