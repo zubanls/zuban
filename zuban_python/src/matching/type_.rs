@@ -140,9 +140,8 @@ impl<'db, 'a> Type<'db, 'a> {
                     },
                     _ => false,
                 },
-                DbType::Union(union_type) => {
-                    union_type.iter().any(|t| Type::new(t).overlaps(i_s, other))
-                }
+                DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
+                DbType::Intersection(intersection) => todo!(),
             },
         }
     }
@@ -252,6 +251,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 DbType::Union(union_type1) => {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
+                DbType::Intersection(intersection) => todo!(),
             },
         }
     }

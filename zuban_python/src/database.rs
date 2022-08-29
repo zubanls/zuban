@@ -524,6 +524,34 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct IntersectionType {
+    pub entries: Box<[DbType]>,
+    pub format_as_overload: bool,
+}
+
+impl IntersectionType {
+    pub fn new_overload(entries: Box<[DbType]>) -> Self {
+        debug_assert!(entries.len() > 1);
+        Self {
+            entries,
+            format_as_overload: true,
+        }
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DbType> {
+        self.entries.iter()
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        if self.format_as_overload {
+            todo!()
+        } else {
+            todo!()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnionEntry {
     pub type_: DbType,
     pub format_index: usize,
@@ -585,6 +613,7 @@ impl UnionType {
 pub enum DbType {
     Class(PointLink, Option<GenericsList>),
     Union(UnionType),
+    Intersection(IntersectionType),
     TypeVar(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
@@ -692,6 +721,7 @@ impl DbType {
             )
             .into(),
             Self::Union(union) => union.format(format_data),
+            Self::Intersection(intersection) => intersection.format(format_data),
             Self::TypeVar(t) => {
                 if let Some(matcher) = format_data.matcher {
                     return matcher.format(format_data.db, t, format_data.style);
@@ -724,6 +754,11 @@ impl DbType {
             Self::Class(_, Some(generics)) => search_in_generics(generics),
             Self::Union(u) => {
                 for t in u.iter() {
+                    t.search_type_vars(found_type_var);
+                }
+            }
+            Self::Intersection(intersection) => {
+                for t in intersection.iter() {
                     t.search_type_vars(found_type_var);
                 }
             }
@@ -768,6 +803,14 @@ impl DbType {
             Self::Class(link, generics) => {
                 Self::Class(*link, generics.as_ref().map(remap_generics))
             }
+            Self::Intersection(intersection) => Self::Intersection(IntersectionType {
+                entries: intersection
+                    .entries
+                    .iter()
+                    .map(|e| e.replace_type_vars(callable))
+                    .collect(),
+                format_as_overload: intersection.format_as_overload,
+            }),
             Self::Union(u) => Self::Union(UnionType {
                 entries: u
                     .entries
@@ -833,6 +876,14 @@ impl DbType {
                     })
                     .collect(),
                 format_as_optional: u.format_as_optional,
+            }),
+            Self::Intersection(intersection) => Self::Intersection(IntersectionType {
+                entries: intersection
+                    .entries
+                    .iter()
+                    .map(|e| e.rewrite_late_bound_callables(manager))
+                    .collect(),
+                format_as_overload: intersection.format_as_overload,
             }),
             Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             Self::Type(db_type) => {
