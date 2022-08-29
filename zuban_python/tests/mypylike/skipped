@@ -13,7 +13,7 @@ testDefaultArgumentExpressions2
 testDefaultArgumentExpressionsGeneric
 
 # data attributes Callable as a bound method
-testMethodAsDataAttribute*
+testMethodAsDataAttribute
 testMethodWithInvalidMethodAsDataAttribute
 testMethodWithDynamicallyTypedMethodAsDataAttribute
 testInvalidMethodAsDataAttributeInGenericClass
