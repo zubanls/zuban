@@ -1,5 +1,4 @@
 # Next up
-testFunctionTypesWithOverloads
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample

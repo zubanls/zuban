@@ -544,7 +544,7 @@ impl IntersectionType {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if self.format_as_overload {
-            todo!()
+            Box::from("overloaded function")
         } else {
             todo!()
         }
