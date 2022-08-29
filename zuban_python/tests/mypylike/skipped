@@ -38,6 +38,7 @@ testOverloadWithDerivedFromAny
 testCovariantOverlappingOverloadSignaturesWithAnyType
 testContravariantOverlappingOverloadSignaturesWithAnyType
 testAnyIsOKAsFallbackInOverloads
+testOverloadBoundedTypevarNotShadowingAny
 
 # Overload List item 0 should not be generated on ALL mismatches
 testPreferExactSignatureMatchInOverload
@@ -95,7 +96,6 @@ testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 # - Overloaded function signature 2 will never be matched: signature 1's parameter type(s) are the same or broader
-testOverloadFlagsPossibleMatches
 testOverloadPossibleOverlapMixingNamedArgsWithKwargs
 
 # - Overloaded function implementation does not accept all possible arguments of signature 2

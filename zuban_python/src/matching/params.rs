@@ -84,7 +84,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                             matches &= t1.matches(i_s, matcher.as_deref_mut(), &t2, variance)
                         }
                     }
-                } else {
+                } else if !param1.has_default() {
                     return Match::new_false();
                 }
             }
