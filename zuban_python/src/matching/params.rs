@@ -14,18 +14,21 @@ pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
     fn param_type(&self) -> ParamType;
 }
 
-pub fn matches_params<'db: 'x, 'x>(
+pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
     mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-    params1: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
-    params2: Option<impl Iterator<Item = impl Param<'db, 'x>>>,
+    params1: Option<impl Iterator<Item = P1>>,
+    params2: Option<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
     if let Some(params1) = params1 {
-        if let Some(mut params2) = params2 {
+        if let Some(params2) = params2 {
+            let mut params2 = params2.peekable();
             let mut matches = Match::True;
+            // TODO if some are unused, we should fail
+            let mut unused_keyword_params: Vec<P2> = vec![];
             for param1 in params1 {
-                if let Some(param2) = params2.next() {
+                if let Some(mut param2) = params2.next().or_else(|| unused_keyword_params.pop()) {
                     let pt1 = param1.param_type();
                     let pt2 = param2.param_type();
                     if !(pt1 == pt2
@@ -39,12 +42,42 @@ pub fn matches_params<'db: 'x, 'x>(
                     if param1.has_default() && !param2.has_default() {
                         return Match::new_false();
                     }
-                    if matches!(
-                        param1.param_type(),
-                        ParamType::PositionalOrKeyword | ParamType::KeywordOnly
-                    ) && param1.name(i_s.db) != param2.name(i_s.db)
+                    if pt1 == ParamType::PositionalOrKeyword {
+                        if param1.name(i_s.db) != param2.name(i_s.db) {
+                            return Match::new_false();
+                        }
+                    } else if pt1 == ParamType::KeywordOnly
+                        && param1.name(i_s.db) != param2.name(i_s.db)
                     {
-                        return Match::new_false();
+                        let mut found = false;
+                        unused_keyword_params.push(param2);
+                        for p2 in unused_keyword_params.iter() {
+                            if param1.name(i_s.db) == p2.name(i_s.db) {
+                                param2 = *p2;
+                                found = true;
+                            }
+                        }
+                        if !found {
+                            while match params2.peek() {
+                                Some(p2) => matches!(
+                                    p2.param_type(),
+                                    ParamType::KeywordOnly // TODO | ParamType::DoubleStarred
+                                ),
+                                None => false,
+                            } {
+                                param2 = params2.next().unwrap();
+                                dbg!(param2);
+                                if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    found = true;
+                                    break;
+                                } else {
+                                    unused_keyword_params.push(param2);
+                                }
+                            }
+                            if !found {
+                                return Match::new_false();
+                            }
+                        }
                     }
                     if let Some(t1) = param1.annotation_type(i_s) {
                         if let Some(t2) = param2.annotation_type(i_s) {
