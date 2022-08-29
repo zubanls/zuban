@@ -24,7 +24,6 @@ pub(crate) enum IssueType {
     TypeNotFound,
     InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
-    OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: Box<str> },
@@ -64,12 +63,14 @@ pub(crate) enum IssueType {
 
     StmtOutsideFunction { keyword: &'static str },
 
+    OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
     OverloadImplementationNeeded,
     OverloadStubImplementationNotAllowed,
     OverloadSingleNotAllowed,
     OverloadUnmatchable { unmatchable_signature_index: usize, matchable_signature_index: usize },
     OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
+    OverloadImplementationReturnTypeIncomplete { signature_index: usize },
 
     MethodWithoutArguments,
 
@@ -335,6 +336,9 @@ impl<'db> Diagnostic<'db> {
             IssueType::OverloadIncompatibleReturnTypes{first_signature_index, second_signature_index} => format!(
                 "Overloaded function signatures {first_signature_index} and \
                  {second_signature_index} overlap with incompatible return types"
+            ),
+            IssueType::OverloadImplementationReturnTypeIncomplete{signature_index} => format!(
+                "Overloaded function implementation cannot produce return type of signature {signature_index}"
             ),
 
             IssueType::Note(s) => {

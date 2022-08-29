@@ -1,6 +1,8 @@
 # Next up
 testSubtypingFunctionsArgsKwargs
 
+testTypeCheckOverloadWithImplTypeVar
+
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
 testDefaultArgumentsWithSubtypes
@@ -111,7 +113,6 @@ testTypeCheckOverloadWithImplTooSpecificArg
 # - Overloaded function implementation cannot produce return type of signature 2
 testOverloadWithMethodOverrideAndImplementation
 testTypeCheckOverloadWithImplTooSpecificRetType
-testPreviousErrorInOverloadedFunction
 testOverloadsUpdatedTypeRechekConsistency
 testOverloadClassMethodImplementation
 testOverloadItemHasMoreGeneralReturnType
