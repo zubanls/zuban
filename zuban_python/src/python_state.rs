@@ -11,6 +11,8 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 pub struct PythonState {
+    pub mypy_compatible: bool,
+
     builtins: *const PythonFile,
     typing: *const PythonFile,
     collections: *const PythonFile,
@@ -28,6 +30,7 @@ pub struct PythonState {
 impl PythonState {
     pub fn reserve() -> Self {
         Self {
+            mypy_compatible: true,
             builtins: null(),
             typing: null(),
             collections: null(),

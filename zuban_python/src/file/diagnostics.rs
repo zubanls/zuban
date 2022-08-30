@@ -197,7 +197,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
                 let f1_result_type = f1.result_type(self.i_s);
-                if let Some(implementation) = implementation.as_ref() {
+                if let Some(implementation) = implementation.as_ref().filter(|i| {
+                    !self.i_s.db.python_state.mypy_compatible || i.return_annotation().is_some()
+                }) {
                     let implementation_type = implementation.result_type(self.i_s);
                     if !implementation_type
                         .is_super_type_of(self.i_s, None, &f1_result_type)

@@ -1,5 +1,6 @@
 # Next up
 testSubtypingFunctionsArgsKwargs
+testNestedOverloadsMutuallyRecursive
 
 testTypeCheckOverloadWithImplTypeVar
 
@@ -25,17 +26,6 @@ testCallableDataAttribute
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
-
-testOverloadPossibleOverlapWithVarargs4
-testInvalidNumberOfGenericArgsInOverloadedSignature
-testTypeCheckOverloadImplementationTypeVarDifferingUsage2
-testOverloadWithOverlappingItemsAndAnyArgument10
-testOverloadOnOverloadWithType
-testOverloadWithNonPositionalArgs
-testOverloadDetectsPossibleMatchesWithGenerics
-testOverloadErrorMessageManyMatches
-testNestedOverloadsTypeVar
-testNestedOverloadsMutuallyRecursive
 
 overload_not_overlapping_optional
 overload_overlapping_any
