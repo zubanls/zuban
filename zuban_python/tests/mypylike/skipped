@@ -82,10 +82,8 @@ testTooManyUnionsException
 
 # OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
-testIntersectionTypeCompatibility
 testVeryBrokenOverload
 testVeryBrokenOverload2
-testOverloadWithThreeItems
 testMapWithOverloadedFunc
 # overload self type
 testOverloadAndSelfTypes
