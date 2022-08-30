@@ -188,18 +188,27 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let implementation = o.implementing_function.map(|i| {
-                let implementation = Function::new(NodeRef::from_link(self.i_s.db, i), class);
-                implementation.type_vars(self.i_s);
-                implementation
-            });
+            let implementation = o
+                .implementing_function
+                .map(|i| Function::new(NodeRef::from_link(self.i_s.db, i), class));
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
                 let f1_result_type = f1.result_type(self.i_s);
-                if let Some(implementation) = implementation.as_ref().filter(|i| {
+                if let Some(implementation) = implementation.filter(|i| {
                     !self.i_s.db.python_state.mypy_compatible || i.return_annotation().is_some()
                 }) {
+                    let impl_type_vars = implementation.type_vars(self.i_s);
+
+                    let mut calculated_type_vars = vec![];
+                    let mut matcher = impl_type_vars.map(|type_vars| {
+                        calculated_type_vars.resize_with(type_vars.len(), Default::default);
+                        let mut matcher =
+                            TypeVarMatcher::new_function(implementation, &mut calculated_type_vars);
+                        matcher.match_reverse = true;
+                        matcher
+                    });
+
                     let implementation_type = implementation.result_type(self.i_s);
                     if !implementation_type
                         .is_super_type_of(self.i_s, None, &f1_result_type)
@@ -215,9 +224,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             },
                         );
                     }
+
                     if !matches_params(
                         self.i_s,
-                        None, //matcher.as_mut(),
+                        matcher.as_mut(),
                         f1.param_iterator(),
                         implementation.param_iterator(),
                         Variance::Contravariant,
