@@ -210,11 +210,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     });
 
                     let implementation_type = implementation.result_type(self.i_s);
-                    if !implementation_type
-                        .is_super_type_of(self.i_s, None, &f1_result_type)
+                    if !f1_result_type
+                        .is_sub_type_of(self.i_s, matcher.as_mut(), &implementation_type)
                         .bool()
-                        && !implementation_type
-                            .is_sub_type_of(self.i_s, None, &f1_result_type)
+                        && !f1_result_type
+                            .is_super_type_of(self.i_s, matcher.as_mut(), &implementation_type)
                             .bool()
                     {
                         name_def_node_ref.add_typing_issue(

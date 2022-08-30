@@ -2,7 +2,6 @@
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-testTypeCheckOverloadWithImplTypeVar
 # - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
 testTypeCheckOverloadWithImplTypeVarProblems
 
