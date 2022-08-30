@@ -56,17 +56,11 @@ testOverloadWithOverlappingItemsAndAnyArgument16
 testOverloadWithDerivedFromAny
 
 testOverloadConstrainedTypevarNotShadowingAny
-
 # overload any fallback
 testCovariantOverlappingOverloadSignaturesWithAnyType
 testContravariantOverlappingOverloadSignaturesWithAnyType
 testAnyIsOKAsFallbackInOverloads
 testOverloadBoundedTypevarNotShadowingAny
-
-# Overload List item 0 should not be generated on ALL mismatches
-testPreferExactSignatureMatchInOverload
-# Overload inference issue
-testBadOverloadProbableMatch
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -83,33 +77,8 @@ testOverloadInferUnionWithDifferingLengths
 testOverloadInferUnionWithMixOfPositionalAndOptionalArgs
 testOverloadingInferUnionReturn*
 testOverloadInferUnionReturnWithInconsistentTypevarNames
-# - Condition cannot be inferred, unable to merge overloads
-testOverloadIf*
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
-# - Signature of "f" incompatible with supertype "Parent"
-#     Overload variants must be defined in the same order as they are in "Parent"
-testOverrideOverloadSwapped
-testOverrideOverloadSwappedWithExtraVariants
-testOverrideOverloadSwappedWithAdjustedVariants
-testOverrideOverloadedMethodWithMoreSpecificArgumentTypes
-testOverloadWithIncompatibleMethodOverrideAndImplementation
-testOverloadFaultyClassMethodInheritance
-testOverloadClassMethodMixingInheritance
-testOverloadFaultyStaticMethodInheritance
-testOverloadStaticMethodMixingInheritance
-testOverloadStaticMethodImplementation
-testUnsafeDunderOverlapInSubclass
-# - The implementation for an overloaded function must come last
-testInconsistentOverload
-testInconsistentOverload2
-# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
-testOverloadPartialOverlapWithUnrestrictedTypeVar
-testOverloadPartialOverlapWithUnrestrictedTypeVarNested
-testOverloadedPartiallyOverlappingTypeVarsAndUnion
-# - Overload does not consistently use the "@classmethod" decorator on all function signatures
-# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
-testOverloadWithInconsistentStaticMethods
 
 # OverloadFunction class
 testTypevarValuesWithOverloadedFunctionSpecialCase
@@ -129,14 +98,43 @@ testOverloadByAnyOtherName
 # overload none matching in non strict
 testOptionalIsNotAUnionIfNoStrictOverload
 testOptionalIsNotAUnionIfNoStrictOverloadStr
+# Overload List item 0 should not be generated on ALL mismatches
+testPreferExactSignatureMatchInOverload
+# Overload inference issue
+testBadOverloadProbableMatch
+# - Signature of "f" incompatible with supertype "Parent"
+#     Overload variants must be defined in the same order as they are in "Parent"
+testOverrideOverloadSwapped
+testOverrideOverloadSwappedWithExtraVariants
+testOverrideOverloadSwappedWithAdjustedVariants
+testOverrideOverloadedMethodWithMoreSpecificArgumentTypes
+testOverloadWithIncompatibleMethodOverrideAndImplementation
+testOverloadFaultyClassMethodInheritance
+testOverloadClassMethodMixingInheritance
+testOverloadFaultyStaticMethodInheritance
+testOverloadStaticMethodMixingInheritance
+testOverloadStaticMethodImplementation
+testUnsafeDunderOverlapInSubclass
+# - Overload does not consistently use the "@classmethod" decorator on all function signatures
+# - Overload does not consistently use the "@staticmethod" decorator on all function signatures
+testOverloadWithInconsistentStaticMethods
 
-# overloading for loop
-testOverloadedInIter
-
+# - The implementation for an overloaded function must come last
+testInconsistentOverload
+testInconsistentOverload2
 # Non consecutive overloads
 testNonconsecutiveOverloads
 testNonconsecutiveOverloadsMissingFirstOverload
 testNonconsecutiveOverloadsMissingLaterOverload
+
+# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
+testOverloadPartialOverlapWithUnrestrictedTypeVar
+testOverloadPartialOverlapWithUnrestrictedTypeVarNested
+testOverloadedPartiallyOverlappingTypeVarsAndUnion
+# overloading for loop
+testOverloadedInIter
+# - Condition cannot be inferred, unable to merge overloads
+testOverloadIf*
 
 # Param spec
 testCallableWithNamedArg
