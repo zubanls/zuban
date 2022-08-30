@@ -2,9 +2,6 @@
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-# - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
-testTypeCheckOverloadWithImplTypeVarProblems
-
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
 testDefaultArgumentsWithSubtypes
