@@ -251,23 +251,20 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                     }
                     _ => {
                         for restriction in type_var.restrictions.iter() {
-                            if Type::new(restriction)
-                                .matches(i_s, None, value_type, variance)
-                                .bool()
-                            {
+                            let m = Type::new(restriction).matches(i_s, None, value_type, variance);
+                            if m.bool() {
                                 current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
-                                return Match::True;
+                                return m;
                             }
                         }
                     }
                 }
                 mismatch_constraints = true;
             }
+            let mut m = Match::True;
             if let Some(bound) = &type_var.bound {
-                mismatch_constraints = mismatch_constraints
-                    || !Type::new(bound)
-                        .is_super_type_of(i_s, None, value_type)
-                        .bool();
+                m = Type::new(bound).is_super_type_of(i_s, None, value_type);
+                mismatch_constraints = mismatch_constraints || !m.bool();
             }
             if mismatch_constraints {
                 return Match::False(MismatchReason::ConstraintMismatch {
@@ -276,7 +273,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 });
             }
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
-            Match::True
+            m
         } else {
             if let Some(parent_matcher) = self.parent_matcher.as_mut() {
                 return parent_matcher.match_or_add_type_var(
