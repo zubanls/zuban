@@ -110,12 +110,7 @@ testOverloadPartialOverlapWithUnrestrictedTypeVarNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 # - Overloaded function implementation does not accept all possible arguments of signature 2
 testTypeCheckOverloadWithImplTooSpecificArg
-# - Overloaded function implementation cannot produce return type of signature 2
-testOverloadWithMethodOverrideAndImplementation
-testTypeCheckOverloadWithImplTooSpecificRetType
 testOverloadsUpdatedTypeRechekConsistency
-testOverloadClassMethodImplementation
-testOverloadItemHasMoreGeneralReturnType
 # - Overloaded function implementation cannot satisfy signature 2 due to inconsistencies in how they use type variables
 testTypeCheckOverloadWithImplTypeVarProblems
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
@@ -358,6 +353,7 @@ testGenericClassDirectCall
 testGenericClassInGenericFunction*
 testGenericClassAlternativeConstructorPrecise*
 testNoGenericAccessOnImplicitAttributes
+testOverloadClassMethodImplementation
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -1097,6 +1093,7 @@ testUnionWithNoneItem
 testBoundHigherOrderWithVoid
 testRegression11705_Strict
 testGenericMethodCalledInGenericContext
+testPreviousErrorInOverloadedFunction
 # Maybe strict-optional?
 testWideOuterContextOptional
 testWideOuterContextOptionalGenericReturn

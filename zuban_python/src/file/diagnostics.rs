@@ -201,6 +201,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     if !implementation_type
                         .is_sub_type(self.i_s, None, &f1_result_type)
                         .bool()
+                        && !implementation_type
+                            .is_super_type(self.i_s, None, &f1_result_type)
+                            .bool()
                     {
                         name_def_node_ref.add_typing_issue(
                             self.i_s.db,
