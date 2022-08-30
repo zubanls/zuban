@@ -71,6 +71,7 @@ pub(crate) enum IssueType {
     OverloadUnmatchable { unmatchable_signature_index: usize, matchable_signature_index: usize },
     OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
     OverloadImplementationReturnTypeIncomplete { signature_index: usize },
+    OverloadImplementationArgumentsNotBroadEnough { signature_index: usize },
 
     MethodWithoutArguments,
 
@@ -339,6 +340,9 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::OverloadImplementationReturnTypeIncomplete{signature_index} => format!(
                 "Overloaded function implementation cannot produce return type of signature {signature_index}"
+            ),
+            IssueType::OverloadImplementationArgumentsNotBroadEnough{signature_index} => format!(
+                "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
             ),
 
             IssueType::Note(s) => {

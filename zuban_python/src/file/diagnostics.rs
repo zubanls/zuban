@@ -213,6 +213,22 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             },
                         );
                     }
+                    if !matches_params(
+                        self.i_s,
+                        None, //matcher.as_mut(),
+                        f1.param_iterator(),
+                        implementation.param_iterator(),
+                        Variance::Contravariant,
+                    )
+                    .bool()
+                    {
+                        name_def_node_ref.add_typing_issue(
+                            self.i_s.db,
+                            IssueType::OverloadImplementationArgumentsNotBroadEnough {
+                                signature_index: i + 1,
+                            },
+                        );
+                    }
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
