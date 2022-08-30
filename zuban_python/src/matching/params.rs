@@ -33,7 +33,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                         return t1.matches(i_s, matcher.as_deref_mut(), &t2, variance);
                     }
                 }
-                Match::new_false()
+                Match::True
             };
             for param1 in params1 {
                 if let Some(mut param2) = params2
