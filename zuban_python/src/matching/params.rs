@@ -59,7 +59,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                             pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
                         }
                         ParamType::KeywordOnly => match pt2 {
-                            ParamType::KeywordOnly => {
+                            ParamType::KeywordOnly | ParamType::PositionalOrKeyword => {
                                 let mut found = false;
                                 for (i, p2) in unused_keyword_params.iter().enumerate() {
                                     if param1.name(i_s.db) == p2.name(i_s.db) {
@@ -71,15 +71,20 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 if !found {
                                     while match params2.peek() {
                                         Some(p2) => {
-                                            matches!(p2.param_type(), ParamType::KeywordOnly)
+                                            matches!(
+                                                p2.param_type(),
+                                                ParamType::KeywordOnly
+                                                    | ParamType::PositionalOrKeyword
+                                            )
                                         }
                                         None => false,
                                     } {
-                                        param2 = params2.next().unwrap();
+                                        param2 = *params2.peek().unwrap();
                                         if param1.name(i_s.db) == param2.name(i_s.db) {
                                             found = true;
                                             break;
                                         } else {
+                                            params2.next();
                                             unused_keyword_params.push(param2);
                                         }
                                     }

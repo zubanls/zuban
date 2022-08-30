@@ -1,0 +1,10 @@
+[case function_subtyping_of_keyword_params]
+def f(*, x: int, y: str) -> None: pass
+def g(x: int, y: str) -> None: pass
+def h(x: int, y: str = "") -> None: pass
+def i(x: int, y: int = 3) -> None: pass
+def j(y: str, x: int = 3) -> None: pass
+f = g
+f = h
+f = i # E: Incompatible types in assignment (expression has type "Callable[[int, int], None]", variable has type "Callable[[NamedArg(int, 'x'), NamedArg(str, 'y')], None]")
+f = j
