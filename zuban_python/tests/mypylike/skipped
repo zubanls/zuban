@@ -56,7 +56,6 @@ testOverloadWithOverlappingItemsAndAnyArgument16
 testOverloadWithDerivedFromAny
 
 # overload any fallback
-testAnyIsOKAsFallbackInOverloads
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"

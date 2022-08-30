@@ -261,10 +261,10 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 }
                 mismatch_constraints = true;
             }
-            let mut m = Match::True;
             if let Some(bound) = &type_var.bound {
-                m = Type::new(bound).is_super_type_of(i_s, None, value_type);
-                mismatch_constraints = mismatch_constraints || !m.bool();
+                mismatch_constraints |= !Type::new(bound)
+                    .is_super_type_of(i_s, None, value_type)
+                    .bool();
             }
             if mismatch_constraints {
                 return Match::False(MismatchReason::ConstraintMismatch {
@@ -273,7 +273,11 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                 });
             }
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
-            m
+            if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
+                Match::TrueWithAny
+            } else {
+                Match::True
+            }
         } else {
             if let Some(parent_matcher) = self.parent_matcher.as_mut() {
                 return parent_matcher.match_or_add_type_var(
