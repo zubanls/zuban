@@ -93,11 +93,11 @@ impl TypeVarBound {
                 }
                 m
             }
-            Self::Lower(lower) => Type::new(lower).is_sub_type(i_s, None, other),
-            Self::Upper(upper) => Type::new(upper).is_super_type(i_s, None, other),
+            Self::Lower(lower) => Type::new(lower).is_super_type_of(i_s, None, other),
+            Self::Upper(upper) => Type::new(upper).is_sub_type_of(i_s, None, other),
             Self::LowerAndUpper(lower, upper) => {
-                Type::new(lower).is_sub_type(i_s, None, other)
-                    & Type::new(upper).is_super_type(i_s, None, other)
+                Type::new(lower).is_super_type_of(i_s, None, other)
+                    & Type::new(upper).is_sub_type_of(i_s, None, other)
             }
         };
         if matches.bool() {
@@ -118,7 +118,7 @@ impl TypeVarBound {
                     | Self::Upper(ref t)
                     | Self::LowerAndUpper(_, ref t) = self
                     {
-                        let m = Type::new(t).is_sub_type(i_s, None, other);
+                        let m = Type::new(t).is_super_type_of(i_s, None, other);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
                             return Match::True;
@@ -128,7 +128,7 @@ impl TypeVarBound {
                 }
                 Variance::Contravariant => {
                     if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
-                        return Type::new(t).is_super_type(i_s, None, other);
+                        return Type::new(t).is_sub_type_of(i_s, None, other);
                     }
                 }
             };
@@ -239,7 +239,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
                             todo!()
                         } else if t2.type_var.restrictions.iter().all(|r2| {
                             type_var.restrictions.iter().any(|r1| {
-                                Type::new(r1).is_sub_type(i_s, None, &Type::new(r2)).bool()
+                                Type::new(r1)
+                                    .is_super_type_of(i_s, None, &Type::new(r2))
+                                    .bool()
                             })
                         }) {
                             current.type_ =
@@ -263,7 +265,9 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
             }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints = mismatch_constraints
-                    || !Type::new(bound).is_sub_type(i_s, None, value_type).bool();
+                    || !Type::new(bound)
+                        .is_super_type_of(i_s, None, value_type)
+                        .bool();
             }
             if mismatch_constraints {
                 return Match::False(MismatchReason::ConstraintMismatch {
@@ -642,7 +646,7 @@ fn calculate_type_vars<'db>(
                 };
                 matcher.match_reverse = true;
                 // Fill the type var arguments from context
-                type_.is_sub_type(i_s, Some(matcher), &result_type);
+                type_.is_super_type_of(i_s, Some(matcher), &result_type);
                 matcher.match_reverse = false;
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {

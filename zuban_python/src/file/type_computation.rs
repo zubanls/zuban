@@ -640,7 +640,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         let i_s = &mut self.inference.i_s;
                         let actual = Type::new(&t);
                         let expected = Type::new(bound);
-                        if !expected.is_sub_type(i_s, None, &actual).bool() {
+                        if !expected.is_super_type_of(i_s, None, &actual).bool() {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::TypeVarBoundViolation {
@@ -657,7 +657,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         if !type_var
                             .restrictions
                             .iter()
-                            .any(|t| Type::new(t).is_sub_type(i_s, None, &t2).bool())
+                            .any(|t| Type::new(t).is_super_type_of(i_s, None, &t2).bool())
                         {
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,

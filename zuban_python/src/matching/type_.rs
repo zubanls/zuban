@@ -197,7 +197,7 @@ impl<'db, 'a> Type<'db, 'a> {
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
                                         // Since __init__ does not have a return, We need to check the params
                                         // of the __init__ functions and the class as a return type separately.
-                                        return Type::new(&c1.result_type).is_sub_type(
+                                        return Type::new(&c1.result_type).is_super_type_of(
                                             i_s,
                                             matcher.as_deref_mut(),
                                             &Type::Class(cls),
@@ -214,7 +214,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             }
                             _ => {
                                 if c1.params.is_none() {
-                                    Type::new(&c1.result_type).is_sub_type(
+                                    Type::new(&c1.result_type).is_super_type_of(
                                         i_s,
                                         matcher.as_deref_mut(),
                                         &Type::new(t2.as_ref()),
@@ -256,7 +256,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn is_super_type(
+    pub fn is_sub_type_of(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -265,15 +265,15 @@ impl<'db, 'a> Type<'db, 'a> {
         if let Some(matcher) = matcher {
             let old = matcher.match_reverse;
             matcher.match_reverse = !old;
-            let result = value_type.is_sub_type(i_s, Some(matcher), self);
+            let result = value_type.is_super_type_of(i_s, Some(matcher), self);
             matcher.match_reverse = old;
             result
         } else {
-            value_type.is_sub_type(i_s, None, self)
+            value_type.is_super_type_of(i_s, None, self)
         }
     }
 
-    pub fn is_sub_type(
+    pub fn is_super_type_of(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -345,10 +345,10 @@ impl<'db, 'a> Type<'db, 'a> {
         variance: Variance,
     ) -> Match {
         match variance {
-            Variance::Covariant => self.is_sub_type(i_s, matcher, value_type),
+            Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
             Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
             Variance::Contravariant => {
-                return self.is_super_type(i_s, matcher.as_deref_mut(), value_type);
+                return self.is_sub_type_of(i_s, matcher.as_deref_mut(), value_type);
             }
         }
     }
@@ -508,8 +508,8 @@ impl<'db, 'a> Type<'db, 'a> {
                     matches.into()
                 }
                 Variance::Invariant => {
-                    self.is_sub_type(i_s, matcher.as_deref_mut(), value_type)
-                        & self.is_super_type(i_s, matcher.as_deref_mut(), value_type)
+                    self.is_super_type_of(i_s, matcher.as_deref_mut(), value_type)
+                        & self.is_sub_type_of(i_s, matcher.as_deref_mut(), value_type)
                 }
                 Variance::Contravariant => unreachable!(),
             },
@@ -559,7 +559,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 return Type::matches_callable(i_s, Some(&mut matcher), c1, c2);
             }
         }
-        Type::new(&c1.result_type).is_sub_type(
+        Type::new(&c1.result_type).is_super_type_of(
             i_s,
             matcher.as_deref_mut(),
             &Type::new(&c2.result_type),
@@ -604,7 +604,7 @@ impl<'db, 'a> Type<'db, 'a> {
                             .iter()
                             .all(|g2| {
                                 let t2 = Type::new(g2);
-                                t1.is_sub_type(i_s, matcher.as_deref_mut(), &t2).bool()
+                                t1.is_super_type_of(i_s, matcher.as_deref_mut(), &t2).bool()
                             })
                             .into()
                     }
@@ -719,7 +719,7 @@ impl<'db, 'a> Type<'db, 'a> {
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
-        let matches = self.is_sub_type(i_s, matcher.as_deref_mut(), &value_type);
+        let matches = self.is_super_type_of(i_s, matcher.as_deref_mut(), &value_type);
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
             let value_type = value.class_as_type(i_s);
             debug!(

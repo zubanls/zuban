@@ -199,10 +199,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 let f1_result_type = f1.result_type(self.i_s);
                 if let Some(implementation_type) = implementation_type.as_ref() {
                     if !implementation_type
-                        .is_sub_type(self.i_s, None, &f1_result_type)
+                        .is_super_type_of(self.i_s, None, &f1_result_type)
                         .bool()
                         && !implementation_type
-                            .is_super_type(self.i_s, None, &f1_result_type)
+                            .is_sub_type_of(self.i_s, None, &f1_result_type)
                             .bool()
                     {
                         name_def_node_ref.add_typing_issue(
@@ -244,7 +244,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
                         if !f1_result_type
-                            .is_super_type(self.i_s, None, &f2_result_type)
+                            .is_sub_type_of(self.i_s, None, &f2_result_type)
                             .bool()
                             && overload_has_overlapping_params(
                                 self.i_s,
