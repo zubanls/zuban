@@ -70,6 +70,7 @@ testOverloadInferUnionRespectsVariance
 testUnionMathTrickyOverload1
 testUnionMathTrickyOverload2
 testManyUnionsInOverload
+testOverloadAndSelfTypes
 # - 3352-3500 Union/Type vars/overloads weird combinations
 testOverloadInferUnionIfParameterNamesAreDifferent
 testOverloadInferUnionReturnFunctionsWithKwargs
@@ -80,26 +81,10 @@ testOverloadInferUnionReturnWithInconsistentTypevarNames
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
 
-# OverloadFunction class
-testTypevarValuesWithOverloadedFunctionSpecialCase
-testVeryBrokenOverload
-testVeryBrokenOverload2
-testMapWithOverloadedFunc
-# overload self type
-testOverloadAndSelfTypes
 # overload operator
 testOverloadedLtAndGtMethods
 testOverloadedForwardMethodAndCallingReverseMethod
 testTypeInferenceSpecialCaseWithOverloading
-# overload rename in import
-testOverloadByAnyOtherName
-# overload none matching in non strict
-testOptionalIsNotAUnionIfNoStrictOverload
-testOptionalIsNotAUnionIfNoStrictOverloadStr
-# Overload List item 0 should not be generated on ALL mismatches
-testPreferExactSignatureMatchInOverload
-# Overload inference issue
-testBadOverloadProbableMatch
 # - Signature of "f" incompatible with supertype "Parent"
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverrideOverloadSwapped
@@ -117,6 +102,11 @@ testUnsafeDunderOverlapInSubclass
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
 testOverloadWithInconsistentStaticMethods
 
+# Overloads are detected in name binder (imports can not be there)
+testVeryBrokenOverload
+testVeryBrokenOverload2
+# overload rename in import (because of name binder issue)
+testOverloadByAnyOtherName
 # - The implementation for an overloaded function must come last
 testInconsistentOverload
 testInconsistentOverload2
@@ -227,6 +217,7 @@ testDefineAttributeInGenericMethodUsingTypeVarWithValues
 testTypevarValuesSpecialCase1
 testGenericTypeAliasesTypeVarConstraints
 testWideOuterContextValuesOverlapping
+testTypevarValuesWithOverloadedFunctionSpecialCase
 
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
@@ -239,6 +230,10 @@ testTypeVarBoundToNewUnionAttributeAccess
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
 testCallableListJoinInference
+# Overload List item 0 should not be generated on ALL mismatches
+testPreferExactSignatureMatchInOverload
+# Overload inference of list multiple times
+testBadOverloadProbableMatch
 
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
@@ -263,6 +258,7 @@ testTypevarWithType
 
 # type var backtracking
 testUnionInference
+testMapWithOverloadedFunc
 unite_type_vars_mypy_issue_5874
 
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
@@ -1090,6 +1086,8 @@ testWideOuterContextOptionalGenericReturn
 testWideOuterContextOptionalTypeVarReturn
 # non strict call on Optional[T]
 testCastConfusion
+# overload none matching in no-strict-optional
+testOptionalIsNotAUnionIfNoStrictOverload
 
 # type: ignore leads to Any type?
 testDunderCallAddition
@@ -1210,6 +1208,7 @@ testNewAnalyzerIncompleteFixture
 # Won't support ever: python 2
 *python2
 testMypyPathAndPython2Dir
+testOptionalIsNotAUnionIfNoStrictOverloadStr
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
