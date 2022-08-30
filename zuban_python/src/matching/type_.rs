@@ -84,6 +84,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     .iter()
                     .any(|t| self.overlaps(i_s, &Type::new(t)))
             }
+            Some(DbType::Any) => return false, // This is a fallback
             _ => (),
         }
 

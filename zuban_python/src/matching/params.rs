@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, CallableParams, Database, Variance};
+use crate::database::{CallableParam, CallableParams, Database, DbType, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;
@@ -160,8 +160,24 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
         }
         true
     };
+    let mut had_any_fallback_with_default = false;
     // Get rid of defaults first, because they always overlap.
-    let mut params2 = params2.filter(|p| !p.has_default()).peekable();
+    let db = i_s.db;
+    let mut params2 = params2
+        .filter(|p| {
+            let has_default = p.has_default();
+            if has_default {
+                // TODO it's weird that we are creating a new InferenceState, because of borrowing
+                // issues in this closure
+                if let Some(t) = p.annotation_type(&mut InferenceState::new(db)) {
+                    if matches!(t.maybe_db_type(), Some(DbType::Any)) {
+                        had_any_fallback_with_default = true;
+                    }
+                }
+            }
+            !has_default
+        })
+        .peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
         match param1.param_type() {
@@ -202,7 +218,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                         ParamType::KeywordOnly => {
                             let mut found = false;
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
-                                if param1.name(i_s.db) == p2.name(i_s.db) {
+                                if param1.name(db) == p2.name(db) {
                                     param2 = unused_keyword_params.remove(i);
                                     found = true;
                                     break;
@@ -214,7 +230,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                                     None => false,
                                 } {
                                     param2 = params2.next().unwrap();
-                                    if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    if param1.name(db) == param2.name(db) {
                                         found = true;
                                         break;
                                     } else {
@@ -257,7 +273,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                         return false;
                     }
                 }
-                return true;
+                return !had_any_fallback_with_default;
             }
         }
     }
@@ -269,7 +285,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             return false;
         }
     }
-    true
+    !had_any_fallback_with_default
 }
 
 impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
