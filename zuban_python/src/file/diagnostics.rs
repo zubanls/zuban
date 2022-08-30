@@ -188,16 +188,17 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let implementation_type = o.implementing_function.map(|i| {
+            let implementation = o.implementing_function.map(|i| {
                 let implementation = Function::new(NodeRef::from_link(self.i_s.db, i), class);
                 implementation.type_vars(self.i_s);
-                implementation.result_type(self.i_s)
+                implementation
             });
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
                 let f1_result_type = f1.result_type(self.i_s);
-                if let Some(implementation_type) = implementation_type.as_ref() {
+                if let Some(implementation) = implementation.as_ref() {
+                    let implementation_type = implementation.result_type(self.i_s);
                     if !implementation_type
                         .is_super_type_of(self.i_s, None, &f1_result_type)
                         .bool()
