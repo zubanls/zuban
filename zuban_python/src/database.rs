@@ -938,26 +938,43 @@ impl DbType {
         if self == other {
             return self;
         }
+        let merge_generics = |g1: Option<GenericsList>, g2: Option<GenericsList>| {
+            g1.map(|g1| {
+                GenericsList::new_generics(
+                    g1.into_iter()
+                        .zip(g2.unwrap().into_iter())
+                        .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                        .collect(),
+                )
+            })
+        };
         match self {
             Self::Class(link1, g1) => match other {
-                Self::Class(link2, g2) if link1 == link2 => Self::Class(
-                    link1,
-                    g1.map(|g1| {
-                        GenericsList::new_generics(
-                            g1.into_iter()
-                                .zip(g2.unwrap().into_iter())
-                                .map(|(t1, t2)| t1.merge_matching_parts(t2))
-                                .collect(),
-                        )
-                    }),
-                ),
+                Self::Class(link2, g2) if link1 == link2 => {
+                    Self::Class(link1, merge_generics(g1, g2))
+                }
                 _ => Self::Any,
             },
             Self::Union(u1) => match other {
                 Self::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => Self::Union(u1),
                 _ => Self::Any,
             },
-            Self::Tuple(content) => todo!(),
+            Self::Tuple(c1) => match other {
+                Self::Tuple(c2) => Self::Tuple({
+                    if c1.arbitrary_length == c2.arbitrary_length
+                        && c1.generics.as_ref().map(|g| g.len())
+                            == c2.generics.as_ref().map(|g| g.len())
+                    {
+                        TupleContent {
+                            arbitrary_length: c1.arbitrary_length,
+                            generics: merge_generics(c1.generics, c2.generics),
+                        }
+                    } else {
+                        TupleContent::new_empty()
+                    }
+                }),
+                _ => Self::Any,
+            },
             Self::Callable(content1) => match other {
                 Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
                     defined_at: content1.defined_at,
@@ -1009,6 +1026,13 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
+    fn new_empty() -> Self {
+        Self {
+            generics: None,
+            arbitrary_length: true,
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let base = match format_data.style {
             FormatStyle::Short => "tuple",

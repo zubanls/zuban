@@ -81,3 +81,69 @@ def g(x): pass
 
 a: Any
 reveal_type(g(a)) # N: Revealed type is "Any"
+
+[case overload_merging_tuple1]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[str, ...]: ...
+@overload
+def g(x: int) -> tuple[int, ...]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[Any, ...]"
+
+[case overload_merging_tuple2]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[str]: ...
+@overload
+def g(x: int) -> tuple[int]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[Any]"
+
+[case overload_merging_tuple3]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[str, bytes]: ...
+@overload
+def g(x: int) -> tuple[int]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[Any, ...]"
+
+[case overload_merging_tuple4]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[int, ...]: ...
+@overload
+def g(x: int) -> tuple[int, ...]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[int, ...]"
+
+[case overload_merging_tuple5]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[int, str]: ...
+@overload
+def g(x: int) -> tuple[int, str]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[int, str]"
+
+[case overload_merging_tuple6]
+from typing import overload, Any
+@overload
+def g(x: str) -> tuple[int, str]: ...
+@overload
+def g(x: int) -> tuple[int, bytes]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "tuple[int, Any]"
