@@ -55,3 +55,29 @@ def g(x): pass
 
 a: Any
 reveal_type(g(a)) # N: Revealed type is "list[list[Any]]"
+
+[case overload_merging_triple1]
+from typing import overload, Any
+@overload
+def g(x: str) -> list[str]: ...
+@overload
+def g(x: int) -> list[int]: ...
+@overload
+def g(x: bytes) -> list[bytes]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "list[Any]"
+
+[case overload_merging_triple2]
+from typing import overload, Any
+@overload
+def g(x: str) -> str: ...
+@overload
+def g(x: int) -> int: ...
+@overload
+def g(x: float) -> bytes: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "Any"
