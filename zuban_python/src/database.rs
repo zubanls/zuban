@@ -958,7 +958,15 @@ impl DbType {
             },
             Self::Union(u) => todo!(),
             Self::Tuple(content) => todo!(),
-            Self::Callable(content) => todo!(),
+            Self::Callable(content1) => match other {
+                Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
+                    defined_at: content1.defined_at,
+                    type_vars: None,
+                    params: None,
+                    result_type: DbType::Any,
+                })),
+                _ => DbType::Any,
+            },
             _ => DbType::Any,
         }
     }
