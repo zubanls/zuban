@@ -312,9 +312,9 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
 
 pub struct InferrableParamIterator2<'db, 'a, I, P> {
     db: &'db Database,
-    pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    pub arguments: std::iter::Peekable<std::iter::Enumerate<ArgumentIterator<'db, 'a>>>,
     params: I,
-    pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
+    pub unused_keyword_arguments: Vec<(usize, Argument<'db, 'a>)>,
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
@@ -324,7 +324,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     pub fn new(
         db: &'db Database,
         params: I,
-        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+        arguments: std::iter::Peekable<std::iter::Enumerate<ArgumentIterator<'db, 'a>>>,
     ) -> Self {
         Self {
             db,
@@ -349,9 +349,13 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
-            if let Some(argument) = self.arguments.next_if(|arg| !arg.is_keyword_argument()) {
+            if let Some((ix, argument)) = self
+                .arguments
+                .next_if(|(_, arg)| !arg.is_keyword_argument())
+            {
                 return Some(InferrableParam2 {
                     param,
+                    argument_index: Some(ix),
                     argument: Some(argument),
                 });
             } else {
@@ -359,9 +363,12 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some(argument) = self.arguments.next_if(|arg| arg.is_keyword_argument()) {
+            if let Some((ix, argument)) =
+                self.arguments.next_if(|(_, arg)| arg.is_keyword_argument())
+            {
                 return Some(InferrableParam2 {
                     param,
+                    argument_index: Some(ix),
                     argument: Some(argument),
                 });
             } else {
@@ -369,34 +376,35 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
             }
         }
         self.params.next().and_then(|param| {
-            for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+            for (i, (argument_index, unused)) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused.type_ {
                     ArgumentType::Keyword(name, reference) => {
                         if Some(name) == param.name(self.db) {
                             return Some(InferrableParam2 {
                                 param,
-                                argument: Some(self.unused_keyword_arguments.remove(i)),
+                                argument_index: Some(*argument_index),
+                                argument: Some(self.unused_keyword_arguments.remove(i).1),
                             });
                         }
                     }
                     _ => unreachable!(),
                 }
             }
-            let mut argument = None;
+            let mut argument_with_index = None;
             match param.param_type() {
                 ParamType::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
-                        match arg.type_ {
+                        match arg.1.type_ {
                             ArgumentType::Keyword(name, reference) => {
                                 if Some(name) == param.name(self.db) {
-                                    argument = Some(arg);
+                                    argument_with_index = Some(arg);
                                     break;
                                 } else {
                                     self.unused_keyword_arguments.push(arg);
                                 }
                             }
                             _ => {
-                                argument = Some(arg);
+                                argument_with_index = Some(arg);
                                 break;
                             }
                         }
@@ -404,10 +412,10 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 }
                 ParamType::KeywordOnly => {
                     for arg in &mut self.arguments {
-                        match arg.type_ {
+                        match arg.1.type_ {
                             ArgumentType::Keyword(name, reference) => {
                                 if Some(name) == param.name(self.db) {
-                                    argument = Some(arg);
+                                    argument_with_index = Some(arg);
                                     break;
                                 } else {
                                     self.unused_keyword_arguments.push(arg);
@@ -418,13 +426,13 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     }
                 }
                 ParamType::PositionalOnly => {
-                    argument = self.arguments.next();
-                    if let Some(arg) = argument {
-                        match arg.type_ {
+                    argument_with_index = self.arguments.next();
+                    if let Some(arg) = argument_with_index {
+                        match arg.1.type_ {
                             ArgumentType::Positional(_, _) => (),
                             ArgumentType::Keyword(_, _) => {
                                 self.unused_keyword_arguments.push(arg);
-                                argument = None;
+                                argument_with_index = None;
                             }
                             _ => todo!(),
                         }
@@ -439,7 +447,11 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     return self.next();
                 }
             }
-            Some(InferrableParam2 { param, argument })
+            Some(InferrableParam2 {
+                param,
+                argument_index: argument_with_index.map(|a| a.0),
+                argument: argument_with_index.map(|a| a.1),
+            })
         })
     }
 }
@@ -447,6 +459,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
 #[derive(Debug)]
 pub struct InferrableParam2<'db, 'a, P> {
     pub param: P,
+    pub argument_index: Option<usize>,
     pub argument: Option<Argument<'db, 'a>>,
 }
 

@@ -687,7 +687,7 @@ fn calculate_type_vars<'db>(
                     InferrableParamIterator2::new(
                         i_s.db,
                         params.iter(),
-                        args.iter_arguments().peekable(),
+                        args.iter_arguments().enumerate().peekable(),
                     ),
                 )
             } else {
@@ -810,13 +810,15 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                         }
                     }),
                 );
-                if let Some(param_annotation_link) = p.param.func_annotation_link() {
-                    // This is never reached when matching callables
-                    if matches!(m, Match::TrueWithAny) {
-                        argument_indices_with_any.push(ArgumentIndexWithParam {
-                            argument_index: 0, // TODO p.argument.index,
-                            param_annotation_link,
-                        })
+                if matches!(m, Match::TrueWithAny) {
+                    if let Some(param_annotation_link) = p.param.func_annotation_link() {
+                        // This is never reached when matching callables
+                        if let Some(argument_index) = p.argument_index {
+                            argument_indices_with_any.push(ArgumentIndexWithParam {
+                                argument_index,
+                                param_annotation_link,
+                            })
+                        }
                     }
                 }
                 matches &= m
@@ -841,7 +843,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
-                match arg.type_ {
+                match arg.1.type_ {
                     ArgumentType::Keyword(name, reference) => {
                         let mut s = format!("Unexpected keyword argument {name:?}");
                         if let Some(function) = function {
@@ -866,7 +868,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     } else if !args_with_params.unused_keyword_arguments.is_empty() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
-            match unused.type_ {
+            match unused.1.type_ {
                 ArgumentType::Keyword(name, reference) => {
                     let s = if let Some(function) = function {
                         if function

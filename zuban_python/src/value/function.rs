@@ -103,7 +103,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, args.iter_arguments().peekable())
+        InferrableParamIterator2::new(db, params, args.iter_arguments().enumerate().peekable())
     }
 
     pub fn infer_param(
