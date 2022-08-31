@@ -406,13 +406,17 @@ impl<'db, 'a> Function<'db, 'a> {
                     ParamType::DoubleStarred => "**",
                     _ => "",
                 };
-                if let Some(annotation_str) = annotation_str {
+                let mut out = if let Some(annotation_str) = annotation_str {
                     format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
                 } else if i == 0 && self.class.is_some() && stars.is_empty() {
                     p.name(i_s.db).unwrap().to_owned()
                 } else {
                     format!("{stars}{}: Any", p.name(i_s.db).unwrap())
+                };
+                if p.has_default() {
+                    out += " = ...";
                 }
+                out
             })
             .collect::<Vec<_>>()
             .join(", ");
