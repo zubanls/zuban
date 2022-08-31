@@ -36,17 +36,9 @@ callable_return_from_method_nested_multiple1
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 
-# weird returns
-testOverloadWithOverlappingItemsAndAnyArgument5
-
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
-testOverloadedCallWithVariableTypes
-testOverloadOverlapWithTypeVarsWithValues
-testOverloadMultipleVarargDefinitionComplex
-
-testOverloadWithDerivedFromAny
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -67,6 +59,10 @@ testOverloadInferUnionReturnWithInconsistentTypevarNames
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
 
+# Overloads maybe later
+testOverloadedCallWithVariableTypes
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadMultipleVarargDefinitionComplex
 # overload operator
 testOverloadedLtAndGtMethods
 testOverloadedForwardMethodAndCallingReverseMethod
@@ -733,6 +729,8 @@ testFineGrainedCallable
 testRefreshSubclassNestedInFunction2
 testAliasFineNormalClassBases
 testSkippedClass*
+# class base Any in combination with overload
+testOverloadWithDerivedFromAny
 
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
