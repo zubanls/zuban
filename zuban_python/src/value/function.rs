@@ -813,7 +813,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     );
                     return handle_result(i_s, calculated_type_args.type_arguments, function);
                 }
-                SignatureMatch::TrueWithAny(ref param_indices) => {
+                SignatureMatch::TrueWithAny(param_indices) => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
                     if multi_any_match.is_some() {
@@ -822,9 +822,8 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                         // also not be an error.
                         return None;
                     }
-                    // TODO why this clone?
-                    let param_indices = param_indices.clone();
-                    multi_any_match = Some((calculated_type_args, function, param_indices))
+                    multi_any_match =
+                        Some((calculated_type_args.type_arguments, function, param_indices))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
@@ -834,8 +833,8 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 SignatureMatch::False => (),
             }
         }
-        if let Some((calculated_type_args, function, _)) = multi_any_match {
-            return handle_result(i_s, calculated_type_args.type_arguments, function);
+        if let Some((type_arguments, function, _)) = multi_any_match {
+            return handle_result(i_s, type_arguments, function);
         }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
