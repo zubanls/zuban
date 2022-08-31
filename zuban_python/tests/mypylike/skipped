@@ -46,8 +46,6 @@ testOverloadedCallWithVariableTypes
 testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
 
-testOverloadWithOverlappingItemsAndAnyArgument15
-
 testOverloadWithDerivedFromAny
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"

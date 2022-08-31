@@ -954,20 +954,23 @@ impl DbType {
                         }),
                     )
                 }
-                _ => DbType::Any,
+                _ => Self::Any,
             },
-            Self::Union(u) => todo!(),
+            Self::Union(u1) => match other {
+                Self::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => Self::Union(u1),
+                _ => Self::Any,
+            },
             Self::Tuple(content) => todo!(),
             Self::Callable(content1) => match other {
                 Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
                     defined_at: content1.defined_at,
                     type_vars: None,
                     params: None,
-                    result_type: DbType::Any,
+                    result_type: Self::Any,
                 })),
-                _ => DbType::Any,
+                _ => Self::Any,
             },
-            _ => DbType::Any,
+            _ => Self::Any,
         }
     }
 }
