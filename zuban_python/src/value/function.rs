@@ -814,12 +814,17 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             let calculated_type_args = match_signature(i_s, function);
             match calculated_type_args.matches {
                 SignatureMatch::True => {
-                    debug!(
-                        "Decided overload for {}: {:?}",
-                        self.name(),
-                        function.node().short_debug()
-                    );
-                    return handle_result(i_s, calculated_type_args.type_arguments, function);
+                    if multi_any_match.is_some() {
+                        // This means that there was an explicit any in a param.
+                        return None;
+                    } else {
+                        debug!(
+                            "Decided overload for {}: {:?}",
+                            self.name(),
+                            function.node().short_debug()
+                        );
+                        return handle_result(i_s, calculated_type_args.type_arguments, function);
+                    }
                 }
                 SignatureMatch::TrueWithAny { argument_indices } => {
                     // TODO there could be three matches or more?
