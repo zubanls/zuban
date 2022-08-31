@@ -893,6 +893,20 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .collect()
     }
 
+    fn fallback_type(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+        let mut t: Option<DbType> = None;
+        for link in self.overload.functions.iter() {
+            let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            let f_t = func.result_type(i_s).as_db_type(i_s);
+            if let Some(old_t) = t.take() {
+                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s)))
+            } else {
+                t = Some(f_t);
+            }
+        }
+        Inferred::execute_db_type(i_s, t.unwrap())
+    }
+
     pub(super) fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -904,7 +918,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, class, false, result_context)
             .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
-            .unwrap_or_else(Inferred::new_unknown)
+            .unwrap_or_else(|| self.fallback_type(i_s))
     }
 }
 

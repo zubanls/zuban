@@ -523,6 +523,15 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
     }
 }
 
+impl IntoIterator for GenericsList {
+    type Item = DbType;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Vec::from(self.0).into_iter()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntersectionType {
     pub entries: Box<[DbType]>,
@@ -925,10 +934,32 @@ impl DbType {
         }
     }
 
-    pub fn maybe_type_var_index(&self) -> Option<&TypeVarUsage> {
+    pub fn merge_matching_parts(self, other: Self) -> Self {
+        if self == other {
+            return self;
+        }
         match self {
-            Self::TypeVar(t) => Some(t),
-            _ => None,
+            Self::Class(link1, g1) => match other {
+                Self::Class(link2, g2) if link1 == link2 => {
+                    // TODO test nested merging
+                    Self::Class(
+                        link1,
+                        g1.map(|g1| {
+                            GenericsList::new_generics(
+                                g1.into_iter()
+                                    .zip(g2.unwrap().into_iter())
+                                    .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                                    .collect(),
+                            )
+                        }),
+                    )
+                }
+                _ => DbType::Any,
+            },
+            Self::Union(u) => todo!(),
+            Self::Tuple(content) => todo!(),
+            Self::Callable(content) => todo!(),
+            _ => DbType::Any,
         }
     }
 }
