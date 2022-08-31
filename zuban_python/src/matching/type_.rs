@@ -234,10 +234,7 @@ impl<'db, 'a> Type<'db, 'a> {
                     matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
                         .into()
                 }
-                DbType::Any => match value_type {
-                    Self::Type(ref t2) if matches!(t2.as_ref(), DbType::Any) => Match::TrueWithAny,
-                    _ => Match::True,
-                },
+                DbType::Any => Match::True,
                 DbType::Never => todo!(),
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {

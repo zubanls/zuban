@@ -972,12 +972,14 @@ fn are_any_arguments_ambiguous_in_overload(
                 let t1 = n1
                     .file
                     .inference(i_s)
-                    .use_cached_annotation_type(n1.as_annotation());
+                    .use_cached_annotation_type(n1.as_annotation())
+                    .as_db_type(i_s);
                 let t2 = n2
                     .file
                     .inference(i_s)
-                    .use_cached_annotation_type(n2.as_annotation());
-                if !t1.is_same_type(i_s, None, &t2).bool() {
+                    .use_cached_annotation_type(n2.as_annotation())
+                    .as_db_type(i_s);
+                if t1 != t2 {
                     return true;
                 }
             }
