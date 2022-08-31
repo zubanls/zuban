@@ -20,8 +20,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return, FormatData,
-    Generics, ResultContext, SignatureMatch, Type, TypeVarMatcher,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
+    ArgumentIndexWithParam, FormatData, Generics, ResultContext, SignatureMatch, Type,
+    TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -807,7 +808,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             Some((function, calculated))
         };
         let mut first_similar = None;
-        let mut multi_any_match = None;
+        let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         for link in self.overload.functions.iter() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let calculated_type_args = match_signature(i_s, function);
@@ -823,17 +824,24 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 SignatureMatch::TrueWithAny { argument_indices } => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
-                    if let Some((_, f_old, _)) = &multi_any_match {
+                    if let Some((_, _, ref old_indices)) = multi_any_match {
                         // If multiple signatures match because of Any, we should just return
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
-                        return None;
+                        if are_any_arguments_ambiguous_in_overload(
+                            i_s,
+                            old_indices,
+                            &argument_indices,
+                        ) {
+                            return None;
+                        }
+                    } else {
+                        multi_any_match = Some((
+                            calculated_type_args.type_arguments,
+                            function,
+                            argument_indices,
+                        ))
                     }
-                    multi_any_match = Some((
-                        calculated_type_args.type_arguments,
-                        function,
-                        argument_indices,
-                    ))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {
@@ -946,4 +954,34 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
                 .collect(),
         )))
     }
+}
+
+fn are_any_arguments_ambiguous_in_overload(
+    i_s: &mut InferenceState,
+    a: &[ArgumentIndexWithParam],
+    b: &[ArgumentIndexWithParam],
+) -> bool {
+    // This function checks if an argument with an Any (like List[Any]) makes it unclear which
+    // overload would need to be chosen. Please have a look at the test
+    // `testOverloadWithOverlappingItemsAndAnyArgument4` for more information.
+    for p1 in a {
+        for p2 in b {
+            if p1.argument_index == p2.argument_index {
+                let n1 = NodeRef::from_link(i_s.db, p1.param_annotation_link);
+                let n2 = NodeRef::from_link(i_s.db, p2.param_annotation_link);
+                let t1 = n1
+                    .file
+                    .inference(i_s)
+                    .use_cached_annotation_type(n1.as_annotation());
+                let t2 = n2
+                    .file
+                    .inference(i_s)
+                    .use_cached_annotation_type(n2.as_annotation());
+                if !t1.is_same_type(i_s, None, &t2).bool() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }

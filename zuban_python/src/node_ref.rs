@@ -1,8 +1,8 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Atom, AtomContent, ClassDef, Expression, ImportFrom, Name, NamedExpression, NodeIndex, Primary,
-    PythonString, StringLiteral,
+    Annotation, Atom, AtomContent, ClassDef, Expression, ImportFrom, Name, NamedExpression,
+    NodeIndex, Primary, PythonString, StringLiteral,
 };
 
 use crate::database::{ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType};
@@ -82,6 +82,10 @@ impl<'db> NodeRef<'db> {
 
     pub fn as_name(&self) -> Name<'db> {
         Name::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn as_annotation(&self) -> Annotation<'db> {
+        Annotation::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_name(&self) -> Option<Name<'db>> {
