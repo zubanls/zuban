@@ -44,3 +44,14 @@ def f(x: Any) -> Any: pass
 @overload
 def f(x: Any) -> Any: pass  # TODO should complain here
 def f(x: Any) -> Any: pass
+
+[case overload_merging_nested]
+from typing import overload, Any
+@overload
+def g(x: str) -> list[list[str]]: ...
+@overload
+def g(x: int) -> list[list[int]]: ...
+def g(x): pass
+
+a: Any
+reveal_type(g(a)) # N: Revealed type is "list[list[Any]]"
