@@ -813,17 +813,20 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                     );
                     return handle_result(i_s, calculated_type_args.type_arguments, function);
                 }
-                SignatureMatch::TrueWithAny(param_indices) => {
+                SignatureMatch::TrueWithAny { argument_indices } => {
                     // TODO there could be three matches or more?
                     // TODO maybe merge list[any] and list[int]
-                    if multi_any_match.is_some() {
+                    if let Some((_, f_old, _)) = &multi_any_match {
                         // If multiple signatures match because of Any, we should just return
-                        // without an error message, there is no clear choice, but there should
-                        // also not be an error.
+                        // without an error message, there is no clear choice, i.e. it's ambiguous,
+                        // but there should also not be an error.
                         return None;
                     }
-                    multi_any_match =
-                        Some((calculated_type_args.type_arguments, function, param_indices))
+                    multi_any_match = Some((
+                        calculated_type_args.type_arguments,
+                        function,
+                        argument_indices,
+                    ))
                 }
                 SignatureMatch::FalseButSimilar => {
                     if first_similar.is_none() {

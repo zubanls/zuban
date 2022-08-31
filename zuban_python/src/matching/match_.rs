@@ -7,7 +7,7 @@ use crate::database::{DbType, TypeVar, TypeVarIndex};
 pub enum SignatureMatch {
     False,
     FalseButSimilar,
-    TrueWithAny(Vec<usize>),
+    TrueWithAny { argument_indices: Box<[usize]> },
     True,
 }
 

@@ -735,7 +735,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     // TODO this can be calculated multiple times from different places
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
-    let mut any_args = vec![];
+    let mut argument_indices_with_any = vec![];
     let mut matches = Match::True;
     for (i, p) in args_with_params.by_ref().enumerate() {
         if p.argument.is_none() && !p.param.has_default() {
@@ -808,7 +808,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     }),
                 );
                 if matches!(m, Match::TrueWithAny) {
-                    any_args.push(i)
+                    argument_indices_with_any.push(i)
                 }
                 matches &= m
             }
@@ -928,7 +928,9 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
     }
     match matches {
         Match::True => SignatureMatch::True,
-        Match::TrueWithAny => SignatureMatch::TrueWithAny(any_args),
+        Match::TrueWithAny => SignatureMatch::TrueWithAny {
+            argument_indices: argument_indices_with_any.into(),
+        },
         Match::FalseButSimilar(_) => SignatureMatch::FalseButSimilar,
         Match::False(_) => SignatureMatch::False,
     }
