@@ -1,13 +1,21 @@
 use std::ops::{BitAnd, BitAndAssign};
 use std::rc::Rc;
 
-use crate::database::{DbType, TypeVar, TypeVarIndex};
+use crate::database::{DbType, PointLink, TypeVar, TypeVarIndex};
+
+#[derive(Debug)]
+pub struct ArgumentIndexWithParam {
+    pub argument_index: usize,
+    pub param_annotation_link: PointLink,
+}
 
 #[derive(Debug)]
 pub enum SignatureMatch {
     False,
     FalseButSimilar,
-    TrueWithAny { argument_indices: Box<[usize]> },
+    TrueWithAny {
+        argument_indices: Box<[ArgumentIndexWithParam]>,
+    },
     True,
 }
 

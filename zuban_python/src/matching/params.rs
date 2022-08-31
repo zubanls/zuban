@@ -2,7 +2,7 @@ use parsa_python_ast::ParamType;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
-use crate::database::{CallableParam, CallableParams, Database, DbType, Variance};
+use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::value::ParamWithArgument;
@@ -11,6 +11,10 @@ pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
     fn name(&self, db: &'db Database) -> Option<&str>;
     fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
+    fn func_annotation_link(&self) -> Option<PointLink> {
+        // Can be None for Callable
+        None
+    }
     fn param_type(&self) -> ParamType;
 }
 

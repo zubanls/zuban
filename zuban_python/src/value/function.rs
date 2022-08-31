@@ -9,11 +9,12 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
-    IntersectionType, Locality, Overload, Point, StringSlice, TypeVar, TypeVars,
+    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, TypeComputation};
+use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -555,6 +556,12 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)
         })
+    }
+
+    fn func_annotation_link(&self) -> Option<PointLink> {
+        self.param
+            .annotation()
+            .map(|a| PointLink::new(self.file.file_index(), a.index()))
     }
 
     fn param_type(&self) -> ParamType {

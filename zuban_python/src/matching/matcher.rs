@@ -1,7 +1,10 @@
 use parsa_python_ast::ParamType;
 
 use super::params::{InferrableParamIterator2, Param};
-use super::{FormatData, Generics, Match, MismatchReason, ResultContext, SignatureMatch, Type};
+use super::{
+    ArgumentIndexWithParam, FormatData, Generics, Match, MismatchReason, ResultContext,
+    SignatureMatch, Type,
+};
 use crate::arguments::{ArgumentType, Arguments};
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage,
@@ -807,8 +810,14 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                         }
                     }),
                 );
-                if matches!(m, Match::TrueWithAny) {
-                    argument_indices_with_any.push(i)
+                if let Some(param_annotation_link) = p.param.func_annotation_link() {
+                    // This is never reached when matching callables
+                    if matches!(m, Match::TrueWithAny) {
+                        argument_indices_with_any.push(ArgumentIndexWithParam {
+                            argument_index: 0, // TODO p.argument.index,
+                            param_annotation_link,
+                        })
+                    }
                 }
                 matches &= m
             }
