@@ -399,18 +399,18 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn simple_param_type(&self) -> SimpleParamType {
+    pub fn simple_param_type(&self) -> SimpleParamKind {
         let param = self.node.parent().unwrap().parent().unwrap();
         if param.is_type(Nonterminal(starred_param))
             || param.is_type(Nonterminal(lambda_starred_param))
         {
-            SimpleParamType::Starred
+            SimpleParamKind::Starred
         } else if param.is_type(Nonterminal(double_starred_param))
             || param.is_type(Nonterminal(lambda_double_starred_param))
         {
-            SimpleParamType::DoubleStarred
+            SimpleParamKind::DoubleStarred
         } else {
-            SimpleParamType::Normal
+            SimpleParamKind::Normal
         }
     }
 }
@@ -1660,7 +1660,7 @@ pub enum ParamKind {
     DoubleStarred,
 }
 
-pub enum SimpleParamType {
+pub enum SimpleParamKind {
     Normal,
     Starred,
     DoubleStarred,

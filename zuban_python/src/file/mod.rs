@@ -1535,8 +1535,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
                         if let Some(annotation) = name_def.maybe_param_annotation() {
                             match name_def.name().simple_param_type() {
-                                SimpleParamType::Normal => self.use_cached_annotation(annotation),
-                                SimpleParamType::Starred => {
+                                SimpleParamKind::Normal => self.use_cached_annotation(annotation),
+                                SimpleParamKind::Starred => {
                                     let p = self
                                         .use_cached_annotation_type(annotation)
                                         .into_db_type(self.i_s);
@@ -1549,7 +1549,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                         })),
                                     ))
                                 }
-                                SimpleParamType::DoubleStarred => {
+                                SimpleParamKind::DoubleStarred => {
                                     let p = self
                                         .use_cached_annotation_type(annotation)
                                         .into_db_type(self.i_s);
