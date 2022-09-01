@@ -399,7 +399,7 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn simple_param_type(&self) -> SimpleParamKind {
+    pub fn simple_param_kind(&self) -> SimpleParamKind {
         let param = self.node.parent().unwrap().parent().unwrap();
         if param.is_type(Nonterminal(starred_param))
             || param.is_type(Nonterminal(lambda_starred_param))

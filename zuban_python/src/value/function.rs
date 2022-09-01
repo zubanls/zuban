@@ -280,7 +280,7 @@ impl<'db, 'a> Function<'db, 'a> {
                             let n = p.param.name_definition();
                             StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
                         }),
-                        param_type: p.param_type(),
+                        param_kind: p.param_kind(),
                     })
                     .collect(),
             ),
@@ -403,7 +403,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 let annotation_str = p
                     .annotation_type(i_s)
                     .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
-                let stars = match p.param_type() {
+                let stars = match p.param_kind() {
                     ParamKind::Starred => "*",
                     ParamKind::DoubleStarred => "**",
                     _ => "",
@@ -565,7 +565,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
             .map(|a| PointLink::new(self.file.file_index(), a.index()))
     }
 
-    fn param_type(&self) -> ParamKind {
+    fn param_kind(&self) -> ParamKind {
         self.param.type_()
     }
 }
@@ -605,7 +605,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 _ => unreachable!(),
             }
         }
-        match param.param_type() {
+        match param.param_kind() {
             ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument.type_ {

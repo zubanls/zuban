@@ -847,7 +847,7 @@ impl DbType {
                     params
                         .iter()
                         .map(|p| CallableParam {
-                            param_type: p.param_type,
+                            param_kind: p.param_kind,
                             has_default: p.has_default,
                             name: p.name,
                             db_type: p.db_type.replace_type_vars(callable),
@@ -921,7 +921,7 @@ impl DbType {
                         params
                             .iter()
                             .map(|p| CallableParam {
-                                param_type: p.param_type,
+                                param_kind: p.param_kind,
                                 has_default: p.has_default,
                                 name: p.name,
                                 db_type: p.db_type.rewrite_late_bound_callables(manager),
@@ -1053,7 +1053,7 @@ impl TupleContent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
-    pub param_type: ParamKind,
+    pub param_kind: ParamKind,
     pub name: Option<StringSlice>,
     pub has_default: bool,
     pub db_type: DbType,
@@ -1061,11 +1061,11 @@ pub struct CallableParam {
 
 impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.param_type != ParamKind::PositionalOnly {
+        if self.param_kind != ParamKind::PositionalOnly {
             if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
-                        let mut string = match self.param_type {
+                        let mut string = match self.param_kind {
                             ParamKind::PositionalOnly => unreachable!(),
                             ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly => {
                                 format!("{}: ", name.as_str(format_data.db))
@@ -1083,7 +1083,7 @@ impl CallableParam {
                     }
                     _ => {
                         let t = self.db_type.format(format_data);
-                        return match self.param_type {
+                        return match self.param_kind {
                             ParamKind::PositionalOnly => unreachable!(),
                             ParamKind::PositionalOrKeyword => {
                                 if !format_data.verbose {
@@ -1135,7 +1135,7 @@ impl CallableContent {
             FormatStyle::MypyRevealType => {
                 if let Some(params) = params.as_mut() {
                     for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
-                        match p.param_type {
+                        match p.param_kind {
                             ParamKind::KeywordOnly => {
                                 params.insert(i, Box::from("*"));
                                 break;
