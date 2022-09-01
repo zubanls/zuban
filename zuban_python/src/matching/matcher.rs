@@ -900,7 +900,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         let mut missing_positional = vec![];
         for param in &missing_params {
             if let Some(param_name) = param.name(i_s.db) {
-                if param.param_kind() == ParamKind::KeywordOnly {
+                if param.kind() == ParamKind::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     if let Some(function) = function {
                         s += " for ";
