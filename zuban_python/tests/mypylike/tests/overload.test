@@ -147,3 +147,23 @@ def g(x): pass
 
 a: Any
 reveal_type(g(a)) # N: Revealed type is "tuple[int, Any]"
+
+[case overload_with_callable_type_var_mypy_issue_13436]
+from typing import Any, Callable, overload, TypeVar
+C = TypeVar("C", bound=Callable[..., object])
+
+@overload
+def wrapper(arg: C) -> C: ...
+@overload
+def wrapper(arg: object) -> object: ...
+def wrapper(arg: object) -> object: ...
+
+def case_a(x: int) -> None: pass
+
+reveal_type(case_a)           # N: Revealed type is "def (x: builtins.int)"
+reveal_type(wrapper(case_a))  # N: Revealed type is "def (x: builtins.int)"
+
+def case_b(x: Any) -> None: pass
+
+reveal_type(case_b)           # N: Revealed type is "def (x: Any)"
+reveal_type(wrapper(case_b))  # N: Revealed type is "def (x: Any)"
