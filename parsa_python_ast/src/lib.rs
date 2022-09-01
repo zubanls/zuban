@@ -404,11 +404,11 @@ impl<'db> Name<'db> {
         if param.is_type(Nonterminal(starred_param))
             || param.is_type(Nonterminal(lambda_starred_param))
         {
-            SimpleParamType::MultiArgs
+            SimpleParamType::Starred
         } else if param.is_type(Nonterminal(double_starred_param))
             || param.is_type(Nonterminal(lambda_double_starred_param))
         {
-            SimpleParamType::MultiKwargs
+            SimpleParamType::DoubleStarred
         } else {
             SimpleParamType::Normal
         }
@@ -1662,8 +1662,8 @@ pub enum ParamType {
 
 pub enum SimpleParamType {
     Normal,
-    MultiArgs,
-    MultiKwargs,
+    Starred,
+    DoubleStarred,
 }
 
 impl<'db> Annotation<'db> {
