@@ -1,4 +1,4 @@
-use parsa_python_ast::{CodeIndex, NodeIndex, ParamType};
+use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -1053,7 +1053,7 @@ impl TupleContent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
-    pub param_type: ParamType,
+    pub param_type: ParamKind,
     pub name: Option<StringSlice>,
     pub has_default: bool,
     pub db_type: DbType,
@@ -1061,17 +1061,17 @@ pub struct CallableParam {
 
 impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.param_type != ParamType::PositionalOnly {
+        if self.param_type != ParamKind::PositionalOnly {
             if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match self.param_type {
-                            ParamType::PositionalOnly => unreachable!(),
-                            ParamType::PositionalOrKeyword | ParamType::KeywordOnly => {
+                            ParamKind::PositionalOnly => unreachable!(),
+                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly => {
                                 format!("{}: ", name.as_str(format_data.db))
                             }
-                            ParamType::Starred => format!("*{}: ", name.as_str(format_data.db)),
-                            ParamType::DoubleStarred => {
+                            ParamKind::Starred => format!("*{}: ", name.as_str(format_data.db)),
+                            ParamKind::DoubleStarred => {
                                 format!("*{}: ", name.as_str(format_data.db))
                             }
                         };
@@ -1084,8 +1084,8 @@ impl CallableParam {
                     _ => {
                         let t = self.db_type.format(format_data);
                         return match self.param_type {
-                            ParamType::PositionalOnly => unreachable!(),
-                            ParamType::PositionalOrKeyword => {
+                            ParamKind::PositionalOnly => unreachable!(),
+                            ParamKind::PositionalOrKeyword => {
                                 if !format_data.verbose {
                                     return t;
                                 }
@@ -1095,15 +1095,15 @@ impl CallableParam {
                                     format!("Arg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
-                            ParamType::KeywordOnly => {
+                            ParamKind::KeywordOnly => {
                                 if self.has_default {
                                     todo!()
                                 } else {
                                     format!("NamedArg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
-                            ParamType::Starred => format!("VarArg({t})"),
-                            ParamType::DoubleStarred => format!("KwArg({t})"),
+                            ParamKind::Starred => format!("VarArg({t})"),
+                            ParamKind::DoubleStarred => format!("KwArg({t})"),
                         }
                         .into();
                     }
@@ -1136,11 +1136,11 @@ impl CallableContent {
                 if let Some(params) = params.as_mut() {
                     for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
                         match p.param_type {
-                            ParamType::KeywordOnly => {
+                            ParamKind::KeywordOnly => {
                                 params.insert(i, Box::from("*"));
                                 break;
                             }
-                            ParamType::Starred => break,
+                            ParamKind::Starred => break,
                             _ => (),
                         }
                     }

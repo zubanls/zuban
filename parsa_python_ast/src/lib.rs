@@ -1570,7 +1570,7 @@ impl<'db> Iterator for ParamIterator<'db> {
         match self {
             Self::Iterator(iterator, positional_only) => {
                 for node in iterator {
-                    use ParamType::*;
+                    use ParamKind::*;
                     if node.is_type(Nonterminal(param_no_default))
                         || node.is_type(Nonterminal(param_with_default))
                     {
@@ -1606,14 +1606,14 @@ impl<'db> Iterator for ParamIterator<'db> {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Param<'db> {
-    type_: ParamType,
+    type_: ParamKind,
     name_def: NameDefinition<'db>,
     annotation: Option<Annotation<'db>>,
     default: Option<Expression<'db>>,
 }
 
 impl<'db> Param<'db> {
-    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamType) -> Self {
+    fn new(param_children: &mut impl Iterator<Item = PyNode<'db>>, type_: ParamKind) -> Self {
         let name_def = NameDefinition::new(param_children.next().unwrap());
         let annot = if let Some(annotation_node) = param_children.next() {
             if annotation_node.is_type(Nonterminal(annotation)) {
@@ -1634,7 +1634,7 @@ impl<'db> Param<'db> {
         }
     }
 
-    pub fn type_(&self) -> ParamType {
+    pub fn type_(&self) -> ParamKind {
         self.type_
     }
 
@@ -1652,7 +1652,7 @@ impl<'db> Param<'db> {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-pub enum ParamType {
+pub enum ParamKind {
     PositionalOnly,
     PositionalOrKeyword,
     KeywordOnly,

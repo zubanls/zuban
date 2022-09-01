@@ -785,7 +785,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = self.compute_type(n.expression());
                 params.as_mut().unwrap().push(CallableParam {
-                    param_type: ParamType::PositionalOnly,
+                    param_type: ParamKind::PositionalOnly,
                     has_default: false,
                     name: None,
                     db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),

@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamType, ReturnAnnotation,
+    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamKind, ReturnAnnotation,
     ReturnOrYield,
 };
 use std::fmt;
@@ -404,8 +404,8 @@ impl<'db, 'a> Function<'db, 'a> {
                     .annotation_type(i_s)
                     .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
                 let stars = match p.param_type() {
-                    ParamType::Starred => "*",
-                    ParamType::DoubleStarred => "**",
+                    ParamKind::Starred => "*",
+                    ParamKind::DoubleStarred => "**",
                     _ => "",
                 };
                 let mut out = if let Some(annotation_str) = annotation_str {
@@ -565,7 +565,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
             .map(|a| PointLink::new(self.file.file_index(), a.index()))
     }
 
-    fn param_type(&self) -> ParamType {
+    fn param_type(&self) -> ParamKind {
         self.param.type_()
     }
 }
@@ -606,7 +606,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             }
         }
         match param.param_type() {
-            ParamType::PositionalOrKeyword => {
+            ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument.type_ {
                         ArgumentType::Keyword(name, reference) => {
@@ -620,7 +620,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                     }
                 }
             }
-            ParamType::KeywordOnly => {
+            ParamKind::KeywordOnly => {
                 for argument in &mut self.arguments {
                     match argument.type_ {
                         ArgumentType::Keyword(name, reference) => {
@@ -634,8 +634,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                     }
                 }
             }
-            ParamType::PositionalOnly => todo!(),
-            ParamType::Starred => {
+            ParamKind::PositionalOnly => todo!(),
+            ParamKind::Starred => {
                 let mut args = vec![];
                 for argument in &mut self.arguments {
                     if argument.is_keyword_argument() {
@@ -646,7 +646,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 }
                 return ParamInput::Tuple(args.into_boxed_slice());
             }
-            ParamType::DoubleStarred => todo!(),
+            ParamKind::DoubleStarred => todo!(),
         }
         for argument in &mut self.arguments {
             // TODO check param type here and make sure that it makes sense.

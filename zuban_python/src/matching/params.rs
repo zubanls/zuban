@@ -1,4 +1,4 @@
-use parsa_python_ast::ParamType;
+use parsa_python_ast::ParamKind;
 
 use super::{Match, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType};
@@ -15,7 +15,7 @@ pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
         // Can be None for Callable
         None
     }
-    fn param_type(&self) -> ParamType;
+    fn param_type(&self) -> ParamKind;
 }
 
 pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
@@ -48,9 +48,9 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                     let pt1 = param1.param_type();
                     let pt2 = param2.param_type();
                     let matches_param_type = match pt1 {
-                        ParamType::PositionalOnly => match pt2 {
-                            ParamType::PositionalOnly | ParamType::PositionalOrKeyword => true,
-                            ParamType::Starred => {
+                        ParamKind::PositionalOnly => match pt2 {
+                            ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
+                            ParamKind::Starred => {
                                 let m = check_annotation(i_s, param1, param2);
                                 if !m.bool() {
                                     return m;
@@ -59,11 +59,11 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                             }
                             _ => false,
                         },
-                        ParamType::PositionalOrKeyword => {
+                        ParamKind::PositionalOrKeyword => {
                             pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
                         }
-                        ParamType::KeywordOnly => match pt2 {
-                            ParamType::KeywordOnly | ParamType::PositionalOrKeyword => {
+                        ParamKind::KeywordOnly => match pt2 {
+                            ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword => {
                                 let mut found = false;
                                 for (i, p2) in unused_keyword_params.iter().enumerate() {
                                     if param1.name(i_s.db) == p2.name(i_s.db) {
@@ -77,8 +77,8 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                         Some(p2) => {
                                             matches!(
                                                 p2.param_type(),
-                                                ParamType::KeywordOnly
-                                                    | ParamType::PositionalOrKeyword
+                                                ParamKind::KeywordOnly
+                                                    | ParamKind::PositionalOrKeyword
                                             )
                                         }
                                         None => false,
@@ -98,7 +98,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 }
                                 true
                             }
-                            ParamType::DoubleStarred => {
+                            ParamKind::DoubleStarred => {
                                 let m = check_annotation(i_s, param1, param2);
                                 if !m.bool() {
                                     return m;
@@ -107,7 +107,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                             }
                             _ => false,
                         },
-                        ParamType::Starred | ParamType::DoubleStarred => pt1 == pt2,
+                        ParamKind::Starred | ParamKind::DoubleStarred => pt1 == pt2,
                     };
                     params2.next();
                     if !matches_param_type || param1.has_default() && !param2.has_default() {
@@ -125,7 +125,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                 if !param2.has_default()
                     && !matches!(
                         param2.param_type(),
-                        ParamType::Starred | ParamType::DoubleStarred
+                        ParamKind::Starred | ParamKind::DoubleStarred
                     )
                 {
                     return Match::new_false();
@@ -185,28 +185,28 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
         match param1.param_type() {
-            ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
+            ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
                 if let Some(param2) = params2.peek() {
                     if !check_type(i_s, param1, *param2) {
                         return false;
                     }
                     match param2.param_type() {
-                        ParamType::PositionalOrKeyword | ParamType::PositionalOnly => {
+                        ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
                             params2.next(); // We only peeked.
                         }
-                        ParamType::KeywordOnly => {
+                        ParamKind::KeywordOnly => {
                             todo!()
                         }
-                        ParamType::Starred => (),
-                        ParamType::DoubleStarred => (),
+                        ParamKind::Starred => (),
+                        ParamKind::DoubleStarred => (),
                     }
                 } else {
                     return false;
                 }
             }
-            ParamType::KeywordOnly => {
+            ParamKind::KeywordOnly => {
                 if let Some(param2) = params2.peek() {
-                    if param2.param_type() == ParamType::Starred {
+                    if param2.param_type() == ParamKind::Starred {
                         params2.next();
                     }
                 }
@@ -216,10 +216,10 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                     .copied()
                 {
                     match param2.param_type() {
-                        ParamType::PositionalOrKeyword => {
+                        ParamKind::PositionalOrKeyword => {
                             todo!()
                         }
-                        ParamType::KeywordOnly => {
+                        ParamKind::KeywordOnly => {
                             let mut found = false;
                             for (i, p2) in unused_keyword_params.iter().enumerate() {
                                 if param1.name(db) == p2.name(db) {
@@ -230,7 +230,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                             }
                             if !found {
                                 while match params2.peek() {
-                                    Some(p2) => matches!(p2.param_type(), ParamType::KeywordOnly),
+                                    Some(p2) => matches!(p2.param_type(), ParamKind::KeywordOnly),
                                     None => false,
                                 } {
                                     param2 = params2.next().unwrap();
@@ -246,7 +246,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                                 }
                             }
                         }
-                        ParamType::DoubleStarred => (),
+                        ParamKind::DoubleStarred => (),
                         _ => return false,
                     }
                     if !check_type(i_s, param1, param2) {
@@ -256,11 +256,11 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                     return false;
                 }
             }
-            ParamType::Starred => {
+            ParamKind::Starred => {
                 while match params2.peek() {
                     Some(p) => !matches!(
                         p.param_type(),
-                        ParamType::KeywordOnly | ParamType::DoubleStarred
+                        ParamKind::KeywordOnly | ParamKind::DoubleStarred
                     ),
                     None => false,
                 } {
@@ -271,7 +271,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                     }
                 }
             }
-            ParamType::DoubleStarred => {
+            ParamKind::DoubleStarred => {
                 for param2 in params2 {
                     if !check_type(i_s, param1, param2) {
                         return false;
@@ -284,7 +284,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     for param2 in params2 {
         if !matches!(
             param2.param_type(),
-            ParamType::Starred | ParamType::DoubleStarred
+            ParamKind::Starred | ParamKind::DoubleStarred
         ) {
             return false;
         }
@@ -305,7 +305,7 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
         Some(Type::new(&self.db_type))
     }
 
-    fn param_type(&self) -> ParamType {
+    fn param_type(&self) -> ParamKind {
         self.param_type
     }
 }
@@ -392,7 +392,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
             }
             let mut argument_with_index = None;
             match param.param_type() {
-                ParamType::PositionalOrKeyword => {
+                ParamKind::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
                         match arg.1.type_ {
                             ArgumentType::Keyword(name, reference) => {
@@ -410,7 +410,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                         }
                     }
                 }
-                ParamType::KeywordOnly => {
+                ParamKind::KeywordOnly => {
                     for arg in &mut self.arguments {
                         match arg.1.type_ {
                             ArgumentType::Keyword(name, reference) => {
@@ -425,7 +425,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                         }
                     }
                 }
-                ParamType::PositionalOnly => {
+                ParamKind::PositionalOnly => {
                     argument_with_index = self.arguments.next();
                     if let Some(arg) = argument_with_index {
                         match arg.1.type_ {
@@ -438,11 +438,11 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                         }
                     }
                 }
-                ParamType::Starred => {
+                ParamKind::Starred => {
                     self.current_starred_param = Some(param);
                     return self.next();
                 }
-                ParamType::DoubleStarred => {
+                ParamKind::DoubleStarred => {
                     self.current_double_starred_param = Some(param);
                     return self.next();
                 }
