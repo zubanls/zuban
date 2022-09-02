@@ -167,3 +167,33 @@ def case_b(x: Any) -> None: pass
 
 reveal_type(case_b)           # N: Revealed type is "def (x: Any)"
 reveal_type(wrapper(case_b))  # N: Revealed type is "def (x: Any)"
+
+[case overload_union_math_on_class_init_constrained]
+from typing import Callable, Union, overload, Generic
+T = TypeVar("T", str, int)
+
+class Foo(Generic[T]):
+    @overload
+    def __init__(self, x: int, y: T): ...
+    @overload
+    def __init__(self, x: T, y: str): ...
+    def __init__(x): ...
+
+u1: int | str
+reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[builtins.str]"
+reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[builtins.int] | __main__.Foo[builtins.str]"
+
+[case overload_union_math_on_class_init_unconstrained]
+from typing import Callable, Union, overload, Generic
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    @overload
+    def __init__(self, x: int, y: T): ...
+    @overload
+    def __init__(self, x: T, y: str): ...
+    def __init__(x): ...
+
+u1: int | str
+reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[builtins.str]"
+reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[int | str]"
