@@ -422,12 +422,12 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     argument_with_index = self.arguments.next();
                     if let Some(arg) = argument_with_index {
                         match arg.1.type_ {
-                            ArgumentType::Positional(_, _) => (),
+                            ArgumentType::Positional(_, _) | ArgumentType::Inferred(_, _) => (),
                             ArgumentType::Keyword(_, _) => {
                                 self.unused_keyword_arguments.push(arg);
                                 argument_with_index = None;
                             }
-                            _ => todo!(),
+                            _ => todo!("{arg:?}"),
                         }
                     }
                 }

@@ -546,6 +546,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
 
 pub fn calculate_callable_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
+    class: Option<&Class<'db, '_>>,
     callable: &CallableContent,
     args: &dyn Arguments<'db>,
     result_context: ResultContext<'db, '_>,

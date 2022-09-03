@@ -371,26 +371,41 @@ impl<'db> Inferred<'db> {
 
                 let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
                 let class = class_t.maybe_class(i_s.db).unwrap();
-                if let Some(ComplexPoint::FunctionOverload(overload)) = reference.complex() {
-                    let func = OverloadedFunction::new(reference, overload, Some(class));
-                    callable(
-                        i_s,
-                        &BoundMethod::new(
-                            &instance,
-                            *mro_index,
-                            BoundMethodFunction::Overload(func),
+                match reference.complex() {
+                    Some(ComplexPoint::FunctionOverload(overload)) => {
+                        let func = OverloadedFunction::new(reference, overload, Some(class));
+                        callable(
+                            i_s,
+                            &BoundMethod::new(
+                                &instance,
+                                *mro_index,
+                                BoundMethodFunction::Overload(func),
+                            ),
+                        )
+                    }
+                    Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
+                        DbType::Callable(c) => callable(
+                            i_s,
+                            &BoundMethod::new(
+                                &instance,
+                                *mro_index,
+                                BoundMethodFunction::Callable(Callable::new(t, c)),
+                            ),
                         ),
-                    )
-                } else {
-                    let func = Function::new(reference, Some(class));
-                    callable(
-                        i_s,
-                        &BoundMethod::new(
-                            &instance,
-                            *mro_index,
-                            BoundMethodFunction::Function(func),
-                        ),
-                    )
+                        _ => unreachable!("{t:?}"),
+                    },
+                    None => {
+                        let func = Function::new(reference, Some(class));
+                        callable(
+                            i_s,
+                            &BoundMethod::new(
+                                &instance,
+                                *mro_index,
+                                BoundMethodFunction::Function(func),
+                            ),
+                        )
+                    }
+                    _ => unreachable!(),
                 }
             }
             ComplexPoint::Closure(function, execution) => {
@@ -862,15 +877,26 @@ impl<'db> Inferred<'db> {
                     }
                 }
                 PointType::Complex => {
-                    if let ComplexPoint::FunctionOverload(o) =
-                        definition.file.complex_points.get(point.complex_index())
-                    {
-                        let complex = ComplexPoint::BoundMethod(
-                            get_inferred(i_s).as_any_link(i_s),
-                            mro_index,
-                            definition.as_link(),
-                        );
-                        return Self::new_unsaved_complex(complex);
+                    match definition.file.complex_points.get(point.complex_index()) {
+                        ComplexPoint::FunctionOverload(o) => {
+                            let complex = ComplexPoint::BoundMethod(
+                                get_inferred(i_s).as_any_link(i_s),
+                                mro_index,
+                                definition.as_link(),
+                            );
+                            return Self::new_unsaved_complex(complex);
+                        }
+                        ComplexPoint::TypeInstance(t) => {
+                            if let DbType::Callable(c) = t.as_ref() {
+                                let complex = ComplexPoint::BoundMethod(
+                                    get_inferred(i_s).as_any_link(i_s),
+                                    mro_index,
+                                    definition.as_link(),
+                                );
+                                return Self::new_unsaved_complex(complex);
+                            }
+                        }
+                        _ => (),
                     }
                 }
                 _ => (),

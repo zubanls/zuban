@@ -14,12 +14,8 @@ testDefaultArgumentExpressions2
 testDefaultArgumentExpressionsGeneric
 
 # data attributes Callable as a bound method
-testMethodAsDataAttribute
 testMethodWithInvalidMethodAsDataAttribute
-testMethodWithDynamicallyTypedMethodAsDataAttribute
 testInvalidMethodAsDataAttributeInGenericClass
-testPartiallyTypedSelfInMethodDataAttribute
-testCallableDataAttribute
 
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample

@@ -1,4 +1,6 @@
-use super::{Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind};
+use super::{
+    Callable, Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind,
+};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
@@ -9,6 +11,7 @@ use crate::matching::{ResultContext, Type};
 pub enum BoundMethodFunction<'db, 'a> {
     Function(Function<'db, 'a>),
     Overload(OverloadedFunction<'db, 'a>),
+    Callable(Callable<'a>),
 }
 
 impl<'db, 'a> BoundMethodFunction<'db, 'a> {
@@ -16,6 +19,7 @@ impl<'db, 'a> BoundMethodFunction<'db, 'a> {
         match self {
             Self::Function(f) => f,
             Self::Overload(f) => f,
+            Self::Callable(c) => c,
         }
     }
 }
@@ -80,6 +84,13 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
                 Some(class),
                 result_context,
             ),
+            BoundMethodFunction::Callable(f) => f.execute_internal(
+                &mut i_s.with_class_context(class),
+                &args,
+                on_type_error,
+                Some(class),
+                result_context,
+            ),
         }
     }
 
@@ -87,6 +98,7 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
         Type::owned(match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => todo!(),
+            BoundMethodFunction::Callable(c) => todo!(),
         })
     }
 }

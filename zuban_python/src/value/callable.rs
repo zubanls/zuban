@@ -1,4 +1,4 @@
-use super::{LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
 use crate::database::{CallableContent, DbType};
@@ -16,6 +16,26 @@ pub struct Callable<'a> {
 impl<'db, 'a> Callable<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
+    }
+
+    pub(super) fn execute_internal(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
+        class: Option<&Class<'db, '_>>,
+        result_context: ResultContext<'db, '_>,
+    ) -> Inferred<'db> {
+        let calculated_type_vars = calculate_callable_type_vars_and_return(
+            i_s,
+            class,
+            self.content,
+            args,
+            result_context,
+            on_type_error,
+        );
+        let g_o = Type::new(&self.content.result_type);
+        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
     }
 }
 
@@ -44,15 +64,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred<'db> {
-        let calculated_type_vars = calculate_callable_type_vars_and_return(
-            i_s,
-            self.content,
-            args,
-            result_context,
-            on_type_error,
-        );
-        let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
+        self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
