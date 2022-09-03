@@ -13,10 +13,6 @@ testMethodDefaultArgumentsAndSignatureAsComment
 testDefaultArgumentExpressions2
 testDefaultArgumentExpressionsGeneric
 
-# data attributes Callable as a bound method
-testMethodWithInvalidMethodAsDataAttribute
-testInvalidMethodAsDataAttributeInGenericClass
-
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
@@ -699,6 +695,11 @@ testRefreshGenericSubclass
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
+
+# "Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]""
+testInvalidMethodAsDataAttributeInGenericClass
+# "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
+testMethodWithInvalidMethodAsDataAttribute
 
 # Liskov
 *Liskov*
