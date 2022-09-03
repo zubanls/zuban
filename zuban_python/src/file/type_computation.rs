@@ -4,8 +4,8 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    GenericsList, Locality, Point, PointLink, PointType, Specific, TupleContent, TypeAlias,
-    TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType,
+    GenericsList, Locality, Point, PointLink, PointType, Specific, StringSlice, TupleContent,
+    TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -38,6 +38,8 @@ pub(super) enum SpecialType {
     Callable,
     Type,
     Tuple,
+    MypyExtensionsParamType(Specific),
+    CallableParam(CallableParam),
 }
 
 #[derive(Debug, Clone)]
@@ -570,9 +572,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
-            PrimaryContent::Execution(details) => {
-                TypeContent::InvalidVariable(InvalidVariableType::Execution)
-            }
+            PrimaryContent::Execution(details) => match base {
+                TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
+                    self.execute_mypy_extension_param(s, details)
+                }
+                _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
+            },
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
@@ -603,6 +608,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         }
                         SpecialType::GenericWithGenerics => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
+                        SpecialType::MypyExtensionsParamType(_) => todo!(),
+                        SpecialType::CallableParam(_) => todo!(),
                     },
                     TypeContent::InvalidVariable(t) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
@@ -784,12 +791,16 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                              element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = self.compute_type(n.expression());
-                params.as_mut().unwrap().push(CallableParam {
-                    param_kind: ParamKind::PositionalOnly,
-                    has_default: false,
-                    name: None,
-                    db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
-                })
+                if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
+                    params.as_mut().unwrap().push(p)
+                } else {
+                    params.as_mut().unwrap().push(CallableParam {
+                        param_kind: ParamKind::PositionalOnly,
+                        has_default: false,
+                        name: None,
+                        db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
+                    })
+                }
             } else {
                 todo!()
             }
@@ -1011,6 +1022,73 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
         }
+    }
+
+    fn execute_mypy_extension_param(
+        &mut self,
+        specific: Specific,
+        details: ArgumentsDetails,
+    ) -> TypeContent<'db, 'db> {
+        let mut name = None;
+        let db_type = match details {
+            ArgumentsDetails::Node(arguments) => {
+                let mut iterator = arguments.iter();
+                let db_type = if let Some(type_arg) = iterator.next() {
+                    if let Argument::Positional(named_expr) = type_arg {
+                        let t = self.compute_type(named_expr.expression());
+                        self.as_db_type(t, NodeRef::new(self.inference.file, named_expr.index()))
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    todo!()
+                };
+                name = iterator.next().map(|named_arg| match named_arg {
+                    Argument::Positional(named_expr) => {
+                        let expr = named_expr.expression();
+                        if let Some(literal) = named_expr.maybe_single_string_literal() {
+                            let (start, end) = literal.content_start_and_end_in_literal();
+                            let s = literal.start();
+                            StringSlice::new(self.inference.file.file_index(), s + start, s + end)
+                        } else {
+                            todo!()
+                        }
+                    }
+                    _ => todo!(),
+                });
+                if iterator.next().is_some() {
+                    todo!()
+                }
+                db_type
+            }
+            ArgumentsDetails::Comprehension(comprehension) => {
+                todo!()
+            }
+            ArgumentsDetails::None => todo!(),
+        };
+        let param_kind = match specific {
+            Specific::MypyExtensionsArg | Specific::MypyExtensionsDefaultArg => {
+                if name.is_some() {
+                    ParamKind::PositionalOrKeyword
+                } else {
+                    ParamKind::PositionalOnly
+                }
+            }
+            Specific::MypyExtensionsNamedArg => ParamKind::KeywordOnly,
+            Specific::MypyExtensionsDefaultNamedArg => ParamKind::KeywordOnly,
+            Specific::MypyExtensionsVarArg => ParamKind::Starred,
+            Specific::MypyExtensionsKwArg => ParamKind::DoubleStarred,
+            _ => unreachable!(),
+        };
+        TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
+            db_type,
+            name,
+            has_default: matches!(
+                specific,
+                Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
+            ),
+            param_kind,
+        }))
     }
 
     pub fn into_type_vars<C>(self, mut on_type_var_recalculation: C) -> TypeVars
@@ -1450,6 +1528,14 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingAny => SpecialType::Any,
             Specific::TypingGeneric => SpecialType::Generic,
             Specific::TypingProtocol => SpecialType::Protocol,
+            Specific::MypyExtensionsArg
+            | Specific::MypyExtensionsDefaultArg
+            | Specific::MypyExtensionsNamedArg
+            | Specific::MypyExtensionsDefaultNamedArg
+            | Specific::MypyExtensionsVarArg
+            | Specific::MypyExtensionsKwArg => {
+                SpecialType::MypyExtensionsParamType(point.specific())
+            }
             _ => return None,
         })
     } else {

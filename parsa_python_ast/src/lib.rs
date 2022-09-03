@@ -2697,7 +2697,37 @@ impl<'db> StringLiteral<'db> {
                 start += 1;
             }
         }
-        &code[start + 1..code.len() - 1]
+        let (start, end) = self.content_start_and_end_in_literal_internal();
+        &code[start..end]
+    }
+
+    fn content_start_and_end_in_literal_internal(&self) -> (usize, usize) {
+        let code = self.node.as_code();
+        let bytes_ = code.as_bytes();
+        let mut start = 0;
+        let mut quote = None;
+        for (i, b) in bytes_.iter().enumerate() {
+            if *b == b'"' || *b == b'\'' {
+                if let Some(quote) = quote {
+                    if *b == quote && i == start + 3 {
+                        return (start + 3, code.len() - 3);
+                    }
+                    break;
+                } else {
+                    quote = Some(*b);
+                }
+            } else if quote.is_some() {
+                break;
+            } else {
+                start += 1;
+            }
+        }
+        (start + 1, code.len() - 1)
+    }
+
+    pub fn content_start_and_end_in_literal(&self) -> (CodeIndex, CodeIndex) {
+        let (start, end) = self.content_start_and_end_in_literal_internal();
+        (start as CodeIndex, end as CodeIndex)
     }
 
     pub fn in_simple_assignment(&self) -> Option<NameDefinition<'db>> {

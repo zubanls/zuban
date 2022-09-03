@@ -100,7 +100,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testCallableWithNamedArg
 testCallableWithOptionalArg
 testCallableWithNamedArgFromExpr
 testCallableWithOptionalArgFromExpr
