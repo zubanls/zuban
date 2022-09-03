@@ -100,27 +100,18 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testCallableWithOptionalArg
-testCallableWithNamedArgFromExpr
-testCallableWithOptionalArgFromExpr
 testCallableParsingSameName
 testCallableParsingFromExpr
 testCallableParsing
 testCallableTypeAnalysis
-testCallableWrongTypeType
 testCallableTooManyVarArg
 testCallableFastParseGood
 testCallableFastParseBadArgArgName
 testCallableKindsOrdering
 testCallableDuplicateNames
-testCallableWithKeywordOnlyArg
-testCallableWithKeywordOnlyOptionalArg
-testCallableWithKwargs
-testCallableWithVarArg
 testCallableArgKindSubtyping
 testParamSpec
 testOverloadingWithParamSpec
-testReprocessCallableArg
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
