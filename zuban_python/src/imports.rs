@@ -19,6 +19,10 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
     if name == "types" {
         return Some(db.python_state.types().file_index());
     }
+    if name == "mypy_extensions" {
+        // TODO this is completely wrong
+        return Some(db.python_state.mypy_extensions().file_index());
+    }
 
     for (dir_path, dir) in db.workspaces.directories() {
         let result = python_import(db, dir_path, dir, name);

@@ -391,6 +391,13 @@ pub enum Specific {
     TypingAny,
     //TypedDict,
     RevealTypeFunction,
+
+    MypyExtensionsArg,
+    MypyExtensionsDefaultArg,
+    MypyExtensionsNamedArg,
+    MypyExtensionsDefaultNamedArg,
+    MypyExtensionsVarArg,
+    MypyExtensionsKwArg,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1655,7 +1662,9 @@ impl Database {
         let collections =
             self.py_load_tmp("../typeshed/stdlib/collections/__init__.pyi") as *const _;
         let types = self.py_load_tmp("../typeshed/stdlib/types.pyi") as *const _;
-        PythonState::initialize(self, builtins, typing, collections, types);
+        let mypy_extensions =
+            self.py_load_tmp("../typeshed/stubs/mypy-extensions/mypy_extensions.pyi") as *const _;
+        PythonState::initialize(self, builtins, typing, collections, types, mypy_extensions);
     }
 }
 

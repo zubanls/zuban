@@ -17,6 +17,7 @@ pub struct PythonState {
     typing: *const PythonFile,
     collections: *const PythonFile,
     types: *const PythonFile,
+    mypy_extensions: *const PythonFile,
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
@@ -35,6 +36,7 @@ impl PythonState {
             typing: null(),
             collections: null(),
             types: null(),
+            mypy_extensions: null(),
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
@@ -55,12 +57,14 @@ impl PythonState {
         typing: *const PythonFile,
         collections: *const PythonFile,
         types: *const PythonFile,
+        mypy_extensions: *const PythonFile,
     ) {
         let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
         s.collections = collections;
         s.types = types;
+        s.mypy_extensions = mypy_extensions;
         let builtins = s.builtins();
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
@@ -99,6 +103,7 @@ impl PythonState {
         }
 
         typing_changes(s.typing(), s.builtins(), s.collections());
+        mypy_extensions_changes(s.mypy_extensions());
     }
 
     #[inline]
@@ -123,6 +128,12 @@ impl PythonState {
     pub fn types(&self) -> &PythonFile {
         debug_assert!(!self.types.is_null());
         unsafe { &*self.types }
+    }
+
+    #[inline]
+    pub fn mypy_extensions(&self) -> &PythonFile {
+        debug_assert!(!self.mypy_extensions.is_null());
+        unsafe { &*self.mypy_extensions }
     }
 
     #[inline]
@@ -270,4 +281,33 @@ fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
     } else {
         unreachable!();
     }
+}
+
+fn mypy_extensions_changes(mypy_extensions: &PythonFile) {
+    set_mypy_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
+    set_mypy_specific(
+        mypy_extensions,
+        "DefaultArg",
+        Specific::MypyExtensionsDefaultArg,
+    );
+    set_mypy_specific(
+        mypy_extensions,
+        "NamedArg",
+        Specific::MypyExtensionsNamedArg,
+    );
+    set_mypy_specific(
+        mypy_extensions,
+        "DefaultNamedArg",
+        Specific::MypyExtensionsDefaultNamedArg,
+    );
+    set_mypy_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
+    set_mypy_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+}
+
+fn set_mypy_specific(file: &PythonFile, name: &str, specific: Specific) {
+    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    file.points.set(
+        node_index,
+        Point::new_simple_specific(specific, Locality::Stmt),
+    );
 }
