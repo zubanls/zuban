@@ -1039,6 +1039,15 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let mut iterator = arguments.iter();
                 let name_from_expr = |expr: Expression| {
                     if let Some(literal) = expr.maybe_single_string_literal() {
+                        if matches!(specific, Specific::MypyExtensionsVarArg) {
+                            NodeRef::new(self.inference.file, expr.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::InvalidType(Box::from(
+                                    "VarArg arguments should not have names",
+                                )),
+                            );
+                            return None;
+                        }
                         let (start, end) = literal.content_start_and_end_in_literal();
                         let s = literal.start();
                         Some(StringSlice::new(
