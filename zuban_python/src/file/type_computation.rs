@@ -468,7 +468,15 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     generics: None,
                     arbitrary_length: true,
                 }),
-                _ => todo!("{m:?}"),
+                _ => {
+                    if !self.errors_already_calculated {
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::InvalidType(Box::from("Invalid type")),
+                        );
+                    }
+                    DbType::Any
+                }
             },
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
@@ -1037,9 +1045,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         match details {
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
-                let name_from_expr = |expr: Expression| {
+                let name_from_expr = |slf: &mut Self, expr: Expression| {
                     if let Some(literal) = expr.maybe_single_string_literal() {
-                        if matches!(specific, Specific::MypyExtensionsVarArg) {
+                        if matches!(specific, Specific::MypyExtensionsVarArg)
+                            && !slf.errors_already_calculated
+                        {
                             NodeRef::new(self.inference.file, expr.index()).add_typing_issue(
                                 self.inference.i_s.db,
                                 IssueType::InvalidType(Box::from(
@@ -1062,27 +1072,42 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         None
                     }
                 };
-                let mut type_from_expr = |expr: Expression| {
-                    let t = self.compute_type(expr);
-                    Some(self.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
+                let type_from_expr = |slf: &mut Self, expr: Expression| {
+                    let t = slf.compute_type(expr);
+                    Some(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
                 };
-                match iterator.next().unwrap() {
+                let arg = iterator.next().unwrap();
+                match arg {
                     // The first arg is always there
-                    Argument::Positional(n) => db_type = type_from_expr(n.expression()),
-                    Argument::Keyword(key, expr) if key == "type" => db_type = type_from_expr(expr),
-                    Argument::Keyword(key, expr) if key == "name" => name = name_from_expr(expr),
+                    Argument::Positional(n) => db_type = type_from_expr(self, n.expression()),
+                    Argument::Keyword(key, expr) if key.as_code() == "type" => {
+                        db_type = type_from_expr(self, expr)
+                    }
+                    Argument::Keyword(key, expr) if key.as_code() == "name" => {
+                        name = name_from_expr(self, expr)
+                    }
+                    Argument::Keyword(key, _) => {
+                        if !self.errors_already_calculated {
+                            NodeRef::new(self.inference.file, key.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::InvalidType(Box::from(
+                                    "VarArg arguments should not have names",
+                                )),
+                            );
+                        }
+                    }
                     _ => todo!(),
                 };
                 if let Some(named_arg) = iterator.next() {
                     match named_arg {
                         Argument::Positional(named_expr) => {
-                            name = name_from_expr(named_expr.expression())
+                            name = name_from_expr(self, named_expr.expression())
                         }
-                        Argument::Keyword(key, expr) if key == "name" => {
-                            name = name_from_expr(expr)
+                        Argument::Keyword(key, expr) if key.as_code() == "name" => {
+                            name = name_from_expr(self, expr)
                         }
-                        Argument::Keyword(key, expr) if key == "type" => {
-                            db_type = type_from_expr(expr)
+                        Argument::Keyword(key, expr) if key.as_code() == "type" => {
+                            db_type = type_from_expr(self, expr)
                         }
                         _ => todo!(),
                     }

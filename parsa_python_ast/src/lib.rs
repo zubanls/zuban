@@ -2413,10 +2413,10 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
             } else if node.is_type(Nonterminal(kwarg)) {
                 // kwarg: Name "=" expression
                 let mut kwarg_iterator = node.iter_children();
-                let name = kwarg_iterator.next().unwrap().as_code();
+                let name = kwarg_iterator.next().unwrap();
                 kwarg_iterator.next();
                 let arg = kwarg_iterator.next().unwrap();
-                return Some(Argument::Keyword(name, Expression::new(arg)));
+                return Some(Argument::Keyword(Name::new(name), Expression::new(arg)));
             } else if node.is_type(Nonterminal(starred_expression)) {
                 return Some(Argument::Starred(Expression::new(node.nth_child(1))));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
@@ -2430,7 +2430,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
 #[derive(Debug)]
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
-    Keyword(&'db str, Expression<'db>),
+    Keyword(Name<'db>, Expression<'db>),
     Starred(Expression<'db>),
     DoubleStarred(Expression<'db>),
 }

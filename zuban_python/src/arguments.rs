@@ -324,7 +324,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                             inference.infer_named_expression(named_expr)
                         }
                         ASTArgument::Keyword(name, expr) => {
-                            prefix = format!("{name}=");
+                            prefix = format!("{}=", name.as_code());
                             inference.infer_expression(expr)
                         }
                         ASTArgument::Starred(expr) => {
@@ -386,7 +386,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         ASTArgument::Keyword(name, expr) => {
                             return Some(Self::Item::new_keyword_argument(
                                 python_file,
-                                name,
+                                name.as_code(),
                                 expr.index(),
                             ))
                         }
