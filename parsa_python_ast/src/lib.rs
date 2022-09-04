@@ -674,6 +674,15 @@ impl<'db> Expression<'db> {
         }
     }
 
+    pub fn is_none_literal(&self) -> bool {
+        match self.unpack() {
+            ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
+                matches!(a.unpack(), AtomContent::NoneLiteral)
+            }
+            _ => false,
+        }
+    }
+
     pub fn maybe_tuple(&self) -> Option<Tuple<'db>> {
         match self.unpack() {
             ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) => {
@@ -816,9 +825,7 @@ impl<'db> NamedExpression<'db> {
     pub fn is_ellipsis_literal(&self) -> bool {
         if let NamedExpressionContent::Expression(e) = self.unpack() {
             if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
-                if let AtomContent::Ellipsis = a.unpack() {
-                    return true;
-                }
+                return matches!(a.unpack(), AtomContent::Ellipsis);
             }
         }
         false

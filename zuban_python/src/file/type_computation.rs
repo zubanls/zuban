@@ -1056,7 +1056,10 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             s + end,
                         ))
                     } else {
-                        todo!()
+                        if !expr.is_none_literal() {
+                            todo!()
+                        }
+                        None
                     }
                 };
                 let mut type_from_expr = |expr: Expression| {
