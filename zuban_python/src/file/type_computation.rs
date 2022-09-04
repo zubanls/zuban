@@ -82,7 +82,10 @@ impl InvalidVariableType<'_, '_> {
                 );
             }
             Self::Execution => {
-                todo!()
+                node_ref.add_typing_issue(
+                    db,
+                    IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
+                );
             }
             Self::Function(func) => {
                 node_ref.add_typing_issue(
@@ -1030,41 +1033,63 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         details: ArgumentsDetails,
     ) -> TypeContent<'db, 'db> {
         let mut name = None;
-        let db_type = match details {
+        let mut db_type = None;
+        match details {
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
-                let db_type = if let Some(type_arg) = iterator.next() {
-                    if let Argument::Positional(named_expr) = type_arg {
-                        let t = self.compute_type(named_expr.expression());
-                        self.as_db_type(t, NodeRef::new(self.inference.file, named_expr.index()))
+                let name_from_expr = |expr: Expression| {
+                    if let Some(literal) = expr.maybe_single_string_literal() {
+                        let (start, end) = literal.content_start_and_end_in_literal();
+                        let s = literal.start();
+                        Some(StringSlice::new(
+                            self.inference.file.file_index(),
+                            s + start,
+                            s + end,
+                        ))
                     } else {
                         todo!()
                     }
-                } else {
-                    todo!()
                 };
-                name = iterator.next().map(|named_arg| match named_arg {
-                    Argument::Positional(named_expr) => {
-                        let expr = named_expr.expression();
-                        if let Some(literal) = named_expr.maybe_single_string_literal() {
-                            let (start, end) = literal.content_start_and_end_in_literal();
-                            let s = literal.start();
-                            StringSlice::new(self.inference.file.file_index(), s + start, s + end)
-                        } else {
-                            todo!()
-                        }
-                    }
+                let mut type_from_expr = |expr: Expression| {
+                    let t = self.compute_type(expr);
+                    Some(self.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
+                };
+                match iterator.next().unwrap() {
+                    // The first arg is always there
+                    Argument::Positional(n) => db_type = type_from_expr(n.expression()),
+                    Argument::Keyword(key, expr) if key == "type" => db_type = type_from_expr(expr),
+                    Argument::Keyword(key, expr) if key == "name" => name = name_from_expr(expr),
                     _ => todo!(),
-                });
+                };
+                if let Some(named_arg) = iterator.next() {
+                    match named_arg {
+                        Argument::Positional(named_expr) => {
+                            name = name_from_expr(named_expr.expression())
+                        }
+                        Argument::Keyword(key, expr) if key == "name" => {
+                            name = name_from_expr(expr)
+                        }
+                        Argument::Keyword(key, expr) if key == "type" => {
+                            db_type = type_from_expr(expr)
+                        }
+                        _ => todo!(),
+                    }
+                }
                 if iterator.next().is_some() {
                     todo!()
                 }
-                db_type
             }
             ArgumentsDetails::Comprehension(comprehension) => {
                 todo!()
             }
-            ArgumentsDetails::None => todo!(),
+            ArgumentsDetails::None => {
+                if matches!(
+                    specific,
+                    Specific::MypyExtensionsNamedArg | Specific::MypyExtensionsDefaultNamedArg
+                ) {
+                    todo!()
+                }
+            }
         };
         let param_kind = match specific {
             Specific::MypyExtensionsArg | Specific::MypyExtensionsDefaultArg => {
@@ -1081,7 +1106,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             _ => unreachable!(),
         };
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
-            db_type,
+            db_type: db_type.unwrap_or(DbType::Any),
             name,
             has_default: matches!(
                 specific,

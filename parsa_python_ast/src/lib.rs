@@ -686,6 +686,15 @@ impl<'db> Expression<'db> {
             _ => None,
         }
     }
+
+    pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = self.unpack() {
+            if let AtomContent::Strings(s) = a.unpack() {
+                return s.maybe_single_string_literal();
+            }
+        }
+        None
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -817,13 +826,10 @@ impl<'db> NamedExpression<'db> {
 
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
         if let NamedExpressionContent::Expression(e) = self.unpack() {
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
-                if let AtomContent::Strings(s) = a.unpack() {
-                    return s.maybe_single_string_literal();
-                }
-            }
+            e.maybe_single_string_literal()
+        } else {
+            None
         }
-        None
     }
 }
 

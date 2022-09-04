@@ -101,7 +101,6 @@ testOverloadIf*
 
 # Param spec
 testCallableParsingSameName
-testCallableParsingFromExpr
 testCallableParsing
 testCallableTypeAnalysis
 testCallableTooManyVarArg
