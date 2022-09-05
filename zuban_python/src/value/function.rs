@@ -280,7 +280,7 @@ impl<'db, 'a> Function<'db, 'a> {
                             let n = p.param.name_definition();
                             StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
                         }),
-                        param_kind: p.kind(),
+                        param_kind: p.kind(i_s.db),
                     })
                     .collect(),
             ),
@@ -403,7 +403,7 @@ impl<'db, 'a> Function<'db, 'a> {
                 let annotation_str = p
                     .annotation_type(i_s)
                     .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
-                let stars = match p.kind() {
+                let stars = match p.kind(i_s.db) {
                     ParamKind::Starred => "*",
                     ParamKind::DoubleStarred => "**",
                     _ => "",
@@ -565,8 +565,16 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
             .map(|a| PointLink::new(self.file.file_index(), a.index()))
     }
 
-    fn kind(&self) -> ParamKind {
-        self.param.type_()
+    fn kind(&self, db: &'db Database) -> ParamKind {
+        let mut t = self.param.type_();
+        if t == ParamKind::PositionalOrKeyword
+            && db.python_state.mypy_compatible
+            && self.param.name_definition().as_code().starts_with("__")
+        {
+            // Mypy treats __ params as positional only
+            t = ParamKind::PositionalOnly
+        }
+        t
     }
 }
 
@@ -605,7 +613,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
                 _ => unreachable!(),
             }
         }
-        match param.kind() {
+        match param.kind(self.db) {
             ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument.type_ {

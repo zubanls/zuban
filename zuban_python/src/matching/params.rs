@@ -15,7 +15,7 @@ pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
         // Can be None for Callable
         None
     }
-    fn kind(&self) -> ParamKind;
+    fn kind(&self, db: &'db Database) -> ParamKind;
 }
 
 pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
@@ -45,8 +45,8 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                     .or_else(|| unused_keyword_params.get(0))
                     .copied()
                 {
-                    let pt1 = param1.kind();
-                    let pt2 = param2.kind();
+                    let pt1 = param1.kind(i_s.db);
+                    let pt2 = param2.kind(i_s.db);
                     let matches_kind = match pt1 {
                         ParamKind::PositionalOnly => match pt2 {
                             ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
@@ -76,7 +76,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                     while match params2.peek() {
                                         Some(p2) => {
                                             matches!(
-                                                p2.kind(),
+                                                p2.kind(i_s.db),
                                                 ParamKind::KeywordOnly
                                                     | ParamKind::PositionalOrKeyword
                                             )
@@ -123,7 +123,10 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
             }
             for param2 in params2 {
                 if !param2.has_default()
-                    && !matches!(param2.kind(), ParamKind::Starred | ParamKind::DoubleStarred)
+                    && !matches!(
+                        param2.kind(i_s.db),
+                        ParamKind::Starred | ParamKind::DoubleStarred
+                    )
                 {
                     return Match::new_false();
                 }
@@ -181,13 +184,13 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
         .peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
-        match param1.kind() {
+        match param1.kind(db) {
             ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
                 if let Some(param2) = params2.peek() {
                     if !check_type(i_s, param1, *param2) {
                         return false;
                     }
-                    match param2.kind() {
+                    match param2.kind(db) {
                         ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
                             params2.next(); // We only peeked.
                         }
@@ -203,7 +206,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             }
             ParamKind::KeywordOnly => {
                 if let Some(param2) = params2.peek() {
-                    if param2.kind() == ParamKind::Starred {
+                    if param2.kind(db) == ParamKind::Starred {
                         params2.next();
                     }
                 }
@@ -212,7 +215,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                     .or_else(|| unused_keyword_params.get(0))
                     .copied()
                 {
-                    match param2.kind() {
+                    match param2.kind(db) {
                         ParamKind::PositionalOrKeyword => {
                             todo!()
                         }
@@ -227,7 +230,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
                             }
                             if !found {
                                 while match params2.peek() {
-                                    Some(p2) => matches!(p2.kind(), ParamKind::KeywordOnly),
+                                    Some(p2) => matches!(p2.kind(db), ParamKind::KeywordOnly),
                                     None => false,
                                 } {
                                     param2 = params2.next().unwrap();
@@ -255,9 +258,10 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
             }
             ParamKind::Starred => {
                 while match params2.peek() {
-                    Some(p) => {
-                        !matches!(p.kind(), ParamKind::KeywordOnly | ParamKind::DoubleStarred)
-                    }
+                    Some(p) => !matches!(
+                        p.kind(db),
+                        ParamKind::KeywordOnly | ParamKind::DoubleStarred
+                    ),
                     None => false,
                 } {
                     if let Some(param2) = params2.next() {
@@ -278,7 +282,10 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
         }
     }
     for param2 in params2 {
-        if !matches!(param2.kind(), ParamKind::Starred | ParamKind::DoubleStarred) {
+        if !matches!(
+            param2.kind(db),
+            ParamKind::Starred | ParamKind::DoubleStarred
+        ) {
             return false;
         }
     }
@@ -298,7 +305,7 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
         Some(Type::new(&self.db_type))
     }
 
-    fn kind(&self) -> ParamKind {
+    fn kind(&self, db: &'db Database) -> ParamKind {
         self.param_kind
     }
 }
@@ -384,7 +391,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 }
             }
             let mut argument_with_index = None;
-            match param.kind() {
+            match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
                         match arg.1.type_ {

@@ -1068,7 +1068,8 @@ pub struct CallableParam {
 
 impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.param_kind != ParamKind::PositionalOnly || self.has_default {
+        if self.param_kind != ParamKind::PositionalOnly || format_data.verbose && self.has_default {
+            let t = self.db_type.format(format_data);
             if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
@@ -1083,14 +1084,13 @@ impl CallableParam {
                                 format!("*{}: ", name.as_str(format_data.db))
                             }
                         };
-                        string += &self.db_type.format(format_data);
+                        string += &t;
                         if self.has_default {
                             string += " =";
                         }
                         return string.into();
                     }
                     _ => {
-                        let t = self.db_type.format(format_data);
                         return match self.param_kind {
                             ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
                                 if !format_data.verbose {
@@ -1115,6 +1115,8 @@ impl CallableParam {
                         .into();
                     }
                 }
+            } else if self.has_default {
+                return format!("DefaultArg({t})").into();
             }
         }
         self.db_type.format(format_data)
