@@ -100,8 +100,7 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testCallableFastParseGood
-testCallableFastParseBadArgArgName
+testCallableTypeAnalysis
 testCallableKindsOrdering
 testCallableDuplicateNames
 testCallableArgKindSubtyping

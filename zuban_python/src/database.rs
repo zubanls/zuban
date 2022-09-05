@@ -1068,13 +1068,14 @@ pub struct CallableParam {
 
 impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.param_kind != ParamKind::PositionalOnly {
+        if self.param_kind != ParamKind::PositionalOnly || self.has_default {
             if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match self.param_kind {
-                            ParamKind::PositionalOnly => unreachable!(),
-                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly => {
+                            ParamKind::PositionalOnly
+                            | ParamKind::PositionalOrKeyword
+                            | ParamKind::KeywordOnly => {
                                 format!("{}: ", name.as_str(format_data.db))
                             }
                             ParamKind::Starred => format!("*{}: ", name.as_str(format_data.db)),
@@ -1091,8 +1092,7 @@ impl CallableParam {
                     _ => {
                         let t = self.db_type.format(format_data);
                         return match self.param_kind {
-                            ParamKind::PositionalOnly => unreachable!(),
-                            ParamKind::PositionalOrKeyword => {
+                            ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
                                 if !format_data.verbose {
                                     return t;
                                 }
