@@ -100,7 +100,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testCallableTypeAnalysis
 testCallableArgKindSubtyping
 testParamSpec
 testOverloadingWithParamSpec

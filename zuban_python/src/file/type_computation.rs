@@ -587,6 +587,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
                     self.execute_mypy_extension_param(primary, s, details)
                 }
+                TypeContent::Unknown => TypeContent::Unknown,
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
             },
             PrimaryContent::GetItem(slice_type) => {
