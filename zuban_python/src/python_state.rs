@@ -8,7 +8,7 @@ use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::value::{Class, Function};
 
 pub struct PythonState {
     pub mypy_compatible: bool,
@@ -23,6 +23,12 @@ pub struct PythonState {
     builtins_tuple_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     types_module_type_index: NodeIndex,
+    mypy_extensions_arg_func: NodeIndex,
+    mypy_extensions_default_arg_func: NodeIndex,
+    mypy_extensions_named_arg_func: NodeIndex,
+    mypy_extensions_default_named_arg_func: NodeIndex,
+    mypy_extensions_kw_arg_func: NodeIndex,
+    mypy_extensions_var_arg_func: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_arbitrary_tuple: DbType,
@@ -42,6 +48,12 @@ impl PythonState {
             builtins_tuple_index: 0,
             builtins_base_exception_index: 0,
             types_module_type_index: 0,
+            mypy_extensions_arg_func: 0,
+            mypy_extensions_default_arg_func: 0,
+            mypy_extensions_named_arg_func: 0,
+            mypy_extensions_default_named_arg_func: 0,
+            mypy_extensions_kw_arg_func: 0,
+            mypy_extensions_var_arg_func: 0,
             type_of_object: DbType::Type(Box::new(DbType::Any)),
             type_of_any: DbType::Type(Box::new(DbType::Any)),
             type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(TupleContent {
@@ -103,7 +115,29 @@ impl PythonState {
         }
 
         typing_changes(s.typing(), s.builtins(), s.collections());
-        mypy_extensions_changes(s.mypy_extensions());
+
+        let mypy_extensions = unsafe { &*s.mypy_extensions };
+        s.mypy_extensions_arg_func =
+            set_mypy_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
+        s.mypy_extensions_default_arg_func = set_mypy_specific(
+            mypy_extensions,
+            "DefaultArg",
+            Specific::MypyExtensionsDefaultArg,
+        );
+        s.mypy_extensions_named_arg_func = set_mypy_specific(
+            mypy_extensions,
+            "NamedArg",
+            Specific::MypyExtensionsNamedArg,
+        );
+        s.mypy_extensions_default_named_arg_func = set_mypy_specific(
+            mypy_extensions,
+            "DefaultNamedArg",
+            Specific::MypyExtensionsDefaultNamedArg,
+        );
+        s.mypy_extensions_var_arg_func =
+            set_mypy_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
+        s.mypy_extensions_kw_arg_func =
+            set_mypy_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
     }
 
     #[inline]
@@ -196,6 +230,19 @@ impl PythonState {
         let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
         Class::from_position(node_ref, Generics::None, None).unwrap()
     }
+
+    pub fn mypy_extensions_arg_func<'x>(&self, specific: Specific) -> Function<'_, 'x> {
+        let node_index = match specific {
+            Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
+            Specific::MypyExtensionsDefaultArg => self.mypy_extensions_default_arg_func,
+            Specific::MypyExtensionsNamedArg => self.mypy_extensions_named_arg_func,
+            Specific::MypyExtensionsDefaultNamedArg => self.mypy_extensions_default_named_arg_func,
+            Specific::MypyExtensionsVarArg => self.mypy_extensions_var_arg_func,
+            Specific::MypyExtensionsKwArg => self.mypy_extensions_kw_arg_func,
+            _ => unreachable!(),
+        };
+        Function::new(NodeRef::new(self.mypy_extensions(), node_index), None)
+    }
 }
 
 fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &PythonFile) {
@@ -283,31 +330,14 @@ fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
     }
 }
 
-fn mypy_extensions_changes(mypy_extensions: &PythonFile) {
-    set_mypy_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
-    set_mypy_specific(
-        mypy_extensions,
-        "DefaultArg",
-        Specific::MypyExtensionsDefaultArg,
-    );
-    set_mypy_specific(
-        mypy_extensions,
-        "NamedArg",
-        Specific::MypyExtensionsNamedArg,
-    );
-    set_mypy_specific(
-        mypy_extensions,
-        "DefaultNamedArg",
-        Specific::MypyExtensionsDefaultNamedArg,
-    );
-    set_mypy_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
-    set_mypy_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
-}
-
-fn set_mypy_specific(file: &PythonFile, name: &str, specific: Specific) {
+fn set_mypy_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    // Act on the name def index and not the name.
+    let old_point = file.points.get(node_index - 1);
     file.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
+    debug_assert_eq!(old_point.type_(), PointType::Redirect);
+    old_point.node_index()
 }

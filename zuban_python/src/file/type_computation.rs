@@ -14,7 +14,7 @@ use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -585,7 +585,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             }
             PrimaryContent::Execution(details) => match base {
                 TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
-                    self.execute_mypy_extension_param(s, details)
+                    self.execute_mypy_extension_param(primary, s, details)
                 }
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
             },
@@ -1037,11 +1037,14 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn execute_mypy_extension_param(
         &mut self,
+        primary: Primary,
         specific: Specific,
         details: ArgumentsDetails,
     ) -> TypeContent<'db, 'db> {
         let mut name = None;
         let mut db_type = None;
+        self.inference
+            .infer_primary(primary, ResultContext::Unknown);
         match details {
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
@@ -1087,14 +1090,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         name = name_from_expr(self, expr)
                     }
                     Argument::Keyword(key, _) => {
-                        if !self.errors_already_calculated {
-                            NodeRef::new(self.inference.file, key.index()).add_typing_issue(
-                                self.inference.i_s.db,
-                                IssueType::InvalidType(Box::from(
-                                    "VarArg arguments should not have names",
-                                )),
-                            );
-                        }
+                        // TODO?
                     }
                     _ => todo!(),
                 };
@@ -1111,9 +1107,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         }
                         _ => todo!(),
                     }
-                }
-                if iterator.next().is_some() {
-                    todo!()
                 }
             }
             ArgumentsDetails::Comprehension(comprehension) => {

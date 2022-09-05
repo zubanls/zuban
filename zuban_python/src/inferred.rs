@@ -292,6 +292,15 @@ impl<'db> Inferred<'db> {
             Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
             Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
             Specific::None => callable(i_s, &NoneInstance()),
+            Specific::MypyExtensionsArg
+            | Specific::MypyExtensionsDefaultArg
+            | Specific::MypyExtensionsNamedArg
+            | Specific::MypyExtensionsDefaultNamedArg
+            | Specific::MypyExtensionsVarArg
+            | Specific::MypyExtensionsKwArg => {
+                let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                callable(i_s, &func)
+            }
             _ => {
                 let instance = self.resolve_specific(i_s.db, specific);
                 callable(i_s, &instance)
