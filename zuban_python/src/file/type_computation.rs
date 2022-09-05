@@ -851,6 +851,30 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         }
                         return;
                     }
+
+                    if let Some(param_name) = p.name {
+                        let param_name = param_name.as_str(self.inference.i_s.db);
+                        for other in params.as_ref().unwrap() {
+                            if let Some(other_name) = other.name {
+                                let other_name = other_name.as_str(self.inference.i_s.db);
+                                if param_name == other_name {
+                                    if !self.errors_already_calculated {
+                                        NodeRef::new(self.inference.file, n.index())
+                                            .add_typing_issue(
+                                                self.inference.i_s.db,
+                                                IssueType::InvalidType(
+                                                    format!(
+                                                "Duplicate argument \"{param_name}\" in Callable",
+                                            )
+                                                    .into(),
+                                                ),
+                                            );
+                                    }
+                                    return;
+                                }
+                            }
+                        }
+                    }
                 }
                 params.as_mut().unwrap().push(p);
             } else {
