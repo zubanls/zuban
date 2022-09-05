@@ -100,10 +100,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testCallableParsingSameName
-testCallableParsingFromExpr
-testCallableTypeAnalysis
-testCallableTooManyVarArg
 testCallableFastParseGood
 testCallableFastParseBadArgArgName
 testCallableKindsOrdering

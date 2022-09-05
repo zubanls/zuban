@@ -802,16 +802,30 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                              element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = self.compute_type(n.expression());
-                if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
-                    params.as_mut().unwrap().push(p)
+                let p = if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
+                    p
                 } else {
-                    params.as_mut().unwrap().push(CallableParam {
+                    CallableParam {
                         param_kind: ParamKind::PositionalOnly,
                         has_default: false,
                         name: None,
                         db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
-                    })
+                    }
+                };
+                if let Some(previous_kind) = params.as_ref().unwrap().last().map(|p| p.param_kind) {
+                    if p.param_kind == ParamKind::PositionalOnly && p.param_kind != previous_kind {
+                        if !self.errors_already_calculated {
+                            NodeRef::new(self.inference.file, n.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::InvalidType(Box::from(
+                                    "Required positional args may not appear after default, named or var args",
+                                )),
+                            );
+                        }
+                        return;
+                    }
                 }
+                params.as_mut().unwrap().push(p);
             } else {
                 todo!()
             }
@@ -1050,17 +1064,6 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let mut iterator = arguments.iter();
                 let name_from_expr = |slf: &mut Self, expr: Expression| {
                     if let Some(literal) = expr.maybe_single_string_literal() {
-                        if matches!(specific, Specific::MypyExtensionsVarArg)
-                            && !slf.errors_already_calculated
-                        {
-                            NodeRef::new(self.inference.file, expr.index()).add_typing_issue(
-                                self.inference.i_s.db,
-                                IssueType::InvalidType(Box::from(
-                                    "VarArg arguments should not have names",
-                                )),
-                            );
-                            return None;
-                        }
                         let (start, end) = literal.content_start_and_end_in_literal();
                         let s = literal.start();
                         Some(StringSlice::new(
@@ -1089,10 +1092,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     Argument::Keyword(key, expr) if key.as_code() == "name" => {
                         name = name_from_expr(self, expr)
                     }
-                    Argument::Keyword(key, _) => {
-                        // TODO?
-                    }
-                    _ => todo!(),
+                    _ => (),
                 };
                 if let Some(named_arg) = iterator.next() {
                     match named_arg {
@@ -1105,7 +1105,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         Argument::Keyword(key, expr) if key.as_code() == "type" => {
                             db_type = type_from_expr(self, expr)
                         }
-                        _ => todo!(),
+                        _ => (),
                     }
                 }
             }
