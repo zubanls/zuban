@@ -820,12 +820,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         ),
                         ParamKind::PositionalOrKeyword => {
                             if previous.has_default && !p.has_default {
-                                todo!()
+                                Some("Required positional args may not appear after default, named or var args")
                             } else if p.param_kind < prev_kind {
                                 if p.has_default {
                                     Some("Positional default args may not appear after named or var args")
                                 } else {
-                                    todo!()
+                                    Some("Required positional args may not appear after default, named or var args")
                                 }
                             } else {
                                 None
