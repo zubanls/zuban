@@ -101,7 +101,6 @@ testOverloadIf*
 
 # Param spec
 testCallableTypeAnalysis
-testCallableKindsOrdering
 testCallableDuplicateNames
 testCallableArgKindSubtyping
 testParamSpec

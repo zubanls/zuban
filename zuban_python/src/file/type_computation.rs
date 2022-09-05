@@ -812,14 +812,41 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
                     }
                 };
-                if let Some(previous_kind) = params.as_ref().unwrap().last().map(|p| p.param_kind) {
-                    if p.param_kind == ParamKind::PositionalOnly && p.param_kind != previous_kind {
+                if let Some(previous) = params.as_ref().unwrap().last() {
+                    let prev_kind = previous.param_kind;
+                    let msg = match p.param_kind {
+                        ParamKind::PositionalOnly if p.param_kind < prev_kind || previous.has_default && !p.has_default => Some(
+                            "Required positional args may not appear after default, named or var args",
+                        ),
+                        ParamKind::PositionalOrKeyword => {
+                            if previous.has_default && !p.has_default {
+                                todo!()
+                            } else if p.param_kind < prev_kind {
+                                if p.has_default {
+                                    Some("Positional default args may not appear after named or var args")
+                                } else {
+                                    todo!()
+                                }
+                            } else {
+                                None
+                            }
+                        }
+                        ParamKind::Starred if p.param_kind <= prev_kind => Some(
+                            "Var args may not appear after named or var args",
+                        ),
+                        ParamKind::KeywordOnly if p.param_kind <= prev_kind => Some(
+                            "A **kwargs argument must be the last argument"
+                        ),
+                        ParamKind::DoubleStarred if p.param_kind == prev_kind => Some(
+                            "You may only have one **kwargs argument"
+                        ),
+                        _ => None,
+                    };
+                    if let Some(msg) = msg {
                         if !self.errors_already_calculated {
                             NodeRef::new(self.inference.file, n.index()).add_typing_issue(
                                 self.inference.i_s.db,
-                                IssueType::InvalidType(Box::from(
-                                    "Required positional args may not appear after default, named or var args",
-                                )),
+                                IssueType::InvalidType(Box::from(msg)),
                             );
                         }
                         return;
