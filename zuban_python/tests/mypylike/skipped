@@ -1117,11 +1117,6 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 
-# param with leading __
-testPositionalOnlyArg
-testMagicMethodPositionalOnlyArg
-testMagicMethodPositionalOnlyArgFastparse
-
 # for type comment
 testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
@@ -1156,6 +1151,10 @@ testScriptsAreModules
 # cmd: mypy ...
 testNonExistentFileOnCommandLine1
 testInlineConfigFineGrained*
+
+# Won't support: __eq__ called directly with a keyword argument
+testMagicMethodPositionalOnlyArg
+testMagicMethodPositionalOnlyArgFastparse
 
 # Won't support: reveal_locals
 testRevealLocalsFunction

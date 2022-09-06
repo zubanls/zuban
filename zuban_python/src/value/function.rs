@@ -570,6 +570,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
         if t == ParamKind::PositionalOrKeyword
             && db.python_state.mypy_compatible
             && self.param.name_definition().as_code().starts_with("__")
+            && !self.param.name_definition().as_code().ends_with("__")
         {
             // Mypy treats __ params as positional only
             t = ParamKind::PositionalOnly
