@@ -1,47 +1,24 @@
 # Next up
+testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-testOverloadPositionalOnlyErrorMessageOldStyle
-testOverloadedStaticMethodOnInstance
-
-testMethodAsDataAttribute
-testMethodWithDynamicallyTypedMethodAsDataAttribute
 testMethodWithInferredMethodAsDataAttribute
-testPartiallyTypedSelfInMethodDataAttribute
-testCallableDataAttribute
-testCallableTypeAnalysis
-
-testBoundGenericMethodFine
-
-testGenericTypeAliasesWithNestedArgs
-testSubtypingWithGenericFunctions
-testGenericFunctionsWithUnalignedIds
-testConstrainedGenericSuper
-testSelfReferentialSubscriptExpression
-testTrailingCommaParsing
-testTrailingCommaInIfParsing
-testClassLevelTypeAliasesInUnusualContexts
-testMalformedTypeAliasRuntimeReassignments
+testOverloadPositionalOnlyErrorMessageOldStyle
 testIterableBoundUnpacking
-testNoReExportUnrelatedModule
-testNoReExportUnrelatedSiblingPrefix
-testSpecialModulesNameImplicitAttr
-testSpecialAttrsAreAvaliableInClasses
-testIncompatibleOverrideFromCachedModuleIncremental
-testUnionWithEllipsis
-testLambdaJoinWithDynamicConstructor
-testSuggestPep604AnnotationForPartialNone
+testGenericFunctionsWithUnalignedIds
+testSubtypingWithGenericFunctions
+
 testUseSupertypeAsInferenceContext
 testUseSupertypeAsInferenceContextInvalidType
 testUseSupertypeAsInferenceContextPartial
 testUseSupertypeAsInferenceContextPartialError
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testUseSupertypeAsInferenceContextConflict
-testNoPartialInSupertypeAsContext
+
+# --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
-testModuleAsProtocolImplementationFine
 
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
@@ -113,6 +90,7 @@ testOverloadClassMethodMixingInheritance
 testOverloadFaultyStaticMethodInheritance
 testOverloadStaticMethodMixingInheritance
 testOverloadStaticMethodImplementation
+testOverloadedStaticMethodOnInstance
 testUnsafeDunderOverlapInSubclass
 # - Overload does not consistently use the "@classmethod" decorator on all function signatures
 # - Overload does not consistently use the "@staticmethod" decorator on all function signatures
@@ -179,6 +157,8 @@ testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testRecursiveForwardReferenceInUnion
+testBoundGenericMethodFine
+testSelfReferentialSubscriptExpression
 # Class generics cycles / + type alias cycles
 testNewAnalyzerAliasToNotReadyDirectBase
 testNewAnalyzerAliasToNotReadyDirectBaseFunction
@@ -193,6 +173,8 @@ testNewAnalyzerAliasToNotReadyNestedClass2
 
 # Module attributes
 testModuleImplicitAttributes
+testSpecialAttrsAreAvaliableInClasses
+testSpecialModulesNameImplicitAttr
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
 
@@ -477,6 +459,7 @@ testLambdaDeferredSpecialCase
 testInferCallableReturningNone1
 testInferCallableReturningNone2
 testErasedTypeRuntimeCoverage
+testLambdaJoinWithDynamicConstructor
 # Lambda with defined return types (inferred context)
 testInferLambdaArgumentTypeUsingContext
 testInferLambdaReturnTypeUsingContext
@@ -555,6 +538,10 @@ testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
 
+# x: typing_extensions.TypeAlias = int
+testClassLevelTypeAliasesInUnusualContexts
+testMalformedTypeAliasRuntimeReassignments
+
 # mypy extensions
 testFlexibleAlias*
 
@@ -629,6 +616,8 @@ testNoReExportNestedStub
 testNoReExportFromMissingStubs
 testMissingGenericImport
 testStubFixupIssues
+testNoReExportUnrelatedModule
+testNoReExportUnrelatedSiblingPrefix
 
 # Import itself / Extremely weird import orders
 testNewAnalyzerImportCycleWithIgnoreMissingImports
@@ -721,18 +710,20 @@ testOverrideGenericMethodInNonGenericClassGeneralize
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedInitSupertype
+testIncompatibleOverrideFromCachedModuleIncremental
 
 # "Access to generic instance variables via class is ambiguous"
 testGenericClassAttrUnboundOnClass
 testGenericClassAttrUnboundOnSubClass
 
-# super
+# super()
 testSuperExpressionsWhenInheritingFromGenericType
 testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
 testSuperOutsideClass
 testSuperField
 testSuperBasics
 testRefreshGenericSubclass
+testConstrainedGenericSuper
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -741,6 +732,12 @@ testInheritanceFromGenericWithImplicitDynamic
 testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
+
+# ClassVar
+testMethodAsDataAttribute
+testMethodWithDynamicallyTypedMethodAsDataAttribute
+testPartiallyTypedSelfInMethodDataAttribute
+testCallableDataAttribute
 
 # Liskov
 *Liskov*
@@ -782,6 +779,8 @@ testImportedVariableViaImport
 # syntax errors
 testPreferPackageOverFile
 testPreferPackageOverFile2
+testTrailingCommaParsing
+testTrailingCommaInIfParsing
 
 # async/await
 *Await*
@@ -928,6 +927,7 @@ testProtocolVsProtocol*
 testProtocolMultipleUpdates
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
+testModuleAsProtocolImplementationFine
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
@@ -959,6 +959,8 @@ testPartialDefaultDict*
 testInferenceOfFor*
 testInferLocalVariableTypeWithUnderspecifiedGenericType
 testLocalVariableInferenceFromEmptyList
+testNoPartialInSupertypeAsContext
+testSuggestPep604AnnotationForPartialNone
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -1085,6 +1087,8 @@ testVariableDeclWithInvalidNumberOfTypesNested
 testVariableDeclWithInvalidNumberOfTypesNested2
 testVariableDeclWithInvalidNumberOfTypesNested4
 
+# EllipsisType
+testUnionWithEllipsis
 # Weird ellipsis assignment
 testEllipsisInitializerInStubFileWithType
 testEllipsisDefaultArgValueInStub2
@@ -1157,6 +1161,7 @@ testLimitLegacyStubErrorVolume
 
 # --pretty
 testReprocessMethodShowSource
+testGenericTypeAliasesWithNestedArgs
 
 # syntax not yet supported
 testBreakOutsideLoop
@@ -1234,7 +1239,6 @@ testOptionalIsNotAUnionIfNoStrictOverloadStr
 testNoSubscriptionOfBuiltinAliases
 
 # Skips
-testTrailingCommaParsing-skip
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
