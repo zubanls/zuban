@@ -491,6 +491,8 @@ testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 
 # typing extensions
 testInvalidUnpackTypes
+
+# TypeVarTuple / typing_extensions.Unpack
 testTypeVarTuple
 testRuntimeProtoTwoBases
 
@@ -1116,13 +1118,9 @@ testInvalidWithTarget
 testInvalidTypeAnnotation2
 
 # param with leading __
-testLackOfNames
-testLackOfNamesFastparse
 testPositionalOnlyArg
 testMagicMethodPositionalOnlyArg
 testMagicMethodPositionalOnlyArgFastparse
-testAnonymousArgumentError
-testGenericFunctionTypeDecl
 
 # for type comment
 testRefreshForWithTypeComment1
