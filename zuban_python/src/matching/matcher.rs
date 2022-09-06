@@ -13,6 +13,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
+use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
@@ -826,6 +827,31 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             }
         }
     }
+    let add_keyword_argument_issue = |reference: NodeRef<'db>, name| {
+        let s = if let Some(function) = function {
+            if function.iter_params().any(|p| {
+                p.name(i_s.db) == Some(name)
+                    && matches!(
+                        p.kind(i_s.db),
+                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                    )
+            }) {
+                format!(
+                    "{} gets multiple values for keyword argument {name:?}",
+                    function.diagnostic_string(class),
+                )
+            } else {
+                format!(
+                    "Unexpected keyword argument {name:?} for {}",
+                    function.diagnostic_string(class),
+                )
+            }
+        } else {
+            debug!("TODO this keyword param could also exist");
+            format!("Unexpected keyword argument {name:?}")
+        };
+        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+    };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
         if should_generate_errors || true {
@@ -846,12 +872,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             for arg in args_with_params.arguments {
                 match arg.1.type_ {
                     ArgumentType::Keyword(name, reference) => {
-                        let mut s = format!("Unexpected keyword argument {name:?}");
-                        if let Some(function) = function {
-                            s += " for ";
-                            s += &function.diagnostic_string(class);
-                        }
-                        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                        add_keyword_argument_issue(reference, name)
                     }
                     _ => too_many = true,
                 }
@@ -871,29 +892,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         for unused in args_with_params.unused_keyword_arguments {
             match unused.1.type_ {
                 ArgumentType::Keyword(name, reference) => {
-                    let s = if let Some(function) = function {
-                        if function.iter_params().any(|p| {
-                            p.name(i_s.db) == Some(name)
-                                && matches!(
-                                    p.kind(i_s.db),
-                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                                )
-                        }) {
-                            format!(
-                                "{:?} gets multiple values for keyword argument {name:?}",
-                                function.name(),
-                            )
-                        } else {
-                            format!(
-                                "Unexpected keyword argument {name:?} for {:?}",
-                                function.name(),
-                            )
-                        }
-                    } else {
-                        debug!("TODO this keyword param could also exist");
-                        format!("Unexpected keyword argument {name:?}")
-                    };
-                    reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                    add_keyword_argument_issue(reference, name)
                 }
                 _ => unreachable!(),
             }
