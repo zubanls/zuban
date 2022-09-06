@@ -872,12 +872,13 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             match unused.1.type_ {
                 ArgumentType::Keyword(name, reference) => {
                     let s = if let Some(function) = function {
-                        if function
-                            .node()
-                            .params()
-                            .iter()
-                            .any(|p| p.name_definition().as_code() == name)
-                        {
+                        if function.iter_params().any(|p| {
+                            p.name(i_s.db) == Some(name)
+                                && matches!(
+                                    p.kind(i_s.db),
+                                    ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                                )
+                        }) {
                             format!(
                                 "{:?} gets multiple values for keyword argument {name:?}",
                                 function.name(),
