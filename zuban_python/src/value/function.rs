@@ -410,24 +410,31 @@ impl<'db, 'a> Function<'db, 'a> {
                     ParamKind::DoubleStarred => "**",
                     _ => "",
                 };
-                let mut out = if let Some(annotation_str) = annotation_str {
-                    if current_kind == ParamKind::PositionalOnly {
-                        annotation_str.into()
-                    } else {
-                        format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
-                    }
-                } else if i == 0 && self.class.is_some() && stars.is_empty() {
+                let mut out = if i == 0
+                    && self.class.is_some()
+                    && stars.is_empty()
+                    && annotation_str.is_none()
+                {
                     p.name(i_s.db).unwrap().to_owned()
                 } else {
-                    format!("{stars}{}: Any", p.name(i_s.db).unwrap())
+                    let mut out = if current_kind == ParamKind::PositionalOnly {
+                        annotation_str.unwrap_or_else(|| Box::from("Any")).into()
+                    } else {
+                        format!(
+                            "{stars}{}: {}",
+                            p.name(i_s.db).unwrap(),
+                            annotation_str.as_deref().unwrap_or("Any")
+                        )
+                    };
+                    if previous_kind == Some(ParamKind::PositionalOnly)
+                        && current_kind != ParamKind::PositionalOnly
+                    {
+                        out = format!(" /, {out}")
+                    }
+                    out
                 };
                 if p.has_default() {
                     out += " = ...";
-                }
-                if previous_kind == Some(ParamKind::PositionalOnly)
-                    && current_kind != ParamKind::PositionalOnly
-                {
-                    out = format!(" /, {out}")
                 }
                 previous_kind = Some(current_kind);
                 out
