@@ -880,6 +880,20 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 value_node_ref,
                                 is_definition,
                             );
+                        } else if value_iterator.len().is_none() {
+                            let value = value_iterator.next(self.i_s).unwrap();
+                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                                self.i_s.db.python_state.list().as_link(),
+                                Some(GenericsList::new_generics(Box::new([
+                                    value.class_as_db_type(self.i_s)
+                                ]))),
+                            ));
+                            self.assign_targets(
+                                star_target.as_target(),
+                                &list,
+                                value_node_ref,
+                                is_definition,
+                            );
                         } else {
                             todo!()
                         }
