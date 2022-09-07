@@ -347,8 +347,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 if matches!(db_type, DbType::Class(_, _) | DbType::Tuple(_)) {
                     BaseClass::DbType(db_type)
                 } else {
-                    NodeRef::new(self.inference.file, expr.index())
-                        .add_typing_issue(self.inference.i_s.db, IssueType::InvalidBaseClass);
+                    self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
                     BaseClass::Invalid
                 }
             }
@@ -415,19 +414,17 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 .as_db_type(self.inference.i_s),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
-                if !self.errors_already_calculated {
-                    node_ref.add_typing_issue(
-                        self.inference.i_s.db,
-                        IssueType::InvalidType(
-                            format!(
-                                "Module {:?} is not valid as a type",
-                                Module::new(self.inference.i_s.db, m)
-                                    .qualified_name(self.inference.i_s.db),
-                            )
-                            .into(),
-                        ),
-                    );
-                }
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::InvalidType(
+                        format!(
+                            "Module {:?} is not valid as a type",
+                            Module::new(self.inference.i_s.db, m)
+                                .qualified_name(self.inference.i_s.db),
+                        )
+                        .into(),
+                    ),
+                );
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => a.as_db_type(),
@@ -448,12 +445,10 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                     arbitrary_length: true,
                 }),
                 _ => {
-                    if !self.errors_already_calculated {
-                        node_ref.add_typing_issue(
-                            self.inference.i_s.db,
-                            IssueType::InvalidType(Box::from("Invalid type")),
-                        );
-                    }
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from("Invalid type")),
+                    );
                     DbType::Any
                 }
             },
@@ -525,16 +520,14 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             self.compute_type_name(name)
                         } else {
                             let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            if !self.errors_already_calculated {
-                                node_ref.add_typing_issue(
-                                    self.inference.i_s.db,
-                                    IssueType::TypeNotFound,
-                                );
-                                self.inference.file.points.set(
-                                    name.index(),
-                                    Point::new_unknown(f.file_index(), Locality::Todo),
-                                );
-                            }
+                            self.add_typing_issue_for_index(
+                                primary.index(),
+                                IssueType::TypeNotFound,
+                            );
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_unknown(f.file_index(), Locality::Todo),
+                            );
                             TypeContent::Unknown
                         }
                     }
@@ -545,9 +538,10 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             self.compute_type_name(name)
                         } else {
                             debug_assert_eq!(point_type, PointType::Unknown);
-                            let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            node_ref
-                                .add_typing_issue(self.inference.i_s.db, IssueType::TypeNotFound);
+                            self.add_typing_issue_for_index(
+                                primary.index(),
+                                IssueType::TypeNotFound,
+                            );
                             TypeContent::Unknown
                         }
                     }
@@ -716,9 +710,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 }
             })
         };
-        if given_count != expected_count && !self.errors_already_calculated {
-            slice_type.as_node_ref().add_typing_issue(
-                self.inference.i_s.db,
+        if given_count != expected_count {
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
                 IssueType::TypeArgumentIssue {
                     class: Box::from(class.name()),
                     expected_count,
@@ -778,10 +772,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
         let mut params = Some(vec![]);
         let db = self.inference.i_s.db;
-        let mut add_param = |params: &mut Option<Vec<CallableParam>>,
-                             element: StarLikeExpression| {
+        let add_param = |slf: &mut Self,
+                         params: &mut Option<Vec<CallableParam>>,
+                         element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
-                let t = self.compute_type(n.expression());
+                let t = slf.compute_type(n.expression());
                 let p = if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
                     p
                 } else {
@@ -789,7 +784,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         param_kind: ParamKind::PositionalOnly,
                         has_default: false,
                         name: None,
-                        db_type: self.as_db_type(t, NodeRef::new(self.inference.file, n.index())),
+                        db_type: slf.as_db_type(t, NodeRef::new(slf.inference.file, n.index())),
                     }
                 };
                 if let Some(previous) = params.as_ref().unwrap().last() {
@@ -823,33 +818,28 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                         _ => None,
                     };
                     if let Some(msg) = msg {
-                        if !self.errors_already_calculated {
-                            NodeRef::new(self.inference.file, n.index()).add_typing_issue(
-                                self.inference.i_s.db,
-                                IssueType::InvalidType(Box::from(msg)),
-                            );
-                        }
+                        slf.add_typing_issue_for_index(
+                            n.index(),
+                            IssueType::InvalidType(Box::from(msg)),
+                        );
                         return;
                     }
 
                     if let Some(param_name) = p.name {
-                        let param_name = param_name.as_str(self.inference.i_s.db);
+                        let param_name = param_name.as_str(slf.inference.i_s.db);
                         for other in params.as_ref().unwrap() {
                             if let Some(other_name) = other.name {
-                                let other_name = other_name.as_str(self.inference.i_s.db);
+                                let other_name = other_name.as_str(slf.inference.i_s.db);
                                 if param_name == other_name {
-                                    if !self.errors_already_calculated {
-                                        NodeRef::new(self.inference.file, n.index())
-                                            .add_typing_issue(
-                                                self.inference.i_s.db,
-                                                IssueType::InvalidType(
-                                                    format!(
+                                    slf.add_typing_issue_for_index(
+                                        n.index(),
+                                        IssueType::InvalidType(
+                                            format!(
                                                 "Duplicate argument \"{param_name}\" in Callable",
                                             )
-                                                    .into(),
-                                                ),
-                                            );
-                                    }
+                                            .into(),
+                                        ),
+                                    );
                                     return;
                                 }
                             }
@@ -873,14 +863,16 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                             AtomContent::List(list) => {
                                 if let Some(iterator) = list.unpack() {
                                     for i in iterator {
-                                        add_param(&mut params, i)
+                                        add_param(self, &mut params, i)
                                     }
                                 }
                             }
                             AtomContent::Ellipsis => params = None,
                             _ => {
-                                n.as_node_ref()
-                                    .add_typing_issue(db, IssueType::InvalidCallableParams);
+                                self.add_typing_issue(
+                                    n.as_node_ref(),
+                                    IssueType::InvalidCallableParams,
+                                );
                                 params = None
                             }
                         }
@@ -899,9 +891,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 result_type,
             }
         } else {
-            slice_type
-                .as_node_ref()
-                .add_typing_issue(db, IssueType::InvalidCallableArgCount);
+            self.add_typing_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
             CallableContent {
                 defined_at,
                 type_vars: None,
@@ -981,8 +971,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
         let mismatch = given_count != expected_count;
         if mismatch {
-            slice_type.as_node_ref().add_typing_issue(
-                self.inference.i_s.db,
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
                 IssueType::TypeAliasArgumentIssue {
                     expected_count,
                     given_count,
@@ -1005,8 +995,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 TypeContent::DbType(DbType::TypeVar(usage))
                     if usage.in_definition == self.for_definition
             ) {
-                s.as_node_ref()
-                    .add_typing_issue(self.inference.i_s.db, IssueType::TypeVarExpected { class })
+                self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
             }
         }
     }
@@ -1187,6 +1176,16 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             })
         }
         self.type_var_manager.into_type_vars()
+    }
+
+    fn add_typing_issue(&self, node_ref: NodeRef<'db>, issue_type: IssueType) {
+        if !self.errors_already_calculated {
+            node_ref.add_typing_issue(self.inference.i_s.db, issue_type)
+        }
+    }
+
+    fn add_typing_issue_for_index(&self, index: NodeIndex, issue_type: IssueType) {
+        self.add_typing_issue(NodeRef::new(self.inference.file, index), issue_type)
     }
 }
 
