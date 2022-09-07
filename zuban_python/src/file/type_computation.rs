@@ -60,20 +60,22 @@ enum TypeComputationOrigin {
 }
 
 impl InvalidVariableType<'_, '_> {
-    fn add_issue(&self, db: &Database, node_ref: NodeRef, origin: TypeComputationOrigin) {
-        node_ref.add_typing_issue(db, match self {
+    fn add_issue(
+        &self,
+        db: &Database,
+        add_typing_issue: impl Fn(IssueType),
+        origin: TypeComputationOrigin,
+    ) {
+        add_typing_issue(match self {
             Self::Variable(var_ref) => {
-                node_ref.add_typing_issue(
-                    db,
-                    IssueType::InvalidType(
-                        format!(
-                            "Variable \"{}.{}\" is not valid as a type",
-                            var_ref.in_module(db).qualified_name(db),
-                            var_ref.as_code().to_owned(),
-                        )
-                        .into(),
-                    ),
-                );
+                add_typing_issue(IssueType::InvalidType(
+                    format!(
+                        "Variable \"{}.{}\" is not valid as a type",
+                        var_ref.in_module(db).qualified_name(db),
+                        var_ref.as_code().to_owned(),
+                    )
+                    .into(),
+                ));
                 IssueType::Note(
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
@@ -82,47 +84,36 @@ impl InvalidVariableType<'_, '_> {
                 IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
             }
             Self::Function(func) => {
-                node_ref.add_typing_issue(
-                    db,
-                    IssueType::InvalidType(
-                        format!(
-                            "Function {:?} is not valid as a type",
-                            func.qualified_name(db),
-                        )
-                        .into(),
-                    ),
-                );
+                add_typing_issue(IssueType::InvalidType(
+                    format!(
+                        "Function {:?} is not valid as a type",
+                        func.qualified_name(db),
+                    )
+                    .into(),
+                ));
                 IssueType::Note(Box::from(match func.name() {
                     "any" => "Perhaps you meant \"typing.Any\" instead of \"any\"?",
-                    "callable" => {
-                        "Perhaps you meant \"typing.Callable\" instead of \"callable\"?"
-                    }
+                    "callable" => "Perhaps you meant \"typing.Callable\" instead of \"callable\"?",
                     _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
                 }))
             }
             Self::List => {
-                node_ref.add_typing_issue(
-                    db,
-                    IssueType::InvalidType(Box::from(
-                        "Bracketed expression \"[...]\" is not valid as a type",
-                    )),
-                );
+                add_typing_issue(IssueType::InvalidType(Box::from(
+                    "Bracketed expression \"[...]\" is not valid as a type",
+                )));
                 IssueType::Note(Box::from("Did you mean \"List[...]\"?"))
             }
             Self::Tuple { .. } => {
-                node_ref.add_typing_issue(
-                    db,
-                    IssueType::InvalidType(Box::from("Syntax error in type annotation")),
-                );
+                add_typing_issue(IssueType::InvalidType(Box::from(
+                    "Syntax error in type annotation",
+                )));
                 IssueType::Note(Box::from(
                     "Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)",
                 ))
             }
-            Self::Literal(s) => {
-                IssueType::InvalidType(
-                    format!("Invalid type: try using Literal[{s}] instead?").into(),
-                )
-            }
+            Self::Literal(s) => IssueType::InvalidType(
+                format!("Invalid type: try using Literal[{s}] instead?").into(),
+            ),
             Self::Other => match origin {
                 TypeComputationOrigin::TypeCommentOrAnnotation => todo!(),
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
@@ -454,9 +445,11 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             },
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
-                if !self.errors_already_calculated {
-                    t.add_issue(self.inference.i_s.db, node_ref, self.origin);
-                }
+                t.add_issue(
+                    self.inference.i_s.db,
+                    |t| self.add_typing_issue(node_ref, t),
+                    self.origin,
+                );
                 DbType::Any
             }
         }
