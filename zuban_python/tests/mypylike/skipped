@@ -3,7 +3,6 @@ testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-testOverloadPositionalOnlyErrorMessageOldStyle
 testIterableBoundUnpacking
 testGenericFunctionsWithUnalignedIds
 testSubtypingWithGenericFunctions

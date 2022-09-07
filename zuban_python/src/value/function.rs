@@ -396,20 +396,26 @@ impl<'db, 'a> Function<'db, 'a> {
                 .format(&FormatData::with_matcher(i_s.db, matcher))
         };
         let node = self.node();
-        let args = self
+        let mut previous_kind = None;
+        let mut args = self
             .iter_params()
             .enumerate()
             .map(|(i, p)| {
                 let annotation_str = p
                     .annotation_type(i_s)
                     .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
-                let stars = match p.kind(i_s.db) {
+                let current_kind = p.kind(i_s.db);
+                let stars = match current_kind {
                     ParamKind::Starred => "*",
                     ParamKind::DoubleStarred => "**",
                     _ => "",
                 };
                 let mut out = if let Some(annotation_str) = annotation_str {
-                    format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
+                    if current_kind == ParamKind::PositionalOnly {
+                        annotation_str.into()
+                    } else {
+                        format!("{stars}{}: {annotation_str}", p.name(i_s.db).unwrap())
+                    }
                 } else if i == 0 && self.class.is_some() && stars.is_empty() {
                     p.name(i_s.db).unwrap().to_owned()
                 } else {
@@ -418,10 +424,19 @@ impl<'db, 'a> Function<'db, 'a> {
                 if p.has_default() {
                     out += " = ...";
                 }
+                if previous_kind == Some(ParamKind::PositionalOnly)
+                    && current_kind != ParamKind::PositionalOnly
+                {
+                    out = format!(" /, {out}")
+                }
+                previous_kind = Some(current_kind);
                 out
             })
             .collect::<Vec<_>>()
             .join(", ");
+        if previous_kind == Some(ParamKind::PositionalOnly) {
+            args += ", /";
+        }
         let ret = node.return_annotation().map(|a| return_type(i_s, a));
         let name = self.name();
         let type_var_string = self.type_vars(i_s).map(|type_vars| {
