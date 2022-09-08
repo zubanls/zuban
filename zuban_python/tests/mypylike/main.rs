@@ -9,6 +9,7 @@ use regex::{Captures, Regex, Replacer};
 const USE_MYPY_TEST_FILES: [&str; 19] = [
     "check-generics.test",
     "check-generic-alias.test",
+    //"check-typevar-unbound.test",
     "semanal-errors.test",
     "check-semanal-error.test",
     "check-newsemanal.test",
@@ -52,6 +53,7 @@ const USE_MYPY_TEST_FILES: [&str; 19] = [
     //"check-redefine.test",
     //"check-dynamic-typing.test",
     //"check-selftype.test",
+    //"check-recursive-types.test",
 
     //"check-typeguard.test",
     //"check-annotated.test",
@@ -88,6 +90,7 @@ const USE_MYPY_TEST_FILES: [&str; 19] = [
     //"fine-grained-cache-incremental.test",
     //"fine-grained-cycles.test",
     //"fine-grained-attr.test",
+    //"fine-grained-inspect.test",
 
     //"check-typevar-tuple.test",
     //"check-columns.test",
