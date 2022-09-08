@@ -6,10 +6,10 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
-const USE_MYPY_TEST_FILES: [&str; 19] = [
+const USE_MYPY_TEST_FILES: [&str; 20] = [
     "check-generics.test",
     "check-generic-alias.test",
-    //"check-typevar-unbound.test",
+    "check-typevar-unbound.test",
     "semanal-errors.test",
     "check-semanal-error.test",
     "check-newsemanal.test",

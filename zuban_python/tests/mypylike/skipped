@@ -3,13 +3,6 @@ testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-subtyping_only_result_generics
-testGenericFunctionAliasExpand
-testGenericFunctionMemberExpand
-testUnionContext
-testNoCrashOnPartialVariable2
-testBasicContextInference
-
 testUseSupertypeAsInferenceContext
 testUseSupertypeAsInferenceContextInvalidType
 testUseSupertypeAsInferenceContextPartial
@@ -207,6 +200,7 @@ testTypeVarValuesMethod2
 # Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
 testTypeVarBoundToOldUnionAttributeAccess
 testTypeVarBoundToNewUnionAttributeAccess
+testUnboundedTypevarUnpacking
 
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch
@@ -266,6 +260,7 @@ testGenericClassInnerFunctionTypeVariable
 testFunctionInGenericInnerClassTypeVariable-skip
 testSubtypingWithGenericInnerFunctions
 testNestedGenericFunctions
+testInnerFunctionTypeVar
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody

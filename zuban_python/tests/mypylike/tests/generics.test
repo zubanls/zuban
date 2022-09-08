@@ -41,8 +41,8 @@ from typing import TypeVar
 class A: pass
 T = TypeVar('T', int, str)
 U = TypeVar('U', str, A, int)
-def f(x: int) -> T: pass
-def g(x: int) -> U: pass
+def f(x: int) -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def g(x: int) -> U: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 a = f
 if int():
     a = f

@@ -211,6 +211,7 @@ impl<'db, 'a> Function<'db, 'a> {
         let func_node = self.node();
         let mut inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
+        let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &mut InferenceState<'db, '_>,
                                manager: &TypeVarManager,
                                type_var: Rc<TypeVar>,
@@ -228,7 +229,7 @@ impl<'db, 'a> Function<'db, 'a> {
                         && manager.position(&type_var).is_none()
                         && current_callable.is_none()
                     {
-                        node_ref.add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                        unbound_type_vars.push(type_var);
                     }
                     None
                 })
@@ -257,6 +258,17 @@ impl<'db, 'a> Function<'db, 'a> {
                 inf.recalculate_annotation_type_vars(return_annot.index(), recalculate_type_vars);
             }
         });
+        if !unbound_type_vars.is_empty() {
+            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
+                if unbound_type_vars.contains(&t.type_var) {
+                    NodeRef::new(
+                        self.node_ref.file,
+                        func_node.return_annotation().unwrap().expression().index(),
+                    )
+                    .add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                }
+            }
+        }
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
             _ => {
