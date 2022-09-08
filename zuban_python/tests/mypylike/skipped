@@ -3,8 +3,12 @@ testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-testGenericFunctionsWithUnalignedIds
-testSubtypingWithGenericFunctions
+subtyping_only_result_generics
+testGenericFunctionAliasExpand
+testGenericFunctionMemberExpand
+testUnionContext
+testNoCrashOnPartialVariable2
+testBasicContextInference
 
 testUseSupertypeAsInferenceContext
 testUseSupertypeAsInferenceContextInvalidType
@@ -261,6 +265,7 @@ testInnerFunctionMutualRecursionWithTypevarValues
 testGenericClassInnerFunctionTypeVariable
 testFunctionInGenericInnerClassTypeVariable-skip
 testSubtypingWithGenericInnerFunctions
+testNestedGenericFunctions
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody

@@ -2,6 +2,7 @@ use parsa_python_ast::{
     FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamKind, ReturnAnnotation,
     ReturnOrYield,
 };
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -9,7 +10,8 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
-    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVars,
+    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVarManager,
+    TypeVars,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -208,13 +210,28 @@ impl<'db, 'a> Function<'db, 'a> {
         }
         let func_node = self.node();
         let mut inference = self.node_ref.file.inference(i_s);
-        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>, type_var: Rc<TypeVar>, _, _| {
-            self.class.and_then(|class| {
-                class
-                    .type_vars(i_s)
-                    .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                    .map(DbType::TypeVar)
-            })
+        let in_result_type = Cell::new(false);
+        let mut on_type_var = |i_s: &mut InferenceState<'db, '_>,
+                               manager: &TypeVarManager,
+                               type_var: Rc<TypeVar>,
+                               node_ref: NodeRef<'db>,
+                               current_callable: Option<_>| {
+            self.class
+                .and_then(|class| {
+                    class
+                        .type_vars(i_s)
+                        .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+                        .map(DbType::TypeVar)
+                })
+                .or_else(|| {
+                    if in_result_type.get()
+                        && manager.position(&type_var).is_none()
+                        && current_callable.is_none()
+                    {
+                        node_ref.add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                    }
+                    None
+                })
         };
         let mut type_computation = TypeComputation::new(
             &mut inference,
@@ -227,6 +244,7 @@ impl<'db, 'a> Function<'db, 'a> {
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
+            in_result_type.set(true);
             type_computation.compute_return_annotation(return_annot);
         }
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {

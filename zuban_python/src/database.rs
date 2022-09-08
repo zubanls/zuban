@@ -1233,12 +1233,14 @@ pub struct TypeVarManager {
 }
 
 impl TypeVarManager {
-    pub fn add(&mut self, type_var: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
-        if let Some(index) = self
-            .type_vars
+    pub fn position(&self, type_var: &TypeVar) -> Option<usize> {
+        self.type_vars
             .iter()
-            .position(|t| t.type_var.as_ref() == type_var.as_ref())
-        {
+            .position(|t| t.type_var.as_ref() == type_var)
+    }
+
+    pub fn add(&mut self, type_var: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
+        if let Some(index) = self.position(type_var.as_ref()) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
                 self.type_vars[index].most_outer_callable,
                 in_callable,
@@ -1265,12 +1267,7 @@ impl TypeVarManager {
     pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
         TypeVarUsage {
             type_var: tv.type_var.clone(),
-            index: self
-                .type_vars
-                .iter()
-                .position(|t| t.type_var == tv.type_var)
-                .unwrap()
-                .into(),
+            index: self.position(&tv.type_var).unwrap().into(),
             in_definition: tv.in_definition,
         }
     }

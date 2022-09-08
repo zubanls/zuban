@@ -57,6 +57,7 @@ pub(crate) enum IssueType {
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
     TypeVarNameMismatch { string_name: Box<str>, variable_name: Box<str> },
+    TypeVarInReturnButNotArgument,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -314,6 +315,8 @@ impl<'db> Diagnostic<'db> {
                 "String argument 1 \"{string_name}\" to TypeVar(...) does not \
                  match variable name \"{variable_name}\""
             ),
+            IssueType::TypeVarInReturnButNotArgument =>
+                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
