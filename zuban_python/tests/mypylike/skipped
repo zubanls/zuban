@@ -1228,9 +1228,7 @@ testObsoleteTypevarValuesSyntax
 testNewAnalyzerIncompleteFixture
 
 # Won't support ever: python 2
-*python2
 testMypyPathAndPython2Dir
-testOptionalIsNotAUnionIfNoStrictOverloadStr
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
