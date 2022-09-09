@@ -10,7 +10,7 @@ use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::matching::{FormatData, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::value::Function;
+use crate::value::{Function, IteratorContent};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -306,6 +306,11 @@ enum ArgumentIteratorBase<'db, 'a> {
     Finished,
 }
 
+enum BaseArgumentReturn<'db, 'a> {
+    ArgsKwargsIterator(ArgsKwargsIterator<'db, 'a>),
+    ArgumentType(ArgumentType<'db, 'a>),
+}
+
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<Box<str>> {
         match self {
@@ -362,13 +367,15 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
-    type Item = ArgumentType<'db, 'a>;
+    type Item = BaseArgumentReturn<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
-                    Some(ArgumentType::Inferred(inf, node_ref))
+                    Some(BaseArgumentReturn::ArgumentType(ArgumentType::Inferred(
+                        inf, node_ref,
+                    )))
                 } else {
                     unreachable!()
                 }
@@ -377,17 +384,17 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
-                            return Some(Self::Item::new_argument(
-                                i + 1,
-                                python_file,
-                                named_expr.index(),
+                            return Some(BaseArgumentReturn::ArgumentType(
+                                ArgumentType::new_argument(i + 1, python_file, named_expr.index()),
                             ))
                         }
                         ASTArgument::Keyword(name, expr) => {
-                            return Some(Self::Item::new_keyword_argument(
-                                python_file,
-                                name.as_code(),
-                                expr.index(),
+                            return Some(BaseArgumentReturn::ArgumentType(
+                                ArgumentType::new_keyword_argument(
+                                    python_file,
+                                    name.as_code(),
+                                    expr.index(),
+                                ),
                             ))
                         }
                         ASTArgument::Starred(expr) => todo!("*args {arg:?}"),
@@ -396,24 +403,26 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(file, comprehension) => {
-                Some(ArgumentType::new_argument(1, file, comprehension.index()))
-            }
+            Self::Comprehension(file, comprehension) => Some(BaseArgumentReturn::ArgumentType(
+                ArgumentType::new_argument(1, file, comprehension.index()),
+            )),
             Self::Finished => None,
             Self::SliceType(slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     let file = s.file;
                     let named_expr = s.named_expr;
                     *self = Self::Finished;
-                    Some(Self::Item::Positional(
+                    Some(BaseArgumentReturn::ArgumentType(ArgumentType::Positional(
                         1,
                         NodeRef {
                             file,
                             node_index: named_expr.index(),
                         },
-                    ))
+                    )))
                 }
-                SliceTypeContent::Slices(slices) => Some(Self::Item::SlicesTuple(slices)),
+                SliceTypeContent::Slices(slices) => Some(BaseArgumentReturn::ArgumentType(
+                    ArgumentType::SlicesTuple(slices),
+                )),
                 _ => todo!(),
             },
         }
@@ -423,6 +432,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 #[derive(Debug)]
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
+    args_kwargs_iterator: ArgsKwargsIterator<'db, 'a>,
     context: Context<'db, 'a>,
     next: Option<&'a dyn Arguments<'db>>,
 }
@@ -432,6 +442,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         Self {
             current,
             next: None,
+            args_kwargs_iterator: ArgsKwargsIterator::None,
             context,
         }
     }
@@ -439,6 +450,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
     pub fn new_slice(slice_type: SliceType<'db, 'a>, context: Context<'db, 'a>) -> Self {
         Self {
             current: ArgumentIteratorBase::SliceType(slice_type),
+            args_kwargs_iterator: ArgsKwargsIterator::None,
             next: None,
             context,
         }
@@ -462,21 +474,29 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.current
-            .next()
-            .map(|type_| Argument {
+        match self.current.next() {
+            Some(BaseArgumentReturn::ArgumentType(type_)) => Some(Argument {
                 type_,
                 context: self.context,
-            })
-            .or_else(|| {
+            }),
+            Some(BaseArgumentReturn::ArgsKwargsIterator(args_kwargs)) => todo!(),
+            None => {
                 if let Some(next) = self.next {
                     *self = next.iter_arguments();
                     self.next()
                 } else {
                     None
                 }
-            })
+            }
+        }
     }
+}
+
+#[derive(Debug)]
+enum ArgsKwargsIterator<'db, 'a> {
+    Args(IteratorContent<'db, 'a>),
+    Kwargs(()),
+    None,
 }
 
 #[derive(Debug)]
