@@ -239,7 +239,7 @@ impl<'db> Inferred<'db> {
                 })
             }
             Specific::InstanceWithArguments => {
-                let inf_cls = self.infer_instance_with_arguments_cls(i_s, definition);
+                let inf_cls = infer_instance_with_arguments_cls(i_s, definition);
                 let class = inf_cls.maybe_class(i_s).unwrap();
                 let args = SimpleArguments::from_primary(
                     i_s.clone(),
@@ -519,7 +519,7 @@ impl<'db> Inferred<'db> {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
     }
 
-    fn resolve_specific(&self, db: &'db Database, specific: Specific) -> Instance<'db, '_> {
+    fn resolve_specific(&self, db: &'db Database, specific: Specific) -> Instance<'db, 'db> {
         self.load_builtin_instance_from_str(
             db,
             match specific {
@@ -539,7 +539,7 @@ impl<'db> Inferred<'db> {
         &self,
         db: &'db Database,
         name: &'static str,
-    ) -> Instance<'db, '_> {
+    ) -> Instance<'db, 'db> {
         let builtins = db.python_state.builtins();
         let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
         let v = builtins.points.get(node_index);
@@ -562,8 +562,7 @@ impl<'db> Inferred<'db> {
             if point.type_() == PointType::Specific {
                 match point.specific() {
                     Specific::InstanceWithArguments => {
-                        let inf_cls = self
-                            .infer_instance_with_arguments_cls(i_s, &definition)
+                        let inf_cls = infer_instance_with_arguments_cls(i_s, &definition)
                             .resolve_function_return(i_s);
                         let class = inf_cls.maybe_class(i_s).unwrap();
                         debug_assert!(class.type_vars(i_s).is_none());
@@ -600,17 +599,6 @@ impl<'db> Inferred<'db> {
             }
         }
         self
-    }
-
-    fn infer_instance_with_arguments_cls(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        definition: &NodeRef<'db>,
-    ) -> Self {
-        definition
-            .file
-            .inference(i_s)
-            .infer_primary_or_atom(definition.as_primary().first())
     }
 
     fn with_instance<'a, T>(
@@ -1063,6 +1051,16 @@ impl fmt::Debug for Inferred<'_> {
         }
         .finish()
     }
+}
+
+fn infer_instance_with_arguments_cls<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    definition: &NodeRef<'db>,
+) -> Inferred<'db> {
+    definition
+        .file
+        .inference(i_s)
+        .infer_primary_or_atom(definition.as_primary().first())
 }
 
 fn use_instance<'db, 'a>(
