@@ -11,6 +11,7 @@ pub enum Context<'db, 'a> {
     Execution(&'a Function<'db, 'a>, &'a dyn Arguments<'db>),
 }
 
+#[derive(Clone, Debug)]
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     pub context: Context<'db, 'a>,

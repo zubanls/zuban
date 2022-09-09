@@ -1461,6 +1461,14 @@ impl TypeAlias {
     }
 }
 
+impl fmt::Debug for Database {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Database")
+            .field("file_count", &self.files.len())
+            .finish()
+    }
+}
+
 pub struct Database {
     in_use: bool,
     pub vfs: Box<dyn Vfs>,
